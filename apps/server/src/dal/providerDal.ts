@@ -1,6 +1,6 @@
 import db from './db';
 import { Provider } from '@service-peek/shared';
-import type sqlite3 from 'sqlite3';
+import type { RunResult } from 'sqlite3';
 
 export interface NewProviderInput {
   provider_name: string;
@@ -15,7 +15,7 @@ export const insertProvider = (input: NewProviderInput): Promise<Provider> => {
     db.run(
       `INSERT INTO providers (provider_name, provider_ip, username, private_key_filename, ssh_port) VALUES (?, ?, ?, ?, ?)`,
       [input.provider_name, input.provider_ip, input.username, input.private_key_filename, input.ssh_port ?? 22],
-      function (this: sqlite3.RunResult, err: Error | null) {
+      function (this: RunResult, err: Error | null) {
         if (err) return reject(err);
 
         db.get('SELECT * FROM providers WHERE id = ?', [this.lastID], (err: Error | null, row: unknown) => {
