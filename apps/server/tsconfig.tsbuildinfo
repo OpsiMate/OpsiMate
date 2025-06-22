@@ -1,0 +1,1 @@
+{"root":["./src/health-router.ts","./src/index.ts","./src/integration-router.ts","./src/api/healthRouter.ts","./src/api/integrationRouter.ts","./src/bl/providerService.ts","./src/dal/db.ts","./src/dal/providerDal.ts","./src/dal/serviceDal.ts"],"version":"5.8.3"}
