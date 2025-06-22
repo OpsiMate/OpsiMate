@@ -1,9 +1,13 @@
 import express from 'express';
-import integrationRouter from './integration-router';
-import healthRouter from './health-router';
+import integrationRouter from './api/integration-router';
+import healthRouter from './api/health-router';
+import { initializeDatabase } from './dal/database';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Initialize database tables
+initializeDatabase();
 
 app.use(express.json());
 app.use('/api/v1', integrationRouter);
