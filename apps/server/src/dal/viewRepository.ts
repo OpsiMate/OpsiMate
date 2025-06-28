@@ -1,4 +1,60 @@
-import { db } from './db';
+import { db as rawDb } from './providerRepository';
+
+// Wrap the callback-based sqlite3 methods exposed by `providerRepository` into
+// promise-based helpers so that the rest of this repository can keep using the
+// same async/await style it was originally written with.
+const db = {
+  all: <T = any>(sql: string, params: any[] = []): Promise<T[]> =>
+    new Promise<T[]>((resolve, reject) => {
+      // sqlite3 allows omitting the params array, so handle that gracefully
+      const callback = (err: Error | null, rows: any[]) => {
+        if (err) return reject(err);
+        resolve(rows as T[]);
+      };
+
+      // Decide whether to pass the params arg based on its length
+      if (params.length) {
+        // @ts-ignore – sqlite3 typings don't perfectly align with runtime API
+        rawDb.all(sql, params, callback);
+      } else {
+        // @ts-ignore
+        rawDb.all(sql, callback);
+      }
+    }),
+
+  get: <T = any>(sql: string, params: any[] = []): Promise<T | undefined> =>
+    new Promise<T | undefined>((resolve, reject) => {
+      const callback = (err: Error | null, row: any) => {
+        if (err) return reject(err);
+        resolve(row as T | undefined);
+      };
+
+      if (params.length) {
+        // @ts-ignore
+        rawDb.get(sql, params, callback);
+      } else {
+        // @ts-ignore
+        rawDb.get(sql, callback);
+      }
+    }),
+
+  run: (sql: string, params: any[] = []): Promise<{ lastID: number; changes: number }> =>
+    new Promise<{ lastID: number; changes: number }>((resolve, reject) => {
+      // Use a traditional function to capture `this` (Statement) for lastID/changes
+      const callback = function (this: any, err: Error | null) {
+        if (err) return reject(err);
+        resolve({ lastID: this.lastID, changes: this.changes });
+      };
+
+      if (params.length) {
+        // @ts-ignore
+        rawDb.run(sql, params, callback);
+      } else {
+        // @ts-ignore
+        rawDb.run(sql, callback);
+      }
+    })
+};
 
 // Define SavedView type
 export interface SavedView {
