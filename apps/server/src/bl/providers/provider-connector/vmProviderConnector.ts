@@ -4,7 +4,7 @@ import {ProviderConnector} from "./providerConnector";
 
 export class VMProviderConnector implements ProviderConnector {
     async discoverServices(provider: Provider): Promise<DiscoveredService[]> {
-        return sshClient.connectAndListContainers(provider);
+        return sshClient.discoverServices(provider);
     }
 
     async startService(provider: Provider, serviceName: string): Promise<void> {
@@ -14,9 +14,11 @@ export class VMProviderConnector implements ProviderConnector {
     async stopService(provider: Provider, serviceName: string): Promise<void> {
         return sshClient.stopService(provider, serviceName);
     }
+
     async getServiceLogs(provider: Provider, serviceName: string): Promise<string[]> {
         return sshClient.getServiceLogs(provider, serviceName);
     }
+
     async testConnection(provider: Provider): Promise<boolean> {
         return sshClient.testConnection(provider);
     }

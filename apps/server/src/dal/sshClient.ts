@@ -8,7 +8,7 @@ const sshConnectionCache = new NodeCache({ stdTTL: 10 * 60, checkperiod: 60});
 
 const PRIVATE_KEYS_DIR = path.join(__dirname, '../../data/private-keys');
 
-function getKeyPath(filename: string) {
+function getKeyPath(filename: string): string {
   const filePath = path.join(PRIVATE_KEYS_DIR, filename);
   if (!fs.existsSync(filePath)) {
     throw new Error(`Key not found: ${filePath}`);
@@ -50,7 +50,7 @@ async function getCachedSSHConnection(provider: Provider): Promise<NodeSSH> {
   return ssh;
 }
 
-export async function connectAndListContainers(provider: Provider) {
+export async function discoverServices(provider: Provider) {
   const ssh = await getCachedSSHConnection(provider);
 
   // Check if docker is available
