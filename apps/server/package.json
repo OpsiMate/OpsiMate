@@ -14,6 +14,7 @@
     "@types/cors": "^2.8.19",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "node-cache": "^5.1.2",
     "node-ssh": "^13.1.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",

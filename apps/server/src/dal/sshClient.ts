@@ -2,6 +2,9 @@ import { NodeSSH } from 'node-ssh';
 import path from 'path';
 import fs from 'fs';
 import {Provider} from "@service-peek/shared";
+import NodeCache from "node-cache";
+
+const sshConnectionCache = new NodeCache({ stdTTL: 10 * 60, checkperiod: 60});
 
 const PRIVATE_KEYS_DIR = path.join(__dirname, '../../data/private-keys');
 
@@ -13,16 +16,42 @@ function getKeyPath(filename: string) {
   return filePath;
 }
 
-export async function connectAndListContainers(provider: Provider) {
-  const ssh = new NodeSSH();
+async function getCachedSSHConnection(provider: Provider): Promise<NodeSSH> {
   const privateKeyPath = getKeyPath(provider.privateKeyFilename);
+  const cacheKey = `${provider.providerIP}_${provider.username}_${privateKeyPath}`;
 
+  const cachedSSH = sshConnectionCache.get<NodeSSH>(cacheKey);
+  if (cachedSSH) {
+    try {
+      const test = await cachedSSH.execCommand('echo "ping"');
+      if (test.code === 0 && test.stdout.trim() === 'ping') {
+        return cachedSSH;
+      } else {
+        console.warn(`SSH session for ${cacheKey} failed liveness check. Reconnecting...`);
+        cachedSSH.dispose();
+        sshConnectionCache.del(cacheKey);
+      }
+    } catch (err) {
+      console.warn(`SSH session for ${cacheKey} is invalid. Reconnecting...`, err);
+      cachedSSH.dispose();
+      sshConnectionCache.del(cacheKey);
+    }
+  }
+
+  const ssh = new NodeSSH();
   await ssh.connect({
     host: provider.providerIP,
     username: provider.username,
     privateKeyPath: privateKeyPath,
     port: provider.SSHPort,
   });
+
+  sshConnectionCache.set(cacheKey, ssh);
+  return ssh;
+}
+
+export async function connectAndListContainers(provider: Provider) {
+  const ssh = await getCachedSSHConnection(provider);
 
   // Check if docker is available
   const dockerCheck = await ssh.execCommand('docker --version');
@@ -52,7 +81,7 @@ export async function startService(
     provider: Provider,
     serviceName: string
 ): Promise<void> {
-  const ssh = new NodeSSH();
+  const ssh = await getCachedSSHConnection(provider);
   try {
     await ssh.connect({
       host: provider.providerIP,
@@ -74,7 +103,7 @@ export async function stopService(
     provider: Provider,
     serviceName: string
 ): Promise<void> {
-  const ssh = new NodeSSH();
+  const ssh = await getCachedSSHConnection(provider);
   try {
     await ssh.connect({
       host: provider.providerIP,
@@ -93,7 +122,7 @@ export async function stopService(
 }
 
 export async function getServiceLogs(provider: Provider, serviceName: string): Promise<string[]> {
-  const ssh = new NodeSSH();
+  const ssh = await getCachedSSHConnection(provider);
 
   try {
     await ssh.connect({
