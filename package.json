@@ -19,5 +19,8 @@
     "prettier": "^3.2.5",
     "turbo": "^1.12.4"
   },
-  "packageManager": "npm@10.2.4"
-} 
+  "packageManager": "npm@10.2.4",
+  "dependencies": {
+    "zod": "^3.25.74"
+  }
+}
