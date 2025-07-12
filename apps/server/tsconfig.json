@@ -28,7 +28,4 @@
     "**/*.test.ts",
     "**/*.spec.ts"
   ],
-  "ts-node": {
-    "esm": true
-  }
 }
