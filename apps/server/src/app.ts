@@ -24,6 +24,9 @@ import { UsersController } from './api/v1/users/controller';
 import Database from "better-sqlite3";
 import {RefreshJob} from "./jobs/refresh-job";
 import {PullGrafanaAlertsJob} from "./jobs/pull-grafana-alerts-job";
+import { AuditLogRepository } from './dal/auditLogRepository';
+import { AuditBL } from './bl/audit.bl';
+import { AuditController } from './api/v1/audit/controller';
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -44,6 +47,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const integrationRepo = new IntegrationRepository(db);
     const alertRepo = new AlertRepository(db);
     const userRepo = new UserRepository(db);
+    const auditLogRepo = new AuditLogRepository(db);
 
     // Init tables
     await Promise.all([
@@ -54,10 +58,12 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         integrationRepo.initIntegrationsTable(),
         alertRepo.initAlertsTable(),
         userRepo.initUsersTable(),
+        auditLogRepo.initAuditLogsTable(),
     ]);
 
     // BL
-    const providerBL = new ProviderBL(providerRepo, serviceRepo);
+    const auditBL = new AuditBL(auditLogRepo);
+    const providerBL = new ProviderBL(providerRepo, serviceRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
@@ -70,6 +76,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const integrationController = new IntegrationController(integrationBL);
     const alertController = new AlertController(alertBL);
     const usersController = new UsersController(userBL);
+    const auditController = new AuditController(auditBL);
 
     app.use('/', healthRouter);
     app.use('/api/v1', createV1Router(
@@ -79,7 +86,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         tagController,
         integrationController,
         alertController,
-        usersController
+        usersController,
+        auditController
     ));
 
     if (config?.enableJobs) {

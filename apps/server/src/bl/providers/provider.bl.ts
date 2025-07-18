@@ -3,12 +3,17 @@ import { ProviderNotFound } from "./ProviderNotFound";
 import { providerConnectorFactory } from "./provider-connector/providerConnectorFactory";
 import {ProviderRepository} from "../../dal/providerRepository";
 import {ServiceRepository} from "../../dal/serviceRepository";
+import { AuditBL } from '../audit.bl';
+import { AuditActionType, AuditResourceType } from '@service-peek/shared';
 
 const logger = new Logger('bl/providers/provider.bl');
 
 export class ProviderBL {
-    constructor(private providerRepo: ProviderRepository,
-                private serviceRepo: ServiceRepository) {}
+    constructor(
+        private providerRepo: ProviderRepository,
+        private serviceRepo: ServiceRepository,
+        private auditBL?: AuditBL // optional for backward compatibility
+    ) {}
 
     async getAllProviders(): Promise<Provider[]> {
         try {
@@ -22,7 +27,7 @@ export class ProviderBL {
         }
     }
 
-    async createProvider(providerToCreate: Omit<Provider, 'id'>): Promise<Provider> {
+    async createProvider(providerToCreate: Omit<Provider, 'id'>, userId?: number): Promise<Provider> {
         try {
             logger.info(`Starting to create provider: ${JSON.stringify(providerToCreate)}`);
             const { lastID } = await this.providerRepo.createProvider(providerToCreate);
@@ -31,6 +36,16 @@ export class ProviderBL {
             const createdProvider = await this.providerRepo.getProviderById(lastID);
             logger.info(`Fetched created provider: ${JSON.stringify(createdProvider)}`);
 
+            if (this.auditBL && userId) {
+                await this.auditBL.logAction({
+                    actionType: AuditActionType.CREATE,
+                    resourceType: AuditResourceType.PROVIDER,
+                    resourceId: String(lastID),
+                    userId: userId,
+                    details: JSON.stringify(providerToCreate)
+                });
+            }
+
             return createdProvider;
         } catch (error) {
             logger.error(`Error creating provider`, error);
@@ -38,13 +53,22 @@ export class ProviderBL {
         }
     }
 
-    async updateProvider(providerId: number, providerToUpdate: Omit<Provider, 'id' | 'createdAt'>): Promise<Provider> {
+    async updateProvider(providerId: number, providerToUpdate: Omit<Provider, 'id' | 'createdAt'>, userId?: number): Promise<Provider> {
         logger.info(`Starting to update provider: ${providerId}`);
         await this.validateProviderExists(providerId);
 
         try {
             await this.providerRepo.updateProvider(providerId, providerToUpdate);
             logger.info(`Updated provider with ID: ${providerId}`);
+            if (this.auditBL && userId) {
+                await this.auditBL.logAction({
+                    actionType: AuditActionType.UPDATE,
+                    resourceType: AuditResourceType.PROVIDER,
+                    resourceId: String(providerId),
+                    userId: userId,
+                    details: JSON.stringify(providerToUpdate)
+                });
+            }
             return await this.providerRepo.getProviderById(providerId);
         } catch (error) {
             logger.error(`Error updating provider`, error);
@@ -52,12 +76,20 @@ export class ProviderBL {
         }
     }
 
-    async deleteProvider(providerId: number): Promise<void> {
+    async deleteProvider(providerId: number, userId?: number): Promise<void> {
         logger.info(`Starting to delete provider: ${providerId}`);
         await this.validateProviderExists(providerId);
 
         try {
             await this.providerRepo.deleteProvider(providerId);
+            if (this.auditBL && userId) {
+                await this.auditBL.logAction({
+                    actionType: AuditActionType.DELETE,
+                    resourceType: AuditResourceType.PROVIDER,
+                    resourceId: String(providerId),
+                    userId: userId
+                });
+            }
         } catch (error) {
             logger.error(`Error deleting provider [${providerId}]`, error);
             throw error;

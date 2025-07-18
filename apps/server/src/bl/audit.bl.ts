@@ -1,0 +1,25 @@
+import { AuditLogRepository } from '../dal/auditLogRepository';
+import { AuditLog, AuditActionType, AuditResourceType } from '@service-peek/shared';
+
+export class AuditBL {
+    constructor(private auditLogRepository: AuditLogRepository) {}
+
+    async logAction(params: {
+        actionType: AuditActionType;
+        resourceType: AuditResourceType;
+        resourceId: string;
+        userId: number;
+        details?: string;
+    }): Promise<void> {
+        await this.auditLogRepository.insertAuditLog(params);
+    }
+
+    async getAuditLogsPaginated(page: number, pageSize: number): Promise<{ logs: AuditLog[]; total: number }> {
+        const offset = (page - 1) * pageSize;
+        const [logs, total] = await Promise.all([
+            this.auditLogRepository.getAuditLogs(offset, pageSize),
+            this.auditLogRepository.countAuditLogs(),
+        ]);
+        return { logs, total };
+    }
+} 

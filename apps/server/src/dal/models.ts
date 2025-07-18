@@ -1,4 +1,5 @@
 import {IntegrationType} from "@service-peek/shared";
+import { AuditActionType, AuditResourceType } from '@service-peek/shared';
 
 export type IntegrationRow = {
     id: number;
@@ -79,4 +80,14 @@ export type UserRow = {
     full_name: string;
     role: 'admin' | 'editor' | 'viewer';
     created_at: string;
+};
+
+export type AuditLogRow = {
+    id: number;
+    action_type: AuditActionType;
+    resource_type: AuditResourceType;
+    resource_id: string;
+    user_id: number;
+    timestamp: string;
+    details?: string;
 };
