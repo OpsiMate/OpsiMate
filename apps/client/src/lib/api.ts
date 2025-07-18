@@ -1,4 +1,4 @@
-import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert } from '@service-peek/shared';
+import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert, AuditLog } from '@service-peek/shared';
 import { SavedView } from '@/types/SavedView';
 
 export type ApiResponse<T = any> = {
@@ -463,6 +463,12 @@ export const alertsApi = {
     }
     return response;
   }
+};
+
+export const auditApi = {
+  getAuditLogs: async (page = 1, pageSize = 20) => {
+    return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
+  },
 };
 
 export { apiRequest };

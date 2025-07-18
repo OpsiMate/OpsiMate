@@ -6,13 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { apiRequest } from '../lib/api';
-import { User, Role } from '@service-peek/shared';
+import { User, Role, AuditLog, AuditActionType, AuditResourceType } from '@service-peek/shared';
 import { getCurrentUser } from '../lib/auth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { Users, FileText, Settings as SettingsIcon } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { AddUserModal } from '../components/AddUserModal';
+import { auditApi } from '../lib/api';
 
 const Settings: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -203,28 +204,12 @@ const Settings: React.FC = () => {
             <h2 className="text-2xl font-semibold">Audit Log</h2>
             <p className="text-muted-foreground">View activity logs for all dashboard operations and user actions.</p>
           </div>
-          
           <Card>
             <CardHeader>
               <CardTitle>Activity Logs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Audit logs will track all important activities including:
-                </p>
-                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-                  <li>User authentication and login events</li>
-                  <li>Provider creation, modification, and deletion</li>
-                  <li>Service operations (start, stop, restart)</li>
-                  <li>User management actions (create, update roles)</li>
-                  <li>Integration configuration changes</li>
-                  <li>System configuration modifications</li>
-                </ul>
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                  <strong>Coming Soon:</strong> Audit logging functionality will be available in a future update.
-                </div>
-              </div>
+              <AuditLogTable />
             </CardContent>
           </Card>
         </TabsContent>
@@ -242,3 +227,74 @@ const Settings: React.FC = () => {
 };
 
 export default Settings; 
+
+const PAGE_SIZE = 20;
+const AuditLogTable: React.FC = () => {
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    auditApi.getAuditLogs(page, PAGE_SIZE).then(res => {
+      if (mounted) {
+        if (res && Array.isArray(res.logs)) {
+          setLogs(res.logs);
+          setTotal(res.total || 0);
+          setError(null);
+        } else {
+          setError(res?.error || 'Failed to fetch audit logs');
+        }
+        setLoading(false);
+      }
+    });
+    return () => { mounted = false; };
+  }, [page]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  if (loading) return <div className="py-8 text-center">Loading audit logs...</div>;
+  if (error) return <ErrorAlert message={error} className="mb-4" />;
+  if (!logs.length) return <div className="py-8 text-center text-muted-foreground">No audit logs found.</div>;
+
+  return (
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Time</TableHead>
+            <TableHead>Action</TableHead>
+            <TableHead>Resource</TableHead>
+            <TableHead>Resource ID</TableHead>
+            <TableHead>User ID</TableHead>
+            <TableHead>Details</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {logs.map(log => (
+            <TableRow key={log.id}>
+              <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
+              <TableCell><Badge variant="outline">{log.actionType}</Badge></TableCell>
+              <TableCell><Badge variant="secondary">{log.resourceType}</Badge></TableCell>
+              <TableCell>{log.resourceId}</TableCell>
+              <TableCell>{log.userId}</TableCell>
+              <TableCell>
+                <pre className="whitespace-pre-wrap break-all text-xs bg-muted p-2 rounded max-w-xs overflow-x-auto">{log.details || '-'}</pre>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {totalPages > 1 && (
+        <div className="flex justify-end items-center gap-2 mt-4">
+          <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>&larr; Prev</Button>
+          <span className="text-sm">Page {page} of {totalPages}</span>
+          <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next &rarr;</Button>
+        </div>
+      )}
+    </div>
+  );
+}; 
