@@ -229,6 +229,18 @@ const Settings: React.FC = () => {
 export default Settings; 
 
 const PAGE_SIZE = 20;
+// Helper for natural relative time
+function formatRelativeTime(dateString: string) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // in seconds
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) === 1 ? '' : 's'} ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hour${Math.floor(diff / 3600) === 1 ? '' : 's'} ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) === 1 ? '' : 's'} ago`;
+  return date.toLocaleDateString();
+}
+
 const AuditLogTable: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
@@ -260,6 +272,20 @@ const AuditLogTable: React.FC = () => {
   if (error) return <ErrorAlert message={error} className="mb-4" />;
   if (!logs.length) return <div className="py-8 text-center text-muted-foreground">No audit logs found.</div>;
 
+  // Helper for action badge color
+  const getActionBadgeProps = (action: string) => {
+    switch (action) {
+      case 'CREATE':
+        return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
+      case 'UPDATE':
+        return { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+      case 'DELETE':
+        return { variant: 'destructive', className: '' };
+      default:
+        return { variant: 'outline', className: '' };
+    }
+  };
+
   return (
     <div>
       <Table>
@@ -270,28 +296,27 @@ const AuditLogTable: React.FC = () => {
             <TableHead>Resource</TableHead>
             <TableHead>Resource Name</TableHead>
             <TableHead>User</TableHead>
-            <TableHead>Details</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {logs.map(log => (
-            <TableRow key={log.id}>
-              <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
-              <TableCell><Badge variant="outline">{log.actionType}</Badge></TableCell>
-              <TableCell><Badge variant="secondary">{log.resourceType}</Badge></TableCell>
-              <TableCell>
-                {log.resourceName || '-'}
-                <div className="text-xs text-muted-foreground">ID: {log.resourceId}</div>
-              </TableCell>
-              <TableCell>
-                {log.userName || '-'}
-                <div className="text-xs text-muted-foreground">ID: {log.userId}</div>
-              </TableCell>
-              <TableCell>
-                <pre className="whitespace-pre-wrap break-all text-xs bg-muted p-2 rounded max-w-xs overflow-x-auto">{log.details || '-'}</pre>
-              </TableCell>
-            </TableRow>
-          ))}
+          {logs.map(log => {
+            const actionProps = getActionBadgeProps(log.actionType);
+            return (
+              <TableRow key={log.id}>
+                <TableCell>{formatRelativeTime(log.timestamp)}</TableCell>
+                <TableCell>
+                  <Badge variant={actionProps.variant as any} className={actionProps.className}>
+                    {log.actionType}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{log.resourceType}</Badge>
+                </TableCell>
+                <TableCell>{log.resourceName || '-'}</TableCell>
+                <TableCell>{log.userName || '-'}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
       {totalPages > 1 && (
