@@ -1,10 +1,10 @@
-# Service Peek Dashboard - Project Documentation
+# OpsiMate Dashboard - Project Documentation
 
-This document provides an overview of the Service Peek Dashboard project structure and functionality to help AI models understand the system without having to analyze the entire codebase every time.
+This document provides an overview of the OpsiMate Dashboard project structure and functionality to help AI models understand the system without having to analyze the entire codebase every time.
 
 ## Project Overview
 
-Service Peek is a web-based dashboard for monitoring and managing cloud services across different providers. It allows users to:
+OpsiMate is a web-based dashboard for monitoring and managing cloud services across different providers. It allows users to:
 
 - Register and manage cloud providers (e.g., Azure VM, AWS EC2)
 - Monitor services running on these providers
@@ -195,4 +195,4 @@ The application is designed to be run locally or deployed as a web service:
 
 ---
 
-*This documentation is designed to provide a high-level overview of the Service Peek Dashboard project structure and functionality. It should be updated after major changes to the codebase.*
+*This documentation is designed to provide a high-level overview of the OpsiMate Dashboard project structure and functionality. It should be updated after major changes to the codebase.*

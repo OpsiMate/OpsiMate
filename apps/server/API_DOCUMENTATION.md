@@ -1,4 +1,4 @@
-# Service Peek Dashboard - Integration API
+# OpsiMate Dashboard - Integration API
 
 This document describes the Integration Router API endpoints for managing cloud providers and their services.
 

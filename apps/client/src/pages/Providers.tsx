@@ -87,7 +87,7 @@ export function Providers() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Providers</h1>
           <p className="text-muted-foreground">
-            Connect your infrastructure and services to Service Peek Dashboard
+            Connect your infrastructure and services to OpsiMate Dashboard
           </p>
         </div>
       </div>

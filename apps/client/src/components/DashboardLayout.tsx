@@ -46,7 +46,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle Menu</span>
         </Button>
-        <h1 className="text-lg font-semibold">Service Peek</h1>
+        <h1 className="text-lg font-semibold">OpsiMate</h1>
       </div>
 
       {/* Mobile Sidebar (Overlay) */}

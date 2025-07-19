@@ -1,6 +1,6 @@
-# Service Peek
+# OpsiMate
 
-A monorepo for the Service Peek application built with Turbo.
+A monorepo for the OpsiMate application built with Turbo.
 
 ## Structure
 

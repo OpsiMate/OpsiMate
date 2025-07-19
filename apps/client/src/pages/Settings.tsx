@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { apiRequest } from '../lib/api';
-import { User, Role, AuditLog, AuditActionType, AuditResourceType } from '@service-peek/shared';
+import { User, Role, AuditLog, AuditActionType, AuditResourceType } from '../types';
 import { getCurrentUser } from '../lib/auth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
@@ -47,7 +47,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleRoleUpdate = async (email: string, newRole: 'admin' | 'editor' | 'viewer') => {
+  const handleRoleUpdate = async (email: string, newRole: Role) => {
     setUpdatingUser(email);
     clearErrors();
     
@@ -77,11 +77,11 @@ const Settings: React.FC = () => {
     setUsers(prevUsers => [...prevUsers, newUser]);
   };
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleBadgeVariant = (role: Role) => {
     switch (role) {
-      case 'admin': return 'destructive';
-      case 'editor': return 'default';
-      case 'viewer': return 'secondary';
+      case Role.Admin: return 'destructive';
+      case Role.Editor: return 'default';
+      case Role.Viewer: return 'secondary';
       default: return 'outline';
     }
   };
@@ -180,16 +180,16 @@ const Settings: React.FC = () => {
                       <TableCell>
                         <Select
                           value={user.role}
-                          onValueChange={(newRole) => handleRoleUpdate(user.email, newRole as 'admin' | 'editor' | 'viewer')}
+                          onValueChange={(newRole) => handleRoleUpdate(user.email, newRole as Role)}
                           disabled={updatingUser === user.email || user.email === currentUser?.email}
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="viewer">Viewer</SelectItem>
-                            <SelectItem value="editor">Editor</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value={Role.Viewer}>Viewer</SelectItem>
+                            <SelectItem value={Role.Editor}>Editor</SelectItem>
+                            <SelectItem value={Role.Admin}>Admin</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -228,7 +228,7 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings; 
+export default Settings;
 
 // Helper to parse SQLite UTC timestamp as ISO 8601
 function parseUTCDate(dateString: string) {
@@ -337,4 +337,4 @@ const AuditLogTable: React.FC = () => {
       )}
     </div>
   );
-}; 
+};

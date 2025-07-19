@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { apiRequest } from '../lib/api';
-import { User, Role } from '@service-peek/shared';
+import { User, Role } from '../types';
 import { ErrorAlert } from './ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
 
@@ -20,7 +20,7 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
     email: '',
     fullName: '',
     password: '',
-    role: 'viewer' as Role
+    role: Role.Viewer
   });
   const [creatingUser, setCreatingUser] = useState(false);
   const { generalError, clearErrors, handleApiResponse } = useFormErrors();
@@ -39,7 +39,7 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
           email: '',
           fullName: '',
           password: '',
-          role: 'viewer' as Role
+          role: Role.Viewer
         });
         onClose();
       } else {
@@ -62,7 +62,7 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
         email: '',
         fullName: '',
         password: '',
-        role: 'viewer' as Role
+        role: Role.Viewer
       });
       onClose();
     }
@@ -118,20 +118,20 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as Role }))}
-                disabled={creatingUser}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                  <SelectItem value="editor">Editor</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+                                <Select
+                    value={formData.role}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as Role }))}
+                    disabled={creatingUser}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={Role.Viewer}>Viewer</SelectItem>
+                      <SelectItem value={Role.Editor}>Editor</SelectItem>
+                      <SelectItem value={Role.Admin}>Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
             </div>
           </div>
           
