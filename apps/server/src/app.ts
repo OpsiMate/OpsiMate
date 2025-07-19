@@ -25,7 +25,7 @@ import Database from "better-sqlite3";
 import {RefreshJob} from "./jobs/refresh-job";
 import {PullGrafanaAlertsJob} from "./jobs/pull-grafana-alerts-job";
 import { AuditLogRepository } from './dal/auditLogRepository';
-import { AuditBL } from './bl/audit.bl';
+import { AuditBL } from './bl/audit/audit.bl';
 import { AuditController } from './api/v1/audit/controller';
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {

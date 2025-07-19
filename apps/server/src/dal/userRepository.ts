@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import {AlertRow, UserRow} from './models';
-import {Alert as SharedAlert, User} from "@service-peek/shared";
+import {UserRow} from './models';
+import {User} from "@service-peek/shared";
 
 export class UserRepository {
     private db: Database.Database;

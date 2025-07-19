@@ -1,5 +1,4 @@
 import { UserRepository } from '../../dal/userRepository';
-import { UserRow } from '../../dal/models';
 import bcrypt from 'bcrypt';
 import { Role, User } from '@service-peek/shared';
 

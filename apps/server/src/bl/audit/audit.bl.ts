@@ -1,4 +1,4 @@
-import { AuditLogRepository } from '../dal/auditLogRepository';
+import { AuditLogRepository } from '../../dal/auditLogRepository';
 import { AuditLog } from '@service-peek/shared';
 
 export class AuditBL {

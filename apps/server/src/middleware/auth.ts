@@ -6,7 +6,7 @@ import {User} from "@service-peek/shared";
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 
 export interface AuthenticatedRequest extends Request {
-    user: User;
+    user?: User;
 }
 
 export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {

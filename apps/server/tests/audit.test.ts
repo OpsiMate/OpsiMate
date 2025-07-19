@@ -38,6 +38,8 @@ beforeAll(async () => {
       resource_type TEXT NOT NULL,
       resource_id TEXT NOT NULL,
       user_id INTEGER NOT NULL,
+      user_name TEXT,
+      resource_name TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       details TEXT
     );
@@ -102,6 +104,8 @@ describe('Audit Logs API', () => {
     expect(log.userId).toBeDefined();
     expect(log.resourceId).toBeDefined();
     expect(log.timestamp).toBeDefined();
+    expect(log.userName).toBeDefined();
+    expect(log.resourceName).toBeDefined();
   });
 
   test('should support pagination', async () => {

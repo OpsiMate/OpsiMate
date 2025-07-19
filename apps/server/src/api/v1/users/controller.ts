@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { UserBL } from '../../../bl/users/user.bl';
-import {CreateUserSchema, LoginSchema, RegisterSchema, UpdateUserRoleSchema} from '@service-peek/shared';
+import {CreateUserSchema, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema} from '@service-peek/shared';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 
@@ -30,7 +30,7 @@ export class UsersController {
     };
 
     createUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || req.user.role !== Role.Admin) {
             return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
         }
         try {
@@ -49,7 +49,7 @@ export class UsersController {
     };
 
     updateUserRoleHandler = async (req: AuthenticatedRequest, res: Response) => {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || req.user.role !== Role.Admin) {
             return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
         }
         try {
@@ -83,7 +83,7 @@ export class UsersController {
     };
 
     getAllUsersHandler = async (req: AuthenticatedRequest, res: Response) => {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || req.user.role !== Role.Admin) {
             return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
         }
         try {

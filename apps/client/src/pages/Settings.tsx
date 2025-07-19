@@ -15,6 +15,8 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { AddUserModal } from '../components/AddUserModal';
 import { auditApi } from '../lib/api';
 
+const PAGE_SIZE = 20;
+
 const Settings: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,11 +230,14 @@ const Settings: React.FC = () => {
 
 export default Settings; 
 
-const PAGE_SIZE = 20;
-// Helper for natural relative time
+// Helper to parse SQLite UTC timestamp as ISO 8601
+function parseUTCDate(dateString: string) {
+  return new Date(dateString.replace(' ', 'T') + 'Z');
+}
+
 function formatRelativeTime(dateString: string) {
   const now = new Date();
-  const date = new Date(dateString);
+  const date = parseUTCDate(dateString);
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // in seconds
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) === 1 ? '' : 's'} ago`;
@@ -303,7 +308,11 @@ const AuditLogTable: React.FC = () => {
             const actionProps = getActionBadgeProps(log.actionType);
             return (
               <TableRow key={log.id}>
-                <TableCell>{formatRelativeTime(log.timestamp)}</TableCell>
+                <TableCell>
+                  <span title={parseUTCDate(log.timestamp).toLocaleString()}>
+                    {formatRelativeTime(log.timestamp)}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <Badge variant={actionProps.variant as any} className={actionProps.className}>
                     {log.actionType}

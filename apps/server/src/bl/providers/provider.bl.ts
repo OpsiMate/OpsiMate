@@ -3,7 +3,7 @@ import { ProviderNotFound } from "./ProviderNotFound";
 import { providerConnectorFactory } from "./provider-connector/providerConnectorFactory";
 import {ProviderRepository} from "../../dal/providerRepository";
 import {ServiceRepository} from "../../dal/serviceRepository";
-import { AuditBL } from '../audit.bl';
+import { AuditBL } from '../audit/audit.bl';
 import { AuditActionType, AuditResourceType } from '@service-peek/shared';
 
 const logger = new Logger('bl/providers/provider.bl');
@@ -42,8 +42,7 @@ export class ProviderBL {
                 resourceId: String(lastID),
                 userId: user.id,
                 userName: user.fullName,
-                resourceName: providerToCreate.name || '',
-                details: JSON.stringify(providerToCreate)
+                resourceName: providerToCreate.name
             });
 
             return createdProvider;
