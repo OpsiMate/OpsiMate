@@ -25,8 +25,7 @@ export class ProviderController {
     async createProvider(req: AuthenticatedRequest, res: Response) {
         try {
             const providerToCreate = CreateProviderSchema.parse(req.body);
-            const userId = req.user?.id;
-            const createdProvider = await this.providerBL.createProvider({ ...providerToCreate, createdAt: (Date.now()).toString() }, userId);
+            const createdProvider = await this.providerBL.createProvider({ ...providerToCreate, createdAt: (Date.now()).toString() }, req.user);
             res.status(201).json({ success: true, data: createdProvider });
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -62,8 +61,7 @@ export class ProviderController {
             }
 
             const validatedData = CreateProviderSchema.parse(req.body);
-            const userId = req.user?.id;
-            const updatedProvider = await this.providerBL.updateProvider(providerId, validatedData, userId);
+            const updatedProvider = await this.providerBL.updateProvider(providerId, validatedData, req.user);
 
             res.json({ success: true, data: updatedProvider, message: 'Provider updated successfully' });
         } catch (error) {
@@ -84,8 +82,7 @@ export class ProviderController {
             if (isNaN(providerId)) {
                 return res.status(400).json({ success: false, error: 'Invalid provider ID' });
             }
-            const userId = req.user?.id;
-            await this.providerBL.deleteProvider(providerId, userId);
+            await this.providerBL.deleteProvider(providerId, req.user);
             res.json({ success: true, message: 'Provider and associated services deleted successfully' });
         } catch (error) {
             if (error instanceof ProviderNotFound) {

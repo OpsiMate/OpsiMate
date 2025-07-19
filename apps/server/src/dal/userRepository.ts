@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { UserRow } from './models';
+import {AlertRow, UserRow} from './models';
+import {Alert as SharedAlert, User} from "@service-peek/shared";
 
 export class UserRepository {
     private db: Database.Database;
@@ -34,10 +35,11 @@ export class UserRepository {
         });
     }
 
-    async findByEmail(email: string): Promise<UserRow | undefined> {
+    async loginVerification(email: string): Promise<{ user: User, passwordHash: string} | undefined> {
         return runAsync(() => {
             const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-            return stmt.get(email) as UserRow | undefined;
+            const userRow = stmt.get(email) as UserRow | undefined;
+            return userRow ? { user: this.toSharedUser(userRow), passwordHash: userRow.password_hash} : undefined;
         });
     }
 
@@ -56,10 +58,22 @@ export class UserRepository {
         });
     }
 
-    async getAllUsers(): Promise<Omit<UserRow, 'password_hash'>[]> {
+    async getAllUsers(): Promise<User[]> {
         return runAsync(() => {
             const stmt = this.db.prepare('SELECT id, email, full_name, role, created_at FROM users');
-            return stmt.all() as Omit<UserRow, 'password_hash'>[];
+            const userRows = stmt.all() as UserRow[];
+            return userRows.map(this.toSharedUser);
         });
     }
+
+    private toSharedUser = (row: UserRow): User => {
+        return {
+            id: row.id,
+            email: row.email,
+            fullName: row.full_name,
+            role: row.role,
+            createdAt: row.created_at
+        };
+    };
+
 } 

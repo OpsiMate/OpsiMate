@@ -14,7 +14,7 @@ export class UsersController {
         try {
             const { email, fullName, password } = RegisterSchema.parse(req.body);
             const result = await this.userBL.register(email, fullName, password);
-            const token = jwt.sign({ id: result.id, email: result.email, role: result.role }, JWT_SECRET, { expiresIn: '7d' });
+            const token = jwt.sign(result, JWT_SECRET, { expiresIn: '7d' });
             res.status(201).json({ success: true, data: result, token });
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -69,7 +69,7 @@ export class UsersController {
         try {
             const { email, password } = LoginSchema.parse(req.body);
             const user = await this.userBL.login(email, password);
-            const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+            const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
             res.status(200).json({ success: true, data: user, token });
         } catch (error) {
             if (error instanceof z.ZodError) {

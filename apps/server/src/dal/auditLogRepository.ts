@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AuditLog } from '@service-peek/shared';
-import {EnrichedAuditLogRow} from './models';
+import { AuditLogRow } from './models';
 
 export class AuditLogRepository {
     private db: Database.Database;
@@ -19,6 +19,8 @@ export class AuditLogRepository {
                     resource_type TEXT NOT NULL,
                     resource_id TEXT NOT NULL,
                     user_id INTEGER NOT NULL,
+                    user_name TEXT,
+                    resource_name TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     details TEXT
                 )
@@ -26,17 +28,19 @@ export class AuditLogRepository {
         });
     }
 
-    async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp' | 'userName' | 'resourceName'>): Promise<{ lastID: number }> {
+    async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
         return runAsync(() => {
             const stmt = this.db.prepare(`
-                INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, details)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
             const result = stmt.run(
                 log.actionType as string,
                 log.resourceType as string,
                 log.resourceId,
                 log.userId,
+                log.userName,
+                log.resourceName,
                 log.details || null
             );
             return { lastID: result.lastInsertRowid as number };
@@ -46,18 +50,10 @@ export class AuditLogRepository {
     async getAuditLogs(offset: number, limit: number): Promise<AuditLog[]> {
         return runAsync(() => {
             const rows = this.db.prepare(`
-                SELECT a.*, u.full_name as user_name,
-                  CASE 
-                    WHEN a.resource_type = 'PROVIDER' THEN (SELECT provider_name FROM providers WHERE id = a.resource_id)
-                    WHEN a.resource_type = 'SERVICE' THEN (SELECT service_name FROM services WHERE id = a.resource_id)
-                    WHEN a.resource_type = 'USER' THEN (SELECT full_name FROM users WHERE id = a.resource_id)
-                    ELSE NULL
-                  END as resource_name
-                FROM audit_logs a
-                LEFT JOIN users u ON a.user_id = u.id
-                ORDER BY a.timestamp DESC
+                SELECT * FROM audit_logs
+                ORDER BY timestamp DESC
                 LIMIT ? OFFSET ?
-            `).all(limit, offset) as EnrichedAuditLogRow[];
+            `).all(limit, offset) as AuditLogRow[];
             return rows.map(row => ({
                 id: row.id,
                 actionType: row.action_type,

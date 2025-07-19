@@ -4,7 +4,7 @@ import { AuditLog } from '@service-peek/shared';
 export class AuditBL {
     constructor(private auditLogRepository: AuditLogRepository) {}
 
-    async logAction(params: Omit<AuditLog, 'id' | 'timestamp' | 'userName' | 'resourceName'>): Promise<void> {
+    async logAction(params: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
         await this.auditLogRepository.insertAuditLog(params);
     }
 

@@ -1,11 +1,12 @@
 // JWT authentication middleware for Express
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import {User} from "@service-peek/shared";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 
 export interface AuthenticatedRequest extends Request {
-    user?: { id: number; email: string; role: string };
+    user: User;
 }
 
 export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -15,7 +16,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
     }
     const token = authHeader.split(' ')[1];
     try {
-        const payload = jwt.verify(token, JWT_SECRET) as { id: number; email: string; role: string };
+        const payload = jwt.verify(token, JWT_SECRET) as User;
         req.user = payload;
         next();
     } catch {
