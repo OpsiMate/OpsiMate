@@ -12,6 +12,7 @@ export class AuditController {
         const pageSize = parseInt(req.query.pageSize as string) || 20;
         try {
             const result = await this.auditBL.getAuditLogsPaginated(page, pageSize);
+            // result.logs now includes userName and resourceName
             res.json(result);
         } catch (error) {
             logger.error('Error fetching audit logs:', error);

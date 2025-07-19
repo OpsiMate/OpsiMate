@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AuditLog } from '@service-peek/shared';
-import { AuditLogRow } from './models';
+import {EnrichedAuditLogRow} from './models';
 
 export class AuditLogRepository {
     private db: Database.Database;
@@ -26,7 +26,7 @@ export class AuditLogRepository {
         });
     }
 
-    async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
+    async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp' | 'userName' | 'resourceName'>): Promise<{ lastID: number }> {
         return runAsync(() => {
             const stmt = this.db.prepare(`
                 INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, details)
@@ -45,18 +45,27 @@ export class AuditLogRepository {
 
     async getAuditLogs(offset: number, limit: number): Promise<AuditLog[]> {
         return runAsync(() => {
-            const stmt = this.db.prepare(`
-                SELECT * FROM audit_logs
-                ORDER BY timestamp DESC
+            const rows = this.db.prepare(`
+                SELECT a.*, u.full_name as user_name,
+                  CASE 
+                    WHEN a.resource_type = 'PROVIDER' THEN (SELECT provider_name FROM providers WHERE id = a.resource_id)
+                    WHEN a.resource_type = 'SERVICE' THEN (SELECT service_name FROM services WHERE id = a.resource_id)
+                    WHEN a.resource_type = 'USER' THEN (SELECT full_name FROM users WHERE id = a.resource_id)
+                    ELSE NULL
+                  END as resource_name
+                FROM audit_logs a
+                LEFT JOIN users u ON a.user_id = u.id
+                ORDER BY a.timestamp DESC
                 LIMIT ? OFFSET ?
-            `);
-            const rows = stmt.all(limit, offset) as AuditLogRow[];
+            `).all(limit, offset) as EnrichedAuditLogRow[];
             return rows.map(row => ({
                 id: row.id,
                 actionType: row.action_type,
                 resourceType: row.resource_type,
                 resourceId: row.resource_id,
                 userId: row.user_id,
+                userName: row.user_name,
+                resourceName: row.resource_name,
                 timestamp: row.timestamp,
                 details: row.details,
             }));

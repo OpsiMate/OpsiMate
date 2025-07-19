@@ -1,16 +1,10 @@
 import { AuditLogRepository } from '../dal/auditLogRepository';
-import { AuditLog, AuditActionType, AuditResourceType } from '@service-peek/shared';
+import { AuditLog } from '@service-peek/shared';
 
 export class AuditBL {
     constructor(private auditLogRepository: AuditLogRepository) {}
 
-    async logAction(params: {
-        actionType: AuditActionType;
-        resourceType: AuditResourceType;
-        resourceId: string;
-        userId: number;
-        details?: string;
-    }): Promise<void> {
+    async logAction(params: Omit<AuditLog, 'id' | 'timestamp' | 'userName' | 'resourceName'>): Promise<void> {
         await this.auditLogRepository.insertAuditLog(params);
     }
 

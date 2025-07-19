@@ -91,3 +91,9 @@ export type AuditLogRow = {
     timestamp: string;
     details?: string;
 };
+
+export type EnrichedAuditLogRow = AuditLogRow & {
+    resource_name: string;
+    user_name: string;
+};
+

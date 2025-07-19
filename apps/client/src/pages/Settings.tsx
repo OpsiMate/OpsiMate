@@ -268,8 +268,8 @@ const AuditLogTable: React.FC = () => {
             <TableHead>Time</TableHead>
             <TableHead>Action</TableHead>
             <TableHead>Resource</TableHead>
-            <TableHead>Resource ID</TableHead>
-            <TableHead>User ID</TableHead>
+            <TableHead>Resource Name</TableHead>
+            <TableHead>User</TableHead>
             <TableHead>Details</TableHead>
           </TableRow>
         </TableHeader>
@@ -279,8 +279,14 @@ const AuditLogTable: React.FC = () => {
               <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
               <TableCell><Badge variant="outline">{log.actionType}</Badge></TableCell>
               <TableCell><Badge variant="secondary">{log.resourceType}</Badge></TableCell>
-              <TableCell>{log.resourceId}</TableCell>
-              <TableCell>{log.userId}</TableCell>
+              <TableCell>
+                {log.resourceName || '-'}
+                <div className="text-xs text-muted-foreground">ID: {log.resourceId}</div>
+              </TableCell>
+              <TableCell>
+                {log.userName || '-'}
+                <div className="text-xs text-muted-foreground">ID: {log.userId}</div>
+              </TableCell>
               <TableCell>
                 <pre className="whitespace-pre-wrap break-all text-xs bg-muted p-2 rounded max-w-xs overflow-x-auto">{log.details || '-'}</pre>
               </TableCell>

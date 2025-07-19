@@ -128,5 +128,7 @@ export interface AuditLog {
   resourceId: string;
   userId: number;
   timestamp: string;
+  resourceName: string;
+  userName: string;
   details?: string;
 }
