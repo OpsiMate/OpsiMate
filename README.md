@@ -91,20 +91,23 @@ Centralized service discovery, monitoring, and management across your infrastruc
 #### Quick Start with Docker
 
 ```bash
+# Create a config file from one of the examples under configuration_example
+vim config.yml
+
 # Create required directories
 mkdir -p data/database data/private-keys
 
 # Copy your SSH private keys
 cp ~/.ssh/id_rsa data/private-keys/
 
-# Build and run
-docker build -t opsimate .
+# Run the container
 docker run -d \
   --name opsimate \
   -p 3001:3001 -p 8080:8080 \
   -v $(pwd)/data/database:/app/data/database \
   -v $(pwd)/data/private-keys:/app/data/private-keys \
-  opsimate
+  -v $(pwd)/config.yml:/app/config/config.yml \
+  opsimate/opsimate
 ```
 **Access the application:**
    - **Backend:** http://localhost:3001
