@@ -12,8 +12,6 @@ Centralized service discovery, monitoring, and management across your infrastruc
 </div>
 
 <div align="center">
-    <a href='http://makeapullrequest.com'>
-      <img alt='PRs Welcome' src='https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=shields'/></a>
     <a href="https://github.com/OpsiMate/OpsiMate/commits/main">
       <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/OpsiMate/OpsiMate"/></a>
     <a href="https://github.com/OpsiMate/OpsiMate/blob/main/LICENSE">
@@ -32,8 +30,6 @@ Centralized service discovery, monitoring, and management across your infrastruc
     ·
     <a href="https://www.opsimate.com/">Website</a>
     ·
-    <a href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA">Join Slack</a>
-    ·
     <a href="https://github.com/OpsiMate/OpsiMate/issues/new?assignees=&labels=bug&template=bug_report.md&title=">Report Bug</a>
 </p>
 
@@ -46,24 +42,8 @@ Centralized service discovery, monitoring, and management across your infrastruc
 - 🎛️ **Service Management** - Start, stop, and restart services directly from the dashboard
 - 📋 **Centralized Logs** - View and analyze service logs from a single interface
 - 🏷️ **Smart Tagging** - Organize and filter services with custom tags and labels
-- 🔐 **Secure Access** - SSH key-based authentication with role-based access control
 
 </br>
-
-## Architecture
-
-OpsiMate is built as a modern monorepo with a React frontend and Node.js backend:
-
-```
-OpsiMate/
-├── apps/
-│   ├── client/          # React frontend (Vite + TypeScript)
-│   └── server/          # Node.js backend (Express + TypeScript)
-├── packages/
-│   └── shared/          # Shared types and validation schemas
-├── configuration_example/  # Example configurations
-└── docker/             # Docker deployment files
-```
 
 ## Supported Infrastructure
 
@@ -82,18 +62,6 @@ OpsiMate/
     <td align="center" width="150">
         <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux VMs"/><br/>
         Linux VMs
-    </td>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original.svg" alt="AWS"/><br/>
-        AWS EC2
-    </td>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg" alt="Azure"/><br/>
-        Azure VMs
-    </td>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/googlecloud/googlecloud-original.svg" alt="GCP"/><br/>
-        GCP Compute
     </td>
 </tr>
 </table>
@@ -118,8 +86,8 @@ OpsiMate/
         Prometheus
     </td>
     <td align="center" width="150">
-        <img width="40" src="https://static-00.iconduck.com/assets.00/elasticsearch-icon-2048x2048-bd6sxbp0.png" alt="Elasticsearch"/><br/>
-        Elasticsearch
+        <img width="40" src="https://avatars.githubusercontent.com/u/6764390?v=4" alt="Kibana"/><br/>
+        Kibana
     </td>
 </tr>
 </table>
