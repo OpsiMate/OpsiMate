@@ -210,3 +210,9 @@ We welcome contributions to OpsiMate! Here's how you can help:
   <p>Built with ❤️ by the OpsiMate team</p>
   <p>© 2025 OpsiMate. All rights reserved.</p>
 </div> 
+
+## Contributors
+
+<a href="https://github.com/opsimate/opsimate/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=opsimate/opsimate" />
+</a>
