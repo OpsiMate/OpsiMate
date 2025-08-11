@@ -10,7 +10,6 @@ export class Logger {
 
     private readonly sensitiveKeyPattern = /(password|pass|token|secret|key)$/i;
 
-    // Recursively sanitize data
     private sanitize(data: unknown): unknown {
         if (Array.isArray(data)) {
             return data.map(item => this.sanitize(item));
@@ -23,12 +22,6 @@ export class Logger {
                     }
                     return [k, this.sanitize(v)];
                 })
-            );
-        }
-        if (typeof data === 'string') {
-            return data.replace(
-                /(password|pass|token|secret|key)\s*=\s*[^&\s]+/gi,
-                '$1=[REDACTED]'
             );
         }
         return data;
