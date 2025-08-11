@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { Logger } from '@OpsiMate/shared';
 import { getDatabaseConfig } from '../config/config';
 
@@ -13,6 +14,13 @@ export function initializeDb(): Database.Database {
   logger.info(`SQLite database is connecting to ${dbPath}`);
 
   try {
+    // Ensure the directory exists
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+      logger.info(`Creating database directory: ${dbDir}`);
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
     const db = new Database(dbPath);
     logger.info(`SQLite database connected at ${dbPath}`);
     
