@@ -9,9 +9,23 @@ const logger = new Logger('dal/sshClient');
 
 function getPrivateKeysDir(): string {
     const securityConfig = getSecurityConfig();
-    return path.isAbsolute(securityConfig.private_keys_path)
+    const privateKeysPath = path.isAbsolute(securityConfig.private_keys_path)
         ? securityConfig.private_keys_path
-        : path.resolve(__dirname, '../../../../', securityConfig.private_keys_path);
+        : path.resolve(__dirname, securityConfig.private_keys_path);
+    
+    // Ensure the directory exists
+    if (!fs.existsSync(privateKeysPath)) {
+        logger.info(`Creating private keys directory: ${privateKeysPath}`);
+        fs.mkdirSync(privateKeysPath, { recursive: true });
+    }
+    
+    return privateKeysPath;
+}
+
+export function initializePrivateKeysDir(): void {
+    // This function ensures the private keys directory is created during server startup
+    getPrivateKeysDir();
+    logger.info('Private keys directory initialized');
 }
 
 function getKeyPath(filename: string) {
