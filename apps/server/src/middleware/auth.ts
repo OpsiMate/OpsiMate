@@ -21,7 +21,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 
         const editMethods = ['PUT', 'PATCH', 'DELETE', 'POST', 'OPTIONS'];
         if (editMethods.includes(req.method) && payload.role === Role.Viewer) {
-            return res.status(401).json({ success: false, error: 'Unauthorized: Viewer users cannot edit data' });
+            return res.status(403).json({ success: false, error: 'Forbidden: Viewer users cannot edit data' });
         }
 
         next();

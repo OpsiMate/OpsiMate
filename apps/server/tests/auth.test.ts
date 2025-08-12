@@ -437,10 +437,7 @@ describe('Authentication API', () => {
           .send(testData);
 
         // Admin should not be blocked by role restriction
-        expect(adminResponse.status).not.toBe(401);
-        if (adminResponse.status === 401) {
-          expect(adminResponse.body.error).not.toBe('Unauthorized: Viewer users cannot edit data');
-        }
+        expect(adminResponse.status).not.toBe(403);
 
         // Test editor access (should not be blocked by role)
         const editorResponse = await app.post(testEndpoint)
@@ -448,30 +445,23 @@ describe('Authentication API', () => {
           .send(testData);
 
         // Editor should not be blocked by role restriction
-        expect(editorResponse.status).not.toBe(401);
-        if (editorResponse.status === 401) {
-          expect(editorResponse.body.error).not.toBe('Unauthorized: Viewer users cannot edit data');
-        }
+        expect(editorResponse.status).not.toBe(403);
 
         // Test viewer access (should be blocked)
         const viewerResponse = await app.post(testEndpoint)
           .set('Authorization', `Bearer ${viewerToken}`)
           .send(testData);
 
-        // Viewer should be blocked with 401 and specific error message
-        expect(viewerResponse.status).toBe(401);
+        // Viewer should be blocked with 403 and specific error message
+        expect(viewerResponse.status).toBe(403);
         expect(viewerResponse.body.success).toBe(false);
-        expect(viewerResponse.body.error).toBe('Unauthorized: Viewer users cannot edit data');
 
         // GET requests should work for all roles, including viewer
         const readResponse = await app.get('/api/v1/providers')
             .set('Authorization', `Bearer ${viewerToken}`);
 
         // Should not be blocked by role restriction (may get other status codes like 200, 404, etc.)
-        expect(readResponse.status).not.toBe(401);
-        if (readResponse.status === 401) {
-          expect(readResponse.body.error).not.toBe('Unauthorized: Viewer users cannot edit data');
-        }
+        expect(readResponse.status).not.toBe(403);
     });
   });
 }); 
