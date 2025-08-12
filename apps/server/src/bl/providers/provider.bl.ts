@@ -29,12 +29,12 @@ export class ProviderBL {
 
     async createProvider(providerToCreate: Omit<Provider, 'id'>, user: User): Promise<Provider> {
         try {
-            logger.info(`Starting to create provider: ${JSON.stringify(providerToCreate)}`);
+            logger.info(`Starting to create provider`, { extraArgs: { ...providerToCreate } });
             const { lastID } = await this.providerRepo.createProvider(providerToCreate);
             logger.info(`Provider created with ID: ${lastID}`);
 
             const createdProvider = await this.providerRepo.getProviderById(lastID);
-            logger.info(`Fetched created provider: ${JSON.stringify(createdProvider)}`);
+            logger.info(`Fetched created provider`, { extraArgs: { ...createdProvider } });
 
             await this.auditBL.logAction({
                 actionType: AuditActionType.CREATE,
@@ -102,7 +102,7 @@ export class ProviderBL {
     async discoverServicesInProvider(providerId: number): Promise<DiscoveredService[]> {
         try {
             const provider = await this.providerRepo.getProviderById(providerId);
-            logger.info(`Fetched provider: ${JSON.stringify(provider)}`);
+            logger.info("Fetched provider", { extraArgs: { ...provider } });
 
             const providerConnector = providerConnectorFactory(provider.providerType);
             return await providerConnector.discoverServices(provider);

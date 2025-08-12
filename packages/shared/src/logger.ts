@@ -3,11 +3,29 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 interface LogOptions {
     extraArgs?: Record<string, unknown>;
 }
-
 const getTimestamp = (): string => new Date().toISOString();
 
 export class Logger {
     constructor(private context: string) {}
+
+    private readonly sensitiveKeyPattern = /(password|pass|token|secret|key)$/i;
+
+    private sanitize(data: unknown): unknown {
+        if (Array.isArray(data)) {
+            return data.map(item => this.sanitize(item));
+        }
+        if (data && typeof data === 'object') {
+            return Object.fromEntries(
+                Object.entries(data as Record<string, unknown>).map(([k, v]) => {
+                    if (this.sensitiveKeyPattern.test(k)) {
+                        return [k, '[REDACTED]'];
+                    }
+                    return [k, this.sanitize(v)];
+                })
+            );
+        }
+        return data;
+    }
 
     private formatMessage(level: LogLevel, message: string): string {
         const parts = [
@@ -42,8 +60,9 @@ export class Logger {
         }
 
         if (options?.extraArgs) {
+            const safeArgs = this.sanitize(options.extraArgs);
             // eslint-disable-next-line no-console
-            console.dir({extraArgs: options.extraArgs}, {depth: null, colors: true});
+            console.dir({ extraArgs: safeArgs }, { depth: null, colors: true });
         }
     }
 
