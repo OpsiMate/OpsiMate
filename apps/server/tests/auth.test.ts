@@ -388,4 +388,90 @@ describe('Authentication API', () => {
       expect(updateResponse.body.success).toBe(false);
       expect(updateResponse.body.error).toBe('Missing or invalid Authorization header');
   });
+
+  describe('Role-based access control for edit methods', () => {
+    test('should allow admin and editor to access POST-like requests, but block viewer', async () => {
+      // Register admin user (first user is automatically admin)
+      const adminRes = await app.post('/api/v1/users/register').send({
+        email: 'rbac-admin@test.com',
+        fullName: 'RBAC Admin',
+        password: 'password123'
+      });
+      const adminToken = adminRes.body.token;
+
+      // Create editor user using createUserHandler
+      await app.post('/api/v1/users').set('Authorization', `Bearer ${adminToken}`).send({
+        email: 'rbac-editor@test.com',
+        fullName: 'RBAC Editor',
+        password: 'password123',
+        role: 'editor'
+      });
+
+      // Create viewer user using createUserHandler
+      await app.post('/api/v1/users').set('Authorization', `Bearer ${adminToken}`).send({
+        email: 'rbac-viewer@test.com',
+        fullName: 'RBAC Viewer',
+        password: 'password123',
+        role: 'viewer'
+      });
+
+      // Get tokens for all users
+      const editorLoginRes = await app.post('/api/v1/users/login').send({
+        email: 'rbac-editor@test.com',
+        password: 'password123'
+      });
+      const editorToken = editorLoginRes.body.token;
+
+      const viewerLoginRes = await app.post('/api/v1/users/login').send({
+        email: 'rbac-viewer@test.com',
+        password: 'password123'
+      });
+      const viewerToken = viewerLoginRes.body.token;
+
+      // Test edit methods that should be restricted for viewers
+      const testEndpoint = '/api/v1/providers';
+      const testData = { name: 'test-provider', type: 'ssh', host: 'test.com' };
+
+      const adminResponse = await app.post(testEndpoint)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(testData);
+
+        // Admin should not be blocked by role restriction
+        expect(adminResponse.status).not.toBe(401);
+        if (adminResponse.status === 401) {
+          expect(adminResponse.body.error).not.toBe('Unauthorized: Viewer users cannot edit data');
+        }
+
+        // Test editor access (should not be blocked by role)
+        const editorResponse = await app.post(testEndpoint)
+          .set('Authorization', `Bearer ${editorToken}`)
+          .send(testData);
+
+        // Editor should not be blocked by role restriction
+        expect(editorResponse.status).not.toBe(401);
+        if (editorResponse.status === 401) {
+          expect(editorResponse.body.error).not.toBe('Unauthorized: Viewer users cannot edit data');
+        }
+
+        // Test viewer access (should be blocked)
+        const viewerResponse = await app.post(testEndpoint)
+          .set('Authorization', `Bearer ${viewerToken}`)
+          .send(testData);
+
+        // Viewer should be blocked with 401 and specific error message
+        expect(viewerResponse.status).toBe(401);
+        expect(viewerResponse.body.success).toBe(false);
+        expect(viewerResponse.body.error).toBe('Unauthorized: Viewer users cannot edit data');
+
+        // GET requests should work for all roles, including viewer
+        const readResponse = await app.get('/api/v1/providers')
+            .set('Authorization', `Bearer ${viewerToken}`);
+
+        // Should not be blocked by role restriction (may get other status codes like 200, 404, etc.)
+        expect(readResponse.status).not.toBe(401);
+        if (readResponse.status === 401) {
+          expect(readResponse.body.error).not.toBe('Unauthorized: Viewer users cannot edit data');
+        }
+    });
+  });
 }); 
