@@ -150,14 +150,27 @@ export const providerApi = {
   // Create a new provider
   createProvider: (providerData: {
     name: string;
-    providerIP: string;
-    username: string;
-    privateKeyFilename: string;
+    providerIP?: string;
+    username?: string;
+    privateKeyFilename?: string;
     password?: string;
     SSHPort?: number;
     providerType: string;
   }) => {
     return apiRequest<Provider>('/providers', 'POST', providerData);
+  },
+
+  // Create multiple providers in bulk
+  createProvidersBulk: (providers: Array<{
+    name: string;
+    providerIP?: string;
+    username?: string;
+    privateKeyFilename?: string;
+    password?: string;
+    SSHPort?: number;
+    providerType: string;
+  }>) => {
+    return apiRequest<{ success: true } | { success: false; error: string }>('/providers/bulk', 'POST', { providers });
   },
 
   // Get provider instances (services)

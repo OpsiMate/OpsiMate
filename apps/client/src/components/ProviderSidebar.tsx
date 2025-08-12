@@ -12,6 +12,7 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {providerApi} from "@/lib/api";
 import {useState} from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {useNavigate} from "react-router-dom";
 
 // --- FORM SCHEMAS ---
@@ -336,6 +337,8 @@ interface ProviderSidebarProps {
 export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
     const {toast} = useToast();
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
+    const [isImporting, setIsImporting] = useState(false);
 
     const handleFormSubmit: SubmitHandler<AnyFormData> = async (data) => {
         switch (provider.type) {
@@ -441,6 +444,96 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
         }
     };
 
+    const handleFile = async (file: File) => {
+        try {
+            setIsImporting(true);
+            const text = await file.text();
+            const json = JSON.parse(text);
+            if (!json || !Array.isArray(json.providers)) {
+                throw new Error('Invalid JSON format. Expected an object with a providers array');
+            }
+            const allowedTypes = ['VM', 'K8S'];
+            const providersPayload = json.providers as any[];
+            const isValid = providersPayload.every((p) => (
+                p && typeof p.name === 'string' && p.name.length > 0 && allowedTypes.includes(p.providerType)
+            ));
+            if (!isValid) {
+                throw new Error('Invalid file structure. Ensure each provider has name and providerType (VM | K8S)');
+            }
+
+            const resp = await providerApi.createProvidersBulk(providersPayload);
+            if (resp.success) {
+                toast({ title: "Providers imported", description: `Imported ${providersPayload.length} providers` });
+                onClose();
+                navigate('/my-providers');
+            } else {
+                throw new Error((resp as any).error || 'Failed to import providers');
+            }
+        } catch (e: any) {
+            const message = e?.message || 'Invalid file';
+            toast({ title: 'Import failed', description: message, variant: 'destructive' });
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
+    const ImportTab = () => {
+        const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files?.[0];
+            if (file) void handleFile(file);
+        };
+        const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+        };
+        return (
+            <div className="space-y-4 py-2">
+                <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={onDrop}
+                    className="relative group flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 text-center hover:bg-accent"
+                >
+                    <input id="provider-import" type="file" accept="application/json,.json" onChange={onSelect} className="hidden" />
+                    <Label
+                        htmlFor="provider-import"
+                        className="absolute inset-0 flex items-center justify-center cursor-pointer transition-colors group-hover:text-white"
+                    >
+                        {isImporting ? 'Importing...' : 'Click to select a JSON file or drag & drop here'}
+                    </Label>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-2">
+                    <div className="font-medium text-foreground">JSON structure</div>
+                    <pre className="bg-muted rounded-md p-3 overflow-auto text-xs">
+{`{
+  "providers": [
+    {
+      "name": "My Server",
+      "providerIP": "192.168.1.10",
+      "username": "root",
+      "privateKeyFilename": "id_rsa",
+      "password": "optional",
+      "SSHPort": 22,
+      "providerType": "VM"
+    },
+    {
+      "name": "My Cluster",
+      "privateKeyFilename": "~/.kube/config",
+      "providerType": "K8S"
+    }
+  ]
+}`}
+                    </pre>
+                    <ul className="list-disc pl-5">
+                        <li><span className="font-medium">providerType</span> must be either <code>VM</code> or <code>K8S</code>.</li>
+                        <li><span className="font-medium">providerIP</span>, <span className="font-medium">username</span>, <span className="font-medium">password</span>, <span className="font-medium">privateKeyFilename</span>, and <span className="font-medium">SSHPort</span> are optional depending on the type.</li>
+                        <li>At least one provider is required.</li>
+                    </ul>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Sheet open={true} onOpenChange={() => onClose()}>
             <SheetContent className="w-full sm:max-w-md overflow-auto">
@@ -456,7 +549,18 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                     </div>
                 </SheetHeader>
                 <Separator className="my-4"/>
-                {renderForm()}
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manual' | 'import')}>
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="manual">Manual</TabsTrigger>
+                        <TabsTrigger value="import">Import</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="manual" className="mt-2">
+                        {renderForm()}
+                    </TabsContent>
+                    <TabsContent value="import" className="mt-2">
+                        <ImportTab />
+                    </TabsContent>
+                </Tabs>
             </SheetContent>
         </Sheet>
     )
