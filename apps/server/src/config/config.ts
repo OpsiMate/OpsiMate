@@ -61,10 +61,10 @@ function getDefaultConfig(): OpsimateConfig {
             api_url: 'http://localhost:3001/api/v1'
         },
         database: {
-            path: '../../data/opsimate.db'
+            path: '../../data/database/opsimate.db'
         },
         security: {
-            private_keys_path: 'apps/server/data/private-keys'
+            private_keys_path: '../../data/private-keys'
         }
     };
 }

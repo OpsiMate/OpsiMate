@@ -91,15 +91,28 @@ Centralized service discovery, monitoring, and management across your infrastruc
 #### Quick Start with Docker
 
 ```bash
-# Create a config file from one of the examples under configuration_example
-vim config.yml
+# Run the container
+docker run -d \
+  --name opsimate \
+  --rm \
+  -p 3001:3001 -p 8080:8080 \
+  opsimate/opsimate
+```
+**Access the application:**
+   - **Backend:** http://localhost:3001
+   - **Client:** http://localhost:8080
 
-# Create required directories
-mkdir -p data/database data/private-keys
+### Volume Mounts (optional)
 
-# Copy your SSH private keys
-cp ~/.ssh/id_rsa data/private-keys/
+| Volume | Purpose |
+|--------|---------|
+| `/app/data/database` | SQLite database persistence |
+| `/app/data/private-keys` | SSH private keys for authentication |
+| `/app/config/config.yml` | Custom configuration |
 
+for example:
+
+```bash
 # Run the container
 docker run -d \
   --name opsimate \
@@ -110,9 +123,6 @@ docker run -d \
   -v $(pwd)/config.yml:/app/config/config.yml \
   opsimate/opsimate
 ```
-**Access the application:**
-   - **Backend:** http://localhost:3001
-   - **Client:** http://localhost:8080
 
 ## Configuration
 
@@ -138,14 +148,6 @@ database:
 security:
   private_keys_path: "/app/data/private-keys"
 ```
-
-### Volume Mounts
-
-| Volume | Purpose |
-|--------|---------|
-| `/app/data/database` | SQLite database persistence |
-| `/app/data/private-keys` | SSH private keys for authentication |
-| `/app/config/config.yml` | Custom configuration |
 
 ## Development
 
