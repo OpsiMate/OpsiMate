@@ -10,10 +10,15 @@ import { User, Role } from '../types';
 import { getCurrentUser } from '../lib/auth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
-import { Users, FileText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { Users, FileText, KeyRound, Trash2, Plus } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { AddUserModal } from '../components/AddUserModal';
 import { auditApi } from '../lib/api';
+import { FileDropzone } from "@/components/ui/file-dropzone";
+import { getSslKeys, addSslKey, deleteSslKey, SSLKey } from "@/lib/sslKeys";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '../components/ui/alert-dialog';
 import {AuditLog} from "@OpsiMate/shared";
 
@@ -141,17 +146,35 @@ const Settings: React.FC = () => {
 
       {generalError && <ErrorAlert message={generalError} className="mb-6" />}
 
-      <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Audit Log
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue={(function(){
+        const h = (location.hash || '').replace('#','');
+        if (h === 'Users') return 'users';
+        if (h === 'Audit_Log') return 'audit';
+        if (h === 'SSL_keys') return 'ssl';
+        return 'users';
+      })()} onValueChange={(v) => {
+        const map: Record<string,string> = { users: 'Users', audit: 'Audit_Log', ssl: 'SSL_keys' };
+        const next = map[v] || v;
+        if (next) window.location.hash = next;
+      }} className="space-y-6">
+        <div className="flex gap-6">
+          <div className="w-64 flex-shrink-0">
+            <TabsList className="flex flex-col items-stretch h-auto p-2 gap-2 bg-white">
+              <TabsTrigger value="users" className="justify-start gap-2">
+                <Users className="h-4 w-4" />
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="justify-start gap-2">
+                <FileText className="h-4 w-4" />
+                Audit Log
+              </TabsTrigger>
+              <TabsTrigger value="ssl" className="justify-start gap-2">
+                <KeyRound className="h-4 w-4" />
+                SSL Keys
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex-1">
 
         <TabsContent value="users" className="space-y-6">
           <div className="flex justify-between items-center">
@@ -276,6 +299,28 @@ const Settings: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="ssl" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-semibold">SSL Keys</h2>
+              <p className="text-muted-foreground">Manage keys used to access providers and services.</p>
+            </div>
+            <AddSslKeyButton />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Keys</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SslKeysTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+          </div>
+        </div>
       </Tabs>
       
       {/* Add User Modal */}
@@ -399,5 +444,113 @@ const AuditLogTable: React.FC = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const AddSslKeyButton: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      // mock upload; just save by name
+      setFileName(file.name);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = () => {
+    const name = displayName.trim() || fileName || "key";
+    if (name) {
+      addSslKey(name);
+      window.dispatchEvent(new Event('ssl-keys-updated'));
+      setOpen(false);
+      setFileName(null);
+      setDisplayName("");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" /> Add Key
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add SSL Key</DialogTitle>
+          <DialogDescription>Upload a key file.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="ssl-name">Key name</Label>
+            <Input id="ssl-name" placeholder="My SSH Key" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </div>
+          <FileDropzone
+            id="ssl-key-upload"
+            accept=".pem,.key,.txt,application/x-pem-file"
+            loading={uploading}
+            onFile={handleFile}
+          />
+          {fileName && <div className="text-sm">Selected: <b>{fileName}</b></div>}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button disabled={!fileName} onClick={handleSave}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const SslKeysTable: React.FC = () => {
+  const [keys, setKeys] = useState<SSLKey[]>(getSslKeys());
+
+  useEffect(() => {
+    // refresh when dialog closes by watching storage events
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'OpsiMate-ssl-keys') setKeys(getSslKeys());
+    };
+    const onLocal = () => setKeys(getSslKeys());
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('ssl-keys-updated', onLocal as EventListener);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const remove = (id: string) => {
+    deleteSslKey(id);
+    setKeys(getSslKeys());
+  };
+
+  if (!keys.length) return <div className="py-6 text-center text-muted-foreground">No keys added yet.</div>;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Created</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {keys.map(k => (
+          <TableRow key={k.id}>
+            <TableCell><b>{k.name}</b></TableCell>
+            <TableCell>{new Date(k.createdAt).toLocaleString()}</TableCell>
+            <TableCell>
+              <Button variant="ghost" className="text-red-600" onClick={() => remove(k.id)} title="Delete">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
