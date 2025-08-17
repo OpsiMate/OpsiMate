@@ -139,3 +139,9 @@ export interface AuditLog {
     userName: string;
     details?: string;
 }
+
+export type SecretMetadata = {
+    id: number;
+    name: string;
+    path: string
+}
