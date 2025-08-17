@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import healthRouter from './api/health';
 import createV1Router from './api/v1/v1';
 import { ProviderRepository } from './dal/providerRepository';
