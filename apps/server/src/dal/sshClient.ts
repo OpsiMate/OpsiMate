@@ -168,56 +168,6 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
 }
 
 /**
- * Discovers system services running on the provider
- */
-export async function discoverSystemServices(provider: Provider): Promise<DiscoveredService[]> {
-    const ssh = new NodeSSH();
-    try {
-        const sshConfig = getSshConfig(provider);
-        await ssh.connect(sshConfig);
-
-        // List all system services (not just running ones)
-        const result = await ssh.execCommand('systemctl list-units --type=service --all --no-legend');
-        if (result.code !== 0) {
-            throw new Error(`Failed to list system services: ${result.stderr}`);
-        }
-
-        // Parse the output
-        const services: DiscoveredService[] = [];
-        const lines = result.stdout.split('\n').filter(line => line.trim().length > 0);
-        
-        for (const line of lines) {
-            // Format is typically: "service.service  loaded active running Description"
-            const parts = line.trim().split(/\s+/);
-            if (parts.length >= 4) {
-                const serviceName = parts[0].replace(/\.service$/, '');
-                
-                // Check both the load state (parts[1]) and active state (parts[2])
-                // A service is running if it's both loaded and active
-                const loadState = parts[1]; // loaded, not-found, etc.
-                const activeState = parts[2]; // active, inactive, etc.
-                
-                // For a service to be considered running, it must be loaded and active
-                const isRunning = loadState === 'loaded' && activeState === 'active';
-                
-                services.push({
-                    name: serviceName,
-                    serviceStatus: isRunning ? 'running' : 'stopped',
-                    serviceIP: provider.providerIP || ''
-                });
-            }
-        }
-
-        return services;
-    } catch (error) {
-        logger.error('Error discovering system services:', error);
-        throw error;
-    } finally {
-        ssh.dispose();
-    }
-}
-
-/**
  * Starts a system service
  */
 export async function startSystemService(
