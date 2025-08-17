@@ -219,7 +219,7 @@ export async function getSystemServiceLogs(provider: Provider, serviceName: stri
         await ssh.connect(sshConfig);
 
         // Get logs using journalctl
-        const result = await ssh.execCommand(`sudo journalctl -u ${serviceName} --since "24 hours ago" --no-pager`);
+        const result = await ssh.execCommand(buildCommand(`journalctl -u ${serviceName} --since "24 hours ago" --no-pager`));
         if (result.code !== 0) {
             throw new Error(`Failed to get logs for ${serviceName}: ${result.stderr}`);
         }
@@ -278,7 +278,7 @@ export async function checkSystemServiceStatus(
         await ssh.connect(sshConfig);
 
         // Check service status using systemctl is-active (most reliable for running status)
-        const isActiveResult = await ssh.execCommand(`sudo systemctl is-active ${serviceName}`);
+        const isActiveResult = await ssh.execCommand(buildCommand(`systemctl is-active ${serviceName}`));
         const isActive = isActiveResult.stdout.trim() === 'active';
         
         logger.info(`[DEBUG] Service ${serviceName} is-active result: '${isActiveResult.stdout.trim()}', code: ${isActiveResult.code}`);
@@ -289,7 +289,7 @@ export async function checkSystemServiceStatus(
         }
         
         // Double-check with systemctl status for more detailed information
-        const statusResult = await ssh.execCommand(`sudo systemctl status ${serviceName} --no-pager -l`);
+        const statusResult = await ssh.execCommand(buildCommand(`systemctl status ${serviceName} --no-pager -l`));
         const statusOutput = statusResult.stdout.toLowerCase();
         
         logger.info(`[DEBUG] Service ${serviceName} status: '${statusResult.stdout.split('\n')[2] || statusResult.stdout.split('\n')[1] || 'No status line found'}'`);
