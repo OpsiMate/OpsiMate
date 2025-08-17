@@ -40,8 +40,9 @@ COPY apps/server/package.json ./apps/server/
 COPY apps/client/package.json ./apps/client/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install only production dependencies
+# Install only production dependencies and serve for static files
 RUN npm ci --omit=dev && \
+    npm install -g serve && \
     npm cache clean --force
 
 # Copy built assets from builder stage
@@ -69,7 +70,7 @@ VOLUME ["/app/data/database", "/app/data/private-keys", "/app/config"]
 ENV NODE_ENV=production
 
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "serve -s /app/apps/client/dist -l 8080 & npm run start"]
 
 # Development stage - includes dev dependencies for development workflow
 FROM node:20-alpine AS development

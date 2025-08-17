@@ -34,7 +34,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
     app.use(express.json());
     app.use(cors({
-        origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:8080',
+        origin: 'http://localhost:8080',
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
         allowedHeaders: ['Content-Type', 'Authorization']
@@ -91,16 +91,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         auditController
     ));
 
-    // Serve static files in production
-    if (process.env.NODE_ENV === 'production') {
-        const clientDistPath = path.join(__dirname, '../../../client/dist');
-        app.use(express.static(clientDistPath));
-        
-        // Handle client-side routing - serve index.html for all non-API routes
-        app.get('*', (req: express.Request, res: express.Response) => {
-            res.sendFile(path.join(clientDistPath, 'index.html'));
-        });
-    }
+
 
     if (config?.enableJobs) {
         new RefreshJob(providerBL, serviceRepo).startRefreshJob();
