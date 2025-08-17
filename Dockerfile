@@ -10,8 +10,8 @@ WORKDIR /app
 # Copy project files
 COPY --chown=opsimate:nodejs . .
 
-# Install dependencies (omit dev), then clear npm cache to save space
-RUN npm ci --omit=dev && \
+# Install all dependencies (including dev for development mode) and turbo globally (matching project version), then clear npm cache to save space
+RUN npm ci && \
     npm cache clean --force
 
 # Build shared package first
@@ -24,8 +24,9 @@ COPY --chown=opsimate:nodejs default-config.yml /app/config/default-config.yml
 COPY --chown=opsimate:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
-# Adjust permissions
-RUN chown -R opsimate:nodejs /app/data /app/config
+# Create turbo cache directory and adjust permissions for all necessary directories
+RUN mkdir -p /app/.turbo/cache && \
+    chown -R opsimate:nodejs /app/data /app/config /app/node_modules /app/packages /app/apps /app/.turbo
 
 USER opsimate
 
@@ -34,5 +35,5 @@ VOLUME ["/app/data/database", "/app/data/private-keys", "/app/config"]
 
 ENV NODE_ENV=development
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 CMD ["npm", "run", "dev"]

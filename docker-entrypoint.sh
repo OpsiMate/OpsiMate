@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Docker entrypoint script for Opsimate
 # Handles config file mounting and startup
