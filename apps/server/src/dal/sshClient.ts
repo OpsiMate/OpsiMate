@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
-import { getSecurityConfig } from '../config/config';
+import { getSecurityConfig, getVmConfig } from '../config/config';
 
 const logger = new Logger('dal/sshClient');
 
@@ -65,6 +65,11 @@ function getSshConfig(provider: Provider) {
     }
 }
 
+function buildCommand(baseCommand: string): string {
+    const vmConfig = getVmConfig();
+    return vmConfig.run_with_sudo ? `sudo ${baseCommand}` : baseCommand;
+}
+
 export async function connectAndListContainers(provider: Provider): Promise<DiscoveredService[]> {
 
     const ssh = new NodeSSH();
@@ -79,7 +84,7 @@ export async function connectAndListContainers(provider: Provider): Promise<Disc
         throw new Error('Docker is not installed or not accessible');
     }
 
-    const result = await ssh.execCommand('sudo docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"');
+    const result = await ssh.execCommand(buildCommand('docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"'));
     ssh.dispose();
 
     return result.stdout
@@ -105,7 +110,7 @@ export async function startService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo docker start ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`docker start ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to start ${serviceName}: ${result.stderr}`);
         }
@@ -123,7 +128,7 @@ export async function stopService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo docker stop ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`docker stop ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to stop ${serviceName}: ${result.stderr}`);
         }
@@ -139,7 +144,7 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const cmd = `sudo docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`
+        const cmd = buildCommand(`docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`)
 
         const result = await ssh.execCommand(cmd);
 
@@ -224,7 +229,7 @@ export async function startSystemService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo systemctl start ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`systemctl start ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to start ${serviceName}: ${result.stderr}`);
         }
@@ -245,7 +250,7 @@ export async function stopSystemService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo systemctl stop ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`systemctl stop ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to stop ${serviceName}: ${result.stderr}`);
         }

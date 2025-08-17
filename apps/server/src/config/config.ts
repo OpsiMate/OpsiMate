@@ -19,6 +19,9 @@ export interface OpsimateConfig {
     security: {
         private_keys_path: string;
     };
+    vm: {
+        run_with_sudo: boolean;
+    };
 }
 
 let cachedConfig: OpsimateConfig | null = null;
@@ -45,6 +48,13 @@ export function loadConfig(): OpsimateConfig {
         throw new Error(`Invalid config file: ${configPath}`);
     }
 
+    // Set default VM config if not provided
+    if (!config.vm) {
+        config.vm = {
+            run_with_sudo: process.env.VM_RUN_WITH_SUDO !== 'false'
+        };
+    }
+
     cachedConfig = config;
     logger.info(`Configuration loaded from ${configPath}`);
     return config;
@@ -65,6 +75,9 @@ function getDefaultConfig(): OpsimateConfig {
         },
         security: {
             private_keys_path: '../../data/private-keys'
+        },
+        vm: {
+            run_with_sudo: process.env.VM_RUN_WITH_SUDO !== 'false'
         }
     };
 }
@@ -84,4 +97,8 @@ export function getDatabaseConfig() {
 
 export function getSecurityConfig() {
     return loadConfig().security;
+}
+
+export function getVmConfig() {
+    return loadConfig().vm;
 }
