@@ -176,8 +176,6 @@ security:
 
 ### Development Commands
 
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build production version
 - `npm run test` - Run test suite
 - `npm run lint` - Check code quality
 
