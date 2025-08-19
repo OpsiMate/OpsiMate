@@ -50,7 +50,7 @@ function getSshConfig(provider: Provider) {
         host: providerIP,
         username: username,
     };
-    
+
     // Use private key authentication if available, otherwise use password
     if (privateKeyFilename) {
         const encryptedKey = fs.readFileSync(getKeyPath(privateKeyFilename), 'utf-8');
