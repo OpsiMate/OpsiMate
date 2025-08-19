@@ -29,7 +29,7 @@ export class SecretsMetadataRepository {
             const stmt = this.db.prepare(`
                 SELECT id,
                        secret_name AS name,
-                       secret_path AS path,
+                       secret_path AS path
                 FROM secrets
             `);
             return stmt.all() as SecretMetadata[];
