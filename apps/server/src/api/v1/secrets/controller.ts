@@ -5,6 +5,8 @@ import {
 } from "@OpsiMate/shared";
 import {z} from "zod";
 import {SecretsMetadataBL} from "../../../bl/secrets/secretsMetadata.bl";
+import fs from "fs";
+import {encryptPassword} from "../../../utils/encryption";
 
 const logger = new Logger("v1/integrations/controller");
 
@@ -24,6 +26,16 @@ export class SecretsController {
 
     createSecret = async (req: Request, res: Response) => {
         try {
+            // Read the just-saved file
+            const filePath = req.file!.path;
+            const originalContent = fs.readFileSync(filePath, 'utf-8');
+
+            // Encrypt it
+            const encryptedContent = encryptPassword(originalContent);
+
+            // Overwrite file with encrypted content
+            fs.writeFileSync(filePath, encryptedContent ?? "");
+
             const {displayName} = CreateSecretsMetadataSchema.parse(req.body);
             const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename);
             res.status(201).json({success: true, data: {id: createdSecretId}});
