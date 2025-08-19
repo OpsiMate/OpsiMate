@@ -171,8 +171,11 @@ vm:
    ```bash
    npm run build
    ```
-
-4. **Start development server:**
+4. **Specify the config file (optional):**
+   ```bash
+   export CONFIG_FILE=/path/to/config.yml
+   ```
+5. **Start development server:**
    ```bash
    npm run dev
    ```
