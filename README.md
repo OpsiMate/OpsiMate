@@ -147,6 +147,9 @@ database:
 
 security:
   private_keys_path: "/app/data/private-keys"
+
+vm:
+  run_with_sudo: false
 ```
 
 ## Development
