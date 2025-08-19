@@ -11,13 +11,13 @@ export class SecretsMetadataBL {
     ) {
     }
 
-    async createSecretMetadata(name: string, secret: string): Promise<number> {
+    async createSecretMetadata(displayName: string, path: string): Promise<number> {
         try {
-            const path = "/data/private-keys"
-            logger.info(`Creating Secret named ${name} in ${path}`)
-            const createdSecret = await this.secretsMetadataRepository.createSecret({name, path})
+            const fullPath = "/data/private-keys/" + path;
+            logger.info(`Creating Secret named ${displayName} in ${path}`)
+            const createdSecret = await this.secretsMetadataRepository.createSecret({name: displayName, path: fullPath})
 
-            logger.info(`Successfully created secret named ${name} in ${path} in ${createdSecret.lastID}`)
+            logger.info(`Successfully created secret named ${displayName} in ${path} in ${createdSecret.lastID}`)
 
             return createdSecret.lastID
         } catch (e) {

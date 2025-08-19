@@ -142,7 +142,7 @@ export const UpdateProfileSchema = z.object({
 
 
 export const CreateSecretsMetadataSchema = z.object({
-    name: z.string().min(1, 'Secret name is required'),
+    displayName: z.string().min(1, 'Secret name is required'),
 })
 
 

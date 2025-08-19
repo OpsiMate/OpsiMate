@@ -24,8 +24,8 @@ export class SecretsController {
 
     createSecret = async (req: Request, res: Response) => {
         try {
-            const {name, secret} = CreateSecretsMetadataSchema.parse(req.body);
-            const createdSecretId: number = await this.secretsBL.createSecretMetadata(name, secret);
+            const {displayName} = CreateSecretsMetadataSchema.parse(req.body);
+            const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename);
             res.status(201).json({success: true, data: {id: createdSecretId}});
         } catch (error) {
             if (error instanceof z.ZodError) {
