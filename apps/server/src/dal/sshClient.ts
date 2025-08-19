@@ -1,9 +1,10 @@
-import {NodeSSH} from 'node-ssh';
+import {Config, NodeSSH} from 'node-ssh';
 import path from 'path';
 import fs from 'fs';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
-import { getSecurityConfig } from '../config/config';
+import {getSecurityConfig} from '../config/config';
+import {decryptPassword} from "../utils/encryption";
 
 const logger = new Logger('dal/sshClient');
 
@@ -12,13 +13,13 @@ function getPrivateKeysDir(): string {
     const privateKeysPath = path.isAbsolute(securityConfig.private_keys_path)
         ? securityConfig.private_keys_path
         : path.resolve(__dirname, securityConfig.private_keys_path);
-    
+
     // Ensure the directory exists
     if (!fs.existsSync(privateKeysPath)) {
         logger.info(`Creating private keys directory: ${privateKeysPath}`);
-        fs.mkdirSync(privateKeysPath, { recursive: true });
+        fs.mkdirSync(privateKeysPath, {recursive: true});
     }
-    
+
     return privateKeysPath;
 }
 
@@ -38,13 +39,13 @@ function getKeyPath(filename: string) {
 }
 
 function getSshConfig(provider: Provider) {
-    const { providerIP, username, privateKeyFilename, password, SSHPort } = provider;
-    
+    const {providerIP, username, privateKeyFilename, password, SSHPort} = provider;
+
     // Ensure at least one authentication method is provided
     if (!privateKeyFilename && !password) {
         throw new Error('Either privateKeyFilename or password must be provided for SSH authentication');
     }
-    
+
     const baseConfig = {
         host: providerIP,
         username: username,
@@ -52,9 +53,12 @@ function getSshConfig(provider: Provider) {
     
     // Use private key authentication if available, otherwise use password
     if (privateKeyFilename) {
+        const encryptedKey = fs.readFileSync(getKeyPath(privateKeyFilename), 'utf-8');
+        const decryptedKey = decryptPassword(encryptedKey);
+
         return {
             ...baseConfig,
-            privateKeyPath: getKeyPath(privateKeyFilename),
+            privateKey: decryptedKey,
             port: SSHPort,
         };
     } else {
@@ -180,21 +184,21 @@ export async function discoverSystemServices(provider: Provider): Promise<Discov
         // Parse the output
         const services: DiscoveredService[] = [];
         const lines = result.stdout.split('\n').filter(line => line.trim().length > 0);
-        
+
         for (const line of lines) {
             // Format is typically: "service.service  loaded active running Description"
             const parts = line.trim().split(/\s+/);
             if (parts.length >= 4) {
                 const serviceName = parts[0].replace(/\.service$/, '');
-                
+
                 // Check both the load state (parts[1]) and active state (parts[2])
                 // A service is running if it's both loaded and active
                 const loadState = parts[1]; // loaded, not-found, etc.
                 const activeState = parts[2]; // active, inactive, etc.
-                
+
                 // For a service to be considered running, it must be loaded and active
                 const isRunning = loadState === 'loaded' && activeState === 'active';
-                
+
                 services.push({
                     name: serviceName,
                     serviceStatus: isRunning ? 'running' : 'stopped',
@@ -325,25 +329,25 @@ export async function checkSystemServiceStatus(
         // Check service status using systemctl is-active (most reliable for running status)
         const isActiveResult = await ssh.execCommand(`sudo systemctl is-active ${serviceName}`);
         const isActive = isActiveResult.stdout.trim() === 'active';
-        
+
         logger.info(`[DEBUG] Service ${serviceName} is-active result: '${isActiveResult.stdout.trim()}', code: ${isActiveResult.code}`);
-        
+
         // If the service is active, it's running regardless of loaded state
         if (isActive) {
             return 'running';
         }
-        
+
         // Double-check with systemctl status for more detailed information
         const statusResult = await ssh.execCommand(`sudo systemctl status ${serviceName} --no-pager -l`);
         const statusOutput = statusResult.stdout.toLowerCase();
-        
+
         logger.info(`[DEBUG] Service ${serviceName} status: '${statusResult.stdout.split('\n')[2] || statusResult.stdout.split('\n')[1] || 'No status line found'}'`);
-        
+
         // Check if the status output indicates the service is running
         if (statusOutput.includes('active (running)') || statusOutput.includes('active (exited)')) {
             return 'running';
         }
-        
+
         return 'stopped';
     } catch (error) {
         logger.error(`Failed to check status for ${serviceName}:`, error);
