@@ -14,6 +14,8 @@ import {providerApi} from "@/lib/api";
 import {useState} from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {useNavigate} from "react-router-dom";
+import { FileDropzone } from "@/components/ui/file-dropzone";
+import { getSslKeys } from "@/lib/sslKeys";
 
 // --- FORM SCHEMAS ---
 
@@ -89,7 +91,7 @@ const FieldWrapper = ({children, error}: { children: React.ReactNode, error?: { 
 // --- FORM COMPONENTS ---
 
 const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
-    const {control, handleSubmit, watch, formState: {errors, isSubmitting}} = useForm<ServerFormData>({
+    const {control, handleSubmit, watch, setValue, formState: {errors, isSubmitting}} = useForm<ServerFormData>({
         resolver: zodResolver(serverSchema),
         defaultValues: {port: 22, authType: "key"},
     });
@@ -203,9 +205,39 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             )}
             {authType === 'key' && (
                 <FieldWrapper error={errors.sshKey}>
-                    <Label htmlFor="sshKey">SSH Key Filename</Label>
-                    <Controller name="sshKey" control={control}
-                                render={({field}) => <Input id="sshKey" placeholder="id_rsa" {...field} />}/>
+                    <Label>SSH Key</Label>
+                    {(() => {
+                        const keys = getSslKeys();
+                        if (keys.length === 0) {
+                            return (
+                                <div className="space-y-2">
+                                    <div className="text-sm text-muted-foreground">No keys available.</div>
+                                    <a
+                                        href="/settings#SSL_keys"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-primary underline"
+                                    >
+                                        Go to Settings to add a key
+                                    </a>
+                                </div>
+                            );
+                        }
+                        return (
+                            <Controller name="sshKey" control={control}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <SelectTrigger><SelectValue placeholder="Select a key" /></SelectTrigger>
+                                        <SelectContent>
+                                            {keys.map(k => (
+                                                <SelectItem key={k.id} value={k.name}><b>{k.name}</b></SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                        );
+                    })()}
                 </FieldWrapper>
             )}
 
@@ -478,30 +510,15 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
     };
 
     const ImportTab = () => {
-        const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files?.[0];
-            if (file) void handleFile(file);
-        };
-        const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0];
-            if (file) void handleFile(file);
-        };
         return (
             <div className="space-y-4 py-2">
-                <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={onDrop}
-                    className="relative group flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 text-center hover:bg-accent"
-                >
-                    <input id="provider-import" type="file" accept="application/json,.json" onChange={onSelect} className="hidden" />
-                    <Label
-                        htmlFor="provider-import"
-                        className="absolute inset-0 flex items-center justify-center cursor-pointer transition-colors group-hover:text-white"
-                    >
-                        {isImporting ? 'Importing...' : 'Click to select a JSON file or drag & drop here'}
-                    </Label>
-                </div>
+                <FileDropzone
+                    id="provider-import"
+                    accept="application/json,.json"
+                    placeholder={isImporting ? 'Importing...' : 'Click to select a JSON file or drag & drop here'}
+                    loading={isImporting}
+                    onFile={(file) => void handleFile(file)}
+                />
                 <div className="text-sm text-muted-foreground space-y-2">
                     <div className="font-medium text-foreground">JSON structure</div>
                     <pre className="bg-muted rounded-md p-3 overflow-auto text-xs">
