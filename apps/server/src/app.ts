@@ -90,6 +90,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         auditController
     ));
 
+
+
     if (config?.enableJobs) {
         new RefreshJob(providerBL, serviceRepo).startRefreshJob();
         new PullGrafanaAlertsJob(alertBL, integrationBL, tagRepo).startPullGrafanaAlertsJob();
