@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { AuditController } from './controller';
 
-export default function createAuditRouter(auditController: AuditController) {
+export default function createAuditRouter(auditController: AuditController): Router {
     const router = Router();
     router.get('/', auditController.getAuditLogsPaginated);
     return router;
