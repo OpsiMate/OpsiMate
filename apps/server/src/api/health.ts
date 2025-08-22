@@ -1,6 +1,7 @@
-import {Request, Response, Router} from 'express';
+import {Request, Response} from 'express';
+import PromiseRouter from "express-promise-router";
 
-const router = Router();
+const router = PromiseRouter();
 
 
 function healthCheck(req: Request, res: Response) {
