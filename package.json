@@ -2,10 +2,6 @@
   "name": "OpsiMate",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "start": "pnpm run start --workspace=@OpsiMate/server",
