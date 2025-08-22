@@ -17,35 +17,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: 'pnpm'
 
-      - name: Enable Pnpm
+      - name: Enable pnpm
         run: corepack enable
 
-      - name: Clear pnpm cache
-        run: pnpm store prune
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: pnpm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build project
         run: pnpm run build
 
       - name: Lint apps/server
-        run: |
-          cd apps/server
-          pnpm run lint -- --max-warnings=0
+        run: pnpm --filter @OpsiMate/server lint -- --max-warnings=0
 
       - name: Lint packages/shared
-        run: |
-          cd packages/shared
-          pnpm run lint -- --max-warnings=0
+        run: pnpm --filter @OpsiMate/shared lint -- --max-warnings=0
 
-      - name: Test apps/server
-        run: |
-          cd apps/server
-          pnpm test
-
-
-      # Uncomment when ready
-      # - name: Run tests
-      #   run: npm run test
+#      - name: Test apps/server
+#        run: pnpm --filter @OpsiMate/server test
