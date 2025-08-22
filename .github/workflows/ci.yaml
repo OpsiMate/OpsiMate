@@ -18,31 +18,31 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Clear npm cache
-        run: npm cache clean --force
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Prepare pnpm
+        run: corepack prepare pnpm@9.12.0 --activate
+
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build project
-        run: npm run build
+        run: pnpm run build
 
       - name: Lint apps/server
-        run: |
-          cd apps/server
-          npm run lint -- --max-warnings=0
+        run: pnpm --filter @OpsiMate/server lint --max-warnings=0
 
       - name: Lint packages/shared
-        run: |
-          cd packages/shared
-          npm run lint -- --max-warnings=0
+        run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 
-      - name: Test apps/server
-        run: |
-          cd apps/server
-          npm test
-
-
-      # Uncomment when ready
-      # - name: Run tests
-      #   run: npm run test
+#      - name: Test apps/server
+#        run: pnpm --filter @OpsiMate/server test
