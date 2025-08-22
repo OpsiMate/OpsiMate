@@ -1,9 +1,10 @@
-import {Config, NodeSSH} from 'node-ssh';
+import {NodeSSH} from 'node-ssh';
 import path from 'path';
 import fs from 'fs';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
-import { getSecurityConfig, getVmConfig, decryptPassword } from '../config/config';
+import {getSecurityConfig, getVmConfig} from '../config/config';
+import {decryptPassword} from "../utils/encryption";
 
 const logger = new Logger('dal/sshClient');
 
