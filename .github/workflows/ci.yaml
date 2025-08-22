@@ -22,7 +22,7 @@ jobs:
         run: corepack enable
 
       - name: Clear pnpm cache
-        run: pnpm cache clean --force
+        run: pnpm store prune
 
       - name: Install dependencies
         run: pnpm ci
