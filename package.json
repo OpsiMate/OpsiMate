@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "start": "npm run start --workspace=@OpsiMate/server",
+    "start": "pnpm run start --workspace=@OpsiMate/server",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint-fix": "turbo run lint-fix",
