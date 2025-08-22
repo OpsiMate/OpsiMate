@@ -7,18 +7,23 @@ RUN apk add --no-cache python3 make g++ bash
 
 WORKDIR /app
 
+# Install pnpm globally
 RUN npm install -g pnpm
 
-# Copy all files needed for build
+# Copy all workspace files
 COPY package.json pnpm-lock.yaml turbo.json pnpm-workspace.yaml ./
 COPY apps ./apps
 COPY packages ./packages
 
-# Install all deps (dev + prod)
+# Install dependencies (dev + prod)
 RUN pnpm install
 
-# Build required packages
+# Build server and client
 RUN pnpm turbo run build --filter=apps/server... --filter=apps/client...
+
+# Debug: list built files
+RUN ls -R /app/apps/server/dist
+RUN ls -R /app/apps/client/dist
 
 # ----------------------------
 # Production Stage
@@ -33,12 +38,14 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy only built dist + package files
+# Copy built dist folders
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/client/dist ./apps/client/dist
+
+# Copy package files for prod deps
 COPY package.json pnpm-lock.yaml ./
 
-# Install only production deps
+# Install prod dependencies only
 RUN npm install -g pnpm serve && pnpm install --prod
 
 # Copy runtime files
@@ -53,5 +60,6 @@ EXPOSE 3001 8080
 VOLUME ["/app/data/database", "/app/data/private-keys", "/app/config"]
 
 ENV NODE_ENV=production
+
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
-CMD ["sh", "-c", "serve -s /app/apps/client/dist -l 8080 & pnpm run start"]
+CMD ["sh", "-c", "serve -s /app/apps/client/dist -l 8080 & node /app/apps/server/dist/index.js"]
