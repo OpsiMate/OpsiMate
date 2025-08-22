@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Enable Pnpm
+        run: corepack enable
+
       - name: Clear pnpm cache
         run: pnpm cache clean --force
 
