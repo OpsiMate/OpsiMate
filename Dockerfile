@@ -3,26 +3,21 @@
 # ----------------------------
 FROM node:20-alpine AS builder
 
-# Create app user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S opsimate -u 1001
+RUN apk add --no-cache python3 make g++ bash
 
 WORKDIR /app
 
-# Install pnpm globally + build tools (for native modules)
-RUN npm install -g pnpm && apk add --no-cache python3 make g++
+RUN npm install -g pnpm
 
-# Copy root files
+# Copy all files needed for build
 COPY package.json pnpm-lock.yaml turbo.json pnpm-workspace.yaml ./
-
-# Copy all apps and packages
 COPY apps ./apps
 COPY packages ./packages
 
-# Install dependencies
+# Install all deps (dev + prod)
 RUN pnpm install
 
-# Build server + client packages
+# Build required packages
 RUN pnpm turbo run build --filter=apps/server... --filter=apps/client...
 
 # ----------------------------
@@ -30,27 +25,27 @@ RUN pnpm turbo run build --filter=apps/server... --filter=apps/client...
 # ----------------------------
 FROM node:20-alpine AS production
 
-# Create app user & directories
+RUN apk add --no-cache bash curl
+
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S opsimate -u 1001 && \
     mkdir -p /app/data/database /app/data/private-keys /app/config
 
 WORKDIR /app
 
-# Copy node_modules and built assets from builder
-COPY --from=builder /app/node_modules ./node_modules
+# Copy only built dist + package files
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/client/dist ./apps/client/dist
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY package.json pnpm-lock.yaml ./
+
+# Install only production deps
+RUN npm install -g pnpm serve && pnpm install --prod
 
 # Copy runtime files
 COPY --chown=opsimate:nodejs default-config.yml /app/config/default-config.yml
 COPY --chown=opsimate:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
-# Adjust permissions
-RUN chown -R opsimate:nodejs /app/data /app/config
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chown -R opsimate:nodejs /app/data /app/config
 
 USER opsimate
 
