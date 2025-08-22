@@ -39,10 +39,10 @@ jobs:
         run: pnpm run build
 
       - name: Lint apps/server
-        run: pnpm --filter @OpsiMate/server lint -- --max-warnings=0
+        run: pnpm --filter @OpsiMate/server lint --max-warnings=0
 
       - name: Lint packages/shared
-        run: pnpm --filter @OpsiMate/shared lint -- --max-warnings=0
+        run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 
 #      - name: Test apps/server
 #        run: pnpm --filter @OpsiMate/server test
