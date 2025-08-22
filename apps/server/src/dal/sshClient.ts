@@ -3,8 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
-import {getSecurityConfig} from '../config/config';
-import {decryptPassword} from "../utils/encryption";
+import { getSecurityConfig, getVmConfig, decryptPassword } from '../config/config';
 
 const logger = new Logger('dal/sshClient');
 
@@ -69,6 +68,11 @@ function getSshConfig(provider: Provider) {
     }
 }
 
+function buildCommand(baseCommand: string): string {
+    const vmConfig = getVmConfig();
+    return vmConfig.run_with_sudo ? `sudo ${baseCommand}` : baseCommand;
+}
+
 export async function connectAndListContainers(provider: Provider): Promise<DiscoveredService[]> {
 
     const ssh = new NodeSSH();
@@ -83,7 +87,7 @@ export async function connectAndListContainers(provider: Provider): Promise<Disc
         throw new Error('Docker is not installed or not accessible');
     }
 
-    const result = await ssh.execCommand('sudo docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"');
+    const result = await ssh.execCommand(buildCommand('docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"'));
     ssh.dispose();
 
     return result.stdout
@@ -109,7 +113,7 @@ export async function startService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo docker start ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`docker start ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to start ${serviceName}: ${result.stderr}`);
         }
@@ -127,7 +131,7 @@ export async function stopService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo docker stop ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`docker stop ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to stop ${serviceName}: ${result.stderr}`);
         }
@@ -143,7 +147,7 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const cmd = `sudo docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`
+        const cmd = buildCommand(`docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`)
 
         const result = await ssh.execCommand(cmd);
 
@@ -167,56 +171,6 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
 }
 
 /**
- * Discovers system services running on the provider
- */
-export async function discoverSystemServices(provider: Provider): Promise<DiscoveredService[]> {
-    const ssh = new NodeSSH();
-    try {
-        const sshConfig = getSshConfig(provider);
-        await ssh.connect(sshConfig);
-
-        // List all system services (not just running ones)
-        const result = await ssh.execCommand('systemctl list-units --type=service --all --no-legend');
-        if (result.code !== 0) {
-            throw new Error(`Failed to list system services: ${result.stderr}`);
-        }
-
-        // Parse the output
-        const services: DiscoveredService[] = [];
-        const lines = result.stdout.split('\n').filter(line => line.trim().length > 0);
-
-        for (const line of lines) {
-            // Format is typically: "service.service  loaded active running Description"
-            const parts = line.trim().split(/\s+/);
-            if (parts.length >= 4) {
-                const serviceName = parts[0].replace(/\.service$/, '');
-
-                // Check both the load state (parts[1]) and active state (parts[2])
-                // A service is running if it's both loaded and active
-                const loadState = parts[1]; // loaded, not-found, etc.
-                const activeState = parts[2]; // active, inactive, etc.
-
-                // For a service to be considered running, it must be loaded and active
-                const isRunning = loadState === 'loaded' && activeState === 'active';
-
-                services.push({
-                    name: serviceName,
-                    serviceStatus: isRunning ? 'running' : 'stopped',
-                    serviceIP: provider.providerIP || ''
-                });
-            }
-        }
-
-        return services;
-    } catch (error) {
-        logger.error('Error discovering system services:', error);
-        throw error;
-    } finally {
-        ssh.dispose();
-    }
-}
-
-/**
  * Starts a system service
  */
 export async function startSystemService(
@@ -228,7 +182,7 @@ export async function startSystemService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo systemctl start ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`systemctl start ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to start ${serviceName}: ${result.stderr}`);
         }
@@ -249,7 +203,7 @@ export async function stopSystemService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(`sudo systemctl stop ${serviceName}`);
+        const result = await ssh.execCommand(buildCommand(`systemctl stop ${serviceName}`));
         if (result.code !== 0) {
             throw new Error(`Failed to stop ${serviceName}: ${result.stderr}`);
         }
@@ -268,7 +222,7 @@ export async function getSystemServiceLogs(provider: Provider, serviceName: stri
         await ssh.connect(sshConfig);
 
         // Get logs using journalctl
-        const result = await ssh.execCommand(`sudo journalctl -u ${serviceName} --since "24 hours ago" --no-pager`);
+        const result = await ssh.execCommand(buildCommand(`journalctl -u ${serviceName} --since "24 hours ago" --no-pager`));
         if (result.code !== 0) {
             throw new Error(`Failed to get logs for ${serviceName}: ${result.stderr}`);
         }
@@ -327,7 +281,7 @@ export async function checkSystemServiceStatus(
         await ssh.connect(sshConfig);
 
         // Check service status using systemctl is-active (most reliable for running status)
-        const isActiveResult = await ssh.execCommand(`sudo systemctl is-active ${serviceName}`);
+        const isActiveResult = await ssh.execCommand(buildCommand(`systemctl is-active ${serviceName}`));
         const isActive = isActiveResult.stdout.trim() === 'active';
 
         logger.info(`[DEBUG] Service ${serviceName} is-active result: '${isActiveResult.stdout.trim()}', code: ${isActiveResult.code}`);
@@ -338,7 +292,7 @@ export async function checkSystemServiceStatus(
         }
 
         // Double-check with systemctl status for more detailed information
-        const statusResult = await ssh.execCommand(`sudo systemctl status ${serviceName} --no-pager -l`);
+        const statusResult = await ssh.execCommand(buildCommand(`systemctl status ${serviceName} --no-pager -l`));
         const statusOutput = statusResult.stdout.toLowerCase();
 
         logger.info(`[DEBUG] Service ${serviceName} status: '${statusResult.stdout.split('\n')[2] || statusResult.stdout.split('\n')[1] || 'No status line found'}'`);
