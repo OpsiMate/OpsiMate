@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "start": "pnpm run start --workspace=@OpsiMate/server",
+    "start": "pnpm --filter @OpsiMate/server start",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint-fix": "turbo run lint-fix",
