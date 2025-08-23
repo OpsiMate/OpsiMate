@@ -73,8 +73,9 @@ async function execCommandWithAutoSudo(ssh: NodeSSH, command: string): Promise<S
     logger.debug(`Executing command: ${command}`);
     const result = await ssh.execCommand(command);
 
-    // Check if the command failed due to permission issues
-    if (result.code !== 0 && isPermissionError(result.stderr)) {
+
+    // Check if the command failed due to permission issues and try_with_sudo is enabled
+    if (result.code !== 0 && isPermissionError(result.stderr) && getVmConfig().try_with_sudo) {
         logger.debug(`Permission denied, retrying with sudo: ${command}`);
         const sudoCommand = `sudo ${command}`;
         const sudoResult = await ssh.execCommand(sudoCommand);
