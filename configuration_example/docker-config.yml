@@ -21,4 +21,4 @@ security:
 
 # VM configuration 
 vm:
-  run_with_sudo: false # Run docker commands with sudo
+  try_with_sudo: true # Run docker commands with sudo
