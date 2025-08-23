@@ -2,13 +2,9 @@
   "name": "OpsiMate",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "turbo run build",
-    "start": "npm run start --workspace=@OpsiMate/server",
+    "start": "pnpm run start --workspace=@OpsiMate/server",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint-fix": "turbo run lint-fix",
@@ -20,5 +16,5 @@
     "prettier": "^3.2.5",
     "turbo": "^1.12.4"
   },
-  "packageManager": "npm@10.2.4"
+  "packageManager": "pnpm@9.12.0"
 }

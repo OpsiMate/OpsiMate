@@ -14,15 +14,15 @@ COPY apps/client/package.json ./apps/client/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install all dependencies (including dev for building)
-RUN npm ci
+RUN pnpm ci
 
 # Copy source code
 COPY . .
 
 # Build all packages
-RUN npm run build --workspace=@OpsiMate/shared && \
-    npm run build --workspace=@OpsiMate/server && \
-    npm run build --workspace=@OpsiMate/client
+RUN pnpm run build --workspace=@OpsiMate/shared && \
+    pnpm run build --workspace=@OpsiMate/server && \
+    pnpm run build --workspace=@OpsiMate/client
 
 # Production stage - minimal runtime dependencies
 FROM node:20-alpine AS production
@@ -41,9 +41,9 @@ COPY apps/client/package.json ./apps/client/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install only production dependencies and serve for static files
-RUN npm ci --omit=dev && \
-    npm install -g serve && \
-    npm cache clean --force
+RUN pnpm ci --omit=dev && \
+    pnpm install -g serve && \
+    pnpm cache clean --force
 
 # Copy built assets from builder stage
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
@@ -86,11 +86,11 @@ WORKDIR /app
 COPY --chown=opsimate:nodejs . .
 
 # Install all dependencies (including dev)
-RUN npm ci && \
-    npm cache clean --force
+RUN pnpm ci && \
+    pnpm cache clean --force
 
 # Build shared package for development
-RUN npm run build --workspace=@OpsiMate/shared
+RUN pnpm run build --workspace=@OpsiMate/shared
 
 # Copy config and entrypoint
 COPY --chown=opsimate:nodejs default-config.yml /app/config/default-config.yml
@@ -109,4 +109,4 @@ VOLUME ["/app/data/database", "/app/data/private-keys", "/app/config"]
 ENV NODE_ENV=development
 
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
