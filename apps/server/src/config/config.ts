@@ -35,7 +35,9 @@ export function loadConfig(): OpsimateConfig {
 
     if (!configPath || !fs.existsSync(configPath)) {
         logger.warn(`Config file not found starting from ${process.cwd()}, using defaults`);
-        return getDefaultConfig();
+        const defaultConfig = getDefaultConfig();
+        cachedConfig = defaultConfig;
+        return defaultConfig;
     }
 
     logger.info(`Loading config from: ${configPath}`);
@@ -51,7 +53,7 @@ export function loadConfig(): OpsimateConfig {
     // Set default VM config if not provided
     if (!config.vm) {
         config.vm = {
-            try_with_sudo: process.env.VM_RUN_WITH_SUDO !== 'false'
+            try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false'
         };
     }
 

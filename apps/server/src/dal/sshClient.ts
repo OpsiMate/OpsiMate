@@ -124,6 +124,9 @@ export async function connectAndListContainers(provider: Provider): Promise<Disc
     }
 
     const result = await execCommandWithAutoSudo(ssh, 'docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"');
+    if (result.code !== 0) {
+        throw new Error(`Failed to list containers: ${result.stderr}`);
+    }
     ssh.dispose();
 
     return result.stdout
@@ -318,6 +321,9 @@ export async function checkSystemServiceStatus(
 
         // Check service status using systemctl is-active (most reliable for running status)
         const isActiveResult = await execCommandWithAutoSudo(ssh, `systemctl is-active ${serviceName}`);
+        if (isActiveResult.code !== 0) {
+            throw new Error(`Failed check system service status ${serviceName}: ${isActiveResult.stderr}`);
+        }
         const isActive = isActiveResult.stdout.trim() === 'active';
 
         logger.info(`[DEBUG] Service ${serviceName} is-active result: '${isActiveResult.stdout.trim()}', code: ${isActiveResult.code}`);
@@ -329,6 +335,9 @@ export async function checkSystemServiceStatus(
 
         // Double-check with systemctl status for more detailed information
         const statusResult = await execCommandWithAutoSudo(ssh, `systemctl status ${serviceName} --no-pager -l`);
+        if (statusResult.code !== 0) {
+            throw new Error(`Failed check system service status ${serviceName}: ${statusResult.stderr}`);
+        }
         const statusOutput = statusResult.stdout.toLowerCase();
 
         logger.info(`[DEBUG] Service ${serviceName} status: '${statusResult.stdout.split('\n')[2] || statusResult.stdout.split('\n')[1] || 'No status line found'}'`);
