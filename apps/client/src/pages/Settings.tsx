@@ -151,10 +151,10 @@ const Settings: React.FC = () => {
         const h = (location.hash || '').replace('#','');
         if (h === 'Users') return 'users';
         if (h === 'Audit_Log') return 'audit';
-        if (h === 'SSL_keys') return 'ssl';
+        if (h === 'secrets') return 'secrets';
         return 'users';
       })()} onValueChange={(v) => {
-        const map: Record<string,string> = { users: 'Users', audit: 'Audit_Log', ssl: 'SSL_keys' };
+        const map: Record<string,string> = { users: 'Users', audit: 'Audit_Log', secrets: 'secrets' };
         const next = map[v] || v;
         if (next) window.location.hash = next;
       }} className="space-y-6">
@@ -169,9 +169,9 @@ const Settings: React.FC = () => {
                 <FileText className="h-4 w-4" />
                 Audit Log
               </TabsTrigger>
-              <TabsTrigger value="ssl" className="justify-start gap-2">
+              <TabsTrigger value="secrets" className="justify-start gap-2">
                 <KeyRound className="h-4 w-4" />
-                SSL Keys
+                Secrets
               </TabsTrigger>
             </TabsList>
           </div>
@@ -301,18 +301,18 @@ const Settings: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ssl" className="space-y-6">
+        <TabsContent value="secrets" className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-semibold">SSL Keys</h2>
-              <p className="text-muted-foreground">Manage SSL/SSH keys used to access providers and services securely.</p>
+              <h2 className="text-2xl font-semibold">Secrets</h2>
+              <p className="text-muted-foreground">Manage SSH keys and kubeconfig files used to access providers and services securely.</p>
             </div>
-            <AddSslKeyButton />
+            <AddSecretButton />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>SSL Keys</CardTitle>
+              <CardTitle>Secrets</CardTitle>
             </CardHeader>
             <CardContent>
               <SslKeysTable />
@@ -448,11 +448,12 @@ const AuditLogTable: React.FC = () => {
   );
 };
 
-const AddSslKeyButton: React.FC = () => {
+const AddSecretButton: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -470,7 +471,7 @@ const AddSslKeyButton: React.FC = () => {
     if (!isKeyFile) {
       toast({
         title: "Warning",
-        description: "This file doesn't appear to be a valid key file. Please ensure you're uploading an SSL/SSH private key.",
+        description: "This file doesn't appear to be a valid secret file. Please ensure you're uploading an SSH key or kubeconfig file.",
         variant: "destructive",
       });
     }
@@ -485,22 +486,23 @@ const AddSslKeyButton: React.FC = () => {
     setUploading(true);
     try {
       const name = displayName.trim() || fileName || "key";
-      const result = await createSecretOnServer(name, selectedFile);
+      const result = await createSecretOnServer(name, selectedFile, secretType);
       
       if (result.success) {
         toast({
           title: "Success",
-          description: "SSL key created successfully",
+          description: "Secret created successfully",
         });
         window.dispatchEvent(new Event('secrets-updated'));
         setOpen(false);
         setFileName(null);
         setDisplayName("");
+        setSecretType('ssh');
         setSelectedFile(null);
       } else {
         toast({
           title: "Error",
-          description: result.error || "Failed to create SSL key",
+          description: result.error || "Failed to create secret",
           variant: "destructive",
         });
       }
@@ -508,7 +510,7 @@ const AddSslKeyButton: React.FC = () => {
       console.error('Error creating SSL key:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while creating the SSL key",
+        description: "An unexpected error occurred while creating the secret",
         variant: "destructive",
       });
     } finally {
@@ -520,21 +522,33 @@ const AddSslKeyButton: React.FC = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="h-4 w-4 mr-2" /> Add SSL Key
+          <Plus className="h-4 w-4 mr-2" /> Add Secret
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add SSL Key</DialogTitle>
-          <DialogDescription>Upload an SSL/SSH key file (any format including files without extensions). It will be encrypted and stored securely.</DialogDescription>
+          <DialogTitle>Add Secret</DialogTitle>
+          <DialogDescription>Upload a secret file (SSH key or kubeconfig). It will be encrypted and stored securely.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="ssl-name">Key name</Label>
-            <Input id="ssl-name" placeholder="My SSH Key" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <Label htmlFor="secret-name">Secret name</Label>
+            <Input id="secret-name" placeholder="My SSH Key" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="secret-type">Type</Label>
+            <Select value={secretType} onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ssh">SSH Key</SelectItem>
+                <SelectItem value="kubeconfig">Kubeconfig</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <FileDropzone
-            id="ssl-key-upload"
+            id="secret-upload"
             accept="*"
             loading={uploading}
             onFile={handleFile}
@@ -565,8 +579,8 @@ const SslKeysTable: React.FC = () => {
       setSecrets(secretsData);
       setError(null);
     } catch (error) {
-      console.error('Error loading SSL keys:', error);
-      setError('Failed to load SSL keys');
+      console.error('Error loading secrets:', error);
+      setError('Failed to load secrets');
     } finally {
       setLoading(false);
     }
@@ -579,13 +593,13 @@ const SslKeysTable: React.FC = () => {
       if (result.success) {
         toast({
           title: "Success",
-          description: "SSL key deleted successfully",
+          description: "Secret deleted successfully",
         });
         loadSecrets(); // Refresh the list
       } else {
         toast({
           title: "Error",
-          description: result.error || "Failed to delete SSL key",
+          description: result.error || "Failed to delete secret",
           variant: "destructive",
         });
       }
@@ -593,7 +607,7 @@ const SslKeysTable: React.FC = () => {
       console.error('Error deleting SSL key:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while deleting the SSL key",
+        description: "An unexpected error occurred while deleting the secret",
         variant: "destructive",
       });
     } finally {
@@ -613,16 +627,16 @@ const SslKeysTable: React.FC = () => {
     return () => window.removeEventListener('secrets-updated', handleSecretsUpdated);
   }, []);
 
-  if (loading) return <div className="py-6 text-center">Loading SSL keys...</div>;
+  if (loading) return <div className="py-6 text-center">Loading secrets...</div>;
   if (error) return <div className="py-6 text-center text-red-600">{error}</div>;
-  if (!secrets.length) return <div className="py-6 text-center text-muted-foreground">No SSL keys added yet.</div>;
+  if (!secrets.length) return <div className="py-6 text-center text-muted-foreground">No secrets added yet.</div>;
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Key Name</TableHead>
-          <TableHead>File Path</TableHead>
+          <TableHead>Secret Name</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -630,7 +644,11 @@ const SslKeysTable: React.FC = () => {
         {secrets.map(secret => (
           <TableRow key={secret.id}>
             <TableCell><b>{secret.name}</b></TableCell>
-            <TableCell>{secret.path}</TableCell>
+            <TableCell>
+              <Badge variant={secret.type === 'kubeconfig' ? 'secondary' : 'default'}>
+                {secret.type === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}
+              </Badge>
+            </TableCell>
             <TableCell>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -646,9 +664,9 @@ const SslKeysTable: React.FC = () => {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete SSL Key</AlertDialogTitle>
+                    <AlertDialogTitle>Delete Secret</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot be undone and will permanently remove the key file.
+                      Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot be undone and will permanently remove the secret file.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

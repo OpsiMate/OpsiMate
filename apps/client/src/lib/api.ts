@@ -554,7 +554,6 @@ export const secretsApi = {
       }
 
       const result = await response.json();
-      console.log('API Response (POST /secrets):', result);
       return result as ApiResponse<{ id: number }>;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

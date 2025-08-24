@@ -36,8 +36,8 @@ export class SecretsController {
             // Overwrite file with encrypted content
             fs.writeFileSync(filePath, encryptedContent ?? "");
 
-            const {displayName} = CreateSecretsMetadataSchema.parse(req.body);
-            const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename);
+            const {displayName, secretType} = CreateSecretsMetadataSchema.parse(req.body);
+            const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename, secretType);
             res.status(201).json({success: true, data: {id: createdSecretId}});
         } catch (error) {
             if (error instanceof z.ZodError) {

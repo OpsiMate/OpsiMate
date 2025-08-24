@@ -1,11 +1,5 @@
 import { secretsApi } from './api';
-
-// Type definition matching the server's SecretMetadata
-export type SecretMetadata = {
-  id: number;
-  name: string;
-  path: string;
-};
+import { SecretType, SecretMetadata } from '@OpsiMate/shared';
 
 // Server-based secrets functions
 export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
@@ -21,9 +15,9 @@ export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
   }
 }
 
-export async function createSecretOnServer(displayName: string, file: File): Promise<{ success: boolean; id?: number; error?: string }> {
+export async function createSecretOnServer(displayName: string, file: File, secretType: SecretType = SecretType.SSH): Promise<{ success: boolean; id?: number; error?: string }> {
   try {
-    const response = await secretsApi.createSecret(displayName, file);
+    const response = await secretsApi.createSecret(displayName, file, secretType);
     if (response.success && response.data) {
       return { success: true, id: response.data.id };
     }

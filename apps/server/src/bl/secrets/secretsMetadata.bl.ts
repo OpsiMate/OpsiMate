@@ -1,4 +1,4 @@
-import {Logger, SecretMetadata} from "@OpsiMate/shared";
+import {Logger, SecretMetadata, SecretType} from "@OpsiMate/shared";
 
 
 import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository";
@@ -13,11 +13,11 @@ export class SecretsMetadataBL {
     ) {
     }
 
-    async createSecretMetadata(displayName: string, newName: string): Promise<number> {
+    async createSecretMetadata(displayName: string, newName: string, secretType: SecretType = SecretType.SSH): Promise<number> {
         try {
             const fullPath = path.resolve(getSecurityConfig().private_keys_path, newName)
             logger.info(`Creating Secret named ${displayName} in ${newName}`)
-            const createdSecret = await this.secretsMetadataRepository.createSecret({name: displayName, path: fullPath})
+            const createdSecret = await this.secretsMetadataRepository.createSecret({name: displayName, path: fullPath, type: secretType})
 
             logger.info(`Successfully created secret named ${displayName} in ${newName} in ${createdSecret.lastID}`)
 

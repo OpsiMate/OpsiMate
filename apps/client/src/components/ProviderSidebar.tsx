@@ -266,7 +266,7 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
                     <SSHKeySelector control={control} />
                     <div className="mt-2">
                         <a
-                            href="/settings#SSL_keys"
+                            href="/settings#secrets"
                             target="_blank"
                             rel="noreferrer"
                             className="text-sm text-primary hover:underline"

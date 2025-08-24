@@ -21,6 +21,11 @@ export enum Role {
     Viewer = 'viewer',
 }
 
+export enum SecretType {
+    SSH = 'ssh',
+    KUBECONFIG = 'kubeconfig',
+}
+
 export interface User {
     id: number;
     email: string;
@@ -143,5 +148,6 @@ export interface AuditLog {
 export type SecretMetadata = {
     id: number;
     name: string;
-    path: string
+    path: string;
+    type: SecretType;
 }
