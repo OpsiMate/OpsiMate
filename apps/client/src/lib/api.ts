@@ -1,4 +1,4 @@
-import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog } from '@OpsiMate/shared';
+import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType } from '@OpsiMate/shared';
 import { SavedView } from '@/types/SavedView';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
@@ -18,7 +18,7 @@ async function apiRequest<T>(
   data?: unknown
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
-
+  
   const token = localStorage.getItem('jwt');
   const options: RequestInit = {
     method,
@@ -517,11 +517,12 @@ export const secretsApi = {
   },
 
   // Create a new secret
-  createSecret: async (displayName: string, file: File) => {
+  createSecret: async (displayName: string, file: File, secretType: SecretType = SecretType.SSH) => {
     try {
       const formData = new FormData();
       formData.append('displayName', displayName);
       formData.append('secret_file', file);
+      formData.append('secretType', secretType);
 
       const url = `${API_BASE_URL}/secrets`;
       const token = localStorage.getItem('jwt');
