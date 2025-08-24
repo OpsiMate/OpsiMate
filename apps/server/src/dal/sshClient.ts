@@ -4,6 +4,7 @@ import fs from 'fs';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
 import {getSecurityConfig, getVmConfig} from '../config/config';
+import {decryptPassword} from "../utils/encryption";
 
 const logger = new Logger('dal/sshClient');
 
@@ -52,9 +53,12 @@ function getSshConfig(provider: Provider) {
 
     // Use private key authentication if available, otherwise use password
     if (privateKeyFilename) {
+        const encryptedKey = fs.readFileSync(getKeyPath(privateKeyFilename), 'utf-8');
+        const decryptedKey = decryptPassword(encryptedKey);
+
         return {
             ...baseConfig,
-            privateKeyPath: getKeyPath(privateKeyFilename),
+            privateKey: decryptedKey,
             port: SSHPort,
         };
     } else {

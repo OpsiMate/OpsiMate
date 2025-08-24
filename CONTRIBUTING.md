@@ -24,19 +24,19 @@ cd opsimate
 ### 2. Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 3. Build the Project
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### 4. Start client and server
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 The Client will be available at `http://localhost:8080`
@@ -44,5 +44,5 @@ The Server will be available at `http://localhost:3001`
 
 ## Development Commands
 
-- `npm run test` - Run test suite
-- `npm run lint` - Check code quality
+- `pnpm run test` - Run test suite
+- `pnpm run lint` - Check code quality

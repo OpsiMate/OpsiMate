@@ -27,6 +27,9 @@ import {PullGrafanaAlertsJob} from "./jobs/pull-grafana-alerts-job";
 import { AuditLogRepository } from './dal/auditLogRepository';
 import { AuditBL } from './bl/audit/audit.bl';
 import { AuditController } from './api/v1/audit/controller';
+import { SecretsController } from "./api/v1/secrets/controller";
+import { SecretsMetadataBL } from "./bl/secrets/secretsMetadata.bl";
+import { SecretsMetadataRepository } from "./dal/secretsMetadataRepository";
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -48,6 +51,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const alertRepo = new AlertRepository(db);
     const userRepo = new UserRepository(db);
     const auditLogRepo = new AuditLogRepository(db);
+    const secretsMetadataRepo = new SecretsMetadataRepository(db);
 
     // Init tables
     await Promise.all([
@@ -59,6 +63,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         alertRepo.initAlertsTable(),
         userRepo.initUsersTable(),
         auditLogRepo.initAuditLogsTable(),
+        secretsMetadataRepo.initSecretsMetadataTable()
     ]);
 
     // BL
@@ -67,6 +72,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
+    const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo)
 
     // Controllers
     const providerController = new ProviderController(providerBL);
@@ -77,6 +83,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const alertController = new AlertController(alertBL);
     const usersController = new UsersController(userBL);
     const auditController = new AuditController(auditBL);
+    const secretController = new SecretsController(secretMetadataBL);
 
     app.use('/', healthRouter);
     app.use('/api/v1', createV1Router(
@@ -87,7 +94,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         integrationController,
         alertController,
         usersController,
-        auditController
+        auditController,
+        secretController
     ));
 
 

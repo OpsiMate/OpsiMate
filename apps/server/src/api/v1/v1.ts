@@ -17,6 +17,8 @@ import {AlertController} from "./alerts/controller";
 import {UsersController} from './users/controller';
 import {AuditController} from './audit/controller';
 import {authenticateJWT} from '../../middleware/auth';
+import createSecretsRouter from "./secrets/router";
+import {SecretsController} from "./secrets/controller";
 
 
 export default function createV1Router(
@@ -27,7 +29,8 @@ export default function createV1Router(
     integrationController: IntegrationController,
     alertController: AlertController,
     usersController: UsersController,
-    auditController: AuditController // optional for backward compatibility
+    auditController: AuditController, // optional for backward compatibility
+    secretsController: SecretsController,
 ) {
     const router = PromiseRouter();
 
@@ -44,6 +47,7 @@ export default function createV1Router(
     router.use('/tags', tagRouter(tagController));
     router.use('/integrations', integrationRouter(integrationController));
     router.use('/alerts', alertRouter(alertController));
+    router.use('/secrets', createSecretsRouter(secretsController))
     // All other /users endpoints (except /register and /login) are protected
     router.use('/users', usersRouter(usersController));
     router.use('/audit', createAuditRouter(auditController));
