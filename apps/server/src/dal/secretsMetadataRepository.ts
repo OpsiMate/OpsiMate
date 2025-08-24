@@ -38,6 +38,21 @@ export class SecretsMetadataRepository {
         });
     }
 
+    async getSecretById(id: number): Promise<SecretMetadata | null> {
+        return runAsync(() => {
+            const stmt = this.db.prepare(`
+                SELECT id,
+                       secret_name AS name,
+                       secret_path AS path,
+                       secret_type AS type
+                FROM secrets
+                WHERE id = ?
+            `);
+            const result = stmt.get(id) as SecretMetadata | undefined;
+            return result || null;
+        });
+    }
+
     async deleteSecret(id: number): Promise<boolean> {
         return await runAsync<boolean>(() => {
             const deleteStmt = this.db.prepare('DELETE FROM secrets WHERE id = ?');

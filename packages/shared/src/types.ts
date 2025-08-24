@@ -44,7 +44,8 @@ export interface Provider {
     name: string;
     providerIP?: string;
     username?: string;
-    privateKeyFilename?: string;
+    secretId?: number;
+    privateKeyFilename?: string; // Deprecated: use secretId instead
     password?: string;
     SSHPort?: number;
     createdAt: string;

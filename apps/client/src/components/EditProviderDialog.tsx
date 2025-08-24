@@ -11,8 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Provider } from "@OpsiMate/shared";
+import { Provider, SecretMetadata } from "@OpsiMate/shared";
 import { Container, Server } from "lucide-react";
+import { getSecretsFromServer } from "@/lib/sslKeys";
 
 interface EditProviderDialogProps {
   provider: Provider | null;
@@ -22,7 +23,7 @@ interface EditProviderDialogProps {
     name: string;
     providerIP: string;
     username: string;
-    privateKeyFilename: string;
+    secretId?: number;
     password: string;
     SSHPort: number;
     providerType: string;
@@ -39,27 +40,55 @@ export function EditProviderDialog({
     name: "",
     providerIP: "",
     username: "",
-    privateKeyFilename: "",
+    secretId: undefined as number | undefined,
     password: "",
     SSHPort: 22,
     providerType: "VM", // Default to VM
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [secrets, setSecrets] = useState<SecretMetadata[]>([]);
+  const [secretsLoading, setSecretsLoading] = useState(false);
+
+  // Load secrets when dialog opens
+  useEffect(() => {
+    if (open) {
+      loadSecrets();
+    }
+  }, [open]);
+
+  const loadSecrets = async () => {
+    setSecretsLoading(true);
+    try {
+      const secretsData = await getSecretsFromServer();
+      setSecrets(secretsData);
+    } catch (error) {
+      console.error('Error loading secrets:', error);
+    } finally {
+      setSecretsLoading(false);
+    }
+  };
 
   // Update form data when provider changes or dialog opens
   useEffect(() => {
     if (provider && open) {
+      // For existing providers, we need to find the secret ID that matches the privateKeyFilename
+      let secretId: number | undefined;
+      if (provider.privateKeyFilename && secrets.length > 0) {
+        const matchingSecret = secrets.find(secret => secret.path === provider.privateKeyFilename);
+        secretId = matchingSecret?.id;
+      }
+
       setFormData({
         name: provider.name,
         providerIP: provider.providerIP || "",
         username: provider.username || "",
-        privateKeyFilename: provider.privateKeyFilename || undefined,
-        password: provider.password || undefined,
+        secretId: secretId,
+        password: provider.password || "",
         SSHPort: provider.SSHPort || 22,
         providerType: provider.providerType || 'VM',
       });
     }
-  }, [provider, open]);
+  }, [provider, open, secrets]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -73,6 +102,13 @@ export function EditProviderDialog({
     setFormData(prev => ({
       ...prev,
       providerType: value
+    }));
+  };
+
+  const handleSecretChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      secretId: value ? parseInt(value) : undefined
     }));
   };
 
@@ -164,18 +200,25 @@ export function EditProviderDialog({
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="privateKeyFilename" className="text-right">
+                  <Label htmlFor="secretId" className="text-right">
                     Kubeconfig
                   </Label>
-                  <Input
-                    id="privateKeyFilename"
-                    name="privateKeyFilename"
-                    value={formData.privateKeyFilename}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="Path to kubeconfig file"
-                    required
-                  />
+                  <Select 
+                    value={formData.secretId?.toString() || ""} 
+                    onValueChange={handleSecretChange}
+                    disabled={secretsLoading}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder={secretsLoading ? "Loading..." : "Select a kubeconfig"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {secrets.filter(secret => secret.type === 'kubeconfig').map(secret => (
+                        <SelectItem key={secret.id} value={secret.id.toString()}>
+                          {secret.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </>
             ) : (
@@ -222,17 +265,25 @@ export function EditProviderDialog({
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="privateKeyFilename" className="text-right">
-                    SSH Key File
+                  <Label htmlFor="secretId" className="text-right">
+                    SSH Key
                   </Label>
-                  <Input
-                    id="privateKeyFilename"
-                    name="privateKeyFilename"
-                    value={formData.privateKeyFilename}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="Path to SSH private key file (leave empty to use password)"
-                  />
+                  <Select 
+                    value={formData.secretId?.toString() || ""} 
+                    onValueChange={handleSecretChange}
+                    disabled={secretsLoading}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder={secretsLoading ? "Loading..." : "Select an SSH key (leave empty to use password)"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {secrets.filter(secret => secret.type === 'ssh').map(secret => (
+                        <SelectItem key={secret.id} value={secret.id.toString()}>
+                          {secret.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="password" className="text-right">

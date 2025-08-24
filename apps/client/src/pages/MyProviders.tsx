@@ -69,7 +69,7 @@ const mockProviderInstances = [
         username: "admin",
         privateKeyFilename: "id_rsa",
         SSHPort: 22,
-        providerType: "VM" as any,
+        providerType: "VM",
         createdAt: "2025-06-01T08:00:00Z",
         services: []
     },
@@ -80,7 +80,7 @@ const mockProviderInstances = [
         username: "dbadmin",
         privateKeyFilename: "id_rsa_db",
         SSHPort: 22,
-        providerType: "VM" as any,
+        providerType: "VM",
         createdAt: "2025-06-02T14:30:00Z",
         services: []
     },
@@ -91,7 +91,7 @@ const mockProviderInstances = [
         username: "devuser",
         privateKeyFilename: "id_rsa_k8s",
         SSHPort: 22,
-        providerType: "K8S" as any,
+        providerType: "K8S",
         createdAt: "2025-06-05T09:20:00Z",
         services: []
     }
@@ -303,7 +303,7 @@ export function MyProviders() {
                             username: response.data.username,
                             privateKeyFilename: response.data.privateKeyFilename,
                             SSHPort: response.data.SSHPort,
-                            providerType: response.data.providerType,
+                            providerType: response.data.providerType as Provider["providerType"],
                         }
                         : provider
                 );
@@ -599,7 +599,8 @@ export function MyProviders() {
         name: string;
         providerIP: string;
         username: string;
-        privateKeyFilename: string;
+        secretId?: number;
+        password: string;
         SSHPort: number;
         providerType: string;
     }) => {
@@ -614,9 +615,8 @@ export function MyProviders() {
                             name: updatedData.name,
                             providerIP: updatedData.providerIP,
                             username: updatedData.username,
-                            privateKeyFilename: updatedData.privateKeyFilename,
                             SSHPort: updatedData.SSHPort,
-                            providerType: updatedData.providerType
+                            providerType: updatedData.providerType as Provider["providerType"]
                         };
                     }
                     return provider;
