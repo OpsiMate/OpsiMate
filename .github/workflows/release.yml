@@ -77,6 +77,7 @@ jobs:
       run: |
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
+          --target production \
           -t opsimate/opsimate:${{ steps.version.outputs.version }} \
           -t opsimate/opsimate:latest \
           --push .

@@ -164,12 +164,12 @@ vm:
 
 2. **Install dependencies:**
    ```bash
-   pnpm install
+   npm install
    ```
 
 3. **Build the project:**
    ```bash
-   pnpm run build
+   npm run build
    ```
 4. **Specify the config file (optional):**
    ```bash
@@ -177,13 +177,13 @@ vm:
    ```
 5. **Start development server:**
    ```bash
-   pnpm run dev
+   npm run dev
    ```
 
 ### Development Commands
 
-- `pnpm run test` - Run test suite
-- `pnpm run lint` - Check code quality
+- `npm run test` - Run test suite
+- `npm run lint` - Check code quality
 
 
 ## Contributing
