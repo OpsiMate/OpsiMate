@@ -517,7 +517,7 @@ export const secretsApi = {
   },
 
   // Create a new secret
-  createSecret: async (displayName: string, file: File, secretType: SecretType = SecretType.SSH) => {
+  createSecret: async (displayName: string, file: File, secretType: 'ssh' | 'kubeconfig' = 'ssh') => {
     try {
       const formData = new FormData();
       formData.append('displayName', displayName);

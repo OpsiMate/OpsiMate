@@ -1,5 +1,5 @@
 import { secretsApi } from './api';
-import { SecretType, SecretMetadata } from '@OpsiMate/shared';
+import { SecretMetadata } from '@OpsiMate/shared';
 
 // Server-based secrets functions
 export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
@@ -15,7 +15,7 @@ export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
   }
 }
 
-export async function createSecretOnServer(displayName: string, file: File, secretType: SecretType = SecretType.SSH): Promise<{ success: boolean; id?: number; error?: string }> {
+export async function createSecretOnServer(displayName: string, file: File, secretType: 'ssh' | 'kubeconfig' = 'ssh'): Promise<{ success: boolean; id?: number; error?: string }> {
   try {
     const response = await secretsApi.createSecret(displayName, file, secretType);
     if (response.success && response.data) {

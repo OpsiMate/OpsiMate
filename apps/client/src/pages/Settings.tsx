@@ -16,7 +16,7 @@ import { AddUserModal } from '../components/AddUserModal';
 import { auditApi } from '../lib/api';
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { getSecretsFromServer, createSecretOnServer, deleteSecretOnServer } from "@/lib/sslKeys";
-import { SecretType, SecretMetadata } from "@OpsiMate/shared";
+import { SecretMetadata } from "@OpsiMate/shared";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -454,7 +454,7 @@ const AddSecretButton: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
-  const [secretType, setSecretType] = useState<SecretType>(SecretType.SSH);
+  const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
   const { toast } = useToast();
@@ -520,7 +520,7 @@ const AddSecretButton: React.FC = () => {
   const resetForm = () => {
     setFileName(null);
     setDisplayName("");
-    setSecretType(SecretType.SSH);
+    setSecretType('ssh');
     setSelectedFile(null);
     setIsFileValid(null);
   };
@@ -549,13 +549,13 @@ const AddSecretButton: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="secret-type">Type</Label>
-            <Select value={secretType} onValueChange={(value: SecretType) => setSecretType(value)}>
+            <Select value={secretType} onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={SecretType.SSH}>SSH Key</SelectItem>
-                <SelectItem value={SecretType.KUBECONFIG}>Kubeconfig</SelectItem>
+                <SelectItem value="ssh">SSH Key</SelectItem>
+                <SelectItem value="kubeconfig">Kubeconfig</SelectItem>
               </SelectContent>
             </Select>
           </div>
