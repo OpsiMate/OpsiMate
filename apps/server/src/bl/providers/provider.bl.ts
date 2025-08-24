@@ -34,7 +34,7 @@ export class ProviderBL {
             logger.info(`Starting to create provider`, { extraArgs: { ...providerToCreate } });
             
             // Resolve secretId to privateKeyFilename if provided
-            let resolvedProvider = { ...providerToCreate };
+            const resolvedProvider = { ...providerToCreate };
             if (providerToCreate.secretId) {
                 const secret = await this.secretsMetadataRepo.getSecretById(providerToCreate.secretId);
                 if (!secret) {
@@ -72,7 +72,7 @@ export class ProviderBL {
 
         try {
             // Resolve secretId to privateKeyFilename if provided
-            let resolvedProvider = { ...providerToUpdate };
+            const resolvedProvider = { ...providerToUpdate };
             if (providerToUpdate.secretId) {
                 const secret = await this.secretsMetadataRepo.getSecretById(providerToUpdate.secretId);
                 if (!secret) {

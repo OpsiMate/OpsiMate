@@ -72,7 +72,7 @@ export class ProviderController {
             const providerData = CreateProviderSchema.parse(req.body);
             
             // Resolve secretId to privateKeyFilename if provided
-            let resolvedProvider = { ...providerData } as Provider;
+            const resolvedProvider = { ...providerData } as Provider;
             if (providerData.secretId) {
                 const secret = await this.providerBL['secretsMetadataRepo'].getSecretById(providerData.secretId);
                 if (!secret) {
