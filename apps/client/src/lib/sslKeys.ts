@@ -1,33 +1,44 @@
-export type SSLKey = {
-  id: string;
-  name: string;
-  createdAt: string;
-};
+import { secretsApi } from './api';
+import { SecretType, SecretMetadata } from '@OpsiMate/shared';
 
-const STORAGE_KEY = "OpsiMate-ssl-keys";
-
-export function getSslKeys(): SSLKey[] {
+// Server-based secrets functions
+export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as SSLKey[];
-  } catch {
+    const response = await secretsApi.getSecrets();
+    if (response.success && response.data) {
+      return response.data.secrets;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching secrets from server:', error);
     return [];
   }
 }
 
-export function addSslKey(name: string): SSLKey {
-  const keys = getSslKeys();
-  const key: SSLKey = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` , name, createdAt: new Date().toISOString() };
-  const next = [key, ...keys];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  return key;
+export async function createSecretOnServer(displayName: string, file: File, secretType: SecretType = SecretType.SSH): Promise<{ success: boolean; id?: number; error?: string }> {
+  try {
+    const response = await secretsApi.createSecret(displayName, file, secretType);
+    if (response.success && response.data) {
+      return { success: true, id: response.data.id };
+    }
+    return { success: false, error: response.error || 'Failed to create secret' };
+  } catch (error) {
+    console.error('Error creating secret on server:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
 }
 
-export function deleteSslKey(id: string): void {
-  const keys = getSslKeys();
-  const next = keys.filter(k => k.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+export async function deleteSecretOnServer(secretId: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await secretsApi.deleteSecret(secretId);
+    if (response.success) {
+      return { success: true };
+    }
+    return { success: false, error: response.error || 'Failed to delete secret' };
+  } catch (error) {
+    console.error('Error deleting secret on server:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
 }
 
 

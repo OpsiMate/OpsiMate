@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {IntegrationType, ProviderType, ServiceType, Role} from './types';
+import {IntegrationType, ProviderType, ServiceType, Role, SecretType} from './types';
 
 export const CreateProviderSchema = z.object({
     name: z.string().min(1, 'Provider name is required'),
@@ -143,6 +143,7 @@ export const UpdateProfileSchema = z.object({
 
 export const CreateSecretsMetadataSchema = z.object({
     displayName: z.string().min(1, 'Secret name is required'),
+    secretType: z.nativeEnum(SecretType).optional().default(SecretType.SSH),
 })
 
 
