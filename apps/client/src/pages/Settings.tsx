@@ -10,17 +10,19 @@ import { User, Role } from '../types';
 import { getCurrentUser } from '../lib/auth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
-import { Users, FileText, KeyRound, Trash2, Plus } from 'lucide-react';
+import { Users, FileText, KeyRound, Trash2, Plus, Check, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { AddUserModal } from '../components/AddUserModal';
 import { auditApi } from '../lib/api';
 import { FileDropzone } from "@/components/ui/file-dropzone";
-import { getSslKeys, addSslKey, deleteSslKey, SSLKey } from "@/lib/sslKeys";
+import { getSecretsFromServer, createSecretOnServer, deleteSecretOnServer } from "@/lib/sslKeys";
+import { SecretMetadata } from "@OpsiMate/shared";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '../components/ui/alert-dialog';
 import {AuditLog} from "@OpsiMate/shared";
+import { useToast } from "@/hooks/use-toast";
 
 const PAGE_SIZE = 20;
 
@@ -150,10 +152,10 @@ const Settings: React.FC = () => {
         const h = (location.hash || '').replace('#','');
         if (h === 'Users') return 'users';
         if (h === 'Audit_Log') return 'audit';
-        if (h === 'SSL_keys') return 'ssl';
+        if (h === 'secrets') return 'secrets';
         return 'users';
       })()} onValueChange={(v) => {
-        const map: Record<string,string> = { users: 'Users', audit: 'Audit_Log', ssl: 'SSL_keys' };
+        const map: Record<string,string> = { users: 'Users', audit: 'Audit_Log', secrets: 'secrets' };
         const next = map[v] || v;
         if (next) window.location.hash = next;
       }} className="space-y-6">
@@ -168,9 +170,9 @@ const Settings: React.FC = () => {
                 <FileText className="h-4 w-4" />
                 Audit Log
               </TabsTrigger>
-              <TabsTrigger value="ssl" className="justify-start gap-2">
+              <TabsTrigger value="secrets" className="justify-start gap-2">
                 <KeyRound className="h-4 w-4" />
-                SSL Keys
+                Secrets
               </TabsTrigger>
             </TabsList>
           </div>
@@ -300,18 +302,18 @@ const Settings: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ssl" className="space-y-6">
+        <TabsContent value="secrets" className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-semibold">SSL Keys</h2>
-              <p className="text-muted-foreground">Manage keys used to access providers and services.</p>
+              <h2 className="text-2xl font-semibold">Secrets</h2>
+              <p className="text-muted-foreground">Manage SSH keys and kubeconfig files used to access providers and services securely.</p>
             </div>
-            <AddSslKeyButton />
+            <AddSecretButton />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Keys</CardTitle>
+              <CardTitle>Secrets</CardTitle>
             </CardHeader>
             <CardContent>
               <SslKeysTable />
@@ -447,61 +449,152 @@ const AuditLogTable: React.FC = () => {
   );
 };
 
-const AddSslKeyButton: React.FC = () => {
+const AddSecretButton: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
+  const { toast } = useToast();
 
   const handleFile = async (file: File) => {
+    // Basic validation to check if the file looks like a key file
+    const fileContent = await file.text();
+    const pemHeaders = [
+      '-----BEGIN RSA PRIVATE KEY-----',
+      '-----BEGIN DSA PRIVATE KEY-----',
+      '-----BEGIN EC PRIVATE KEY-----',
+      '-----BEGIN OPENSSH PRIVATE KEY-----',
+      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN ENCRYPTED PRIVATE KEY-----',
+      '-----BEGIN PUBLIC KEY-----',
+      'ssh-rsa ',
+      'ssh-ed25519 ',
+      'ecdsa-sha2-'
+    ];
+    
+    const isKeyFile = pemHeaders.some(header => fileContent.includes(header));
+    
+    setIsFileValid(isKeyFile);
+    setSelectedFile(file);
+    setFileName(file.name);
+  };
+
+  const handleSave = async () => {
+    if (!selectedFile) return;
+    
     setUploading(true);
     try {
-      // mock upload; just save by name
-      setFileName(file.name);
+      const name = displayName.trim() || fileName || "key";
+      const result = await createSecretOnServer(name, selectedFile, secretType);
+      
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Secret created successfully",
+        });
+        window.dispatchEvent(new Event('secrets-updated'));
+        setOpen(false);
+        resetForm();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create secret",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error creating SSL key:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while creating the secret",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleSave = () => {
-    const name = displayName.trim() || fileName || "key";
-    if (name) {
-      addSslKey(name);
-      window.dispatchEvent(new Event('ssl-keys-updated'));
-      setOpen(false);
-      setFileName(null);
-      setDisplayName("");
-    }
+  const resetForm = () => {
+    setFileName(null);
+    setDisplayName("");
+    setSecretType('ssh');
+    setSelectedFile(null);
+    setIsFileValid(null);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      setOpen(newOpen);
+      if (!newOpen) {
+        resetForm();
+      }
+    }}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="h-4 w-4 mr-2" /> Add Key
+          <Plus className="h-4 w-4 mr-2" /> Add Secret
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add SSL Key</DialogTitle>
-          <DialogDescription>Upload a key file.</DialogDescription>
+          <DialogTitle>Add Secret</DialogTitle>
+          <DialogDescription>Upload a secret file (SSH key or kubeconfig). It will be encrypted and stored securely.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="ssl-name">Key name</Label>
-            <Input id="ssl-name" placeholder="My SSH Key" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <Label htmlFor="secret-name">Secret name</Label>
+            <Input id="secret-name" placeholder="My SSH Key" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="secret-type">Type</Label>
+            <Select value={secretType} onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ssh">SSH Key</SelectItem>
+                <SelectItem value="kubeconfig">Kubeconfig</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <FileDropzone
-            id="ssl-key-upload"
-            accept=".pem,.key,.txt,application/x-pem-file"
+            id="secret-upload"
+            accept="*"
             loading={uploading}
             onFile={handleFile}
+            multiple={false}
           />
-          {fileName && <div className="text-sm">Selected: <b>{fileName}</b></div>}
+          {fileName && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <span>Selected: <b>{fileName}</b></span>
+                {isFileValid !== null && (
+                  isFileValid ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <X className="h-4 w-4 text-red-600" />
+                  )
+                )}
+              </div>
+              {isFileValid === false && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <X className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-700">
+                    <p className="font-medium">Invalid file format</p>
+                    <p className="text-red-600 mt-1">
+                      This file doesn't appear to be a valid secret file. Please ensure you're uploading an SSH key or kubeconfig file.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button disabled={!fileName} onClick={handleSave}>Save</Button>
+          <Button disabled={!fileName || isFileValid === false} onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -509,44 +602,123 @@ const AddSslKeyButton: React.FC = () => {
 };
 
 const SslKeysTable: React.FC = () => {
-  const [keys, setKeys] = useState<SSLKey[]>(getSslKeys());
+  const [secrets, setSecrets] = useState<SecretMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    // refresh when dialog closes by watching storage events
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'OpsiMate-ssl-keys') setKeys(getSslKeys());
-    };
-    const onLocal = () => setKeys(getSslKeys());
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('ssl-keys-updated', onLocal as EventListener);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const remove = (id: string) => {
-    deleteSslKey(id);
-    setKeys(getSslKeys());
+  const loadSecrets = async () => {
+    setLoading(true);
+    try {
+      const secretsData = await getSecretsFromServer();
+      setSecrets(secretsData);
+      setError(null);
+    } catch (error) {
+      console.error('Error loading secrets:', error);
+      setError('Failed to load secrets');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!keys.length) return <div className="py-6 text-center text-muted-foreground">No keys added yet.</div>;
+  const handleDeleteSecret = async (secretId: number) => {
+    setDeleting(secretId);
+    try {
+      const result = await deleteSecretOnServer(secretId);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Secret deleted successfully",
+        });
+        loadSecrets(); // Refresh the list
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete secret",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting SSL key:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the secret",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  useEffect(() => {
+    loadSecrets();
+    
+    // Listen for updates
+    const handleSecretsUpdated = () => {
+      loadSecrets();
+    };
+    
+    window.addEventListener('secrets-updated', handleSecretsUpdated);
+    return () => window.removeEventListener('secrets-updated', handleSecretsUpdated);
+  }, []);
+
+  if (loading) return <div className="py-6 text-center">Loading secrets...</div>;
+  if (error) return <div className="py-6 text-center text-red-600">{error}</div>;
+  if (!secrets.length) return <div className="py-6 text-center text-muted-foreground">No secrets added yet.</div>;
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Created</TableHead>
+          <TableHead>Secret Name</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {keys.map(k => (
-          <TableRow key={k.id}>
-            <TableCell><b>{k.name}</b></TableCell>
-            <TableCell>{new Date(k.createdAt).toLocaleString()}</TableCell>
+        {secrets.map(secret => (
+          <TableRow key={secret.id}>
+            <TableCell><b>{secret.name}</b></TableCell>
             <TableCell>
-              <Button variant="ghost" className="text-red-600" onClick={() => remove(k.id)} title="Delete">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <Badge variant={secret.type === 'kubeconfig' ? 'secondary' : 'default'}>
+                {secret.type === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors" 
+                    title="Delete SSL key"
+                    disabled={deleting === secret.id}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Secret</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot be undone and will permanently remove the secret file.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleting === secret.id}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
+                      disabled={deleting === secret.id}
+                      onClick={() => handleDeleteSecret(secret.id)}
+                    >
+                      {deleting === secret.id ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </TableCell>
           </TableRow>
         ))}

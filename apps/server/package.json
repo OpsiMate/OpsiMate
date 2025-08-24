@@ -25,6 +25,7 @@
     "express-promise-router": "^4.1.1",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
     "node-ssh": "^13.1.0",
     "zod": "^3.23.8"
   },
@@ -37,6 +38,7 @@
     "@types/express-promise-router": "^2.0.1",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.5.5",
     "@types/supertest": "^6.0.3",
     "axios": "^1.7.9",

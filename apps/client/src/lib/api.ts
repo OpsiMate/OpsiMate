@@ -1,4 +1,4 @@
-import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog } from '@OpsiMate/shared';
+import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType } from '@OpsiMate/shared';
 import { SavedView } from '@/types/SavedView';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
@@ -18,7 +18,7 @@ async function apiRequest<T>(
   data?: unknown
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
-
+  
   const token = localStorage.getItem('jwt');
   const options: RequestInit = {
     method,
@@ -495,6 +495,89 @@ export const alertsApi = {
 export const auditApi = {
   getAuditLogs: async (page = 1, pageSize = 20) => {
     return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
+  },
+};
+
+/**
+ * Secrets API endpoints
+ */
+export const secretsApi = {
+  // Get all secrets
+  getSecrets: async () => {
+    try {
+      const response = await apiRequest<{ secrets: any[] }>('/secrets');
+      return response;
+    } catch (error) {
+      console.error('Error getting secrets:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  },
+
+  // Create a new secret
+  createSecret: async (displayName: string, file: File, secretType: 'ssh' | 'kubeconfig' = 'ssh') => {
+    try {
+      const formData = new FormData();
+      formData.append('displayName', displayName);
+      formData.append('secret_file', file);
+      formData.append('secretType', secretType);
+
+      const url = `${API_BASE_URL}/secrets`;
+      const token = localStorage.getItem('jwt');
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API Error (${response.status}):`, errorText);
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          return {
+            success: false,
+            ...errorJson,
+          };
+        } catch {
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${errorText || 'Unknown error'}`,
+          };
+        }
+      }
+
+      const result = await response.json();
+      return result as ApiResponse<{ id: number }>;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('API Error (POST /secrets):', errorMessage, error);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  // Delete a secret
+  deleteSecret: async (secretId: number) => {
+    try {
+      const response = await apiRequest<{ message: string }>(`/secrets/${secretId}`, 'DELETE');
+      return response;
+    } catch (error) {
+      console.error('Error deleting secret:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
   },
 };
 

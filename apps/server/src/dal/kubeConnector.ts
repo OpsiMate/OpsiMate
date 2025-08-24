@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import {ObjectCoreV1Api} from "@kubernetes/client-node/dist/gen/types/ObjectParamAPI";
 import {getSecurityConfig} from '../config/config';
+import {decryptPassword} from "../utils/encryption";
 
 function getPrivateKeysDir(): string {
     const securityConfig = getSecurityConfig();
@@ -24,10 +25,13 @@ function getKeyPath(filename: string) {
 }
 
 const createClient = (_provider: Provider): ObjectCoreV1Api => {
-    const kc: k8s.KubeConfig = new k8s.KubeConfig();
-    const privateKeyPath = getKeyPath(_provider.privateKeyFilename!);
 
-    kc.loadFromFile(privateKeyPath);
+    const encryptedKubeConfig = fs.readFileSync(getKeyPath(_provider.privateKeyFilename!), 'utf-8');
+    const decryptedKubeConfig = decryptPassword(encryptedKubeConfig);
+
+    const kc: k8s.KubeConfig = new k8s.KubeConfig();
+
+    kc.loadFromString(decryptedKubeConfig ?? '');
 
     return kc.makeApiClient(k8s.CoreV1Api);
 }

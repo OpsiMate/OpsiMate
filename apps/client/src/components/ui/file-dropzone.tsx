@@ -9,6 +9,7 @@ type FileDropzoneProps = {
   placeholder?: string;
   loading?: boolean;
   className?: string;
+  multiple?: boolean;
 };
 
 export function FileDropzone({
@@ -18,16 +19,27 @@ export function FileDropzone({
   placeholder = "Click to select a file or drag & drop here",
   loading = false,
   className,
+  multiple = false,
 }: FileDropzoneProps) {
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) onFile(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (multiple) {
+      files.forEach(file => onFile(file));
+    } else {
+      const file = files[0];
+      if (file) onFile(file);
+    }
   };
 
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) onFile(file);
+    const files = Array.from(e.target.files || []);
+    if (multiple) {
+      files.forEach(file => onFile(file));
+    } else {
+      const file = files[0];
+      if (file) onFile(file);
+    }
   };
 
   return (
@@ -39,7 +51,7 @@ export function FileDropzone({
         className
       )}
     >
-      <input id={id} type="file" accept={accept} onChange={onSelect} className="hidden" />
+      <input id={id} type="file" accept={accept} multiple={multiple} onChange={onSelect} className="hidden" />
       <Label
         htmlFor={id}
         className="absolute inset-0 flex items-center justify-center cursor-pointer transition-colors group-hover:text-white"

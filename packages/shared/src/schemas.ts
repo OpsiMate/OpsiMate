@@ -1,12 +1,12 @@
 import {z} from 'zod';
-import {IntegrationType, ProviderType, ServiceType, Role} from './types';
+import {IntegrationType, ProviderType, ServiceType, Role, SecretType} from './types';
 
 export const CreateProviderSchema = z.object({
     name: z.string().min(1, 'Provider name is required'),
     providerIP: z.string().ip('Invalid IP address').optional(),
     username: z.string().min(1, 'Username is required').optional(),
     privateKeyFilename: z.string().min(1, 'private Key Filename is required').optional(),
-    password: z.string().min(1, 'Passowrd is required').optional(),
+    password: z.string().min(1, 'Password is required').optional(),
     SSHPort: z.number().int().min(1).max(65535).optional().default(22),
     providerType: z.nativeEnum(ProviderType),
 });
@@ -141,6 +141,12 @@ export const UpdateProfileSchema = z.object({
 });
 
 
+export const CreateSecretsMetadataSchema = z.object({
+    displayName: z.string().min(1, 'Secret name is required'),
+    secretType: z.nativeEnum(SecretType).optional().default(SecretType.SSH),
+})
+
+
 export type UserSchemaType = z.infer<typeof UserSchema>;
 export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
 export type UpdateUserRoleRequest = z.infer<typeof UpdateUserRoleSchema>;
@@ -150,3 +156,5 @@ export type CreateProviderRequest = z.infer<typeof CreateProviderSchema>;
 export type CreateProviderBulkRequest = z.infer<typeof CreateProviderBulkSchema>;
 export type AddBulkServiceRequest = z.infer<typeof AddBulkServiceSchema>;
 export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
+
+export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
