@@ -7,15 +7,15 @@ import {Separator} from "@/components/ui/separator";
 import {X, Loader2} from "lucide-react";
 import {ProviderType} from "@/pages/Providers";
 import {useToast} from "@/hooks/use-toast";
-import {useForm, Controller, SubmitHandler} from "react-hook-form";
+import {useForm, Controller, SubmitHandler, Control} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {providerApi} from "@/lib/api";
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {useNavigate} from "react-router-dom";
 import { FileDropzone } from "@/components/ui/file-dropzone";
-import { getSslKeys } from "@/lib/sslKeys";
+import { getSecretsFromServer, SecretMetadata } from "@/lib/sslKeys";
 
 // --- FORM SCHEMAS ---
 
@@ -89,6 +89,63 @@ const FieldWrapper = ({children, error}: { children: React.ReactNode, error?: { 
 
 
 // --- FORM COMPONENTS ---
+
+const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
+    const [keys, setKeys] = useState<SecretMetadata[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadKeys = async () => {
+            try {
+                const secrets = await getSecretsFromServer();
+                setKeys(secrets);
+                setError(null);
+            } catch (err) {
+                console.error('Error loading SSH keys:', err);
+                setError('Failed to load SSH keys');
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadKeys();
+    }, []);
+
+    if (loading) {
+        return <div className="text-sm text-muted-foreground">Loading keys...</div>;
+    }
+
+    if (error) {
+        return (
+            <div className="space-y-2">
+                <div className="text-sm text-destructive">Error loading keys: {error}</div>
+            </div>
+        );
+    }
+
+    if (keys.length === 0) {
+        return (
+            <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">No keys available.</div>
+            </div>
+        );
+    }
+
+    return (
+        <Controller name="sshKey" control={control}
+            render={({ field }) => (
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select a key" /></SelectTrigger>
+                    <SelectContent>
+                        {keys.map(key => (
+                            <SelectItem key={key.id} value={key.name}><b>{key.name}</b></SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+        />
+    );
+};
 
 const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
     const {control, handleSubmit, watch, setValue, formState: {errors, isSubmitting}} = useForm<ServerFormData>({
@@ -206,38 +263,17 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             {authType === 'key' && (
                 <FieldWrapper error={errors.sshKey}>
                     <Label>SSH Key</Label>
-                    {(() => {
-                        const keys = getSslKeys();
-                        if (keys.length === 0) {
-                            return (
-                                <div className="space-y-2">
-                                    <div className="text-sm text-muted-foreground">No keys available.</div>
-                                    <a
-                                        href="/settings#SSL_keys"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-primary underline"
-                                    >
-                                        Go to Settings to add a key
-                                    </a>
-                                </div>
-                            );
-                        }
-                        return (
-                            <Controller name="sshKey" control={control}
-                                render={({ field }) => (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <SelectTrigger><SelectValue placeholder="Select a key" /></SelectTrigger>
-                                        <SelectContent>
-                                            {keys.map(k => (
-                                                <SelectItem key={k.id} value={k.name}><b>{k.name}</b></SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            />
-                        );
-                    })()}
+                    <SSHKeySelector control={control} />
+                    <div className="mt-2">
+                        <a
+                            href="/settings#SSL_keys"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-primary hover:underline"
+                        >
+                            + Add new key
+                        </a>
+                    </div>
                 </FieldWrapper>
             )}
 
@@ -518,6 +554,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                     placeholder={isImporting ? 'Importing...' : 'Click to select a JSON file or drag & drop here'}
                     loading={isImporting}
                     onFile={(file) => void handleFile(file)}
+                    multiple={false}
                 />
                 <div className="text-sm text-muted-foreground space-y-2">
                     <div className="font-medium text-foreground">JSON structure</div>

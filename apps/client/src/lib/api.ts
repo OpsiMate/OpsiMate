@@ -498,4 +498,87 @@ export const auditApi = {
   },
 };
 
+/**
+ * Secrets API endpoints
+ */
+export const secretsApi = {
+  // Get all secrets
+  getSecrets: async () => {
+    try {
+      const response = await apiRequest<{ secrets: any[] }>('/secrets');
+      return response;
+    } catch (error) {
+      console.error('Error getting secrets:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  },
+
+  // Create a new secret
+  createSecret: async (displayName: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('displayName', displayName);
+      formData.append('secret_file', file);
+
+      const url = `${API_BASE_URL}/secrets`;
+      const token = localStorage.getItem('jwt');
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API Error (${response.status}):`, errorText);
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          return {
+            success: false,
+            ...errorJson,
+          };
+        } catch {
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${errorText || 'Unknown error'}`,
+          };
+        }
+      }
+
+      const result = await response.json();
+      console.log('API Response (POST /secrets):', result);
+      return result as ApiResponse<{ id: number }>;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('API Error (POST /secrets):', errorMessage, error);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  // Delete a secret
+  deleteSecret: async (secretId: number) => {
+    try {
+      const response = await apiRequest<{ message: string }>(`/secrets/${secretId}`, 'DELETE');
+      return response;
+    } catch (error) {
+      console.error('Error deleting secret:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  },
+};
+
 export { apiRequest };

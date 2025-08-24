@@ -36,6 +36,19 @@ export class SecretsMetadataRepository {
         });
     }
 
+    async deleteSecret(id: number): Promise<boolean> {
+        return await runAsync<boolean>(() => {
+            const deleteStmt = this.db.prepare('DELETE FROM secrets WHERE id = ?');
+            const result = deleteStmt.run(id);
+            
+            if (result.changes === 0) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
     async initSecretsMetadataTable(): Promise<void> {
         return runAsync(() => {
             this.db.prepare(`

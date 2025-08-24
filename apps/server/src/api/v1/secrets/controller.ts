@@ -49,4 +49,24 @@ export class SecretsController {
         }
     };
 
+    deleteSecret = async (req: Request, res: Response) => {
+        try {
+            const secretId = parseInt(req.params.id);
+            if (isNaN(secretId)) {
+                res.status(400).json({success: false, error: 'Invalid secret ID'});
+                return;
+            }
+
+            const deleted = await this.secretsBL.deleteSecret(secretId);
+            if (deleted) {
+                res.json({success: true, message: 'Secret deleted successfully'});
+            } else {
+                res.status(404).json({success: false, error: 'Secret not found'});
+            }
+        } catch (error) {
+            logger.error('Error deleting secret:', error);
+            res.status(500).json({success: false, error: 'Internal server error'});
+        }
+    };
+
 }

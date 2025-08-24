@@ -29,5 +29,8 @@ export default function createSecretsRouter(secretsController: SecretsController
     // GET /api/v1/secrets
     router.get('/', secretsController.getSecrets);
 
+    // DELETE /api/v1/secrets/:id
+    router.delete('/:id', secretsController.deleteSecret);
+
     return router;
 }
