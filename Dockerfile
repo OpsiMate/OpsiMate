@@ -44,8 +44,13 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/client/dist ./apps/client/dist
 
+RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
+
 # Install only the essential runtime dependencies manually
-RUN npm install --no-save --no-package-lock \
+RUN mkdir -p /tmp/app && \
+    cd /tmp/app && \
+    echo '{}' > package.json && \
+    pnpm add \
     better-sqlite3@12.2.0 \
     express@4.19.2 \
     cors@2.8.5 \
@@ -56,8 +61,12 @@ RUN npm install --no-save --no-package-lock \
     express-promise-router@4.1.1 \
     node-ssh@13.1.0 \
     @kubernetes/client-node@1.3.0 && \
-    npm cache clean --force && \
+    cp -R node_modules /app/node_modules && \
+    cd / && rm -rf /tmp/app && \
+    pnpm store prune && \
     rm -rf /tmp/* /var/cache/apk/* /root/.npm
+
+
 
 # Copy only package.json files for runtime info
 COPY --from=builder /app/apps/server/package.json ./apps/server/
