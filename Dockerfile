@@ -44,34 +44,19 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/client/dist ./apps/client/dist
 
-RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
-
-# Install only the essential runtime dependencies manually
-RUN mkdir -p /tmp/app && \
-    cd /tmp/app && \
-    echo '{}' > package.json && \
-    # temp install dependencies
-    pnpm add \
-    better-sqlite3@12.2.0 \
-    express@4.19.2 \
-    cors@2.8.5 \
-    js-yaml@4.1.0 \
-    jsonwebtoken@9.0.2 \
-    bcrypt@5.1.0 \
-    zod@3.23.8 \
-    express-promise-router@4.1.1 \
-    node-ssh@13.1.0 \
-    @kubernetes/client-node@1.3.0 && \
-    cp -R node_modules /app/node_modules && \
-    cd / && rm -rf /tmp/app && \
-    pnpm store prune && \
-    rm -rf /tmp/* /var/cache/apk/* /root/.npm
-
-
-
-# Copy only package.json files for runtime info
+# Copy package files for production dependencies
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/apps/server/package.json ./apps/server/
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+
+# Install production dependencies using the actual package.json files
+RUN npm install -g pnpm && \
+    pnpm install --prod --frozen-lockfile && \
+    pnpm store prune && \
+    npm cache clean --force && \
+    rm -rf /tmp/* /var/cache/apk/* /root/.npm
 
 # Create workspace linking for shared package
 RUN mkdir -p node_modules/@OpsiMate && \
