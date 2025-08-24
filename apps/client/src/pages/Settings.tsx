@@ -10,7 +10,7 @@ import { User, Role } from '../types';
 import { getCurrentUser } from '../lib/auth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
-import { Users, FileText, KeyRound, Trash2, Plus } from 'lucide-react';
+import { Users, FileText, KeyRound, Trash2, Plus, Check, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { AddUserModal } from '../components/AddUserModal';
 import { auditApi } from '../lib/api';
@@ -455,27 +455,28 @@ const AddSecretButton: React.FC = () => {
   const [displayName, setDisplayName] = useState<string>("");
   const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const handleFile = async (file: File) => {
     // Basic validation to check if the file looks like a key file
     const fileContent = await file.text();
-    const isKeyFile = fileContent.includes('-----BEGIN') || 
-                     fileContent.includes('PRIVATE KEY') || 
-                     fileContent.includes('RSA PRIVATE KEY') ||
-                     fileContent.includes('DSA PRIVATE KEY') ||
-                     fileContent.includes('EC PRIVATE KEY') ||
-                     fileContent.includes('OPENSSH PRIVATE KEY') ||
-                     fileContent.length > 100; // Most key files are larger than 100 chars
+    const pemHeaders = [
+      '-----BEGIN RSA PRIVATE KEY-----',
+      '-----BEGIN DSA PRIVATE KEY-----',
+      '-----BEGIN EC PRIVATE KEY-----',
+      '-----BEGIN OPENSSH PRIVATE KEY-----',
+      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN ENCRYPTED PRIVATE KEY-----',
+      '-----BEGIN PUBLIC KEY-----',
+      'ssh-rsa ',
+      'ssh-ed25519 ',
+      'ecdsa-sha2-'
+    ];
     
-    if (!isKeyFile) {
-      toast({
-        title: "Warning",
-        description: "This file doesn't appear to be a valid secret file. Please ensure you're uploading an SSH key or kubeconfig file.",
-        variant: "destructive",
-      });
-    }
+    const isKeyFile = pemHeaders.some(header => fileContent.includes(header));
     
+    setIsFileValid(isKeyFile);
     setSelectedFile(file);
     setFileName(file.name);
   };
@@ -495,10 +496,7 @@ const AddSecretButton: React.FC = () => {
         });
         window.dispatchEvent(new Event('secrets-updated'));
         setOpen(false);
-        setFileName(null);
-        setDisplayName("");
-        setSecretType('ssh');
-        setSelectedFile(null);
+        resetForm();
       } else {
         toast({
           title: "Error",
@@ -518,8 +516,21 @@ const AddSecretButton: React.FC = () => {
     }
   };
 
+  const resetForm = () => {
+    setFileName(null);
+    setDisplayName("");
+    setSecretType('ssh');
+    setSelectedFile(null);
+    setIsFileValid(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      setOpen(newOpen);
+      if (!newOpen) {
+        resetForm();
+      }
+    }}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" /> Add Secret
@@ -554,11 +565,35 @@ const AddSecretButton: React.FC = () => {
             onFile={handleFile}
             multiple={false}
           />
-          {fileName && <div className="text-sm">Selected: <b>{fileName}</b></div>}
+          {fileName && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <span>Selected: <b>{fileName}</b></span>
+                {isFileValid !== null && (
+                  isFileValid ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <X className="h-4 w-4 text-red-600" />
+                  )
+                )}
+              </div>
+              {isFileValid === false && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <X className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-700">
+                    <p className="font-medium">Invalid file format</p>
+                    <p className="text-red-600 mt-1">
+                      This file doesn't appear to be a valid secret file. Please ensure you're uploading an SSH key or kubeconfig file.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button disabled={!fileName} onClick={handleSave}>Save</Button>
+          <Button disabled={!fileName || isFileValid === false} onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
