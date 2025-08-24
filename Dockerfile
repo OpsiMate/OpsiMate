@@ -50,6 +50,7 @@ RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
 RUN mkdir -p /tmp/app && \
     cd /tmp/app && \
     echo '{}' > package.json && \
+    # temp install dependencies
     pnpm add \
     better-sqlite3@12.2.0 \
     express@4.19.2 \
