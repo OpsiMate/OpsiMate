@@ -1,4 +1,4 @@
-import {NodeSSH} from 'node-ssh';
+import {NodeSSH, SSHExecCommandResponse} from 'node-ssh';
 import path from 'path';
 import fs from 'fs';
 
@@ -69,9 +69,48 @@ function getSshConfig(provider: Provider) {
     }
 }
 
-function buildCommand(baseCommand: string): string {
-    const vmConfig = getVmConfig();
-    return vmConfig.run_with_sudo ? `sudo ${baseCommand}` : baseCommand;
+/**
+ * Executes a command via SSH with automatic sudo retry on permission failures
+ */
+async function execCommandWithAutoSudo(ssh: NodeSSH, command: string): Promise<SSHExecCommandResponse> {
+    // First try without sudo
+    logger.debug(`Executing command: ${command}`);
+    const result = await ssh.execCommand(command);
+
+
+    // Check if the command failed due to permission issues and try_with_sudo is enabled
+    if (result.code !== 0 && isPermissionError(result.stderr) && getVmConfig().try_with_sudo) {
+        logger.debug(`Permission denied, retrying with sudo: ${command}`);
+        const sudoCommand = `sudo ${command}`;
+        const sudoResult = await ssh.execCommand(sudoCommand);
+
+        if (sudoResult.code === 0) {
+            logger.debug(`Command succeeded with sudo: ${sudoCommand}`);
+        }
+
+        return sudoResult;
+    }
+
+    return result;
+}
+
+/**
+ * Checks if the error output indicates a permission issue
+ */
+function isPermissionError(stderr: string): boolean {
+    const permissionKeywords = [
+        'permission denied',
+        'access denied',
+        'operation not permitted',
+        'must be root',
+        'sudo required',
+        'insufficient privileges',
+        'authorization required',
+        'not authorized'
+    ];
+
+    const lowerStderr = stderr.toLowerCase();
+    return permissionKeywords.some(keyword => lowerStderr.includes(keyword));
 }
 
 export async function connectAndListContainers(provider: Provider): Promise<DiscoveredService[]> {
@@ -88,7 +127,10 @@ export async function connectAndListContainers(provider: Provider): Promise<Disc
         throw new Error('Docker is not installed or not accessible');
     }
 
-    const result = await ssh.execCommand(buildCommand('docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"'));
+    const result = await execCommandWithAutoSudo(ssh, 'docker ps -a --format "{{.Names}}\t{{.Status}}\t{{.Image}}"');
+    if (result.code !== 0) {
+        throw new Error(`Failed to list containers: ${result.stderr}`);
+    }
     ssh.dispose();
 
     return result.stdout
@@ -114,7 +156,7 @@ export async function startService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(buildCommand(`docker start ${serviceName}`));
+        const result = await execCommandWithAutoSudo(ssh, `docker start ${serviceName}`);
         if (result.code !== 0) {
             throw new Error(`Failed to start ${serviceName}: ${result.stderr}`);
         }
@@ -132,7 +174,7 @@ export async function stopService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(buildCommand(`docker stop ${serviceName}`));
+        const result = await execCommandWithAutoSudo(ssh, `docker stop ${serviceName}`);
         if (result.code !== 0) {
             throw new Error(`Failed to stop ${serviceName}: ${result.stderr}`);
         }
@@ -148,9 +190,9 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const cmd = buildCommand(`docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`)
+        const cmd = `docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`;
 
-        const result = await ssh.execCommand(cmd);
+        const result = await execCommandWithAutoSudo(ssh, cmd);
 
         if (result.code !== 0) {
             throw new Error(result.stderr || 'Failed to retrieve service logs');
@@ -183,7 +225,7 @@ export async function startSystemService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(buildCommand(`systemctl start ${serviceName}`));
+        const result = await execCommandWithAutoSudo(ssh, `systemctl start ${serviceName}`);
         if (result.code !== 0) {
             throw new Error(`Failed to start ${serviceName}: ${result.stderr}`);
         }
@@ -204,7 +246,7 @@ export async function stopSystemService(
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const result = await ssh.execCommand(buildCommand(`systemctl stop ${serviceName}`));
+        const result = await execCommandWithAutoSudo(ssh, `systemctl stop ${serviceName}`);
         if (result.code !== 0) {
             throw new Error(`Failed to stop ${serviceName}: ${result.stderr}`);
         }
@@ -223,7 +265,7 @@ export async function getSystemServiceLogs(provider: Provider, serviceName: stri
         await ssh.connect(sshConfig);
 
         // Get logs using journalctl
-        const result = await ssh.execCommand(buildCommand(`journalctl -u ${serviceName} --since "24 hours ago" --no-pager`));
+        const result = await execCommandWithAutoSudo(ssh, `journalctl -u ${serviceName} --since "24 hours ago" --no-pager`);
         if (result.code !== 0) {
             throw new Error(`Failed to get logs for ${serviceName}: ${result.stderr}`);
         }
@@ -282,7 +324,10 @@ export async function checkSystemServiceStatus(
         await ssh.connect(sshConfig);
 
         // Check service status using systemctl is-active (most reliable for running status)
-        const isActiveResult = await ssh.execCommand(buildCommand(`systemctl is-active ${serviceName}`));
+        const isActiveResult = await execCommandWithAutoSudo(ssh, `systemctl is-active ${serviceName}`);
+        if (isActiveResult.code !== 0) {
+            throw new Error(`Failed check system service status ${serviceName}: ${isActiveResult.stderr}`);
+        }
         const isActive = isActiveResult.stdout.trim() === 'active';
 
         logger.info(`[DEBUG] Service ${serviceName} is-active result: '${isActiveResult.stdout.trim()}', code: ${isActiveResult.code}`);
@@ -293,7 +338,10 @@ export async function checkSystemServiceStatus(
         }
 
         // Double-check with systemctl status for more detailed information
-        const statusResult = await ssh.execCommand(buildCommand(`systemctl status ${serviceName} --no-pager -l`));
+        const statusResult = await execCommandWithAutoSudo(ssh, `systemctl status ${serviceName} --no-pager -l`);
+        if (statusResult.code !== 0) {
+            throw new Error(`Failed check system service status ${serviceName}: ${statusResult.stderr}`);
+        }
         const statusOutput = statusResult.stdout.toLowerCase();
 
         logger.info(`[DEBUG] Service ${serviceName} status: '${statusResult.stdout.split('\n')[2] || statusResult.stdout.split('\n')[1] || 'No status line found'}'`);

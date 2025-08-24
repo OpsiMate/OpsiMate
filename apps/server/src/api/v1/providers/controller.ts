@@ -69,9 +69,21 @@ export class ProviderController {
 
     async testConnection(req: Request, res: Response) {
         try {
-            const provider = CreateProviderSchema.parse(req.body) as Provider;
-            const providerConnector = providerConnectorFactory(provider.providerType);
-            const isValidConnection = await providerConnector.testConnection(provider);
+            const providerData = CreateProviderSchema.parse(req.body);
+            
+            // Resolve secretId to privateKeyFilename if provided
+            let resolvedProvider = { ...providerData } as Provider;
+            if (providerData.secretId) {
+                const secret = await this.providerBL['secretsMetadataRepo'].getSecretById(providerData.secretId);
+                if (!secret) {
+                    return res.status(400).json({success: false, error: `Secret with ID ${providerData.secretId} not found`});
+                }
+                resolvedProvider.privateKeyFilename = secret.path;
+                delete resolvedProvider.secretId;
+            }
+            
+            const providerConnector = providerConnectorFactory(resolvedProvider.providerType);
+            const isValidConnection = await providerConnector.testConnection(resolvedProvider);
             res.status(201).json({success: true, data: {isValidConnection}});
         } catch (error) {
             if (error instanceof z.ZodError) {

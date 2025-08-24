@@ -200,7 +200,7 @@ export const providerApi = {
     name: string;
     providerIP: string;
     username: string;
-    privateKeyFilename: string;
+    secretId?: number;
     password?: string;
     SSHPort?: number;
     providerType: string;
@@ -214,7 +214,7 @@ export const providerApi = {
     name: string;
     providerIP: string;
     username: string;
-    privateKeyFilename: string;
+    secretId?: number;
     password?: string;
     SSHPort?: number;
     providerType: string;
