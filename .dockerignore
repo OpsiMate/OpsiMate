@@ -26,3 +26,46 @@ apps/server/data
 Dockerfile
 .dockerignore
 docker-compose.yml
+
+# Node modules (will be installed in container)
+node_modules
+**/node_modules
+
+# Build outputs (will be built in container)
+dist
+**/dist
+build
+**/build
+
+# Development files
+*.md
+README*
+CHANGELOG*
+.github
+.vscode
+.idea
+
+# Test files
+**/*.test.*
+**/*.spec.*
+__tests__
+**/__tests__
+coverage
+
+# Cache directories
+.cache
+**/.cache
+.pnpm-store
+**/.pnpm-store
+.npm
+**/.npm
+
+# Environment files
+.env*
+!.env.example
+
+# Temporary files
+tmp
+**/.tmp
+temp
+**/.temp

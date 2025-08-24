@@ -1,18 +1,29 @@
 # Build stage
 FROM node:20-alpine AS builder
 
-# Install build tools
-RUN npm install -g pnpm typescript
+# Install build tools and clean up in same layer
+RUN npm install -g pnpm typescript && \
+    npm cache clean --force
 
 WORKDIR /app
 
-# Copy source and build
-COPY . .
+# Copy package files first for better caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json ./apps/server/
+COPY apps/client/package.json ./apps/client/
+COPY packages/shared/package.json ./packages/shared/
+
+# Install dependencies with cleanup in same layer
 RUN pnpm install --frozen-lockfile && \
     if [ "$(uname -m)" = "aarch64" ]; then pnpm add @rollup/rollup-linux-arm64-musl --save-dev --filter @OpsiMate/client; fi && \
-    pnpm run build && \
-    pnpm prune --prod && \
     pnpm store prune
+
+# Copy source code and build
+COPY . .
+RUN pnpm run build && \
+    pnpm prune --prod && \
+    pnpm store prune && \
+    rm -rf .pnpm-store node_modules/.cache
 
 # Production stage - minimal runtime
 FROM node:20-alpine
