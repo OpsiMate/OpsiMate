@@ -35,12 +35,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const app = express();
 
     app.use(express.json());
-    app.use(cors({
-        origin: 'http://localhost:8080',
-        credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-        allowedHeaders: ['Content-Type', 'Authorization']
-    }));
+    app.use(cors({ origin: "*" }));
 
     // Repositories
     const providerRepo = new ProviderRepository(db);
