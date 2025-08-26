@@ -1,7 +1,9 @@
 import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType } from '@OpsiMate/shared';
 import { SavedView } from '@/types/SavedView';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+const { protocol, hostname } = window.location;
+
+export const API_BASE_URL = `${protocol}//${hostname}:3001/api/v1`;
 export type ApiResponse<T = any> = {
   success: boolean;
   data?: T;

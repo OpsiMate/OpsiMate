@@ -138,10 +138,6 @@ server:
   port: 3001
   host: "0.0.0.0"
 
-client:
-  port: 8080
-  api_url: "http://localhost:3001/api/v1"
-
 database:
   path: "/app/data/database/opsimate.db"
 
