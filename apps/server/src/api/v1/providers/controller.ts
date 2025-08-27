@@ -12,11 +12,12 @@ import {providerConnectorFactory} from "../../../bl/providers/provider-connector
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
 import {ProviderBL} from "../../../bl/providers/provider.bl";
 import {AuthenticatedRequest} from '../../../middleware/auth';
+import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository";
 
 const logger: Logger = new Logger('server');
 
 export class ProviderController {
-    constructor(private providerBL: ProviderBL) {
+    constructor(private providerBL: ProviderBL, private secretsRepo: SecretsMetadataRepository) {
     }
 
     async getProviders(req: Request, res: Response) {
@@ -74,7 +75,7 @@ export class ProviderController {
             // Resolve secretId to privateKeyFilename if provided
             const resolvedProvider = { ...providerData } as Provider;
             if (providerData.secretId) {
-                const secret = await this.providerBL['secretsMetadataRepo'].getSecretById(providerData.secretId);
+                const secret = await this.secretsRepo.getSecretById(providerData.secretId);
                 if (!secret) {
                     return res.status(400).json({success: false, error: `Secret with ID ${providerData.secretId} not found`});
                 }
