@@ -9,10 +9,6 @@ export interface OpsimateConfig {
         port: number;
         host: string;
     };
-    client: {
-        port: number;
-        api_url: string;
-    };
     database: {
         path: string;
     };
@@ -68,10 +64,6 @@ function getDefaultConfig(): OpsimateConfig {
             port: 3001,
             host: 'localhost'
         },
-        client: {
-            port: 8080,
-            api_url: 'http://localhost:3001/api/v1'
-        },
         database: {
             path: '../../data/database/opsimate.db'
         },
@@ -87,10 +79,6 @@ function getDefaultConfig(): OpsimateConfig {
 // Helper function to get individual config sections
 export function getServerConfig() {
     return loadConfig().server;
-}
-
-export function getClientConfig() {
-    return loadConfig().client;
 }
 
 export function getDatabaseConfig() {
