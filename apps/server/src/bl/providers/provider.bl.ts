@@ -3,6 +3,7 @@ import { ProviderNotFound } from "./ProviderNotFound";
 import { providerConnectorFactory } from "./provider-connector/providerConnectorFactory";
 import {ProviderRepository} from "../../dal/providerRepository";
 import {ServiceRepository} from "../../dal/serviceRepository";
+import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository";
 import { AuditBL } from '../audit/audit.bl';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
 
@@ -12,6 +13,7 @@ export class ProviderBL {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
+        private secretsMetadataRepo: SecretsMetadataRepository,
         private auditBL: AuditBL
     ) {}
 
@@ -30,7 +32,19 @@ export class ProviderBL {
     async createProvider(providerToCreate: Omit<Provider, 'id'>, user: User): Promise<Provider> {
         try {
             logger.info(`Starting to create provider`, { extraArgs: { ...providerToCreate } });
-            const { lastID } = await this.providerRepo.createProvider(providerToCreate);
+            
+            // Resolve secretId to privateKeyFilename if provided
+            const resolvedProvider = { ...providerToCreate };
+            if (providerToCreate.secretId) {
+                const secret = await this.secretsMetadataRepo.getSecretById(providerToCreate.secretId);
+                if (!secret) {
+                    throw new Error(`Secret with ID ${providerToCreate.secretId} not found`);
+                }
+                resolvedProvider.privateKeyFilename = secret.path;
+                delete resolvedProvider.secretId;
+            }
+            
+            const { lastID } = await this.providerRepo.createProvider(resolvedProvider);
             logger.info(`Provider created with ID: ${lastID}`);
 
             const createdProvider = await this.providerRepo.getProviderById(lastID);
@@ -57,7 +71,18 @@ export class ProviderBL {
         await this.validateProviderExists(providerId);
 
         try {
-            await this.providerRepo.updateProvider(providerId, providerToUpdate);
+            // Resolve secretId to privateKeyFilename if provided
+            const resolvedProvider = { ...providerToUpdate };
+            if (providerToUpdate.secretId) {
+                const secret = await this.secretsMetadataRepo.getSecretById(providerToUpdate.secretId);
+                if (!secret) {
+                    throw new Error(`Secret with ID ${providerToUpdate.secretId} not found`);
+                }
+                resolvedProvider.privateKeyFilename = secret.path;
+                delete resolvedProvider.secretId;
+            }
+            
+            await this.providerRepo.updateProvider(providerId, resolvedProvider);
             logger.info(`Updated provider with ID: ${providerId}`);
             await this.auditBL.logAction({
                 actionType: AuditActionType.UPDATE,

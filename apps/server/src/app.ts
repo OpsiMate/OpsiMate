@@ -2,34 +2,34 @@ import express from 'express';
 import cors from 'cors';
 import healthRouter from './api/health';
 import createV1Router from './api/v1/v1';
-import { ProviderRepository } from './dal/providerRepository';
-import { ServiceRepository } from './dal/serviceRepository';
-import { ViewRepository } from './dal/viewRepository';
-import { TagRepository } from './dal/tagRepository';
-import { IntegrationRepository } from './dal/integrationRepository';
-import { AlertRepository } from './dal/alertRepository';
-import { ProviderBL } from './bl/providers/provider.bl';
-import { ViewBL } from './bl/custom-views/custom-view.bl';
-import { IntegrationBL } from './bl/integrations/integration.bl';
-import { AlertBL } from './bl/alerts/alert.bl';
-import { ProviderController } from './api/v1/providers/controller';
-import { ServiceController } from './api/v1/services/controller';
-import { ViewController } from './api/v1/views/controller';
-import { TagController } from './api/v1/tags/controller';
-import { IntegrationController } from './api/v1/integrations/controller';
-import { AlertController } from './api/v1/alerts/controller';
-import { UserRepository } from './dal/userRepository';
-import { UserBL } from './bl/users/user.bl';
-import { UsersController } from './api/v1/users/controller';
+import {ProviderRepository} from './dal/providerRepository';
+import {ServiceRepository} from './dal/serviceRepository';
+import {ViewRepository} from './dal/viewRepository';
+import {TagRepository} from './dal/tagRepository';
+import {IntegrationRepository} from './dal/integrationRepository';
+import {AlertRepository} from './dal/alertRepository';
+import {ProviderBL} from './bl/providers/provider.bl';
+import {ViewBL} from './bl/custom-views/custom-view.bl';
+import {IntegrationBL} from './bl/integrations/integration.bl';
+import {AlertBL} from './bl/alerts/alert.bl';
+import {ProviderController} from './api/v1/providers/controller';
+import {ServiceController} from './api/v1/services/controller';
+import {ViewController} from './api/v1/views/controller';
+import {TagController} from './api/v1/tags/controller';
+import {IntegrationController} from './api/v1/integrations/controller';
+import {AlertController} from './api/v1/alerts/controller';
+import {UserRepository} from './dal/userRepository';
+import {UserBL} from './bl/users/user.bl';
+import {UsersController} from './api/v1/users/controller';
 import Database from "better-sqlite3";
 import {RefreshJob} from "./jobs/refresh-job";
 import {PullGrafanaAlertsJob} from "./jobs/pull-grafana-alerts-job";
-import { AuditLogRepository } from './dal/auditLogRepository';
-import { AuditBL } from './bl/audit/audit.bl';
-import { AuditController } from './api/v1/audit/controller';
-import { SecretsController } from "./api/v1/secrets/controller";
-import { SecretsMetadataBL } from "./bl/secrets/secretsMetadata.bl";
-import { SecretsMetadataRepository } from "./dal/secretsMetadataRepository";
+import {AuditLogRepository} from './dal/auditLogRepository';
+import {AuditBL} from './bl/audit/audit.bl';
+import {AuditController} from './api/v1/audit/controller';
+import {SecretsController} from "./api/v1/secrets/controller";
+import {SecretsMetadataBL} from "./bl/secrets/secretsMetadata.bl";
+import {SecretsMetadataRepository} from "./dal/secretsMetadataRepository";
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -73,14 +73,14 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
     // BL
     const auditBL = new AuditBL(auditLogRepo);
-    const providerBL = new ProviderBL(providerRepo, serviceRepo, auditBL);
+    const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
     const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo)
 
     // Controllers
-    const providerController = new ProviderController(providerBL);
+    const providerController = new ProviderController(providerBL, secretsMetadataRepo);
     const serviceController = new ServiceController(providerRepo, serviceRepo);
     const viewController = new ViewController(new ViewBL(viewRepo));
     const tagController = new TagController(tagRepo, serviceRepo);
@@ -102,7 +102,6 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         auditController,
         secretController
     ));
-
 
 
     if (config?.enableJobs) {

@@ -15,7 +15,8 @@ import {useState, useEffect} from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {useNavigate} from "react-router-dom";
 import { FileDropzone } from "@/components/ui/file-dropzone";
-import { getSecretsFromServer, SecretMetadata } from "@/lib/sslKeys";
+import { getSecretsFromServer } from "@/lib/sslKeys";
+import { SecretMetadata } from "@OpsiMate/shared";
 
 // --- FORM SCHEMAS ---
 
@@ -138,7 +139,9 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
                     <SelectTrigger><SelectValue placeholder="Select a key" /></SelectTrigger>
                     <SelectContent>
                         {keys.map(key => (
-                            <SelectItem key={key.id} value={key.name}><b>{key.name}</b></SelectItem>
+                            <SelectItem key={key.id} value={key.id.toString()}>
+                                <b>{key.name}</b>
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -189,7 +192,7 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
                 name: values.name,
                 providerIP: values.hostname,
                 username: values.username,
-                privateKeyFilename: values.authType === 'key' ? values.sshKey : undefined,
+                secretId: values.authType === 'key' && values.sshKey ? parseInt(values.sshKey) : undefined,
                 password: values.authType === 'password' ? values.password : undefined,
                 SSHPort: values.port,
                 providerType: 'VM',
@@ -461,7 +464,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                         name: serverData.name,
                         providerIP: serverData.hostname,
                         username: serverData.username,
-                        privateKeyFilename: serverData.authType === 'key' ? serverData.sshKey : undefined,
+                        secretId: serverData.authType === 'key' && serverData.sshKey ? parseInt(serverData.sshKey) : undefined,
                         password: serverData.authType === 'password' ? serverData.password : undefined,
                         SSHPort: serverData.port,
                         providerType: providerType

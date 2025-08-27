@@ -12,11 +12,12 @@ import {providerConnectorFactory} from "../../../bl/providers/provider-connector
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
 import {ProviderBL} from "../../../bl/providers/provider.bl";
 import {AuthenticatedRequest} from '../../../middleware/auth';
+import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository";
 
 const logger: Logger = new Logger('server');
 
 export class ProviderController {
-    constructor(private providerBL: ProviderBL) {
+    constructor(private providerBL: ProviderBL, private secretsRepo: SecretsMetadataRepository) {
     }
 
     async getProviders(req: Request, res: Response) {
@@ -69,9 +70,21 @@ export class ProviderController {
 
     async testConnection(req: Request, res: Response) {
         try {
-            const provider = CreateProviderSchema.parse(req.body) as Provider;
-            const providerConnector = providerConnectorFactory(provider.providerType);
-            const isValidConnection = await providerConnector.testConnection(provider);
+            const providerData = CreateProviderSchema.parse(req.body);
+            
+            // Resolve secretId to privateKeyFilename if provided
+            const resolvedProvider = { ...providerData } as Provider;
+            if (providerData.secretId) {
+                const secret = await this.secretsRepo.getSecretById(providerData.secretId);
+                if (!secret) {
+                    return res.status(400).json({success: false, error: `Secret with ID ${providerData.secretId} not found`});
+                }
+                resolvedProvider.privateKeyFilename = secret.path;
+                delete resolvedProvider.secretId;
+            }
+            
+            const providerConnector = providerConnectorFactory(resolvedProvider.providerType);
+            const isValidConnection = await providerConnector.testConnection(resolvedProvider);
             res.status(201).json({success: true, data: {isValidConnection}});
         } catch (error) {
             if (error instanceof z.ZodError) {
