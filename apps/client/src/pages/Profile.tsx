@@ -1,5 +1,5 @@
 import { User as UserType } from '@OpsiMate/shared';
-import { Lock, LogOut, Save, User, X } from 'lucide-react';
+import { Lock, LogOut, Save, User, X, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ErrorAlert } from '../components/ErrorAlert';
@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
+import { useTheme } from 'next-themes';
 
 interface UserProfile {
   id: number;
@@ -29,6 +30,7 @@ const Profile: React.FC = () => {
     confirmPassword: ''
   });
   const { errors, generalError, clearErrors, handleApiResponse } = useFormErrors();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     fetchProfile();
@@ -251,6 +253,41 @@ const Profile: React.FC = () => {
                   <label className="text-sm font-semibold text-muted-foreground">Member Since</label>
                   <div className="mt-1 text-sm text-foreground">{formatDate(profile.createdAt)}</div>
                 </div>
+              </div>
+            </div>
+
+            {/* Theme Preferences */}
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center gap-3">
+                <Sun className="h-5 w-5 text-gray-500" />
+                <h3 className="font-semibold">Theme Preferences</h3>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant={theme === "light" ? "default" : "outline"}
+                  onClick={() => setTheme("light")}
+                  className="flex items-center gap-2"
+                >
+                  <Sun className="h-4 w-4" />
+                  Light
+                </Button>
+                <Button
+                  variant={theme === "dark" ? "default" : "outline"}
+                  onClick={() => setTheme("dark")}
+                  className="flex items-center gap-2"
+                >
+                  <Moon className="h-4 w-4" />
+                  Dark
+                </Button>
+                <Button
+                  variant={theme === "system" ? "default" : "outline"}
+                  onClick={() => setTheme("system")}
+                  className="flex items-center gap-2"
+                >
+                  <div className="h-4 w-4 rounded border-2 border-current" />
+                  System
+                </Button>
               </div>
             </div>
 

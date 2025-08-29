@@ -3,7 +3,6 @@ import { Settings, Layers, LayoutDashboard, Database, Puzzle, Bell } from "lucid
 import { cn } from "@/lib/utils"
 import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
-import { ThemeButton } from "./ThemeButton"
 import { ProfileButton } from "./ProfileButton"
 import { isAdmin } from "../lib/auth"
 
@@ -112,7 +111,6 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
       
       <div className={cn("p-4 mt-auto flex flex-col gap-3", collapsed && "items-center")}>
         <div className={cn("flex flex-col gap-3 items-center")}>
-          <ThemeButton collapsed={collapsed} />
           {isAdmin() && (
             <Button 
               variant={location.pathname === "/settings" ? "default" : "ghost"}
