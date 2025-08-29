@@ -100,7 +100,11 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
         const loadKeys = async () => {
             try {
                 const secrets = await getSecretsFromServer();
-                setKeys(secrets);
+                // Filter for SSH type secrets only
+                const sshSecrets = secrets.filter(secret => 
+                    secret.type === 'ssh'
+                );
+                setKeys(sshSecrets);
                 setError(null);
             } catch (err) {
                 console.error('Error loading SSH keys:', err);
@@ -127,7 +131,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
     if (keys.length === 0) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-muted-foreground">No keys available.</div>
+                <div className="text-sm text-muted-foreground">No SSH keys available.</div>
             </div>
         );
     }
