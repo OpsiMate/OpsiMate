@@ -17,6 +17,11 @@
       "persistent": true,
       "dependsOn": ["^build"]
     },
+    "debug": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
     "clean": {
       "cache": false
     }

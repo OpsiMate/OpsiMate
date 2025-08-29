@@ -74,7 +74,7 @@ export function EditProviderDialog({
       // For existing providers, we need to find the secret ID that matches the privateKeyFilename
       let secretId: number | undefined;
       if (provider.privateKeyFilename && secrets.length > 0) {
-        const matchingSecret = secrets.find(secret => secret.path === provider.privateKeyFilename);
+        const matchingSecret = secrets.find(secret => secret.fileName === provider.privateKeyFilename);
         secretId = matchingSecret?.id;
       }
 

@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node dist/src/index.js",
     "dev": "ts-node src/index.ts",
+    "debug": "node --inspect=0.0.0.0:9229 -r ts-node/register/transpile-only src/index.ts",
     "build": "tsc",
     "clean": "rm -rf dist",
     "lint": "eslint src --ext .ts",

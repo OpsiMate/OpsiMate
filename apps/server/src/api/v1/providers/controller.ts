@@ -79,13 +79,13 @@ export class ProviderController {
                 if (!secret) {
                     return res.status(400).json({success: false, error: `Secret with ID ${providerData.secretId} not found`});
                 }
-                resolvedProvider.privateKeyFilename = secret.path;
+                resolvedProvider.privateKeyFilename = secret.fileName;
                 delete resolvedProvider.secretId;
             }
             
             const providerConnector = providerConnectorFactory(resolvedProvider.providerType);
             const isValidConnection = await providerConnector.testConnection(resolvedProvider);
-            res.status(201).json({success: true, data: {isValidConnection}});
+            res.status(200).json({success: true, data: {isValidConnection}});
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});

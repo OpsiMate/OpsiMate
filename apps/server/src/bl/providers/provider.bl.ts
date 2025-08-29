@@ -40,7 +40,7 @@ export class ProviderBL {
                 if (!secret) {
                     throw new Error(`Secret with ID ${providerToCreate.secretId} not found`);
                 }
-                resolvedProvider.privateKeyFilename = secret.path;
+                resolvedProvider.privateKeyFilename = secret.fileName;
                 delete resolvedProvider.secretId;
             }
             
@@ -78,7 +78,7 @@ export class ProviderBL {
                 if (!secret) {
                     throw new Error(`Secret with ID ${providerToUpdate.secretId} not found`);
                 }
-                resolvedProvider.privateKeyFilename = secret.path;
+                resolvedProvider.privateKeyFilename = secret.fileName;
                 delete resolvedProvider.secretId;
             }
             

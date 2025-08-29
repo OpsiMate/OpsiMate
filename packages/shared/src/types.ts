@@ -149,6 +149,6 @@ export interface AuditLog {
 export type SecretMetadata = {
     id: number;
     name: string;
-    path: string;
+    fileName: string;
     type: SecretType;
 }

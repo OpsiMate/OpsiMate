@@ -35,7 +35,7 @@ const serverSchema = z.object({
 
 const kubernetesSchema = z.object({
     name: z.string().min(1, "Cluster name is required"),
-    kubeconfigPath: z.string().min(1, "Kubeconfig path is required"),
+    kubeconfigKey: z.string().min(1, "Kubeconfig key is required"),
     context: z.string().optional(),
 });
 
@@ -137,6 +137,69 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
             render={({ field }) => (
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <SelectTrigger><SelectValue placeholder="Select a key" /></SelectTrigger>
+                    <SelectContent>
+                        {keys.map(key => (
+                            <SelectItem key={key.id} value={key.id.toString()}>
+                                <b>{key.name}</b>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+        />
+    );
+};
+
+const KubeconfigSelector = ({ control }: { control: Control<KubernetesFormData> }) => {
+    const [keys, setKeys] = useState<SecretMetadata[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadKeys = async () => {
+            try {
+                const secrets = await getSecretsFromServer();
+                // Filter for kubeconfig type secrets
+                const kubeconfigSecrets = secrets.filter(secret => 
+                    secret.type === 'kubeconfig' || secret.fileName?.endsWith('.yml') || secret.fileName?.endsWith('.yaml') || secret.fileName?.endsWith('.config')
+                );
+                setKeys(kubeconfigSecrets);
+                setError(null);
+            } catch (err) {
+                console.error('Error loading kubeconfig keys:', err);
+                setError('Failed to load kubeconfig keys');
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadKeys();
+    }, []);
+
+    if (loading) {
+        return <div className="text-sm text-muted-foreground">Loading kubeconfig keys...</div>;
+    }
+
+    if (error) {
+        return (
+            <div className="space-y-2">
+                <div className="text-sm text-destructive">Error loading kubeconfig keys: {error}</div>
+            </div>
+        );
+    }
+
+    if (keys.length === 0) {
+        return (
+            <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">No kubeconfig keys available.</div>
+            </div>
+        );
+    }
+
+    return (
+        <Controller name="kubeconfigKey" control={control}
+            render={({ field }) => (
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select a kubeconfig key" /></SelectTrigger>
                     <SelectContent>
                         {keys.map(key => (
                             <SelectItem key={key.id} value={key.id.toString()}>
@@ -321,10 +384,19 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
                 <Controller name="name" control={control}
                             render={({field}) => <Input id="name" placeholder="Production Cluster" {...field} />}/>
             </FieldWrapper>
-            <FieldWrapper error={errors.kubeconfigPath}>
-                <Label htmlFor="kubeconfigPath">Kubeconfig Path <span className="text-destructive">*</span></Label>
-                <Controller name="kubeconfigPath" control={control} render={({field}) => <Input id="kubeconfigPath"
-                                                                                                placeholder="~/.kube/config" {...field} />}/>
+            <FieldWrapper error={errors.kubeconfigKey}>
+                <Label>Kubeconfig Key <span className="text-destructive">*</span></Label>
+                <KubeconfigSelector control={control} />
+                <div className="mt-2">
+                    <a
+                        href="/settings#secrets"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-primary hover:underline"
+                    >
+                        + Add new kubeconfig key
+                    </a>
+                </div>
             </FieldWrapper>
             <FieldWrapper error={errors.context}>
                 <Label htmlFor="context">Context</Label>
@@ -419,7 +491,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
 
                     const providerData = {
                         name: serverData.name,
-                        privateKeyFilename: serverData.kubeconfigPath,
+                        secretId: parseInt(serverData.kubeconfigKey),
                         providerType: 'K8S'
                     };
 
@@ -575,7 +647,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
     },
     {
       "name": "My Cluster",
-      "privateKeyFilename": "~/.kube/config",
+      "secretId": 1,
       "providerType": "K8S"
     }
   ]
@@ -584,6 +656,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                     <ul className="list-disc pl-5">
                         <li><span className="font-medium">providerType</span> must be either <code>VM</code> or <code>K8S</code>.</li>
                         <li><span className="font-medium">providerIP</span>, <span className="font-medium">username</span>, <span className="font-medium">password</span>, <span className="font-medium">privateKeyFilename</span>, and <span className="font-medium">SSHPort</span> are optional depending on the type.</li>
+                        <li><span className="font-medium">secretId</span> should reference a secret ID for the kubeconfig file or SSH key.</li>
                         <li>At least one provider is required.</li>
                     </ul>
                 </div>

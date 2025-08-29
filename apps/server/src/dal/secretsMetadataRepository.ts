@@ -12,12 +12,12 @@ export class SecretsMetadataRepository {
     async createSecret(data: Omit<SecretMetadata, 'id'>): Promise<{ lastID: number }> {
         return await runAsync<{ lastID: number }>(() => {
             const stmt = this.db.prepare(
-                'INSERT INTO secrets (secret_name, secret_path, secret_type) VALUES (?, ?, ?)'
+                'INSERT INTO secrets (secret_name, secret_filename, secret_type) VALUES (?, ?, ?)'
             );
 
             const result = stmt.run(
                 data.name,
-                data.path,
+                data.fileName,
                 data.type
             );
 
@@ -30,7 +30,7 @@ export class SecretsMetadataRepository {
             const stmt = this.db.prepare(`
                 SELECT id,
                        secret_name AS name,
-                       secret_path AS path,
+                       secret_filename AS fileName,
                        secret_type AS type
                 FROM secrets
             `);
@@ -43,7 +43,7 @@ export class SecretsMetadataRepository {
             const stmt = this.db.prepare(`
                 SELECT id,
                        secret_name AS name,
-                       secret_path AS path,
+                       secret_filename AS fileName,
                        secret_type AS type
                 FROM secrets
                 WHERE id = ?
@@ -72,7 +72,7 @@ export class SecretsMetadataRepository {
                 CREATE TABLE IF NOT EXISTS secrets (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     secret_name TEXT NOT NULL,
-                    secret_path TEXT NOT NULL,
+                    secret_filename TEXT NOT NULL,
                     secret_type TEXT NOT NULL DEFAULT 'ssh'
                 )
             `).run();

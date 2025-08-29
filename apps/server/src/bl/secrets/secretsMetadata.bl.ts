@@ -15,9 +15,8 @@ export class SecretsMetadataBL {
 
     async createSecretMetadata(displayName: string, newName: string, secretType: SecretType = SecretType.SSH): Promise<number> {
         try {
-            const fullPath = path.resolve(getSecurityConfig().private_keys_path, newName)
             logger.info(`Creating Secret named ${displayName} in ${newName}`)
-            const createdSecret = await this.secretsMetadataRepository.createSecret({name: displayName, path: fullPath, type: secretType})
+            const createdSecret = await this.secretsMetadataRepository.createSecret({name: displayName, fileName: newName, type: secretType})
 
             logger.info(`Successfully created secret named ${displayName} in ${newName} in ${createdSecret.lastID}`)
 
@@ -68,14 +67,16 @@ export class SecretsMetadataBL {
             // Delete the actual file from filesystem
             const fs = await import('fs');
             try {
-                if (fs.existsSync(secretToDelete.path)) {
-                    fs.unlinkSync(secretToDelete.path);
-                    logger.info(`Successfully deleted secret file: ${secretToDelete.path}`);
+                // Construct the full path since we now store only the filename
+                const fullPath = path.resolve(getSecurityConfig().private_keys_path, secretToDelete.fileName);
+                if (fs.existsSync(fullPath)) {
+                    fs.unlinkSync(fullPath);
+                    logger.info(`Successfully deleted secret file: ${fullPath}`);
                 } else {
-                    logger.warn(`Secret file not found on filesystem: ${secretToDelete.path}`);
+                    logger.warn(`Secret file not found on filesystem: ${fullPath}`);
                 }
             } catch (fileError) {
-                logger.error(`Error deleting secret file: ${secretToDelete.path}`, fileError);
+                logger.error(`Error deleting secret file: ${secretToDelete.fileName}`, fileError);
                 // Don't throw here - the database record is already deleted
             }
 
