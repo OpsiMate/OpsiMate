@@ -15,9 +15,15 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
   const location = useLocation();
   return (
     <div className={cn("w-full bg-background flex flex-col h-full overflow-hidden", collapsed && "items-center")}>
-      <div className={cn("flex items-center h-20 px-5 border-b", collapsed && "justify-center px-2")}>
+      <Link 
+        to="/" 
+        className={cn(
+          "flex items-center h-20 px-5 border-b cursor-pointer transition-all duration-200",
+          collapsed && "justify-center px-2"
+        )}
+      >
         <div className="flex items-center">
-          <div className="relative w-11 h-11 flex-shrink-0">
+          <div className="relative w-11 h-11 flex-shrink-0 transition-all duration-200 hover:drop-shadow-lg hover:scale-110">
             <AppIcon className="w-full h-full text-primary" />
           </div>
           <div className={cn("ml-3", collapsed && "sr-only")}>
@@ -25,7 +31,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             <p className="text-xs text-muted-foreground">Operational Insights</p>
           </div>
         </div>
-      </div>
+      </Link>
       
       <div className={cn("px-4 space-y-2 w-full flex-grow flex flex-col", collapsed && "px-2 items-center")}>
         <Button 
