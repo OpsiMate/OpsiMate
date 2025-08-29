@@ -92,6 +92,11 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
 
   const fetchPods = useCallback(async () => {
     if (!service) return;
+    
+    // Only fetch pods for Kubernetes services
+    if (service.provider?.providerType !== 'kubernetes') {
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -417,13 +422,14 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
             </div>
           </CollapsibleSection>
 
-          {/* Service Pods Section */}
-          <CollapsibleSection
-            title="Service Pods"
-            icon={Package}
-            isOpen={sectionsOpen.pods}
-            onToggle={() => fetchPods() && toggleSection('pods') }
-          >
+          {/* Service Pods Section - Only show for Kubernetes services */}
+          {service?.provider?.providerType === 'kubernetes' && (
+            <CollapsibleSection
+              title="Service Pods"
+              icon={Package}
+              isOpen={sectionsOpen.pods}
+              onToggle={() => fetchPods() && toggleSection('pods') }
+            >
             <div className="pt-2">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-muted-foreground text-xs">Pods List</span>
@@ -455,6 +461,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
               )}
             </div>
           </CollapsibleSection>
+          )}
 
           {/* Tags Section - Always visible */}
           <CollapsibleSection
