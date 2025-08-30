@@ -26,7 +26,6 @@ const FACET_FIELDS = [
   'serviceType', 
   'providerType',
   'providerName',
-  'containerImage',
   'containerNamespace',
   'tags'
 ] as const;
@@ -36,7 +35,6 @@ const FIELD_LABELS: Record<string, string> = {
   serviceType: 'Service Type',
   providerType: 'Provider Type',
   providerName: 'Provider Name',
-  containerImage: 'Container Image',
   containerNamespace: 'Container Namespace',
   tags: 'Tags'
 };
@@ -73,12 +71,6 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
       if (service.provider?.name) {
         const value = String(service.provider.name);
         newFacets.providerName[value] = (newFacets.providerName[value] || 0) + 1;
-      }
-
-      // Container image
-      if (service.containerDetails?.image) {
-        const value = String(service.containerDetails.image);
-        newFacets.containerImage[value] = (newFacets.containerImage[value] || 0) + 1;
       }
 
       // Container namespace

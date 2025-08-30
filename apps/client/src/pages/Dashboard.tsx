@@ -183,10 +183,6 @@ const Dashboard = () => {
                             // Nested provider property
                             return filterValues.includes(String(service.provider?.name));
                         
-                        case 'containerImage':
-                            // Nested container details property
-                            return filterValues.includes(String(service.containerDetails?.image));
-                        
                         case 'containerNamespace':
                             // Nested container details property
                             return filterValues.includes(String(service.containerDetails?.namespace));

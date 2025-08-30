@@ -113,7 +113,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
           return {
             serviceStatus: service.serviceStatus,
             serviceIP: service.serviceIP,
-            image: 'N/A', // DiscoveredService doesn't have image info
+            image: '', // DiscoveredService doesn't have image info
             id: `container-${index}`, // Generate ID since DiscoveredService doesn't have id
             name: service.name,
             selected: false,
@@ -478,7 +478,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                               </div>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">{container.image}</div>
+                          {container.image && <div className="text-sm text-muted-foreground">{container.image}</div>}
                           <div className="text-xs mt-1">
                             <span className={`inline-block px-2 py-1 rounded-full ${container.serviceStatus === 'running' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                               {container.serviceStatus}
@@ -582,7 +582,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                                 </div>
                               )}
                             </div>
-                            <div className="text-sm text-muted-foreground">{container.image}</div>
+                            {container.image && <div className="text-sm text-muted-foreground">{container.image}</div>}
                             <div className="text-xs mt-1">
                               <span className={`inline-block px-2 py-1 rounded-full ${container.serviceStatus === 'running' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {container.serviceStatus}
