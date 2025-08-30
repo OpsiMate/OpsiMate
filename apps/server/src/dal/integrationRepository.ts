@@ -2,13 +2,14 @@ import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import {Integration, IntegrationType} from '@OpsiMate/shared';
 import { IntegrationRow } from './models';
+import {decryptPassword, encryptPassword} from "../utils/encryption";
 
 const mapRowToIntegration = (row: IntegrationRow): Integration => ({
     id: row.id,
     name: row.name,
     type: row.type,
     externalUrl: row.external_url,
-    credentials: JSON.parse(row.credentials) as Record<string, unknown>,
+    credentials: JSON.parse(decryptPassword(row.credentials) as string) as Record<string, unknown>,
     createdAt: row.created_at,
 });
 
@@ -29,7 +30,7 @@ export class IntegrationRepository {
                 data.name,
                 data.type,
                 data.externalUrl,
-                JSON.stringify(data.credentials)
+                encryptPassword(JSON.stringify(data.credentials))
             );
             return { lastID: result.lastInsertRowid as number };
         });
@@ -90,7 +91,7 @@ export class IntegrationRepository {
                 data.name,
                 data.type,
                 data.externalUrl,
-                JSON.stringify(data.credentials),
+                encryptPassword(JSON.stringify(data.credentials)),
                 id
             );
         });

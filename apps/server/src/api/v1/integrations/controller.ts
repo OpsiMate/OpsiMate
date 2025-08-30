@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import {
     CreateIntegrationSchema,
-    Integration,
+    Integration, IntegrationResponse,
     IntegrationTagsquerySchema, Logger
 } from "@OpsiMate/shared";
 import { z } from "zod";
@@ -9,13 +9,19 @@ import { IntegrationBL } from "../../../bl/integrations/integration.bl";
 
 const logger = new Logger("v1/integrations/controller");
 
+export function toIntegrationResponse(integration: Integration): IntegrationResponse {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { credentials, ...rest } = integration;
+    return rest;
+}
+
 export class IntegrationController {
     constructor(private integrationBL: IntegrationBL) {}
 
     getIntegrations = async (req: Request, res: Response) => {
         try {
             const integrations = await this.integrationBL.getAllIntegrations();
-            res.json({ success: true, data: { integrations } });
+            res.json({ success: true, data: { integrations: integrations.map(toIntegrationResponse) } });
         } catch (error) {
             logger.error('Error getting integrations:', error);
             res.status(500).json({ success: false, error: 'Internal server error' });
@@ -47,7 +53,7 @@ export class IntegrationController {
             const validatedData = CreateIntegrationSchema.parse(req.body);
             const updatedIntegration = await this.integrationBL.updateIntegration(integrationId, validatedData);
 
-            res.json({ success: true, data: updatedIntegration, message: 'Integration updated successfully' });
+            res.json({ success: true, data: toIntegrationResponse(updatedIntegration), message: 'Integration updated successfully' });
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });

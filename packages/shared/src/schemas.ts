@@ -30,6 +30,8 @@ export type Integration = z.infer<typeof CreateIntegrationSchema> & {
     createdAt: string;
 };
 
+export type IntegrationResponse = Omit<Integration, 'credentials'>;
+
 export const IntegrationTagsquerySchema = z.object({
     tags: z.union([z.string(), z.array(z.string())]),
 });
