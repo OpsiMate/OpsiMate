@@ -23,7 +23,8 @@ import {
   Square,
   MoreVertical,
   Eye,
-  Clock
+  Clock,
+  RefreshCw
 } from "lucide-react"
 import { useServices, useAlerts, useStartService, useStopService } from "@/hooks/queries"
 import { useToast } from "@/hooks/use-toast"
@@ -579,6 +580,53 @@ const TVMode = ({
               {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
               {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
             </Button>
+            
+            {/* Help/Shortcuts Button */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  Help
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" className="max-w-sm p-4">
+                <div className="space-y-3">
+                  <p className="font-semibold text-sm">⌨️ Keyboard Shortcuts</p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Status Views:</span>
+                      <span className="font-mono">1-4</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Toggle Alerts:</span>
+                      <span className="font-mono">A</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Manual Refresh:</span>
+                      <span className="font-mono">Ctrl+R</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Fullscreen:</span>
+                      <span className="font-mono">F11</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Exit TV Mode:</span>
+                      <span className="font-mono">Esc</span>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t text-xs text-muted-foreground">
+                    <p>💡 <strong>Tips:</strong></p>
+                    <p>• Click alert badges for detailed information</p>
+                    <p>• Use three-dot menu for service actions</p>
+                    <p>• Grid automatically adapts to service count</p>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           
           {/* Status Filter Buttons */}
