@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
 import { useToast } from "@/hooks/use-toast"
 import { ServiceTable, Service } from "@/components/ServiceTable"
 import { RightSidebarWithLogs as RightSidebar } from "@/components/RightSidebarWithLogs"
@@ -11,9 +12,11 @@ import { DashboardLayout } from "../components/DashboardLayout"
 import { SavedView } from "@/types/SavedView"
 import { useServices, useAlerts, useStartService, useStopService, useDismissAlert, useSaveView, useDeleteView, useViews, useActiveView } from "@/hooks/queries"
 import { Alert } from "@OpsiMate/shared"
+import { TVModeLauncher } from "@/components/TVModeLauncher"
 
 
 const Dashboard = () => {
+    const navigate = useNavigate()
     const {toast} = useToast()
     
     // React Query hooks for data fetching
@@ -489,6 +492,12 @@ const Dashboard = () => {
                                         onSaveView={handleSaveView}
                                         onDeleteView={handleDeleteView}
                                         onLoadView={applyView}
+                                        activeViewId={activeViewId}
+                                    />
+                                    <TVModeLauncher 
+                                        currentFilters={filters}
+                                        currentVisibleColumns={visibleColumns}
+                                        currentSearchTerm={searchTerm}
                                         activeViewId={activeViewId}
                                     />
                                 </div>

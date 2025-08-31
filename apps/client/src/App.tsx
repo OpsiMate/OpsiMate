@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Providers, MyProviders, Integrations, NotFound, Register, Login, Settings, Dashboard, Profile, Alerts } from "./pages";
+import { Providers, MyProviders, Integrations, NotFound, Register, Login, Settings, Dashboard, Profile, Alerts, TVMode } from "./pages";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthGuard } from "./components/AuthGuard";
 
@@ -19,6 +19,7 @@ const App = () => (
           <AuthGuard>
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/tv-mode" element={<TVMode />} />
               <Route path="/providers" element={<Providers />} />
               <Route path="/my-providers" element={<MyProviders />} />
               <Route path="/integrations" element={<Integrations />} />
