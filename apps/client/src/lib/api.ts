@@ -42,8 +42,15 @@ async function apiRequest<T>(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`API Error (${response.status}):`, errorText);
-
       // Try to parse the error as JSON to handle validation errors properly
+
+        if(response.status === 401){
+            window.location.href = "/login?expired=true";
+            localStorage.removeItem('jwt');
+
+            // navigate to login /login
+        }
+
       try {
         const errorJson = JSON.parse(errorText);
         return {
