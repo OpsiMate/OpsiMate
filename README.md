@@ -43,6 +43,14 @@ Centralized service discovery, monitoring, and management across your infrastruc
 - 📋 **Centralized Logs** - View and analyze service logs from a single interface
 - 🏷️ **Smart Tagging** - Organize and filter services with custom tags and labels
 
+### Main Dashboard
+
+![OpsiMate Dashboard](https://github.com/user-attachments/assets/8c5f4f4a-8b4a-4c8e-9c8a-1d2e3f4g5h6i)
+
+### TV Mode
+
+![OpsiMate TV Mode](https://github.com/user-attachments/assets/7f8e9g0h-1i2j-3k4l-5m6n-7o8p9q0r1s2t)
+
 </br>
 
 ## Supported Infrastructure
