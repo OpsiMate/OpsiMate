@@ -1,47 +1,47 @@
-<div align="center">
-    <img src="apps/client/images/logo.png" width="86">
-</div>
-
-<h1 align="center">The all-in-one platform for managing and controlling your organization - Everything in one place.</h1>
-
-</br>
-
-<div align="center">
-Centralized service discovery, monitoring, and management across your infrastructure.
-</br>
-</div>
-
-<div align="center">
-    <a href="https://github.com/OpsiMate/OpsiMate/commits/main">
-      <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/OpsiMate/OpsiMate"/></a>
-    <a href="https://github.com/OpsiMate/OpsiMate/blob/main/LICENSE">
-      <img alt="License" src="https://img.shields.io/github/license/OpsiMate/OpsiMate"/></a>
-    <a href="https://github.com/OpsiMate/OpsiMate/stargazers">
-      <img alt="GitHub stars" src="https://img.shields.io/github/stars/OpsiMate/OpsiMate?style=social"/></a>
-<a href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA">
-  <img alt="Join Slack" src="https://img.shields.io/badge/Slack-Join%20Chat-4A154B?logo=slack&logoColor=white"/>
-</a>
-</div>
-
 <p align="center">
-    <a href="https://opsimate.vercel.app/getting-started/deploy">Get Started</a>
-    ·
-    <a href="https://opsimate.vercel.app/">Documentation</a>
-    ·
-    <a href="https://www.opsimate.com/">Website</a>
-    ·
-    <a href="https://github.com/OpsiMate/OpsiMate/issues/new?assignees=&labels=bug&template=bug_report.md&title=">Report Bug</a>
+  <img src="apps/client/images/logo.png" width="86" alt="OpsiMate logo" />
 </p>
 
-<h1 align="center"></h1>
+<h1 align="center">OpsiMate</h1>
+<p align="center"><b>One console for servers, Docker, and Kubernetes—discover, monitor, and act.</b></p>
+<p align="center">
+  Built for DevOps/NOC/IT teams that need a single place to see service health,
+  jump to dashboards, and perform safe start/stop/restart operations.
+</p>
 
-- 🔍 **Service Discovery** - Automatically discover and monitor Docker containers and systemd services across your infrastructure
-- 🖥️ **Multi-Provider Support** - Connect to VMs, Kubernetes clusters, and cloud instances via SSH and APIs
-- 📊 **Real-time Monitoring** - Live service status, health checks, and performance metrics
-- 🚨 **Integrated Alerting** - Grafana integration for centralized alert management and correlation
-- 🎛️ **Service Management** - Start, stop, and restart services directly from the dashboard
-- 📋 **Centralized Logs** - View and analyze service logs from a single interface
-- 🏷️ **Smart Tagging** - Organize and filter services with custom tags and labels
+<p align="center">
+  <a href="https://img.shields.io/github/commit-activity/m/OpsiMate/OpsiMate">
+    <img alt="Commit activity" src="https://img.shields.io/github/commit-activity/m/OpsiMate/OpsiMate" />
+  </a>
+  <a href="https://github.com/OpsiMate/OpsiMate/releases">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/OpsiMate/OpsiMate" />
+  </a>
+  <a href="https://github.com/OpsiMate/OpsiMate/blob/main/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/OpsiMate/OpsiMate" />
+  </a>
+  <a href="https://github.com/OpsiMate/OpsiMate/stargazers">
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/OpsiMate/OpsiMate?style=social" />
+  </a>
+  <a href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA">
+    <img alt="Join Slack" src="https://img.shields.io/badge/Slack-Join%20Chat-4A154B?logo=slack&logoColor=white" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://opsimate.vercel.app/getting-started/deploy">Get Started</a> ·
+  <a href="https://opsimate.vercel.app/">Docs</a> ·
+  <a href="https://www.opsimate.com/">Website</a> ·
+  <a href="https://github.com/OpsiMate/OpsiMate/issues/new?labels=bug&template=bug_report.md">Report Bug</a>
+</p>
+
+---
+
+### TL;DR
+- 🔎 **Auto-discovery** of Docker/systemd services  
+- 📊 **Live health & metrics** with Grafana/Prometheus/Kibana links  
+- 🎛️ **Safe actions**: start/stop/restart from the dashboard  
+- 🏷️ **Smart tags** for quick filtering
+
 
 ### Main Dashboard
 
