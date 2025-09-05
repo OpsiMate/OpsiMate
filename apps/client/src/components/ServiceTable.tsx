@@ -101,7 +101,7 @@ function DraggableHeader({ id, children, field, currentSort, onSort, className }
       ref={setNodeRef}
       style={style}
       className={cn(
-        "font-medium cursor-pointer hover:bg-muted/50 transition-colors select-none relative",
+        "font-medium cursor-pointer hover:bg-muted/50 transition-colors select-none relative h-8 py-1 px-2 text-xs",
         isDragging && "opacity-50 z-50",
         className
       )}
@@ -340,19 +340,19 @@ export function ServiceTable({
   if (loading) {
     return (
       <div className="flex-1 flex flex-col bg-card border border-border rounded-lg overflow-hidden">
-        <div className="p-4 border-b border-border space-y-4 flex-shrink-0">
+        <div className="p-2 border-b border-border space-y-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Services</h3>
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <h3 className="text-sm font-semibold text-foreground">Services</h3>
+              <p className="text-xs text-muted-foreground">Loading...</p>
             </div>
             <Button
               variant="outline"
               size="icon"
               onClick={onSettingsClick}
-              className="h-9 w-9 rounded-md"
+              className="h-7 w-7 rounded-md"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-3 w-3" />
               <span className="sr-only">Table Settings</span>
             </Button>
           </div>
@@ -392,17 +392,17 @@ export function ServiceTable({
 
   return (
     <div className="flex-1 flex flex-col bg-card border border-border rounded-lg overflow-hidden">
-      <div className="p-4 border-b border-border space-y-4 flex-shrink-0">
+      <div className="p-2 border-b border-border space-y-2 flex-shrink-0">
         {/* Header with title and settings */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Services</h3>
-            <p className="text-sm text-muted-foreground">
-              {filteredAndSortedServices.length} of {services.length} services found
+            <h3 className="text-sm font-semibold text-foreground">Services</h3>
+            <p className="text-xs text-muted-foreground">
+              {filteredAndSortedServices.length} of {services.length} services
               {searchTerm && ` matching "${searchTerm}"`}
               {sortConfig && (
-                <span className="ml-2 text-xs bg-muted px-2 py-1 rounded">
-                  Sorted by {sortConfig.field} ({sortConfig.direction})
+                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded">
+                  {sortConfig.field} ({sortConfig.direction})
                 </span>
               )}
             </p>
@@ -411,16 +411,16 @@ export function ServiceTable({
             variant="outline"
             size="icon"
             onClick={onSettingsClick}
-            className="h-9 w-9 rounded-md"
+            className="h-7 w-7 rounded-md"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-3 w-3" />
             <span className="sr-only">Table Settings</span>
           </Button>
         </div>
 
         {/* Search filter */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
             placeholder="Search services..."
             value={searchTerm}
@@ -432,16 +432,16 @@ export function ServiceTable({
                 setInternalSearchTerm(newValue);
               }
             }}
-            className="pl-10 pr-10 h-9"
+            className="pl-8 pr-8 h-7 text-sm"
           />
           {searchTerm && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearSearch}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-5 w-5 p-0"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -456,7 +456,7 @@ export function ServiceTable({
           <Table className="relative">
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-10">
+                <TableHead className="w-10 h-8 py-1 px-1">
                   <Checkbox
                     checked={filteredAndSortedServices.length > 0 && selectedServices.length === filteredAndSortedServices.length}
                     onCheckedChange={(checked) => {
@@ -514,12 +514,12 @@ export function ServiceTable({
                 <TableRow
                   key={service.id}
                   className={cn(
-                    "hover:bg-muted/50 transition-colors cursor-pointer",
+                    "hover:bg-muted/50 transition-colors cursor-pointer h-8",
                     selectedServices.some(s => s.id === service.id) && "bg-muted"
                   )}
                   onClick={() => handleRowClick(service)}
                 >
-                  <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="w-10 p-1" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selectedServices.some(s => s.id === service.id)}
                       onCheckedChange={(checked) => {
@@ -530,6 +530,7 @@ export function ServiceTable({
                         }
                       }}
                       aria-label={`Select ${service.name}`}
+                      className="h-3 w-3"
                     />
                   </TableCell>
                   {columnOrder.map(columnId => {
@@ -537,30 +538,30 @@ export function ServiceTable({
                     
                     switch (columnId) {
                       case 'name':
-                        return <TableCell key={columnId} className="font-medium">{service.name}</TableCell>;
+                        return <TableCell key={columnId} className="font-medium py-1 px-2 text-sm">{service.name}</TableCell>;
                       case 'serviceIP':
                         return (
-                          <TableCell key={columnId}>
+                          <TableCell key={columnId} className="py-1 px-2 text-sm">
                             {service.serviceType === 'SYSTEMD' ? service.provider.providerIP : service.serviceIP || '-'}
                           </TableCell>
                         );
                       case 'serviceStatus':
                         return (
-                          <TableCell key={columnId} className="text-center">
-                            <Badge className={cn(getStatusColor(service.serviceStatus), "font-medium")}> 
+                          <TableCell key={columnId} className="text-center py-1 px-2">
+                            <Badge className={cn(getStatusColor(service.serviceStatus), "font-medium text-xs px-1.5 py-0.5")}> 
                               {service.serviceStatus}
                             </Badge>
                           </TableCell>
                         );
                       case 'provider':
-                        return <TableCell key={columnId}>{service.provider.name}</TableCell>;
+                        return <TableCell key={columnId} className="py-1 px-2 text-sm">{service.provider.name}</TableCell>;
                       case 'containerDetails':
                         return (
-                          <TableCell key={columnId}>
+                          <TableCell key={columnId} className="py-1 px-2 text-sm">
                             {service.serviceType === 'DOCKER' ? (
                               service.containerDetails?.image || '-'
                             ) : service.serviceType === 'SYSTEMD' ? (
-                              <span className="text-green-600 font-medium">Systemd Service</span>
+                              <span className="text-green-600 font-medium text-xs">Systemd Service</span>
                             ) : (
                               '-'
                             )}
@@ -568,13 +569,13 @@ export function ServiceTable({
                         );
                       case 'alerts':
                         return (
-                          <TableCell key={columnId} className="text-center">
+                          <TableCell key={columnId} className="text-center py-1 px-2">
                             {service.alertsCount && service.alertsCount > 0 ? (
-                              <Badge variant="destructive" className="font-medium">
+                              <Badge variant="destructive" className="font-medium text-xs px-1.5 py-0.5">
                                 {service.alertsCount}
                               </Badge>
                             ) : (
-                              <span className="text-muted-foreground">0</span>
+                              <span className="text-muted-foreground text-xs">0</span>
                             )}
                           </TableCell>
                         );
