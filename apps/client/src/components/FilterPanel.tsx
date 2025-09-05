@@ -39,6 +39,17 @@ const FIELD_LABELS: Record<string, string> = {
   tags: 'Tags'
 };
 
+// Helper function to format filter values consistently
+const formatFilterValue = (value: string): string => {
+  // Handle special cases
+  if (value.toUpperCase() === 'DOCKER') return 'Docker';
+  if (value.toUpperCase() === 'SYSTEMD') return 'Systemd';
+  if (value.toUpperCase() === 'MANUAL') return 'Manual';
+  
+  // Capitalize first letter and make rest lowercase
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+};
+
 export function FilterPanel({ services, filters, onFilterChange, collapsed }: FilterPanelProps) {
   const facets = useMemo(() => {
     const newFacets: Record<string, Record<string, number>> = {};
@@ -133,22 +144,25 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-2 pl-2 py-1">
-                    {Object.entries(fieldFacets).sort(([a], [b]) => a.localeCompare(b)).map(([value, count]) => (
-                      <div key={value} className="flex items-center justify-between py-1">
-                        <label className="flex items-center gap-2 text-sm font-normal cursor-pointer hover:text-foreground">
-                          <Checkbox
-                            checked={(filters[field] || []).includes(value)}
-                            onCheckedChange={() => handleCheckboxChange(field, value)}
-                          />
-                          <span className="truncate max-w-[150px]" title={value}>
-                            {value}
+                    {Object.entries(fieldFacets).sort(([a], [b]) => a.localeCompare(b)).map(([value, count]) => {
+                      const displayValue = formatFilterValue(value);
+                      return (
+                        <div key={value} className="flex items-center justify-between py-1">
+                          <label className="flex items-center gap-2 text-sm font-normal cursor-pointer hover:text-foreground">
+                            <Checkbox
+                              checked={(filters[field] || []).includes(value)}
+                              onCheckedChange={() => handleCheckboxChange(field, value)}
+                            />
+                            <span className="truncate max-w-[150px]" title={displayValue}>
+                              {displayValue}
+                            </span>
+                          </label>
+                          <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground flex-shrink-0">
+                            {count}
                           </span>
-                        </label>
-                        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground flex-shrink-0">
-                          {count}
-                        </span>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </AccordionContent>
               </AccordionItem>

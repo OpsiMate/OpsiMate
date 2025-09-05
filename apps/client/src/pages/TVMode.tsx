@@ -103,7 +103,8 @@ const TVMode = ({
     }
   })()
   
-  const [currentView, setCurrentView] = useState<'all' | 'running' | 'stopped' | 'error'>(defaultView)
+  // Multi-state selection for TV Mode
+  const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set(['all']))
   const [alertFilter, setAlertFilter] = useState<'all' | 'with-alerts'>('all')
   const [searchTerm, setSearchTerm] = useState(savedSearchTerm)
   
@@ -198,21 +199,13 @@ const TVMode = ({
     return filtered
   }, [servicesWithAlerts, searchTerm, savedFilters])
   
-  // Filter services based on current view and alert filter
+  // Filter services based on selected states and alert filter
   const filteredServices = useMemo(() => {
     let filtered = baseFilteredServices
     
-    // Apply status filter
-    switch (currentView) {
-      case 'running':
-        filtered = filtered.filter(s => s.serviceStatus === 'running')
-        break
-      case 'stopped':
-        filtered = filtered.filter(s => s.serviceStatus === 'stopped')
-        break
-      case 'error':
-        filtered = filtered.filter(s => s.serviceStatus === 'error')
-        break
+    // Apply multi-state filter
+    if (!selectedStates.has('all')) {
+      filtered = filtered.filter(s => selectedStates.has(s.serviceStatus))
     }
     
     // Apply alert filter
@@ -221,7 +214,7 @@ const TVMode = ({
     }
     
     return filtered
-  }, [baseFilteredServices, currentView, alertFilter])
+  }, [baseFilteredServices, selectedStates, alertFilter])
   
   // Smart grid calculation based on service count
   const smartGridConfig = useMemo(() => {
@@ -297,16 +290,23 @@ const TVMode = ({
     return () => clearInterval(interval)
   }, [autoRefresh, refreshInterval, refetch])
 
-  // View rotation
+  // View rotation - cycles through different state combinations
   useEffect(() => {
     if (!viewRotation) return
     
-    const views: typeof currentView[] = ['all', 'running', 'stopped', 'error']
+    const viewCombinations = [
+      new Set(['all']),
+      new Set(['running']),
+      new Set(['stopped']),
+      new Set(['error']),
+      new Set(['running', 'stopped']),
+      new Set(['error', 'stopped'])
+    ]
     let currentIndex = 0
     
     const interval = setInterval(() => {
-      currentIndex = (currentIndex + 1) % views.length
-      setCurrentView(views[currentIndex])
+      currentIndex = (currentIndex + 1) % viewCombinations.length
+      setSelectedStates(viewCombinations[currentIndex])
     }, rotationInterval)
     
     return () => clearInterval(interval)
@@ -401,6 +401,31 @@ const TVMode = ({
     }
   }
 
+  // Helper function to toggle state selection
+  const toggleStateSelection = (state: string) => {
+    setSelectedStates(prev => {
+      const newStates = new Set(prev)
+      if (state === 'all') {
+        return new Set(['all'])
+      }
+      
+      // Remove 'all' if selecting specific states
+      newStates.delete('all')
+      
+      if (newStates.has(state)) {
+        newStates.delete(state)
+        // If no states selected, default to 'all'
+        if (newStates.size === 0) {
+          newStates.add('all')
+        }
+      } else {
+        newStates.add(state)
+      }
+      
+      return newStates
+    })
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -409,16 +434,16 @@ const TVMode = ({
           navigate('/')
           break
         case '1':
-          setCurrentView('all')
+          setSelectedStates(new Set(['all']))
           break
         case '2':
-          setCurrentView('running')
+          toggleStateSelection('running')
           break
         case '3':
-          setCurrentView('stopped')
+          toggleStateSelection('stopped')
           break
         case '4':
-          setCurrentView('error')
+          toggleStateSelection('error')
           break
         case 'a':
         case 'A':
@@ -440,7 +465,7 @@ const TVMode = ({
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [navigate, handleManualRefresh, alertFilter])
+  }, [navigate, handleManualRefresh, alertFilter, toggleStateSelection])
 
   // Fullscreen functionality
   const toggleFullscreen = () => {
@@ -524,7 +549,8 @@ const TVMode = ({
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4">
+    <>
+      <div className="min-h-screen bg-background text-foreground p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -629,22 +655,39 @@ const TVMode = ({
             </Popover>
           </div>
           
-          {/* Status Filter Buttons */}
+          {/* Multi-State Filter Buttons */}
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">Status:</span>
             <div className="flex gap-1">
-              {(['all', 'running', 'stopped', 'error'] as const).map((view, index) => (
-                <Button
-                  key={view}
-                  variant={currentView === view ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentView(view)}
-                  className="capitalize"
-                  title={`Switch to ${view} view (${index + 1})`}
-                >
-                  {view}
-                </Button>
-              ))}
+              {(['all', 'running', 'stopped', 'error'] as const).map((state, index) => {
+                const isSelected = selectedStates.has(state)
+                const isAllSelected = selectedStates.has('all')
+                
+                return (
+                  <Button
+                    key={state}
+                    variant={isSelected || (state === 'all' && isAllSelected) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (state === 'all') {
+                        setSelectedStates(new Set(['all']))
+                      } else {
+                        toggleStateSelection(state)
+                      }
+                    }}
+                    className="capitalize"
+                    title={`Toggle ${state} view (${index + 1})`}
+                  >
+                    {state}
+                    {isSelected && state !== 'all' && !isAllSelected && (
+                      <span className="ml-1 text-xs">✓</span>
+                    )}
+                  </Button>
+                )
+              })}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {selectedStates.has('all') ? 'All' : `${Array.from(selectedStates).join(', ')}`}
             </div>
           </div>
           
@@ -788,8 +831,15 @@ const TVMode = ({
               <Card
                 key={service.id}
                 className={cn(
-                  "border-2 transition-all duration-200 hover:scale-105",
-                  getStatusColor(service.serviceStatus)
+                  "border-2 transition-all duration-200 hover:scale-105 relative overflow-hidden",
+                  getStatusColor(service.serviceStatus),
+                  // Add static red indicator for services with alerts
+                  service.alertsCount > 0 && [
+                    "shadow-md shadow-red-500/15",
+                    "ring-1 ring-red-500/20",
+                    "border-red-400/60",
+                    "bg-gradient-to-br from-red-50/30 to-transparent dark:from-red-950/30"
+                  ]
                 )}
               >
                 <CardContent className={cn(
@@ -976,6 +1026,7 @@ const TVMode = ({
         </div>
       )}
     </div>
+  </>
   )
 }
 
