@@ -161,7 +161,7 @@ const Settings: React.FC = () => {
       }} className="space-y-6">
         <div className="flex gap-6">
           <div className="w-64 flex-shrink-0">
-            <TabsList className="flex flex-col items-stretch h-auto p-2 gap-2 bg-white">
+            <TabsList className="flex flex-col items-stretch h-auto p-2 gap-2">
               <TabsTrigger value="users" className="justify-start gap-2">
                 <Users className="h-4 w-4" />
                 Users
