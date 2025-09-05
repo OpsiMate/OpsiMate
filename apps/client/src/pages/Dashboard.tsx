@@ -45,13 +45,14 @@ const Dashboard = () => {
         serviceStatus: true,
         provider: true,
         containerDetails: false,
+        tags: true,
         alerts: true
     })
     const [filters, setFilters] = useState<Filters>({})
     const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false)
     const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
-    const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'serviceIP', 'serviceStatus', 'provider', 'containerDetails', 'alerts'])
+    const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'serviceIP', 'serviceStatus', 'provider', 'containerDetails', 'tags', 'alerts'])
 
     // Enhanced alert calculation: each service gets alerts for ALL its tags
     const servicesWithAlerts = useMemo(() => {
@@ -116,6 +117,7 @@ const Dashboard = () => {
                             serviceStatus: true,
                             provider: true,
                             containerDetails: true,
+                            tags: true,
                             alerts: true
                         });
                     } else {

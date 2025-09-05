@@ -41,11 +41,6 @@ const FIELD_LABELS: Record<string, string> = {
 
 // Helper function to format filter values consistently
 const formatFilterValue = (value: string): string => {
-  // Handle special cases
-  if (value.toUpperCase() === 'DOCKER') return 'Docker';
-  if (value.toUpperCase() === 'SYSTEMD') return 'Systemd';
-  if (value.toUpperCase() === 'MANUAL') return 'Manual';
-  
   // Capitalize first letter and make rest lowercase
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };

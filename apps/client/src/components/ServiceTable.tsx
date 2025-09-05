@@ -55,7 +55,7 @@ export interface Service {
   serviceAlerts?: Alert[]
 }
 
-type SortField = 'name' | 'serviceIP' | 'serviceStatus' | 'provider' | 'containerDetails' | 'alerts' | 'createdAt'
+type SortField = 'name' | 'serviceIP' | 'serviceStatus' | 'provider' | 'containerDetails' | 'tags' | 'alerts' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
 
 interface SortableHeaderProps {
@@ -300,6 +300,10 @@ export function ServiceTable({
             aValue = a.serviceType === 'DOCKER' ? (a.containerDetails?.image || '') : a.serviceType
             bValue = b.serviceType === 'DOCKER' ? (b.containerDetails?.image || '') : b.serviceType
             break
+          case 'tags':
+            aValue = a.tags && a.tags.length > 0 ? a.tags[0].name.toLowerCase() : ''
+            bValue = b.tags && b.tags.length > 0 ? b.tags[0].name.toLowerCase() : ''
+            break
           case 'alerts':
             aValue = a.alertsCount || 0
             bValue = b.alertsCount || 0
@@ -482,6 +486,7 @@ export function ServiceTable({
                       serviceStatus: 'Status',
                       provider: 'Provider',
                       containerDetails: 'Container Details',
+                      tags: 'Tags',
                       alerts: 'Alerts'
                     };
                     
@@ -564,6 +569,25 @@ export function ServiceTable({
                               <span className="text-green-600 font-medium text-xs">Systemd Service</span>
                             ) : (
                               '-'
+                            )}
+                          </TableCell>
+                        );
+                      case 'tags':
+                        return (
+                          <TableCell key={columnId} className="py-1 px-2">
+                            {service.tags && service.tags.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {service.tags.slice(0, 3).map((tag, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs px-1.5 py-0.5">
+                                    {tag.name}
+                                  </Badge>
+                                ))}
+                                {service.tags.length > 3 && (
+                                  <span className="text-xs text-muted-foreground">+{service.tags.length - 3}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
                             )}
                           </TableCell>
                         );

@@ -28,7 +28,7 @@ export function ActionButtons({
               <span>
                 Selected: <span className="text-primary">{selectedServices.length} service{selectedServices.length !== 1 ? 's' : ''}</span> 
                 {selectedServices.length === 1 && (
-                  <span className="text-muted-foreground">({selectedServices[0].id})</span>
+                  <span className="text-muted-foreground">({selectedServices[0].name})</span>
                 )}
               </span>
             )
