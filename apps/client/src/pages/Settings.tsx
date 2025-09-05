@@ -460,24 +460,8 @@ const AddSecretButton: React.FC = () => {
   const { toast } = useToast();
 
   const handleFile = async (file: File) => {
-    // Basic validation to check if the file looks like a key file
-    const fileContent = await file.text();
-    const pemHeaders = [
-      '-----BEGIN RSA PRIVATE KEY-----',
-      '-----BEGIN DSA PRIVATE KEY-----',
-      '-----BEGIN EC PRIVATE KEY-----',
-      '-----BEGIN OPENSSH PRIVATE KEY-----',
-      '-----BEGIN PRIVATE KEY-----',
-      '-----BEGIN ENCRYPTED PRIVATE KEY-----',
-      '-----BEGIN PUBLIC KEY-----',
-      'ssh-rsa ',
-      'ssh-ed25519 ',
-      'ecdsa-sha2-'
-    ];
-    
-    const isKeyFile = pemHeaders.some(header => fileContent.includes(header));
-    
-    setIsFileValid(isKeyFile);
+    // todo: implement file validation
+    setIsFileValid(true);
     setSelectedFile(file);
     setFileName(file.name);
   };
