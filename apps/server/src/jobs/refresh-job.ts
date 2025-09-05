@@ -75,6 +75,10 @@ export class RefreshJob {
                 // For non-systemd services, use the discovered services
                 const matchedService = this.findMatchingService(discoveredServices, dbService.name);
 
+                if (!matchedService) {
+                    await this.serviceRepo.deleteService(dbService.id);
+                }
+
                 // Update service status only if it is different to reduce db calls
                 if (matchedService && matchedService.serviceStatus !== dbService.serviceStatus) {
                     await this.serviceRepo.updateService(dbService.id, {
