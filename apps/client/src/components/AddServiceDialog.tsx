@@ -59,6 +59,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     name: string; 
     created: string;
     alreadyAdded?: boolean; // Flag to mark containers that are already added as services
+    existingServiceId?: number; // ID of existing service for removal
   }>>([]);
   const [loadingContainers, setLoadingContainers] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,9 +117,10 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
             image: '', // DiscoveredService doesn't have image info
             id: `container-${index}`, // Generate ID since DiscoveredService doesn't have id
             name: service.name,
-            selected: false,
+            selected: isAlreadyAdded, // Pre-select already added services
             created: new Date().toISOString(),
-            alreadyAdded: isAlreadyAdded // Mark if already added
+            alreadyAdded: isAlreadyAdded, // Mark if already added
+            existingServiceId: isAlreadyAdded ? existingServices.find(es => es.name === service.name)?.id : undefined // Store existing service ID for removal
           };
         });
 
@@ -221,11 +223,12 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
 
   const handleAddContainersOrPods = async () => {
     const selectedContainers = containers.filter(container => container.selected);
+    const deselectedContainers = containers.filter(container => !container.selected && container.alreadyAdded);
 
-    if (selectedContainers.length === 0) {
+    if (selectedContainers.length === 0 && deselectedContainers.length === 0) {
       toast({
-        title: `No ${isKubernetes ? 'pods' : 'containers'} selected`,
-        description: `Please select at least one ${isKubernetes ? 'pod' : 'container'}`,
+        title: "No changes to apply",
+        description: "Please select or deselect services to add or remove them",
         variant: "destructive"
       });
       return;
@@ -234,19 +237,35 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     setLoading(true);
 
     try {
-      // Create an array to store successful service creations
       const createdServices: ServiceConfig[] = [];
-      const failedContainers: string[] = [];
+      const removedServices: string[] = [];
+      const failedOperations: string[] = [];
 
-      // Create each service individually using the new API
-      for (const container of selectedContainers) {
-        // Ensure status is one of the allowed values
+      // Handle service removals (deselected previously added services)
+      for (const container of deselectedContainers) {
+        if (container.existingServiceId) {
+          try {
+            const response = await providerApi.deleteService(container.existingServiceId);
+            if (response.success) {
+              removedServices.push(container.name);
+            } else {
+              failedOperations.push(`Failed to remove ${container.name}`);
+            }
+          } catch (error) {
+            console.error(`Error removing service ${container.name}:`, error);
+            failedOperations.push(`Failed to remove ${container.name}`);
+          }
+        }
+      }
+
+      // Handle service additions (selected new services)
+      const newContainers = selectedContainers.filter(container => !container.alreadyAdded);
+      for (const container of newContainers) {
         const status = container.serviceStatus === "running" ? "running" as const :
                       container.serviceStatus === "stopped" ? "stopped" as const :
                       container.serviceStatus === "error" ? "error" as const : "unknown" as const;
 
         try {
-          // Create service using the new API
           const response = await providerApi.createService({
             providerId: parseInt(serverId),
             name: container.name,
@@ -261,11 +280,10 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
           });
 
           if (response.success && response.data) {
-            // Create UI service object from API response
             const newService: ServiceConfig = {
               id: response.data.id.toString(),
               name: response.data.name,
-              type: "DOCKER", // Match the API service_type
+              type: "DOCKER",
               status: response.data.serviceStatus as "running" | "stopped" | "error" | "unknown",
               serviceIP: response.data.serviceIP,
               containerDetails: response.data.containerDetails
@@ -273,41 +291,49 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
 
             createdServices.push(newService);
           } else {
-            failedContainers.push(container.name);
+            failedOperations.push(`Failed to add ${container.name}`);
           }
         } catch (error) {
           console.error(`Error creating service for container ${container.name}:`, error);
-          failedContainers.push(container.name);
+          failedOperations.push(`Failed to add ${container.name}`);
         }
       }
 
-      // Add successful services to UI
-      // For multiple services, we need to call onServiceAdded for each one
-      // but we'll use React's functional state update to ensure all services are added
+      // Update UI with successful operations
       createdServices.forEach(service => onServiceAdded(service));
 
-      // Show appropriate toast message
-      if (createdServices.length > 0) {
+      // Show summary toast
+      const totalOperations = createdServices.length + removedServices.length;
+      if (totalOperations > 0) {
+        let message = '';
+        if (createdServices.length > 0) {
+          message += `Added ${createdServices.length} service${createdServices.length > 1 ? 's' : ''}`;
+        }
+        if (removedServices.length > 0) {
+          if (message) message += ', ';
+          message += `Removed ${removedServices.length} service${removedServices.length > 1 ? 's' : ''}`;
+        }
+        
         toast({
-          title: `${createdServices.length} ${isKubernetes ? 'pod' : 'container'}${createdServices.length > 1 ? 's' : ''} added`,
-          description: `Added to ${isKubernetes ? 'Kubernetes cluster' : 'server'} ${serverName}${failedContainers.length > 0 ? '. Some failed.' : ''}`
+          title: "Services updated",
+          description: message + (failedOperations.length > 0 ? `. ${failedOperations.length} operation(s) failed.` : '')
         });
 
-        // Reset and close if at least one service was created
-        setContainers(containers.map(container => ({ ...container, selected: false })));
+        // Refresh the container list to reflect changes
+        await fetchContainers();
         setSelectedContainer(null);
         onClose();
       } else {
         toast({
-          title: `Failed to add ${isKubernetes ? 'pods' : 'containers'}`,
-          description: `None of the selected ${isKubernetes ? 'pods' : 'containers'} could be added`,
+          title: "Operation failed",
+          description: failedOperations.join(', ') || "No operations completed successfully",
           variant: "destructive"
         });
       }
     } catch (err) {
-      console.error("Error adding containers:", err);
+      console.error("Error managing services:", err);
       toast({
-        title: "Error adding containers",
+        title: "Error managing services",
         description: "An unexpected error occurred",
         variant: "destructive"
       });
@@ -320,16 +346,6 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
   const toggleContainerSelection = (containerId: string) => {
     // Find the container being toggled
     const containerToToggle = containers.find(c => c.id === containerId);
-    
-    // If container is already added as a service, don't allow selection
-    if (containerToToggle?.alreadyAdded) {
-      toast({
-        title: "Container already exists",
-        description: "This container is already being monitored as a service",
-        variant: "default"
-      });
-      return;
-    }
     
     const updatedContainers = containers.map(container => {
       if (container.id === containerId) {
@@ -357,17 +373,11 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
   
   // Toggle selection for all containers at once
   const toggleAllContainersSelection = () => {
-    // Check if all selectable containers are already selected
-    const selectableContainers = containers.filter(container => !container.alreadyAdded);
-    const allSelected = selectableContainers.every(container => container.selected);
+    // Check if all containers are already selected
+    const allSelected = containers.every(container => container.selected);
     
-    // Toggle all containers (except already added ones)
+    // Toggle all containers
     const updatedContainers = containers.map(container => {
-      // Skip already added containers
-      if (container.alreadyAdded) {
-        return container;
-      }
-      
       // Set all to the opposite of current state
       return { ...container, selected: !allSelected };
     });
@@ -376,8 +386,8 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     setContainers(updatedContainers);
     
     // Update selectedContainer state
-    if (!allSelected && selectableContainers.length > 0) {
-      // If we're selecting all and there are selectable containers, enable the Add button
+    if (!allSelected && containers.length > 0) {
+      // If we're selecting all and there are containers, enable the Add button
       setSelectedContainer({ id: 'multi-select' } as any);
     } else {
       // If we're deselecting all, disable the Add button
@@ -442,11 +452,11 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                   <div className="flex items-center space-x-2 mb-4 p-2 border rounded bg-muted/20">
                     <Checkbox
                       id="select-all-containers"
-                      checked={containers.filter(c => !c.alreadyAdded).every(c => c.selected)}
+                      checked={containers.every(c => c.selected)}
                       onCheckedChange={toggleAllContainersSelection}
                     />
                     <Label htmlFor="select-all-containers" className="font-medium cursor-pointer">
-                      Monitor all pods
+                      Select/Deselect all pods
                     </Label>
                   </div>
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -456,31 +466,32 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                         className={cn(
                           "flex items-center space-x-3 border rounded-lg p-4 transition-all duration-200 shadow-sm",
                           container.selected && "border-primary bg-primary/5 shadow-md",
-                          container.alreadyAdded 
-                            ? "opacity-60 cursor-not-allowed bg-gray-50" 
-                            : "hover:bg-slate-50 hover:border-slate-300 hover:shadow-md cursor-pointer"
+                          "hover:bg-slate-50 hover:border-slate-300 hover:shadow-md cursor-pointer dark:hover:bg-slate-800 dark:hover:border-slate-600"
                         )}
                         onClick={() => toggleContainerSelection(container.id)}
                       >
                         <Checkbox
                           id={`container-${container.id}`}
-                          checked={container.alreadyAdded || container.selected}
-                          disabled={container.alreadyAdded}
+                          checked={container.selected}
                           onCheckedChange={() => toggleContainerSelection(container.id)}
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <div className="font-medium">{container.name}</div>
                             {container.alreadyAdded && (
-                              <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center gap-1">
+                              <div className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded-full flex items-center gap-1">
                                 <AlertCircle className="h-3 w-3" />
-                                Already exists
+                                Currently monitored
                               </div>
                             )}
                           </div>
                           {container.image && <div className="text-sm text-muted-foreground">{container.image}</div>}
                           <div className="text-xs mt-1">
-                            <span className={`inline-block px-2 py-1 rounded-full ${container.serviceStatus === 'running' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            <span className={`inline-block px-2 py-1 rounded-full ${
+                              container.serviceStatus === 'running' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                            }`}>
                               {container.serviceStatus}
                             </span>
                           </div>
@@ -497,7 +508,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "container" | "systemd")} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="container">
-                Docker Containers
+                Manage Docker Services
               </TabsTrigger>
               <TabsTrigger value="systemd">
                 Systemd Services
@@ -507,7 +518,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
             <TabsContent value="container" className="space-y-4 py-4">
               {/* Container UI for non-Kubernetes providers */}
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-medium">Available Containers</h4>
+                <h4 className="text-sm font-medium">Manage Docker Services</h4>
                 <Button
                   variant="outline"
                   size="sm"
@@ -546,11 +557,11 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                     <div className="flex items-center space-x-2 mb-4 p-2 border rounded bg-muted/20">
                       <Checkbox
                         id="select-all-containers"
-                        checked={containers.filter(c => !c.alreadyAdded).every(c => c.selected)}
+                        checked={containers.every(c => c.selected)}
                         onCheckedChange={toggleAllContainersSelection}
                       />
                       <Label htmlFor="select-all-containers" className="font-medium cursor-pointer">
-                        Monitor all Docker containers
+                        Select/Deselect all containers
                       </Label>
                     </div>
                     <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -560,31 +571,32 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                           className={cn(
                             "flex items-center space-x-3 border rounded-lg p-4 transition-all duration-200 shadow-sm",
                             container.selected && "border-primary bg-primary/5 shadow-md",
-                            container.alreadyAdded 
-                              ? "opacity-60 cursor-not-allowed bg-gray-50" 
-                              : "hover:bg-slate-50 hover:border-slate-300 hover:shadow-md cursor-pointer"
+                            "hover:bg-slate-50 hover:border-slate-300 hover:shadow-md cursor-pointer dark:hover:bg-slate-800 dark:hover:border-slate-600"
                           )}
                           onClick={() => toggleContainerSelection(container.id)}
                         >
                           <Checkbox
                             id={`container-${container.id}`}
-                            checked={container.alreadyAdded || container.selected}
-                            disabled={container.alreadyAdded}
+                            checked={container.selected}
                             onCheckedChange={() => toggleContainerSelection(container.id)}
                           />
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <div className="font-medium">{container.name}</div>
                               {container.alreadyAdded && (
-                                <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center gap-1">
+                                <div className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded-full flex items-center gap-1">
                                   <AlertCircle className="h-3 w-3" />
-                                  Already exists
+                                  Currently monitored
                                 </div>
                               )}
                             </div>
                             {container.image && <div className="text-sm text-muted-foreground">{container.image}</div>}
                             <div className="text-xs mt-1">
-                              <span className={`inline-block px-2 py-1 rounded-full ${container.serviceStatus === 'running' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                              <span className={`inline-block px-2 py-1 rounded-full ${
+                                container.serviceStatus === 'running' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                              }`}>
                                 {container.serviceStatus}
                               </span>
                             </div>
@@ -633,12 +645,12 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
           {isKubernetes ? (
             <Button type="button" onClick={handleAddContainersOrPods} disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Add Selected Pods
+              Apply Changes
             </Button>
           ) : activeTab === "container" ? (
             <Button type="button" onClick={handleAddContainersOrPods} disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Add Selected Containers
+              Apply Changes
             </Button>
           ) : (
             <Button type="button" onClick={handleAddSystemdService} disabled={loading}>

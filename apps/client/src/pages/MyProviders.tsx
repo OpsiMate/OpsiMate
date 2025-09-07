@@ -264,7 +264,13 @@ export function MyProviders() {
 
     useEffect(() => {
         if (!isLoading && providerInstances.length > 0) {
-            loadAllProviderServices();
+            // Only load services if providers don't already have services loaded
+            const hasServicesLoaded = providerInstances.some(provider => 
+                provider.services && provider.services.length > 0
+            );
+            if (!hasServicesLoaded) {
+                loadAllProviderServices();
+            }
         }
     }, [isLoading, providerInstances.length]);
 
@@ -510,20 +516,22 @@ export function MyProviders() {
     };
 
     const updateUIAfterServiceDeletion = (serviceId: string) => {
-        const updatedProviders = providerInstances.map(provider => {
-            if (provider.services) {
-                const serviceExists = provider.services.some(service => service.id === serviceId);
-                if (serviceExists) {
-                    return {
-                        ...provider,
-                        services: provider.services.filter(service => service.id !== serviceId)
-                    };
+        setProviderInstances(prevProviders => {
+            const updatedProviders = prevProviders.map(provider => {
+                if (provider.services) {
+                    const serviceExists = provider.services.some(service => service.id === serviceId);
+                    if (serviceExists) {
+                        return {
+                            ...provider,
+                            services: provider.services.filter(service => service.id !== serviceId)
+                        };
+                    }
                 }
-            }
-            return provider;
+                return provider;
+            });
+            console.log('Updated providers after service deletion:', updatedProviders);
+            return updatedProviders;
         });
-
-        setProviderInstances(updatedProviders);
     };
 
     const handleDeleteService = async (serviceId: string) => {
@@ -546,7 +554,11 @@ export function MyProviders() {
             const response = await providerApi.deleteService(serviceIdNum);
 
             if (response.success) {
-                updateUIAfterServiceDeletion(serviceId);
+                // Force complete refresh of all data
+                await fetchProviders();
+                setTimeout(async () => {
+                    await loadAllProviderServices();
+                }, 100);
 
                 toast({
                     title: "Service deleted",

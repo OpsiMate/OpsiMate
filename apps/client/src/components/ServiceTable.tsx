@@ -55,7 +55,7 @@ export interface Service {
   serviceAlerts?: Alert[]
 }
 
-type SortField = 'name' | 'serviceIP' | 'serviceStatus' | 'provider' | 'containerDetails' | 'tags' | 'alerts' | 'createdAt'
+type SortField = 'name' | 'serviceIP' | 'serviceStatus' | 'provider' | 'providerType' | 'containerDetails' | 'tags' | 'alerts' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
 
 interface SortableHeaderProps {
@@ -200,7 +200,7 @@ export function ServiceTable({
   const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm
   
   // Default column order
-  const defaultColumnOrder = ['name', 'serviceIP', 'serviceStatus', 'provider', 'containerDetails', 'alerts']
+  const defaultColumnOrder = ['name', 'serviceIP', 'serviceStatus', 'provider', 'providerType', 'containerDetails', 'alerts']
   const [internalColumnOrder, setInternalColumnOrder] = useState<string[]>(defaultColumnOrder)
   const columnOrder = externalColumnOrder || internalColumnOrder
   
@@ -295,6 +295,10 @@ export function ServiceTable({
           case 'provider':
             aValue = a.provider.name.toLowerCase()
             bValue = b.provider.name.toLowerCase()
+            break
+          case 'providerType':
+            aValue = a.provider.providerType.toLowerCase()
+            bValue = b.provider.providerType.toLowerCase()
             break
           case 'containerDetails':
             aValue = a.serviceType === 'DOCKER' ? (a.containerDetails?.image || '') : a.serviceType
@@ -485,6 +489,7 @@ export function ServiceTable({
                       serviceIP: 'Service IP',
                       serviceStatus: 'Status',
                       provider: 'Provider',
+                      providerType: 'Provider Type',
                       containerDetails: 'Container Details',
                       tags: 'Tags',
                       alerts: 'Alerts'
@@ -560,6 +565,8 @@ export function ServiceTable({
                         );
                       case 'provider':
                         return <TableCell key={columnId} className="py-1 px-2 text-sm">{service.provider.name}</TableCell>;
+                      case 'providerType':
+                        return <TableCell key={columnId} className="py-1 px-2 text-sm">{service.provider.providerType}</TableCell>;
                       case 'containerDetails':
                         return (
                           <TableCell key={columnId} className="py-1 px-2 text-sm">

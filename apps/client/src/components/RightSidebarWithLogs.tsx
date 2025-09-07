@@ -94,7 +94,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
     if (!service) return;
     
     // Only fetch pods for Kubernetes services
-    if (service.provider?.providerType !== 'kubernetes') {
+    if (service.provider?.providerType !== 'kubernetes' && service.provider?.providerType !== 'K8S') {
       return;
     }
 
@@ -304,7 +304,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
         <div className="flex items-center justify-between">
           <div>
             <h4 className="font-semibold text-foreground text-lg">{service.name}</h4>
-            <p className="text-muted-foreground text-sm">{service.serviceType}</p>
+            <p className="text-muted-foreground text-sm">{service.serviceType.replace('DOCKER', 'Docker').replace('SYSTEMD', 'Systemd').replace('MANUAL', 'Manual')}</p>
           </div>
           <Badge className={cn(getStatusColor(service.serviceStatus), "text-xs py-1 px-3")}>
             {service.serviceStatus}
@@ -322,36 +322,22 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
             isOpen={sectionsOpen.details}
             onToggle={() => toggleSection('details')}
           >
-            <div className="grid grid-cols-1 gap-4 p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Service ID</div>
-                  <div className="font-medium text-foreground text-sm">{service.id}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">IP Address</div>
-                  <div className="font-medium text-foreground font-mono text-sm">{service.serviceIP || '-'}</div>
-                </div>
+            <div className="grid grid-cols-2 gap-4 p-3">
+              <div>
+                <div className="text-muted-foreground text-xs mb-1">IP Address</div>
+                <div className="font-medium text-foreground font-mono text-sm">{service.serviceIP || '-'}</div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Provider</div>
-                  <div className="font-medium text-foreground text-sm">{service.provider.name}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Provider IP</div>
-                  <div className="font-medium text-foreground text-sm">{service.provider.providerIP}</div>
-                </div>
+              <div>
+                <div className="text-muted-foreground text-xs mb-1">Provider</div>
+                <div className="font-medium text-foreground text-sm">{service.provider.name}</div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Created</div>
-                  <div className="font-medium text-foreground text-sm">{new Date(service.createdAt).toLocaleDateString()}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Container ID</div>
-                  <div className="font-medium text-foreground text-sm truncate">{service.containerDetails?.id || '-'}</div>
-                </div>
+              <div>
+                <div className="text-muted-foreground text-xs mb-1">Provider Type</div>
+                <div className="font-medium text-foreground text-sm">{service.provider.providerType}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs mb-1">Created</div>
+                <div className="font-medium text-foreground text-sm">{new Date(service.createdAt).toLocaleDateString()}</div>
               </div>
             </div>
           </CollapsibleSection>
@@ -423,7 +409,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
           </CollapsibleSection>
 
           {/* Service Pods Section - Only show for Kubernetes services */}
-          {service?.provider?.providerType === 'kubernetes' && (
+          {(service?.provider?.providerType === 'kubernetes' || service?.provider?.providerType === 'K8S') && (
             <CollapsibleSection
               title="Service Pods"
               icon={Package}

@@ -41,7 +41,23 @@ const FIELD_LABELS: Record<string, string> = {
 
 // Helper function to format filter values consistently
 const formatFilterValue = (value: string): string => {
-  // Capitalize first letter and make rest lowercase
+  // Handle specific abbreviations that should stay uppercase
+  const uppercaseValues: Record<string, string> = {
+    'vm': 'VM',
+    'k8s': 'K8S', 
+    'kubernetes': 'K8S',
+    'ssh': 'SSH',
+    'docker': 'Docker',
+    'systemd': 'Systemd',
+    'manual': 'Manual'
+  };
+  
+  const lowerValue = value.toLowerCase();
+  if (uppercaseValues[lowerValue]) {
+    return uppercaseValues[lowerValue];
+  }
+  
+  // Capitalize first letter and make rest lowercase for other values
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
 
