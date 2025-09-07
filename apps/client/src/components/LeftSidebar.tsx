@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
-import { isAdmin } from "../lib/auth"
+import { isAdmin, isEditor } from "../lib/auth"
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -47,23 +47,26 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             <span className={cn("font-medium", collapsed && "sr-only")}>Dashboard</span>
           </Link>
         </Button>
+
+
+        {isEditor() &&
+            <Button
+                variant={location.pathname === "/providers" ? "default" : "ghost"}
+                className={cn(
+                    "gap-3 h-10",
+                    collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
+                    location.pathname === "/providers" && "text-primary-foreground"
+                )}
+                asChild
+            >
+              <Link to="/providers">
+                <Layers className="h-5 w-5 flex-shrink-0"/>
+                <span className={cn("font-medium", collapsed && "sr-only")}>Add Provider</span>
+              </Link>
+            </Button>
+        }
         
-        <Button 
-          variant={location.pathname === "/providers" ? "default" : "ghost"}
-          className={cn(
-            "gap-3 h-10", 
-            collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
-            location.pathname === "/providers" && "text-primary-foreground"
-          )}
-          asChild
-        >
-          <Link to="/providers">
-            <Layers className="h-5 w-5 flex-shrink-0" />
-            <span className={cn("font-medium", collapsed && "sr-only")}>Add Provider</span>
-          </Link>
-        </Button>
-        
-        <Button 
+        <Button
           variant={location.pathname === "/my-providers" ? "default" : "ghost"}
           className={cn(
             "gap-3 h-10", 
@@ -77,21 +80,23 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             <span className={cn("font-medium", collapsed && "sr-only")}>My Providers</span>
           </Link>
         </Button>
-        
-        <Button 
-          variant={location.pathname === "/integrations" ? "default" : "ghost"}
-          className={cn(
-            "gap-3 h-10", 
-            collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
-            location.pathname === "/integrations" && "text-primary-foreground"
-          )}
-          asChild
-        >
-          <Link to="/integrations">
-            <Puzzle className="h-5 w-5 flex-shrink-0" />
-            <span className={cn("font-medium", collapsed && "sr-only")}>Integrations</span>
-          </Link>
-        </Button>
+
+        {isEditor() &&
+            <Button
+                variant={location.pathname === "/integrations" ? "default" : "ghost"}
+                className={cn(
+                    "gap-3 h-10",
+                    collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
+                    location.pathname === "/integrations" && "text-primary-foreground"
+                )}
+                asChild
+            >
+              <Link to="/integrations">
+                <Puzzle className="h-5 w-5 flex-shrink-0"/>
+                <span className={cn("font-medium", collapsed && "sr-only")}>Integrations</span>
+              </Link>
+            </Button>
+        }
         
         <Button 
           variant={location.pathname === "/alerts" ? "default" : "ghost"}

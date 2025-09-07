@@ -213,7 +213,7 @@ export function ServiceTable({
   )
 
   const getStatusColor = (status: Service['serviceStatus']) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'running': return 'bg-green-100 text-green-800 border-green-200'
       case 'stopped': return 'bg-gray-100 text-gray-800 border-gray-200'
       case 'error': return 'bg-red-100 text-red-800 border-red-200'
@@ -559,7 +559,7 @@ export function ServiceTable({
                         return (
                           <TableCell key={columnId} className="text-center py-1 px-2">
                             <Badge className={cn(getStatusColor(service.serviceStatus), "font-medium text-xs px-1.5 py-0.5")}> 
-                              {service.serviceStatus}
+                              {service.serviceStatus.toLowerCase()}
                             </Badge>
                           </TableCell>
                         );
