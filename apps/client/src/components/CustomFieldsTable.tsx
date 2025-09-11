@@ -36,9 +36,11 @@ export const CustomFieldsTable: React.FC = () => {
     setEditingField(field);
   };
 
-  const handleCloseModal = () => {
-    setShowCreateModal(false);
-    setEditingField(null);
+  const handleCloseModal = (open: boolean) => {
+    setShowCreateModal(open);
+    if (!open) {
+      setEditingField(null);
+    }
   };
 
   if (isLoading) {
@@ -143,8 +145,8 @@ export const CustomFieldsTable: React.FC = () => {
       </Table>
 
       <CustomFieldModal
-        isOpen={showCreateModal || !!editingField}
-        onClose={handleCloseModal}
+        open={showCreateModal || !!editingField}
+        onOpenChange={handleCloseModal}
         editingField={editingField}
       />
     </>

@@ -8,14 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { ServiceCustomField } from '@OpsiMate/shared';
 
 interface CustomFieldModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   editingField?: ServiceCustomField | null;
 }
 
 export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
-  isOpen,
-  onClose,
+  open,
+  onOpenChange,
   editingField
 }) => {
   const [fieldName, setFieldName] = useState('');
@@ -33,7 +33,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
     } else {
       setFieldName('');
     }
-  }, [editingField, isOpen]);
+  }, [editingField, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +66,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
           description: "Custom field created successfully",
         });
       }
-      onClose();
+      onOpenChange(false);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -78,15 +78,17 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
     }
   };
 
-  const handleClose = () => {
-    if (!isSubmitting) {
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && !isSubmitting) {
       setFieldName('');
-      onClose();
+      onOpenChange(false);
+    } else if (newOpen) {
+      onOpenChange(true);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -120,7 +122,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
             <Button
               type="button"
               variant="ghost"
-              onClick={handleClose}
+              onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel

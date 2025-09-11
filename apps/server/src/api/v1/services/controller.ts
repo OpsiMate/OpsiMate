@@ -180,7 +180,19 @@ export class ServiceController {
                 return res.status(404).json({success: false, error: 'Service not found'});
             }
 
+            // Delete custom field values for this service (if custom field BL is available)
+            if (this.customFieldBL) {
+                try {
+                    const deletedValuesCount = await this.customFieldBL.deleteAllValuesForService(serviceId);
+                    logger.info(`Deleted ${deletedValuesCount} custom field values for service ${serviceId}`);
+                } catch (error) {
+                    logger.warn(`Failed to delete custom field values for service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`);
+                    // Continue with service deletion even if custom field cleanup fails
+                }
+            }
+
             await this.serviceRepo.deleteService(serviceId);
+            logger.info(`Successfully deleted service ${serviceId} (${service.name})`);
             res.json({success: true, message: 'Service deleted successfully'});
         } catch (error) {
             if (error instanceof z.ZodError) {

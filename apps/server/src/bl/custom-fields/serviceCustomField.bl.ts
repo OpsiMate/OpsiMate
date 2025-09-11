@@ -209,4 +209,17 @@ export class ServiceCustomFieldBL {
             throw error;
         }
     }
+
+    async deleteAllValuesForService(serviceId: number): Promise<number> {
+        try {
+            logger.info(`Deleting all custom field values for service ${serviceId}`);
+            const deletedCount = await this.customFieldValueRepository.deleteAllValuesForService(serviceId);
+            logger.info(`Deleted ${deletedCount} custom field values for service ${serviceId}`);
+
+            return deletedCount;
+        } catch (error) {
+            logger.error(`Error deleting custom field values for service ${serviceId}`, error);
+            throw error;
+        }
+    }
 }

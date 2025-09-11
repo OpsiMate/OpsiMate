@@ -10,7 +10,7 @@ import { FilterPanel, Filters } from "@/components/FilterPanel"
 import { SavedViewsManager } from "@/components/SavedViewsManager"
 import { DashboardLayout } from "../components/DashboardLayout"
 import { SavedView } from "@/types/SavedView"
-import { useServices, useAlerts, useStartService, useStopService, useDismissAlert, useSaveView, useDeleteView, useViews, useActiveView } from "@/hooks/queries"
+import { useServices, useAlerts, useStartService, useStopService, useDismissAlert, useSaveView, useDeleteView, useViews, useActiveView, useCustomFields } from "@/hooks/queries"
 import { Alert } from "@OpsiMate/shared"
 import { TVModeLauncher } from "@/components/TVModeLauncher"
 import { Button } from "@/components/ui/button"
@@ -27,7 +27,30 @@ const Dashboard = () => {
     const { data: alerts = [], error: alertsError } = useAlerts();
     const { data: savedViews = [], error: viewsError } = useViews();
     const { activeViewId, setActiveView, error: activeViewError } = useActiveView();
-    
+    const { data: customFields = [] } = useCustomFields();
+    // Update visibleColumns and columnOrder when customFields change
+    useEffect(() => {
+        if (customFields.length > 0) {
+            setVisibleColumns(prev => {
+                const updated = { ...prev };
+                customFields.forEach(field => {
+                    const key = `custom-${field.id}`;
+                    if (!(key in updated)) {
+                        updated[key] = false; // Default to hidden for new custom fields
+                    }
+                });
+                return updated;
+            });
+
+            setColumnOrder(prev => {
+                const customFieldKeys = customFields.map(field => `custom-${field.id}`);
+                // Add custom fields that aren't already in the order
+                const newFields = customFieldKeys.filter(key => !prev.includes(key));
+                return [...prev, ...newFields];
+            });
+        }
+    }, [customFields]);
+
     // Mutations
     const startServiceMutation = useStartService();
     const stopServiceMutation = useStopService();
@@ -539,6 +562,7 @@ const Dashboard = () => {
                                     loading={servicesLoading}
                                     columnOrder={columnOrder}
                                     onColumnOrderChange={setColumnOrder}
+                                    customFields={customFields}
                                 />
                             </div>
                             <div className="flex-shrink-0 p-2 border-t border-border">
@@ -572,6 +596,7 @@ const Dashboard = () => {
                 onOpenChange={setShowTableSettings}
                 visibleColumns={visibleColumns}
                 onColumnToggle={handleColumnToggle}
+                customFields={customFields}
             />
 
             <AddServiceModal
