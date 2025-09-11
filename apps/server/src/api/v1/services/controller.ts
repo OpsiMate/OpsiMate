@@ -1,17 +1,56 @@
 import {Request, Response} from "express";
 import {z} from "zod";
-import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType} from "@OpsiMate/shared";
+import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
 import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
 import {ServiceNotFound} from "../../../bl/services/ServiceNotFound";
 import {ProviderRepository} from "../../../dal/providerRepository";
 import {ServiceRepository} from "../../../dal/serviceRepository";
 import {checkSystemServiceStatus} from "../../../dal/sshClient";
+import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
 
 const logger = new Logger('api/v1/services/controller');
 
 export class ServiceController {
-    constructor(private providerRepo: ProviderRepository, private serviceRepo: ServiceRepository) {
+    constructor(
+        private providerRepo: ProviderRepository,
+        private serviceRepo: ServiceRepository,
+        private customFieldBL?: ServiceCustomFieldBL
+    ) {
+    }
+
+    private async enrichServicesWithCustomFields(services: (Service | ServiceWithProvider)[]): Promise<(Service | ServiceWithProvider)[]> {
+        if (!this.customFieldBL) {
+            return services;
+        }
+
+        try {
+            // Get custom field values for all services
+            const serviceIds = services.map(service => service.id);
+            const customFieldValues: { [serviceId: number]: { [customFieldId: number]: string } } = {};
+
+            for (const serviceId of serviceIds) {
+                const values = await this.customFieldBL.getCustomFieldValuesForService(serviceId);
+                const customFields: { [customFieldId: number]: string } = {};
+                values.forEach(value => {
+                    customFields[value.customFieldId] = value.value;
+                });
+                customFieldValues[serviceId] = customFields;
+            }
+
+            // Enrich services with custom fields
+            return services.map(service => ({
+                ...service,
+                customFields: customFieldValues[service.id] || {}
+            }));
+        } catch (error) {
+            logger.error('Error enriching services with custom fields:', error);
+            // Return services without custom fields if enrichment fails
+            return services.map(service => ({
+                ...service,
+                customFields: {}
+            }));
+        }
     }
 
     createServiceHandler = async (req: Request, res: Response) => {
@@ -52,9 +91,10 @@ export class ServiceController {
                 }
             }
 
+            const enrichedServices = await this.enrichServicesWithCustomFields([{...service, provider}]);
             res.status(201).json({
                 success: true,
-                data: {...service, provider},
+                data: enrichedServices[0],
                 message: 'Service created successfully'
             });
         } catch (error) {
@@ -74,7 +114,8 @@ export class ServiceController {
     getAllServicesHandler = async (_req: Request, res: Response) => {
         try {
             const services = await this.serviceRepo.getServicesWithProvider();
-            res.json({success: true, data: services});
+            const enrichedServices = await this.enrichServicesWithCustomFields(services);
+            res.json({success: true, data: enrichedServices});
         } catch (error) {
             logger.error('Error getting services:', error);
             res.status(500).json({success: false, error: 'Internal server error'});
@@ -88,7 +129,9 @@ export class ServiceController {
             if (!service) {
                 return res.status(404).json({success: false, error: 'Service not found'});
             }
-            res.json({success: true, data: service});
+
+            const enrichedServices = await this.enrichServicesWithCustomFields([service]);
+            res.json({success: true, data: enrichedServices[0]});
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
@@ -112,7 +155,12 @@ export class ServiceController {
             await this.serviceRepo.updateService(serviceId, validatedData);
             const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
 
-            res.json({success: true, data: updatedService, message: 'Service updated successfully'});
+            if (updatedService) {
+                const enrichedServices = await this.enrichServicesWithCustomFields([updatedService]);
+                res.json({success: true, data: enrichedServices[0], message: 'Service updated successfully'});
+            } else {
+                res.json({success: true, data: null, message: 'Service updated successfully'});
+            }
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
@@ -163,7 +211,12 @@ export class ServiceController {
             await this.serviceRepo.updateService(serviceId, {serviceStatus: 'running'});
 
             const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
-            res.json({success: true, data: updatedService, message: 'Service started successfully'});
+            if (updatedService) {
+                const enrichedServices = await this.enrichServicesWithCustomFields([updatedService]);
+                res.json({success: true, data: enrichedServices[0], message: 'Service started successfully'});
+            } else {
+                res.json({success: true, data: null, message: 'Service started successfully'});
+            }
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
@@ -194,7 +247,12 @@ export class ServiceController {
             await this.serviceRepo.updateService(serviceId, {serviceStatus: 'stopped'});
 
             const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
-            res.json({success: true, data: updatedService, message: 'Service stopped successfully'});
+            if (updatedService) {
+                const enrichedServices = await this.enrichServicesWithCustomFields([updatedService]);
+                res.json({success: true, data: enrichedServices[0], message: 'Service stopped successfully'});
+            } else {
+                res.json({success: true, data: null, message: 'Service stopped successfully'});
+            }
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
