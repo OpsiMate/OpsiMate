@@ -1,18 +1,45 @@
-import axios, { AxiosResponse } from 'axios';
+import request, { SuperTest, Test } from 'supertest';
+import Database from 'better-sqlite3';
+import { createApp } from '../src/app';
 import { Logger } from '@OpsiMate/shared';
 
-const BASE_URL = 'http://localhost:3001/api/v1';
 const logger = new Logger('test-custom-fields');
 
 async function testCustomFieldsController() {
+  let app: SuperTest<Test>;
+  let db: Database.Database;
+  let authToken: string;
+
+  // Setup database and app
+  db = new Database(':memory:');
+  const expressApp = await createApp(db);
+  app = request(expressApp) as unknown as SuperTest<Test>;
+
+  // Register and login to get auth token
+  logger.info('Setting up authentication...');
+  const registerRes = await app.post('/api/v1/users/register').send({
+    email: 'admin@example.com',
+    fullName: 'Admin User',
+    password: 'securepassword'
+  });
+
+  const loginRes = await app.post('/api/v1/users/login').send({
+    email: 'admin@example.com',
+    password: 'securepassword'
+  });
+
+  authToken = loginRes.body.token;
+  logger.info('✅ Authentication setup complete\n');
   try {
     logger.info('Testing Custom Fields Controller...\n');
 
     // Test 1: Get all custom fields (should be empty initially)
     logger.info('1. Getting all custom fields (initial state)...');
-    const initialFieldsResponse: AxiosResponse = await axios.get(`${BASE_URL}/custom-fields`);
-    logger.info('Initial custom fields: ' + JSON.stringify(initialFieldsResponse.data));
-    if (initialFieldsResponse.data.success && initialFieldsResponse.data.data.customFields.length === 0) {
+    const initialFieldsResponse = await app
+      .get('/api/v1/custom-fields')
+      .set('Authorization', `Bearer ${authToken}`);
+    logger.info('Initial custom fields: ' + JSON.stringify(initialFieldsResponse.body));
+    if (initialFieldsResponse.body.success && initialFieldsResponse.body.data.customFields.length === 0) {
       logger.info('✅ Initial custom fields retrieved successfully - database is empty\n');
     } else {
       logger.info('⚠️  Database contains existing custom fields\n');
@@ -23,15 +50,20 @@ async function testCustomFieldsController() {
     const fieldData = {
       name: 'Environment'
     };
-    const createFieldResponse: AxiosResponse = await axios.post(`${BASE_URL}/custom-fields`, fieldData);
-    logger.info('Custom field created: ' + JSON.stringify(createFieldResponse.data));
-    const fieldId = createFieldResponse.data.data.id;
+    const createFieldResponse = await app
+      .post('/api/v1/custom-fields')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send(fieldData);
+    logger.info('Custom field created: ' + JSON.stringify(createFieldResponse.body));
+    const fieldId = createFieldResponse.body.data.id;
     logger.info('✅ Custom field created successfully\n');
 
     // Verify field exists in database
     logger.info('2a. Verifying custom field exists in database...');
-    const verifyFieldResponse: AxiosResponse = await axios.get(`${BASE_URL}/custom-fields/${fieldId}`);
-    if (verifyFieldResponse.data.success && verifyFieldResponse.data.data.id === fieldId) {
+    const verifyFieldResponse = await app
+      .get(`/api/v1/custom-fields/${fieldId}`)
+      .set('Authorization', `Bearer ${authToken}`);
+    if (verifyFieldResponse.body.success && verifyFieldResponse.body.data.id === fieldId) {
       logger.info('✅ Custom field verified in database\n');
     } else {
       logger.info('❌ Custom field not found in database\n');

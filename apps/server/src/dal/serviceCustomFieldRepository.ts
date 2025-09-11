@@ -12,7 +12,7 @@ export class ServiceCustomFieldRepository {
     async createCustomField(data: Omit<ServiceCustomField, 'id' | 'createdAt'>): Promise<{ lastID: number }> {
         return await runAsync<{ lastID: number }>(() => {
             const stmt = this.db.prepare(
-                'INSERT INTO service_custom_field (name, created_at) VALUES (?, datetime("now"))'
+                'INSERT INTO service_custom_field (name, created_at) VALUES (?, datetime(\'now\'))'
             );
 
             const result = stmt.run(data.name);
