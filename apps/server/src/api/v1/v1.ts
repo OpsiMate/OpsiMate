@@ -19,6 +19,8 @@ import {AuditController} from './audit/controller';
 import {authenticateJWT} from '../../middleware/auth';
 import createSecretsRouter from "./secrets/router";
 import {SecretsController} from "./secrets/controller";
+import createCustomFieldsRouter from "./custom-fields/router";
+import {CustomFieldsController} from "./custom-fields/controller";
 
 
 export default function createV1Router(
@@ -31,6 +33,7 @@ export default function createV1Router(
     usersController: UsersController,
     auditController: AuditController, // optional for backward compatibility
     secretsController: SecretsController,
+    customFieldsController: CustomFieldsController,
 ) {
     const router = PromiseRouter();
 
@@ -47,7 +50,8 @@ export default function createV1Router(
     router.use('/tags', tagRouter(tagController));
     router.use('/integrations', integrationRouter(integrationController));
     router.use('/alerts', alertRouter(alertController));
-    router.use('/secrets', createSecretsRouter(secretsController))
+    router.use('/secrets', createSecretsRouter(secretsController));
+    router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
     // All other /users endpoints (except /register and /login) are protected
     router.use('/users', usersRouter(usersController));
     router.use('/audit', createAuditRouter(auditController));

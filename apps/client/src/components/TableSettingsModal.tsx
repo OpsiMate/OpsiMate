@@ -7,6 +7,7 @@ interface TableSettingsModalProps {
   onOpenChange: (open: boolean) => void
   visibleColumns: Record<string, boolean>
   onColumnToggle: (column: string) => void
+  customFields?: Array<{ id: number; name: string }>
 }
 
 const columnLabels = {
@@ -22,7 +23,8 @@ export function TableSettingsModal({
   open,
   onOpenChange,
   visibleColumns,
-  onColumnToggle
+  onColumnToggle,
+  customFields = []
 }: TableSettingsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -37,6 +39,7 @@ export function TableSettingsModal({
           </p>
 
           <div className="space-y-3">
+            {/* Native Columns */}
             {Object.entries(columnLabels).map(([key, label]) => (
               <div key={key} className="flex items-center space-x-2">
                 <Checkbox
@@ -52,6 +55,30 @@ export function TableSettingsModal({
                 </label>
               </div>
             ))}
+
+            {/* Custom Fields */}
+            {customFields.length > 0 && (
+              <>
+                <div className="border-t pt-3 mt-3">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-2">Custom Fields</h4>
+                </div>
+                {customFields.map((field) => (
+                  <div key={`custom-${field.id}`} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`custom-${field.id}`}
+                      checked={visibleColumns[`custom-${field.id}`] || false}
+                      onCheckedChange={() => onColumnToggle(`custom-${field.id}`)}
+                    />
+                    <label
+                      htmlFor={`custom-${field.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {field.name}
+                    </label>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

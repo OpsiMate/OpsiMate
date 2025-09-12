@@ -96,3 +96,17 @@ export type AuditLogRow = {
     details?: string;
 };
 
+export type ServiceCustomFieldRow = {
+    id: number;
+    name: string;
+    created_at: string;
+};
+
+export type ServiceCustomFieldValueRow = {
+    service_id: number;
+    custom_field_id: number;
+    value: string;
+    created_at: string;
+    updated_at: string;
+};
+

@@ -84,6 +84,7 @@ export interface Service {
     // todo - this be in different interface
     containerDetails?: ContainerDetails;
     tags?: Tag[];
+    customFields?: Record<number, string>; // customFieldId -> value
 }
 
 export interface ServiceWithProvider extends Service {
@@ -151,4 +152,18 @@ export type SecretMetadata = {
     name: string;
     fileName: string;
     type: SecretType;
+}
+
+export interface ServiceCustomField {
+    id: number;
+    name: string;
+    createdAt: string;
+}
+
+export interface ServiceCustomFieldValue {
+    serviceId: number;
+    customFieldId: number;
+    value: string;
+    createdAt: string;
+    updatedAt: string;
 }

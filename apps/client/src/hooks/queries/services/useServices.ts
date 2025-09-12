@@ -21,7 +21,8 @@ export const useServices = () => {
         createdAt: service.createdAt,
         provider: service.provider,
         containerDetails: service.containerDetails,
-        tags: service.tags || []
+        tags: service.tags || [],
+        customFields: service.customFields || {}
       }));
       
       return transformedServices;

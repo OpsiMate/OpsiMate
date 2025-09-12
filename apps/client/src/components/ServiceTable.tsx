@@ -53,6 +53,7 @@ export interface Service {
   tags?: Tag[]
   alertsCount?: number
   serviceAlerts?: Alert[]
+  customFields?: Record<number, string>
 }
 
 type SortField = 'name' | 'serviceIP' | 'serviceStatus' | 'provider' | 'providerType' | 'containerDetails' | 'tags' | 'alerts' | 'createdAt'
@@ -181,6 +182,7 @@ interface ServiceTableProps {
   loading?: boolean
   columnOrder?: string[]
   onColumnOrderChange?: (newOrder: string[]) => void
+  customFields?: Array<{ id: number; name: string }>
 }
 
 export function ServiceTable({
@@ -193,7 +195,8 @@ export function ServiceTable({
   onSearchChange,
   loading,
   columnOrder: externalColumnOrder,
-  onColumnOrderChange
+  onColumnOrderChange,
+  customFields = []
 }: ServiceTableProps) {
   const [internalSearchTerm, setInternalSearchTerm] = useState("")
   const [sortConfig, setSortConfig] = useState<{ field: SortField; direction: SortDirection } | null>(null)
@@ -492,7 +495,12 @@ export function ServiceTable({
                       providerType: 'Provider Type',
                       containerDetails: 'Container Details',
                       tags: 'Tags',
-                      alerts: 'Alerts'
+                      alerts: 'Alerts',
+                      // Add custom fields to labels
+                      ...customFields.reduce((acc, field) => {
+                        acc[`custom-${field.id}`] = field.name;
+                        return acc;
+                      }, {} as Record<string, string>)
                     };
                     
                     return (
@@ -611,6 +619,16 @@ export function ServiceTable({
                           </TableCell>
                         );
                       default:
+                        // Handle custom fields
+                        if (columnId.startsWith('custom-')) {
+                          const fieldId = parseInt(columnId.replace('custom-', ''));
+                          const fieldValue = service.customFields?.[fieldId] || '';
+                          return (
+                            <TableCell key={columnId} className="py-1 px-2 text-sm">
+                              {fieldValue || <span className="text-muted-foreground">-</span>}
+                            </TableCell>
+                          );
+                        }
                         return null;
                     }
                   })}

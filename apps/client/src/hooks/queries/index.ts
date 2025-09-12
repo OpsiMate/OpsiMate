@@ -7,6 +7,7 @@ export * from './integrations';
 export * from './views';
 export * from './users';
 export * from './audit';
+export * from './custom-fields';
 
 // Export query keys
 export { queryKeys } from './queryKeys'; 

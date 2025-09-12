@@ -23,6 +23,9 @@ import { AlertsSection } from "./AlertsSection";
 import { IntegrationDashboardDropdown } from "./IntegrationDashboardDropdown";
 import { Service } from "./ServiceTable";
 import { TagSelector } from "./TagSelector";
+import { EditableCustomField } from "./EditableCustomField";
+import { useCustomFields, useUpsertCustomFieldValue } from "../hooks/queries/custom-fields";
+import { ServiceCustomField } from "@OpsiMate/shared";
 
 interface RightSidebarProps {
   service: Service | null;
@@ -40,6 +43,37 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serviceTags, setServiceTags] = useState<Tag[]>(service?.tags || []);
+
+  // Custom fields hooks
+  const { data: customFields } = useCustomFields();
+  const upsertCustomFieldValue = useUpsertCustomFieldValue();
+
+  // Create mapping from field ID to field name for display
+  const customFieldMap = useMemo(() => {
+    const map = new Map<number, string>();
+    if (customFields) {
+      customFields.forEach(field => {
+        map.set(field.id, field.name);
+      });
+    }
+    return map;
+  }, [customFields]);
+
+  // Handle custom field value changes
+  const handleCustomFieldValueChange = async (fieldId: number, value: string) => {
+    if (!service) return;
+
+    try {
+      await upsertCustomFieldValue.mutateAsync({
+        serviceId: parseInt(service.id),
+        customFieldId: fieldId,
+        value: value
+      });
+    } catch (error) {
+      console.error('Failed to update custom field value:', error);
+      throw error; // Re-throw to let EditableCustomField handle the error
+    }
+  };
 
   // Collapsible section states - Service Information expanded by default
   const [sectionsOpen, setSectionsOpen] = useState({
@@ -340,6 +374,25 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
                 <div className="font-medium text-foreground text-sm">{new Date(service.createdAt).toLocaleDateString()}</div>
               </div>
             </div>
+
+            {/* Custom Fields - Integrated into main grid */}
+            {customFields && customFields.map(field => {
+              const currentValue = service.customFields?.[field.id] || '';
+
+              return (
+                <div key={field.id}>
+                  <div className="text-muted-foreground text-xs mb-1">{field.name}</div>
+                  <EditableCustomField
+                    fieldId={field.id}
+                    fieldName={field.name}
+                    value={currentValue}
+                    serviceId={parseInt(service.id)}
+                    onValueChange={handleCustomFieldValueChange}
+                    className="w-full"
+                  />
+                </div>
+              );
+            })}
           </CollapsibleSection>
 
           {/* Alerts Section - Smart visibility */}
