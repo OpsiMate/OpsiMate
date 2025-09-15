@@ -1,7 +1,7 @@
 {
   "extends": "@OpsiMate/typescript-config/node.json",
   "compilerOptions": {
-    "rootDir": "./"
+    "outDir": "./dist"
   },
   "include": [
     "src/**/*",

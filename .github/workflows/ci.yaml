@@ -24,6 +24,9 @@ jobs:
       - name: Prepare pnpm
         run: corepack prepare pnpm@9.12.0 --activate
 
+      - name: Install TypeScript globally
+        run: npm install -g typescript@^5.5.3
+
       - name: Cache pnpm store
         uses: actions/cache@v3
         with:
@@ -35,11 +38,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify TypeScript configuration
+        run: |
+          echo "Checking TypeScript configuration..."
+          pnpm --filter @OpsiMate/typescript-config --version || echo "typescript-config package not found"
+          echo "TypeScript version: $(npx tsc --version)"
+
       - name: Build project
         run: pnpm run build
 
       - name: Lint apps/server
         run: pnpm --filter @OpsiMate/server lint --max-warnings=0
+
+      - name: Lint apps/client
+        run: pnpm --filter @OpsiMate/client lint --max-warnings=0
 
       - name: Lint packages/shared
         run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
