@@ -189,6 +189,9 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      '@OpsiMate/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
       '@eslint/js':
         specifier: ^9.9.0
         version: 9.33.0
@@ -289,6 +292,9 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      '@OpsiMate/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
       '@babel/preset-env':
         specifier: ^7.28.0
         version: 7.28.3(@babel/core@7.28.3)
@@ -353,12 +359,21 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      '@OpsiMate/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^22.5.5
         version: 22.17.2
       eslint:
         specifier: ^9.9.0
         version: 9.33.0(jiti@1.21.7)
+      typescript:
+        specifier: ^5.5.3
+        version: 5.9.2
+
+  packages/typescript-config:
+    devDependencies:
       typescript:
         specifier: ^5.5.3
         version: 5.9.2
