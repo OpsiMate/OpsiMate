@@ -24,8 +24,8 @@ function getKeyPath(filename: string) {
     return filePath;
 }
 
-const createClient = (_provider: Provider): ObjectCoreV1Api => {
-
+const createClient = async (_provider: Provider): Promise<ObjectCoreV1Api> => {
+    const k8s = await import('@kubernetes/client-node');
     const encryptedKubeConfig = fs.readFileSync(getKeyPath(_provider.privateKeyFilename!), 'utf-8');
     const decryptedKubeConfig = decryptPassword(encryptedKubeConfig);
 
@@ -37,7 +37,7 @@ const createClient = (_provider: Provider): ObjectCoreV1Api => {
 }
 
 const getK8RLogs = async (_provider: Provider, serviceName: string, namespace: string) => {
-    const k8sApi = createClient(_provider)
+    const k8sApi = await createClient(_provider)
     return getServicePodLogs(k8sApi, serviceName, namespace)
 }
 
@@ -76,7 +76,7 @@ async function getServicePodLogs(coreV1: ObjectCoreV1Api, serviceName: string, n
 }
 
 const restartK8RServicePods = async (provider: Provider, serviceName: string) => {
-    const k8sApi = createClient(provider)
+    const k8sApi = await createClient(provider)
 
     // Step 1: Get the service
     const serviceResp = await k8sApi.readNamespacedService({name: serviceName, namespace: 'default'});
@@ -104,7 +104,7 @@ const restartK8RServicePods = async (provider: Provider, serviceName: string) =>
 }
 
 const getK8RPods = async (_provider: Provider, service: Service): Promise<DiscoveredPod[]> => {
-    const k8sApi = createClient(_provider)
+    const k8sApi = await createClient(_provider)
     // Get the Service
     const serviceResp = await k8sApi.readNamespacedService({
         name: service.name,
@@ -136,7 +136,7 @@ const getK8RPods = async (_provider: Provider, service: Service): Promise<Discov
 }
 
 const deleteK8RPod = async (_provider: Provider, podName: string, namespace: string): Promise<void> => {
-    const k8sApi = createClient(_provider)
+    const k8sApi = await createClient(_provider)
 
     return k8sApi.deleteNamespacedPod(
         {
@@ -155,7 +155,7 @@ const deleteK8RPod = async (_provider: Provider, podName: string, namespace: str
 
 
 const getK8SServices = async (_provider: Provider): Promise<DiscoveredService[]> => {
-    const k8sApi = createClient(_provider)
+    const k8sApi = await createClient(_provider)
     const servicesResp = await k8sApi.listServiceForAllNamespaces();
 
     const allResponses = servicesResp.items
