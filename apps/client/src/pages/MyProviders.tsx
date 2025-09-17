@@ -122,11 +122,11 @@ export const getProviderTypeName = (type: Provider["providerType"]): string => {
 const getProviderCategory = (type: Provider["providerType"]): string => {
     switch (type) {
         case "VM":
-            return "cloud";
+            return "server";
         case "K8S":
             return "kubernetes";
         default:
-            return "server";
+            return "cloud";
     }
 };
 
