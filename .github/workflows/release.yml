@@ -81,12 +81,9 @@ jobs:
           -t opsimate/opsimate:latest \
           --push .
 
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
+    - name: Update Release Draft
+      uses: release-drafter/release-drafter@v5
+      with:
+        config-name: release-drafter.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.version.outputs.tag }}
-        release_name: Release v${{ steps.version.outputs.version }}
-        draft: false
-        prerelease: false
