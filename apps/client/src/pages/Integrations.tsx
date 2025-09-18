@@ -303,6 +303,10 @@ export default function Integrations() {
     );
   };
 
+  const handleIntegrationButtonClick = () =>{
+    window.open("https://github.com/OpsiMate/OpsiMate/issues","_blank");
+  }
+
   return (
     <>
       <DashboardLayout>
@@ -312,9 +316,9 @@ export default function Integrations() {
             <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
             <p className="text-muted-foreground mt-1">Connect your favorite tools and services</p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleIntegrationButtonClick}>
             <Plus className="h-4 w-4" />
-            <span>Request Integration</span>
+            <span>Request Integration via GitHub</span>
           </Button>
         </div>
 
