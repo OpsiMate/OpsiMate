@@ -1,0 +1,31 @@
+name-template: 'v$NEXT_PATCH_VERSION 🚀'
+tag-template: 'v$NEXT_PATCH_VERSION'
+template: |
+  ## What's Changed.
+
+  $CHANGES
+
+  Thanks to our contributors: $CONTRIBUTORS
+categories:
+  - title: 'New Features 🚀'
+    labels:
+      - enhancement
+      - feature
+      - UI
+      - Server
+
+  - title: 'Bug Fixes 🐛'
+    labels:
+      - bug
+      - fix
+      - DevOps
+      - Test
+
+  - title: 'Documentation 📚'
+    labels:
+      - documentation
+      - docs
+
+exclude-labels:
+  - ignore-for-release
+  - do-not-merge

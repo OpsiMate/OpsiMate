@@ -1,0 +1,52 @@
+name: Auto Label Issues
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply Labels to Issues by Keywords
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue?.title) return;
+
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+
+            // Mapping labels to keywords - use whole word/phrase matching
+            const keywordMapping = {
+              'devops': ['docker', 'ci', 'infrastructure', 'pipeline', 'devops', 'kubernetes'],
+              'server': ['server','backend','api','apis','services','route','routing'],
+              'bug': ['not working', 'error', 'issue', 'failure', 'crash', 'fix', 'bug' ],
+              'enhancement': ['feature request', 'improve', 'suggestion', 'enhancement'],
+              'documentation': ['documentations','documentation','docs','doc', 'readme', 'guide', 'tutorial', 'tutorials'],
+              'question': ['clarification', 'help', 'how to', 'guidance'],
+            };
+
+            function containsKeyword(text, keywords) {
+              return keywords.some(kw => new RegExp(`\\b${kw}\\b`).test(text));
+            }
+
+            const labelsToAdd = Object.entries(keywordMapping)
+              .filter(([label, keywords]) =>
+                containsKeyword(title, keywords) || containsKeyword(body, keywords))
+              .map(([label]) => label);
+
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd,
+              });
+            }

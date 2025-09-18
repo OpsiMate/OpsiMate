@@ -1,0 +1,27 @@
+DevOps:
+  - 'devops*'
+  - 'infrastructure/**'
+  - 'ci/**'
+  - 'docker/**'
+  - '**/.github/**'
+
+documentation:
+  - 'docs/**'
+  - '**/*.md'
+  - 'README.md'
+  - 'documentation/**'
+
+Server:
+  - '**/server/**'
+
+UI:
+  - '**/client/**'
+  - '**/*.css'
+  - '**/*.scss'
+  - '**/*.html'
+
+Test:
+  - '**/*.test.*'
+  - '**/tests/**'
+  - '**/__tests__/**'
+  - '**/test/**'
