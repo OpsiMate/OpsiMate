@@ -41,6 +41,9 @@ jobs:
       - name: Lint apps/server
         run: pnpm --filter @OpsiMate/server lint --max-warnings=0
 
+      - name: Lint apps/client
+        run: pnpm --filter @OpsiMate/client lint --max-warnings=0
+
       - name: Lint packages/shared
         run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 

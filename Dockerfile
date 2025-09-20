@@ -12,6 +12,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json ./apps/server/
 COPY apps/client/package.json ./apps/client/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
 
 # Install dependencies with cleanup in same layer
 RUN pnpm install --frozen-lockfile && \
@@ -50,6 +51,7 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/apps/server/package.json ./apps/server/
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/packages/typescript-config/ ./packages/typescript-config/
 
 # Install production dependencies using the actual package.json files
 RUN npm install -g pnpm && \
