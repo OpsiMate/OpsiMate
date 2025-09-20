@@ -839,7 +839,7 @@ export default function Integrations() {
 
                     <div>
                       <h4 className="text-sm font-medium mb-3">Documentation</h4>
-                      <Button variant="outline" className="w-full justify-start gap-2">
+                      <Button variant="outline" className="w-full justify-start gap-2" onClick={() => window.open(selectedIntegration.documentationUrl, '_blank')}>
                         <ExternalLink className="h-4 w-4" />
                         View {selectedIntegration.name} Documentation
                       </Button>
