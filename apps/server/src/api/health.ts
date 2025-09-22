@@ -10,4 +10,12 @@ function healthCheck(req: Request, res: Response) {
 
 router.get('/health', healthCheck);
 
+router.get('/', (_req: Request, res: Response) => {
+    res.json({
+        message: 'Welcome to Opsimate server',
+        status: 'Server is up and running',
+        timestamp: new Date().toISOString()
+    });
+});
+
 export default router;
