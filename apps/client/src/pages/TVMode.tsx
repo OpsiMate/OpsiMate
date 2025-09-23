@@ -506,7 +506,7 @@ const TVMode = ({
   }, [])
 
   const getStatusIcon = (status: Service['serviceStatus']) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'running':
         return <CheckCircle className="h-6 w-6 text-green-500" />
       case 'stopped':
@@ -521,7 +521,7 @@ const TVMode = ({
   }
 
   const getStatusColor = (status: Service['serviceStatus']) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'running':
         return 'border-green-500 bg-green-50 dark:bg-green-950'
       case 'stopped':
