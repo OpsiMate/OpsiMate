@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  opsimate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opsimate
+    ports:
+      - "3001:3001"  # Backend API port
+      - "8080:8080"  # Frontend UI port
+    volumes:
+      - ./data/database:/app/data/database
+      - ./data/private-keys:/app/data/private-keys
+      - ./config.yml:/app/config/config.yml
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

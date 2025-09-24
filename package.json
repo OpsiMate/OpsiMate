@@ -10,7 +10,8 @@
     "lint": "turbo run lint",
     "lint-fix": "turbo run lint-fix",
     "clean": "turbo run clean",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "start:docker": "./start.sh"
   },
   "devDependencies": {
     "@turbo/gen": "^1.12.4",

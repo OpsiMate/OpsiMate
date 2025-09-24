@@ -13,6 +13,14 @@ dist-ssr
 *.local
 .env
 
+#Changes made for docker-compose to ignore data and config.yaml start here
+
+data
+config.yml
+
+#Changes made for docker-compose end here
+
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
