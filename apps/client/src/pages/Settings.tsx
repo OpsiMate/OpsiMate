@@ -15,7 +15,7 @@ import {DashboardLayout} from '../components/DashboardLayout';
 import {AddUserModal} from '../components/AddUserModal';
 import {auditApi} from '../lib/api';
 import {FileDropzone} from "@/components/ui/file-dropzone";
-import {getSecretsFromServer, createSecretOnServer, deleteSecretOnServer} from "@/lib/sslKeys";
+import {getSecretsFromServer, createSecretOnServer, deleteSecretOnServer, updateSecretOnServer } from "@/lib/sslKeys";
 import {SecretMetadata, SecretType} from "@OpsiMate/shared";
 import {
     Dialog,
@@ -842,7 +842,8 @@ const EditSecretDialog: React.FC<{
     onSave: (updatedSecret: SecretMetadata) => void;
 }> = ({ secret, open, onOpenChange, onSave }) => {
     const [displayName, setDisplayName] = useState<string>("");
-    const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
+    // CHANGE THIS LINE - use SecretType enum instead of string literals
+    const [secretType, setSecretType] = useState<SecretType>(SecretType.SSH);
     const [fileName, setFileName] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
@@ -850,16 +851,18 @@ const EditSecretDialog: React.FC<{
     const [uploading, setUploading] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     
-    // Store original values to detect changes
+    const { toast } = useToast();
+    
+    // Store original values to detect changes - UPDATED TYPES
     const [originalValues, setOriginalValues] = useState<{
         name: string;
-        type: 'ssh' | 'kubeconfig';
+        type: SecretType;  // Changed from string literal to SecretType
     } | null>(null);
 
     useEffect(() => {
         if (secret && open) {
             setDisplayName(secret.name || "");
-            setSecretType(secret.type || 'ssh');
+            setSecretType(secret.type || SecretType.SSH); // Use enum value
             setFileName(secret.fileName || null);
             setFileChanged(false);
             setSelectedFile(null);
@@ -869,7 +872,7 @@ const EditSecretDialog: React.FC<{
             // Store original values
             setOriginalValues({
                 name: secret.name || "",
-                type: secret.type || 'ssh'
+                type: secret.type || SecretType.SSH  // Use enum value
             });
         }
     }, [secret, open]);
@@ -887,7 +890,6 @@ const EditSecretDialog: React.FC<{
     }, [displayName, secretType, fileChanged, originalValues]);
 
     const handleFile = async (file: File) => {
-        // todo: implement file validation
         setIsFileValid(true);
         setSelectedFile(file);
         setFileName(file.name);
@@ -901,10 +903,9 @@ const EditSecretDialog: React.FC<{
         }
         
         if (!newOpen) {
-            // Reset form when closing
             setFileName(null);
             setDisplayName("");
-            setSecretType('ssh');
+            setSecretType(SecretType.SSH); // Use enum value
             setSelectedFile(null);
             setIsFileValid(null);
             setFileChanged(false);
@@ -920,15 +921,73 @@ const EditSecretDialog: React.FC<{
 
         setUploading(true);
         try {
-            const updatedSecret: SecretMetadata = {
-                ...secret,
-                name: displayName.trim() || secret.name,
-                type: secretType,
-            };
+            // Prepare update data - UPDATED TYPES
+            const updateData: {
+                displayName?: string;
+                secretType?: SecretType;  // Changed from string literal to SecretType
+                file?: File;
+            } = {};
 
-            onSave(updatedSecret);
+            // Only include displayName if it changed
+            if (displayName.trim() !== originalValues?.name) {
+                updateData.displayName = displayName.trim();
+            }
+
+            // Only include secretType if it changed
+            if (secretType !== originalValues?.type) {
+                updateData.secretType = secretType;
+            }
+
+            // Only include file if a new one was selected
+            if (selectedFile) {
+                updateData.file = selectedFile;
+            }
+
+            // If no changes were made, just close the dialog
+            if (Object.keys(updateData).length === 0) {
+                toast({
+                    title: "No Changes",
+                    description: "No changes were made to the secret.",
+                });
+                handleDialogClose(false);
+                return;
+            }
+
+            // Make API call to update the secret
+            const result = await updateSecretOnServer(secret.id, updateData);
+
+            if (result.success) {
+                toast({
+                    title: "Success",
+                    description: "Secret updated successfully",
+                });
+
+                // Create updated secret object for local state
+                const updatedSecret: SecretMetadata = {
+                    ...secret,
+                    name: updateData.displayName || secret.name,
+                    type: updateData.secretType || secret.type,  // This should now match SecretType
+                };
+
+                // Update local state
+                onSave(updatedSecret);
+                
+                // Close dialog
+                handleDialogClose(false);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Failed to update secret",
+                    variant: "destructive",
+                });
+            }
         } catch (error) {
             console.error('Error updating secret:', error);
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "An unexpected error occurred",
+                variant: "destructive",
+            });
         } finally {
             setUploading(false);
         }
@@ -966,15 +1025,15 @@ const EditSecretDialog: React.FC<{
                         <Label htmlFor="edit-secret-type">Type</Label>
                         <Select 
                             value={secretType}
-                            onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}
+                            onValueChange={(value: SecretType) => setSecretType(value)}  // Updated type
                             disabled={uploading}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select type"/>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ssh">SSH Key</SelectItem>
-                                <SelectItem value="kubeconfig">Kubeconfig</SelectItem>
+                                <SelectItem value={SecretType.SSH}>SSH Key</SelectItem>
+                                <SelectItem value={SecretType.KUBECONFIG}>Kubeconfig</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -588,6 +588,68 @@ export const secretsApi = {
       };
     }
   },
+
+    updateSecret: async (secretId: number, updateData: {
+    displayName?: string;
+    secretType?: SecretType;
+    file?: File;
+  }) => {
+    try {
+      const formData = new FormData();
+      
+      if (updateData.displayName) {
+        formData.append('displayName', updateData.displayName);
+      }
+      
+      if (updateData.secretType) {
+        formData.append('secretType', updateData.secretType);
+      }
+      
+      if (updateData.file) {
+        formData.append('secret_file', updateData.file);
+      }
+
+      const url = `${API_BASE_URL}/secrets/${secretId}`;
+      const token = localStorage.getItem('jwt');
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API Error (${response.status}):`, errorText);
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          return {
+            success: false,
+            ...errorJson,
+          };
+        } catch {
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${errorText || 'Unknown error'}`,
+          };
+        }
+      }
+
+      const result = await response.json();
+      return result as ApiResponse<any>;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`API Error (PATCH /secrets/${secretId}):`, errorMessage, error);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
 };
 
 export { apiRequest };

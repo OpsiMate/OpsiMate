@@ -43,6 +43,59 @@ export class SecretsMetadataBL {
         }
     }
 
+        async updateSecretMetadata(id: number, data: Partial<Omit<SecretMetadata, 'id'>>): Promise<boolean> {
+        try {
+            logger.info(`Updating secret with id ${id}, data: ${JSON.stringify(data)}`);
+
+            // Check if secret exists
+            const secret = await this.secretsMetadataRepository.getSecretById(id);
+            if (!secret) {
+                logger.warn(`Secret with id ${id} not found`);
+                return false;
+            }
+
+            // If fileName is being updated, verify the new file exists
+            if (data.fileName && data.fileName !== secret.fileName) {
+                const fs = await import('fs');
+                const oldPath = path.resolve(getSecurityConfig().private_keys_path, secret.fileName);
+                const newPath = path.resolve(getSecurityConfig().private_keys_path, data.fileName);
+
+                // Check if new file exists
+                if (!fs.existsSync(newPath)) {
+                    throw new Error(`New secret file not found: ${data.fileName}`);
+                }
+
+                // If the filename is changing, we should verify the old file exists before trying to delete it
+                if (fs.existsSync(oldPath)) {
+                    // Delete the old file if it exists
+                    try {
+                        fs.unlinkSync(oldPath);
+                        logger.info(`Successfully deleted old secret file: ${oldPath}`);
+                    } catch (fileError) {
+                        const error = fileError as Error;
+                        logger.error(`Error deleting old secret file: ${oldPath}`, error);
+                        throw new Error(`Failed to remove old secret file: ${error.message}`);
+                    }
+                }
+            }
+
+            // Update the secret metadata in the database
+            const updated = await this.secretsMetadataRepository.updateSecret(id, data);
+
+            if (!updated) {
+                logger.warn(`Failed to update secret with id ${id} in database`);
+                return false;
+            }
+
+            logger.info(`Successfully updated secret with id ${id}`);
+            return true;
+        } catch (e) {
+            logger.error(`Error occurred updating secret with id ${id}`, e);
+            throw e;
+        }
+    }
+
+
     async deleteSecret(id: number): Promise<boolean> {
         try {
             logger.info(`Deleting secret with id ${id}`);
