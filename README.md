@@ -229,7 +229,7 @@ We welcome contributions to OpsiMate! Here's how you can help:
 This project wouldn’t be what it is today without the incredible people who have shared their time, knowledge, and creativity.  
 A huge thank you to everyone who has helped and continues to help make OpsiMate better every day! 🙌
 
-<a href="https://github.com/OpsiMate/OpsiMate/graphs/contributors">
+ <a href="https://github.com/OpsiMate/OpsiMate/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=OpsiMate/OpsiMate" />
 </a>
 

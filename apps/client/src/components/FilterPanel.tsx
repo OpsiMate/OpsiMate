@@ -73,7 +73,7 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
     services.forEach(service => {
       // Service status
       if (service.serviceStatus) {
-        const value = String(service.serviceStatus);
+        const value = String(service.serviceStatus.toLowerCase());
         newFacets.serviceStatus[value] = (newFacets.serviceStatus[value] || 0) + 1;
       }
 

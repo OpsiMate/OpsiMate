@@ -402,11 +402,7 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
                     </a>
                 </div>
             </FieldWrapper>
-            <FieldWrapper error={errors.context}>
-                <Label htmlFor="context">Context</Label>
-                <Controller name="context" control={control}
-                            render={({field}) => <Input id="context" placeholder="my-cluster-context" {...field} />}/>
-            </FieldWrapper>
+            
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
                 <Button type="submit">Add Provider</Button>
