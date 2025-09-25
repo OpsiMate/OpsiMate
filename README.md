@@ -100,7 +100,7 @@ Run OpsiMate locally quickly with Docker and a single command — no cloning or 
 ### Run OpsiMate with one command
 Open your terminal and run:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/run.sh | sh
+curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 **Access the application:**
    - **Backend:** http://localhost:3001
