@@ -2,13 +2,11 @@ version: "3.8"
 
 services:
   opsimate:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: opsimate/opsimate:latest
     container_name: opsimate
     ports:
-      - "3001:3001"  # Backend API port
-      - "8080:8080"  # Frontend UI port
+      - "3001:3001"        # Backend API port
+      - "8080:8080"        # Frontend UI port
     volumes:
       - ./data/database:/app/data/database
       - ./data/private-keys:/app/data/private-keys

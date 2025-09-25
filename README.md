@@ -95,6 +95,22 @@
 
 ### Docker Deployment
 
+Run OpsiMate locally quickly with Docker and a single command — no cloning or building required.
+
+### Run OpsiMate with one command
+Open your terminal and run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/run.sh | sh
+```
+**Access the application:**
+   - **Backend:** http://localhost:3001
+   - **Client:** http://localhost:8080
+
+
+## Manual Docker Run (Optional)
+
+Alternatively, run the container manually:
+
 #### Quick Start with Docker
 
 ```bash
@@ -108,6 +124,7 @@ docker run -d \
 **Access the application:**
    - **Backend:** http://localhost:3001
    - **Client:** http://localhost:8080
+
 
 ### Volume Mounts (optional)
 
