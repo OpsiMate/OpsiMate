@@ -78,7 +78,7 @@ export class SecretsController {
         }
     };
 
-        updateSecret = async (req: Request, res: Response) => {
+        updateSecretOnServer = async (req: Request, res: Response) => {
     try {
         const secretId = parseInt(req.params.id);
         if (isNaN(secretId)) {

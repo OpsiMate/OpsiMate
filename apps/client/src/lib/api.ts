@@ -1,5 +1,6 @@
 import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType } from '@OpsiMate/shared';
 import { SavedView } from '@/types/SavedView';
+import { updateSecretOnServer } from './sslKeys';
 
 const { protocol, hostname } = window.location;
 
@@ -589,7 +590,7 @@ export const secretsApi = {
     }
   },
 
-    updateSecret: async (secretId: number, updateData: {
+    updateSecretOnServer : async (secretId: number, updateData: {
     displayName?: string;
     secretType?: SecretType;
     file?: File;

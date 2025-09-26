@@ -78,7 +78,7 @@ export class SecretsMetadataRepository {
             `).run();
         });
     }
-    async updateSecret(id: number, data: Partial<{
+    async updateSecretOnserver(id: number, data: Partial<{
     name: string;
     type: SecretType;
     fileName: string;

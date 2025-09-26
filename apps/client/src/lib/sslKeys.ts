@@ -1,5 +1,6 @@
 import { secretsApi } from './api';
 import { SecretMetadata,SecretType } from '@OpsiMate/shared';
+import { API_BASE_URL } from './api';
 // Server-based secrets functions
 export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
   try {
@@ -40,6 +41,7 @@ export async function deleteSecretOnServer(secretId: number): Promise<{ success:
   }
 }
 
+
 export const updateSecretOnServer = async (secretId: number, updateData: {
     displayName?: string;
     secretType?: SecretType;  // Changed from string literal to SecretType enum
@@ -53,7 +55,7 @@ export const updateSecretOnServer = async (secretId: number, updateData: {
         }
         
         if (updateData.secretType) {
-            formData.append('secretType', updateData.secretType);  
+            formData.append('secretType', updateData.secretType);
         }
         
         if (updateData.file) {
@@ -62,8 +64,7 @@ export const updateSecretOnServer = async (secretId: number, updateData: {
 
         // Get JWT token from localStorage (same as your other API calls)
         const token = localStorage.getItem('jwt');
-
-        const response = await fetch(`/api/v1/secrets/${secretId}`, {
+        const response = await fetch(`${API_BASE_URL}/secrets/${secretId}`, {
             method: 'PATCH',
             headers: {
                 // Add Authorization header if token exists

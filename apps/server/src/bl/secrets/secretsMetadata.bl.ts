@@ -80,7 +80,7 @@ export class SecretsMetadataBL {
             }
 
             // Update the secret metadata in the database
-            const updated = await this.secretsMetadataRepository.updateSecret(id, data);
+            const updated = await this.secretsMetadataRepository.updateSecretOnserver(id, data);
 
             if (!updated) {
                 logger.warn(`Failed to update secret with id ${id} in database`);

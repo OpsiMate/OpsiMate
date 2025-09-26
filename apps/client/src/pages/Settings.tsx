@@ -897,10 +897,7 @@ const EditSecretDialog: React.FC<{
     };
 
     const handleDialogClose = (newOpen: boolean) => {
-        if (!newOpen && hasUnsavedChanges) {
-            const confirmClose = window.confirm('You have unsaved changes. Are you sure you want to close?');
-            if (!confirmClose) return;
-        }
+    
         
         if (!newOpen) {
             setFileName(null);
