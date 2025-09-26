@@ -1,9 +1,14 @@
 import * as k8s from '@kubernetes/client-node';
 import { DiscoveredPod, DiscoveredService, Logger, Provider, Service } from "@OpsiMate/shared";
-import path from "path";
-import fs from "fs";
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 import { getSecurityConfig } from '../config/config';
 import { decryptPassword } from "../utils/encryption";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function getPrivateKeysDir(): string {
     const securityConfig = getSecurityConfig();
@@ -40,8 +45,7 @@ const getK8RLogs = async (_provider: Provider, serviceName: string, namespace: s
 
 async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, namespace: string): Promise<string> {
     // Get the Service
-    const serviceResp = await coreV1.readNamespacedService(serviceName, namespace);
-    const service = serviceResp.body;
+    const service = await coreV1.readNamespacedService({ name: serviceName, namespace });
 
     const selector = service.spec?.selector;
     if (!selector || Object.keys(selector).length === 0) {
@@ -53,8 +57,8 @@ async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, nam
         .join(',');
 
     // Get the matching Pods
-    const podsResp = await coreV1.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector);
-    const pods = podsResp.body.items;
+    const podsList = await coreV1.listNamespacedPod({ namespace, labelSelector });
+    const pods: k8s.V1Pod[] = podsList.items ?? [];
 
     if (pods.length === 0) {
         return "No logs available for service.";
@@ -65,8 +69,8 @@ async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, nam
         const podName = pod.metadata?.name;
         if (!podName) continue;
 
-        const logResp = await coreV1.readNamespacedPodLog(podName, namespace);
-        logs.push(logResp.body);
+        const logText = await coreV1.readNamespacedPodLog({ name: podName, namespace });
+        logs.push(logText || "");
     }
 
     return logs.join("\n");
@@ -75,22 +79,22 @@ async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, nam
 const restartK8RServicePods = async (provider: Provider, serviceName: string) => {
     const k8sApi = createClient(provider);
 
-    const serviceResp = await k8sApi.readNamespacedService(serviceName, 'default');
-    const selector = serviceResp.body.spec?.selector;
+    const service = await k8sApi.readNamespacedService({ name: serviceName, namespace: 'default' });
+    const selector = service.spec?.selector;
 
     if (!selector || Object.keys(selector).length === 0) {
         throw new Error(`Service "${serviceName}" has no selector.`);
     }
 
     const labelSelector = Object.entries(selector).map(([k, v]) => `${k}=${v}`).join(',');
-    const podsResp = await k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, labelSelector);
-    const pods = podsResp.body.items;
+    const podsList = await k8sApi.listNamespacedPod({ namespace: 'default', labelSelector });
+    const pods: k8s.V1Pod[] = podsList.items ?? [];
 
     for (const pod of pods) {
         const podName = pod.metadata?.name;
         if (!podName) continue;
 
-        await k8sApi.deleteNamespacedPod(podName, 'default');
+        await k8sApi.deleteNamespacedPod({ name: podName, namespace: 'default' });
     }
 }
 
@@ -98,25 +102,25 @@ const getK8RPods = async (_provider: Provider, service: Service): Promise<Discov
     const k8sApi = createClient(_provider);
     const ns = service.containerDetails?.namespace || 'default';
 
-    const serviceResp = await k8sApi.readNamespacedService(service.name, ns);
-    const selector = serviceResp.body.spec?.selector;
+    const serviceResp = await k8sApi.readNamespacedService({ name: service.name, namespace: ns });
+    const selector = serviceResp.spec?.selector;
 
     if (!selector || Object.keys(selector).length === 0) {
         return [];
     }
 
     const labelSelector = Object.entries(selector).map(([k, v]) => `${k}=${v}`).join(',');
-    const podsResp = await k8sApi.listNamespacedPod(ns, undefined, undefined, undefined, undefined, labelSelector);
-    const pods = podsResp.body.items;
+    const podsList = await k8sApi.listNamespacedPod({ namespace: ns, labelSelector });
+    const pods: k8s.V1Pod[] = podsList.items ?? [];
 
-    return pods.map(p => ({ name: p.metadata?.name || "No-Name" }));
+    return pods.map((p: k8s.V1Pod) => ({ name: p.metadata?.name || "No-Name" }));
 }
 
 const deleteK8RPod = async (_provider: Provider, podName: string, namespace: string): Promise<void> => {
     const k8sApi = createClient(_provider);
 
     try {
-        await k8sApi.deleteNamespacedPod(podName, namespace);
+        await k8sApi.deleteNamespacedPod({ name: podName, namespace });
         logger.info(`Pod: ${podName} in namespace: ${namespace} deleted successfully`);
     } catch (err) {
         logger.error(`Failed to delete pod: ${podName} in namespace: ${namespace}`, err);
@@ -126,12 +130,12 @@ const deleteK8RPod = async (_provider: Provider, podName: string, namespace: str
 
 const getK8SServices = async (_provider: Provider): Promise<DiscoveredService[]> => {
     const k8sApi = createClient(_provider);
-    const servicesResp = await k8sApi.listServiceForAllNamespaces();
-    const services = servicesResp.body.items;
+    const servicesList = await k8sApi.listServiceForAllNamespaces({});
+    const services: k8s.V1Service[] = servicesList.items ?? [];
 
     const allResponses = services
-        .filter(s => s.metadata?.namespace !== "kube-system")
-        .map(async (service) => {
+        .filter((s: k8s.V1Service) => s.metadata?.namespace !== "kube-system")
+        .map(async (service: k8s.V1Service) => {
             const name = service.metadata?.name || 'unknown';
             const namespace = service.metadata?.namespace || 'default';
             const serviceType = service.spec?.type || 'ClusterIP';
@@ -141,8 +145,9 @@ const getK8SServices = async (_provider: Provider): Promise<DiscoveredService[]>
             let serviceStatus = "Unknown";
             if (selector && Object.keys(selector).length > 0) {
                 const labelSelector = Object.entries(selector).map(([k, v]) => `${k}=${v}`).join(',');
-                const podsResp = await k8sApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector);
-                serviceStatus = [...new Set(podsResp.body.items.map(i => i.status?.phase || "Unknown"))].join(", ");
+                const podsList = await k8sApi.listNamespacedPod({ namespace, labelSelector });
+                const items: k8s.V1Pod[] = podsList.items ?? [];
+                serviceStatus = [...new Set(items.map((i: k8s.V1Pod) => i.status?.phase || "Unknown"))].join(", ");
             }
 
             return {

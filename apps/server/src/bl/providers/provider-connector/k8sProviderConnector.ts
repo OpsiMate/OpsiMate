@@ -1,7 +1,7 @@
 import {ProviderConnector} from "./providerConnector";
 import {DiscoveredService, Provider, Service} from "@OpsiMate/shared";
 import {getK8RLogs, getK8SServices, getK8RPods, restartK8RServicePods} from "../../../dal/kubeConnector";
-import {DiscoveredPod} from "@OpsiMate/shared/src/types";
+import {DiscoveredPod} from "@OpsiMate/shared";
 
 export class K8SProviderConnector implements ProviderConnector {
     async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
