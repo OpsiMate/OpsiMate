@@ -1,12 +1,17 @@
 import {NodeSSH, SSHExecCommandResponse} from 'node-ssh';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
 import {getSecurityConfig, getVmConfig} from '../config/config';
 import {decryptPassword} from "../utils/encryption";
 
 const logger = new Logger('dal/sshClient');
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function getPrivateKeysDir(): string {
     const securityConfig = getSecurityConfig();
