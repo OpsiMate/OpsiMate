@@ -205,19 +205,19 @@ const Dashboard = () => {
                         case 'serviceStatus':
                         case 'serviceType':
                             // Direct service properties
-                            return filterValues.includes(String(service[key]));
+                            return filterValues.includes(String(service[key].toLowerCase()));
                         
                         case 'providerType':
                             // Nested provider property
-                            return filterValues.includes(String(service.provider?.providerType));
+                            return filterValues.includes(String(service.provider?.providerType.toLowerCase()));
                         
                         case 'providerName':
                             // Nested provider property
-                            return filterValues.includes(String(service.provider?.name));
+                            return filterValues.includes(String(service.provider?.name.toLowerCase()));
                         
                         case 'containerNamespace':
                             // Nested container details property
-                            return filterValues.includes(String(service.containerDetails?.namespace));
+                            return filterValues.includes(String(service.containerDetails?.namespace.toLowerCase()));
                         
                         case 'tags':
                             // Handle tags array - service must have ALL selected tags (AND logic)
@@ -226,12 +226,12 @@ const Dashboard = () => {
                             }
                             // Check if the service has ALL the selected tags
                             return filterValues.every(selectedTag => 
-                                service.tags.some(tag => tag.name === selectedTag)
+                                service.tags.some(tag => tag.name.toLowerCase() === selectedTag.toLowerCase())
                             );
                         
                         default:
                             // Fallback for any other direct properties
-                            return filterValues.includes(String(service[key as keyof Service]));
+                            return filterValues.includes(String(service[key as keyof Service]).toLowerCase());
                     }
                 }
                 return true;
