@@ -10,13 +10,13 @@ import {User, Role} from '../types';
 import {getCurrentUser} from '../lib/auth';
 import {ErrorAlert} from '../components/ErrorAlert';
 import {useFormErrors} from '../hooks/useFormErrors';
-import {Users, FileText, KeyRound, Trash2, Plus, Check, X} from 'lucide-react';
+import {Users, FileText, KeyRound, Trash2, Plus, Check, X, Edit} from 'lucide-react';
 import {DashboardLayout} from '../components/DashboardLayout';
 import {AddUserModal} from '../components/AddUserModal';
 import {auditApi} from '../lib/api';
 import {FileDropzone} from "@/components/ui/file-dropzone";
-import {getSecretsFromServer, createSecretOnServer, deleteSecretOnServer} from "@/lib/sslKeys";
-import {SecretMetadata} from "@OpsiMate/shared";
+import {getSecretsFromServer, createSecretOnServer, deleteSecretOnServer, updateSecretOnServer } from "@/lib/sslKeys";
+import {SecretMetadata, SecretType} from "@OpsiMate/shared";
 import {
     Dialog,
     DialogContent,
@@ -662,6 +662,10 @@ const SslKeysTable: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<number | null>(null);
+    const [editingSecretId, setEditingSecretId] = useState<string | null>(null);
+    const [editingSecret, setEditingSecret] = useState<SecretMetadata | null>(null);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    
     const {toast} = useToast();
 
     const loadSecrets = async () => {
@@ -676,6 +680,31 @@ const SslKeysTable: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEditSecret = (secret: SecretMetadata) => {
+        setEditingSecretId(secret.id.toString());
+        setEditingSecret({...secret});
+        setEditDialogOpen(true);
+    };
+
+    const handleSaveEdit = (updatedSecret: SecretMetadata) => {
+        // Update the secrets array
+        setSecrets(prevSecrets => 
+            prevSecrets.map(secret => 
+                secret.id === updatedSecret.id ? updatedSecret : secret
+            )
+        );
+
+        setEditingSecretId(null);
+        setEditingSecret(null);
+        setEditDialogOpen(false);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingSecretId(null);
+        setEditingSecret(null);
+        setEditDialogOpen(false);
     };
 
     const handleDeleteSecret = async (secretId: number) => {
@@ -724,62 +753,351 @@ const SslKeysTable: React.FC = () => {
     if (!secrets.length) return <div className="py-6 text-center text-muted-foreground">No secrets added yet.</div>;
 
     return (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Secret Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {secrets.map(secret => (
-                    <TableRow key={secret.id}>
-                        <TableCell><b>{secret.name}</b></TableCell>
-                        <TableCell>
-                            <Badge variant={secret.type === 'kubeconfig' ? 'secondary' : 'default'}>
-                                {secret.type === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
+        <>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Secret Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {secrets.map(secret => (
+                        <TableRow key={secret.id}>
+                            <TableCell><b>{secret.name}</b></TableCell>
+                            <TableCell>
+                                <Badge variant={secret.type === 'kubeconfig' ? 'secondary' : 'default'}>
+                                    {secret.type === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex items-center gap-2">
+                                    
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-                                        title="Delete SSL key"
-                                        disabled={deleting === secret.id}
+                                        onClick={() => handleEditSecret(secret)}
+                                        className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                        title="Edit secret"
                                     >
-                                        <Trash2 className="h-4 w-4"/>
+                                        <Edit className="h-4 w-4" />
                                     </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Delete Secret</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot
-                                            be undone and will permanently remove the secret file.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel disabled={deleting === secret.id}>
-                                            Cancel
-                                        </AlertDialogCancel>
-                                        <AlertDialogAction
-                                            className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
-                                            disabled={deleting === secret.id}
-                                            onClick={() => handleDeleteSecret(secret.id)}
-                                        >
-                                            {deleting === secret.id ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                title="Delete SSL key"
+                                                disabled={deleting === secret.id}
+                                            >
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Secret</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot
+                                                    be undone and will permanently remove the secret file.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel disabled={deleting === secret.id}>
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
+                                                    disabled={deleting === secret.id}
+                                                    onClick={() => handleDeleteSecret(secret.id)}
+                                                >
+                                                    {deleting === secret.id ? 'Deleting...' : 'Delete'}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+
+            <EditSecretDialog
+                secret={editingSecret}
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                onSave={handleSaveEdit}
+            />
+        </>
+    );
+};
+
+const EditSecretDialog: React.FC<{
+    secret: SecretMetadata | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSave: (updatedSecret: SecretMetadata) => void;
+}> = ({ secret, open, onOpenChange, onSave }) => {
+    const [displayName, setDisplayName] = useState<string>("");
+    // CHANGE THIS LINE - use SecretType enum instead of string literals
+    const [secretType, setSecretType] = useState<SecretType>(SecretType.SSH);
+    const [fileName, setFileName] = useState<string | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
+    const [fileChanged, setFileChanged] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    
+    const { toast } = useToast();
+    
+    // Store original values to detect changes - UPDATED TYPES
+    const [originalValues, setOriginalValues] = useState<{
+        name: string;
+        type: SecretType;  // Changed from string literal to SecretType
+    } | null>(null);
+
+    useEffect(() => {
+        if (secret && open) {
+            setDisplayName(secret.name || "");
+            setSecretType(secret.type || SecretType.SSH); // Use enum value
+            setFileName(secret.fileName || null);
+            setFileChanged(false);
+            setSelectedFile(null);
+            setIsFileValid(null);
+            setHasUnsavedChanges(false);
+            
+            // Store original values
+            setOriginalValues({
+                name: secret.name || "",
+                type: secret.type || SecretType.SSH  // Use enum value
+            });
+        }
+    }, [secret, open]);
+
+    // Check for unsaved changes
+    useEffect(() => {
+        if (!originalValues) return;
+        
+        const hasChanges = 
+            displayName !== originalValues.name ||
+            secretType !== originalValues.type ||
+            fileChanged;
+            
+        setHasUnsavedChanges(hasChanges);
+    }, [displayName, secretType, fileChanged, originalValues]);
+
+    const handleFile = async (file: File) => {
+        setIsFileValid(true);
+        setSelectedFile(file);
+        setFileName(file.name);
+        setFileChanged(true);
+    };
+
+    const handleDialogClose = (newOpen: boolean) => {
+    
+        
+        if (!newOpen) {
+            setFileName(null);
+            setDisplayName("");
+            setSecretType(SecretType.SSH); // Use enum value
+            setSelectedFile(null);
+            setIsFileValid(null);
+            setFileChanged(false);
+            setHasUnsavedChanges(false);
+            setOriginalValues(null);
+        }
+        
+        onOpenChange(newOpen);
+    };
+
+    const handleSave = async () => {
+        if (!secret) return;
+
+        setUploading(true);
+        try {
+            // Prepare update data - UPDATED TYPES
+            const updateData: {
+                displayName?: string;
+                secretType?: SecretType;  // Changed from string literal to SecretType
+                file?: File;
+            } = {};
+
+            // Only include displayName if it changed
+            if (displayName.trim() !== originalValues?.name) {
+                updateData.displayName = displayName.trim();
+            }
+
+            // Only include secretType if it changed
+            if (secretType !== originalValues?.type) {
+                updateData.secretType = secretType;
+            }
+
+            // Only include file if a new one was selected
+            if (selectedFile) {
+                updateData.file = selectedFile;
+            }
+
+            // If no changes were made, just close the dialog
+            if (Object.keys(updateData).length === 0) {
+                toast({
+                    title: "No Changes",
+                    description: "No changes were made to the secret.",
+                });
+                handleDialogClose(false);
+                return;
+            }
+
+            // Make API call to update the secret
+            const result = await updateSecretOnServer(secret.id, updateData);
+
+            if (result.success) {
+                toast({
+                    title: "Success",
+                    description: "Secret updated successfully",
+                });
+
+                // Create updated secret object for local state
+                const updatedSecret: SecretMetadata = {
+                    ...secret,
+                    name: updateData.displayName || secret.name,
+                    type: updateData.secretType || secret.type,  // This should now match SecretType
+                };
+
+                // Update local state
+                onSave(updatedSecret);
+                
+                // Close dialog
+                handleDialogClose(false);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Failed to update secret",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error updating secret:', error);
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "An unexpected error occurred",
+                variant: "destructive",
+            });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    if (!secret) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={handleDialogClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>
+                        Edit Secret
+                        {hasUnsavedChanges && (
+                            <span className="ml-2 h-2 w-2 bg-orange-500 rounded-full inline-block" 
+                                  title="Unsaved changes" />
+                        )}
+                    </DialogTitle>
+                    <DialogDescription>Update the secret details.</DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-3">
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-secret-name">Secret name</Label>
+                        <Input 
+                            id="edit-secret-name" 
+                            placeholder="My SSH Key" 
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            disabled={uploading}
+                        />
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-secret-type">Type</Label>
+                        <Select 
+                            value={secretType}
+                            onValueChange={(value: SecretType) => setSecretType(value)}  // Updated type
+                            disabled={uploading}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select type"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={SecretType.SSH}>SSH Key</SelectItem>
+                                <SelectItem value={SecretType.KUBECONFIG}>Kubeconfig</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Update File (Optional)</Label>
+                        <FileDropzone
+                            id="edit-secret-upload"
+                            accept="*"
+                            loading={uploading}
+                            onFile={handleFile}
+                            multiple={false}
+                        />
+                        {!fileChanged && (
+                            <p className="text-sm text-muted-foreground">
+                                Current file will be kept if no new file is uploaded
+                            </p>
+                        )}
+                    </div>
+
+                    {fileName && (
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                                <span>
+                                    {fileChanged ? 'New file: ' : 'Current file: '}
+                                    <b>{fileName}</b>
+                                </span>
+                                {isFileValid !== null && (
+                                    isFileValid ? (
+                                        <Check className="h-4 w-4 text-green-600"/>
+                                    ) : (
+                                        <X className="h-4 w-4 text-red-600"/>
+                                    )
+                                )}
+                            </div>
+                            {isFileValid === false && (
+                                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                                    <X className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0"/>
+                                    <div className="text-sm text-red-700">
+                                        <p className="font-medium">Invalid file format</p>
+                                        <p className="text-red-600 mt-1">
+                                            This file doesn't appear to be a valid secret file. Please ensure you're
+                                            uploading an SSH key or kubeconfig file.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+                
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => handleDialogClose(false)} disabled={uploading}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSave} disabled={uploading || (fileChanged && isFileValid === false)}>
+                        {uploading ? (
+                            <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Saving...
+                            </>
+                        ) : (
+                            "Save Changes"
+                        )}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };

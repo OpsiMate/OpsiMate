@@ -22,6 +22,8 @@ const storage = multer.diskStorage({
     }
 });
 
+
+
 const upload = multer({storage});
 
 export default function createSecretsRouter(secretsController: SecretsController) {
@@ -36,6 +38,9 @@ export default function createSecretsRouter(secretsController: SecretsController
 
     // DELETE /api/v1/secrets/:id
     router.delete('/:id', secretsController.deleteSecret);
+
+    // PATCH /api/v1/secrets/:id
+    router.patch('/:id', upload.single("secret_file"), secretsController.updateSecretOnServer);
 
     return router;
 }
