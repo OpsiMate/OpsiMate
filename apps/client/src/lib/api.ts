@@ -47,8 +47,6 @@ async function apiRequest<T>(
         if(response.status === 401){
             window.location.href = "/login?expired=true";
             localStorage.removeItem('jwt');
-
-            // navigate to login /login
         }
 
       try {
@@ -588,6 +586,43 @@ export const secretsApi = {
       };
     }
   },
+
+updateSecretOnServer: async (secretId: number, updateData: {
+  displayName?: string;
+  secretType?: SecretType;
+  file?: File;
+}) => {
+  try {
+
+    const jsonData: { displayName?: string; secretType?: SecretType } = {};
+    
+    if (updateData.displayName) {
+      jsonData.displayName = updateData.displayName;
+    }
+    
+    if (updateData.secretType) {
+      jsonData.secretType = updateData.secretType;
+    }
+
+    // Check if we have any fields to update
+    if (Object.keys(jsonData).length === 0) {
+      return {
+        success: false,
+        error: 'No fields to update'
+      };
+    }
+
+    // Use apiRequest for JSON data (consistent with deleteSecret)
+    const response = await apiRequest<{ message: string }>(`/secrets/${secretId}`, 'PATCH', jsonData);
+    return response;
+  } catch (error) {
+    console.error('Error updating secret:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+},
 };
 
 export { apiRequest };

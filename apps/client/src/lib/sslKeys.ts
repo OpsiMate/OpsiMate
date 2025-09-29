@@ -1,6 +1,6 @@
 import { secretsApi } from './api';
-import { SecretMetadata } from '@OpsiMate/shared';
-
+import { SecretMetadata,SecretType } from '@OpsiMate/shared';
+import { API_BASE_URL } from './api';
 // Server-based secrets functions
 export async function getSecretsFromServer(): Promise<SecretMetadata[]> {
   try {
@@ -42,3 +42,19 @@ export async function deleteSecretOnServer(secretId: number): Promise<{ success:
 }
 
 
+export const updateSecretOnServer = async (secretId: number, updateData: {
+    displayName?: string;
+    secretType?: SecretType;  // Changed from string literal to SecretType enum
+    file?: File;
+}) => {
+    try {
+    const response = await secretsApi.updateSecretOnServer(secretId, updateData);
+    if (response.success) {
+      return { success: true };
+    }
+    return { success: false, error: response.error || 'Failed to update secret' };
+  } catch (error) {
+    console.error('Error updating secret on server:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
+};

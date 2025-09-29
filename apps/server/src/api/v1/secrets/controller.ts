@@ -6,14 +6,27 @@ import {
 import {z} from "zod";
 import {SecretsMetadataBL} from "../../../bl/secrets/secretsMetadata.bl";
 import fs from "fs";
+import { SecretType } from "@OpsiMate/shared";
 import {encryptPassword} from "../../../utils/encryption";
 
 const logger = new Logger("v1/integrations/controller");
 
+const UpdateSecretSchema = z.object({
+    displayName: z.string().min(1).optional(),
+    secretType: z.nativeEnum(SecretType).optional()
+}).refine(data => {
+    const hasDisplayName = data.displayName !== undefined && data.displayName !== '';
+    const hasSecretType = data.secretType !== undefined;
+    return hasDisplayName || hasSecretType;
+}, {
+    message: 'At least one field must be provided for update',
+    path: ['displayName', 'secretType']
+});
+
 export class SecretsController {
     constructor(private secretsBL: SecretsMetadataBL) {
     }
-
+    
     getSecrets = async (req: Request, res: Response) => {
         try {
             const secretsMetadata = await this.secretsBL.getSecretsMetadata()
@@ -69,4 +82,74 @@ export class SecretsController {
         }
     };
 
+    updateSecretOnServer = async (req: Request, res: Response) => {
+        try {
+            const secretId = parseInt(req.params.id);
+            if (isNaN(secretId)) {
+                return res.status(400).json({success: false, error: 'Invalid secret ID'});
+            }
+
+            // Validate request body - only validate if there are body params
+            const updateData = UpdateSecretSchema.parse(req.body);
+
+            // Prepare data for update - FIXED TYPE
+        const updatePayload: Partial<{
+            name: string;
+            type: SecretType;
+            fileName: string;
+        }> = {};
+
+        if (updateData.displayName) updatePayload.name = updateData.displayName;
+        if (updateData.secretType) updatePayload.type = updateData.secretType;
+
+        // Handle file update if provided
+        if (req.file) {
+            try {
+                // Read and encrypt the new file
+                const filePath = req.file.path;
+                const originalContent = fs.readFileSync(filePath, 'utf-8');
+                const encryptedContent = encryptPassword(originalContent);
+
+                // Overwrite file with encrypted content
+                fs.writeFileSync(filePath, encryptedContent ?? "");
+
+                // Update the filename in the payload
+                updatePayload.fileName = req.file.filename;
+            } catch (fileError) {
+                logger.error('Error processing uploaded file:', fileError);
+                return res.status(500).json({
+                    success: false, 
+                    error: 'Error processing uploaded file'
+                });
+            }
+        }
+
+        // If no fields to update, return error
+        if (Object.keys(updatePayload).length === 0) {
+            return res.status(400).json({
+                success: false, 
+                error: 'No valid fields provided for update. Provide displayName, secretType, or a new file.'
+            });
+        }
+
+        // Update the secret
+        const updated = await this.secretsBL.updateSecretMetadata(secretId, updatePayload);
+
+        if (updated) {
+            return res.json({success: true, message: 'Secret updated successfully'});
+        } else {
+            return res.status(404).json({success: false, error: 'Secret not found or update failed'});
+        }
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false, 
+                error: 'Validation error', 
+                details: error.errors
+            });
+        }
+        logger.error('Error updating secret:', error);
+        return res.status(500).json({success: false, error: 'Internal server error'});
+    }
+};
 }
