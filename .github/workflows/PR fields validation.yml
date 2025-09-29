@@ -18,9 +18,11 @@ jobs:
     steps:
       - name: Check PR Description
         id: check-description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           # Check if PR body exists and has meaningful content
-          BODY="${{ github.event.pull_request.body }}"
+          BODY="$PR_BODY"
           
           # Remove whitespace and check if empty
           CLEANED_BODY=$(echo "$BODY" | tr -d '[:space:]')
