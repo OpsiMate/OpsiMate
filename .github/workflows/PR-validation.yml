@@ -16,41 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Validate PR Title
-        uses: amannn/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Allow [BUG] and [FEAT] prefixes
-          VALID_PREFIXES: "[BUG],[FEAT]"
-          # Require description (body) to be present
-          REQUIRE_DESCRIPTION: "true"
-        with:
-          # Custom patterns for bug fixes and features
-          types: |
-            bug
-            feat
-          requireScope: false
-          allowedScopes: |
-            server
-            client
-            shared
-            docs
-            ci
-            test
-          subjectPattern: '^(?:\\([a-z\\-]+\\) )?(bug|feat): (?!\\s)(?:(?!\\.).)*(?<!\\.)$'
-          subjectPatternError: |
-            The PR title should follow one of these formats:
-            • [BUG]: Short description of the bug fix
-            
-            • [FEAT]: Short description of the new feature
-            
-            Examples:
-            • [BUG]: Fix authentication timeout issue
-            • [FEAT]: Add user profile preferences
-            
-            The PR must also have a description in the body explaining the changes.
-
-      # Additional validation to ensure body has content
       - name: Check PR Description
         id: check-description
         run: |
