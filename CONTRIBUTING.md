@@ -1,7 +1,3 @@
----
-sidebar_position: 10
----
-
 # Development
 
 Learn how to set up and run the OpsiMate project locally for development.

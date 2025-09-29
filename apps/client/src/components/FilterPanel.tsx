@@ -73,7 +73,7 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
     services.forEach(service => {
       // Service status
       if (service.serviceStatus) {
-        const value = String(service.serviceStatus);
+        const value = String(service.serviceStatus.toLowerCase());
         newFacets.serviceStatus[value] = (newFacets.serviceStatus[value] || 0) + 1;
       }
 
@@ -115,9 +115,9 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
 
   const handleCheckboxChange = (field: string, value: string) => {
     const currentFilters = filters[field] || [];
-    const newFilters = currentFilters.includes(value)
-      ? currentFilters.filter(v => v !== value)
-      : [...currentFilters, value];
+    const newFilters = currentFilters.includes(value.toLowerCase())
+      ? currentFilters.filter(v => v.toLowerCase() !== value.toLowerCase())
+      : [...currentFilters, value.toLowerCase()];
     onFilterChange({
       ...filters,
       [field]: newFilters,
