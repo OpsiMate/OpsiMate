@@ -2,7 +2,7 @@ name: PR Fields Validation
 
 # This workflow validates that pull requests have meaningful titles and descriptions
 # Requirements:
-# 1. PR title must start with [BUG] or [FEAT] prefix
+# 1. PR title must start with [FIX] or [FEAT] prefix
 # 2. PR must have a description/body with meaningful content
 # 3. Title must be descriptive and reasonably long
 
@@ -60,18 +60,18 @@ jobs:
           
           echo "Checking PR title: $TITLE"
           
-          # Check if title starts with [BUG] or [FEAT]
-          if [[ "$TITLE" =~ ^\[(BUG|FEAT)\] ]]; then
+          # Check if title starts with [FIX] or [FEAT]
+          if [[ "$TITLE" =~ ^\[(FIX|FEAT)\] ]]; then
             echo "✅ Title prefix is valid!"
           else
             echo "❌ Invalid PR title format!"
             echo ""
             echo "The PR title must start with one of these prefixes:"
-            echo "• [BUG] - for bug fixes"
+            echo "• [FIX] - for bug fixes"
             echo "• [FEAT] - for new features"
             echo ""
             echo "Examples:"
-            echo "• [BUG]: Fix login redirect issue"
+            echo "• [FIX]: Fix login redirect issue"
             echo "• [FEAT]: Add dark mode toggle"
             echo ""
             echo "Current title: \"$TITLE\""
@@ -86,7 +86,8 @@ jobs:
           fi
           
           # Check if title has meaningful content after the prefix
-          DESCRIPTION=$(echo "$TITLE" | sed 's/^\[\(BUG\|FEAT\)\]: *//')
+          DESCRIPTION=$(echo "$TITLE" | sed 's/^\[\(FIX\|FEAT\)\]: *//')
+
           if [ ${#DESCRIPTION} -lt 5 ]; then
             echo "❌ Title description is too short!"
             echo "Please provide a meaningful description after the prefix."
