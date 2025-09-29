@@ -488,6 +488,7 @@ const AuditLogTable: React.FC = () => {
                   <span title={parseUTCDate(log.timestamp).toLocaleString()}>
                     {formatRelativeTime(log.timestamp)}
                   </span>
+                  {/* todo: test */}
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant={actionProps.variant as any} className={actionProps.className}>
