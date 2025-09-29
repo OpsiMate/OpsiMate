@@ -4,6 +4,7 @@ import {SecretsController} from './controller';
 import multer from "multer";
 import {getSecurityConfig} from "../../../config/config";
 import path from "path";
+import { authenticateJWT } from '../../../middleware/auth';
 
 const securityConfig = getSecurityConfig();
 
@@ -36,6 +37,5 @@ export default function createSecretsRouter(secretsController: SecretsController
 
     // PATCH /api/v1/secrets/:id
     router.patch('/:id', upload.single("secret_file"), secretsController.updateSecretOnServer);
-
     return router;
 }

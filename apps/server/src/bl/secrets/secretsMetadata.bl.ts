@@ -43,7 +43,35 @@ export class SecretsMetadataBL {
         }
     }
 
-        async updateSecretMetadata(id: number, data: Partial<Omit<SecretMetadata, 'id'>>): Promise<boolean> {
+    private async validateNewSecretFile(newFileName: string): Promise<void> {
+        const fs = await import('fs');
+        const newPath = path.resolve(getSecurityConfig().private_keys_path, newFileName);
+
+        // Check if new file exists
+        if (!fs.existsSync(newPath)) {
+            throw new Error(`New secret file not found: ${newFileName}`);
+        }
+    }
+
+    private async deleteOldSecretFile(oldFileName: string): Promise<void> {
+        const fs = await import('fs');
+        const oldPath = path.resolve(getSecurityConfig().private_keys_path, oldFileName);
+
+        // If the filename is changing, we should verify the old file exists before trying to delete it
+        if (fs.existsSync(oldPath)) {
+            // Delete the old file if it exists
+            try {
+                fs.unlinkSync(oldPath);
+                logger.info(`Successfully deleted old secret file: ${oldPath}`);
+            } catch (fileError) {
+                const error = fileError as Error;
+                logger.error(`Error deleting old secret file: ${oldPath}`, error);
+                throw new Error(`Failed to remove old secret file: ${error.message}`);
+            }
+        }
+    }
+
+    async updateSecretMetadata(id: number, data: Partial<Omit<SecretMetadata, 'id'>>): Promise<boolean> {
         try {
             logger.info(`Updating secret with id ${id}, data: ${JSON.stringify(data)}`);
 
@@ -54,33 +82,14 @@ export class SecretsMetadataBL {
                 return false;
             }
 
-            // If fileName is being updated, verify the new file exists
+            // If fileName is being updated, verify the new file exists and handle old file deletion
             if (data.fileName && data.fileName !== secret.fileName) {
-                const fs = await import('fs');
-                const oldPath = path.resolve(getSecurityConfig().private_keys_path, secret.fileName);
-                const newPath = path.resolve(getSecurityConfig().private_keys_path, data.fileName);
-
-                // Check if new file exists
-                if (!fs.existsSync(newPath)) {
-                    throw new Error(`New secret file not found: ${data.fileName}`);
-                }
-
-                // If the filename is changing, we should verify the old file exists before trying to delete it
-                if (fs.existsSync(oldPath)) {
-                    // Delete the old file if it exists
-                    try {
-                        fs.unlinkSync(oldPath);
-                        logger.info(`Successfully deleted old secret file: ${oldPath}`);
-                    } catch (fileError) {
-                        const error = fileError as Error;
-                        logger.error(`Error deleting old secret file: ${oldPath}`, error);
-                        throw new Error(`Failed to remove old secret file: ${error.message}`);
-                    }
-                }
+                await this.validateNewSecretFile(data.fileName);
+                await this.deleteOldSecretFile(secret.fileName);
             }
 
             // Update the secret metadata in the database
-            const updated = await this.secretsMetadataRepository.updateSecretOnserver(id, data);
+            const updated = await this.secretsMetadataRepository.updateSecret(id, data);
 
             if (!updated) {
                 logger.warn(`Failed to update secret with id ${id} in database`);

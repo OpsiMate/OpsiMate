@@ -78,47 +78,45 @@ export class SecretsMetadataRepository {
             `).run();
         });
     }
-    async updateSecretOnserver(id: number, data: Partial<{
-    name: string;
-    type: SecretType;
-    fileName: string;
-}>): Promise<boolean> {
-    try {
-        // Build the SET clause dynamically based on provided fields
-        const fields = [];
-        const values = [];
+    
+    async updateSecret(id: number, data: Partial<{
+        name: string;
+        type: SecretType;
+        fileName: string;
+    }>): Promise<boolean> {
+        return await runAsync<boolean>(() => {
+            // Build the SET clause dynamically based on provided fields
+            const fields = [];
+            const values = [];
 
-        if (data.name !== undefined) {
-            fields.push('secret_name = ?'); // FIXED: was 'name = ?'
-            values.push(data.name);
-        }
+            if (data.name !== undefined) {
+                fields.push('secret_name = ?'); // FIXED: was 'name = ?'
+                values.push(data.name);
+            }
 
-        if (data.type !== undefined) {
-            fields.push('secret_type = ?'); // FIXED: was 'type = ?'
-            values.push(data.type);
-        }
+            if (data.type !== undefined) {
+                fields.push('secret_type = ?'); // FIXED: was 'type = ?'
+                values.push(data.type);
+            }
 
-        if (data.fileName !== undefined) {
-            fields.push('secret_filename = ?'); // FIXED: was 'fileName = ?'
-            values.push(data.fileName);
-        }
+            if (data.fileName !== undefined) {
+                fields.push('secret_filename = ?'); // FIXED: was 'fileName = ?'
+                values.push(data.fileName);
+            }
 
-        if (fields.length === 0) {
-            return false; // Nothing to update
-        }
+            if (fields.length === 0) {
+                return false; // Nothing to update
+            }
 
-        // Add the id parameter for WHERE clause
-        values.push(id);
+            // Add the id parameter for WHERE clause
+            values.push(id);
 
-        // FIXED: Table name was 'secrets_metadata', should be 'secrets'
-        const sql = `UPDATE secrets SET ${fields.join(', ')} WHERE id = ?`;
-        
-        const result = this.db.prepare(sql).run(...values); // FIXED: spread the values array
-        
-        return result.changes > 0;
-    } catch (error) {
-        console.error('Error updating secret in database:', error);
-        throw error;
+            // FIXED: Table name was 'secrets_metadata', should be 'secrets'
+            const sql = `UPDATE secrets SET ${fields.join(', ')} WHERE id = ?`;
+            
+            const result = this.db.prepare(sql).run(...values);
+            
+            return result.changes > 0;
+        });
     }
-}
 }

@@ -14,7 +14,11 @@ const logger = new Logger("v1/integrations/controller");
 const UpdateSecretSchema = z.object({
     displayName: z.string().min(1).optional(),
     secretType: z.nativeEnum(SecretType).optional()
-}).refine(data => Object.keys(data).length > 0, {
+}).refine(data => {
+    const hasDisplayName = data.displayName !== undefined && data.displayName !== '';
+    const hasSecretType = data.secretType !== undefined;
+    return hasDisplayName || hasSecretType;
+}, {
     message: 'At least one field must be provided for update',
     path: ['displayName', 'secretType']
 });
@@ -78,20 +82,17 @@ export class SecretsController {
         }
     };
 
-        updateSecretOnServer = async (req: Request, res: Response) => {
-    try {
-        const secretId = parseInt(req.params.id);
-        if (isNaN(secretId)) {
-            return res.status(400).json({success: false, error: 'Invalid secret ID'});
-        }
+    updateSecretOnServer = async (req: Request, res: Response) => {
+        try {
+            const secretId = parseInt(req.params.id);
+            if (isNaN(secretId)) {
+                return res.status(400).json({success: false, error: 'Invalid secret ID'});
+            }
 
-        // Validate request body - only validate if there are body params
-        let updateData: any = {};
-        if (Object.keys(req.body).length > 0) {
-            updateData = UpdateSecretSchema.parse(req.body);
-        }
+            // Validate request body - only validate if there are body params
+            const updateData = UpdateSecretSchema.parse(req.body);
 
-        // Prepare data for update - FIXED TYPE
+            // Prepare data for update - FIXED TYPE
         const updatePayload: Partial<{
             name: string;
             type: SecretType;

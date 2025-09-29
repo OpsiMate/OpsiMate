@@ -48,54 +48,13 @@ export const updateSecretOnServer = async (secretId: number, updateData: {
     file?: File;
 }) => {
     try {
-        const formData = new FormData();
-        
-        if (updateData.displayName) {
-            formData.append('displayName', updateData.displayName);
-        }
-        
-        if (updateData.secretType) {
-            formData.append('secretType', updateData.secretType);
-        }
-        
-        if (updateData.file) {
-            formData.append('secret_file', updateData.file);
-        }
-
-        // Get JWT token from localStorage (same as your other API calls)
-        const token = localStorage.getItem('jwt');
-        const response = await fetch(`${API_BASE_URL}/secrets/${secretId}`, {
-            method: 'PATCH',
-            headers: {
-                // Add Authorization header if token exists
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            },
-            credentials: 'include', // Include cookies (consistent with your other API calls)
-            body: formData,
-        });
-
-        if (!response.ok) {
-            // Handle 401 unauthorized (same as your main API)
-            if (response.status === 401) {
-                window.location.href = "/login?expired=true";
-                localStorage.removeItem('jwt');
-                return;
-            }
-
-            const errorText = await response.text();
-            console.error(`API Error (${response.status}):`, errorText);
-            
-            try {
-                const errorJson = JSON.parse(errorText);
-                throw new Error(errorJson.error || 'Failed to update secret');
-            } catch {
-                throw new Error(`HTTP ${response.status}: ${errorText || 'Unknown error'}`);
-            }
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('API Error updating secret:', error);
-        throw error;
+    const response = await secretsApi.updateSecretOnServer(secretId, updateData);
+    if (response.success) {
+      return { success: true };
     }
+    return { success: false, error: response.error || 'Failed to update secret' };
+  } catch (error) {
+    console.error('Error updating secret on server:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
 };

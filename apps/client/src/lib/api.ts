@@ -1,6 +1,5 @@
 import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType } from '@OpsiMate/shared';
 import { SavedView } from '@/types/SavedView';
-import { updateSecretOnServer } from './sslKeys';
 
 const { protocol, hostname } = window.location;
 
@@ -48,8 +47,6 @@ async function apiRequest<T>(
         if(response.status === 401){
             window.location.href = "/login?expired=true";
             localStorage.removeItem('jwt');
-
-            // navigate to login /login
         }
 
       try {
@@ -590,67 +587,42 @@ export const secretsApi = {
     }
   },
 
-    updateSecretOnServer : async (secretId: number, updateData: {
-    displayName?: string;
-    secretType?: SecretType;
-    file?: File;
-  }) => {
-    try {
-      const formData = new FormData();
-      
-      if (updateData.displayName) {
-        formData.append('displayName', updateData.displayName);
-      }
-      
-      if (updateData.secretType) {
-        formData.append('secretType', updateData.secretType);
-      }
-      
-      if (updateData.file) {
-        formData.append('secret_file', updateData.file);
-      }
+updateSecretOnServer: async (secretId: number, updateData: {
+  displayName?: string;
+  secretType?: SecretType;
+  file?: File;
+}) => {
+  try {
 
-      const url = `${API_BASE_URL}/secrets/${secretId}`;
-      const token = localStorage.getItem('jwt');
-      
-      const response = await fetch(url, {
-        method: 'PATCH',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        credentials: 'include',
-        body: formData,
-      });
+    const jsonData: { displayName?: string; secretType?: SecretType } = {};
+    
+    if (updateData.displayName) {
+      jsonData.displayName = updateData.displayName;
+    }
+    
+    if (updateData.secretType) {
+      jsonData.secretType = updateData.secretType;
+    }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API Error (${response.status}):`, errorText);
-        
-        try {
-          const errorJson = JSON.parse(errorText);
-          return {
-            success: false,
-            ...errorJson,
-          };
-        } catch {
-          return {
-            success: false,
-            error: `HTTP ${response.status}: ${errorText || 'Unknown error'}`,
-          };
-        }
-      }
-
-      const result = await response.json();
-      return result as ApiResponse<any>;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error(`API Error (PATCH /secrets/${secretId}):`, errorMessage, error);
+    // Check if we have any fields to update
+    if (Object.keys(jsonData).length === 0) {
       return {
         success: false,
-        error: errorMessage,
+        error: 'No fields to update'
       };
     }
-  },
+
+    // Use apiRequest for JSON data (consistent with deleteSecret)
+    const response = await apiRequest<{ message: string }>(`/secrets/${secretId}`, 'PATCH', jsonData);
+    return response;
+  } catch (error) {
+    console.error('Error updating secret:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+},
 };
 
 export { apiRequest };
