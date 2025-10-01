@@ -64,11 +64,16 @@ jobs:
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
         echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
 
-    - name: Docker Login
+        - name: Docker Login
       uses: docker/login-action@v3
       with:
         username: karan076
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Set up Docker Buildx builder
+      run: |
+        docker buildx create --name mybuilder --use
+        docker buildx inspect --bootstrap
 
     - name: Build and Push Backend Image
       run: |
@@ -87,7 +92,6 @@ jobs:
           -t karan076/frontend:latest \
           -f Dockerfile.client \
           --push .
-
 
     - name: Update Release Draft
       uses: release-drafter/release-drafter@v5
