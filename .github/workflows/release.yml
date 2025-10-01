@@ -64,6 +64,9 @@ jobs:
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
         echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
 
+    - name: Prepare pnpm
+      run: corepack prepare pnpm@9.12.0 --activate
+
     - name: Docker Login
       uses: docker/login-action@v3
       with:
