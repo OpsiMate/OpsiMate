@@ -824,7 +824,7 @@ export function MyProviders() {
                                                                                 <p className="font-medium text-sm truncate">{service.name}</p>
                                                                                 <p className="text-xs text-muted-foreground truncate">
                                                                                     {service.type === "DOCKER"
-                                                                                        ? `Container: ${service.containerDetails?.image || service.name}`
+                                                                                        ? `${provider.providerType === "K8S" ? "Pod" : "Container"}: ${service.containerDetails?.image || service.name}`
                                                                                         : service.serviceIP
                                                                                             ? `IP: ${service.serviceIP}`
                                                                                             : "Manual service"
