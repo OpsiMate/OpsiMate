@@ -156,7 +156,7 @@ export class ProviderBL {
         }
     }
 
-    private async getProviderById(providerId: number): Promise<Provider> {
+    async getProviderById(providerId: number): Promise<Provider> {
         return await this.providerRepo.getProviderById(providerId);
     }
 }
