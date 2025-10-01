@@ -159,4 +159,42 @@ export class ProviderBL {
     async getProviderById(providerId: number): Promise<Provider> {
         return await this.providerRepo.getProviderById(providerId);
     }
+
+    async refreshProvider(providerId: number): Promise<{ provider: Provider; services: Service[] }> {
+        logger.info(`Starting to refresh provider: ${providerId}`);
+        
+        const provider = await this.getProviderById(providerId);
+        if (!provider) {
+            throw new ProviderNotFound(providerId);
+        }
+
+        try {
+            const providerConnector = providerConnectorFactory(provider.providerType);
+            const discoveredServices = await providerConnector.discoverServices(provider);
+            logger.info(`Discovered ${discoveredServices.length} services for provider ${providerId}`);
+
+            const dbServices = await this.serviceRepo.getServicesByProviderId(providerId);
+            
+            for (const dbService of dbServices) {
+                const matchedService = discoveredServices.find(ds => ds.name === dbService.name);
+                
+                if (matchedService && matchedService.serviceStatus !== dbService.serviceStatus) {
+                    await this.serviceRepo.updateService(dbService.id, {
+                        serviceStatus: matchedService.serviceStatus
+                    });
+                    logger.info(`Updated service ${dbService.name} status to ${matchedService.serviceStatus}`);
+                }
+            }
+
+            const updatedServices = await this.serviceRepo.getServicesByProviderId(providerId);
+            
+            return {
+                provider,
+                services: updatedServices
+            };
+        } catch (error) {
+            logger.error(`Error refreshing provider ${providerId}:`, error);
+            throw new Error(`Failed to refresh provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
 }

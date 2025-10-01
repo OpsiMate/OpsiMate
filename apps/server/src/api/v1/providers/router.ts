@@ -13,6 +13,7 @@ export default function createProviderRouter(controller: ProviderController) {
     
     // Provider-specific routes (with :providerId parameter)
     router.get('/:providerId', controller.getProviderById.bind(controller));
+    router.post('/:providerId/refresh', controller.refreshProvider.bind(controller));
     router.put('/:providerId', controller.updateProvider.bind(controller));
     router.delete('/:providerId', controller.deleteProvider.bind(controller));
 
