@@ -26,8 +26,42 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
             setFullName(user.fullName);
             setEmail(user.email);
         }
+    }, [user]);
 
+    const handleSave = async () => {
+        if (!user) return;
         
+        clearErrors();
+        setSaving(true);
+
+        try {
+            const response = await apiRequest<User>(`/users/${user.id}`, 'PATCH', {
+                fullName: fullName.trim(),
+                email: email.trim()
+            });
+
+            if (response.success && response.data) {
+                onUserUpdated(response.data);
+                onClose();
+            } else {
+                handleApiResponse(response);
+            }
+        } catch (error) {
+            handleApiResponse({
+                success: false,
+                error: 'Failed to update user'
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleClose = () => {
+        clearErrors();
+        onClose();
+    };
+
+    React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 handleClose();
@@ -39,46 +73,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 
         if (isOpen) {
             window.addEventListener('keydown', handleKeyDown);
+            return () => {
+                window.removeEventListener('keydown', handleKeyDown);
+            };
         }
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-        
-    }, [user, isOpen, saving, fullName, email]);
-
-    const handleSave = async () => {
-    if (!user) return;
-    
-    clearErrors();
-    setSaving(true);
-
-    try {
-        const response = await apiRequest<User>(`/users/${user.id}`, 'PATCH', {
-            fullName: fullName.trim(),
-            email: email.trim()
-        });
-
-        if (response.success && response.data) {
-            onUserUpdated(response.data);
-            onClose();
-        } else {
-            handleApiResponse(response);
-        }
-    } catch (error) {
-        handleApiResponse({
-            success: false,
-            error: 'Failed to update user'
-        });
-    } finally {
-        setSaving(false);
-    }
-};
-
-    const handleClose = () => {
-        clearErrors();
-        onClose();
-    };
+    }, [isOpen, saving, fullName, email]);
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
