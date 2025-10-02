@@ -25,14 +25,23 @@ async function apiRequest<T>(
   const options: RequestInit = {
     method,
     headers: {
-      'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },
     credentials: 'include',
   };
 
   if (data) {
-    options.body = JSON.stringify(data);
+    if (data instanceof FormData) {
+      // Don't set Content-Type for FormData, let the browser set it with boundary
+      options.body = data;
+    } else {
+      // For JSON data, set Content-Type and stringify
+      options.headers = {
+        ...options.headers,
+        'Content-Type': 'application/json',
+      };
+      options.body = JSON.stringify(data);
+    }
   }
 
   try {
@@ -533,41 +542,37 @@ export const secretsApi = {
       formData.append('secret_file', file);
       formData.append('secretType', secretType);
 
-      const url = `${API_BASE_URL}/secrets`;
-      const token = localStorage.getItem('jwt');
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        credentials: 'include',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API Error (${response.status}):`, errorText);
-        
-        try {
-          const errorJson = JSON.parse(errorText);
-          return {
-            success: false,
-            ...errorJson,
-          };
-        } catch {
-          return {
-            success: false,
-            error: `HTTP ${response.status}: ${errorText || 'Unknown error'}`,
-          };
-        }
-      }
-
-      const result = await response.json();
-      return result as ApiResponse<{ id: number }>;
+      const response = await apiRequest<{ id: number }>('/secrets', 'POST', formData);
+      return response;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('API Error (POST /secrets):', errorMessage, error);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  // Update a secret
+  updateSecret: async (secretId: number, displayName?: string, file?: File, secretType?: 'ssh' | 'kubeconfig') => {
+    try {
+      const formData = new FormData();
+      if (displayName !== undefined) {
+        formData.append('displayName', displayName);
+      }
+      if (file !== undefined) {
+        formData.append('secret_file', file);
+      }
+      if (secretType !== undefined) {
+        formData.append('secretType', secretType);
+      }
+
+      const response = await apiRequest<{ message: string }>(`/secrets/${secretId}`, 'PUT', formData);
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('API Error (PUT /secrets):', errorMessage, error);
       return {
         success: false,
         error: errorMessage,
