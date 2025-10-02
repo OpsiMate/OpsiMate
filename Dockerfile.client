@@ -36,10 +36,7 @@ COPY --from=client-builder /app/packages/shared/package.json packages/shared/pac
 COPY --from=client-builder /app/packages/shared/dist packages/shared/dist
 
 # Install only production deps
-RUN npm install -g pnpm && \
-    pnpm install --prod --frozen-lockfile && \
-    pnpm store prune && \
-    rm -rf /root/.npm /root/.cache /tmp/*
+COPY --from=client-builder /app/node_modules ./node_modules
 
 # Ensure workspace link for shared
 RUN mkdir -p node_modules/@OpsiMate && \
