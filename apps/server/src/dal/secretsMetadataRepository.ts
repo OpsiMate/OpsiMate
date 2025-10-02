@@ -56,7 +56,7 @@ export class SecretsMetadataRepository {
     async updateSecret(id: number, data: Partial<Omit<SecretMetadata, 'id'>>): Promise<boolean> {
         return await runAsync<boolean>(() => {
             const updateFields: string[] = [];
-            const updateValues: any[] = [];
+            const updateValues: (string | number)[] = [];
 
             if (data.name !== undefined) {
                 updateFields.push('secret_name = ?');
