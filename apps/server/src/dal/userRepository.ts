@@ -101,7 +101,7 @@ export class UserRepository {
     async updateUser(userId: number, updates: { fullName?: string; email?: string; role?: string }): Promise<void> {
         return runAsync(() => {
             const setClauses: string[] = [];
-            const values: any[] = [];
+            const values: (string | number)[] = [];
 
             if (updates.fullName !== undefined) {
                 setClauses.push('full_name = ?');
@@ -125,7 +125,7 @@ export class UserRepository {
             values.push(userId);
             const sql = `UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`;
             const stmt = this.db.prepare(sql);
-            stmt.run(...values);
+            stmt.run(...(values as [string | number, ...Array<string | number>]));
         });
     }
 

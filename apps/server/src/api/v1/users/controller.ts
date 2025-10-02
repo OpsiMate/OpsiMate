@@ -157,7 +157,7 @@ export class UsersController {
             const { fullName, newPassword } = UpdateProfileSchema.parse(req.body);
             const updatedUser = await this.userBL.updateProfile(req.user.id, fullName, newPassword);
             
-            const responseData: { user: User; token?: string } = { user: updatedUser };
+            const responseData: { user: User; token?: string | undefined } = { user: updatedUser };
             
             // If password was changed, generate a new token
             if (newPassword) {
@@ -189,7 +189,7 @@ export class UsersController {
         }
 
         try {
-            const { newPassword } = req.body;
+            const { newPassword } = req.body as { newPassword: string };
 
             if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
                 return res.status(400).json({
@@ -234,7 +234,11 @@ export class UsersController {
         }
 
         try {
-            const { fullName, email, role } = req.body;
+            const { fullName, email, role } = req.body as {
+                fullName?: string;
+                email?: string;
+                role?: Role;
+            };
 
             // Validate at least one field is provided
             if (!fullName && !email && !role) {
