@@ -91,6 +91,44 @@ export class UserRepository {
         });
     }
 
+    async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
+        return runAsync(() => {
+            const stmt = this.db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+            stmt.run(hashedPassword, userId);
+        });
+    }
+
+    async updateUser(userId: number, updates: { fullName?: string; email?: string; role?: string }): Promise<void> {
+        return runAsync(() => {
+            const setClauses: string[] = [];
+            const values: any[] = [];
+
+            if (updates.fullName !== undefined) {
+                setClauses.push('full_name = ?');
+                values.push(updates.fullName);
+            }
+
+            if (updates.email !== undefined) {
+                setClauses.push('email = ?');
+                values.push(updates.email);
+            }
+
+            if (updates.role !== undefined) {
+                setClauses.push('role = ?');
+                values.push(updates.role);
+            }
+
+            if (setClauses.length === 0) {
+                return;
+            }
+
+            values.push(userId);
+            const sql = `UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`;
+            const stmt = this.db.prepare(sql);
+            stmt.run(...values);
+        });
+    }
+
     private toSharedUser = (row: UserRow): User => {
         return {
             id: row.id,
@@ -100,5 +138,4 @@ export class UserRepository {
             createdAt: row.created_at
         };
     };
-
-} 
+}
