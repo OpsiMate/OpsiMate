@@ -33,6 +33,12 @@ export class ProviderBL {
         try {
             logger.info(`Starting to create provider`, { extraArgs: { ...providerToCreate } });
             
+            // Check if a provider with the same name already exists
+            const existingProvider = await this.providerRepo.getProviderByName(providerToCreate.name);
+            if (existingProvider) {
+                throw new Error(`A provider with the name '${providerToCreate.name}' already exists`);
+            }
+            
             // Resolve secretId to privateKeyFilename if provided
             const resolvedProvider = { ...providerToCreate };
             if (providerToCreate.secretId) {

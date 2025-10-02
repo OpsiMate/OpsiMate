@@ -46,7 +46,8 @@ export class ProviderController {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error creating provider:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+                res.status(400).json({success: false, error: errorMessage});
             }
         }
     }

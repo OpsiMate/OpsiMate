@@ -91,6 +91,32 @@ export class ProviderRepository {
         });
     }
 
+    async getProviderByName(name: string): Promise<Provider | null> {
+        return runAsync((): Provider | null => {
+            const stmt = this.db.prepare(`
+                SELECT id,
+                       provider_name        AS name,
+                       provider_ip          AS providerIP,
+                       username,
+                       private_key_filename AS privateKeyFilename,
+                       password,
+                       ssh_port             AS SSHPort,
+                       created_at           AS createdAt,
+                       provider_type        AS providerType
+                FROM providers
+                WHERE provider_name = ?
+            `);
+
+            const result = stmt.get(name) as Provider | undefined;
+            if (!result) return null;
+            
+            if (result.password) {
+                result.password = decryptPassword(result.password);
+            }
+            return result;
+        });
+    }
+
     async updateProvider(id: number, data: Omit<Provider, 'id' | 'createdAt'>): Promise<void> {
         return runAsync(() => {
             const stmt = this.db.prepare(`
@@ -124,14 +150,14 @@ export class ProviderRepository {
                 CREATE TABLE IF NOT EXISTS providers
                 (
                     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-                    provider_name        TEXT NOT NULL,
+                    provider_name        TEXT NOT NULL UNIQUE,
                     provider_ip          TEXT     DEFAULT NULL,
                     username             TEXT     DEFAULT NULL,
                     private_key_filename TEXT,
                     password             TEXT,
                     ssh_port             INTEGER  DEFAULT 22,
                     created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    provider_type        TEXT NOT NULL
+                    provider_type        TEXT NOT NULL,
                     CHECK (
                         (private_key_filename IS NOT NULL AND TRIM(private_key_filename) <> '')
                             OR
