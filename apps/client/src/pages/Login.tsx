@@ -52,10 +52,10 @@ const Login: React.FC = () => {
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-80">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+   return (
+   <div className="min-h-screen flex items-center justify-center bg-background">
+      <form onSubmit={handleSubmit} className="bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80">
+        <h2 className="text-2xl font-bold mb-6 text-center text-foreground">Login</h2>
         <div className="mb-4">
           <Input
             type="email"
