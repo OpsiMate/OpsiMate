@@ -33,30 +33,6 @@ export class ProviderController {
         }
     }
 
-    async getProviderById(req: Request, res: Response) {
-        try {
-            const providerId = parseInt(req.params.providerId);
-            if (isNaN(providerId)) {
-                return res.status(400).json({success: false, error: 'Invalid provider ID'});
-            }
-
-            const provider = await this.providerBL.getProviderById(providerId);
-            if (!provider) {
-                return res.status(404).json({success: false, error: 'Provider not found'});
-            }
-
-            delete provider.password;
-            res.json({success: true, data: provider});
-        } catch (error) {
-            if (error instanceof ProviderNotFound) {
-                res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
-            } else {
-                logger.error('Error getting provider:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
-            }
-        }
-    }
-
     async refreshProvider(req: Request, res: Response) {
         try {
             const providerId = parseInt(req.params.providerId);
