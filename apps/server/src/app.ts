@@ -116,7 +116,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
 
     if (config?.enableJobs) {
-        new RefreshJob(providerBL, serviceRepo).startRefreshJob();
+        new RefreshJob(providerBL).startRefreshJob();
         new PullGrafanaAlertsJob(alertBL, integrationBL, tagRepo).startPullGrafanaAlertsJob();
     }
 
