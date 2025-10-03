@@ -12,12 +12,14 @@ import {ErrorAlert} from '../components/ErrorAlert';
 import { EditUserModal } from '../components/EditUserModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import {useFormErrors} from '../hooks/useFormErrors';
-import {Users, FileText, KeyRound, Trash2, Plus, Check, X, Edit2Icon, Edit3, Edit} from 'lucide-react';
+
+import {Users, FileText, KeyRound, Trash2, Plus, Check, X, Edit} from 'lucide-react';
 import {DashboardLayout} from '../components/DashboardLayout';
 import {AddUserModal} from '../components/AddUserModal';
 import {auditApi} from '../lib/api';
 import {FileDropzone} from "@/components/ui/file-dropzone";
 import {getSecretsFromServer, createSecretOnServer, deleteSecretOnServer} from "@/lib/sslKeys";
+import {EditSecretDialog} from "@/components/EditSecretDialog";
 import {SecretMetadata} from "@OpsiMate/shared";
 import {
     Dialog,
@@ -836,6 +838,7 @@ const SslKeysTable: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<number | null>(null);
+    const [editingSecret, setEditingSecret] = useState<SecretMetadata | null>(null);
     const {toast} = useToast();
 
     const loadSecrets = async () => {
@@ -898,62 +901,87 @@ const SslKeysTable: React.FC = () => {
     if (!secrets.length) return <div className="py-6 text-center text-muted-foreground">No secrets added yet.</div>;
 
     return (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Secret Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {secrets.map(secret => (
-                    <TableRow key={secret.id}>
-                        <TableCell><b>{secret.name}</b></TableCell>
-                        <TableCell>
-                            <Badge variant={secret.type === 'kubeconfig' ? 'secondary' : 'default'}>
-                                {secret.type === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
+        <>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Secret Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {secrets.map(secret => (
+                        <TableRow key={secret.id}>
+                            <TableCell><b>{secret.name}</b></TableCell>
+                            <TableCell>
+                                <Badge variant={secret.type === 'kubeconfig' ? 'secondary' : 'default'}>
+                                    {secret.type === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex items-center gap-2">
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-                                        title="Delete SSL key"
-                                        disabled={deleting === secret.id}
+                                        className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                        title="Edit secret"
+                                        onClick={() => setEditingSecret(secret)}
                                     >
-                                        <Trash2 className="h-4 w-4"/>
+                                        <Edit className="h-4 w-4"/>
                                     </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Delete Secret</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot
-                                            be undone and will permanently remove the secret file.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel disabled={deleting === secret.id}>
-                                            Cancel
-                                        </AlertDialogCancel>
-                                        <AlertDialogAction
-                                            className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
-                                            disabled={deleting === secret.id}
-                                            onClick={() => handleDeleteSecret(secret.id)}
-                                        >
-                                            {deleting === secret.id ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                title="Delete SSL key"
+                                                disabled={deleting === secret.id}
+                                            >
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete Secret</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to delete "<b>{secret.name}</b>"? This action cannot
+                                                be undone and will permanently remove the secret file.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={deleting === secret.id}>
+                                                Cancel
+                                            </AlertDialogCancel>
+                                            <AlertDialogAction
+                                                className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
+                                                disabled={deleting === secret.id}
+                                                onClick={() => handleDeleteSecret(secret.id)}
+                                            >
+                                                {deleting === secret.id ? 'Deleting...' : 'Delete'}
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            
+            {editingSecret && (
+                <EditSecretDialog
+                    secret={editingSecret}
+                    open={!!editingSecret}
+                    onClose={() => setEditingSecret(null)}
+                    onSuccess={() => {
+                        loadSecrets();
+                        setEditingSecret(null);
+                    }}
+                />
+            )}
+        </>
     );
 };
