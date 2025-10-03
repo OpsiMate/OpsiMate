@@ -132,6 +132,7 @@ export enum AuditResourceType {
     PROVIDER = 'PROVIDER',
     SERVICE = 'SERVICE',
     USER = 'USER',
+    INTEGRATION = 'INTEGRATION',
     // Add more as needed
 }
 

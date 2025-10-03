@@ -4,18 +4,13 @@ import {SecretsController} from './controller';
 import multer from "multer";
 import {getSecurityConfig} from "../../../config/config";
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const securityConfig = getSecurityConfig();
 
 // storage configuration
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => {
-        cb(null, path.resolve(__dirname, '../../', securityConfig.private_keys_path)); // make sure folder exists
+        cb(null, path.resolve(process.cwd(), securityConfig.private_keys_path)); // make sure folder exists
     },
     filename: (_req, file, cb) => {
         cb(null, Date.now() + "-" + file.originalname);

@@ -2,10 +2,11 @@ import { Request, Response } from "express";
 import {
     CreateIntegrationSchema,
     Integration, IntegrationResponse,
-    IntegrationTagsquerySchema, Logger
+    IntegrationTagsquerySchema, Logger, User
 } from "@OpsiMate/shared";
 import { z } from "zod";
 import { IntegrationBL } from "../../../bl/integrations/integration.bl";
+import {AuthenticatedRequest} from '../../../middleware/auth';
 
 const logger = new Logger("v1/integrations/controller");
 
@@ -28,10 +29,11 @@ export class IntegrationController {
         }
     };
 
-    createIntegration = async (req: Request, res: Response) => {
+    createIntegration = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const integrationToCreate = CreateIntegrationSchema.parse(req.body);
-            const createdIntegration: Integration = await this.integrationBL.createIntegration(integrationToCreate);
+            const user = req.user as User; // User should be available from auth middleware
+            const createdIntegration: Integration = await this.integrationBL.createIntegration(integrationToCreate, user);
             res.status(201).json({ success: true, data: createdIntegration });
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -43,7 +45,7 @@ export class IntegrationController {
         }
     };
 
-    updateIntegration = async (req: Request, res: Response) => {
+    updateIntegration = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const integrationId = parseInt(req.params.integrationId);
             if (isNaN(integrationId)) {
@@ -51,7 +53,8 @@ export class IntegrationController {
             }
 
             const validatedData = CreateIntegrationSchema.parse(req.body);
-            const updatedIntegration = await this.integrationBL.updateIntegration(integrationId, validatedData);
+            const user = req.user as User; // User should be available from auth middleware
+            const updatedIntegration = await this.integrationBL.updateIntegration(integrationId, validatedData, user);
 
             res.json({ success: true, data: toIntegrationResponse(updatedIntegration), message: 'Integration updated successfully' });
         } catch (error) {
@@ -64,14 +67,15 @@ export class IntegrationController {
         }
     };
 
-    deleteIntegration = async (req: Request, res: Response) => {
+    deleteIntegration = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const integrationId = parseInt(req.params.integrationId);
             if (isNaN(integrationId)) {
                 return res.status(400).json({ success: false, error: 'Invalid integration ID' });
             }
 
-            await this.integrationBL.deleteIntegration(integrationId);
+            const user = req.user as User; // User should be available from auth middleware
+            await this.integrationBL.deleteIntegration(integrationId, user);
             res.json({ success: true, message: 'Integration and associated services deleted successfully' });
         } catch (error) {
             logger.error('Error deleting integration:', error);

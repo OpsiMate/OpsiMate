@@ -2,19 +2,14 @@ import * as k8s from '@kubernetes/client-node';
 import { DiscoveredPod, DiscoveredService, Logger, Provider, Service } from "@OpsiMate/shared";
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
 import { getSecurityConfig } from '../config/config';
 import { decryptPassword } from "../utils/encryption";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 function getPrivateKeysDir(): string {
     const securityConfig = getSecurityConfig();
     return path.isAbsolute(securityConfig.private_keys_path)
         ? securityConfig.private_keys_path
-        : path.resolve(__dirname, securityConfig.private_keys_path);
+        : path.resolve(process.cwd(), securityConfig.private_keys_path);
 }
 
 const logger = new Logger('kubeConnector.ts');

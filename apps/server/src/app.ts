@@ -82,7 +82,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     // BL
     const auditBL = new AuditBL(auditLogRepo);
     const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-    const integrationBL = new IntegrationBL(integrationRepo);
+    const integrationBL = new IntegrationBL(integrationRepo, auditBL); // Updated to inject auditBL
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
     const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo);
@@ -113,7 +113,6 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         secretController,
         customFieldsController
     ));
-
 
     if (config?.enableJobs) {
         new RefreshJob(providerBL).startRefreshJob();
