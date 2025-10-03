@@ -156,6 +156,11 @@ export const providerApi = {
     return apiRequest<Provider>(`/providers/${providerId}`);
   },
 
+  // Refresh provider and get real-time service status
+  refreshProvider: (providerId: number) => {
+    return apiRequest<{ provider: Provider; services: Service[] }>(`/providers/${providerId}/refresh`, 'POST');
+  },
+
   // Create a new provider
   createProvider: (providerData: {
     name: string;
