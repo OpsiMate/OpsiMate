@@ -157,7 +157,7 @@ export class UsersController {
             const { fullName, newPassword } = UpdateProfileSchema.parse(req.body);
             const updatedUser = await this.userBL.updateProfile(req.user.id, fullName, newPassword);
             
-            const responseData: { user: User; token?: string } = { user: updatedUser };
+            const responseData: { user: User; token?: string | undefined } = { user: updatedUser };
             
             // If password was changed, generate a new token
             if (newPassword) {
@@ -177,4 +177,96 @@ export class UsersController {
             }
         }
     };
-} 
+
+    updateUserPasswordHandler = async (req: AuthenticatedRequest, res: Response) => {
+        if (!req.user || req.user.role !== Role.Admin) {
+            return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
+        }
+
+        const userId = parseInt(req.params.id);
+        if (isNaN(userId)) {
+            return res.status(400).json({ success: false, error: 'Invalid user ID' });
+        }
+
+        try {
+            const { newPassword } = req.body as { newPassword: string };
+
+            if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password must be at least 8 characters long'
+                });
+            }
+
+            // Don't allow admin to reset their own password this way
+            if (userId === req.user.id) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Cannot reset your own password. Use profile settings instead.'
+                });
+            }
+
+            const user = await this.userBL.getUserById(userId);
+            if (!user) {
+                return res.status(404).json({ success: false, error: 'User not found' });
+            }
+
+            await this.userBL.resetUserPassword(userId, newPassword);
+
+            res.status(200).json({
+                success: true,
+                message: 'Password reset successfully'
+            });
+        } catch (error) {
+            logger.error('Error resetting user password:', error);
+            res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
+    updateUserHandler = async (req: AuthenticatedRequest, res: Response) => {
+        if (!req.user || req.user.role !== Role.Admin) {
+            return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
+        }
+
+        const userId = parseInt(req.params.id);
+        if (isNaN(userId)) {
+            return res.status(400).json({ success: false, error: 'Invalid user ID' });
+        }
+
+        try {
+            const { fullName, email, role } = req.body as {
+                fullName?: string;
+                email?: string;
+                role?: Role;
+            };
+
+            // Validate at least one field is provided
+            if (!fullName && !email && !role) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'At least one field (fullName, email, or role) must be provided'
+                });
+            }
+
+            const user = await this.userBL.getUserById(userId);
+            if (!user) {
+                return res.status(404).json({ success: false, error: 'User not found' });
+            }
+
+            const updatedUser = await this.userBL.updateUser(userId, { fullName, email, role });
+
+            res.status(200).json({
+                success: true,
+                data: updatedUser,
+                message: 'User updated successfully'
+            });
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
+                res.status(400).json({ success: false, error: 'Email already registered' });
+            } else {
+                logger.error('Error updating user:', error);
+                res.status(500).json({ success: false, error: 'Internal server error' });
+            }
+        }
+    }
+};
