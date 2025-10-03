@@ -34,6 +34,9 @@ export default function createSecretsRouter(secretsController: SecretsController
     // GET /api/v1/secrets
     router.get('/', secretsController.getSecrets);
 
+    // PUT /api/v1/secrets/:id
+    router.put('/:id', upload.single("secret_file"), secretsController.updateSecret);
+
     // DELETE /api/v1/secrets/:id
     router.delete('/:id', secretsController.deleteSecret);
 
