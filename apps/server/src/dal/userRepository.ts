@@ -51,10 +51,11 @@ export class UserRepository {
         });
     }
 
-    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'): Promise<void> {
+    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'): Promise<User> {
         return runAsync(() => {
-            const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ?');
-            stmt.run(newRole, email);
+            const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ? RETURNING *');
+            const result = stmt.run(newRole, email);
+            return result as unknown as User
         });
     }
 
@@ -73,9 +74,11 @@ export class UserRepository {
         });
     }
 
-    async deleteUser(id: number): Promise<void> {
+    async deleteUser(id: number): Promise<User> {
         return runAsync(() => {
-            this.db.prepare('DELETE FROM users WHERE id = ?').run(id);
+            const stmt = this.db.prepare('DELETE FROM users WHERE id = ? RETURNING *')
+            const result = stmt.run(id);
+            return result as unknown as User
         });
     }
 
