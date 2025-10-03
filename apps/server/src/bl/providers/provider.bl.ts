@@ -1,4 +1,4 @@
-import {DiscoveredService, Provider, Service, Logger, User} from "@OpsiMate/shared";
+import {DiscoveredService, Provider, Service, Logger, User, ServiceType} from "@OpsiMate/shared";
 import { ProviderNotFound } from "./ProviderNotFound";
 import { providerConnectorFactory } from "./provider-connector/providerConnectorFactory";
 import {ProviderRepository} from "../../dal/providerRepository";
@@ -6,6 +6,7 @@ import {ServiceRepository} from "../../dal/serviceRepository";
 import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository";
 import { AuditBL } from '../audit/audit.bl';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
+import { checkSystemServiceStatus } from "../../dal/sshClient";
 
 const logger = new Logger('bl/providers/provider.bl');
 
@@ -169,23 +170,7 @@ export class ProviderBL {
         }
 
         try {
-            const providerConnector = providerConnectorFactory(provider.providerType);
-            const discoveredServices = await providerConnector.discoverServices(provider);
-            logger.info(`Discovered ${discoveredServices.length} services for provider ${providerId}`);
-
-            const dbServices = await this.serviceRepo.getServicesByProviderId(providerId);
-            
-            for (const dbService of dbServices) {
-                const matchedService = discoveredServices.find(ds => ds.name === dbService.name);
-                
-                if (matchedService && matchedService.serviceStatus !== dbService.serviceStatus) {
-                    await this.serviceRepo.updateService(dbService.id, {
-                        serviceStatus: matchedService.serviceStatus
-                    });
-                    logger.info(`Updated service ${dbService.name} status to ${matchedService.serviceStatus}`);
-                }
-            }
-
+            await this.refreshProviderServices(provider);
             const updatedServices = await this.serviceRepo.getServicesByProviderId(providerId);
             
             return {
@@ -196,5 +181,49 @@ export class ProviderBL {
             logger.error(`Error refreshing provider ${providerId}:`, error);
             throw new Error(`Failed to refresh provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
+
+    async refreshProviderServices(provider: Provider): Promise<void> {
+        const connector = providerConnectorFactory(provider.providerType);
+        const discoveredServices: DiscoveredService[] = await connector.discoverServices(provider);
+        const dbServices = await this.serviceRepo.getServicesByProviderId(provider.id);
+
+        for (const dbService of dbServices) {
+            if (dbService.serviceType === ServiceType.SYSTEMD) {
+                try {
+                    const actualStatus = await checkSystemServiceStatus(provider, dbService.name);
+                    
+                    if (actualStatus !== dbService.serviceStatus) {
+                        await this.serviceRepo.updateService(dbService.id, {
+                            serviceStatus: actualStatus
+                        });
+                        logger.info(`Updated systemd service ${dbService.name} status to ${actualStatus}`);
+                    }
+                } catch (error) {
+                    logger.error(`Failed to check systemd service ${dbService.name} status:`, error);
+                }
+            } else {
+                const matchedService = this.findMatchingService(discoveredServices, dbService.name);
+
+                if (!matchedService) {
+                    await this.serviceRepo.deleteService(dbService.id);
+                }
+
+                if (matchedService && matchedService.serviceStatus !== dbService.serviceStatus) {
+                    await this.serviceRepo.updateService(dbService.id, {
+                        serviceStatus: matchedService.serviceStatus
+                    });
+                }
+            }
+        }
+    }
+
+    private findMatchingService(
+        discoveredServices: DiscoveredService[],
+        dbServiceName: string
+    ): DiscoveredService | undefined {
+        return discoveredServices.find(
+            ds => ds.name.trim().toLowerCase() === dbServiceName.trim().toLowerCase()
+        );
     }
 }
