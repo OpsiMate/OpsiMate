@@ -9,8 +9,10 @@ import {apiRequest} from '../lib/api';
 import {User, Role} from '../types';
 import {getCurrentUser} from '../lib/auth';
 import {ErrorAlert} from '../components/ErrorAlert';
+import { EditUserModal } from '../components/EditUserModal';
+import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import {useFormErrors} from '../hooks/useFormErrors';
-import {Users, FileText, KeyRound, Trash2, Plus, Check, X} from 'lucide-react';
+import {Users, FileText, KeyRound, Trash2, Plus, Check, X, Edit2Icon, Edit3, Edit} from 'lucide-react';
 import {DashboardLayout} from '../components/DashboardLayout';
 import {AddUserModal} from '../components/AddUserModal';
 import {auditApi} from '../lib/api';
@@ -55,6 +57,14 @@ const Settings: React.FC = () => {
     const currentUser = getCurrentUser();
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [userToEdit, setUserToEdit] = useState<User | null>(null);
+    const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+    const [userToResetPassword, 
+        setUserToResetPassword] = useState<User | null>(null);
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -119,6 +129,42 @@ const Settings: React.FC = () => {
             default:
                 return 'outline';
         }
+    };
+    // Filter users based on search query
+    const filteredUsers = users.filter(user =>
+        user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Handle bulk role update
+    const handleBulkRoleUpdate = async (newRole: Role) => {
+        for (const userId of selectedUsers) {
+            const user = users.find(u => u.id === userId);
+            if (user && user.email !== currentUser?.email) {
+                await handleRoleUpdate(user.email, newRole);
+            }
+        }
+        setSelectedUsers([]);
+    };
+
+    // Handle bulk delete
+    const handleBulkDelete = async () => {
+        for (const userId of selectedUsers) {
+            if (users.find(u => u.id === userId)?.email !== currentUser?.email) {
+                await handleDeleteUser(userId);
+            }
+        }
+        setSelectedUsers([]);
+        setShowBulkDeleteConfirm(false);
+    };
+
+    // Handle user update from edit modal
+    const handleUserUpdated = (updatedUser: User) => {
+        setUsers(prevUsers =>
+            prevUsers.map(user =>
+                user.id === updatedUser.id ? updatedUser : user
+            )
+        );
     };
 
     const formatDate = (dateString: string) => {
@@ -213,29 +259,81 @@ const Settings: React.FC = () => {
                                 <div className="flex-1">
 
                                     <TabsContent value="users" className="space-y-6">
-                                        <div className="flex justify-between items-center">
-                                            <div>
+                                        <div className="flex justify-between items-center gap-4">
+                                            <div className="flex-1">
                                                 <h2 className="text-2xl font-semibold">User Management</h2>
-                                                <p className="text-muted-foreground">Manage user access and permissions
-                                                    for your Service instance.</p>
+                                                <p className="text-muted-foreground">Manage user access and permissions for your Service instance.</p>
                                             </div>
-                                            <Button
-                                                onClick={() => setShowAddUserModal(true)}
-                                                variant="default"
-                                            >
-                                                Add User
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                {selectedUsers.length > 0 && (
+                                                    <>
+                                                        <Select
+                                                            value=""
+                                                            onValueChange={(newRole) => handleBulkRoleUpdate(newRole as Role)}
+                                                        >
+                                                            <SelectTrigger className="w-40">
+                                                                <SelectValue placeholder="Bulk Role Change" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value={Role.Viewer}>Set as Viewer</SelectItem>
+                                                                <SelectItem value={Role.Editor}>Set as Editor</SelectItem>
+                                                                <SelectItem value={Role.Admin}>Set as Admin</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => setShowBulkDeleteConfirm(true)}
+                                                        >
+                                                            Delete Selected ({selectedUsers.length})
+                                                        </Button>
+                                                    </>
+                                                )}
+                                                <Button onClick={() => setShowAddUserModal(true)} variant="default">
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Add User
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        {/* Search Bar */}
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Search users by name or email..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="max-w-md"
+                                            />
+                                            {searchQuery && (
+                                                <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
+                                                    Clear
+                                                </Button>
+                                            )}
                                         </div>
 
                                         {/* Users Table */}
                                         <Card>
                                             <CardHeader>
-                                                <CardTitle>Current Users</CardTitle>
+                                                <CardTitle>Current Users ({filteredUsers.length})</CardTitle>
                                             </CardHeader>
                                             <CardContent>
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
+                                                            <TableHead className="w-12">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setSelectedUsers(filteredUsers.map(u => u.id));
+                                                                        } else {
+                                                                            setSelectedUsers([]);
+                                                                        }
+                                                                    }}
+                                                                    className="cursor-pointer"
+                                                                />
+                                                            </TableHead>
                                                             <TableHead>User</TableHead>
                                                             <TableHead>Email</TableHead>
                                                             <TableHead>Role</TableHead>
@@ -244,13 +342,27 @@ const Settings: React.FC = () => {
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {users.map((user) => (
+                                                        {filteredUsers.map((user) => (
                                                             <TableRow key={user.id}>
+                                                                <TableCell>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedUsers.includes(user.id)}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setSelectedUsers(prev => [...prev, user.id]);
+                                                                            } else {
+                                                                                setSelectedUsers(prev => prev.filter(id => id !== user.id));
+                                                                            }
+                                                                        }}
+                                                                        disabled={user.email === currentUser?.email}
+                                                                        className="cursor-pointer"
+                                                                    />
+                                                                </TableCell>
                                                                 <TableCell className="font-medium">
                                                                     {user.fullName}
                                                                     {user.email === currentUser?.email && (
-                                                                        <Badge variant="outline"
-                                                                               className="ml-2 text-xs">
+                                                                        <Badge variant="outline" className="ml-2 text-xs">
                                                                             (me)
                                                                         </Badge>
                                                                     )}
@@ -270,61 +382,80 @@ const Settings: React.FC = () => {
                                                                             disabled={updatingUser === user.email || user.email === currentUser?.email}
                                                                         >
                                                                             <SelectTrigger className="w-32">
-                                                                                <SelectValue/>
+                                                                                <SelectValue />
                                                                             </SelectTrigger>
                                                                             <SelectContent>
-                                                                                <SelectItem
-                                                                                    value={Role.Viewer}>Viewer</SelectItem>
-                                                                                <SelectItem
-                                                                                    value={Role.Editor}>Editor</SelectItem>
-                                                                                <SelectItem
-                                                                                    value={Role.Admin}>Admin</SelectItem>
+                                                                                <SelectItem value={Role.Viewer}>Viewer</SelectItem>
+                                                                                <SelectItem value={Role.Editor}>Editor</SelectItem>
+                                                                                <SelectItem value={Role.Admin}>Admin</SelectItem>
                                                                             </SelectContent>
                                                                         </Select>
                                                                         {isAdmin && user.email !== currentUser?.email && (
-                                                                            <AlertDialog>
-                                                                                <AlertDialogTrigger asChild>
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="icon"
-                                                                                        className="text-red-600 hover:bg-red-100 focus:bg-red-100 focus:ring-2 focus:ring-red-400 ml-auto"
-                                                                                        title="Delete user"
-                                                                                        onClick={() => setUserToDelete(user)}
-                                                                                    >
-                                                                                        <Trash2 className="h-4 w-4"/>
-                                                                                    </Button>
-                                                                                </AlertDialogTrigger>
-                                                                                <AlertDialogContent>
-                                                                                    <AlertDialogHeader>
-                                                                                        <AlertDialogTitle>Delete
-                                                                                            User</AlertDialogTitle>
-                                                                                        <AlertDialogDescription>
-                                                                                            Are you sure you want to
-                                                                                            delete <b>{userToDelete?.fullName}</b>?
-                                                                                            This action cannot be
-                                                                                            undone.
-                                                                                        </AlertDialogDescription>
-                                                                                    </AlertDialogHeader>
-                                                                                    <AlertDialogFooter>
-                                                                                        <AlertDialogCancel
-                                                                                            disabled={deleting}
-                                                                                            onClick={() => setUserToDelete(null)}>
-                                                                                            Cancel
-                                                                                        </AlertDialogCancel>
-                                                                                        <AlertDialogAction
-                                                                                            className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
-                                                                                            disabled={deleting}
-                                                                                            onClick={() => handleDeleteUser(userToDelete!.id)}
+                                                                            <>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    onClick={() => {
+                                                                                        setUserToEdit(user);
+                                                                                        setShowEditModal(true);
+                                                                                    }}
+                                                                                    title="Edit user"
+                                                                                >
+                                                                                    <Edit className="h-4 w-4" />
+                                                                                </Button>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    onClick={() => {
+                                                                                        setUserToResetPassword(user);
+                                                                                        setShowResetPasswordModal(true);
+                                                                                    }}
+                                                                                    title="Reset password"
+                                                                                >
+                                                                                    <KeyRound className="h-4 w-4" />
+                                                                                </Button>
+                                                                                <AlertDialog>
+                                                                                    <AlertDialogTrigger asChild>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="icon"
+                                                                                            className="text-red-600 hover:bg-red-100 focus:bg-red-100 focus:ring-2 focus:ring-red-400"
+                                                                                            title="Delete user"
+                                                                                            onClick={() => setUserToDelete(user)}
                                                                                         >
-                                                                                            {deleting ? 'Deleting...' : 'Delete'}
-                                                                                        </AlertDialogAction>
-                                                                                    </AlertDialogFooter>
-                                                                                </AlertDialogContent>
-                                                                            </AlertDialog>
+                                                                                            <Trash2 className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </AlertDialogTrigger>
+                                                                                    <AlertDialogContent>
+                                                                                        <AlertDialogHeader>
+                                                                                            <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                                                                            <AlertDialogDescription>
+                                                                                                Are you sure you want to delete <b>{userToDelete?.fullName}</b>?
+                                                                                                This action cannot be undone.
+                                                                                            </AlertDialogDescription>
+                                                                                        </AlertDialogHeader>
+                                                                                        <AlertDialogFooter>
+                                                                                            <AlertDialogCancel
+                                                                                                disabled={deleting}
+                                                                                                onClick={() => setUserToDelete(null)}>
+                                                                                                Cancel
+                                                                                            </AlertDialogCancel>
+                                                                                            <AlertDialogAction
+                                                                                                className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
+                                                                                                disabled={deleting}
+                                                                                                onClick={() => handleDeleteUser(userToDelete!.id)}
+                                                                                            >
+                                                                                                {deleting ? 'Deleting...' : 'Delete'}
+                                                                                            </AlertDialogAction>
+                                                                                        </AlertDialogFooter>
+                                                                                    </AlertDialogContent>
+                                                                                </AlertDialog>
+                                                                            </>
                                                                         )}
                                                                     </div>
                                                                 </TableCell>
                                                             </TableRow>
+
                                                         ))}
                                                     </TableBody>
                                                 </Table>
@@ -343,7 +474,7 @@ const Settings: React.FC = () => {
                                                 <CardTitle>Activity Logs</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                <AuditLogTable/>
+                                                <AuditLogTable />
                                             </CardContent>
                                         </Card>
                                     </TabsContent>
@@ -355,7 +486,7 @@ const Settings: React.FC = () => {
                                                 <p className="text-muted-foreground">Manage SSH keys and kubeconfig
                                                     files used to access providers and services securely.</p>
                                             </div>
-                                            <AddSecretButton/>
+                                            <AddSecretButton />
                                         </div>
 
                                         <Card>
@@ -363,7 +494,7 @@ const Settings: React.FC = () => {
                                                 <CardTitle>Secrets</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                <SslKeysTable/>
+                                                <SslKeysTable />
                                             </CardContent>
                                         </Card>
                                     </TabsContent>
@@ -380,24 +511,67 @@ const Settings: React.FC = () => {
                                                 <CardTitle>Custom Fields</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                <CustomFieldsTable/>
+                                                <CustomFieldsTable />
                                             </CardContent>
                                         </Card>
                                     </TabsContent>
 
+                                    
                                 </div>
                             </div>
                         </Tabs>
-
-                        {/* Add User Modal */}
-                        <AddUserModal
-                            isOpen={showAddUserModal}
-                            onClose={() => setShowAddUserModal(false)}
-                            onUserCreated={handleUserCreated}
-                        />
                     </div>
                 </div>
             </div>
+            {/* Add User Modal */}
+            <AddUserModal
+                isOpen={showAddUserModal}
+                onClose={() => setShowAddUserModal(false)}
+                onUserCreated={handleUserCreated}
+            />
+
+
+            {/* Edit User Modal */}
+            <EditUserModal
+                user={userToEdit}
+                isOpen={showEditModal}
+                onClose={() => {
+                    setShowEditModal(false);
+                    setUserToEdit(null);
+                }}
+                onUserUpdated={handleUserUpdated}
+            />
+
+            {/* Reset Password Modal */}
+            <ResetPasswordModal
+                user={userToResetPassword}
+                isOpen={showResetPasswordModal}
+                onClose={() => {
+                    setShowResetPasswordModal(false);
+                    setUserToResetPassword(null);
+                }}
+            />
+
+            {/* Bulk Delete Confirmation */}
+            <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Multiple Users</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete {selectedUsers.length} user(s)? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={handleBulkDelete}
+                        >
+                            Delete {selectedUsers.length} User(s)
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </DashboardLayout>
     );
 };
@@ -485,9 +659,9 @@ const AuditLogTable: React.FC = () => {
                         return (
                             <TableRow key={log.id}>
                                 <TableCell>
-                  <span title={parseUTCDate(log.timestamp).toLocaleString()}>
-                    {formatRelativeTime(log.timestamp)}
-                  </span>
+                                    <span title={parseUTCDate(log.timestamp).toLocaleString()}>
+                                        {formatRelativeTime(log.timestamp)}
+                                    </span>
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant={actionProps.variant as any} className={actionProps.className}>
