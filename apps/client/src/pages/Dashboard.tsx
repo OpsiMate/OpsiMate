@@ -506,7 +506,7 @@ const Dashboard = () => {
                             "border-r border-border transition-all duration-300 ease-in-out flex-shrink-0 relative",
                             filterPanelCollapsed ? "w-12" : "w-48"
                         )}>
-                            <div className="h-full flex flex-col">
+                            <div className="h-full flex flex-col px-4">
                                 <div className="flex items-center justify-between p-2 border-b border-border">
                                     {!filterPanelCollapsed && (
                                         <h3 className="text-sm font-semibold text-foreground">Filters</h3>
@@ -525,7 +525,7 @@ const Dashboard = () => {
                                 onClick={toggleFilterPanel}
                                 variant="ghost"
                                 size="icon"
-                                className="z-10 absolute top-3/4 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8"
+                                className="z-10 absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8"
                                 title={filterPanelCollapsed ? "Expand filters" : "Collapse filters"}
                             >
                                 {filterPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
