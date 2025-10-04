@@ -1,6 +1,7 @@
 import {Request, Response} from "express";
 import {
     CreateSecretsMetadataSchema,
+    UpdateSecretsMetadataSchema,
     Logger
 } from "@OpsiMate/shared";
 import {z} from "zod";
@@ -44,6 +45,56 @@ export class SecretsController {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error creating secret:', error);
+                res.status(500).json({success: false, error: 'Internal server error'});
+            }
+        }
+    };
+
+    updateSecret = async (req: Request, res: Response) => {
+        try {
+            const secretId = parseInt(req.params.id);
+            if (isNaN(secretId)) {
+                res.status(400).json({success: false, error: 'Invalid secret ID'});
+                return;
+            }
+
+            // Parse the request body for metadata updates
+            const {displayName, secretType} = UpdateSecretsMetadataSchema.parse(req.body);
+            
+            let newFileName: string | undefined;
+            
+            // If a new file is uploaded, handle it
+            if (req.file) {
+                // Read the just-saved file
+                const filePath = req.file.path;
+                const originalContent = fs.readFileSync(filePath, 'utf-8');
+
+                // Encrypt it
+                const encryptedContent = encryptPassword(originalContent);
+
+                // Overwrite file with encrypted content
+                fs.writeFileSync(filePath, encryptedContent ?? "");
+                
+                newFileName = req.file.filename;
+            }
+
+            const updated = await this.secretsBL.updateSecretMetadata(
+                secretId, 
+                displayName, 
+                newFileName, 
+                secretType
+            );
+            
+            if (updated) {
+                res.json({success: true, message: 'Secret updated successfully'});
+            } else {
+                res.status(404).json({success: false, error: 'Secret not found'});
+            }
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            } else {
+                logger.error('Error updating secret:', error);
                 res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
