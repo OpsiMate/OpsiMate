@@ -290,7 +290,7 @@ export async function getSystemServiceLogs(provider: Provider, serviceName: stri
     }
 }
 
-export async function testConnection(provider: Provider): Promise<boolean> {
+export async function testConnection(provider: Provider): Promise<{success: boolean, error?: string}> {
     const ssh = new NodeSSH();
 
     try {
@@ -300,16 +300,35 @@ export async function testConnection(provider: Provider): Promise<boolean> {
         await timeoutPromise(ssh.connect(sshConfig), 10000, 'SSH connection timed out');
 
         // Timeout for executing command (e.g., 5 seconds)
-        const result = await timeoutPromise(
+        const result: SSHExecCommandResponse = await timeoutPromise(
             ssh.execCommand('echo "Connection test"'),
             5000,
             'Command execution timed out'
         );
 
-        return result.code === 0 && result.stdout.trim() === 'Connection test';
+        const success = result.code === 0 && result.stdout.trim() === 'Connection test';
+        if (!success) {
+            return { success: false, error: 'Command execution failed' };
+        }
+        return { success: true };
     } catch (error) {
         logger.error(`Connection test failed for provider ${provider.providerIP}:`, error);
-        return false;
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+        if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+            return { success: false, error: 'Connection timeout - unable to reach the server' };
+        } else if (errorMessage.includes('authentication') || errorMessage.includes('auth') || errorMessage.includes('password')) {
+            return { success: false, error: 'Authentication failed - invalid credentials or SSH key' };
+        } else if (errorMessage.includes('ECONNREFUSED')) {
+            return { success: false, error: 'Connection refused - server may be down or SSH port is incorrect' };
+        } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('EHOSTUNREACH')) {
+            return { success: false, error: 'Host not found - check the IP address or hostname' };
+        } else if (errorMessage.includes('Key not found')) {
+            return { success: false, error: 'SSH key not found on server' };
+        } else {
+            return { success: false, error: errorMessage };
+        }
     } finally {
         ssh.dispose();
     }

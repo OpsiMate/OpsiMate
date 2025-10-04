@@ -35,7 +35,7 @@ export class VMProviderConnector implements ProviderConnector {
         }
     }
 
-    async testConnection(provider: Provider): Promise<boolean> {
+    async testConnection(provider: Provider): Promise<{success: boolean, error?: string}> {
         return sshClient.testConnection(provider);
     }
 

@@ -24,7 +24,7 @@ export class K8SProviderConnector implements ProviderConnector {
         return getK8SServices(provider);
     }
 
-    testConnection(_: Provider): Promise<boolean> {
-        throw new Error("Method not implemented.");
+    testConnection(_: Provider): Promise<{success: boolean, error?: string}> {
+        return Promise.resolve({ success: false, error: "Kubernetes connection testing is not yet implemented" });
     }
 }

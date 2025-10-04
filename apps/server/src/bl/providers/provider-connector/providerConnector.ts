@@ -9,7 +9,7 @@ export interface ProviderConnector {
 
     getServiceLogs(provider: Provider, service: Service): Promise<string[]>;
 
-    testConnection(provider: Provider): Promise<boolean>;
+    testConnection(provider: Provider): Promise<{success: boolean, error?: string}>;
 
     getServicePods(provider: Provider, service: Service): Promise<DiscoveredPod[]>;
 }
