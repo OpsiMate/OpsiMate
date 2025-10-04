@@ -600,4 +600,20 @@ export const secretsApi = {
   },
 };
 
+export const versionApi = {
+  // Get version information
+  getVersion: async () => {
+    try {
+      const response = await apiRequest<{ version: string; name: string; buildDate: string }>('/version');
+      return response;
+    } catch (error) {
+      console.error('Error getting version:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  },
+};
+
 export { apiRequest };

@@ -7,6 +7,7 @@ export const queryKeys = {
   integrations: ['integrations'] as const,
   views: ['views'] as const,
   usersExist: ['usersExist'] as const,
+  version: ['version'] as const,
   service: (id: number) => ['service', id] as const,
   provider: (id: number) => ['provider', id] as const,
   serviceLogs: (id: number) => ['serviceLogs', id] as const,

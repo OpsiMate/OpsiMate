@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
 import { isAdmin, isEditor } from "../lib/auth"
+import { useVersion } from "@/hooks/queries"
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -134,8 +135,36 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           )}
           <ProfileButton collapsed={collapsed} />
         </div>
-        <p className={cn("text-xs text-muted-foreground", collapsed && "sr-only")}>© 2024 OpsiMate</p>
+        <VersionDisplay collapsed={collapsed} />
       </div>
     </div>
   )
 }
+
+// Version Display Component for Sidebar
+interface VersionDisplayProps {
+  collapsed: boolean;
+}
+
+const VersionDisplay: React.FC<VersionDisplayProps> = ({ collapsed }) => {
+  const { data: versionInfo } = useVersion();
+  
+  if (!versionInfo) {
+    return (
+      <p className={cn("text-xs text-muted-foreground", collapsed && "sr-only")}>
+        © 2024 OpsiMate
+      </p>
+    );
+  }
+  
+  return (
+    <div className={cn("text-xs text-muted-foreground space-y-1", collapsed && "sr-only")}>
+      <p className="font-medium">
+        OpsiMate v{versionInfo.version}
+      </p>
+      <p>
+        © 2024 OpsiMate
+      </p>
+    </div>
+  );
+};

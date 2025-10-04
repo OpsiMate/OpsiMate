@@ -47,6 +47,7 @@ import {AuditLog} from "@OpsiMate/shared";
 import {useToast} from "@/hooks/use-toast";
 import {Settings as SettingsIcon} from "lucide-react";
 import {CustomFieldsTable} from "../components/CustomFieldsTable";
+import {useVersion} from "@/hooks/queries";
 
 const PAGE_SIZE = 20;
 
@@ -573,12 +574,44 @@ const Settings: React.FC = () => {
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </AlertDialog>
+                    </AlertDialog>
+        
+        {/* Version Footer */}
+        <VersionFooter />
         </DashboardLayout>
     );
 };
 
-export default Settings;
+// Version Footer Component
+const VersionFooter: React.FC = () => {
+    const { data: versionInfo } = useVersion();
+    
+    if (!versionInfo) {
+        return null;
+    }
+    
+    return (
+        <div className="border-t border-border bg-muted/30">
+            <div className="max-w-6xl mx-auto px-6 py-4">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4">
+                        <span className="font-medium">
+                            {versionInfo.name} v{versionInfo.version}
+                        </span>
+                        {versionInfo.buildDate && (
+                            <span className="text-xs">
+                                Build: {new Date(versionInfo.buildDate).toLocaleDateString()}
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-xs">
+                        © 2024 OpsiMate. All rights reserved.
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Helper to parse SQLite UTC timestamp as ISO 8601
 function parseUTCDate(dateString: string) {
