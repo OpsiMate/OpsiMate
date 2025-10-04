@@ -17,6 +17,7 @@ import {useNavigate} from "react-router-dom";
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { getSecretsFromServer } from "@/lib/sslKeys";
 import { SecretMetadata } from "@OpsiMate/shared";
+import { AddSecretModal } from "@/components/AddSecretModal";
 
 // --- FORM SCHEMAS ---
 
@@ -154,28 +155,33 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
     );
 };
 
-const KubeconfigSelector = ({ control }: { control: Control<KubernetesFormData> }) => {
+const KubeconfigSelector = ({ control, onSecretCreated }: { 
+    control: Control<KubernetesFormData>;
+    onSecretCreated?: (secretId: number) => void;
+}) => {
     const [keys, setKeys] = useState<SecretMetadata[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const loadKeys = async () => {
+        try {
+            setLoading(true);
+            const secrets = await getSecretsFromServer();
+            // Filter for kubeconfig type secrets
+            const kubeconfigSecrets = secrets.filter(secret => 
+                secret.type === 'kubeconfig' || secret.fileName?.endsWith('.yml') || secret.fileName?.endsWith('.yaml') || secret.fileName?.endsWith('.config')
+            );
+            setKeys(kubeconfigSecrets);
+            setError(null);
+        } catch (err) {
+            console.error('Error loading kubeconfig keys:', err);
+            setError('Failed to load kubeconfig keys');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const loadKeys = async () => {
-            try {
-                const secrets = await getSecretsFromServer();
-                // Filter for kubeconfig type secrets
-                const kubeconfigSecrets = secrets.filter(secret => 
-                    secret.type === 'kubeconfig' || secret.fileName?.endsWith('.yml') || secret.fileName?.endsWith('.yaml') || secret.fileName?.endsWith('.config')
-                );
-                setKeys(kubeconfigSecrets);
-                setError(null);
-            } catch (err) {
-                console.error('Error loading kubeconfig keys:', err);
-                setError('Failed to load kubeconfig keys');
-            } finally {
-                setLoading(false);
-            }
-        };
         loadKeys();
     }, []);
 
@@ -380,6 +386,13 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
     const {control, handleSubmit, formState: {errors}} = useForm<KubernetesFormData>({
         resolver: zodResolver(kubernetesSchema),
     });
+    
+    const [refreshKey, setRefreshKey] = useState(0);
+    
+    const handleSecretCreated = (secretId: number) => {
+        setRefreshKey(prev => prev + 1);
+    };
+    
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormSectionHeader title="Cluster Details"/>
@@ -390,16 +403,19 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
             </FieldWrapper>
             <FieldWrapper error={errors.kubeconfigKey}>
                 <Label>Kubeconfig Key <span className="text-destructive">*</span></Label>
-                <KubeconfigSelector control={control} />
+                <KubeconfigSelector key={refreshKey} control={control} onSecretCreated={handleSecretCreated} />
                 <div className="mt-2">
-                    <a
-                        href="/settings#secrets"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-primary hover:underline"
+                    <AddSecretModal 
+                        secretType="kubeconfig"
+                        onSecretCreated={handleSecretCreated}
                     >
-                        + Add new kubeconfig key
-                    </a>
+                        <button
+                            type="button"
+                            className="text-sm text-primary hover:underline"
+                        >
+                            + Add new kubeconfig key
+                        </button>
+                    </AddSecretModal>
                 </div>
             </FieldWrapper>
             
