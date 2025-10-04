@@ -37,7 +37,7 @@ export class UsersController {
         }
         try {
             const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
-            const result = await this.userBL.createUser(email, fullName, password, role);
+            const result = await this.userBL.createUser(email, fullName, password, role, { creatorId: req.user.id, creatorName:req.user.fullName});
             res.status(201).json({ success: true, data: result });
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -56,7 +56,7 @@ export class UsersController {
         }
         try {
             const { email, newRole } = UpdateUserRoleSchema.parse(req.body);
-            await this.userBL.updateUserRole(email, newRole);
+            await this.userBL.updateUserRole(email, newRole, { updaterId: req.user.id, updaterName: req.user.fullName});
             res.status(200).json({ success: true, message: 'User role updated successfully' });
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -100,16 +100,19 @@ export class UsersController {
         if (!req.user || req.user.role !== Role.Admin) {
             return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
         }
+
         const userId = parseInt(req.params.id);
         if (isNaN(userId)) {
             return res.status(400).json({ success: false, error: 'Invalid user ID' });
         }
+
         try {
             const user = await this.userBL.getUserById(userId);
             if (!user) {
                 return res.status(404).json({ success: false, error: 'User not found' });
             }
-            await this.userBL.deleteUser(userId);
+
+            await this.userBL.deleteUser(userId, { deleterId: req.user.id, deleterName: req.user.fullName });
             res.status(200).json({ success: true, message: 'User deleted successfully' });
         } catch (error) {
             logger.error('Error deleting user:', error);
