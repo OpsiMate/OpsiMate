@@ -76,7 +76,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
-import { AuditLogTable } from '@/components/settings/auditLog/table';
+import { AuditLogTable } from '@/components/settings/auditLog/AuditLogTable';
 import { Edit } from 'lucide-react';
 import { EditSecretDialog } from '@/components/EditSecretDialog';
 

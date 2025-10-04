@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AuditLog } from '@OpsiMate/shared';
+import { AuditActionType, AuditLog } from '@OpsiMate/shared';
 import { auditApi } from '../../../lib/api';
 import {
   Table,
@@ -79,24 +79,23 @@ function formatRelativeTime(dateString: string) {
   return date.toLocaleDateString();
 }
 
-// Helper for action badge color
-const getActionBadgeProps = (action: string) => {
-  switch (action) {
-    case 'CREATE':
-      return {
-        variant: 'secondary',
-        className: 'bg-green-100 text-green-800 border-green-200',
-      };
-    case 'UPDATE':
-      return {
-        variant: 'secondary',
-        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      };
-    case 'DELETE':
-      return { variant: 'destructive', className: '' };
-    default:
-      return { variant: 'outline', className: '' };
-  }
+const actionBadgeProps: Record<
+  AuditActionType,
+  { variant: string; className: string }
+> = {
+  CREATE: {
+    variant: 'secondary',
+    className: 'bg-green-100 text-green-800 border-green-200',
+  },
+  UPDATE: {
+    variant: 'secondary',
+    className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  },
+  DELETE: { variant: 'destructive', className: '' },
+};
+
+const getActionBadgeProps = (action: AuditActionType) => {
+  return actionBadgeProps[action] ?? { variant: 'outline', className: '' };
 };
 
 export const AuditLogTable: React.FC = () => {
