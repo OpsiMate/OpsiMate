@@ -550,46 +550,50 @@ const TVMode = ({
 
   return (
     <>
-      <div className="h-screen overflow-y-auto bg-background text-foreground p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Monitor className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">OpsiMate TV Mode</h1>
-            <p className="text-muted-foreground">
-              {currentTime.toLocaleString()} • Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
-              {(isLoading || isRefreshing) && (
+      <div className="space-y-3 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Monitor className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">OpsiMate TV Mode</h1>
+              <div className="text-muted-foreground space-y-0.5">
+                <p>
+                  {currentTime.toLocaleString()} • Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
+                  {viewRotation && ' • View Rotation: ON'}
+                </p>
+                <p>
+                  Grid: {smartGridConfig.columns} cols ({smartGridConfig.cardSize})
+                  {(isLoading || isRefreshing) && (
                 <span className="inline-flex items-center gap-1 ml-2">
                   <RotateCcw className="h-3 w-3 animate-spin" />
                   <span className="text-xs">{isRefreshing ? 'Manual refresh' : 'Auto refresh'}</span>
                 </span>
               )}
-              {viewRotation && ' • View Rotation: ON'}
-              • Grid: {smartGridConfig.columns} cols ({smartGridConfig.cardSize})
-              {searchTerm && ` • Search: "${searchTerm}"`}
-              {Object.keys(savedFilters).length > 0 && (
-                <span>
-                  {' • Filters: '}
-                  {Object.entries(savedFilters)
-                    .filter(([_, values]) => values.length > 0)
-                    .map(([key, values]) => `${key}(${values.length})`)
-                    .join(', ')}
-                </span>
-              )}
-            </p>
+                  {searchTerm && ` • Search: "${searchTerm}"`}
+                  {Object.keys(savedFilters).length > 0 && (
+                    <span>
+                      {' • Filters: '}
+                      {Object.entries(savedFilters)
+                        .filter(([_, values]) => values.length > 0)
+                        .map(([key, values]) => `${key}(${values.length})`)
+                        .join(', ')}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {/* Control Buttons */}
-          <div className="flex gap-2">
+          
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Control Buttons */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 min-w-[120px]"
               title="Manual Refresh (Ctrl+R)"
             >
               <RotateCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -653,12 +657,25 @@ const TVMode = ({
                 </div>
               </PopoverContent>
             </Popover>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2"
+              title="Exit TV Mode (Escape)"
+            >
+              <X className="h-4 w-4" />
+              Exit TV Mode
+            </Button>
           </div>
-          
+        </div>
+        
+        <div className="flex flex-wrap items-center justify-center gap-6">
           {/* Multi-State Filter Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">Status:</span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {(['all', 'running', 'stopped', 'error'] as const).map((state, index) => {
                 const isSelected = selectedStates.has(state)
                 const isAllSelected = selectedStates.has('all')
@@ -675,10 +692,10 @@ const TVMode = ({
                         toggleStateSelection(state)
                       }
                     }}
-                    className="capitalize"
+                    className="capitalize min-w-[85px]"
                     title={`Toggle ${state} view (${index + 1})`}
                   >
-                    {state}
+                    <span className="inline-block min-w-[50px]">{state}</span>
                     {isSelected && state !== 'all' && !isAllSelected && (
                       <span className="ml-1 text-xs">✓</span>
                     )}
@@ -686,13 +703,13 @@ const TVMode = ({
                 )
               })}
             </div>
-            <div className="text-xs text-muted-foreground">
+            {/* <div className="text-xs text-muted-foreground">
               {selectedStates.has('all') ? 'All' : `${Array.from(selectedStates).join(', ')}`}
-            </div>
+            </div> */}
           </div>
           
           {/* Alert Filter Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">Show:</span>
             <div className="flex gap-1 bg-muted/50 rounded-md p-1">
               <Button
@@ -716,17 +733,6 @@ const TVMode = ({
               </Button>
             </div>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2"
-            title="Exit TV Mode (Escape)"
-          >
-            <X className="h-4 w-4" />
-            Exit TV Mode
-          </Button>
         </div>
       </div>
 
@@ -820,7 +826,7 @@ const TVMode = ({
         </div>
       ) : (
         <div 
-          className={cn("grid gap-2",smartGridConfig.cardSize === 'xs' ? 'gap-1' : smartGridConfig.cardSize === 'sm' ? 'gap-2' : 'gap-4')}
+          className={`grid gap-2 ${smartGridConfig.cardSize === 'xs' ? 'gap-1' : smartGridConfig.cardSize === 'sm' ? 'gap-2' : 'gap-4'}`} 
           style={{ gridTemplateColumns: `repeat(${smartGridConfig.columns}, minmax(0, 1fr))` }}
         >
           {filteredServices.map((service) => {
@@ -831,8 +837,7 @@ const TVMode = ({
               <Card
                 key={service.id}
                 className={cn(
-                  "border-2 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 relative overflow-hidden",
-                  smartGridConfig.cardSize === 'lg' ? "hover:scale-[1.02]" : "hover:scale-105",
+                  "border-2 transition-all duration-200 hover:scale-105 relative overflow-hidden",
                   getStatusColor(service.serviceStatus),
                   // Add static red indicator for services with alerts
                   service.alertsCount > 0 && [
