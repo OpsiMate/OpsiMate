@@ -22,7 +22,14 @@ import { SecretMetadata } from "@OpsiMate/shared";
 
 const serverSchema = z.object({
     name: z.string().min(1, "Server name is required"),
-    hostname: z.string().ip({message: "Invalid IP address"}),
+    hostname: z.string().min(1, "Hostname/IP is required").refine((value) => {
+        // Allow both IP addresses and hostnames
+        const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        const hostnameRegex = /^([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9])(\.([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9]))*\.([a-z]{2,63})$/;
+        return ipRegex.test(value) || hostnameRegex.test(value);
+    }, {
+        message: "Must be a valid IP address or hostname"
+    }),
     port: z.coerce.number().min(1).max(65535),
     username: z.string().min(1, "Username is required"),
     authType: z.enum(["password", "key"]),

@@ -3,7 +3,13 @@ import {IntegrationType, ProviderType, ServiceType, Role, SecretType} from './ty
 
 export const CreateProviderSchema = z.object({
     name: z.string().min(1, 'Provider name is required'),
-    providerIP: z.string().ip('Invalid IP address').optional(),
+    providerIP: z.string().min(1, "Hostname/IP is required").refine((value) => {
+        const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        const hostnameRegex = /^([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9])(\.([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9]))*\.([a-z]{2,63})$/;
+        return ipRegex.test(value) || hostnameRegex.test(value);
+    }, {
+        message: "Must be a valid IP address or hostname"
+    }).optional(),
     username: z.string().min(1, 'Username is required').optional(),
     secretId: z.number().optional(),
     password: z.string().min(1, 'Password is required').optional(),
@@ -39,7 +45,13 @@ export const IntegrationTagsquerySchema = z.object({
 export const AddBulkServiceSchema = z.array(
     z.object({
         name: z.string().min(1, 'Name is required'),
-        serviceIP: z.string().ip('Invalid IP address').optional(),
+        serviceIP: z.string().min(1, "Hostname/IP is required").refine((value) => {
+            const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            const hostnameRegex = /^([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9])(\.([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9]))*\.([a-z]{2,63})$/;
+            return ipRegex.test(value) || hostnameRegex.test(value);
+        }, {
+            message: "Must be a valid IP address or hostname"
+        }).optional(),
         serviceStatus: z.string().min(1),
         serviceType: z.nativeEnum(ServiceType),
     })
