@@ -34,6 +34,7 @@ import {ServiceCustomFieldRepository} from "./dal/serviceCustomFieldRepository";
 import {ServiceCustomFieldValueRepository} from "./dal/serviceCustomFieldValueRepository";
 import {ServiceCustomFieldBL} from "./bl/custom-fields/serviceCustomField.bl";
 import {CustomFieldsController} from "./api/v1/custom-fields/controller";
+import { ServicesBL } from './bl/services/services.bl';
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -82,6 +83,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     // BL
     const auditBL = new AuditBL(auditLogRepo);
     const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
+    const servicesBL = new ServicesBL(serviceRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
@@ -90,7 +92,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
     // Controllers
     const providerController = new ProviderController(providerBL, secretsMetadataRepo);
-    const serviceController = new ServiceController(providerRepo, serviceRepo, serviceCustomFieldBL);
+    const serviceController = new ServiceController(providerRepo, serviceRepo, servicesBL, serviceCustomFieldBL);
     const viewController = new ViewController(new ViewBL(viewRepo));
     const tagController = new TagController(tagRepo, serviceRepo);
     const integrationController = new IntegrationController(integrationBL);

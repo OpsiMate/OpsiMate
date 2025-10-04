@@ -8,6 +8,9 @@ import {ProviderRepository} from "../../../dal/providerRepository";
 import {ServiceRepository} from "../../../dal/serviceRepository";
 import {checkSystemServiceStatus} from "../../../dal/sshClient";
 import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
+import { ServicesBL } from "../../../bl/services/services.bl"; // <-- EDIT #1: We import your new ServicesBL class.
+import {AuthenticatedRequest} from '../../../middleware/auth';
+
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -15,6 +18,7 @@ export class ServiceController {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
+        private servicesBL: ServicesBL, // <-- EDIT #2: We add your new servicesBL to the constructor
         private customFieldBL?: ServiceCustomFieldBL
     ) {
     }
@@ -53,9 +57,16 @@ export class ServiceController {
         }
     }
 
-    createServiceHandler = async (req: Request, res: Response) => {
+    createServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const validatedData = CreateServiceSchema.parse(req.body);
+
+            // <-- EDIT #3: We replace the old logic with ONE line that calls your new code.
+            // Your servicesBL.createService function now handles creating the service AND writing the audit log.
+            if (!req.user) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
+            const service = await this.servicesBL.createService(validatedData, req.user);
 
             const provider = await this.providerRepo.getProviderById(validatedData.providerId);
 
@@ -64,23 +75,12 @@ export class ServiceController {
                 throw new ProviderNotFound(validatedData.providerId);
             }
 
-            const {lastID} = await this.serviceRepo.createService(validatedData);
-            logger.info(`service created with id ${lastID}`);
-
-            const service = await this.serviceRepo.getServiceById(lastID)
-
-            if (!service) {
-                logger.error(`No service found with id ${lastID}`);
-                throw new ProviderNotFound(validatedData.providerId);
-            }
-
             // If it's a systemd service, check its actual status
             if (service.serviceType === ServiceType.SYSTEMD) {
                 try {
                     const actualStatus = await checkSystemServiceStatus(provider, service.name);
 
-                    // Update the service status in the database
-                    await this.serviceRepo.updateService(lastID, {serviceStatus: actualStatus});
+                    await this.serviceRepo.updateService(service.id, {serviceStatus: actualStatus});
 
                     // Update the service object for the response
                     service.serviceStatus = actualStatus;
