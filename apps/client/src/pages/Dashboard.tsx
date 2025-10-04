@@ -482,7 +482,34 @@ const Dashboard = () => {
         }
     }
 
+   
 
+     const canStart = useMemo(() => {
+        if (selectedServices.length === 0) return false;
+        // Can start if at least one service is stopped
+        return selectedServices.some(service => 
+            service.serviceStatus?.toLowerCase() === 'stopped' || 
+            service.serviceStatus?.toLowerCase() === 'offline'
+        );
+    }, [selectedServices]);
+
+    const canStop = useMemo(() => {
+        if (selectedServices.length === 0) return false;
+        // Can stop if at least one service is running
+        return selectedServices.some(service => 
+            service.serviceStatus?.toLowerCase() === 'running' || 
+            service.serviceStatus?.toLowerCase() === 'online'
+        );
+    }, [selectedServices]);
+
+    const canRestart = useMemo(() => {
+        // Can restart if any services are selected and at least one is running
+        if (selectedServices.length === 0) return false;
+        return selectedServices.some(service => 
+            service.serviceStatus?.toLowerCase() === 'running' || 
+            service.serviceStatus?.toLowerCase() === 'online'
+        );
+    }, [selectedServices]);
 
     const handleAlertDismiss = async (alertId: string) => {
         try {
@@ -572,6 +599,9 @@ const Dashboard = () => {
                                     onStart={handleStart}
                                     onStop={handleStop}
                                     onRestart={handleRestart}
+                                    canStart={canStart}
+                                    canStop={canStop}
+                                    canRestart={canRestart}
                                 />
                             </div>
                         </div>
