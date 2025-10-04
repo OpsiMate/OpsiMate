@@ -21,6 +21,7 @@ import {
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthGuard } from "./components/AuthGuard";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import FloatingThemeToggle from "./components/FloatingThemeToggle";
 
 const queryClient = new QueryClient();
 
@@ -60,7 +61,7 @@ const App: React.FC = () => {
             </AuthGuard>
           </BrowserRouter>
 
-         
+          <FloatingThemeToggle/>
           <ScrollToTopButton  />
         </TooltipProvider>
       </QueryClientProvider>
