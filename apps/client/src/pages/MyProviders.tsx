@@ -535,47 +535,41 @@ export function MyProviders() {
     };
 
     const handleDeleteService = async (serviceId: string) => {
-        try {
-            const serviceIdNum = parseInt(serviceId);
+    try {
+        const serviceIdNum = parseInt(serviceId);
 
-            const containingProvider = providerInstances.find(provider =>
-                provider.services?.some(service => service.id === serviceId)
+        const response = await providerApi.deleteService(serviceIdNum);
+
+        if (response.success) {
+            // Update local state immediately
+            setProviderInstances(prevProviders => 
+                prevProviders.map(provider => {
+                    if (provider.services) {
+                        return {
+                            ...provider,
+                            services: provider.services.filter(service => service.id !== serviceId)
+                        };
+                    }
+                    return provider;
+                })
             );
 
-            if (!containingProvider) {
-                toast({
-                    title: "Service not found",
-                    description: "Could not find the service to delete",
-                    variant: "destructive"
-                });
-                return;
-            }
-
-            const response = await providerApi.deleteService(serviceIdNum);
-
-            if (response.success) {
-                // Force complete refresh of all data
-                await fetchProviders();
-                setTimeout(async () => {
-                    await loadAllProviderServices();
-                }, 100);
-
-                toast({
-                    title: "Service deleted",
-                    description: "The service has been successfully deleted."
-                });
-            } else {
-                throw new Error(response.error || 'Failed to delete service');
-            }
-        } catch (error) {
-            console.error("Error deleting service:", error);
             toast({
-                title: "Error deleting service",
-                description: error instanceof Error ? error.message : "There was a problem deleting the service",
-                variant: "destructive"
+                title: "Service deleted",
+                description: "The service has been successfully deleted."
             });
+        } else {
+            throw new Error(response.error || 'Failed to delete service');
         }
-    };
+    } catch (error) {
+        console.error("Error deleting service:", error);
+        toast({
+            title: "Error deleting service",
+            description: error instanceof Error ? error.message : "There was a problem deleting the service",
+            variant: "destructive"
+        });
+    }
+};
 
     const handleDeleteProvider = async () => {
         if (!selectedProvider) return;
