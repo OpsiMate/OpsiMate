@@ -58,7 +58,6 @@ interface Provider extends SharedProvider {
     services?: ServiceConfig[];
 }
 
-
 import {EditProviderDialog} from "@/components/EditProviderDialog";
 
 const mockProviderInstances = [
@@ -174,11 +173,26 @@ export function MyProviders() {
     const [selectedServiceForDrawer, setSelectedServiceForDrawer] = useState<Service | null>(null);
     const [isServiceDrawerOpen, setIsServiceDrawerOpen] = useState(false);
 
+    // Helper functions to check if service actions are allowed
+    const canStartService = (service: ServiceConfig) => {
+        const status = service.status.toLowerCase();
+        return status === 'stopped' || status === 'offline' || status === 'error';
+    };
+
+    const canStopService = (service: ServiceConfig) => {
+        const status = service.status.toLowerCase();
+        return status === 'running' || status === 'online';
+    };
+
+    const canRestartService = (service: ServiceConfig) => {
+        const status = service.status.toLowerCase();
+        return status === 'running' || status === 'online';
+    };
+
     const fetchProviders = async () => {
         setIsLoading(true);
         try {
             const response = await providerApi.getProviders();
-
             if (response.success && response.data && response.data.providers) {
                 const apiProviders: Provider[] = response.data.providers.map(provider => {
                     const mappedProvider = {
@@ -192,10 +206,8 @@ export function MyProviders() {
                         createdAt: provider.createdAt ? new Date(provider.createdAt).toISOString() : new Date().toISOString(),
                         services: []
                     };
-
                     return mappedProvider;
                 });
-
                 setProviderInstances(apiProviders);
             } else if (import.meta.env.DEV && (!response.data || !response.data.providers || response.data.providers.length === 0)) {
                 setProviderInstances(mockProviderInstances);
@@ -207,7 +219,6 @@ export function MyProviders() {
                 description: "There was a problem loading your providers",
                 variant: "destructive"
             });
-
             if (import.meta.env.DEV) {
                 setProviderInstances(mockProviderInstances);
             }
@@ -225,7 +236,6 @@ export function MyProviders() {
 
         try {
             const response = await providerApi.getAllServices();
-
             if (response.success && response.data) {
                 const servicesByProvider = response.data.reduce((acc, service) => {
                     const providerId = service.providerId?.toString();
@@ -264,8 +274,7 @@ export function MyProviders() {
 
     useEffect(() => {
         if (!isLoading && providerInstances.length > 0) {
-            // Only load services if providers don't already have services loaded
-            const hasServicesLoaded = providerInstances.some(provider => 
+            const hasServicesLoaded = providerInstances.some(provider =>
                 provider.services && provider.services.length > 0
             );
             if (!hasServicesLoaded) {
@@ -279,10 +288,8 @@ export function MyProviders() {
         const type = provider?.providerType || 'VM';
         const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             type.toLowerCase().includes(searchQuery.toLowerCase());
-
         const matchesTab = activeTab === "all" ||
             getProviderCategory(type) === activeTab;
-
         return matchesSearch && matchesTab;
     });
 
@@ -302,7 +309,6 @@ export function MyProviders() {
 
         try {
             const response = await providerApi.refreshProvider(parseInt(id));
-
             if (response.success && response.data) {
                 const { provider: refreshedProvider, services } = response.data;
 
@@ -331,9 +337,9 @@ export function MyProviders() {
                 const updatedProviders = providerInstances.map(provider =>
                     provider.id === Number(id) ? updatedProvider : provider
                 );
-                
+
                 setProviderInstances(updatedProviders);
-                
+
                 toast({
                     title: "Provider refreshed",
                     description: `Discovered ${services.length} services with real-time status`
@@ -408,11 +414,9 @@ export function MyProviders() {
         }
 
         const providerId = provider.id;
-
         if (!provider.services || provider.services.length === 0) {
             await refreshProviderServices(provider);
         }
-
     };
 
     const handleServiceClick = (service: ServiceConfig) => {
@@ -442,7 +446,6 @@ export function MyProviders() {
             });
 
             setTimeout(() => handleRowClick(providerInstances.find(i => i.id === Number(providerId))!), 2000);
-
         } catch (error) {
             console.error(`Error ${action}ing service:`, error);
             toast({
@@ -559,7 +562,6 @@ export function MyProviders() {
     const handleDeleteService = async (serviceId: string) => {
         try {
             const serviceIdNum = parseInt(serviceId);
-
             const containingProvider = providerInstances.find(provider =>
                 provider.services?.some(service => service.id === serviceId)
             );
@@ -576,7 +578,6 @@ export function MyProviders() {
             const response = await providerApi.deleteService(serviceIdNum);
 
             if (response.success) {
-                // Force complete refresh of all data
                 await fetchProviders();
                 setTimeout(async () => {
                     await loadAllProviderServices();
@@ -601,6 +602,7 @@ export function MyProviders() {
 
     const handleDeleteProvider = async () => {
         if (!selectedProvider) return;
+
         try {
             const response = await providerApi.deleteProvider(selectedProvider.id);
 
@@ -614,6 +616,7 @@ export function MyProviders() {
                     title: "Provider deleted",
                     description: `${selectedProvider.name} has been successfully deleted.`,
                 });
+
                 setSelectedProvider(null);
                 setIsDeleteDialogOpen(false);
             } else {
@@ -736,16 +739,13 @@ export function MyProviders() {
                                         key={provider.id}
                                         className="flex flex-col transition-all duration-300 hover:shadow-md"
                                     >
-                                        <CardHeader
-                                            className="flex flex-row items-start justify-between space-y-0 pb-2">
+                                        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                                             <div className="flex items-start gap-3">
-                                                <div
-                                                    className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg flex-shrink-0">
+                                                <div className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg flex-shrink-0">
                                                     {getProviderIcon(provider.providerType)}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <CardTitle
-                                                        className="text-lg font-semibold leading-snug truncate">{provider.name}</CardTitle>
+                                                    <CardTitle className="text-lg font-semibold leading-snug truncate">{provider.name}</CardTitle>
                                                     <p className="text-sm text-muted-foreground">{getProviderTypeName(provider.providerType)}</p>
                                                 </div>
                                             </div>
@@ -798,7 +798,6 @@ export function MyProviders() {
                                                 </DropdownMenuPortal>
                                             </DropdownMenu>
                                         </CardHeader>
-
                                         <CardContent className="flex-grow pt-2 px-6 pb-4 h-full">
                                             <div className="min-h-[320px] h-full flex flex-col justify-start">
                                                 <div className="relative h-full">
@@ -813,11 +812,9 @@ export function MyProviders() {
                                                                         <div className="flex items-center gap-3">
                                                                             <div className="flex-shrink-0">
                                                                                 {service.type === "DOCKER" ? (
-                                                                                    <Container
-                                                                                        className="h-4 w-4 text-blue-500"/>
+                                                                                    <Container className="h-4 w-4 text-blue-500"/>
                                                                                 ) : (
-                                                                                    <Server
-                                                                                        className="h-4 w-4 text-purple-500"/>
+                                                                                    <Server className="h-4 w-4 text-purple-500"/>
                                                                                 )}
                                                                             </div>
                                                                             <div className="min-w-0 flex-1">
@@ -833,8 +830,7 @@ export function MyProviders() {
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
-                                                                            <Badge
-                                                                                className={`text-xs ${getServiceStatusBadgeColor(service.status)}`}>
+                                                                            <Badge className={`text-xs ${getServiceStatusBadgeColor(service.status)}`}>
                                                                                 {service.status.toLowerCase()}
                                                                             </Badge>
                                                                             <DropdownMenu>
@@ -842,8 +838,7 @@ export function MyProviders() {
                                                                                     <Button variant="ghost" size="icon"
                                                                                             className="h-6 w-6"
                                                                                             onClick={(e) => e.stopPropagation()}>
-                                                                                        <MoreVertical
-                                                                                            className="h-3 w-3"/>
+                                                                                        <MoreVertical className="h-3 w-3"/>
                                                                                     </Button>
                                                                                 </DropdownMenuTrigger>
                                                                                 <DropdownMenuPortal>
@@ -875,28 +870,30 @@ export function MyProviders() {
                                                                                                 setSelectedServiceForDrawer(mappedService);
                                                                                                 setIsServiceDrawerOpen(true);
                                                                                             }}>
-                                                                                            <Terminal
-                                                                                                className="mr-2 h-3 w-3"/> Details
+                                                                                            <Terminal className="mr-2 h-3 w-3"/> Details
                                                                                         </DropdownMenuItem>
-                                                                                                                                                                                {canManageProviders() && service.status !== 'running' && (
+                                                                                        {canManageProviders() && (
                                                                                             <DropdownMenuItem
-                                                                                                onClick={() => handleServiceAction(String(provider.id), service.id, 'start')}>
-                                                                                                <Play
-                                                                                                    className="mr-2 h-3 w-3"/> Start
-                                                                                            </DropdownMenuItem>
-                                                                                        )}
-                                                                                        {canManageProviders() && service.status === 'running' && (
-                                                                                            <DropdownMenuItem
-                                                                                                onClick={() => handleServiceAction(String(provider.id), service.id, 'stop')}>
-                                                                                                <Square
-                                                                                                    className="mr-2 h-3 w-3"/> Stop
+                                                                                                onClick={() => handleServiceAction(String(provider.id), service.id, 'start')}
+                                                                                                disabled={!canStartService(service)}
+                                                                                            >
+                                                                                                <Play className="mr-2 h-3 w-3"/> Start
                                                                                             </DropdownMenuItem>
                                                                                         )}
                                                                                         {canManageProviders() && (
                                                                                             <DropdownMenuItem
-                                                                                                onClick={() => handleServiceAction(String(provider.id), service.id, 'restart')}>
-                                                                                                <RefreshCw
-                                                                                                    className="mr-2 h-3 w-3"/> Restart
+                                                                                                onClick={() => handleServiceAction(String(provider.id), service.id, 'stop')}
+                                                                                                disabled={!canStopService(service)}
+                                                                                            >
+                                                                                                <Square className="mr-2 h-3 w-3"/> Stop
+                                                                                            </DropdownMenuItem>
+                                                                                        )}
+                                                                                        {canManageProviders() && (
+                                                                                            <DropdownMenuItem
+                                                                                                onClick={() => handleServiceAction(String(provider.id), service.id, 'restart')}
+                                                                                                disabled={!canRestartService(service)}
+                                                                                            >
+                                                                                                <RefreshCw className="mr-2 h-3 w-3"/> Restart
                                                                                             </DropdownMenuItem>
                                                                                         )}
                                                                                         {canDelete() && (
@@ -904,8 +901,7 @@ export function MyProviders() {
                                                                                                 onClick={() => handleDeleteService(service.id)}
                                                                                                 className="text-red-500 focus:text-red-500"
                                                                                             >
-                                                                                                <Trash
-                                                                                                    className="mr-2 h-3 w-3"/> Delete
+                                                                                                <Trash className="mr-2 h-3 w-3"/> Delete
                                                                                             </DropdownMenuItem>
                                                                                         )}
                                                                                     </DropdownMenuContent>
@@ -922,8 +918,7 @@ export function MyProviders() {
                                                                     style={{ alignItems: 'center', justifyContent: 'center' }}
                                                                 >
                                                                     <Server className="h-8 w-8 text-muted-foreground mb-2"/>
-                                                                    <h4 className="font-semibold text-sm text-foreground">No
-                                                                        Services Configured</h4>
+                                                                    <h4 className="font-semibold text-sm text-foreground">No Services Configured</h4>
                                                                     <p className="text-xs text-muted-foreground mt-1 mb-4">
                                                                         Get started by adding a new service to this provider.
                                                                     </p>
@@ -948,9 +943,7 @@ export function MyProviders() {
                                                 </div>
                                             </div>
                                         </CardContent>
-
-                                        <CardFooter
-                                            className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
                                         </CardFooter>
                                     </Card>
                                 );
@@ -975,7 +968,6 @@ export function MyProviders() {
                     )}
                 </div>
             </div>
-
 
             {selectedServerForService && (
                 <AddServiceDialog
