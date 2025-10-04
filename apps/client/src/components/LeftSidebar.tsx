@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button"
-import { Settings, Layers, LayoutDashboard, Database, Puzzle, Bell } from "lucide-react"
+import { Settings, Layers, LayoutDashboard, Database, Puzzle, Bell, Sun, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
 import { isAdmin, isEditor } from "../lib/auth"
+import { useTheme } from "next-themes"
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -12,6 +13,8 @@ interface LeftSidebarProps {
 
 export function LeftSidebar({ collapsed }: LeftSidebarProps) {
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
+
   return (
     <div className={cn("w-full bg-background flex flex-col h-full overflow-hidden", collapsed && "items-center")}>
       <Link 
@@ -47,7 +50,6 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             <span className={cn("font-medium", collapsed && "sr-only")}>Dashboard</span>
           </Link>
         </Button>
-
 
         {isEditor() &&
             <Button
@@ -116,6 +118,18 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
       
       <div className={cn("p-4 mt-auto flex flex-col gap-3", collapsed && "items-center")}>
         <div className={cn("flex flex-col gap-3 items-center")}>
+          <Button
+            variant="ghost"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className={cn(
+              "gap-3 h-10 items-center w-full justify-start px-3",
+              collapsed && "w-10 justify-center p-0"
+            )}
+          >
+            {theme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            <span className={cn("font-medium", collapsed && "sr-only")}>Theme</span>
+          </Button>
+
           {isAdmin() && (
             <Button 
               variant={location.pathname === "/settings" ? "default" : "ghost"}
