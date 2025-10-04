@@ -43,6 +43,65 @@ export class SecretsMetadataBL {
         }
     }
 
+    async updateSecretMetadata(id: number, displayName?: string, newFileName?: string, secretType?: SecretType): Promise<boolean> {
+        try {
+            logger.info(`Updating secret with id ${id}`);
+            
+            // Check if secret exists
+            const existingSecret = await this.secretsMetadataRepository.getSecretById(id);
+            if (!existingSecret) {
+                logger.warn(`Secret with id ${id} not found`);
+                return false;
+            }
+
+            // Prepare update data
+            const updateData: Partial<SecretMetadata> = {};
+            if (displayName !== undefined) {
+                updateData.name = displayName;
+            }
+            if (newFileName !== undefined) {
+                updateData.fileName = newFileName;
+            }
+            if (secretType !== undefined) {
+                updateData.type = secretType;
+            }
+
+            // Update in database
+            const updated = await this.secretsMetadataRepository.updateSecret(id, updateData);
+            
+            if (!updated) {
+                logger.warn(`Failed to update secret with id ${id} in database`);
+                return false;
+            }
+
+            // If filename changed, handle file operations
+            if (newFileName !== undefined && newFileName !== existingSecret.fileName) {
+                const fs = await import('fs');
+                try {
+                    const oldPath = path.resolve(getSecurityConfig().private_keys_path, existingSecret.fileName);
+                    const newPath = path.resolve(getSecurityConfig().private_keys_path, newFileName);
+                    
+                    // Move the file if it exists
+                    if (fs.existsSync(oldPath)) {
+                        fs.renameSync(oldPath, newPath);
+                        logger.info(`Successfully moved secret file from ${oldPath} to ${newPath}`);
+                    } else {
+                        logger.warn(`Old secret file not found on filesystem: ${oldPath}`);
+                    }
+                } catch (fileError) {
+                    logger.error(`Error moving secret file from ${existingSecret.fileName} to ${newFileName}`, fileError);
+                    // Don't throw here - the database record is already updated
+                }
+            }
+
+            logger.info(`Successfully updated secret with id ${id}`);
+            return true;
+        } catch (e) {
+            logger.error(`Error occurred updating secret with id ${id}`, e);
+            throw e;
+        }
+    }
+
     async deleteSecret(id: number): Promise<boolean> {
         try {
             logger.info(`Deleting secret with id ${id}`);

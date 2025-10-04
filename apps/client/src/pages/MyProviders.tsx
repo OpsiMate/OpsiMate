@@ -293,32 +293,50 @@ export function MyProviders() {
     const handleRefreshProvider = async (id: string) => {
         toast({
             title: "Refreshing provider",
-            description: "Checking connection status..."
+            description: "Connecting to server and discovering services..."
         });
 
+        const newLoading = new Set(loadingServices);
+        newLoading.add(parseInt(id));
+        setLoadingServices(newLoading);
+
         try {
-            const response = await providerApi.getProvider(parseInt(id));
+            const response = await providerApi.refreshProvider(parseInt(id));
 
             if (response.success && response.data) {
+                const { provider: refreshedProvider, services } = response.data;
+
+                const serviceConfigs: ServiceConfig[] = services.map(service => ({
+                    id: service.id.toString(),
+                    name: service.name,
+                    status: service.serviceStatus as "running" | "stopped" | "error" | "unknown",
+                    type: service.serviceType,
+                    serviceIP: service.serviceIP,
+                    containerDetails: service.containerDetails || undefined
+                }));
+
+                const updatedProvider: Provider = {
+                    id: parseInt(id),
+                    name: refreshedProvider.name,
+                    providerIP: refreshedProvider.providerIP || '',
+                    username: refreshedProvider.username || '',
+                    privateKeyFilename: refreshedProvider.privateKeyFilename,
+                    SSHPort: refreshedProvider.SSHPort || 22,
+                    providerType: refreshedProvider.providerType as Provider["providerType"],
+                    status: services.some(s => s.serviceStatus === 'running') ? 'running' : 'stopped',
+                    services: serviceConfigs,
+                    details: {}
+                };
+
                 const updatedProviders = providerInstances.map(provider =>
-                    provider.id === Number(id)
-                        ? {
-                            ...provider,
-                            name: response.data.name,
-                            providerIP: response.data.providerIP,
-                            username: response.data.username,
-                            privateKeyFilename: response.data.privateKeyFilename,
-                            SSHPort: response.data.SSHPort,
-                            providerType: response.data.providerType as Provider["providerType"],
-                        }
-                        : provider
+                    provider.id === Number(id) ? updatedProvider : provider
                 );
-
+                
                 setProviderInstances(updatedProviders);
-
+                
                 toast({
                     title: "Provider refreshed",
-                    description: "Connection status updated"
+                    description: `Discovered ${services.length} services with real-time status`
                 });
             } else {
                 throw new Error("Failed to refresh provider");
@@ -330,6 +348,10 @@ export function MyProviders() {
                 description: "There was a problem updating the provider status",
                 variant: "destructive"
             });
+        } finally {
+            const newLoading = new Set(loadingServices);
+            newLoading.delete(parseInt(id));
+            setLoadingServices(newLoading);
         }
     };
 
@@ -796,7 +818,7 @@ export function MyProviders() {
                                                                                 <p className="font-medium text-sm truncate">{service.name}</p>
                                                                                 <p className="text-xs text-muted-foreground truncate">
                                                                                     {service.type === "DOCKER"
-                                                                                        ? `Container: ${service.containerDetails?.image || service.name}`
+                                                                                        ? `${provider.providerType === "K8S" ? "Pod" : "Container"}: ${service.containerDetails?.image || service.name}`
                                                                                         : service.serviceIP
                                                                                             ? `IP: ${service.serviceIP}`
                                                                                             : "Manual service"

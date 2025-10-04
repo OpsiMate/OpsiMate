@@ -41,6 +41,20 @@ export class UserBL {
         return user.user;
     }
 
+    async resetUserPassword(userId: number, newPassword: string): Promise<void> {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await this.userRepo.updateUserPassword(userId, hashedPassword);
+    }
+
+    async updateUser(userId: number, updates: { fullName?: string; email?: string; role?: Role }): Promise<User> {
+        await this.userRepo.updateUser(userId, updates);
+        const updatedUser = await this.userRepo.getUserById(userId);
+        if (!updatedUser) {
+            throw new Error('User not found');
+        }
+        return updatedUser;
+    }
+
     async getAllUsers(): Promise<User[]> {
         return await this.userRepo.getAllUsers()
     }
@@ -74,4 +88,4 @@ export class UserBL {
         }
         return updatedUser;
     }
-} 
+}

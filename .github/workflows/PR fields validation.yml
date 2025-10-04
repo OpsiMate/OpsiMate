@@ -1,0 +1,97 @@
+name: PR Fields Validation
+
+# This workflow validates that pull requests have meaningful titles and descriptions
+# Requirements:
+# 1. PR title must start with [FIX] or [FEAT] prefix
+# 2. PR must have a description/body with meaningful content
+# 3. Title must be descriptive and reasonably long
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check PR Description
+        id: check-description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Check if PR body exists and has meaningful content
+          BODY="$PR_BODY"
+          
+          # Remove whitespace and check if empty
+          CLEANED_BODY=$(echo "$BODY" | tr -d '[:space:]')
+          
+          if [ -z "$CLEANED_BODY" ] || [ "$CLEANED_BODY" = "null" ]; then
+            echo "❌ PR Description is missing!"
+            echo ""
+            echo "Please provide a detailed description in the PR body that explains:"
+            echo "• What changes were made"
+            echo "• Why the changeswere made"
+            echo "• Any additional context that reviewers should know"
+            echo ""
+            echo "This helps maintainers understand your contribution."
+            exit 1
+          fi
+          
+          # Check for minimum description length (excluding markers/templates)
+          MIN_LENGTH=50
+          WORD_COUNT=$(echo "$BODY" | wc -w)
+          
+          if [ "$WORD_COUNT" -lt 10 ]; then
+            echo "❌ PR Description is too short!"
+            echo ""
+            echo "Please provide a more detailed description (at least 10 words)."
+            echo "Help reviewers understand your changes better."
+            exit 1
+          fi
+          
+          echo "✅ PR Description looks good!"
+          echo "description_valid=true" >> $GITHUB_OUTPUT
+
+      - name: Custom Title Validation
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          
+          echo "Checking PR title: $TITLE"
+          
+          # Check if title starts with [FIX] or [FEAT]
+          if [[ "$TITLE" =~ ^\[(FIX|FEAT)\] ]]; then
+            echo "✅ Title prefix is valid!"
+          else
+            echo "❌ Invalid PR title format!"
+            echo ""
+            echo "The PR title must start with one of these prefixes:"
+            echo "• [FIX] - for bug fixes"
+            echo "• [FEAT] - for new features"
+            echo ""
+            echo "Examples:"
+            echo "• [FIX]: Fix login redirect issue"
+            echo "• [FEAT]: Add dark mode toggle"
+            echo ""
+            echo "Current title: \"$TITLE\""
+            exit 1
+          fi
+          
+          # Check title length
+          if [ ${#TITLE} -lt 10 ]; then
+            echo "❌ Title is too short!"
+            echo "Please provide a more descriptive title (at least 10 characters)."
+            exit 1
+          fi
+          
+          # Check if title has meaningful content after the prefix
+          DESCRIPTION=$(echo "$TITLE" | sed 's/^\[\(FIX\|FEAT\)\]: *//')
+
+          if [ ${#DESCRIPTION} -lt 5 ]; then
+            echo "❌ Title description is too short!"
+            echo "Please provide a meaningful description after the prefix."
+            exit 1
+          fi
+          
+          echo "✅ All PR title validations passed!"

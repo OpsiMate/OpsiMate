@@ -1,0 +1,47 @@
+FROM node:20-alpine AS server-builder
+
+RUN npm install -g pnpm typescript && npm cache clean --force
+WORKDIR /app
+
+# Copy workspace manifests for caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json apps/server/package.json
+COPY packages/shared/package.json packages/shared/package.json
+
+# Install deps (server + shared)
+RUN pnpm install --frozen-lockfile && pnpm store prune
+
+# Copy sources
+COPY apps/server apps/server
+COPY packages/shared packages/shared
+
+# Build shared package first, then server
+RUN pnpm --filter @OpsiMate/shared build && \
+    pnpm --filter @OpsiMate/server build
+
+# Production runtime
+FROM node:20-alpine AS server-runtime
+WORKDIR /app
+
+# Copy built server and minimal workspace files
+COPY --from=server-builder /app/apps/server/dist apps/server/dist
+COPY --from=server-builder /app/apps/server/package.json apps/server/package.json
+COPY --from=server-builder /app/package.json package.json
+COPY --from=server-builder /app/pnpm-lock.yaml pnpm-lock.yaml
+COPY --from=server-builder /app/pnpm-workspace.yaml pnpm-workspace.yaml
+COPY --from=server-builder /app/packages/shared/package.json packages/shared/package.json
+COPY --from=server-builder /app/packages/shared/dist packages/shared/dist
+
+# Install only production deps
+RUN npm install -g pnpm && \
+    pnpm install --prod --frozen-lockfile && \
+    pnpm store prune && \
+    rm -rf /root/.npm /root/.cache /tmp/*
+
+# Ensure workspace link for shared
+RUN mkdir -p node_modules/@OpsiMate && \
+    ln -sf /app/packages/shared node_modules/@OpsiMate/shared
+
+EXPOSE 3001
+ENV NODE_ENV=production
+CMD ["node", "apps/server/dist/src/index.js"]
