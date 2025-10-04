@@ -1,5 +1,9 @@
 name: 'Welcome New Contributors'
 
+permissions:
+  issues: write
+  pull-requests: write
+
 on:
   issues:
     types: [opened]
@@ -15,8 +19,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-message: >
-            Welcome! Join our Slack: https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA  
+            Welcome! Join our Slack: [https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA](https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA)  
             Also, don't forget to star ⭐️ the repository if you find it helpful!
           pr-message: >
-            Thanks for your contribution! Join our Slack: https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA  
+            Thanks for your contribution! Join our Slack: [https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA](https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA)  
             And please star ⭐️ the repository to support us!
