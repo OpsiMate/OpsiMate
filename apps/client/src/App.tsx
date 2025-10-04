@@ -29,19 +29,11 @@ const App: React.FC = () => {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          {/* App-level toasters */}
           <Toaster />
           <Sonner />
 
           <BrowserRouter>
-            {/*
-              Use a selector that targets the actual scrollable element.
-              The logs showed a <main> and nested element with `overflow-auto`.
-              'main .overflow-auto' will select the first descendant that actually scrolls.
-              Keep debug=true while we confirm.
-            */}
-
-            {/* Protect routes inside AuthGuard */}
+        
             <AuthGuard>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
@@ -54,7 +46,6 @@ const App: React.FC = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/alerts" element={<Alerts />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthGuard>
