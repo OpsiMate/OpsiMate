@@ -22,7 +22,6 @@ import { SecretMetadata } from "@OpsiMate/shared";
 
 const serverSchema = z.object({
     name: z.string().min(1, "Server name is required"),
-    hostname: z.string().ip({message: "Invalid IP address"}),
     port: z.coerce.number().min(1).max(65535),
     username: z.string().min(1, "Username is required"),
     authType: z.enum(["password", "key"]),
@@ -507,13 +506,19 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                         // Redirect to My Providers page
                         navigate('/my-providers');
                     } else {
-                        throw new Error(response.error || 'Failed to create provider');
+                        // Display the actual error message from the server
+                        toast({
+                            title: "Error adding provider",
+                            description: response.error || 'Failed to create provider',
+                            variant: "destructive"
+                        });
                     }
-                } catch (error) {
-                    console.error("Error creating server provider:", error);
+                } catch (error: any) {
+                    console.error("Error creating kubernetes provider:", error);
+                    const errorMessage = error?.message || "There was a problem creating your provider";
                     toast({
                         title: "Error adding provider",
-                        description: error instanceof Error ? error.message : "There was a problem creating your provider",
+                        description: errorMessage,
                         variant: "destructive"
                     });
                 }
@@ -554,13 +559,19 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                         // Redirect to My Providers page
                         navigate('/my-providers');
                     } else {
-                        throw new Error(response.error || 'Failed to create provider');
+                        // Display the actual error message from the server
+                        toast({
+                            title: "Error adding provider",
+                            description: response.error || 'Failed to create provider',
+                            variant: "destructive"
+                        });
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error("Error creating server provider:", error);
+                    const errorMessage = error?.message || "There was a problem creating your provider";
                     toast({
                         title: "Error adding provider",
-                        description: error instanceof Error ? error.message : "There was a problem creating your provider",
+                        description: errorMessage,
                         variant: "destructive"
                     });
                 }

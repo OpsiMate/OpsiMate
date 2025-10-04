@@ -3,7 +3,6 @@ import {IntegrationType, ProviderType, ServiceType, Role, SecretType} from './ty
 
 export const CreateProviderSchema = z.object({
     name: z.string().min(1, 'Provider name is required'),
-    providerIP: z.string().ip('Invalid IP address').optional(),
     username: z.string().min(1, 'Username is required').optional(),
     secretId: z.number().optional(),
     password: z.string().min(1, 'Password is required').optional(),
@@ -39,7 +38,6 @@ export const IntegrationTagsquerySchema = z.object({
 export const AddBulkServiceSchema = z.array(
     z.object({
         name: z.string().min(1, 'Name is required'),
-        serviceIP: z.string().ip('Invalid IP address').optional(),
         serviceStatus: z.string().min(1),
         serviceType: z.nativeEnum(ServiceType),
     })
