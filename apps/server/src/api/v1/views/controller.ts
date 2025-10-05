@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ViewBL } from '../../../bl/custom-views/custom-view.bl';
 import { Logger } from '@OpsiMate/shared';
 import {SavedView} from "../../../dal/viewRepository";
+import { AuthenticatedRequest } from '../../../middleware/auth';
 
 const logger = new Logger('api/v1/views/controller');
 
@@ -34,28 +35,41 @@ export class ViewController {
         }
     };
 
-    createViewHandler = async (req: Request, res: Response) => {
-        try {
+     createViewHandler = async (req: AuthenticatedRequest, res: Response) => {
+          try {
             // todo: should use zod schema
             const view = req.body as SavedView;
+            const user = req.user;
 
             if (!view || !view.id || !view.name) {
-                return res.status(400).json({ success: false, error: 'Invalid view data' });
+              return res
+                .status(400)
+                .json({ success: false, error: "Invalid view data" });
             }
 
-            const savedView = await this.viewBL.saveView(view);
+            if (!user) {
+              return res
+                .status(401)
+                .json({ success: false, error: "Unauthorized: user not found" });
+            }
+
+            const savedView = await this.viewBL.saveView(view, user);
 
             if (!savedView) {
-                return res.status(500).json({ success: false, error: 'Failed to save view' });
+              return res
+                .status(500)
+                .json({ success: false, error: "Failed to save view" });
             }
 
             res.json({ success: true, data: savedView });
-        } catch (error) {
-            logger.error('Error saving view:', error);
+          } catch (error) {
+            logger.error("Error saving view:", error);
             const message = error instanceof Error ? error.message : String(error);
-            res.status(500).json({ success: false, error: message || 'Failed to save view' });
-        }
-    };
+            res
+              .status(500)
+              .json({ success: false, error: message || "Failed to save view" });
+          }
+        };
 
     deleteViewHandler = async (req: Request, res: Response) => {
         try {
