@@ -23,8 +23,8 @@ else
 fi
 
 # Pull latest official images
-echo "Pulling latest OpsiMate image..."
-docker compose pull
+echo "Pulling latest OpsiMate images (backend + frontend)..."
+docker compose pull backend frontend
 
 # Start containers in detached mode
 echo "Starting OpsiMate containers..."

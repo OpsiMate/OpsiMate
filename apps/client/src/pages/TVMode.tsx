@@ -550,7 +550,7 @@ const TVMode = ({
 
   return (
     <>
-      <div className="min-h-screen bg-background text-foreground p-4">
+      <div className="h-screen overflow-y-auto bg-background text-foreground p-4">
       {/* Header */}
       <div className="space-y-3 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -826,7 +826,7 @@ const TVMode = ({
         </div>
       ) : (
         <div 
-          className={`grid gap-2 ${smartGridConfig.cardSize === 'xs' ? 'gap-1' : smartGridConfig.cardSize === 'sm' ? 'gap-2' : 'gap-4'}`} 
+          className={cn("grid gap-2",smartGridConfig.cardSize === 'xs' ? 'gap-1' : smartGridConfig.cardSize === 'sm' ? 'gap-2' : 'gap-4')}
           style={{ gridTemplateColumns: `repeat(${smartGridConfig.columns}, minmax(0, 1fr))` }}
         >
           {filteredServices.map((service) => {
@@ -837,7 +837,8 @@ const TVMode = ({
               <Card
                 key={service.id}
                 className={cn(
-                  "border-2 transition-all duration-200 hover:scale-105 relative overflow-hidden",
+                  "border-2 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 relative overflow-hidden",
+                  smartGridConfig.cardSize === 'lg' ? "hover:scale-[1.02]" : "hover:scale-105",
                   getStatusColor(service.serviceStatus),
                   // Add static red indicator for services with alerts
                   service.alertsCount > 0 && [
