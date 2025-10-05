@@ -73,13 +73,33 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build and Push Docker Image
+    - name: Build and Push Backend Image
+      run: |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t opsimate/backend:${{ steps.version.outputs.version }} \
+          -t opsimate/backend:latest \
+          -f Dockerfile.server \
+          --push .
+
+    - name: Build and Push Frontend Image
+      run: |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t opsimate/frontend:${{ steps.version.outputs.version }} \
+          -t opsimate/frontend:latest \
+          -f Dockerfile.client \
+          --push .
+
+    - name: Build and Push Main App Image
       run: |
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
           -t opsimate/opsimate:${{ steps.version.outputs.version }} \
           -t opsimate/opsimate:latest \
+          -f Dockerfile \
           --push .
+
 
     - name: Update Release Draft
       uses: release-drafter/release-drafter@v5
