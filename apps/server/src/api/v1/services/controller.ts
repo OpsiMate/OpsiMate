@@ -8,7 +8,7 @@ import {ProviderRepository} from "../../../dal/providerRepository";
 import {ServiceRepository} from "../../../dal/serviceRepository";
 import {checkSystemServiceStatus} from "../../../dal/sshClient";
 import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
-import { ServicesBL } from "../../../bl/services/services.bl"; // <-- EDIT #1: We import your new ServicesBL class.
+import { ServicesBL } from "../../../bl/services/services.bl";
 import {AuthenticatedRequest} from '../../../middleware/auth';
 
 
@@ -18,7 +18,7 @@ export class ServiceController {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
-        private servicesBL: ServicesBL, // <-- EDIT #2: We add your new servicesBL to the constructor
+        private servicesBL: ServicesBL, 
         private customFieldBL?: ServiceCustomFieldBL
     ) {
     }
@@ -61,8 +61,6 @@ export class ServiceController {
         try {
             const validatedData = CreateServiceSchema.parse(req.body);
 
-            // <-- EDIT #3: We replace the old logic with ONE line that calls your new code.
-            // Your servicesBL.createService function now handles creating the service AND writing the audit log.
             if (!req.user) {
                 return res.status(401).json({ success: false, error: 'Unauthorized' });
             }
@@ -79,7 +77,8 @@ export class ServiceController {
             if (service.serviceType === ServiceType.SYSTEMD) {
                 try {
                     const actualStatus = await checkSystemServiceStatus(provider, service.name);
-
+                    
+                    // Update the service status in the database
                     await this.serviceRepo.updateService(service.id, {serviceStatus: actualStatus});
 
                     // Update the service object for the response

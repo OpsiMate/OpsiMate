@@ -2,7 +2,7 @@ import { Service, Logger, User } from '@OpsiMate/shared';
 import { ServiceRepository } from '../../dal/serviceRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
-import { ServiceNotFound } from './ServiceNotFound'; // <-- Added a new import
+import { ServiceNotFound } from './ServiceNotFound';
 
 const logger = new Logger('bl/services/service.bl');
 
@@ -21,7 +21,6 @@ export class ServicesBL {
 
             const createdService = await this.serviceRepo.getServiceById(lastID);
 
-            // This is our safety check
             if (!createdService) {
                 logger.error(`Failed to fetch service immediately after creation with ID: ${lastID}`);
                 throw new ServiceNotFound(lastID);

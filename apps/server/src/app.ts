@@ -43,7 +43,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
     app.use(cors({
         origin: (origin, callback) => {
-            // allow requests with no origin (like curl or mobile apps)
+            
             if (!origin) return callback(null, true);
             return callback(null, origin);
         },
