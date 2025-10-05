@@ -1,4 +1,7 @@
+import { AuditActionType, AuditResourceType, User } from '@OpsiMate/shared';
+import { AuditLogRepository } from '../../dal/auditLogRepository';
 import {SavedView, ViewRepository} from '../../dal/viewRepository';
+import { AuditBL } from '../audit/audit.bl';
 
 export class ViewBL {
     constructor(private viewRepository: ViewRepository) {
@@ -21,15 +24,46 @@ export class ViewBL {
     /**
      * Create a new view or update an existing one
      */
-    async saveView(view: SavedView): Promise<SavedView | null> {
-        const existingView = await this.viewRepository.getViewById(view.id);
+    async saveView(view: SavedView, user: User): Promise<SavedView | null> {
+    const existingView = await this.viewRepository.getViewById(view.id);
+    const auditBL = new AuditBL(
+      new AuditLogRepository(this.viewRepository["db"])
+    );
 
-        if (existingView) {
-            return await this.viewRepository.updateView(view);
-        } else {
-            return await this.viewRepository.createView(view);
-        }
+    if (existingView) {
+      const savedView = await this.viewRepository.updateView(view);
+
+      if (savedView) {
+        await auditBL.logAction({
+          actionType: AuditActionType.UPDATE,
+          resourceType: AuditResourceType.VIEW,
+          resourceId: view.id,
+          userId: user.id,
+          userName: user.fullName,
+          resourceName: view.name,
+          details: JSON.stringify(savedView),
+        });
+      }
+
+      return savedView;
+    } else {
+      const savedView = await this.viewRepository.createView(view);
+
+      if (savedView) {
+        await auditBL.logAction({
+          actionType: AuditActionType.CREATE,
+          resourceType: AuditResourceType.VIEW,
+          resourceId: savedView.id,
+          userId: user.id,
+          userName: user.fullName,
+          resourceName: view.name,
+          details: JSON.stringify(savedView),
+        });
+      }
+
+      return savedView;
     }
+  }
 
     /**
      * Delete a view

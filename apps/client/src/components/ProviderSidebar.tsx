@@ -4,7 +4,7 @@ import {Label} from "@/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle} from "@/components/ui/sheet";
 import {Separator} from "@/components/ui/separator";
-import {X, Loader2} from "lucide-react";
+import {X, Loader2, CheckCircle2, XCircle} from "lucide-react";
 import {ProviderType} from "@/pages/Providers";
 import {useToast} from "@/hooks/use-toast";
 import {useForm, Controller, SubmitHandler, Control} from "react-hook-form";
@@ -273,12 +273,12 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             };
             const response = await providerApi.testProviderConnection(providerData);
             if (response.success && response.data?.isValidConnection) {
-                setTestResult({ok: true, message: 'TEST OK'});
+                setTestResult({ok: true, message: 'Successfully connected to the server and verified authentication.'});
             } else {
-                setTestResult({ok: false, message: response.error || 'Connection failed.'});
+                setTestResult({ok: false, message: response.error || 'Connection test failed. Please check your credentials and network settings.'});
             }
         } catch (err: any) {
-            setTestResult({ok: false, message: err?.message || 'Unknown error'});
+            setTestResult({ok: false, message: err?.message || 'An unexpected error occurred while testing the connection.'});
         } finally {
             setTestLoading(false);
         }
@@ -355,14 +355,32 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             )}
 
             {/* Test Connection Button and Result */}
-            <div className="flex flex-col items-start gap-2 pt-2">
+            <div className="flex flex-col items-start gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={handleTestConnection}
                         disabled={testLoading || isSubmitting}>
                     {testLoading ? (<><Loader2
                         className="mr-2 h-4 w-4 animate-spin"/>Testing...</>) : 'Test Connection'}
                 </Button>
                 {testResult && (
-                    <span className={testResult.ok ? 'text-green-600' : 'text-red-600'}>{testResult.message}</span>
+                    <div className={`flex items-start gap-2 p-3 rounded-md border ${
+                        testResult.ok
+                            ? 'bg-green-50 border-green-200 text-green-800'
+                            : 'bg-red-50 border-red-200 text-red-800'
+                    }`}>
+                        {testResult.ok ? (
+                            <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        ) : (
+                            <XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                            <p className="font-medium text-sm">
+                                {testResult.ok ? 'Connection Successful' : 'Connection Failed'}
+                            </p>
+                            {testResult.message && (
+                                <p className="text-sm mt-1">{testResult.message}</p>
+                            )}
+                        </div>
+                    </div>
                 )}
             </div>
             {/* End Test Connection */}
