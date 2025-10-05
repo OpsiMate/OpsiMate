@@ -83,7 +83,7 @@ export function EditProviderDialog({
         providerIP: provider.providerIP || "",
         username: provider.username || "",
         secretId: secretId,
-        password: provider.password || "",
+        password: "",
         SSHPort: provider.SSHPort || 22,
         providerType: provider.providerType || 'VM',
       });
@@ -108,7 +108,8 @@ export function EditProviderDialog({
   const handleSecretChange = (value: string) => {
     setFormData(prev => ({
       ...prev,
-      secretId: value ? parseInt(value) : undefined
+      secretId: value ? parseInt(value) : undefined,
+      password: value ? "" : prev.password, // Clear password if SSH key selected
     }));
   };
 
@@ -118,7 +119,19 @@ export function EditProviderDialog({
 
     setIsLoading(true);
     try {
-      await onSave(provider.id.toString(), formData);
+      const submitData = {
+        name: formData.name,
+        providerIP: formData.providerIP,
+        username: formData.username,
+        SSHPort: formData.SSHPort,
+        providerType: formData.providerType,
+        // Only include password if there's a value AND no secretId selected
+        ...(formData.password && !formData.secretId && { password: formData.password }),
+        // Only include secretId if one is selected
+        ...(formData.secretId && { secretId: formData.secretId }),
+      };
+
+      await onSave(provider.id.toString(), submitData);
       onClose();
     } catch (error) {
       console.error("Error updating provider:", error);
@@ -297,6 +310,7 @@ export function EditProviderDialog({
                     onChange={handleInputChange}
                     className="col-span-3"
                     placeholder="SSH password (leave empty to use key file)"
+                    required={!formData.secretId}
                   />
                 </div>
               </>
