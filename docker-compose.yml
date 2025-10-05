@@ -1,12 +1,11 @@
 version: "3.8"
 
 services:
-  opsimate:
-    image: opsimate/opsimate:latest
-    container_name: opsimate
+  backend:
+    image: opsimate/backend:latest
+    container_name: opsimate-backend
     ports:
-      - "3001:3001"        # Backend API port
-      - "8080:8080"        # Frontend UI port
+      - "3001:3001"        
     volumes:
       - ./data/database:/app/data/database
       - ./data/private-keys:/app/data/private-keys
@@ -15,7 +14,26 @@ services:
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    image: opsimate/frontend:latest
+    container_name: opsimate-frontend
+    ports:
+      - "8080:8080"        
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://backend:3001   
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
