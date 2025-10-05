@@ -151,6 +151,11 @@ export const CreateSecretsMetadataSchema = z.object({
     secretType: z.nativeEnum(SecretType).optional().default(SecretType.SSH),
 })
 
+export const UpdateSecretsMetadataSchema = z.object({
+    displayName: z.string().min(1, 'Secret name is required').optional(),
+    secretType: z.nativeEnum(SecretType).optional(),
+})
+
 
 export type UserSchemaType = z.infer<typeof UserSchema>;
 export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
@@ -163,3 +168,4 @@ export type AddBulkServiceRequest = z.infer<typeof AddBulkServiceSchema>;
 export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
 
 export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
+export type UpdateSecretRequest = z.infer<typeof UpdateSecretsMetadataSchema>;

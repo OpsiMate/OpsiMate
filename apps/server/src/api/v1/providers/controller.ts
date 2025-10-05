@@ -33,6 +33,36 @@ export class ProviderController {
         }
     }
 
+    async refreshProvider(req: Request, res: Response) {
+        try {
+            const providerId = parseInt(req.params.providerId);
+            if (isNaN(providerId)) {
+                return res.status(400).json({success: false, error: 'Invalid provider ID'});
+            }
+
+            const result = await this.providerBL.refreshProvider(providerId);
+            
+            delete result.provider.password;
+            
+            res.json({
+                success: true, 
+                data: {
+                    provider: result.provider,
+                    services: result.services
+                },
+                message: 'Provider refreshed successfully'
+            });
+        } catch (error) {
+            if (error instanceof ProviderNotFound) {
+                res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
+            } else {
+                logger.error('Error refreshing provider:', error);
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                res.status(500).json({success: false, error: 'Failed to refresh provider', details: message});
+            }
+        }
+    }
+
     async createProvider(req: AuthenticatedRequest, res: Response) {
         try {
             const providerToCreate = CreateProviderSchema.parse(req.body);
@@ -71,7 +101,7 @@ export class ProviderController {
     async testConnection(req: Request, res: Response) {
         try {
             const providerData = CreateProviderSchema.parse(req.body);
-            
+
             // Resolve secretId to privateKeyFilename if provided
             const resolvedProvider = { ...providerData } as Provider;
             if (providerData.secretId) {
@@ -82,16 +112,22 @@ export class ProviderController {
                 resolvedProvider.privateKeyFilename = secret.fileName;
                 delete resolvedProvider.secretId;
             }
-            
+
             const providerConnector = providerConnectorFactory(resolvedProvider.providerType);
-            const isValidConnection = await providerConnector.testConnection(resolvedProvider);
-            res.status(200).json({success: true, data: {isValidConnection}});
+            const testResult = await providerConnector.testConnection(resolvedProvider);
+
+            if (testResult.success) {
+                res.status(200).json({success: true, data: {isValidConnection: true}});
+            } else {
+                res.status(200).json({success: false, error: testResult.error || 'Connection test failed', data: {isValidConnection: false}});
+            }
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error testing provider connection:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+                res.status(500).json({success: false, error: errorMessage});
             }
         }
     }

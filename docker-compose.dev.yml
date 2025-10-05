@@ -1,0 +1,50 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+      target: client-builder
+    command: sh -c "pnpm --filter @OpsiMate/client dev -- --port 8080 --host 0.0.0.0"
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./apps/client:/app/apps/client
+      - ./packages/shared:/app/packages/shared
+      - pnpm-store-client:/root/.pnpm-store
+    networks:
+      - appnet
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+      target: server-builder
+    command: sh -c "pnpm --filter @OpsiMate/server dev"
+    working_dir: /app
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - HOST=0.0.0.0
+    volumes:
+      - ./apps/server:/app/apps/server
+      - ./packages/shared:/app/packages/shared
+      - ./data:/app/data
+      - ./config:/app/config
+      - pnpm-store-server:/root/.pnpm-store
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
+
+volumes:
+  pnpm-store-client:
+  pnpm-store-server:
