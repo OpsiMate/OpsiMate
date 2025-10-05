@@ -14,6 +14,10 @@ interface ValidationFeedbackProps {
   showValid?: boolean; // Whether to show green checkmarks for valid rules
 }
 
+const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const hostnameRegex = /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || hostnameRegex.test(value);
+
 export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
   value,
   rules,
@@ -102,9 +106,7 @@ export const validationRules = {
       label: 'Must be a valid IP address or hostname',
       validator: (value: string) => {
         if (value.length === 0) return true; // Don't validate empty
-        const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        const hostnameRegex = /^([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9])(\.([a-z0-9]|[a-z0-9][a-z0-9-]{0,61}[a-z0-9]))*\.([a-z]{2,63})$/;
-        return ipRegex.test(value) || hostnameRegex.test(value);
+        return isValidHostnameOrIP(value);
       },
     },
   ],
