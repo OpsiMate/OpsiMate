@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useToast } from "@/hooks/use-toast"
 import { ServiceTable, Service } from "@/components/ServiceTable"
 import { RightSidebarWithLogs as RightSidebar } from "@/components/RightSidebarWithLogs"
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 
 const Dashboard = () => {
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
     const {toast} = useToast()
     
     // React Query hooks for data fetching
@@ -28,6 +29,9 @@ const Dashboard = () => {
     const { data: savedViews = [], error: viewsError } = useViews();
     const { activeViewId, setActiveView, error: activeViewError } = useActiveView();
     const { data: customFields = [] } = useCustomFields();
+    
+    // Get viewId from URL parameter (higher priority than stored activeViewId)
+    const urlViewId = searchParams.get('viewId');
     // Update visibleColumns and columnOrder when customFields change
     useEffect(() => {
         if (customFields.length > 0) {
@@ -125,11 +129,14 @@ const Dashboard = () => {
     useEffect(() => {
         const loadViews = async () => {
             try {
-                if (activeViewId) {
-                    const activeView = savedViews.find(view => view.id === activeViewId);
+                // Use URL viewId if available, otherwise use activeViewId
+                const viewIdToLoad = urlViewId || activeViewId;
+                
+                if (viewIdToLoad) {
+                    const activeView = savedViews.find(view => view.id === viewIdToLoad);
                     if (activeView) {
                         applyView(activeView);
-                    } else if (activeViewId === 'default-view') {
+                    } else if (viewIdToLoad === 'default-view') {
                         // If the active view is 'default-view' but it doesn't exist, create a default state
                         // Apply default filters and settings
                         setFilters({});
@@ -143,6 +150,10 @@ const Dashboard = () => {
                             tags: true,
                             alerts: true
                         });
+                        // Update URL to reflect default view
+                        if (!urlViewId) {
+                            setSearchParams({ viewId: 'default-view' });
+                        }
                     } else {
                         // If the active view ID doesn't exist, fall back to the first available view or default
                         const firstView = savedViews[0];
@@ -151,8 +162,12 @@ const Dashboard = () => {
                             applyView(firstView);
                         } else {
                             setActiveView('default-view');
+                            setSearchParams({ viewId: 'default-view' });
                         }
                     }
+                } else if (!urlViewId && savedViews.length === 0) {
+                    // On first load with no URL param and no saved views, set default view in URL
+                    setSearchParams({ viewId: 'default-view' });
                 }
             } catch (error) {
                 console.error('Error loading saved views:', error);
@@ -164,10 +179,11 @@ const Dashboard = () => {
             }
         };
 
-        if (savedViews.length > 0 && activeViewId) {
+        // Always run on mount or when dependencies change
+        if (savedViews.length >= 0) {
             loadViews();
         }
-    }, [savedViews, activeViewId, setActiveView, toast]);
+    }, [savedViews, activeViewId, urlViewId, setActiveView, setSearchParams, toast]);
 
     // Handle errors from React Query
     useEffect(() => {
@@ -258,8 +274,10 @@ const Dashboard = () => {
         try {
             await deleteViewMutation.mutateAsync(viewId);
 
-            if (activeViewId === viewId) {
+            if (activeViewId === viewId || urlViewId === viewId) {
                 await setActiveView(undefined);
+                // Clear URL parameter or set to default view
+                setSearchParams({ viewId: 'default-view' });
             }
 
             toast({
@@ -286,6 +304,9 @@ const Dashboard = () => {
             }));
             setSearchTerm(view.searchTerm);
             await setActiveView(view.id);
+            
+            // Update URL to persist view across page refreshes
+            setSearchParams({ viewId: view.id });
 
             // Only show toast if not the default 'All Services' view
             if (view.name !== "All Services") {
@@ -542,13 +563,13 @@ const Dashboard = () => {
                                         onSaveView={handleSaveView}
                                         onDeleteView={handleDeleteView}
                                         onLoadView={applyView}
-                                        activeViewId={activeViewId}
+                                        activeViewId={urlViewId || activeViewId}
                                     />
                                     <TVModeLauncher 
                                         currentFilters={filters}
                                         currentVisibleColumns={visibleColumns}
                                         currentSearchTerm={searchTerm}
-                                        activeViewId={activeViewId}
+                                        activeViewId={urlViewId || activeViewId}
                                     />
                                 </div>
                                 <ServiceTable
