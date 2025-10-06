@@ -96,9 +96,6 @@ const Settings: React.FC = () => {
 useEffect(() => {
   let result = logs;
 
-  console.log(dateRange);
-
-  // 1️⃣ Apply string filter first
   const query = searchAuditLogQuery?.toLowerCase().trim();
   if (query && selectedFilter) {
     result = result.filter(log => {
