@@ -43,10 +43,21 @@ import {
     AlertDialogAction,
     AlertDialogCancel
 } from '../components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import {AuditLog} from "@OpsiMate/shared";
 import {useToast} from "@/hooks/use-toast";
 import {Settings as SettingsIcon} from "lucide-react";
 import {CustomFieldsTable} from "../components/CustomFieldsTable";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
 
 const PAGE_SIZE = 20;
 
@@ -60,6 +71,7 @@ const Settings: React.FC = () => {
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchAuditLogQuery, setSearchAuditLogQuery] = useState('');
     const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
     const [showEditModal, setShowEditModal] = useState(false);
     const [userToEdit, setUserToEdit] = useState<User | null>(null);
@@ -67,6 +79,60 @@ const Settings: React.FC = () => {
     const [userToResetPassword, 
         setUserToResetPassword] = useState<User | null>(null);
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+    const [selectedFilter, setSelectedFilter] = useState("Filter");
+    const [logs, setLogs] = useState<AuditLog[]>([]);
+    const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
+    const [isFiltering, setIsFiltering] = useState(false);
+    const [dateRange, setDateRange] = useState<DateRange | undefined>()
+
+
+    const filters = ["Action", "Resource", "Resource Name", "User"];
+
+    useEffect(() => {
+        setIsFiltering(filteredLogs.length > 0);
+    }, [filteredLogs]);
+
+
+useEffect(() => {
+  let result = logs;
+
+  console.log(dateRange);
+
+  // 1️⃣ Apply string filter first
+  const query = searchAuditLogQuery?.toLowerCase().trim();
+  if (query && selectedFilter) {
+    result = result.filter(log => {
+      switch (selectedFilter) {
+        case "Action":
+          return log.actionType?.toLowerCase().includes(query);
+        case "Resource":
+          return log.resourceType?.toLowerCase().includes(query);
+        case "Resource Name":
+          return log.resourceName?.toLowerCase().includes(query);
+        case "User":
+          return log.userName?.toString().toLowerCase().includes(query);
+        default:
+          return Object.values(log).some(val =>
+            val?.toString().toLowerCase().includes(query)
+          );
+      }
+    });
+  }
+
+  if (dateRange?.from && dateRange?.to) {
+    const startTime = new Date(dateRange.from).getTime();
+    const endTime = new Date(dateRange.to).getTime() + 24*60*60*1000 - 1; // include full day
+
+    result = result.filter(log => {
+      const logTime = new Date(log.timestamp).getTime();
+      return logTime >= startTime && logTime <= endTime;
+    });
+  }
+
+  setFilteredLogs(result);
+}, [logs, selectedFilter, searchAuditLogQuery, dateRange]);
+
+
 
     useEffect(() => {
         fetchUsers();
@@ -138,7 +204,6 @@ const Settings: React.FC = () => {
         user.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Handle bulk role update
     const handleBulkRoleUpdate = async (newRole: Role) => {
         for (const userId of selectedUsers) {
             const user = users.find(u => u.id === userId);
@@ -472,11 +537,50 @@ const Settings: React.FC = () => {
                                                 operations and user actions.</p>
                                         </div>
                                         <Card>
-                                            <CardHeader>
+                                            <CardHeader className='flex flex-row justify-between items-center'>
                                                 <CardTitle>Activity Logs</CardTitle>
+                                                <div className='flex gap-2'>
+                                                    <Input onChange={(e)=>
+                                                        setSearchAuditLogQuery(e.target.value)
+                                                    } placeholder="Search logs..." />
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="outline">{selectedFilter}</Button>
+                                                        </DropdownMenuTrigger>
+
+                                                        <DropdownMenuContent>
+                                                            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            {filters.map((filter) => (
+                                                            <DropdownMenuItem
+                                                                key={filter}
+                                                                onSelect={() => setSelectedFilter(filter)}
+                                                            >
+                                                                {filter}
+                                                            </DropdownMenuItem>
+                                                            ))}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                    <Popover  >
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline">
+                                                                {dateRange
+                                                                    ? `${new Date(dateRange.from).toLocaleDateString()} - ${new Date(dateRange.to).toLocaleDateString()}`
+                                                                    : "Select Date"}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent>
+                                                        <Calendar
+                                                            mode="range"       
+                                                            selected={dateRange} 
+                                                            onSelect={setDateRange}
+                                                            />  
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
                                             </CardHeader>
                                             <CardContent>
-                                                <AuditLogTable />
+                                                <AuditLogTable logs={logs} setLogs={setLogs} filteredLogs={filteredLogs} isFiltering={isFiltering} />
                                             </CardContent>
                                         </Card>
                                     </TabsContent>
@@ -596,8 +700,7 @@ function formatRelativeTime(dateString: string) {
     return date.toLocaleDateString();
 }
 
-const AuditLogTable: React.FC = () => {
-    const [logs, setLogs] = useState<AuditLog[]>([]);
+const AuditLogTable: React.FC<{ logs: AuditLog[] , setLogs: React.Dispatch<React.SetStateAction<AuditLog[]>> , filteredLogs: AuditLog[] , isFiltering: boolean }> = ({ logs, setLogs, filteredLogs, isFiltering }) => {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -655,30 +758,30 @@ const AuditLogTable: React.FC = () => {
                         <TableHead>User</TableHead>
                     </TableRow>
                 </TableHeader>
-                <TableBody>
-                    {logs.map(log => {
-                        const actionProps = getActionBadgeProps(log.actionType);
-                        return (
-                            <TableRow key={log.id}>
-                                <TableCell>
-                                    <span title={parseUTCDate(log.timestamp).toLocaleString()}>
-                                        {formatRelativeTime(log.timestamp)}
-                                    </span>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={actionProps.variant as any} className={actionProps.className}>
-                                        {log.actionType}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant="secondary">{log.resourceType}</Badge>
-                                </TableCell>
-                                <TableCell>{log.resourceName || '-'}</TableCell>
-                                <TableCell>{log.userName || '-'}</TableCell>
-                            </TableRow>
-                        );
-                    })}
-                </TableBody>
+            <TableBody>
+                {filteredLogs.map(log => {
+                    const actionProps = getActionBadgeProps(log.actionType);
+                    return (
+                    <TableRow key={log.id}>
+                        <TableCell>
+                        <span title={parseUTCDate(log.timestamp).toLocaleString()}>
+                            {formatRelativeTime(log.timestamp)}
+                        </span>
+                        </TableCell>
+                        <TableCell>
+                        <Badge variant={actionProps.variant as any} className={actionProps.className}>
+                            {log.actionType}
+                        </Badge>
+                        </TableCell>
+                        <TableCell>
+                        <Badge variant="secondary">{log.resourceType}</Badge>
+                        </TableCell>
+                        <TableCell>{log.resourceName || '-'}</TableCell>
+                        <TableCell>{log.userName || '-'}</TableCell>
+                    </TableRow>
+                    );
+                })}
+            </TableBody>
             </Table>
             {totalPages > 1 && (
                 <div className="flex justify-end items-center gap-2 mt-4">
