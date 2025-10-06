@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opsimate-frontend-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: opsimate-frontend
+  ports:
+    - protocol: TCP
+      port: 8383
+      targetPort: 8080
