@@ -21,8 +21,14 @@ OpsiMate/
 ├── apps/
 │   ├── client/    # Frontend React application
 │   └── server/    # Backend Express API server
-└── packages/
-    └── shared/    # Shared types and utilities
+├── packages/
+│   └── shared/    # Shared types and utilities
+├── scripts/       # Helper scripts, setup scripts, automation and many more
+└── .github/
+    ├── ISSUE_TEMPLATE/   # Templates for GitHub issues
+    ├── workflows/        # GitHub Actions workflows
+    └── other files       # Any additional GitHub config files
+
 ```
 
 ## Server (Backend)

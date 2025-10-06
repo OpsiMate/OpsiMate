@@ -98,7 +98,7 @@
 Run OpsiMate locally quickly with Docker and a single command — no cloning or building required.
 
 ### Run OpsiMate with one command
-Open your terminal and run:
+#### Open your terminal and run:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
@@ -107,20 +107,43 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
    - **Client:** http://localhost:8080
 
 
-## Manual Docker Run (Optional)
+## Manual Docker Run (Alternatively)
+#### OpsiMate now uses separate Docker images for frontend and backend:
 
-Alternatively, run the container manually:
-
-#### Quick Start with Docker
 
 ```bash
-# Run the container
+#Backend:
+
+docker run -d \
+  --name opsimate-backend \
+  --rm \
+  -p 3001:3001 \
+  opsimate/backend
+
+```
+
+```bash
+#Frontend:
+
+docker run -d \
+  --name opsimate-frontend \
+  --rm \
+  -p 8080:8080 \
+  opsimate/frontend
+
+```
+
+```bash
+#We also suppourt the old Monolith verison:
+
 docker run -d \
   --name opsimate \
   --rm \
   -p 3001:3001 -p 8080:8080 \
   opsimate/opsimate
+
 ```
+
 **Access the application:**
    - **Backend:** http://localhost:3001
    - **Client:** http://localhost:8080
@@ -134,7 +157,7 @@ docker run -d \
 | `/app/data/private-keys` | SSH private keys for authentication |
 | `/app/config/config.yml` | Custom configuration |
 
-for example:
+### for example:
 
 ```bash
 # Run the container
@@ -171,40 +194,6 @@ security:
 vm:
   try_with_sudo: false
 ```
-
-## Development
-
-### Development Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/opsimate/opsimate.git
-   cd opsimate
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
-
-3. **Build the project:**
-   ```bash
-   pnpm run build
-   ```
-4. **Specify the config file (optional):**
-   ```bash
-   export CONFIG_FILE=/path/to/config.yml
-   ```
-5. **Start development server:**
-   ```bash
-   pnpm run dev
-   ```
-
-### Development Commands
-
-- `pnpm run test` - Run test suite
-- `pnpm run lint` - Check code quality
-
 
 ## Contributing
 
