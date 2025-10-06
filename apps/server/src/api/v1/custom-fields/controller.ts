@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Logger } from "@OpsiMate/shared";
 import { z } from "zod";
 import { ServiceCustomFieldBL } from "../../../bl/custom-fields/serviceCustomField.bl";
+import { AuthenticatedRequest } from "../../../middleware/auth";
 
 const logger = new Logger("v1/custom-fields/controller");
 
@@ -24,10 +25,10 @@ export class CustomFieldsController {
     constructor(private customFieldsBL: ServiceCustomFieldBL) {}
 
     // Custom Field CRUD operations
-    createCustomField = async (req: Request, res: Response) => {
+    createCustomField = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const { name } = CreateCustomFieldSchema.parse(req.body);
-            const customFieldId = await this.customFieldsBL.createCustomField(name);
+            const customFieldId = await this.customFieldsBL.createCustomField(name, req.user!);
 
             res.status(201).json({
                 success: true,
@@ -98,7 +99,7 @@ export class CustomFieldsController {
         }
     };
 
-    updateCustomField = async (req: Request, res: Response) => {
+    updateCustomField = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const customFieldId = parseInt(req.params.id);
             if (isNaN(customFieldId)) {
@@ -110,7 +111,7 @@ export class CustomFieldsController {
             }
 
             const { name } = UpdateCustomFieldSchema.parse(req.body);
-            const updated = await this.customFieldsBL.updateCustomField(customFieldId, name);
+            const updated = await this.customFieldsBL.updateCustomField(customFieldId, name, req.user!);
 
             if (updated) {
                 res.json({
@@ -140,7 +141,7 @@ export class CustomFieldsController {
         }
     };
 
-    deleteCustomField = async (req: Request, res: Response) => {
+    deleteCustomField = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const customFieldId = parseInt(req.params.id);
             if (isNaN(customFieldId)) {
@@ -151,7 +152,7 @@ export class CustomFieldsController {
                 return;
             }
 
-            const deleted = await this.customFieldsBL.deleteCustomField(customFieldId);
+            const deleted = await this.customFieldsBL.deleteCustomField(customFieldId, req.user!);
             if (deleted) {
                 res.json({
                     success: true,

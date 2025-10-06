@@ -1,21 +1,16 @@
 import Database from 'better-sqlite3';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
 import { Logger } from '@OpsiMate/shared';
 import { getDatabaseConfig } from '../config/config';
 
 const logger = new Logger('dal/db');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 export function initializeDb(): Database.Database {
   const databaseConfig = getDatabaseConfig();
   const dbPath = path.isAbsolute(databaseConfig.path) 
     ? databaseConfig.path 
-    : path.resolve(__dirname, databaseConfig.path);
+    : path.resolve(process.cwd(), databaseConfig.path);
   logger.info(`SQLite database is connecting to ${dbPath}`);
 
   try {

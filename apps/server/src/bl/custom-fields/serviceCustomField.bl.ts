@@ -1,17 +1,19 @@
-import { Logger, ServiceCustomField, ServiceCustomFieldValue } from "@OpsiMate/shared";
+import { Logger, ServiceCustomField, ServiceCustomFieldValue, User, AuditActionType, AuditResourceType } from "@OpsiMate/shared";
 import { ServiceCustomFieldRepository } from "../../dal/serviceCustomFieldRepository";
 import { ServiceCustomFieldValueRepository } from "../../dal/serviceCustomFieldValueRepository";
+import { AuditBL } from "../audit/audit.bl";
 
 const logger = new Logger('bl/custom-fields/serviceCustomField.bl');
 
 export class ServiceCustomFieldBL {
     constructor(
         private customFieldRepository: ServiceCustomFieldRepository,
-        private customFieldValueRepository: ServiceCustomFieldValueRepository
+        private customFieldValueRepository: ServiceCustomFieldValueRepository,
+        private auditBL: AuditBL
     ) {}
 
     // Custom Field CRUD operations
-    async createCustomField(name: string): Promise<number> {
+    async createCustomField(name: string, user: User): Promise<number> {
         try {
             logger.info(`Creating custom field with name: ${name}`);
 
@@ -24,6 +26,20 @@ export class ServiceCustomFieldBL {
 
             const result = await this.customFieldRepository.createCustomField({ name });
             logger.info(`Successfully created custom field '${name}' with ID: ${result.lastID}`);
+
+            // Log the audit action
+            await this.auditBL.logAction({
+                actionType: AuditActionType.CREATE,
+                resourceType: AuditResourceType.CUSTOM_FIELD,
+                resourceId: String(result.lastID),
+                userId: user.id,
+                userName: user.fullName,
+                resourceName: name,
+                details: JSON.stringify({ 
+                    name,
+                    type: 'service_custom_field'
+                })
+            });
 
             return result.lastID;
         } catch (error) {
@@ -63,7 +79,7 @@ export class ServiceCustomFieldBL {
         }
     }
 
-    async updateCustomField(id: number, name: string): Promise<boolean> {
+    async updateCustomField(id: number, name: string, user: User): Promise<boolean> {
         try {
             logger.info(`Updating custom field ${id} with name: ${name}`);
 
@@ -86,6 +102,21 @@ export class ServiceCustomFieldBL {
 
             if (updated) {
                 logger.info(`Successfully updated custom field ${id} to name '${name}'`);
+                
+                // Log the audit action
+                await this.auditBL.logAction({
+                    actionType: AuditActionType.UPDATE,
+                    resourceType: AuditResourceType.CUSTOM_FIELD,
+                    resourceId: String(id),
+                    userId: user.id,
+                    userName: user.fullName,
+                    resourceName: name,
+                    details: JSON.stringify({ 
+                        oldName: existingField.name,
+                        newName: name,
+                        type: 'service_custom_field'
+                    })
+                });
             } else {
                 logger.warn(`No changes made to custom field ${id}`);
             }
@@ -97,7 +128,7 @@ export class ServiceCustomFieldBL {
         }
     }
 
-    async deleteCustomField(id: number): Promise<boolean> {
+    async deleteCustomField(id: number, user: User): Promise<boolean> {
         try {
             logger.info(`Deleting custom field with ID: ${id}`);
 
@@ -116,6 +147,21 @@ export class ServiceCustomFieldBL {
 
             if (deleted) {
                 logger.info(`Successfully deleted custom field '${field.name}' and all its values`);
+                
+                // Log the audit action
+                await this.auditBL.logAction({
+                    actionType: AuditActionType.DELETE,
+                    resourceType: AuditResourceType.CUSTOM_FIELD,
+                    resourceId: String(id),
+                    userId: user.id,
+                    userName: user.fullName,
+                    resourceName: field.name,
+                    details: JSON.stringify({ 
+                        name: field.name,
+                        deletedValuesCount,
+                        type: 'service_custom_field'
+                    })
+                });
             }
 
             return deleted;
