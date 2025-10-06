@@ -43,8 +43,9 @@ export function EditProviderDialog({
     secretId: undefined as number | undefined,
     password: "",
     SSHPort: 22,
-    providerType: "VM", // Default to VM
+    providerType: "VM",
   });
+  const [authMethod, setAuthMethod] = useState<"password" | "key">("key");
   const [isLoading, setIsLoading] = useState(false);
   const [secrets, setSecrets] = useState<SecretMetadata[]>([]);
   const [secretsLoading, setSecretsLoading] = useState(false);
@@ -71,12 +72,16 @@ export function EditProviderDialog({
   // Update form data when provider changes or dialog opens
   useEffect(() => {
     if (provider && open) {
-      // For existing providers, we need to find the secret ID that matches the privateKeyFilename
+      // For existing providers, find the secret ID that matches the privateKeyFilename
       let secretId: number | undefined;
       if (provider.privateKeyFilename && secrets.length > 0) {
         const matchingSecret = secrets.find(secret => secret.fileName === provider.privateKeyFilename);
         secretId = matchingSecret?.id;
       }
+
+      // Determine auth method based on existing provider
+      const hasKey = !!provider.privateKeyFilename;
+      setAuthMethod(hasKey ? "key" : "password");
 
       setFormData({
         name: provider.name,
@@ -109,8 +114,17 @@ export function EditProviderDialog({
     setFormData(prev => ({
       ...prev,
       secretId: value ? parseInt(value) : undefined,
-      password: value ? "" : prev.password, // Clear password if SSH key selected
     }));
+  };
+
+  const handleAuthMethodChange = (value: string) => {
+    setAuthMethod(value as "password" | "key");
+    // Clear the other field when switching auth methods
+    if (value === "password") {
+      setFormData(prev => ({ ...prev, secretId: undefined }));
+    } else {
+      setFormData(prev => ({ ...prev, password: "" }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,10 +139,9 @@ export function EditProviderDialog({
         username: formData.username,
         SSHPort: formData.SSHPort,
         providerType: formData.providerType,
-        // Only include password if there's a value AND no secretId selected
-        ...(formData.password && !formData.secretId && { password: formData.password }),
-        // Only include secretId if one is selected
-        ...(formData.secretId && { secretId: formData.secretId }),
+        // Include password or secretId based on selected auth method
+        ...(authMethod === "password" && formData.password && { password: formData.password }),
+        ...(authMethod === "key" && formData.secretId && { secretId: formData.secretId }),
       };
 
       await onSave(provider.id.toString(), submitData);
@@ -277,42 +290,64 @@ export function EditProviderDialog({
                     required
                   />
                 </div>
+
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="secretId" className="text-right">
-                    SSH Key
+                  <Label htmlFor="authMethod" className="text-right">
+                    Auth Method
                   </Label>
-                  <Select 
-                    value={formData.secretId?.toString() || ""} 
-                    onValueChange={handleSecretChange}
-                    disabled={secretsLoading}
+                  <Select
+                    value={authMethod}
+                    onValueChange={handleAuthMethodChange}
                   >
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={secretsLoading ? "Loading..." : "Select an SSH key (leave empty to use password)"} />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {secrets.filter(secret => secret.type === 'ssh').map(secret => (
-                        <SelectItem key={secret.id} value={secret.id.toString()}>
-                          {secret.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="key">SSH Key</SelectItem>
+                      <SelectItem value="password">Password</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">
-                    Password
-                  </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="SSH password (leave empty to use key file)"
-                    required={!formData.secretId}
-                  />
-                </div>
+
+                {authMethod === "key" ? (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="secretId" className="text-right">
+                      SSH Key
+                    </Label>
+                    <Select
+                      value={formData.secretId?.toString() || ""}
+                      onValueChange={handleSecretChange}
+                      disabled={secretsLoading}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder={secretsLoading ? "Loading..." : "Select an SSH key"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {secrets.filter(secret => secret.type === 'ssh').map(secret => (
+                          <SelectItem key={secret.id} value={secret.id.toString()}>
+                            {secret.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="password" className="text-right">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                      placeholder="Enter SSH password"
+                      required
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
