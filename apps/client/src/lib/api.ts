@@ -1,4 +1,4 @@
-import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType } from '@OpsiMate/shared';
+import { Provider, Service, ServiceWithProvider, DiscoveredService, Tag, Integration, IntegrationType, Alert as SharedAlert, AuditLog, SecretType, LogEntry, LogLevel } from '@OpsiMate/shared';
 import { SavedView } from '@/types/SavedView';
 
 const { protocol, hostname } = window.location;
@@ -319,10 +319,32 @@ export const providerApi = {
   },
 
   // Get service logs
-  getServiceLogs: (serviceId: number) => {
-    console.log('API getServiceLogs called with ID:', serviceId);
-    // Make sure we're using the correct path
-    return apiRequest<string[]>(`/services/${serviceId}/logs`, 'GET');
+  getServiceLogs: (serviceId: number, filters?: {
+    levels?: string[];
+    searchText?: string;
+    since?: string;
+    until?: string;
+    limit?: number;
+    source?: string;
+  }) => {
+    console.log('API getServiceLogs called with ID:', serviceId, 'filters:', filters);
+    
+    const queryParams = new URLSearchParams();
+    if (filters) {
+      if (filters.levels && filters.levels.length > 0) {
+        filters.levels.forEach(level => queryParams.append('levels', level));
+      }
+      if (filters.searchText) queryParams.append('searchText', filters.searchText);
+      if (filters.since) queryParams.append('since', filters.since);
+      if (filters.until) queryParams.append('until', filters.until);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.source) queryParams.append('source', filters.source);
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = `/services/${serviceId}/logs${queryString ? `?${queryString}` : ''}`;
+    
+    return apiRequest<any>(`${endpoint}`, 'GET');
   },
 
   // Get service logs

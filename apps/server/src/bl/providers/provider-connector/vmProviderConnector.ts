@@ -26,12 +26,23 @@ export class VMProviderConnector implements ProviderConnector {
         }
     }
 
-    async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
+    async getServiceLogs(
+        provider: Provider, 
+        service: Service,
+        filters?: {
+            levels?: string[];
+            searchText?: string;
+            since?: string;
+            until?: string;
+            limit?: number;
+            source?: string;
+        }
+    ): Promise<string[]> {
         if (service.serviceType === ServiceType.SYSTEMD) {
-            return sshClient.getSystemServiceLogs(provider, service.name);
+            return sshClient.getSystemServiceLogs(provider, service.name, filters);
         } else {
             // Default to Docker service
-            return sshClient.getServiceLogs(provider, service.name);
+            return sshClient.getServiceLogs(provider, service.name, filters);
         }
     }
 

@@ -4,8 +4,19 @@ import {getK8RLogs, getK8SServices, getK8RPods, restartK8RServicePods} from "../
 import {DiscoveredPod} from "@OpsiMate/shared";
 
 export class K8SProviderConnector implements ProviderConnector {
-    async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
-        return [await getK8RLogs(provider, service.name, service.containerDetails?.namespace || 'default')];
+    async getServiceLogs(
+        provider: Provider, 
+        service: Service,
+        filters?: {
+            levels?: string[];
+            searchText?: string;
+            since?: string;
+            until?: string;
+            limit?: number;
+            source?: string;
+        }
+    ): Promise<string[]> {
+        return [await getK8RLogs(provider, service.name, service.containerDetails?.namespace || 'default', filters)];
     }
 
     startService(provider: Provider, serviceName: string): Promise<void> {

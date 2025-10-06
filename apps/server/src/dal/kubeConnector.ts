@@ -38,12 +38,36 @@ const createClient = (_provider: Provider): k8s.CoreV1Api => {
     return kc.makeApiClient(k8s.CoreV1Api);
 }
 
-const getK8RLogs = async (_provider: Provider, serviceName: string, namespace: string) => {
+const getK8RLogs = async (
+    _provider: Provider, 
+    serviceName: string, 
+    namespace: string,
+    filters?: {
+        levels?: string[];
+        searchText?: string;
+        since?: string;
+        until?: string;
+        limit?: number;
+        source?: string;
+    }
+) => {
     const k8sApi = createClient(_provider);
-    return getServicePodLogs(k8sApi, serviceName, namespace);
+    return getServicePodLogs(k8sApi, serviceName, namespace, filters);
 }
 
-async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, namespace: string): Promise<string> {
+async function getServicePodLogs(
+    coreV1: k8s.CoreV1Api, 
+    serviceName: string, 
+    namespace: string,
+    filters?: {
+        levels?: string[];
+        searchText?: string;
+        since?: string;
+        until?: string;
+        limit?: number;
+        source?: string;
+    }
+): Promise<string> {
     // Get the Service
     const service = await coreV1.readNamespacedService({ name: serviceName, namespace });
 
@@ -64,16 +88,75 @@ async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, nam
         return "No logs available for service.";
     }
 
+    // Filter pods by source if specified
+    const filteredPods = filters?.source 
+        ? pods.filter(pod => pod.metadata?.name === filters.source)
+        : pods;
+
     const logs: string[] = [];
-    for (const pod of pods) {
+    for (const pod of filteredPods) {
         const podName = pod.metadata?.name;
         if (!podName) continue;
 
-        const logText = await coreV1.readNamespacedPodLog({ name: podName, namespace });
-        logs.push(logText || "");
+        try {
+            // Build log request options
+            const logOptions: any = {
+                name: podName,
+                namespace,
+                timestamps: true,
+            };
+
+            // Add time range filters
+            if (filters?.since) {
+                // Convert relative time to seconds if needed
+                const sinceSeconds = parseRelativeTime(filters.since);
+                if (sinceSeconds) {
+                    logOptions.sinceSeconds = sinceSeconds;
+                }
+            }
+
+            // Limit the number of lines
+            const limit = filters?.limit || 1000;
+            logOptions.tailLines = limit;
+
+            const logText = await coreV1.readNamespacedPodLog(logOptions);
+            
+            if (logText) {
+                // Add pod name as source prefix to each log line
+                const podLogs = logText
+                    .split('\n')
+                    .filter(line => line.trim())
+                    .map(line => `[${podName}] ${line}`)
+                    .join('\n');
+                
+                logs.push(podLogs);
+            }
+        } catch (error) {
+            logs.push(`[${podName}] Error fetching logs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
 
-    return logs.join("\n");
+    return logs.length > 0 ? logs.join("\n") : "No logs available for service.";
+}
+
+/**
+ * Parse relative time strings like "1h", "24h" to seconds
+ */
+function parseRelativeTime(timeStr: string): number | null {
+    const match = timeStr.match(/^(\d+)([smhdw])$/);
+    if (!match) return null;
+
+    const [, amount, unit] = match;
+    const amountNum = parseInt(amount);
+
+    switch (unit) {
+        case 's': return amountNum;
+        case 'm': return amountNum * 60;
+        case 'h': return amountNum * 60 * 60;
+        case 'd': return amountNum * 24 * 60 * 60;
+        case 'w': return amountNum * 7 * 24 * 60 * 60;
+        default: return null;
+    }
 }
 
 const restartK8RServicePods = async (provider: Provider, serviceName: string) => {

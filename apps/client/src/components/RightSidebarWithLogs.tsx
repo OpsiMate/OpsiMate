@@ -24,6 +24,7 @@ import { IntegrationDashboardDropdown } from "./IntegrationDashboardDropdown";
 import { Service } from "./ServiceTable";
 import { TagSelector } from "./TagSelector";
 import { EditableCustomField } from "./EditableCustomField";
+import { InteractiveServiceLogs } from "./InteractiveServiceLogs";
 import { useCustomFields, useUpsertCustomFieldValue } from "../hooks/queries/custom-fields";
 import { ServiceCustomField } from "@OpsiMate/shared";
 
@@ -38,7 +39,6 @@ interface RightSidebarProps {
 
 export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpdate, alerts = [], onAlertDismiss }: RightSidebarProps) {
   const { toast } = useToast();
-  const [logs, setLogs] = useState<string[]>([]);
   const [pods, setPods] = useState<{ name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -430,34 +430,11 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
             onToggle={() => toggleSection('logs')}
           >
             <div className="pt-2">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-muted-foreground text-xs">Recent logs</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchLogs}
-                  disabled={loading}
-                  className="h-6 w-6 p-0"
-                >
-                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-
-              {loading ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-pulse text-muted-foreground text-xs">Loading logs...</div>
-                </div>
-              ) : error ? (
-                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{error}</div>
-              ) : logs.length === 0 ? (
-                <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">No logs available</div>
-              ) : (
-                <div className="bg-muted rounded-md p-3 overflow-auto max-h-[200px] border">
-                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground">
-                    {logs.join('\n')}
-                  </pre>
-                </div>
-              )}
+              <InteractiveServiceLogs
+                serviceId={parseInt(service.id)}
+                serviceName={service.name}
+                className="border-none shadow-none"
+              />
             </div>
           </CollapsibleSection>
 

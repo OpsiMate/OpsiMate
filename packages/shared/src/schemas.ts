@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {IntegrationType, ProviderType, ServiceType, Role, SecretType} from './types';
+import {IntegrationType, ProviderType, ServiceType, Role, SecretType, LogLevel} from './types';
 
 const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 const hostnameRegex = /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
@@ -181,3 +181,14 @@ export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
 
 export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
 export type UpdateSecretRequest = z.infer<typeof UpdateSecretsMetadataSchema>;
+
+export const GetServiceLogsSchema = z.object({
+    levels: z.array(z.nativeEnum(LogLevel)).optional(),
+    searchText: z.string().max(500).optional(), // Prevent very long search strings
+    since: z.string().max(50).optional(), // Limit time filter length
+    until: z.string().max(50).optional(),
+    limit: z.number().int().positive().max(1000).optional().default(100),
+    source: z.string().max(100).optional(), // Limit source name length
+});
+
+export type GetServiceLogsRequest = z.infer<typeof GetServiceLogsSchema>;

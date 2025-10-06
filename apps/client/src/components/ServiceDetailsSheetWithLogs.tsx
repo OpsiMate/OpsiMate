@@ -10,6 +10,7 @@ import { ServiceConfig } from "./AddServiceDialog";
 import { ServicesList } from "./ServicesList";
 import { providerApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { InteractiveServiceLogs } from './InteractiveServiceLogs';
 
 interface ServiceDetailsSheetProps {
   provider: Provider | null;
@@ -33,44 +34,7 @@ export function ServiceDetailsSheetWithLogs({
 }: ServiceDetailsSheetProps) {
   const { toast } = useToast();
   const [selectedServiceForLogs, setSelectedServiceForLogs] = useState<ServiceConfig | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchLogs = async (serviceId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await providerApi.getServiceLogs(parseInt(serviceId));
-      
-      if (response.success && response.data) {
-        setLogs(response.data);
-      } else {
-        setError(response.error || "Failed to fetch logs");
-        toast({
-          title: "Error fetching logs",
-          description: response.error || "Failed to fetch logs",
-          variant: "destructive"
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
-      toast({
-        title: "Error fetching logs",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedServiceForLogs) {
-      fetchLogs(selectedServiceForLogs.id);
-    }
-  }, [selectedServiceForLogs?.id]);
 
   if (!provider) return null;
 
@@ -120,43 +84,20 @@ export function ServiceDetailsSheetWithLogs({
           {selectedServiceForLogs && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold text-md">Service Logs: {selectedServiceForLogs.name}</h4>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => fetchLogs(selectedServiceForLogs.id)} 
-                    disabled={loading}
-                    className="h-8 w-8 p-0"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setSelectedServiceForLogs(null)} 
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setSelectedServiceForLogs(null)} 
+                  className="h-8 w-8 p-0 ml-auto"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
               
-              {loading ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-pulse text-muted-foreground">Loading logs...</div>
-                </div>
-              ) : error ? (
-                <div className="text-red-500 py-2">{error}</div>
-              ) : logs.length === 0 ? (
-                <div className="text-muted-foreground py-2">No logs available</div>
-              ) : (
-                <div className="bg-muted rounded-md p-2 overflow-auto max-h-[300px]">
-                  <pre className="text-xs font-mono whitespace-pre-wrap">
-                    {logs.join('\n')}
-                  </pre>
-                </div>
-              )}
+              <InteractiveServiceLogs
+                serviceId={parseInt(selectedServiceForLogs.id)}
+                serviceName={selectedServiceForLogs.name}
+              />
             </div>
           )}
 

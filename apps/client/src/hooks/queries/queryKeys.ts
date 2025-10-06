@@ -9,7 +9,7 @@ export const queryKeys = {
   usersExist: ['usersExist'] as const,
   service: (id: number) => ['service', id] as const,
   provider: (id: number) => ['provider', id] as const,
-  serviceLogs: (id: number) => ['serviceLogs', id] as const,
+  serviceLogs: (id: number, filters?: any) => ['serviceLogs', id, filters ? JSON.stringify(filters) : 'all'] as const,
   serviceTags: (id: number) => ['serviceTags', id] as const,
   auditLogs: (page: number, pageSize: number) => ['audit', page, pageSize] as const,
 }; 

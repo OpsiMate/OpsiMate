@@ -1,6 +1,6 @@
 import {Request, Response} from "express";
 import {z} from "zod";
-import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
+import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider, GetServiceLogsSchema, LogEntry, LogLevel} from "@OpsiMate/shared";
 import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
 import {ServiceNotFound} from "../../../bl/services/ServiceNotFound";
@@ -8,6 +8,7 @@ import {ProviderRepository} from "../../../dal/providerRepository";
 import {ServiceRepository} from "../../../dal/serviceRepository";
 import {checkSystemServiceStatus} from "../../../dal/sshClient";
 import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
+import {parseLogLine, filterLogEntries, sortLogEntries} from '../../../utils/logParser';
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -279,6 +280,10 @@ export class ServiceController {
     getServiceLogsHandler = async (req: Request, res: Response) => {
         try {
             const {serviceId} = ServiceIdSchema.parse({serviceId: req.params.serviceId});
+            
+            // Parse query parameters for filtering
+            const filters = GetServiceLogsSchema.parse(req.query);
+            
             const service = await this.serviceRepo.getServiceById(serviceId);
 
             if (!service) {
@@ -291,9 +296,47 @@ export class ServiceController {
             }
 
             const providerConnector = providerConnectorFactory(provider.providerType);
-            const logs = await providerConnector.getServiceLogs(provider, service);
+            const rawLogs = await providerConnector.getServiceLogs(provider, service, filters);
 
-            res.json({success: true, data: logs, message: 'Service logs retrieved successfully'});
+            // Parse raw logs into structured LogEntry objects
+            const structuredLogs: LogEntry[] = [];
+            for (const rawLog of rawLogs) {
+                const lines = rawLog.split('\n').filter(line => line.trim());
+                for (const line of lines) {
+                    try {
+                        const logEntry = parseLogLine(line, service.name);
+                        structuredLogs.push(logEntry);
+                    } catch (parseError) {
+                        // If parsing fails, create a simple log entry
+                        structuredLogs.push({
+                            id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            timestamp: new Date().toISOString(),
+                            level: LogLevel.INFO,
+                            message: line,
+                            source: service.name
+                        });
+                    }
+                }
+            }
+
+            // Apply client-side filtering if needed (for more complex filters not handled by backend)
+            const filteredLogs = filterLogEntries(structuredLogs, filters);
+            
+            // Sort logs by timestamp (newest first)
+            const sortedLogs = sortLogEntries(filteredLogs, false);
+
+            // Apply limit if specified
+            const finalLogs = filters.limit ? sortedLogs.slice(0, filters.limit) : sortedLogs;
+
+            res.json({
+                success: true, 
+                data: finalLogs, 
+                message: 'Service logs retrieved successfully',
+                meta: {
+                    totalCount: finalLogs.length,
+                    hasMore: sortedLogs.length > finalLogs.length
+                }
+            });
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});

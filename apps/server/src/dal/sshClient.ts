@@ -188,14 +188,43 @@ export async function stopService(
     }
 }
 
-export async function getServiceLogs(provider: Provider, serviceName: string): Promise<string[]> {
+export async function getServiceLogs(
+    provider: Provider, 
+    serviceName: string, 
+    filters?: {
+        levels?: string[];
+        searchText?: string;
+        since?: string;
+        until?: string;
+        limit?: number;
+        source?: string;
+    }
+): Promise<string[]> {
     const ssh = new NodeSSH();
 
     try {
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const cmd = `docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`;
+        // Build docker logs command with time filters
+        let cmd = `docker logs`;
+        
+        // Add time range filter
+        const since = filters?.since || '24h';
+        cmd += ` --since ${since}`;
+        
+        if (filters?.until) {
+            cmd += ` --until ${filters.until}`;
+        }
+
+        // Add timestamps to logs
+        cmd += ` --timestamps`;
+        
+        cmd += ` ${serviceName} 2>&1`;
+
+        // Limit the number of lines if specified
+        const limit = filters?.limit || 1000;
+        cmd += ` | tail -n ${limit}`;
 
         const result = await execCommandWithAutoSudo(ssh, cmd);
 
@@ -208,7 +237,7 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
             .split('\n')
             .filter(line => line.trim().length > 0);
 
-        return logs.length > 0 ? logs : ['No error logs found in the last 24 hours'];
+        return logs.length > 0 ? logs : ['No logs found for the specified time range'];
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -263,14 +292,42 @@ export async function stopSystemService(
 /**
  * Gets logs for a system service
  */
-export async function getSystemServiceLogs(provider: Provider, serviceName: string): Promise<string[]> {
+export async function getSystemServiceLogs(
+    provider: Provider, 
+    serviceName: string,
+    filters?: {
+        levels?: string[];
+        searchText?: string;
+        since?: string;
+        until?: string;
+        limit?: number;
+        source?: string;
+    }
+): Promise<string[]> {
     const ssh = new NodeSSH();
     try {
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        // Get logs using journalctl
-        const result = await execCommandWithAutoSudo(ssh, `journalctl -u ${serviceName} --since "24 hours ago" --no-pager`);
+        // Build journalctl command with filters
+        let cmd = `journalctl -u ${serviceName}`;
+        
+        // Add time range filters
+        const since = filters?.since || '24 hours ago';
+        cmd += ` --since "${since}"`;
+        
+        if (filters?.until) {
+            cmd += ` --until "${filters.until}"`;
+        }
+
+        // Add output formatting
+        cmd += ` --no-pager --output=short-iso`;
+
+        // Limit the number of lines if specified
+        const limit = filters?.limit || 1000;
+        cmd += ` | tail -n ${limit}`;
+
+        const result = await execCommandWithAutoSudo(ssh, cmd);
         if (result.code !== 0) {
             throw new Error(`Failed to get logs for ${serviceName}: ${result.stderr}`);
         }
@@ -280,7 +337,7 @@ export async function getSystemServiceLogs(provider: Provider, serviceName: stri
             .split('\n')
             .filter(line => line.trim().length > 0);
 
-        return logs.length > 0 ? logs : ['No logs found in the last 24 hours'];
+        return logs.length > 0 ? logs : ['No logs found for the specified time range'];
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

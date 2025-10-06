@@ -7,7 +7,18 @@ export interface ProviderConnector {
 
     stopService(provider: Provider, serviceName: string, serviceType?: ServiceType, containerDetails?: ContainerDetails): Promise<void>;
 
-    getServiceLogs(provider: Provider, service: Service): Promise<string[]>;
+    getServiceLogs(
+        provider: Provider, 
+        service: Service,
+        filters?: {
+            levels?: string[];
+            searchText?: string;
+            since?: string;
+            until?: string;
+            limit?: number;
+            source?: string;
+        }
+    ): Promise<string[]>;
 
     testConnection(provider: Provider): Promise<{success: boolean, error?: string}>;
 

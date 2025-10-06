@@ -15,6 +15,15 @@ export enum ServiceType {
     MANUAL = 'MANUAL',
 }
 
+export enum LogLevel {
+    DEBUG = 'debug',
+    INFO = 'info',
+    WARN = 'warn',
+    ERROR = 'error',
+    FATAL = 'fatal',
+    TRACE = 'trace',
+}
+
 export enum Role {
     Admin = 'admin',
     Editor = 'editor',
@@ -167,4 +176,22 @@ export interface ServiceCustomFieldValue {
     value: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface LogEntry {
+    id?: string;
+    timestamp: string;
+    level: LogLevel;
+    message: string;
+    source?: string; // container name, pod name, etc.
+    metadata?: Record<string, any>; // additional structured data
+}
+
+export interface LogFilterParams {
+    levels?: LogLevel[];
+    searchText?: string;
+    since?: string; // ISO date string or relative time like "1h", "24h"
+    until?: string; // ISO date string
+    limit?: number;
+    source?: string; // filter by specific container/pod
 }
