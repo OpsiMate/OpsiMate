@@ -1,11 +1,11 @@
-import { AuditLogRepository } from '../../dal/auditLogRepository';
+import {AuditLogJobData, AuditLogRepository} from '../../dal/auditLogRepository';
 import { AuditLog } from '@OpsiMate/shared';
 
 export class AuditBL {
     constructor(private auditLogRepository: AuditLogRepository) {}
 
-    async logAction(params: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
-        await this.auditLogRepository.insertAuditLog(params);
+      logAction(params: AuditLogJobData) {
+        this.auditLogRepository.insertAuditLog(params);
     }
 
     async getAuditLogsPaginated(page: number, pageSize: number): Promise<{ logs: AuditLog[]; total: number }> {
