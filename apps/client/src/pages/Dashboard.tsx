@@ -16,16 +16,8 @@ import { TVModeLauncher } from "@/components/TVModeLauncher"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getAlertServiceId } from "@/utils/alert.utils";
 
-// Extract serviceId from alert (new field or from "id" like "fp:serviceId")
-const getAlertServiceId = (a: Alert): number | undefined => {
-  const anyA = a as any;
-  if (typeof anyA.serviceId === 'number') return anyA.serviceId;
-
-  const parts = a.id.split(':');         // "fingerprint:123"
-  const n = Number(parts[1]);
-  return Number.isFinite(n) ? n : undefined;
-};
 
 const Dashboard = () => {
     const navigate = useNavigate()

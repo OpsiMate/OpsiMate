@@ -9,6 +9,7 @@ import { Alert } from "@OpsiMate/shared";
 import { ExternalLink, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useServices } from "@/hooks/queries/services";
+import {getAlertServiceId} from "@/utils/alert.utils.ts";
 
 export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
@@ -24,20 +25,6 @@ export default function Alerts() {
   () => Object.fromEntries(services.map((s) => [s.id, s.name])),
   [services]
 );
-
-
-type AlertWithServiceId = { serviceId?: number };
-
-const getServiceId = (a: Alert): number | undefined => {
-
-  const { serviceId } = (a as unknown as AlertWithServiceId);
-  if (typeof serviceId === 'number') return serviceId;
-
-  const parts = a.id.split(':');
-  const n = Number(parts[1]);
-  return Number.isFinite(n) ? n : undefined;
-};
-
   const filteredAlerts = useMemo(() => {
     if (!search.trim()) return alerts;
     const lower = search.toLowerCase();
@@ -65,6 +52,11 @@ const getServiceId = (a: Alert): number | undefined => {
       });
     }
   };
+const renderServiceName = (a: Alert) => {
+  const sid = getAlertServiceId(a);
+  if (!sid) return <span className="text-muted-foreground">-</span>;
+  return serviceNameById[sid] ?? `#${sid}`;
+};
 
   const handleUndismissAlert = async (alertId: string) => {
     try {
@@ -81,7 +73,6 @@ const getServiceId = (a: Alert): number | undefined => {
       });
     }
   };
-
   const getStatusBadge = (alert: Alert) => {
     if (alert.isDismissed) {
       return <Badge variant="secondary">dismissed</Badge>
@@ -146,13 +137,7 @@ const getServiceId = (a: Alert): number | undefined => {
                       <TableCell>
                         {new Date(alert.startsAt).toLocaleString()}
                       </TableCell>
-                      <TableCell>
-                        {(() => {
-                        const sid = getServiceId(alert);
-                      if (!sid) return <span className="text-muted-foreground">-</span>;
-                      return serviceNameById[sid] ?? `#${sid}`;
-                      })()}
-                      </TableCell>
+                      <TableCell>{renderServiceName(alert)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button

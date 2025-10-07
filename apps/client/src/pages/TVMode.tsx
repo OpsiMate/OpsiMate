@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Service } from "@/components/ServiceTable"
 import { Alert } from "@OpsiMate/shared"
 import { Filters } from "@/components/FilterPanel"
+import { getAlertServiceId } from "@/utils/alert.utils";
 
 interface TVModeProps {
   autoRefresh?: boolean
@@ -81,14 +82,7 @@ const TVMode = ({
     }
   })()
 
-const getAlertServiceId = (a: Alert): number | undefined => {
-  const anyA = a as any;
-  if (typeof anyA.serviceId === 'number') return anyA.serviceId;
 
-  const parts = a.id.split(':');         // "fingerprint:123"
-  const n = Number(parts[1]);
-  return Number.isFinite(n) ? n : undefined;
-};
 
   const savedVisibleColumns: Record<string, boolean> = (() => {
     try {
