@@ -80,7 +80,7 @@ const TVMode = ({
       return {}
     }
   })()
-  // Extract serviceId from alert (new field or from "id" like "fp:serviceId")
+
 const getAlertServiceId = (a: Alert): number | undefined => {
   const anyA = a as any;
   if (typeof anyA.serviceId === 'number') return anyA.serviceId;
@@ -128,7 +128,7 @@ const getAlertServiceId = (a: Alert): number | undefined => {
   return services.map(service => {
     const sid = Number(service.id);
 
-    // 1) Match alerts to the service (serviceId first, then tag fallback).
+
     const serviceAlerts = alerts.filter(alert => {
     const explicitSid = getAlertServiceId(alert);
     return explicitSid !== undefined
@@ -136,11 +136,11 @@ const getAlertServiceId = (a: Alert): number | undefined => {
       : service.tags?.some(tag => tag.name === alert.tag);
   })
 
-// 2) Safety net: keep each alert only once per service.
+
     const uniqueAlerts = serviceAlerts.filter((a, i, self) =>
       i === self.findIndex(b => b.id === a.id)
     );
-// 3) Only non-dismissed alerts contribute to the red count.
+
     const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed)
 
     if (activeAlerts.length > 0) {

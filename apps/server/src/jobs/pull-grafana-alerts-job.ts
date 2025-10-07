@@ -31,7 +31,7 @@ export class PullGrafanaAlertsJob {
 
     private async pullGrafanaAlerts() {
   try {
-       // 1) Resolve Grafana integration & API token. Exit early if missing.
+
     const grafana = await this.integrationBL.getIntegrationByType(IntegrationType.Grafana);
     if (!grafana) return;
 
@@ -40,16 +40,16 @@ export class PullGrafanaAlertsJob {
       logger.warn(`No token for Grafana integration ${grafana.name}`);
       return;
     }
-     // 2) Collect all tag names from our DB and init Grafana client.
+
     const tagNames = (await this.tagRepo.getAllTags()).map(t => t.name);
     const client = new GrafanaClient(grafana.externalUrl, token);
 
-     // 3) Fetch alerts once. If this fails, we DON'T perform cleanup.
+
     const alerts = await client.getAlerts(tagNames);
- // We'll keep IDs we upsert successfully
+
     const keepIds: string[] = [];
 
-    // 4) For each alert, find all services matching the alert's tag.
+
     for (const a of alerts) {
       const tagName = a.labels?.tag || '';
       if (!tagName) continue;
@@ -62,7 +62,7 @@ export class PullGrafanaAlertsJob {
         continue;
       }
       if (serviceIds.length === 0) continue;
- // 5) Upsert alert per service:
+
       for (const sid of serviceIds) {
         const id = `${a.fingerprint}:${sid}`;
         try {
@@ -78,14 +78,14 @@ export class PullGrafanaAlertsJob {
             runbook_url: a.annotations?.runbook_url || '',
             service_id: sid,
           });
-          keepIds.push(id); // mark only on successful upsert
+          keepIds.push(id);
         } catch (e) {
           logger.error(`Upsert failed for id=${id}`, e);
         }
       }
     }
 
-   // 6) Cleanup: remove any alerts not present in the current run.
+
     try {
       const resolved = await this.alertBL.deleteAlertsNotInIds(keepIds);
       logger.info(`resolved ${resolved.changes} alerts`);

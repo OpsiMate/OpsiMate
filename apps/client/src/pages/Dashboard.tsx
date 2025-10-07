@@ -92,9 +92,7 @@ const Dashboard = () => {
   return services.map(service => {
       console.log(`Service ${service.name} tags:`, service.tags?.map(t => t.name) || [])
 
-      // 1) Pick alerts that belong to this service.
-    //    - If alert.serviceId is present, compare strictly by serviceId.
-    //    - Otherwise (legacy), treat as a tag-based match.
+
       const sid = Number(service.id);
       // Get all unique alerts that match any of the service's tags (including dismissed)
       const serviceAlerts = alerts.filter(alert => {

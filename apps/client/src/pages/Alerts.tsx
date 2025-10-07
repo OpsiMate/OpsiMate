@@ -17,25 +17,23 @@ export default function Alerts() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
 
-  // Fetch all services;
+
   const { data: services = [] } = useServices();
-// Build a quick lookup map
+
   const serviceNameById = useMemo(
   () => Object.fromEntries(services.map((s) => [s.id, s.name])),
   [services]
 );
 
-// Helper: safely get serviceId from an alert.
-// Works for both: (1) payloads that already have `serviceId`,
-// and (2) legacy ids in the "fingerprint:serviceId" format.
+
 type AlertWithServiceId = { serviceId?: number };
 
 const getServiceId = (a: Alert): number | undefined => {
-  // Don't access a.serviceId directly — it's not in the shared type.
+
   const { serviceId } = (a as unknown as AlertWithServiceId);
   if (typeof serviceId === 'number') return serviceId;
 
-  const parts = a.id.split(':');          // e.g. "fp:123"
+  const parts = a.id.split(':');
   const n = Number(parts[1]);
   return Number.isFinite(n) ? n : undefined;
 };

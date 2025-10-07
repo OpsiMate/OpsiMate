@@ -81,7 +81,7 @@ export class AlertRepository {
             return { changes: result.changes };
         });
     }
-// Deletes ALL alerts with the given tag.
+
 async deleteAlertsByTag(tag: string): Promise<{ changes: number }> {
   return runAsync(() => {
     const stmt = this.db.prepare(`DELETE FROM alerts WHERE tag = ?`);

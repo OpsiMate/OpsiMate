@@ -144,7 +144,7 @@ export class TagController {
                 tagId: Number(tagId)
             });
 
-            // find out the name of the tag BEFORE deleting the link
+
     const tag = await this.tagRepo.getTagById(parsed.tagId);
     if (!tag) {
       return res.status(404).json({ success: false, error: 'Tag not found' });
@@ -154,7 +154,7 @@ export class TagController {
     await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
     await this.alertBL.clearAlertsByServiceAndTag(parsed.serviceId, tag.name);
 
-    // Let's see if the tag is still there somewhere
+
     const usage = await this.tagRepo.countServicesUsingTag(parsed.tagId);
     if (usage === 0) {
       await this.alertBL.clearAlertsByTag(tag.name);
