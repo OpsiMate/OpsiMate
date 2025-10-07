@@ -54,7 +54,7 @@ const TVMode = ({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
-  
+
   // Service action mutations
   const startServiceMutation = useStartService()
   const stopServiceMutation = useStopService()
@@ -80,6 +80,16 @@ const TVMode = ({
       return {}
     }
   })()
+  // Extract serviceId from alert (new field or from "id" like "fp:serviceId")
+const getAlertServiceId = (a: Alert): number | undefined => {
+  const anyA = a as any;
+  if (typeof anyA.serviceId === 'number') return anyA.serviceId;
+
+  const parts = a.id.split(':');         // "fingerprint:123"
+  const n = Number(parts[1]);
+  return Number.isFinite(n) ? n : undefined;
+};
+
   const savedVisibleColumns: Record<string, boolean> = (() => {
     try {
       const columnsParam = searchParams.get('visibleColumns')
@@ -114,27 +124,36 @@ const TVMode = ({
 
   // Enhanced alert calculation
   const servicesWithAlerts = useMemo(() => {
-    console.log('TV Mode - Total alerts available:', alerts.length)
-    return services.map(service => {
-      const serviceAlerts = alerts.filter(alert => 
-        service.tags?.some(tag => tag.name === alert.tag)
-      )
-      const uniqueAlerts = serviceAlerts.filter((alert, index, self) => 
-        index === self.findIndex(a => a.id === alert.id)
-      )
-      const activeAlerts = uniqueAlerts.filter(alert => !alert.isDismissed)
-      
-      if (activeAlerts.length > 0) {
-        console.log(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, activeAlerts)
-      }
-      
-      return {
-        ...service,
-        alertsCount: activeAlerts.length,
-        serviceAlerts: activeAlerts // Use activeAlerts instead of uniqueAlerts to only show non-dismissed alerts
-      }
-    })
-  }, [services, alerts])
+  console.log('TV Mode - Total alerts available:', alerts.length)
+  return services.map(service => {
+    const sid = Number(service.id);
+
+    // 1) Match alerts to the service (serviceId first, then tag fallback).
+    const serviceAlerts = alerts.filter(alert => {
+    const explicitSid = getAlertServiceId(alert);
+    return explicitSid !== undefined
+      ? explicitSid === sid
+      : service.tags?.some(tag => tag.name === alert.tag);
+  })
+
+// 2) Safety net: keep each alert only once per service.
+    const uniqueAlerts = serviceAlerts.filter((a, i, self) =>
+      i === self.findIndex(b => b.id === a.id)
+    );
+// 3) Only non-dismissed alerts contribute to the red count.
+    const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed)
+
+    if (activeAlerts.length > 0) {
+      console.log(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, activeAlerts)
+    }
+
+    return {
+      ...service,
+      alertsCount: activeAlerts.length,
+      serviceAlerts: activeAlerts
+    }
+  })
+}, [services, alerts])
 
   // Apply saved view filters and search
   const baseFilteredServices = useMemo(() => {

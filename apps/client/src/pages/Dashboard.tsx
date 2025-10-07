@@ -17,6 +17,15 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+// Extract serviceId from alert (new field or from "id" like "fp:serviceId")
+const getAlertServiceId = (a: Alert): number | undefined => {
+  const anyA = a as any;
+  if (typeof anyA.serviceId === 'number') return anyA.serviceId;
+
+  const parts = a.id.split(':');         // "fingerprint:123"
+  const n = Number(parts[1]);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 const Dashboard = () => {
     const navigate = useNavigate()
@@ -79,37 +88,43 @@ const Dashboard = () => {
 
     // Enhanced alert calculation: each service gets alerts for ALL its tags
     const servicesWithAlerts = useMemo(() => {
-        console.log('Debug - Services:', services.length, 'Alerts:', alerts.length)
-        return services.map(service => {
-            console.log(`Service ${service.name} tags:`, service.tags?.map(t => t.name) || [])
-            
-            // Get all unique alerts that match any of the service's tags (including dismissed)
-            const serviceAlerts = alerts.filter(alert => {
-                console.log(`Checking alert ${alert.id} (tag: ${alert.tag}) against service ${service.name}`)
-                
-                // Check if alert tag matches any of the service's tags
-                const matches = service.tags?.some(tag => tag.name === alert.tag)
-                console.log(`Match result: ${matches}`)
-                return matches
-            })
-            
-            // Remove duplicates (in case an alert matches multiple tags of the same service)
-            const uniqueAlerts = serviceAlerts.filter((alert, index, self) => 
-                index === self.findIndex(a => a.id === alert.id)
-            )
-            
-            // Count only non-dismissed alerts for the badge count
-            const activeAlerts = uniqueAlerts.filter(alert => !alert.isDismissed);
-            
-            console.log(`Service ${service.name} final result: ${activeAlerts.length} active, ${uniqueAlerts.length - activeAlerts.length} dismissed`)
-            
-            return {
-                ...service,
-                alertsCount: activeAlerts.length, // Only count non-dismissed alerts
-                serviceAlerts: uniqueAlerts // Store ALL alerts for sidebar display (including dismissed)
-            }
-        })
-    }, [services, alerts])
+  console.log('Debug - Services:', services.length, 'Alerts:', alerts.length)
+  return services.map(service => {
+      console.log(`Service ${service.name} tags:`, service.tags?.map(t => t.name) || [])
+
+      // 1) Pick alerts that belong to this service.
+    //    - If alert.serviceId is present, compare strictly by serviceId.
+    //    - Otherwise (legacy), treat as a tag-based match.
+      const sid = Number(service.id);
+      // Get all unique alerts that match any of the service's tags (including dismissed)
+      const serviceAlerts = alerts.filter(alert => {
+
+          console.log(`Checking alert ${alert.id} (tag: ${alert.tag}) against service ${service.name}`)
+          const explicitSid = getAlertServiceId(alert);
+          const matches = explicitSid !== undefined
+            ? explicitSid === sid
+            : service.tags?.some(tag => tag.name === alert.tag);
+          console.log(`Match result: ${matches}`)
+          return matches
+      })
+
+      // Remove duplicates
+      const uniqueAlerts = serviceAlerts.filter((a, i, self) =>
+        i === self.findIndex(b => b.id === a.id)
+      )
+
+      // Count only non-dismissed alerts for the badge count
+      const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed);
+
+      console.log(`Service ${service.name} final result: ${activeAlerts.length} active, ${uniqueAlerts.length - activeAlerts.length} dismissed`)
+
+      return {
+          ...service,
+          alertsCount: activeAlerts.length,
+          serviceAlerts: uniqueAlerts
+      }
+  })
+}, [services, alerts])
 
     // Update selectedService when servicesWithAlerts changes
     useEffect(() => {

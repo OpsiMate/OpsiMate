@@ -20,13 +20,24 @@ export class TagRepository {
             return stmt.all() as Tag[];
         });
     }
+// Returns a single tag by its numeric ID, or undefined if not found.
+    async getTagById(id: number): Promise<Tag | undefined> {
+  return runAsync(() => {
+    const stmt = this.db.prepare(
+      'SELECT id, name, color, created_at as createdAt FROM tags WHERE id = ?'
+    );
+    return stmt.get(id) as Tag | undefined;
+  });
+}
+// Counts how many services are currently linked to the given tag.
+    async countServicesUsingTag(tagId: number): Promise<number> {
+  return runAsync(() => {
+    const stmt = this.db.prepare(`SELECT COUNT(*) as cnt FROM service_tags WHERE tag_id = ?`);
+    const row = stmt.get(tagId) as { cnt: number };
+    return row?.cnt ?? 0;
+  });
+}
 
-    async getTagById(id: number): Promise<Tag> {
-        return runAsync(() => {
-            const stmt = this.db.prepare('SELECT id, name, color, created_at as createdAt FROM tags WHERE id = ?');
-            return stmt.get(id) as Tag;
-        });
-    }
 
     async updateTag(id: number, data: Partial<Omit<Tag, 'id' | 'createdAt'>>): Promise<void> {
         return runAsync(() => {
@@ -109,4 +120,23 @@ export class TagRepository {
             `).run();
         });
     }
+// Deletes all tag links for the given service (from the pivot table).
+    async deleteAllServiceTags(serviceId: number): Promise<number> {
+  return runAsync(() => {
+    const r = this.db.prepare('DELETE FROM service_tags WHERE service_id = ?').run(serviceId);
+    return r.changes as number;
+  });
+}
+// Finds all service IDs that are linked to a tag by its NAME.
+async findServiceIdsByTagName(tagName: string): Promise<number[]> {
+  return runAsync(() => {
+    const rows = this.db.prepare(`
+      SELECT st.service_id
+      FROM service_tags st
+      JOIN tags t ON t.id = st.tag_id
+      WHERE t.name = ?
+    `).all(tagName) as { service_id: number }[];
+    return rows.map(r => r.service_id);
+  });
+}
 }

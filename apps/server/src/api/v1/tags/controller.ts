@@ -4,10 +4,14 @@ import { CreateTagSchema, UpdateTagSchema, TagIdSchema, ServiceTagSchema, Logger
 import { TagRepository } from '../../../dal/tagRepository';
 import {ServiceRepository} from "../../../dal/serviceRepository"; // can be refactored to use DI as well
 
+import { AlertBL } from '../../../bl/alerts/alert.bl';
 const logger = new Logger('api/v1/tags/controller');
 
 export class TagController {
-    constructor(private tagRepo: TagRepository, private serviceRepo: ServiceRepository) {}
+    constructor(private tagRepo: TagRepository,
+                private serviceRepo: ServiceRepository,
+                private alertBL: AlertBL
+    ) {}
 
     getAllTagsHandler = async (req: Request, res: Response) => {
         try {
@@ -87,6 +91,7 @@ export class TagController {
             }
 
             await this.tagRepo.deleteTag(tagId);
+             await this.alertBL.clearAlertsByTag(existingTag.name);
             res.json({ success: true, message: 'Tag deleted successfully' });
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -139,7 +144,21 @@ export class TagController {
                 tagId: Number(tagId)
             });
 
-            await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
+            // find out the name of the tag BEFORE deleting the link
+    const tag = await this.tagRepo.getTagById(parsed.tagId);
+    if (!tag) {
+      return res.status(404).json({ success: false, error: 'Tag not found' });
+    }
+
+
+    await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
+    await this.alertBL.clearAlertsByServiceAndTag(parsed.serviceId, tag.name);
+
+    // Let's see if the tag is still there somewhere
+    const usage = await this.tagRepo.countServicesUsingTag(parsed.tagId);
+    if (usage === 0) {
+      await this.alertBL.clearAlertsByTag(tag.name);
+    }
             res.json({ success: true, message: 'Tag removed from service successfully' });
         } catch (error) {
             if (error instanceof z.ZodError) {

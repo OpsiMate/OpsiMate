@@ -8,6 +8,7 @@ import { useState, useMemo } from "react";
 import { Alert } from "@OpsiMate/shared";
 import { ExternalLink, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useServices } from "@/hooks/queries/services";
 
 export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
@@ -15,6 +16,29 @@ export default function Alerts() {
   const undismissAlertMutation = useUndismissAlert();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+
+  // Fetch all services;
+  const { data: services = [] } = useServices();
+// Build a quick lookup map
+  const serviceNameById = useMemo(
+  () => Object.fromEntries(services.map((s) => [s.id, s.name])),
+  [services]
+);
+
+// Helper: safely get serviceId from an alert.
+// Works for both: (1) payloads that already have `serviceId`,
+// and (2) legacy ids in the "fingerprint:serviceId" format.
+type AlertWithServiceId = { serviceId?: number };
+
+const getServiceId = (a: Alert): number | undefined => {
+  // Don't access a.serviceId directly — it's not in the shared type.
+  const { serviceId } = (a as unknown as AlertWithServiceId);
+  if (typeof serviceId === 'number') return serviceId;
+
+  const parts = a.id.split(':');          // e.g. "fp:123"
+  const n = Number(parts[1]);
+  return Number.isFinite(n) ? n : undefined;
+};
 
   const filteredAlerts = useMemo(() => {
     if (!search.trim()) return alerts;
@@ -93,6 +117,7 @@ export default function Alerts() {
                   <TableHead>Tag</TableHead>
                   <TableHead>Summary</TableHead>
                   <TableHead>Started</TableHead>
+                  <TableHead>Service</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -122,6 +147,13 @@ export default function Alerts() {
                       <TableCell className="max-w-xs truncate">{alert.summary || "-"}</TableCell>
                       <TableCell>
                         {new Date(alert.startsAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                        const sid = getServiceId(alert);
+                      if (!sid) return <span className="text-muted-foreground">-</span>;
+                      return serviceNameById[sid] ?? `#${sid}`;
+                      })()}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
