@@ -387,7 +387,7 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             </div>
             {/* End Test Connection */}
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting} className="shadow-sm active:scale-95 dark:border dark:border-white">Cancel</Button>
                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                         <>
@@ -431,7 +431,7 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
             </FieldWrapper>
             
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose} className="shadow-sm active:scale-95 dark:border dark:border-white">Cancel</Button>
                 <Button type="submit">Add Provider</Button>
             </div>
         </form>
@@ -483,7 +483,7 @@ const AWSForm = ({onSubmit, onClose}: ProviderFormProps<AWSFormData>) => {
             </FieldWrapper>
 
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose} className="shadow-sm active:scale-95 dark:border dark:border-white">Cancel</Button>
                 <Button type="submit">Add Provider</Button>
             </div>
         </form>
