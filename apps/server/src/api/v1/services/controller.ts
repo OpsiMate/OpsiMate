@@ -170,35 +170,34 @@ export class ServiceController {
         }
     };
 
-    deleteServiceHandler = async (req: Request, res: Response) => {
+    deleteServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
-            const {serviceId} = ServiceIdSchema.parse({serviceId: req.params.serviceId});
-            const service = await this.serviceRepo.getServiceById(serviceId);
+            const { serviceId } = ServiceIdSchema.parse({ serviceId: req.params.serviceId });
 
-            if (!service) {
-                return res.status(404).json({success: false, error: 'Service not found'});
+            if (!req.user) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
             }
 
-            // Delete custom field values for this service (if custom field BL is available)
             if (this.customFieldBL) {
                 try {
                     const deletedValuesCount = await this.customFieldBL.deleteAllValuesForService(serviceId);
                     logger.info(`Deleted ${deletedValuesCount} custom field values for service ${serviceId}`);
                 } catch (error) {
                     logger.warn(`Failed to delete custom field values for service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`);
-                    // Continue with service deletion even if custom field cleanup fails
                 }
             }
 
-            await this.serviceRepo.deleteService(serviceId);
-            logger.info(`Successfully deleted service ${serviceId} (${service.name})`);
-            res.json({success: true, message: 'Service deleted successfully'});
+            await this.servicesBL.deleteService(serviceId, req.user);
+
+            res.json({ success: true, message: 'Service deleted successfully' });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            } else if (error instanceof ServiceNotFound) {
+                res.status(404).json({ success: false, error: `Service with ID ${error.serviceId} not found` });
             } else {
                 logger.error('Error deleting service:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };

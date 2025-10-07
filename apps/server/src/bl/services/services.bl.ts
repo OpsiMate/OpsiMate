@@ -42,4 +42,30 @@ export class ServicesBL {
             throw error;
         }
     }
+
+    async deleteService(serviceId: number, user: User): Promise<void> {
+        logger.info(`Starting to delete service: ${serviceId}`);
+        
+        const serviceToDelete = await this.serviceRepo.getServiceById(serviceId);
+        if (!serviceToDelete) {
+            throw new ServiceNotFound(serviceId);
+        }
+
+        try {
+            await this.serviceRepo.deleteService(serviceId);
+            logger.info(`Service deleted with ID: ${serviceId}`);
+
+            await this.auditBL.logAction({
+                actionType: AuditActionType.DELETE,
+                resourceType: AuditResourceType.SERVICE,
+                resourceId: String(serviceId),
+                userId: user.id,
+                userName: user.fullName,
+                resourceName: serviceToDelete.name,
+            });
+        } catch (error) {
+            logger.error(`Error deleting service [${serviceId}]`, error);
+            throw error;
+        }
+    }
 }
