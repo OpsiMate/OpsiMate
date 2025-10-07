@@ -46,6 +46,7 @@ import {AuditLog} from "@OpsiMate/shared";
 import {useToast} from "@/hooks/use-toast";
 import {Settings as SettingsIcon} from "lucide-react";
 import {CustomFieldsTable} from "../components/CustomFieldsTable";
+import { set } from 'zod';
 const PAGE_SIZE = 20;
 
 const Settings: React.FC = () => {
@@ -799,10 +800,23 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
     const {toast} = useToast();
 
     const handleFile = async (file: File) => {
-        // todo: implement file validation
-        setIsFileValid(true);
-        setSelectedFile(file);
-        setFileName(file.name);
+        const sshFormats=['pem',"ppk","pub"]
+        const kubeConfigs=['yaml','yml']
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        if(secretType==="ssh" && sshFormats.includes(fileExtension) ){
+            setIsFileValid(true);
+            setSelectedFile(file);
+            setFileName(file.name);
+            return
+        }else if(secretType==="kubeconfig" && kubeConfigs.includes(fileExtension)){
+            setIsFileValid(true);
+            setSelectedFile(file);
+            setFileName(file.name);
+            return 
+        }
+        setIsFileValid(false)
+        setSelectedFile(null)
+        setFileName(file.name)
     };
 
     const handleSave = async () => {
@@ -895,7 +909,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
                     </div>
                     <FileDropzone
                         id="secret-upload"
-                        accept="*"
+                        accept=".pem,.pub,.ppk,.yaml,.yml"
                         loading={uploading}
                         onFile={handleFile}
                         multiple={false}
