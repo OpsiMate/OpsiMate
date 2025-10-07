@@ -1,14 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
 import {SecretsController} from './controller';
 import multer from "multer";
 import {getSecurityConfig} from "../../../config/config";
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const securityConfig = getSecurityConfig();
 
