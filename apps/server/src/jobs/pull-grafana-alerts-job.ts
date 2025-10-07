@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import {IntegrationType, Logger, Tag} from '@OpsiMate/shared';
+import {IntegrationType, Logger} from '@OpsiMate/shared';
 import {TagRepository} from '../dal/tagRepository';
 import {GrafanaClient} from '../dal/external-client/grafana-client';
 import {AlertBL} from "../bl/alerts/alert.bl";

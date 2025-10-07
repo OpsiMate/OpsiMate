@@ -124,7 +124,7 @@ export class TagRepository {
     async deleteAllServiceTags(serviceId: number): Promise<number> {
   return runAsync(() => {
     const r = this.db.prepare('DELETE FROM service_tags WHERE service_id = ?').run(serviceId);
-    return r.changes as number;
+    return r.changes;
   });
 }
 // Finds all service IDs that are linked to a tag by its NAME.
