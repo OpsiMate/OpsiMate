@@ -16,7 +16,7 @@
 
 ---
 
-## Screenshots (Optional)
+## Screenshots
 
 <!-- If UI changes or visual diffs were made, include screenshots here -->
 

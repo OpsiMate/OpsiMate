@@ -28,6 +28,19 @@ export async function createSecretOnServer(displayName: string, file: File, secr
   }
 }
 
+export async function updateSecretOnServer(secretId: number, displayName?: string, file?: File, secretType?: 'ssh' | 'kubeconfig'): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await secretsApi.updateSecret(secretId, displayName, file, secretType);
+    if (response.success) {
+      return { success: true };
+    }
+    return { success: false, error: response.error || 'Failed to update secret' };
+  } catch (error) {
+    console.error('Error updating secret on server:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
+}
+
 export async function deleteSecretOnServer(secretId: number): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await secretsApi.deleteSecret(secretId);

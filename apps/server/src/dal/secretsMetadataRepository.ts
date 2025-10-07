@@ -53,6 +53,38 @@ export class SecretsMetadataRepository {
         });
     }
 
+    async updateSecret(id: number, data: Partial<Omit<SecretMetadata, 'id'>>): Promise<boolean> {
+        return await runAsync<boolean>(() => {
+            const updateFields: string[] = [];
+            const updateValues: (string | number)[] = [];
+
+            if (data.name !== undefined) {
+                updateFields.push('secret_name = ?');
+                updateValues.push(data.name);
+            }
+            if (data.fileName !== undefined) {
+                updateFields.push('secret_filename = ?');
+                updateValues.push(data.fileName);
+            }
+            if (data.type !== undefined) {
+                updateFields.push('secret_type = ?');
+                updateValues.push(data.type);
+            }
+
+            if (updateFields.length === 0) {
+                return true; // No fields to update
+            }
+
+            updateValues.push(id);
+            const updateStmt = this.db.prepare(
+                `UPDATE secrets SET ${updateFields.join(', ')} WHERE id = ?`
+            );
+            const result = updateStmt.run(...updateValues);
+            
+            return result.changes > 0;
+        });
+    }
+
     async deleteSecret(id: number): Promise<boolean> {
         return await runAsync<boolean>(() => {
             const deleteStmt = this.db.prepare('DELETE FROM secrets WHERE id = ?');
