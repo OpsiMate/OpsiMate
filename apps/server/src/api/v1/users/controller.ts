@@ -13,24 +13,20 @@ export class UsersController {
     constructor(private userBL: UserBL) {}
 
     registerHandler = async (req: Request, res: Response) => {
-        const parsed = RegisterSchema.safeParse(req.body);
-        if(!parsed.success) {
-            return res.status(400).json({ success: false, error: 'Validation error', details: parsed.error.issues });
-        }
         try {
-            const { email, fullName, password } = parsed.data;
+            const { email, fullName, password } = RegisterSchema.parse(req.body);
             const result = await this.userBL.register(email, fullName, password);
             const token = jwt.sign(result, JWT_SECRET, { expiresIn: '7d' });
-            res.status(201).json({ success: true, data: result, token });
+            return res.status(201).json({ success: true, data: result, token });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else if (error instanceof Error && error.message === 'Registration is disabled after first admin') {
-                res.status(403).json({ success: false, error: error.message });
+                return res.status(403).json({ success: false, error: error.message });
             } else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-                res.status(400).json({ success: false, error: 'Email already registered' });
+                return res.status(400).json({ success: false, error: 'Email already registered' });
             } else {
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
