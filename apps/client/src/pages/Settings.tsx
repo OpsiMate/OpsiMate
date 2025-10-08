@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {Button} from '../components/ui/button';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '../components/ui/table';
 import {Badge} from '../components/ui/badge';
@@ -921,6 +921,18 @@ const SslKeysTable: React.FC = () => {
     const [deleting, setDeleting] = useState<number | null>(null);
     const [editingSecret, setEditingSecret] = useState<SecretMetadata | null>(null);
     const {toast} = useToast();
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredSecrets = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return secrets;
+
+        return secrets.filter((secret) => {
+            const nameMatch = secret.name.toLowerCase().includes(query);
+            return nameMatch;
+        });
+        }, [secrets, searchQuery]);
+
 
     const loadSecrets = async () => {
         setLoading(true);
@@ -983,6 +995,26 @@ const SslKeysTable: React.FC = () => {
 
     return (
         <>
+            <div className="relative w-full md:w-96 mb-4">
+                <Input
+                    placeholder="Search by secret name or provider..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pr-8"  
+                />
+
+                {searchQuery && (
+                    <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Clear search"
+                    >
+                    ×
+                    </button>
+                )}
+            </div>
+
+
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -992,7 +1024,14 @@ const SslKeysTable: React.FC = () => {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {secrets.map(secret => (
+                    {filteredSecrets.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                    No secrets match your search.
+                    </TableCell>
+                </TableRow>
+                ) : (
+                    filteredSecrets.map(secret => (
                         <TableRow key={secret.id}>
                             <TableCell><b>{secret.name}</b></TableCell>
                             <TableCell>
@@ -1048,7 +1087,8 @@ const SslKeysTable: React.FC = () => {
                                 </div>
                             </TableCell>
                         </TableRow>
-                    ))}
+                     ))
+                    )}
                 </TableBody>
             </Table>
             
