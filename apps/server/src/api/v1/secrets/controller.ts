@@ -18,10 +18,10 @@ export class SecretsController {
     getSecrets = async (req: Request, res: Response) => {
         try {
             const secretsMetadata = await this.secretsBL.getSecretsMetadata()
-            res.json({success: true, data: {secrets: secretsMetadata}});
+            return res.json({success: true, data: {secrets: secretsMetadata}});
         } catch (error) {
             logger.error('Error getting secrets:', error);
-            res.status(500).json({success: false, error: 'Internal server error'});
+            return res.status(500).json({success: false, error: 'Internal server error'});
         }
     };
 
@@ -39,13 +39,13 @@ export class SecretsController {
 
             const {displayName, secretType} = CreateSecretsMetadataSchema.parse(req.body);
             const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename, secretType);
-            res.status(201).json({success: true, data: {id: createdSecretId}});
+            return res.status(201).json({success: true, data: {id: createdSecretId}});
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error creating secret:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     };
@@ -54,8 +54,7 @@ export class SecretsController {
         try {
             const secretId = parseInt(req.params.id);
             if (isNaN(secretId)) {
-                res.status(400).json({success: false, error: 'Invalid secret ID'});
-                return;
+                return res.status(400).json({success: false, error: 'Invalid secret ID'});
             }
 
             // Parse the request body for metadata updates
@@ -86,16 +85,16 @@ export class SecretsController {
             );
             
             if (updated) {
-                res.json({success: true, message: 'Secret updated successfully'});
+                return res.json({success: true, message: 'Secret updated successfully'});
             } else {
-                res.status(404).json({success: false, error: 'Secret not found'});
+                return res.status(404).json({success: false, error: 'Secret not found'});
             }
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error updating secret:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     };
@@ -104,19 +103,18 @@ export class SecretsController {
         try {
             const secretId = parseInt(req.params.id);
             if (isNaN(secretId)) {
-                res.status(400).json({success: false, error: 'Invalid secret ID'});
-                return;
+                return res.status(400).json({success: false, error: 'Invalid secret ID'});
             }
 
             const deleted = await this.secretsBL.deleteSecret(secretId);
             if (deleted) {
-                res.json({success: true, message: 'Secret deleted successfully'});
+                return res.json({success: true, message: 'Secret deleted successfully'});
             } else {
-                res.status(404).json({success: false, error: 'Secret not found'});
+                return res.status(404).json({success: false, error: 'Secret not found'});
             }
         } catch (error) {
             logger.error('Error deleting secret:', error);
-            res.status(500).json({success: false, error: 'Internal server error'});
+            return res.status(500).json({success: false, error: 'Internal server error'});
         }
     };
 

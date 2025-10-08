@@ -13,10 +13,10 @@ export class TagController {
     getAllTagsHandler = async (req: Request, res: Response) => {
         try {
             const tags = await this.tagRepo.getAllTags();
-            res.json({ success: true, data: tags });
+            return res.json({ success: true, data: tags });
         } catch (error) {
             logger.error('Error getting all tags:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -27,13 +27,13 @@ export class TagController {
             if (!tag) {
                 return res.status(404).json({ success: false, error: 'Tag not found' });
             }
-            res.json({ success: true, data: tag });
+            return res.json({ success: true, data: tag });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error getting tag by ID:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -43,13 +43,13 @@ export class TagController {
             const tagData = CreateTagSchema.parse(req.body);
             const result = await this.tagRepo.createTag(tagData);
             const newTag = await this.tagRepo.getTagById(result.lastID);
-            res.status(201).json({ success: true, data: newTag, message: 'Tag created successfully' });
+            return res.status(201).json({ success: true, data: newTag, message: 'Tag created successfully' });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error creating tag:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -67,13 +67,13 @@ export class TagController {
             await this.tagRepo.updateTag(tagId, updateData);
             const updatedTag = await this.tagRepo.getTagById(tagId);
 
-            res.json({ success: true, data: updatedTag, message: 'Tag updated successfully' });
+            return res.json({ success: true, data: updatedTag, message: 'Tag updated successfully' });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error updating tag:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -88,13 +88,13 @@ export class TagController {
             }
 
             await this.tagRepo.deleteTag(tagId);
-            res.json({ success: true, message: 'Tag deleted successfully' });
+            return res.json({ success: true, message: 'Tag deleted successfully' });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error deleting tag:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -120,13 +120,13 @@ export class TagController {
             }
 
             await this.tagRepo.addTagToService(parsed.serviceId, parsed.tagId);
-            res.json({ success: true, message: 'Tag added to service successfully' });
+            return res.json({ success: true, message: 'Tag added to service successfully' });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error adding tag to service:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -141,13 +141,13 @@ export class TagController {
             });
 
             await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
-            res.json({ success: true, message: 'Tag removed from service successfully' });
+            return res.json({ success: true, message: 'Tag removed from service successfully' });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error removing tag from service:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -163,13 +163,13 @@ export class TagController {
             }).parse({ serviceId: req.params.serviceId });
 
             const tags = await this.tagRepo.getServiceTags(serviceId);
-            res.json({ success: true, data: tags });
+            return res.json({ success: true, data: tags });
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error getting service tags:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
