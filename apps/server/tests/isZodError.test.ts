@@ -25,9 +25,14 @@ describe('isZodError', () => {
   });
 
   test('returns true when constructor.name is "ZodError"', () => {
-    const err = new Error('fake error') as any;
-    err.constructor = { name: 'ZodError' };
-    expect(isZodError(err)).toBe(true);
+    let caught: unknown;
+    try {
+      z.string().parse(123);
+    } catch (e) {
+      caught = e;
+    }
+    expect((caught as any)?.constructor?.name).toBe("ZodError");
+    expect(isZodError(caught)).toBe(true);
   });
 
   test('returns true when Error has an issues array', () => {
