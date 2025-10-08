@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Logger } from "@OpsiMate/shared";
 import { z } from "zod";
 import { ServiceCustomFieldBL } from "../../../bl/custom-fields/serviceCustomField.bl";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger("v1/custom-fields/controller");
 
@@ -34,7 +35,7 @@ export class CustomFieldsController {
                 data: { id: customFieldId }
             });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({
                     success: false,
                     error: 'Validation error',
@@ -124,7 +125,7 @@ export class CustomFieldsController {
                 });
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({
                     success: false,
                     error: 'Validation error',
@@ -183,7 +184,7 @@ export class CustomFieldsController {
                 message: 'Custom field value upserted successfully'
             });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({
                     success: false,
                     error: 'Validation error',

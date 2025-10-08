@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CreateTagSchema, UpdateTagSchema, TagIdSchema, ServiceTagSchema, Logger } from '@OpsiMate/shared';
 import { TagRepository } from '../../../dal/tagRepository';
 import {ServiceRepository} from "../../../dal/serviceRepository"; // can be refactored to use DI as well
+import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/tags/controller');
 
@@ -28,7 +29,7 @@ export class TagController {
             }
             res.json({ success: true, data: tag });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error getting tag by ID:', error);
@@ -44,7 +45,7 @@ export class TagController {
             const newTag = await this.tagRepo.getTagById(result.lastID);
             res.status(201).json({ success: true, data: newTag, message: 'Tag created successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error creating tag:', error);
@@ -68,7 +69,7 @@ export class TagController {
 
             res.json({ success: true, data: updatedTag, message: 'Tag updated successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error updating tag:', error);
@@ -89,7 +90,7 @@ export class TagController {
             await this.tagRepo.deleteTag(tagId);
             res.json({ success: true, message: 'Tag deleted successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error deleting tag:', error);
@@ -121,7 +122,7 @@ export class TagController {
             await this.tagRepo.addTagToService(parsed.serviceId, parsed.tagId);
             res.json({ success: true, message: 'Tag added to service successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error adding tag to service:', error);
@@ -142,7 +143,7 @@ export class TagController {
             await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
             res.json({ success: true, message: 'Tag removed from service successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error removing tag from service:', error);
@@ -164,7 +165,7 @@ export class TagController {
             const tags = await this.tagRepo.getServiceTags(serviceId);
             res.json({ success: true, data: tags });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error getting service tags:', error);

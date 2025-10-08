@@ -1,5 +1,4 @@
 import {Request, Response} from "express";
-import {z} from "zod";
 import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
 import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
@@ -8,6 +7,7 @@ import {ProviderRepository} from "../../../dal/providerRepository";
 import {ServiceRepository} from "../../../dal/serviceRepository";
 import {checkSystemServiceStatus} from "../../../dal/sshClient";
 import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -98,7 +98,7 @@ export class ServiceController {
                 message: 'Service created successfully'
             });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ProviderNotFound) {
                 res.status(404).json({success: false, error: `Provider with ID ${error.provider} not found`});
@@ -133,7 +133,7 @@ export class ServiceController {
             const enrichedServices = await this.enrichServicesWithCustomFields([service]);
             res.json({success: true, data: enrichedServices[0]});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error getting service:', error);
@@ -162,7 +162,7 @@ export class ServiceController {
                 res.json({success: true, data: null, message: 'Service updated successfully'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error updating service:', error);
@@ -195,7 +195,7 @@ export class ServiceController {
             logger.info(`Successfully deleted service ${serviceId} (${service.name})`);
             res.json({success: true, message: 'Service deleted successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error deleting service:', error);
@@ -230,7 +230,7 @@ export class ServiceController {
                 res.json({success: true, data: null, message: 'Service started successfully'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error starting service:', error);
@@ -266,7 +266,7 @@ export class ServiceController {
                 res.json({success: true, data: null, message: 'Service stopped successfully'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error stopping service:', error);
@@ -295,7 +295,7 @@ export class ServiceController {
 
             res.json({success: true, data: logs, message: 'Service logs retrieved successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error getting logs:', error);
@@ -324,7 +324,7 @@ export class ServiceController {
 
             res.json({success: true, data: pods, message: 'Service pods retrieved successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error getting pods:', error);

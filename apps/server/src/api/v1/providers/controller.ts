@@ -7,12 +7,12 @@ import {
     Provider,
     User
 } from "@OpsiMate/shared";
-import {z} from "zod";
 import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
 import {ProviderBL} from "../../../bl/providers/provider.bl";
 import {AuthenticatedRequest} from '../../../middleware/auth';
 import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger: Logger = new Logger('server');
 
@@ -72,7 +72,7 @@ export class ProviderController {
             }, req.user as User);
             res.status(201).json({success: true, data: createdProvider});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error creating provider:', error);
@@ -122,7 +122,7 @@ export class ProviderController {
                 res.status(200).json({success: false, error: testResult.error || 'Connection test failed', data: {isValidConnection: false}});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error testing provider connection:', error);
@@ -144,7 +144,7 @@ export class ProviderController {
 
             res.json({success: true, data: updatedProvider, message: 'Provider updated successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ProviderNotFound) {
                 res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
@@ -184,7 +184,7 @@ export class ProviderController {
 
             res.status(201).json({success: true, data: newServices});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ProviderNotFound) {
                 res.status(404).json({success: false, error: `Provider ${error.provider} not found`});

@@ -4,10 +4,10 @@ import {
     UpdateSecretsMetadataSchema,
     Logger
 } from "@OpsiMate/shared";
-import {z} from "zod";
 import {SecretsMetadataBL} from "../../../bl/secrets/secretsMetadata.bl";
 import fs from "fs";
 import {encryptPassword} from "../../../utils/encryption";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger("v1/integrations/controller");
 
@@ -41,7 +41,7 @@ export class SecretsController {
             const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename, secretType);
             res.status(201).json({success: true, data: {id: createdSecretId}});
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error creating secret:', error);
@@ -91,7 +91,7 @@ export class SecretsController {
                 res.status(404).json({success: false, error: 'Secret not found'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error updating secret:', error);

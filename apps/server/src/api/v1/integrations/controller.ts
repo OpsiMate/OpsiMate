@@ -4,8 +4,8 @@ import {
     Integration, IntegrationResponse,
     IntegrationTagsquerySchema, Logger
 } from "@OpsiMate/shared";
-import { z } from "zod";
 import { IntegrationBL } from "../../../bl/integrations/integration.bl";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger("v1/integrations/controller");
 
@@ -34,7 +34,7 @@ export class IntegrationController {
             const createdIntegration: Integration = await this.integrationBL.createIntegration(integrationToCreate);
             res.status(201).json({ success: true, data: createdIntegration });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error creating integration:', error);
@@ -55,7 +55,7 @@ export class IntegrationController {
 
             res.json({ success: true, data: toIntegrationResponse(updatedIntegration), message: 'Integration updated successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error updating integration:', error);
@@ -88,7 +88,7 @@ export class IntegrationController {
             res.json({ success: true, data: response });
 
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({
                     success: false,
                     error: 'Validation error',
