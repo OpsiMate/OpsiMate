@@ -3,6 +3,8 @@ import { runAsync } from './db';
 import { AuditLog } from '@OpsiMate/shared';
 import { AuditLogRow } from './models';
 
+export type AuditLogJobData = Omit<AuditLog, 'id' | 'timestamp'>;
+
 export class AuditLogRepository {
     private db: Database.Database;
 
@@ -28,7 +30,7 @@ export class AuditLogRepository {
         });
     }
 
-    async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
+    async insertAuditLog(log: AuditLogJobData): Promise<{ lastID: number }> {
         return runAsync(() => {
             const stmt = this.db.prepare(`
                 INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details)

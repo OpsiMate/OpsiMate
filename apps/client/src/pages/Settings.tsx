@@ -15,7 +15,6 @@ import {useFormErrors} from '../hooks/useFormErrors';
 import {Users, FileText, KeyRound, Trash2, Plus, Check, X, Edit} from 'lucide-react';
 import {DashboardLayout} from '../components/DashboardLayout';
 import {AddUserModal} from '../components/AddUserModal';
-import {auditApi} from '../lib/api';
 import {FileDropzone} from "@/components/ui/file-dropzone";
 import {getSecretsFromServer, createSecretOnServer, deleteSecretOnServer} from "@/lib/sslKeys";
 import {EditSecretDialog} from "@/components/EditSecretDialog";
@@ -42,11 +41,10 @@ import {
     AlertDialogAction,
     AlertDialogCancel
 } from '../components/ui/alert-dialog';
-import {AuditLog} from "@OpsiMate/shared";
 import {useToast} from "@/hooks/use-toast";
 import {Settings as SettingsIcon} from "lucide-react";
 import {CustomFieldsTable} from "../components/CustomFieldsTable";
-const PAGE_SIZE = 20;
+import {AuditLogTable} from '@/components/settings/auditLog/AuditLogTable';
 
 const Settings: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -577,202 +575,6 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
-
-// Helper to parse SQLite UTC timestamp as ISO 8601
-function parseUTCDate(dateString: string) {
-    return new Date(dateString.replace(' ', 'T') + 'Z');
-}
-
-function formatRelativeTime(dateString: string) {
-    const now = new Date();
-    const date = parseUTCDate(dateString);
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // in seconds
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) === 1 ? '' : 's'} ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hour${Math.floor(diff / 3600) === 1 ? '' : 's'} ago`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) === 1 ? '' : 's'} ago`;
-    return date.toLocaleDateString();
-}
-
-const AuditLogTable: React.FC = () => {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL');
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-
-    auditApi.getAuditLogs(page, pageSize).then(res => {
-      if (mounted) {
-        if (res && Array.isArray(res.logs)) {
-          setLogs(res.logs);
-          setTotal(res.total || 0);
-          setError(null);
-        } else {
-          setError(res?.error || 'Failed to fetch audit logs');
-        }
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [page, pageSize]);
-
-  const totalPages = Math.ceil(total / pageSize);
-  const filteredLogs = logs.filter(log =>
-    filter === 'ALL' ? true : log.actionType === filter
-  );
-
-  const getActionBadgeProps = (action: string) => {
-    switch (action) {
-      case 'CREATE':
-        return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
-      case 'UPDATE':
-        return { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
-      case 'DELETE':
-        return { variant: 'destructive', className: '' };
-      default:
-        return { variant: 'outline', className: '' };
-    }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setPage(1);
-  };
-
-  const renderPageNumbers = () => {
-    return Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-      let pageNum;
-      if (totalPages <= 5) {
-        pageNum = i + 1;
-      } else if (page <= 3) {
-        pageNum = i + 1;
-      } else if (page >= totalPages - 2) {
-        pageNum = totalPages - 4 + i;
-      } else {
-        pageNum = page - 2 + i;
-      }
-      
-      return (
-        <Button
-          key={pageNum}
-          variant={page === pageNum ? "default" : "outline"}
-          size="sm"
-          onClick={() => handlePageChange(pageNum)}
-          className="min-w-[40px]"
-        >
-          {pageNum}
-        </Button>
-      );
-    });
-  };
-
-  return (
-    <div>
-      <div className="flex justify-end items-center mb-4">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground">Items per page:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="border rounded px-3 py-1 text-sm"
-          >
-            {[5, 10, 15, 20].map(size => (
-              <option key={size} value={size}>{size}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="py-8 text-center">Loading audit logs...</div>
-      ) : error ? (
-        <ErrorAlert message={error} className="mb-4" />
-      ) : filteredLogs.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground">
-          No audit logs found.
-        </div>
-      ) : (
-        <>
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Resource</TableHead>
-                <TableHead>Resource Name</TableHead>
-                <TableHead>User</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLogs.map(log => {
-                const actionProps = getActionBadgeProps(log.actionType);
-                return (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <span title={parseUTCDate(log.timestamp).toLocaleString()}>
-                        {formatRelativeTime(log.timestamp)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={actionProps.variant as any} className={actionProps.className}>
-                        {log.actionType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{log.resourceType}</Badge>
-                    </TableCell>
-                    <TableCell>{log.resourceName || '-'}</TableCell>
-                    <TableCell>{log.userName || '-'}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                disabled={page === 1}
-              >
-                &larr; Previous
-              </Button>
-              
-              <div className="flex items-center gap-2">
-                {renderPageNumbers()}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-              >
-                Next &rarr;
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-};
 
 const AddSecretButton: React.FC = () => {
     const [open, setOpen] = useState(false);

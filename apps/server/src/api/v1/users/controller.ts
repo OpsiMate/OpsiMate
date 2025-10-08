@@ -37,7 +37,7 @@ export class UsersController {
         }
         try {
             const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
-            const result = await this.userBL.createUser(email, fullName, password, role);
+            const result = await this.userBL.createUser(email, fullName, password, role, { creatorId: req.user.id, creatorName: req.user.fullName });
             return res.status(201).json({ success: true, data: result });
         } catch (error) {
             if (isZodError(error)) {
@@ -56,7 +56,7 @@ export class UsersController {
         }
         try {
             const { email, newRole } = UpdateUserRoleSchema.parse(req.body);
-            await this.userBL.updateUserRole(email, newRole);
+            await this.userBL.updateUserRole(email, newRole, {updaterId: req.user.id, updaterName: req.user.fullName });
             return res.status(200).json({ success: true, message: 'User role updated successfully' });
         } catch (error) {
             if (isZodError(error)) {
@@ -109,7 +109,7 @@ export class UsersController {
             if (!user) {
                 return res.status(404).json({ success: false, error: 'User not found' });
             }
-            await this.userBL.deleteUser(userId);
+            await this.userBL.deleteUser(userId, { deleterId: req.user.id, deleterName: req.user.fullName });
             return res.status(200).json({ success: true, message: 'User deleted successfully' });
         } catch (error) {
             logger.error('Error deleting user:', error);

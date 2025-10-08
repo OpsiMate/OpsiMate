@@ -51,14 +51,19 @@ export class ProviderBL {
             const createdProvider = await this.providerRepo.getProviderById(lastID);
             logger.info(`Fetched created provider`, { extraArgs: { ...createdProvider } });
 
-            await this.auditBL.logAction({
-                actionType: AuditActionType.CREATE,
-                resourceType: AuditResourceType.PROVIDER,
-                resourceId: String(lastID),
-                userId: user.id,
-                userName: user.fullName,
-                resourceName: providerToCreate.name
-            });
+						await this.auditBL.logAction({
+								actionType: AuditActionType.CREATE,
+								resourceType: AuditResourceType.PROVIDER,
+								resourceId: String(lastID),
+								userId: user.id,
+								userName: user.fullName,
+								resourceName: providerToCreate.name,
+								details: JSON.stringify({
+										name: createdProvider.name,
+										ip: createdProvider.providerIP,
+										type: createdProvider.providerType,
+								}),
+						});
 
             return createdProvider;
         } catch (error) {
