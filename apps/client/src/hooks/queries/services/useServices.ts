@@ -27,7 +27,9 @@ export const useServices = () => {
       
       return transformedServices;
     },
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }; 

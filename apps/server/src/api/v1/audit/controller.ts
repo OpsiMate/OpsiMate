@@ -13,10 +13,10 @@ export class AuditController {
         try {
             const result = await this.auditBL.getAuditLogsPaginated(page, pageSize);
             // result.logs now includes userName and resourceName
-            res.json(result);
+            return res.json(result);
         } catch (error) {
             logger.error('Error fetching audit logs:', error);
-            res.status(500).json({ error: 'Failed to fetch audit logs' });
+            return res.status(500).json({ error: 'Failed to fetch audit logs' });
         }
     };
 } 
