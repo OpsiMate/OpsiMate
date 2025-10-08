@@ -16,9 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {useNavigate} from "react-router-dom";
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { getSecretsFromServer } from "@/lib/sslKeys";
-import { createSecretOnServer } from "@/lib/sslKeys";
 import { SecretMetadata } from "@OpsiMate/shared";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AddSecretButton } from "@/pages/Settings";
 
 // --- FORM SCHEMAS ---
 
@@ -351,14 +350,16 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
                     <Label>SSH Key</Label>
                     <SSHKeySelector control={control} />
                     <div className="mt-2">
-                        <a
-                            href="/settings#secrets"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm text-primary hover:underline"
+                        <AddSecretButton 
+                            secretType="ssh"
                         >
-                            + Add new key
-                        </a>
+                            <button
+                                type="button"
+                                className="text-sm text-primary hover:underline"
+                            >
+                                + Add new key
+                            </button>
+                        </AddSecretButton>
                     </div>
                 </FieldWrapper>
             )}
@@ -410,157 +411,6 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
     );
 }
 
-// Inline Add Secret Dialog Component
-interface InlineAddSecretDialogProps {
-    secretType: 'ssh' | 'kubeconfig';
-    onSecretCreated?: (secretId: number) => void;
-}
-
-const InlineAddSecretDialog: React.FC<InlineAddSecretDialogProps> = ({ 
-    secretType, 
-    onSecretCreated 
-}) => {
-    const [open, setOpen] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [fileName, setFileName] = useState<string | null>(null);
-    const [displayName, setDisplayName] = useState<string>("");
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
-    const { toast } = useToast();
-
-    const handleFile = async (file: File) => {
-        setIsFileValid(true);
-        setSelectedFile(file);
-        setFileName(file.name);
-    };
-
-    const handleSave = async () => {
-        if (!selectedFile) return;
-
-        setUploading(true);
-        try {
-            const name = displayName.trim() || fileName || "key";
-            const result = await createSecretOnServer(name, selectedFile, secretType);
-
-            if (result.success && result.id) {
-                toast({
-                    title: "Success",
-                    description: "Secret created successfully",
-                });
-                
-                if (onSecretCreated) {
-                    onSecretCreated(result.id);
-                }
-                
-                window.dispatchEvent(new Event('secrets-updated'));
-                
-                setOpen(false);
-                resetForm();
-            } else {
-                toast({
-                    title: "Error",
-                    description: result.error || "Failed to create secret",
-                    variant: "destructive",
-                });
-            }
-        } catch (error) {
-            console.error('Error creating secret:', error);
-            toast({
-                title: "Error",
-                description: "An unexpected error occurred while creating the secret",
-                variant: "destructive",
-            });
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const resetForm = () => {
-        setFileName(null);
-        setDisplayName("");
-        setSelectedFile(null);
-        setIsFileValid(null);
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={(newOpen) => {
-            setOpen(newOpen);
-            if (!newOpen) {
-                resetForm();
-            }
-        }}>
-            <DialogTrigger asChild>
-                <button
-                    type="button"
-                    className="text-sm text-primary hover:underline"
-                >
-                    + Add new {secretType} key
-                </button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Add {secretType === 'kubeconfig' ? 'Kubeconfig' : 'SSH Key'}</DialogTitle>
-                    <DialogDescription>
-                        Upload a {secretType} file. It will be encrypted and stored securely.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                    <div className="space-y-2">
-                        <Label htmlFor="secret-name">Secret name</Label>
-                        <Input 
-                            id="secret-name" 
-                            placeholder={secretType === 'kubeconfig' ? "My Kubeconfig" : "My SSH Key"}
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                        />
-                    </div>
-                    <FileDropzone
-                        id="secret-upload"
-                        accept="*"
-                        loading={uploading}
-                        onFile={handleFile}
-                        multiple={false}
-                    />
-                    {fileName && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
-                                <span>Selected: <b>{fileName}</b></span>
-                                {isFileValid !== null && (
-                                    isFileValid ? (
-                                        <Check className="h-4 w-4 text-green-600" />
-                                    ) : (
-                                        <X className="h-4 w-4 text-red-600" />
-                                    )
-                                )}
-                            </div>
-                            {isFileValid === false && (
-                                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-                                    <X className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                    <div className="text-sm text-red-700">
-                                        <p className="font-medium">Invalid file format</p>
-                                        <p className="text-red-600 mt-1">
-                                            This file doesn't appear to be a valid {secretType} file.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button 
-                        disabled={!fileName || isFileValid === false || uploading} 
-                        onClick={handleSave}
-                    >
-                        {uploading ? "Creating..." : "Save"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
 const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormData>) => {
     const {control, handleSubmit, formState: {errors}} = useForm<KubernetesFormData>({
         resolver: zodResolver(kubernetesSchema),
@@ -584,10 +434,17 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
                 <Label>Kubeconfig Key <span className="text-destructive">*</span></Label>
                 <KubeconfigSelector key={refreshKey} control={control} onSecretCreated={handleSecretCreated} />
                 <div className="mt-2">
-                    <InlineAddSecretDialog 
+                    <AddSecretButton 
                         secretType="kubeconfig"
                         onSecretCreated={handleSecretCreated}
-                    />
+                    >
+                        <button
+                            type="button"
+                            className="text-sm text-primary hover:underline"
+                        >
+                            + Add new kubeconfig key
+                        </button>
+                    </AddSecretButton>
                 </div>
             </FieldWrapper>
             

@@ -774,12 +774,26 @@ const AuditLogTable: React.FC = () => {
   );
 };
 
-const AddSecretButton: React.FC = () => {
+interface AddSecretButtonProps {
+    triggerText?: string;
+    secretType?: 'ssh' | 'kubeconfig';
+    onSecretCreated?: (secretId?: number) => void;
+    children?: React.ReactNode;
+    className?: string;
+}
+
+export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
+    triggerText = "Add Secret",
+    secretType: defaultSecretType = 'ssh',
+    onSecretCreated,
+    children,
+    className
+}) => {
     const [open, setOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState<string>("");
-    const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
+    const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>(defaultSecretType);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
     const {toast} = useToast();
@@ -804,6 +818,11 @@ const AddSecretButton: React.FC = () => {
                     title: "Success",
                     description: "Secret created successfully",
                 });
+
+                if (onSecretCreated) {
+                    onSecretCreated(result.id);
+                }
+                
                 window.dispatchEvent(new Event('secrets-updated'));
                 setOpen(false);
                 resetForm();
@@ -829,7 +848,7 @@ const AddSecretButton: React.FC = () => {
     const resetForm = () => {
         setFileName(null);
         setDisplayName("");
-        setSecretType('ssh');
+        setSecretType(defaultSecretType);
         setSelectedFile(null);
         setIsFileValid(null);
     };
@@ -842,9 +861,12 @@ const AddSecretButton: React.FC = () => {
             }
         }}>
             <DialogTrigger asChild>
-                <Button>
-                    <Plus className="h-4 w-4 mr-2"/> Add Secret
-                </Button>
+                {children || (
+                    <Button className={className}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        {triggerText}
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
