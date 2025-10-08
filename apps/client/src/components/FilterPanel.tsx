@@ -196,9 +196,8 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
                         <div key={value} className="flex items-center justify-between py-0.5">
                           <label className="flex items-center gap-1.5 text-xs font-normal cursor-pointer hover:text-foreground">
                             <Checkbox
-                              checked={(filters[field] || []).includes(value)}
+                              checked={(filters[field] || []).includes(value.toLowerCase())}
                               onCheckedChange={() => handleCheckboxChange(field, value)}
-                              className="h-3 w-3"
                             />
                             <span className="truncate max-w-[100px]" title={displayValue}>
                               {displayValue}
