@@ -133,6 +133,7 @@ export enum AuditResourceType {
     SERVICE = 'SERVICE',
     USER = 'USER',
     VIEW = 'VIEW',
+    CUSTOM_FIELD = 'CUSTOM_FIELD',
     // Add more as needed
 }
 
