@@ -13,8 +13,12 @@ export class UsersController {
     constructor(private userBL: UserBL) {}
 
     registerHandler = async (req: Request, res: Response) => {
+        const parsed = RegisterSchema.safeParse(req.body);
+        if(!parsed.success) {
+            return res.status(400).json({ success: false, error: 'Validation error', details: parsed.error.issues });
+        }
         try {
-            const { email, fullName, password } = RegisterSchema.parse(req.body);
+            const { email, fullName, password } = parsed.data;
             const result = await this.userBL.register(email, fullName, password);
             const token = jwt.sign(result, JWT_SECRET, { expiresIn: '7d' });
             res.status(201).json({ success: true, data: result, token });
