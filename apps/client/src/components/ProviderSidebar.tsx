@@ -242,6 +242,11 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
     // --- Test Connection State ---
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState<null | { ok: boolean; message: string }>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
+    
+    const handleSecretCreated = (secretId: number) => {
+        setRefreshKey(prev => prev + 1);
+    };
 
     // Helper to get current form values
     const getValues = () => {
@@ -348,16 +353,17 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             {authType === 'key' && (
                 <FieldWrapper error={errors.sshKey}>
                     <Label>SSH Key</Label>
-                    <SSHKeySelector control={control} />
+                    <SSHKeySelector key={refreshKey} control={control} />
                     <div className="mt-2">
                         <AddSecretButton 
                             secretType="ssh"
+                            onSecretCreated={handleSecretCreated}
                         >
                             <button
                                 type="button"
                                 className="text-sm text-primary hover:underline"
                             >
-                                + Add new key
+                                + Add new SSH key
                             </button>
                         </AddSecretButton>
                     </div>
