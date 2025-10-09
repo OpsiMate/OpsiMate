@@ -73,6 +73,7 @@ export type AlertRow = {
     runbook_url?: string;
     created_at: string;
     is_dismissed: boolean;
+    service_id: number | null;
 };
 
 export type UserRow = {

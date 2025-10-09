@@ -7,6 +7,8 @@ import {ProviderRepository} from "../../../dal/providerRepository";
 import {ServiceRepository} from "../../../dal/serviceRepository";
 import {checkSystemServiceStatus} from "../../../dal/sshClient";
 import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
+import { TagRepository } from '../../../dal/tagRepository';
+import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger('api/v1/services/controller');
@@ -15,7 +17,9 @@ export class ServiceController {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
-        private customFieldBL?: ServiceCustomFieldBL
+        private customFieldBL?: ServiceCustomFieldBL,
+        private tagRepo?: TagRepository,
+  private alertBL?: AlertBL
     ) {
     }
 
@@ -190,6 +194,8 @@ export class ServiceController {
                     // Continue with service deletion even if custom field cleanup fails
                 }
             }
+await this.alertBL?.clearAlertsByService(serviceId);
+    await this.tagRepo?.deleteAllServiceTags(serviceId);
 
             await this.serviceRepo.deleteService(serviceId);
             logger.info(`Successfully deleted service ${serviceId} (${service.name})`);

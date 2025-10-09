@@ -90,9 +90,9 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
     // Controllers
     const providerController = new ProviderController(providerBL, secretsMetadataRepo);
-    const serviceController = new ServiceController(providerRepo, serviceRepo, serviceCustomFieldBL);
+    const serviceController = new ServiceController(providerRepo, serviceRepo, serviceCustomFieldBL,tagRepo,alertBL);
     const viewController = new ViewController(new ViewBL(viewRepo));
-    const tagController = new TagController(tagRepo, serviceRepo);
+    const tagController = new TagController(tagRepo, serviceRepo,alertBL);
     const integrationController = new IntegrationController(integrationBL);
     const alertController = new AlertController(alertBL);
     const usersController = new UsersController(userBL);
