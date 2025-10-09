@@ -35,7 +35,6 @@ export class ServicesBL {
                 resourceName: serviceToCreate.name,
             });
 
-
             return createdService;
         } catch (error) {
             logger.error(`Error creating service`, error);
