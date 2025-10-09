@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
 import { isAdmin, isEditor } from "../lib/auth"
+import { useVersion } from "@/hooks/queries/version"
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -12,6 +13,8 @@ interface LeftSidebarProps {
 
 export function LeftSidebar({ collapsed }: LeftSidebarProps) {
   const location = useLocation();
+  const { data: versionData, isLoading } = useVersion();
+  const versionText = isLoading ? "..." : versionData?.version;
   return (
     <div className={cn("w-full bg-background flex flex-col h-full overflow-hidden", collapsed && "items-center")}>
       <Link 
@@ -134,7 +137,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           )}
           <ProfileButton collapsed={collapsed} />
         </div>
-        <p className={cn("text-xs text-muted-foreground", collapsed && "sr-only")}>© 2024 OpsiMate</p>
+        <p className={cn("text-xs text-muted-foreground", collapsed && "sr-only")}>© 2024 OpsiMate {versionText ? `v${versionText}` : ""}</p>
       </div>
     </div>
   )

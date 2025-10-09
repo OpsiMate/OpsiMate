@@ -600,4 +600,20 @@ export const secretsApi = {
   },
 };
 
+/**
+ * Version API endpoints
+ */
+export const versionApi = {
+  getVersion: async () => {
+    try {
+      const response = await apiRequest<{ version: string; name: string; buildDate: string }>('/version');
+      return response;
+    } catch (error) {
+      console.error('Error getting version:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+};
+
+
 export { apiRequest };
