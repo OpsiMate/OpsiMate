@@ -61,6 +61,12 @@ export class AlertRepository {
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `).run();
+
+           const cols = this.db.prepare(`PRAGMA table_info(alerts)`).all() as { name: string }[];
+    const hasServiceId = cols.some(c => c.name === 'service_id');
+    if (!hasServiceId) {
+      this.db.prepare(`ALTER TABLE alerts ADD COLUMN service_id INTEGER REFERENCES services(id) ON DELETE CASCADE`).run();
+    }
         });
     }
 
