@@ -48,6 +48,7 @@ export class ServicesBL {
         
         const serviceToDelete = await this.serviceRepo.getServiceById(serviceId);
         if (!serviceToDelete) {
+            logger.error('Unable to delete service ${serviceId}, not found');
             throw new ServiceNotFound(serviceId);
         }
 
