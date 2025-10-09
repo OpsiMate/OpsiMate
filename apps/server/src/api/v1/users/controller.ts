@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
+import { isZodError } from '../../../utils/isZodError';
 import { UserBL } from '../../../bl/users/user.bl';
 import {CreateUserSchema, Logger, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema, UpdateProfileSchema} from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
@@ -17,16 +17,16 @@ export class UsersController {
             const { email, fullName, password } = RegisterSchema.parse(req.body);
             const result = await this.userBL.register(email, fullName, password);
             const token = jwt.sign(result, JWT_SECRET, { expiresIn: '7d' });
-            res.status(201).json({ success: true, data: result, token });
+            return res.status(201).json({ success: true, data: result, token });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else if (error instanceof Error && error.message === 'Registration is disabled after first admin') {
-                res.status(403).json({ success: false, error: error.message });
+                return res.status(403).json({ success: false, error: error.message });
             } else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-                res.status(400).json({ success: false, error: 'Email already registered' });
+                return res.status(400).json({ success: false, error: 'Email already registered' });
             } else {
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -38,14 +38,14 @@ export class UsersController {
         try {
             const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
             const result = await this.userBL.createUser(email, fullName, password, role);
-            res.status(201).json({ success: true, data: result });
+            return res.status(201).json({ success: true, data: result });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-                res.status(400).json({ success: false, error: 'Email already registered' });
+                return res.status(400).json({ success: false, error: 'Email already registered' });
             } else {
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -57,12 +57,12 @@ export class UsersController {
         try {
             const { email, newRole } = UpdateUserRoleSchema.parse(req.body);
             await this.userBL.updateUserRole(email, newRole);
-            res.status(200).json({ success: true, message: 'User role updated successfully' });
+            return res.status(200).json({ success: true, message: 'User role updated successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -72,14 +72,14 @@ export class UsersController {
             const { email, password } = LoginSchema.parse(req.body);
             const user = await this.userBL.login(email, password);
             const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
-            res.status(200).json({ success: true, data: user, token });
+            return res.status(200).json({ success: true, data: user, token });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else if (error instanceof Error && error.message === 'Invalid email or password') {
-                res.status(401).json({ success: false, error: error.message });
+                return res.status(401).json({ success: false, error: error.message });
             } else {
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -90,9 +90,9 @@ export class UsersController {
         }
         try {
             const users = await this.userBL.getAllUsers();
-            res.status(200).json({ success: true, data: users });
+            return res.status(200).json({ success: true, data: users });
         } catch {
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -110,10 +110,10 @@ export class UsersController {
                 return res.status(404).json({ success: false, error: 'User not found' });
             }
             await this.userBL.deleteUser(userId);
-            res.status(200).json({ success: true, message: 'User deleted successfully' });
+            return res.status(200).json({ success: true, message: 'User deleted successfully' });
         } catch (error) {
             logger.error('Error deleting user:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -124,9 +124,9 @@ export class UsersController {
     usersExistHandler = async (req: Request, res: Response) => {
         try {
             const exists = await this.userBL.usersExist();
-            res.status(200).json({ success: true, exists });
+            return res.status(200).json({ success: true, exists });
         } catch {
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -141,10 +141,10 @@ export class UsersController {
                 return res.status(404).json({ success: false, error: 'User not found' });
             }
             
-            res.status(200).json({ success: true, data: user });
+            return res.status(200).json({ success: true, data: user });
         } catch (error) {
             logger.error('Error fetching profile:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -165,15 +165,15 @@ export class UsersController {
                 responseData.token = token;
             }
             
-            res.status(200).json({ success: true, data: responseData });
+            return res.status(200).json({ success: true, data: responseData });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else if (error instanceof Error && error.message === 'User not found') {
-                res.status(404).json({ success: false, error: error.message });
+                return res.status(404).json({ success: false, error: error.message });
             } else {
                 logger.error('Error updating profile:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -213,13 +213,13 @@ export class UsersController {
 
             await this.userBL.resetUserPassword(userId, newPassword);
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 message: 'Password reset successfully'
             });
         } catch (error) {
             logger.error('Error resetting user password:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     }
 
@@ -255,17 +255,17 @@ export class UsersController {
 
             const updatedUser = await this.userBL.updateUser(userId, { fullName, email, role });
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 data: updatedUser,
                 message: 'User updated successfully'
             });
         } catch (error) {
             if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-                res.status(400).json({ success: false, error: 'Email already registered' });
+                return res.status(400).json({ success: false, error: 'Email already registered' });
             } else {
                 logger.error('Error updating user:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     }
