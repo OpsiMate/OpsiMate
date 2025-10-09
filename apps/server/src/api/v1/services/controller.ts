@@ -10,7 +10,6 @@ import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField
 import { ServicesBL } from "../../../bl/services/services.bl";
 import {AuthenticatedRequest} from '../../../middleware/auth';
 import { isZodError } from "../../../utils/isZodError";
-import { z } from "zod";
 
 const logger = new Logger('api/v1/services/controller');
 
