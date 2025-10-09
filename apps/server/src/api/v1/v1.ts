@@ -21,6 +21,8 @@ import createSecretsRouter from "./secrets/router";
 import {SecretsController} from "./secrets/controller";
 import createCustomFieldsRouter from "./custom-fields/router";
 import {CustomFieldsController} from "./custom-fields/controller";
+import createVersionRouter from "./version/router";
+import { VersionController } from "./version/controller";
 
 
 export default function createV1Router(
@@ -41,6 +43,10 @@ export default function createV1Router(
     router.post('/users/register', usersController.registerHandler);
     router.post('/users/login', usersController.loginHandler);
     router.get('/users/exists', usersController.usersExistHandler);
+
+    // Version endpoint (public)
+    const versionController = new VersionController();
+    router.use('/version', createVersionRouter(versionController));
 
     // JWT-protected endpoints
     router.use(authenticateJWT);
