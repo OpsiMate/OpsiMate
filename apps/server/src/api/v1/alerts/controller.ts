@@ -10,10 +10,10 @@ export class AlertController {
     async getAlerts(req: Request, res: Response) {
         try {
             const alerts = await this.alertBL.getAllAlerts();
-            res.json({ success: true, data: { alerts } });
+            return res.json({ success: true, data: { alerts } });
         } catch (error) {
             logger.error('Error getting alerts:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     }
 
@@ -27,10 +27,10 @@ export class AlertController {
             if (!alert) {
                 return res.status(404).json({ success: false, error: 'Alert not found' });
             }
-            res.json({ success: true, data: { alert } });
+            return res.json({ success: true, data: { alert } });
         } catch (error) {
             logger.error('Error dismissing alert:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     }
 
@@ -44,10 +44,10 @@ export class AlertController {
             if (!alert) {
                 return res.status(404).json({ success: false, error: 'Alert not found' });
             }
-            res.json({ success: true, data: { alert } });
+            return res.json({ success: true, data: { alert } });
         } catch (error) {
             logger.error('Error undismissing alert:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     }
 } 
