@@ -13,11 +13,11 @@ import {
   Register,
   Login,
   Settings,
-  Dashboard,
   Profile,
   Alerts,
   TVMode,
 } from "./pages";
+import { Dashboard } from "@/components/Dashboard";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthGuard } from "./components/AuthGuard";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
