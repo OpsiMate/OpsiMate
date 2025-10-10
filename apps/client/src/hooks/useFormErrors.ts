@@ -7,7 +7,7 @@ export interface FormErrorState {
   setErrors: (errors: Record<string, string>) => void;
   setGeneralError: (error: string | null) => void;
   clearErrors: () => void;
-  handleApiResponse: (response: any) => void;
+  handleApiResponse: (response: { success: boolean; error?: string; errors?: Record<string, string> }) => void;
   getFieldError: (fieldName: string) => string | null;
 }
 
@@ -28,7 +28,7 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
     setGeneralError(null);
   };
 
-  const handleApiResponse = (response: any) => {
+  const handleApiResponse = (response: { success: boolean; error?: string; errors?: Record<string, string> }) => {
     console.log('handleApiResponse called with:', response);
     
     if (response.success) {

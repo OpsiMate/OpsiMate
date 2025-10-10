@@ -273,7 +273,7 @@ export const Dashboard = () => {
         })
     }
 
-    const handleAddService = (serviceData: any) => {
+    const handleAddService = (serviceData: { name: string }) => {
         toast({
             title: "Service Added",
             description: `${serviceData.name} has been added successfully.`
