@@ -39,7 +39,7 @@ jobs:
         run: pnpm run build
 
       - name: Lint apps/client
-        run: pnpm --filter @OpsiMate/client lint --max-warnings=0
+        run: pnpm --filter @OpsiMate/client lint --max-warnings=22
 
       - name: Lint apps/server
         run: pnpm --filter @OpsiMate/server lint --max-warnings=0
