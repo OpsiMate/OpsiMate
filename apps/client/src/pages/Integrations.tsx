@@ -258,9 +258,9 @@ export default function Integrations() {
   const [configuredInstances, setConfiguredInstances] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
-  const [savedIntegrations, setSavedIntegrations] = useState<any[]>([]);
+  const [savedIntegrations, setSavedIntegrations] = useState<Array<{ id: string; type: string; name: string; url: string }>>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [integrationToDelete, setIntegrationToDelete] = useState<any>(null);
+  const [integrationToDelete, setIntegrationToDelete] = useState<{ id: string; type: string; name: string; url: string } | null>(null);
   const { toast } = useToast();
 
   // Fetch saved integrations on component mount

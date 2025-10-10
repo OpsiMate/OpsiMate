@@ -12,7 +12,7 @@ export const useServices = () => {
       }
       
       // Transform the data to match the Service interface
-      const transformedServices = (response.data || []).map((service: any) => ({
+      const transformedServices = (response.data || []).map((service: { id: number; name: string; serviceIP: string; serviceStatus: string; serviceType: string; provider: { id: number; name: string; providerType: string }; tags: string[] }) => ({
         id: service.id.toString(), // Convert number to string
         name: service.name,
         serviceIP: service.serviceIP,
