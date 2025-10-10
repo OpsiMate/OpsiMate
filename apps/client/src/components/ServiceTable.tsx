@@ -279,8 +279,8 @@ export function ServiceTable({
     // Apply sorting
     if (sortConfig) {
       filtered = [...filtered].sort((a, b) => {
-        let aValue: any
-        let bValue: any
+        let aValue: string | number
+        let bValue: string | number
 
         switch (sortConfig.field) {
           case 'name':

@@ -33,7 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Service } from "@/components/ServiceTable"
 import { Alert } from "@OpsiMate/shared"
-import { Filters } from "@/components/FilterPanel"
+import { Filters } from "@/components/Dashboard"
 
 interface TVModeProps {
   autoRefresh?: boolean

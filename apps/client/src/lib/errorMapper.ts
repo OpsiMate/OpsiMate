@@ -244,7 +244,7 @@ export function mapApiError(error: string): string {
 /**
  * Extracts field-specific errors from a validation error response
  */
-export function getFieldError(fieldName: string, response: any): string | null {
+export function getFieldError(fieldName: string, response: { details?: ValidationErrorDetail[] }): string | null {
   if (response?.details && Array.isArray(response.details)) {
     const fieldError = response.details.find(
       (detail: ValidationErrorDetail) => detail.path[detail.path.length - 1] === fieldName
@@ -257,7 +257,7 @@ export function getFieldError(fieldName: string, response: any): string | null {
 /**
  * Checks if a response contains validation errors
  */
-export function isValidationError(response: any): response is ValidationErrorResponse {
+export function isValidationError(response: unknown): response is ValidationErrorResponse {
   return response?.success === false && 
          (response?.error === 'Validation error' || response?.error?.includes('Validation error')) && 
          Array.isArray(response?.details);
