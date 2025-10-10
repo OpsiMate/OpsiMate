@@ -22,47 +22,47 @@ describe('Dashboard', () => {
       data: [],
       isLoading: false,
       error: null,
-    } as any)
+    } as ReturnType<typeof queries.useServices>)
 
     vi.mocked(queries.useAlerts).mockReturnValue({
       data: [],
       error: null,
-    } as any)
+    } as ReturnType<typeof queries.useAlerts>)
 
     vi.mocked(queries.useViews).mockReturnValue({
       data: [],
       error: null,
-    } as any)
+    } as ReturnType<typeof queries.useViews>)
 
     vi.mocked(queries.useActiveView).mockReturnValue({
       activeViewId: undefined,
       setActiveView: vi.fn(),
       error: null,
-    } as any)
+    } as ReturnType<typeof queries.useActiveView>)
 
     vi.mocked(queries.useCustomFields).mockReturnValue({
       data: [],
-    } as any)
+    } as ReturnType<typeof queries.useCustomFields>)
 
     vi.mocked(queries.useStartService).mockReturnValue({
       mutateAsync: vi.fn(),
-    } as any)
+    } as ReturnType<typeof queries.useStartService>)
 
     vi.mocked(queries.useStopService).mockReturnValue({
       mutateAsync: vi.fn(),
-    } as any)
+    } as ReturnType<typeof queries.useStopService>)
 
     vi.mocked(queries.useDismissAlert).mockReturnValue({
       mutateAsync: vi.fn(),
-    } as any)
+    } as ReturnType<typeof queries.useDismissAlert>)
 
     vi.mocked(queries.useSaveView).mockReturnValue({
       mutateAsync: vi.fn(),
-    } as any)
+    } as ReturnType<typeof queries.useSaveView>)
 
     vi.mocked(queries.useDeleteView).mockReturnValue({
       mutateAsync: vi.fn(),
-    } as any)
+    } as ReturnType<typeof queries.useDeleteView>)
   })
 
   it('renders dashboard layout', async () => {
@@ -86,7 +86,7 @@ describe('Dashboard', () => {
       data: [],
       isLoading: true,
       error: null,
-    } as any)
+    } as ReturnType<typeof queries.useServices>)
 
     render(<Dashboard />)
     
@@ -115,7 +115,7 @@ describe('Dashboard', () => {
       data: mockServices,
       isLoading: false,
       error: null,
-    } as any)
+    } as ReturnType<typeof queries.useServices>)
 
     render(<Dashboard />)
     
