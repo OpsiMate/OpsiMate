@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { providerApi } from "@/lib/api";
 import { Tag } from "@OpsiMate/shared";
@@ -13,7 +20,12 @@ interface DeleteTagDialogProps {
   onTagDeleted: (tagId: number) => void;
 }
 
-export function DeleteTagDialog({ open, onClose, tag, onTagDeleted }: DeleteTagDialogProps) {
+export function DeleteTagDialog({
+  open,
+  onClose,
+  tag,
+  onTagDeleted,
+}: DeleteTagDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -23,26 +35,26 @@ export function DeleteTagDialog({ open, onClose, tag, onTagDeleted }: DeleteTagD
     setLoading(true);
     try {
       const response = await providerApi.deleteTag(tag.id);
-      
+
       if (response.success) {
         onTagDeleted(tag.id);
         toast({
           title: "Success",
-          description: "Tag deleted successfully"
+          description: "Tag deleted successfully",
         });
         handleClose();
       } else {
         toast({
           title: "Error",
           description: response.error || "Failed to delete tag",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete tag",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -65,11 +77,12 @@ export function DeleteTagDialog({ open, onClose, tag, onTagDeleted }: DeleteTagD
             Delete Tag
           </DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the tag <strong>"{tag.name}"</strong>? 
-            This action will remove the tag from all services and cannot be undone.
+            Are you sure you want to delete the tag{" "}
+            <strong>"{tag.name}"</strong>? This action will remove the tag from
+            all services and cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
           <div
             className="w-4 h-4 rounded-full"
@@ -79,12 +92,17 @@ export function DeleteTagDialog({ open, onClose, tag, onTagDeleted }: DeleteTagD
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button 
-            type="button" 
-            variant="destructive" 
+          <Button
+            type="button"
+            variant="destructive"
             onClick={handleDelete}
             disabled={loading}
           >
@@ -94,4 +112,4 @@ export function DeleteTagDialog({ open, onClose, tag, onTagDeleted }: DeleteTagD
       </DialogContent>
     </Dialog>
   );
-} 
+}

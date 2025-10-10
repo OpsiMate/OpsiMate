@@ -2,12 +2,24 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, X, Eye, EyeOff, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import {
+  AlertTriangle,
+  X,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+} from "lucide-react";
 import { GrafanaIcon } from "@/components/icons/GrafanaIcon";
-import { Alert as SharedAlert } from '@OpsiMate/shared';
+import { Alert as SharedAlert } from "@OpsiMate/shared";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface AlertsSectionProps {
   alerts: SharedAlert[];
@@ -15,17 +27,23 @@ interface AlertsSectionProps {
   className?: string;
 }
 
-export function AlertsSection({ alerts, onAlertDismiss, className }: AlertsSectionProps) {
+export function AlertsSection({
+  alerts,
+  onAlertDismiss,
+  className,
+}: AlertsSectionProps) {
   const { toast } = useToast();
-  const [dismissingAlerts, setDismissingAlerts] = useState<Set<string>>(new Set());
+  const [dismissingAlerts, setDismissingAlerts] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
 
-  const activeAlerts = alerts.filter(alert => !alert.isDismissed);
+  const activeAlerts = alerts.filter((alert) => !alert.isDismissed);
 
   const handleDismissAlert = async (alertId: string) => {
     try {
-      setDismissingAlerts(prev => new Set(prev).add(alertId));
-      
+      setDismissingAlerts((prev) => new Set(prev).add(alertId));
+
       if (onAlertDismiss) {
         await onAlertDismiss(alertId);
         toast({
@@ -34,14 +52,14 @@ export function AlertsSection({ alerts, onAlertDismiss, className }: AlertsSecti
         });
       }
     } catch (error) {
-      console.error('Error dismissing alert:', error);
+      console.error("Error dismissing alert:", error);
       toast({
         title: "Error dismissing alert",
         description: "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
-      setDismissingAlerts(prev => {
+      setDismissingAlerts((prev) => {
         const newSet = new Set(prev);
         newSet.delete(alertId);
         return newSet;
@@ -51,7 +69,7 @@ export function AlertsSection({ alerts, onAlertDismiss, className }: AlertsSecti
 
   const handleAlertClick = (alertUrl: string) => {
     if (alertUrl) {
-      window.open(alertUrl, '_blank', 'noopener,noreferrer');
+      window.open(alertUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -69,7 +87,7 @@ export function AlertsSection({ alerts, onAlertDismiss, className }: AlertsSecti
               key={alert.id}
               className={cn(
                 "rounded-lg border transition-colors flex items-center justify-between gap-2 p-3",
-                "bg-card border-border hover:bg-muted/50"
+                "bg-card border-border hover:bg-muted/50",
               )}
             >
               <div className="flex flex-col min-w-0 flex-1">
@@ -94,7 +112,13 @@ export function AlertsSection({ alerts, onAlertDismiss, className }: AlertsSecti
                     size="icon"
                     className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
                     title="Open Runbook"
-                    onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
+                    onClick={() =>
+                      window.open(
+                        alert.runbookUrl,
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
                   >
                     <span className="sr-only">Open Runbook</span>
                     📖

@@ -3,8 +3,7 @@ name: UI Issue
 about: Report an issue related to the user interface
 title: "[UI]"
 labels: UI
-assignees: ''
-
+assignees: ""
 ---
 
 **Describe the UI issue**

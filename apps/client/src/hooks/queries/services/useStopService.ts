@@ -1,15 +1,15 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { providerApi } from '@/lib/api';
-import { queryKeys } from '../queryKeys';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { providerApi } from "@/lib/api";
+import { queryKeys } from "../queryKeys";
 
 export const useStopService = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (serviceId: number) => {
       const response = await providerApi.stopService(serviceId);
       if (!response.success) {
-        throw new Error(response.error || 'Failed to stop service');
+        throw new Error(response.error || "Failed to stop service");
       }
       return response.data;
     },
@@ -19,4 +19,4 @@ export const useStopService = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.service(serviceId) });
     },
   });
-}; 
+};

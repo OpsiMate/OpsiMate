@@ -3,8 +3,7 @@ name: DevOps Issue
 about: Report an issue related to DevOps or infrastructure
 title: "[DevOps]"
 labels: DevOps
-assignees: ''
-
+assignees: ""
 ---
 
 **Describe the DevOps issue**

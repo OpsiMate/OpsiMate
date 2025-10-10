@@ -17,7 +17,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("sidebarCollapsed", JSON.stringify(isSidebarCollapsed));
+    localStorage.setItem(
+      "sidebarCollapsed",
+      JSON.stringify(isSidebarCollapsed),
+    );
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
@@ -50,13 +53,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Mobile Sidebar (Overlay) */}
-      <div 
-        className={`md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-200 ${mobileSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      <div
+        className={`md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-200 ${mobileSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         onClick={() => setMobileSidebarOpen(false)}
       >
-        <div 
-          className={`fixed left-0 top-0 h-full z-50 bg-card w-72 shadow-xl transition-transform duration-200 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-          onClick={e => e.stopPropagation()}
+        <div
+          className={`fixed left-0 top-0 h-full z-50 bg-card w-72 shadow-xl transition-transform duration-200 ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+          onClick={(e) => e.stopPropagation()}
         >
           <LeftSidebar collapsed={false} />
           <button
@@ -71,31 +74,34 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Desktop Layout */}
       <div className="hidden md:flex flex-1 overflow-hidden">
-        <div 
-          className={cn("bg-background border-r border-border transition-all duration-300 ease-in-out", isSidebarCollapsed ? "w-[70px]" : "w-[207px]")}
+        <div
+          className={cn(
+            "bg-background border-r border-border transition-all duration-300 ease-in-out",
+            isSidebarCollapsed ? "w-[70px]" : "w-[207px]",
+          )}
         >
           <LeftSidebar collapsed={isSidebarCollapsed} />
         </div>
-        
+
         <div className="flex-1 min-w-0 relative bg-muted/20 w-full">
-           <Button
+          <Button
             onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
             variant="ghost"
             size="icon"
             className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8"
           >
-            {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {isSidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
-          <main className="h-full overflow-auto w-full">
-            {children}
-          </main>
+          <main className="h-full overflow-auto w-full">{children}</main>
         </div>
       </div>
 
       {/* Mobile Content */}
-      <div className="md:hidden flex-1 overflow-auto">
-        {children}
-      </div>
+      <div className="md:hidden flex-1 overflow-auto">{children}</div>
     </div>
   );
 }

@@ -1,30 +1,35 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 interface TableSettingsModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  visibleColumns: Record<string, boolean>
-  onColumnToggle: (column: string) => void
-  customFields?: Array<{ id: number; name: string }>
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  visibleColumns: Record<string, boolean>;
+  onColumnToggle: (column: string) => void;
+  customFields?: Array<{ id: number; name: string }>;
 }
 
 const columnLabels = {
-  name: 'Service Name',
-  serviceIP: 'Service IP',
-  serviceStatus: 'Status',
-  provider: 'Provider',
-  containerDetails: 'Container Details',
-  alerts: 'Alerts'
-}
+  name: "Service Name",
+  serviceIP: "Service IP",
+  serviceStatus: "Status",
+  provider: "Provider",
+  containerDetails: "Container Details",
+  alerts: "Alerts",
+};
 
 export function TableSettingsModal({
   open,
   onOpenChange,
   visibleColumns,
   onColumnToggle,
-  customFields = []
+  customFields = [],
 }: TableSettingsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,14 +65,21 @@ export function TableSettingsModal({
             {customFields.length > 0 && (
               <>
                 <div className="border-t pt-3 mt-3">
-                  <h4 className="text-sm font-semibold text-muted-foreground mb-2">Custom Fields</h4>
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+                    Custom Fields
+                  </h4>
                 </div>
                 {customFields.map((field) => (
-                  <div key={`custom-${field.id}`} className="flex items-center space-x-2">
+                  <div
+                    key={`custom-${field.id}`}
+                    className="flex items-center space-x-2"
+                  >
                     <Checkbox
                       id={`custom-${field.id}`}
                       checked={visibleColumns[`custom-${field.id}`] || false}
-                      onCheckedChange={() => onColumnToggle(`custom-${field.id}`)}
+                      onCheckedChange={() =>
+                        onColumnToggle(`custom-${field.id}`)
+                      }
                     />
                     <label
                       htmlFor={`custom-${field.id}`}
@@ -89,5 +101,5 @@ export function TableSettingsModal({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

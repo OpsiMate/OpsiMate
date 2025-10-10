@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { providerApi } from '@/lib/api';
-import { queryKeys } from '../queryKeys';
+import { useQuery } from "@tanstack/react-query";
+import { providerApi } from "@/lib/api";
+import { queryKeys } from "../queryKeys";
 
 export const useServices = () => {
   return useQuery({
@@ -8,9 +8,9 @@ export const useServices = () => {
     queryFn: async () => {
       const response = await providerApi.getAllServices();
       if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch services');
+        throw new Error(response.error || "Failed to fetch services");
       }
-      
+
       // Transform the data to match the Service interface
       const transformedServices = (response.data || []).map((service: any) => ({
         id: service.id.toString(), // Convert number to string
@@ -22,9 +22,9 @@ export const useServices = () => {
         provider: service.provider,
         containerDetails: service.containerDetails,
         tags: service.tags || [],
-        customFields: service.customFields || {}
+        customFields: service.customFields || {},
       }));
-      
+
       return transformedServices;
     },
     staleTime: 30 * 1000,
@@ -32,4 +32,4 @@ export const useServices = () => {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
-}; 
+};

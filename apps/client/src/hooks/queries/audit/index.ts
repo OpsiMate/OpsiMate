@@ -1,1 +1,1 @@
-export { useAuditLogs } from './useAuditLogs'; 
+export { useAuditLogs } from "./useAuditLogs";

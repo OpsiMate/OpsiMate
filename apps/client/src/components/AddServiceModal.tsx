@@ -1,46 +1,61 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
 
 interface AddServiceModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onAddService: (serviceData: any) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddService: (serviceData: any) => void;
 }
 
-export function AddServiceModal({ open, onOpenChange, onAddService }: AddServiceModalProps) {
+export function AddServiceModal({
+  open,
+  onOpenChange,
+  onAddService,
+}: AddServiceModalProps) {
   const [formData, setFormData] = useState({
-    name: '',
-    serverId: '',
-    ipAddress: '',
-    os: '',
-    port: '',
-    sshUser: '',
-    sshKey: ''
-  })
+    name: "",
+    serverId: "",
+    ipAddress: "",
+    os: "",
+    port: "",
+    sshUser: "",
+    sshKey: "",
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     onAddService({
       ...formData,
       id: Date.now().toString(),
-      status: 'stopped' as const,
-      port: formData.port ? parseInt(formData.port) : undefined
-    })
+      status: "stopped" as const,
+      port: formData.port ? parseInt(formData.port) : undefined,
+    });
     setFormData({
-      name: '',
-      serverId: '',
-      ipAddress: '',
-      os: '',
-      port: '',
-      sshUser: '',
-      sshKey: ''
-    })
-    onOpenChange(false)
-  }
+      name: "",
+      serverId: "",
+      ipAddress: "",
+      os: "",
+      port: "",
+      sshUser: "",
+      sshKey: "",
+    });
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,7 +70,9 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
               placeholder="e.g., Web Server, Database"
               required
             />
@@ -66,7 +83,9 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
             <Input
               id="serverId"
               value={formData.serverId}
-              onChange={(e) => setFormData(prev => ({ ...prev, serverId: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, serverId: e.target.value }))
+              }
               placeholder="e.g., srv-001"
               required
             />
@@ -77,7 +96,9 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
             <Input
               id="ipAddress"
               value={formData.ipAddress}
-              onChange={(e) => setFormData(prev => ({ ...prev, ipAddress: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, ipAddress: e.target.value }))
+              }
               placeholder="e.g., 192.168.1.100"
               required
             />
@@ -85,7 +106,12 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
 
           <div className="space-y-2">
             <Label htmlFor="os">Operating System</Label>
-            <Select value={formData.os} onValueChange={(value) => setFormData(prev => ({ ...prev, os: value }))}>
+            <Select
+              value={formData.os}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, os: value }))
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select OS" />
               </SelectTrigger>
@@ -94,7 +120,9 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
                 <SelectItem value="CentOS 7">CentOS 7</SelectItem>
                 <SelectItem value="RHEL 8">RHEL 8</SelectItem>
                 <SelectItem value="Debian 11">Debian 11</SelectItem>
-                <SelectItem value="Windows Server 2019">Windows Server 2019</SelectItem>
+                <SelectItem value="Windows Server 2019">
+                  Windows Server 2019
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -105,7 +133,9 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
               id="port"
               type="number"
               value={formData.port}
-              onChange={(e) => setFormData(prev => ({ ...prev, port: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, port: e.target.value }))
+              }
               placeholder="e.g., 8080"
             />
           </div>
@@ -115,22 +145,26 @@ export function AddServiceModal({ open, onOpenChange, onAddService }: AddService
             <Input
               id="sshUser"
               value={formData.sshUser}
-              onChange={(e) => setFormData(prev => ({ ...prev, sshUser: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, sshUser: e.target.value }))
+              }
               placeholder="e.g., root, ubuntu"
               required
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              Add Service
-            </Button>
+            <Button type="submit">Add Service</Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

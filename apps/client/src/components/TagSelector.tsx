@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +29,12 @@ interface TagSelectorProps {
   className?: string;
 }
 
-export function TagSelector({ selectedTags, onTagsChange, serviceId, className }: TagSelectorProps) {
+export function TagSelector({
+  selectedTags,
+  onTagsChange,
+  serviceId,
+  className,
+}: TagSelectorProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -42,7 +58,7 @@ export function TagSelector({ selectedTags, onTagsChange, serviceId, className }
       toast({
         title: "Error",
         description: "Failed to fetch tags",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -51,46 +67,52 @@ export function TagSelector({ selectedTags, onTagsChange, serviceId, className }
 
   const addTag = async (tag: Tag) => {
     try {
-      const response = await providerApi.addTagToService(Number(serviceId), Number(tag.id));
+      const response = await providerApi.addTagToService(
+        Number(serviceId),
+        Number(tag.id),
+      );
       if (response.success) {
         onTagsChange([...selectedTags, tag]);
       } else {
         toast({
           title: "Error",
           description: response.error || "Failed to add tag",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to add tag",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const removeTag = async (tag: Tag) => {
     try {
-      const response = await providerApi.removeTagFromService(Number(serviceId), Number(tag.id));
+      const response = await providerApi.removeTagFromService(
+        Number(serviceId),
+        Number(tag.id),
+      );
       if (response.success) {
-        onTagsChange(selectedTags.filter(t => t.id !== tag.id));
+        onTagsChange(selectedTags.filter((t) => t.id !== tag.id));
         toast({
           title: "Success",
-          description: "Tag removed from service"
+          description: "Tag removed from service",
         });
       } else {
         toast({
           title: "Error",
           description: response.error || "Failed to remove tag",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to remove tag",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -103,11 +125,11 @@ export function TagSelector({ selectedTags, onTagsChange, serviceId, className }
 
   const handleTagDeleted = (tagId: number) => {
     // Remove the tag from all tags list
-    setAllTags(allTags.filter(tag => tag.id !== tagId));
-    
+    setAllTags(allTags.filter((tag) => tag.id !== tagId));
+
     // Remove the tag from selected tags if it was selected
-    if (selectedTags.some(tag => tag.id === tagId)) {
-      onTagsChange(selectedTags.filter(tag => tag.id !== tagId));
+    if (selectedTags.some((tag) => tag.id === tagId)) {
+      onTagsChange(selectedTags.filter((tag) => tag.id !== tagId));
     }
   };
 
@@ -118,7 +140,9 @@ export function TagSelector({ selectedTags, onTagsChange, serviceId, className }
     setShowDeleteDialog(true);
   };
 
-  const availableTags = allTags.filter(tag => !selectedTags.some(selected => selected.id === tag.id));
+  const availableTags = allTags.filter(
+    (tag) => !selectedTags.some((selected) => selected.id === tag.id),
+  );
 
   return (
     <>
@@ -154,7 +178,9 @@ export function TagSelector({ selectedTags, onTagsChange, serviceId, className }
               <CommandList>
                 <CommandEmpty>
                   <div className="flex flex-col items-center gap-2 p-4">
-                    <p className="text-sm text-muted-foreground">No tags found</p>
+                    <p className="text-sm text-muted-foreground">
+                      No tags found
+                    </p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -228,4 +254,4 @@ export function TagSelector({ selectedTags, onTagsChange, serviceId, className }
       />
     </>
   );
-} 
+}

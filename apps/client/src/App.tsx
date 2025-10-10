@@ -33,7 +33,6 @@ const App: React.FC = () => {
           <Sonner />
 
           <BrowserRouter>
-        
             <AuthGuard>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
@@ -51,8 +50,7 @@ const App: React.FC = () => {
             </AuthGuard>
           </BrowserRouter>
 
-         
-          <ScrollToTopButton  />
+          <ScrollToTopButton />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

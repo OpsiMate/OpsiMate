@@ -1,170 +1,170 @@
 export enum ProviderType {
-    VM = 'VM',
-    K8S = 'K8S'
+  VM = "VM",
+  K8S = "K8S",
 }
 
 export enum IntegrationType {
-    Grafana = 'Grafana',
-    Kibana = 'Kibana',
-    Datadog = 'Datadog',
+  Grafana = "Grafana",
+  Kibana = "Kibana",
+  Datadog = "Datadog",
 }
 
 export enum ServiceType {
-    DOCKER = 'DOCKER',
-    SYSTEMD = 'SYSTEMD',
-    MANUAL = 'MANUAL',
+  DOCKER = "DOCKER",
+  SYSTEMD = "SYSTEMD",
+  MANUAL = "MANUAL",
 }
 
 export enum Role {
-    Admin = 'admin',
-    Editor = 'editor',
-    Viewer = 'viewer',
+  Admin = "admin",
+  Editor = "editor",
+  Viewer = "viewer",
 }
 
 export enum SecretType {
-    SSH = 'ssh',
-    KUBECONFIG = 'kubeconfig',
+  SSH = "ssh",
+  KUBECONFIG = "kubeconfig",
 }
 
 export interface User {
-    id: number;
-    email: string;
-    fullName: string;
-    role: Role;
-    createdAt: string;
+  id: number;
+  email: string;
+  fullName: string;
+  role: Role;
+  createdAt: string;
 }
 
 export interface IntegrationUrls {
-    name: string,
-    url: string,
+  name: string;
+  url: string;
 }
 
 export interface Provider {
-    id: number;
-    name: string;
-    providerIP?: string;
-    username?: string;
-    secretId?: number;
-    privateKeyFilename?: string; // Deprecated: use secretId instead
-    password?: string;
-    SSHPort?: number;
-    createdAt: string;
-    providerType: ProviderType;
+  id: number;
+  name: string;
+  providerIP?: string;
+  username?: string;
+  secretId?: number;
+  privateKeyFilename?: string; // Deprecated: use secretId instead
+  password?: string;
+  SSHPort?: number;
+  createdAt: string;
+  providerType: ProviderType;
 }
 
 export interface ContainerDetails {
-    id?: string;
-    image?: string;
-    created?: string;
-    namespace?: string;
+  id?: string;
+  image?: string;
+  created?: string;
+  namespace?: string;
 }
 
 export interface Tag {
-    id: number;
-    name: string;
-    color: string;
-    createdAt: string;
+  id: number;
+  name: string;
+  color: string;
+  createdAt: string;
 }
 
 export interface ServiceTag {
-    id: number;
-    serviceId: number;
-    tagId: number;
-    createdAt: string;
+  id: number;
+  serviceId: number;
+  tagId: number;
+  createdAt: string;
 }
 
 export interface Service {
-    id: number;
-    providerId: number;
-    name: string;
-    serviceIP?: string;
-    serviceStatus: string;
-    createdAt: string;
-    serviceType: ServiceType;
-    // todo - this be in different interface
-    containerDetails?: ContainerDetails;
-    tags?: Tag[];
-    customFields?: Record<number, string>; // customFieldId -> value
+  id: number;
+  providerId: number;
+  name: string;
+  serviceIP?: string;
+  serviceStatus: string;
+  createdAt: string;
+  serviceType: ServiceType;
+  // todo - this be in different interface
+  containerDetails?: ContainerDetails;
+  tags?: Tag[];
+  customFields?: Record<number, string>; // customFieldId -> value
 }
 
 export interface ServiceWithProvider extends Service {
-    provider: Provider;
+  provider: Provider;
 }
 
 export interface DiscoveredService {
-    name: string;
-    serviceStatus: string;
-    serviceIP: string;
-    namespace?: string;
+  name: string;
+  serviceStatus: string;
+  serviceIP: string;
+  namespace?: string;
 }
 
 export interface DiscoveredPod {
-    name: string;
+  name: string;
 }
 
 export interface Alert {
-    id: string;
-    status: string;
-    tag: string;
-    startsAt: string;
-    updatedAt: string;
-    alertUrl: string;
-    alertName: string;
-    summary?: string;
-    runbookUrl?: string;
-    createdAt: string;
-    isDismissed: boolean;
+  id: string;
+  status: string;
+  tag: string;
+  startsAt: string;
+  updatedAt: string;
+  alertUrl: string;
+  alertName: string;
+  summary?: string;
+  runbookUrl?: string;
+  createdAt: string;
+  isDismissed: boolean;
 }
 
 export interface ApiResponse<T> {
-    success: boolean;
-    data?: T;
-    error?: string;
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 export enum AuditActionType {
-    CREATE = 'CREATE',
-    UPDATE = 'UPDATE',
-    DELETE = 'DELETE',
+  CREATE = "CREATE",
+  UPDATE = "UPDATE",
+  DELETE = "DELETE",
 }
 
 export enum AuditResourceType {
-    PROVIDER = 'PROVIDER',
-    SERVICE = 'SERVICE',
-    USER = 'USER',
-    VIEW = 'VIEW',
-    // Add more as needed
+  PROVIDER = "PROVIDER",
+  SERVICE = "SERVICE",
+  USER = "USER",
+  VIEW = "VIEW",
+  // Add more as needed
 }
 
 export interface AuditLog {
-    id: number;
-    actionType: AuditActionType;
-    resourceType: AuditResourceType;
-    resourceId: string;
-    userId: number;
-    timestamp: string;
-    resourceName: string;
-    userName: string;
-    details?: string;
+  id: number;
+  actionType: AuditActionType;
+  resourceType: AuditResourceType;
+  resourceId: string;
+  userId: number;
+  timestamp: string;
+  resourceName: string;
+  userName: string;
+  details?: string;
 }
 
 export type SecretMetadata = {
-    id: number;
-    name: string;
-    fileName: string;
-    type: SecretType;
-}
+  id: number;
+  name: string;
+  fileName: string;
+  type: SecretType;
+};
 
 export interface ServiceCustomField {
-    id: number;
-    name: string;
-    createdAt: string;
+  id: number;
+  name: string;
+  createdAt: string;
 }
 
 export interface ServiceCustomFieldValue {
-    serviceId: number;
-    customFieldId: number;
-    value: string;
-    createdAt: string;
-    updatedAt: string;
+  serviceId: number;
+  customFieldId: number;
+  value: string;
+  createdAt: string;
+  updatedAt: string;
 }

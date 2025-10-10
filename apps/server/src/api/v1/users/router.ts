@@ -1,33 +1,36 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
-import { UsersController } from './controller';
+import PromiseRouter from "express-promise-router";
+import { UsersController } from "./controller";
 
 export default function createUsersRouter(usersController: UsersController) {
-    const router = PromiseRouter();
+  const router = PromiseRouter();
 
-    // POST /users - admin creates new user
-    router.post('/', usersController.createUserHandler);
+  // POST /users - admin creates new user
+  router.post("/", usersController.createUserHandler);
 
-    // GET /users - get all users (admin only)
-    router.get('/', usersController.getAllUsersHandler);
+  // GET /users - get all users (admin only)
+  router.get("/", usersController.getAllUsersHandler);
 
-    // PATCH /users/role - update user role
-    router.patch('/role', usersController.updateUserRoleHandler);
+  // PATCH /users/role - update user role
+  router.patch("/role", usersController.updateUserRoleHandler);
 
-    // GET /users/profile - get user profile
-    router.get('/profile', usersController.getProfileHandler);
+  // GET /users/profile - get user profile
+  router.get("/profile", usersController.getProfileHandler);
 
-    // PATCH /users/profile - update user profile
-    router.patch('/profile', usersController.updateProfileHandler);
+  // PATCH /users/profile - update user profile
+  router.patch("/profile", usersController.updateProfileHandler);
 
-    // DELETE /users/:id - delete user by ID (admin only)
-    router.delete('/:id', usersController.deleteUserHandler);
+  // DELETE /users/:id - delete user by ID (admin only)
+  router.delete("/:id", usersController.deleteUserHandler);
 
-    // PATCH /users/password - update user password
-    router.patch('/:id/reset-password', usersController.updateUserPasswordHandler);
+  // PATCH /users/password - update user password
+  router.patch(
+    "/:id/reset-password",
+    usersController.updateUserPasswordHandler,
+  );
 
-    //PATCH /user/:id - update user info by admin
-    router.patch('/:id', usersController.updateUserHandler);
+  //PATCH /user/:id - update user info by admin
+  router.patch("/:id", usersController.updateUserHandler);
 
-    return router;
-} 
+  return router;
+}

@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { viewsApi } from '@/lib/api';
-import { queryKeys } from '../queryKeys';
+import { useQuery } from "@tanstack/react-query";
+import { viewsApi } from "@/lib/api";
+import { queryKeys } from "../queryKeys";
 
 export const useViews = () => {
   return useQuery({
@@ -8,9 +8,9 @@ export const useViews = () => {
     queryFn: async () => {
       const response = await viewsApi.getViews();
       if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch views');
+        throw new Error(response.error || "Failed to fetch views");
       }
       return response.data || [];
     },
   });
-}; 
+};

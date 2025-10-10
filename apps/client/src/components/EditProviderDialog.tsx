@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +25,18 @@ interface EditProviderDialogProps {
   provider: Provider | null;
   open: boolean;
   onClose: () => void;
-  onSave: (providerId: string, updatedData: {
-    name: string;
-    providerIP: string;
-    username: string;
-    secretId?: number;
-    password: string;
-    SSHPort: number;
-    providerType: string;
-  }) => Promise<void>;
+  onSave: (
+    providerId: string,
+    updatedData: {
+      name: string;
+      providerIP: string;
+      username: string;
+      secretId?: number;
+      password: string;
+      SSHPort: number;
+      providerType: string;
+    },
+  ) => Promise<void>;
 }
 
 export function EditProviderDialog({
@@ -63,7 +72,7 @@ export function EditProviderDialog({
       const secretsData = await getSecretsFromServer();
       setSecrets(secretsData);
     } catch (error) {
-      console.error('Error loading secrets:', error);
+      console.error("Error loading secrets:", error);
     } finally {
       setSecretsLoading(false);
     }
@@ -75,7 +84,9 @@ export function EditProviderDialog({
       // For existing providers, find the secret ID that matches the privateKeyFilename
       let secretId: number | undefined;
       if (provider.privateKeyFilename && secrets.length > 0) {
-        const matchingSecret = secrets.find(secret => secret.fileName === provider.privateKeyFilename);
+        const matchingSecret = secrets.find(
+          (secret) => secret.fileName === provider.privateKeyFilename,
+        );
         secretId = matchingSecret?.id;
       }
 
@@ -90,7 +101,7 @@ export function EditProviderDialog({
         secretId: secretId,
         password: "",
         SSHPort: provider.SSHPort || 22,
-        providerType: provider.providerType || 'VM',
+        providerType: provider.providerType || "VM",
       });
     }
   }, [provider, open, secrets]);
@@ -102,16 +113,16 @@ export function EditProviderDialog({
       [name]: name === "SSHPort" ? parseInt(value) || 22 : value,
     }));
   };
-  
+
   const handleSelectChange = (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      providerType: value
+      providerType: value,
     }));
   };
 
   const handleSecretChange = (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       secretId: value ? parseInt(value) : undefined,
     }));
@@ -121,9 +132,9 @@ export function EditProviderDialog({
     setAuthMethod(value as "password" | "key");
     // Clear the other field when switching auth methods
     if (value === "password") {
-      setFormData(prev => ({ ...prev, secretId: undefined }));
+      setFormData((prev) => ({ ...prev, secretId: undefined }));
     } else {
-      setFormData(prev => ({ ...prev, password: "" }));
+      setFormData((prev) => ({ ...prev, password: "" }));
     }
   };
 
@@ -140,8 +151,10 @@ export function EditProviderDialog({
         SSHPort: formData.SSHPort,
         providerType: formData.providerType,
         // Include password or secretId based on selected auth method
-        ...(authMethod === "password" && formData.password && { password: formData.password }),
-        ...(authMethod === "key" && formData.secretId && { secretId: formData.secretId }),
+        ...(authMethod === "password" &&
+          formData.password && { password: formData.password }),
+        ...(authMethod === "key" &&
+          formData.secretId && { secretId: formData.secretId }),
       };
 
       await onSave(provider.id.toString(), submitData);
@@ -153,8 +166,9 @@ export function EditProviderDialog({
     }
   };
 
-  const isKubernetes = provider?.providerType === 'K8S' || formData.providerType === 'K8S';
-  
+  const isKubernetes =
+    provider?.providerType === "K8S" || formData.providerType === "K8S";
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -166,11 +180,13 @@ export function EditProviderDialog({
               ) : (
                 <Server className="h-5 w-5 text-purple-500" />
               )}
-              Edit {isKubernetes ? 'Kubernetes Cluster' : 'Server'}
+              Edit {isKubernetes ? "Kubernetes Cluster" : "Server"}
             </div>
           </DialogTitle>
           <DialogDescription>
-            Update the details for this {isKubernetes ? 'Kubernetes cluster' : 'server'}. Click save when you're done.
+            Update the details for this{" "}
+            {isKubernetes ? "Kubernetes cluster" : "server"}. Click save when
+            you're done.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -188,13 +204,13 @@ export function EditProviderDialog({
                 required
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="providerType" className="text-right">
                 Type
               </Label>
-              <Select 
-                value={formData.providerType} 
+              <Select
+                value={formData.providerType}
                 onValueChange={handleSelectChange}
                 disabled={!!provider} // Disable changing type for existing providers
               >
@@ -207,7 +223,7 @@ export function EditProviderDialog({
                 </SelectContent>
               </Select>
             </div>
-            
+
             {isKubernetes ? (
               // Kubernetes-specific fields
               <>
@@ -229,20 +245,29 @@ export function EditProviderDialog({
                   <Label htmlFor="secretId" className="text-right">
                     Kubeconfig
                   </Label>
-                  <Select 
-                    value={formData.secretId?.toString() || ""} 
+                  <Select
+                    value={formData.secretId?.toString() || ""}
                     onValueChange={handleSecretChange}
                     disabled={secretsLoading}
                   >
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={secretsLoading ? "Loading..." : "Select a kubeconfig"} />
+                      <SelectValue
+                        placeholder={
+                          secretsLoading ? "Loading..." : "Select a kubeconfig"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {secrets.filter(secret => secret.type === 'kubeconfig').map(secret => (
-                        <SelectItem key={secret.id} value={secret.id.toString()}>
-                          {secret.name}
-                        </SelectItem>
-                      ))}
+                      {secrets
+                        .filter((secret) => secret.type === "kubeconfig")
+                        .map((secret) => (
+                          <SelectItem
+                            key={secret.id}
+                            value={secret.id.toString()}
+                          >
+                            {secret.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -320,14 +345,23 @@ export function EditProviderDialog({
                       disabled={secretsLoading}
                     >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder={secretsLoading ? "Loading..." : "Select an SSH key"} />
+                        <SelectValue
+                          placeholder={
+                            secretsLoading ? "Loading..." : "Select an SSH key"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {secrets.filter(secret => secret.type === 'ssh').map(secret => (
-                          <SelectItem key={secret.id} value={secret.id.toString()}>
-                            {secret.name}
-                          </SelectItem>
-                        ))}
+                        {secrets
+                          .filter((secret) => secret.type === "ssh")
+                          .map((secret) => (
+                            <SelectItem
+                              key={secret.id}
+                              value={secret.id.toString()}
+                            >
+                              {secret.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>

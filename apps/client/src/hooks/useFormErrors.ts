@@ -1,5 +1,9 @@
-import { useState } from 'react';
-import { mapValidationErrors, mapApiError, isValidationError } from '../lib/errorMapper';
+import { useState } from "react";
+import {
+  mapValidationErrors,
+  mapApiError,
+  isValidationError,
+} from "../lib/errorMapper";
 
 export interface FormErrorState {
   errors: Record<string, string>;
@@ -29,8 +33,8 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
   };
 
   const handleApiResponse = (response: any) => {
-    console.log('handleApiResponse called with:', response);
-    
+    console.log("handleApiResponse called with:", response);
+
     if (response.success) {
       clearErrors();
       return;
@@ -38,23 +42,25 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
 
     // Handle validation errors
     if (isValidationError(response)) {
-      console.log('Detected validation error, mapping fields...');
+      console.log("Detected validation error, mapping fields...");
       if (showFieldErrors) {
         const fieldErrors = mapValidationErrors(response);
-        console.log('Mapped field errors:', fieldErrors);
+        console.log("Mapped field errors:", fieldErrors);
         setErrors(fieldErrors);
         setGeneralError(null);
       } else {
         // For login, show a general error instead of field-specific ones
-        console.log('Field errors disabled, showing general error...');
+        console.log("Field errors disabled, showing general error...");
         setErrors({});
-        setGeneralError('Invalid email or password. Please check your credentials and try again.');
+        setGeneralError(
+          "Invalid email or password. Please check your credentials and try again.",
+        );
       }
     } else {
       // Handle general errors
-      console.log('Detected general error, mapping message...');
+      console.log("Detected general error, mapping message...");
       setErrors({});
-      setGeneralError(mapApiError(response.error || 'An error occurred'));
+      setGeneralError(mapApiError(response.error || "An error occurred"));
     }
   };
 
@@ -71,4 +77,4 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
     handleApiResponse,
     getFieldError,
   };
-} 
+}

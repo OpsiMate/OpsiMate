@@ -3,6 +3,7 @@
 This document describes the Integration Router API endpoints for managing cloud providers and their services.
 
 ## Base URL
+
 ```
 http://localhost:3001/api/v1/integration
 ```
@@ -10,11 +11,13 @@ http://localhost:3001/api/v1/integration
 ## Endpoints
 
 ### 1. Create Provider
+
 **POST** `/providers`
 
 Creates a new cloud provider integration.
 
 **Request Body:**
+
 ```json
 {
   "provider_name": "Azure VM",
@@ -26,6 +29,7 @@ Creates a new cloud provider integration.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -42,11 +46,13 @@ Creates a new cloud provider integration.
 ```
 
 ### 2. Get All Providers
+
 **GET** `/providers`
 
 Retrieves all registered providers.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -65,11 +71,13 @@ Retrieves all registered providers.
 ```
 
 ### 3. Get Provider Instances
+
 **GET** `/providers/:providerId/instance`
 
 Connects to the provider via SSH and retrieves running services.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -100,11 +108,13 @@ Connects to the provider via SSH and retrieves running services.
 ```
 
 ### 4. Store Services in Bulk
+
 **POST** `/providers/:providerId/instance/bulk`
 
 Stores a list of service names for a specific provider.
 
 **Request Body:**
+
 ```json
 {
   "service_names": ["nginx", "postgresql", "redis"]
@@ -112,6 +122,7 @@ Stores a list of service names for a specific provider.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -137,11 +148,13 @@ Stores a list of service names for a specific provider.
 ```
 
 ### 5. Get Provider Services
+
 **GET** `/providers/:providerId/services`
 
 Retrieves all services stored for a specific provider.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -171,6 +184,7 @@ All endpoints return error responses in the following format:
 ```
 
 Common HTTP status codes:
+
 - `400` - Bad Request (validation errors)
 - `404` - Not Found (provider not found)
 - `500` - Internal Server Error
@@ -178,6 +192,7 @@ Common HTTP status codes:
 ## Database Schema
 
 ### Providers Table
+
 ```sql
 CREATE TABLE providers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,6 +206,7 @@ CREATE TABLE providers (
 ```
 
 ### Services Table
+
 ```sql
 CREATE TABLE services (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -219,4 +235,4 @@ node test-integration.js
 - The SSH connection uses the provided public key for authentication
 - Service discovery uses `systemctl list-units` command (Linux systems)
 - All data is stored locally in SQLite database (`opsimate.db`)
-- The API includes input validation using Zod schemas 
+- The API includes input validation using Zod schemas

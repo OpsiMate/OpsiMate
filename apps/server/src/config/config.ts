@@ -1,94 +1,100 @@
-import * as yaml from 'js-yaml';
-import * as fs from 'fs';
-import {Logger} from '@OpsiMate/shared';
+import * as yaml from "js-yaml";
+import * as fs from "fs";
+import { Logger } from "@OpsiMate/shared";
 
-const logger = new Logger('config');
+const logger = new Logger("config");
 
 export interface OpsimateConfig {
-    server: {
-        port: number;
-        host: string;
-    };
-    database: {
-        path: string;
-    };
-    security: {
-        private_keys_path: string;
-    };
-    vm: {
-        try_with_sudo: boolean;
-    };
+  server: {
+    port: number;
+    host: string;
+  };
+  database: {
+    path: string;
+  };
+  security: {
+    private_keys_path: string;
+  };
+  vm: {
+    try_with_sudo: boolean;
+  };
 }
 
 let cachedConfig: OpsimateConfig | null = null;
 
 export function loadConfig(): OpsimateConfig {
-    if (cachedConfig) {
-        return cachedConfig;
-    }
+  if (cachedConfig) {
+    return cachedConfig;
+  }
 
-    const configPath: string | null = process.env.CONFIG_FILE || null;
+  const configPath: string | null = process.env.CONFIG_FILE || null;
 
-    if (!configPath || !fs.existsSync(configPath)) {
-        logger.warn(`Config file not found starting from ${process.cwd()}, using defaults`);
-        const defaultConfig = getDefaultConfig();
-        cachedConfig = defaultConfig;
-        return defaultConfig;
-    }
+  if (!configPath || !fs.existsSync(configPath)) {
+    logger.warn(
+      `Config file not found starting from ${process.cwd()}, using defaults`,
+    );
+    const defaultConfig = getDefaultConfig();
+    cachedConfig = defaultConfig;
+    return defaultConfig;
+  }
 
-    logger.info(`Loading config from: ${configPath}`);
-    const configFile = fs.readFileSync(configPath, 'utf8');
-    const config = yaml.load(configFile) as OpsimateConfig;
+  logger.info(`Loading config from: ${configPath}`);
+  const configFile = fs.readFileSync(configPath, "utf8");
+  const config = yaml.load(configFile) as OpsimateConfig;
 
-    // Validate required fields
-    if (!config.server?.port || !config.database?.path || !config.security?.private_keys_path) {
-        logger.error('Invalid config file: missing required fields');
-        throw new Error(`Invalid config file: ${configPath}`);
-    }
+  // Validate required fields
+  if (
+    !config.server?.port ||
+    !config.database?.path ||
+    !config.security?.private_keys_path
+  ) {
+    logger.error("Invalid config file: missing required fields");
+    throw new Error(`Invalid config file: ${configPath}`);
+  }
 
-    // Set default VM config if not provided
-    if (!config.vm) {
-        config.vm = {
-            try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false'
-        };
-    }
+  // Set default VM config if not provided
+  if (!config.vm) {
+    config.vm = {
+      try_with_sudo: process.env.VM_TRY_WITH_SUDO !== "false",
+    };
+  }
 
-    cachedConfig = config;
-    logger.info(`Configuration loaded from ${configPath}`);
-    return config;
+  cachedConfig = config;
+  logger.info(`Configuration loaded from ${configPath}`);
+  return config;
 }
 
 function getDefaultConfig(): OpsimateConfig {
-    return {
-        server: {
-            port: 3001,
-            host: 'localhost'
-        },
-        database: {
-            path: '../../data/database/opsimate.db'
-        },
-        security: {
-            private_keys_path: '../../data/private-keys'
-        },
-        vm: {
-            try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false'
-        }
-    };
+  return {
+    server: {
+      port: 3001,
+      host: "localhost",
+    },
+    database: {
+      path: "../../data/database/opsimate.db",
+    },
+    security: {
+      private_keys_path: "../../data/private-keys",
+    },
+    vm: {
+      try_with_sudo: process.env.VM_TRY_WITH_SUDO !== "false",
+    },
+  };
 }
 
 // Helper function to get individual config sections
 export function getServerConfig() {
-    return loadConfig().server;
+  return loadConfig().server;
 }
 
 export function getDatabaseConfig() {
-    return loadConfig().database;
+  return loadConfig().database;
 }
 
 export function getSecurityConfig() {
-    return loadConfig().security;
+  return loadConfig().security;
 }
 
 export function getVmConfig() {
-    return loadConfig().vm;
+  return loadConfig().vm;
 }

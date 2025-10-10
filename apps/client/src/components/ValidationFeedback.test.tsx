@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { ValidationFeedback, validationRules } from './ValidationFeedback';
+import React, { useState } from "react";
+import { ValidationFeedback, validationRules } from "./ValidationFeedback";
 
 // Test component to demonstrate validation feedback
 export const ValidationFeedbackDemo: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
 
   return (
     <div className="p-8 max-w-md mx-auto space-y-6">
       <h2 className="text-2xl font-bold mb-6">Validation Feedback Demo</h2>
-      
+
       <div>
         <label className="block text-sm font-medium mb-2">Email</label>
         <input
@@ -20,9 +20,9 @@ export const ValidationFeedbackDemo: React.FC = () => {
           className="w-full p-2 border rounded"
           placeholder="Enter email"
         />
-        <ValidationFeedback 
-          value={email} 
-          rules={validationRules.email} 
+        <ValidationFeedback
+          value={email}
+          rules={validationRules.email}
           showValid={email.length > 0}
         />
       </div>
@@ -36,9 +36,9 @@ export const ValidationFeedbackDemo: React.FC = () => {
           className="w-full p-2 border rounded"
           placeholder="Enter password"
         />
-        <ValidationFeedback 
-          value={password} 
-          rules={validationRules.password} 
+        <ValidationFeedback
+          value={password}
+          rules={validationRules.password}
           showValid={password.length > 0}
         />
       </div>
@@ -52,9 +52,9 @@ export const ValidationFeedbackDemo: React.FC = () => {
           className="w-full p-2 border rounded"
           placeholder="Enter full name"
         />
-        <ValidationFeedback 
-          value={fullName} 
-          rules={validationRules.fullName} 
+        <ValidationFeedback
+          value={fullName}
+          rules={validationRules.fullName}
           showValid={fullName.length > 0}
         />
       </div>
@@ -67,4 +67,4 @@ export const ValidationFeedbackDemo: React.FC = () => {
       </div>
     </div>
   );
-}; 
+};

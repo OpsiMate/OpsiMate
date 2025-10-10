@@ -1,6 +1,17 @@
-import { useAlerts, useDismissAlert, useUndismissAlert } from "@/hooks/queries/alerts";
+import {
+  useAlerts,
+  useDismissAlert,
+  useUndismissAlert,
+} from "@/hooks/queries/alerts";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +35,7 @@ export default function Alerts() {
         a.alertName.toLowerCase().includes(lower) ||
         a.status.toLowerCase().includes(lower) ||
         (a.summary && a.summary.toLowerCase().includes(lower)) ||
-        a.tag.toLowerCase().includes(lower)
+        a.tag.toLowerCase().includes(lower),
     );
   }, [alerts, search]);
 
@@ -39,7 +50,7 @@ export default function Alerts() {
       toast({
         title: "Error dismissing alert",
         description: "Failed to dismiss alert",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -55,16 +66,16 @@ export default function Alerts() {
       toast({
         title: "Error undismissing alert",
         description: "Failed to undismiss alert",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const getStatusBadge = (alert: Alert) => {
     if (alert.isDismissed) {
-      return <Badge variant="secondary">dismissed</Badge>
+      return <Badge variant="secondary">dismissed</Badge>;
     }
-    
+
     return <Badge variant="destructive">firing</Badge>;
   };
 
@@ -80,7 +91,7 @@ export default function Alerts() {
             <Input
               placeholder="Search alerts..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               className="max-w-xs"
             />
           </div>
@@ -105,21 +116,26 @@ export default function Alerts() {
                   </TableRow>
                 ) : filteredAlerts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       No alerts found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAlerts.map(alert => (
+                  filteredAlerts.map((alert) => (
                     <TableRow key={alert.id}>
-                      <TableCell className="font-medium">{alert.alertName}</TableCell>
-                      <TableCell>
-                        {getStatusBadge(alert)}
+                      <TableCell className="font-medium">
+                        {alert.alertName}
                       </TableCell>
+                      <TableCell>{getStatusBadge(alert)}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{alert.tag}</Badge>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{alert.summary || "-"}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {alert.summary || "-"}
+                      </TableCell>
                       <TableCell>
                         {new Date(alert.startsAt).toLocaleString()}
                       </TableCell>
@@ -130,7 +146,13 @@ export default function Alerts() {
                             size="icon"
                             className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
                             title="Open Runbook"
-                            onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
+                            onClick={() =>
+                              window.open(
+                                alert.runbookUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            }
                             disabled={!alert.runbookUrl}
                           >
                             <span className="sr-only">Open Runbook</span>
@@ -141,7 +163,13 @@ export default function Alerts() {
                             size="icon"
                             className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
                             title="View in Grafana"
-                            onClick={() => window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')}
+                            onClick={() =>
+                              window.open(
+                                alert.alertUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            }
                             disabled={!alert.alertUrl}
                           >
                             <ExternalLink className="h-4 w-4" />
@@ -150,11 +178,23 @@ export default function Alerts() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
-                            title={alert.isDismissed ? "Undismiss Alert" : "Dismiss Alert"}
-                            onClick={() => alert.isDismissed ? handleUndismissAlert(alert.id) : handleDismissAlert(alert.id)}
-                            disabled={dismissAlertMutation.isPending || undismissAlertMutation.isPending}
+                            title={
+                              alert.isDismissed
+                                ? "Undismiss Alert"
+                                : "Dismiss Alert"
+                            }
+                            onClick={() =>
+                              alert.isDismissed
+                                ? handleUndismissAlert(alert.id)
+                                : handleDismissAlert(alert.id)
+                            }
+                            disabled={
+                              dismissAlertMutation.isPending ||
+                              undismissAlertMutation.isPending
+                            }
                           >
-                            {(dismissAlertMutation.isPending || undismissAlertMutation.isPending) ? (
+                            {dismissAlertMutation.isPending ||
+                            undismissAlertMutation.isPending ? (
                               <div className="h-3 w-3 rounded-full border-2 border-t-transparent animate-spin" />
                             ) : alert.isDismissed ? (
                               <RotateCcw className="h-4 w-4" />
@@ -174,4 +214,4 @@ export default function Alerts() {
       </div>
     </DashboardLayout>
   );
-} 
+}

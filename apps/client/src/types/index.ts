@@ -1,8 +1,8 @@
 // Client-side type definitions
 export enum Role {
-  Admin = 'admin',
-  Editor = 'editor',
-  Viewer = 'viewer',
+  Admin = "admin",
+  Editor = "editor",
+  Viewer = "viewer",
 }
 
 export interface User {
@@ -11,4 +11,4 @@ export interface User {
   fullName: string;
   role: Role;
   createdAt: string;
-} 
+}

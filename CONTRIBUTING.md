@@ -17,11 +17,15 @@ Learn how to set up and run the OpsiMate project locally for development.
    - Click **“Fork”** in the top-right corner to create your own copy.
 
 2. **Clone Your Fork**
+
    ```bash
    git clone https://github.com/<your-username>/OpsiMate.git
    cd OpsiMate
 
+   ```
+
 3. **Install dependencies:**
+
    ```bash
    pnpm install
    ```
@@ -31,6 +35,7 @@ Learn how to set up and run the OpsiMate project locally for development.
    pnpm run build
    ```
 5. **Specify the config file (optional):**
+
    ```bash
    export CONFIG_FILE=/path/to/config.yml
    ```
@@ -60,14 +65,14 @@ fix/docker-compose-path
 ```
 
 2. **Make Your Changes:**
-Edit the code, docs, or configuration as needed.
+   Edit the code, docs, or configuration as needed.
 
 ```bash
 git add .
 git commit -m "Add login page UI"
 ```
 
-3. **Push to Your Fork:** 
+3. **Push to Your Fork:**
 
 ```bash
 git push origin feat/your-feature-name
@@ -80,8 +85,9 @@ b. Click Compare & pull request.
 c. Choose the base repository as OpsiMate/OpsiMate and branch as main.  
 d. Add a meaningful title and a clear description of what you changed.
 
-# Pull Request Title 
+# Pull Request Title
+
 ### Your Pull Request title must strictly follow one of the following formats:
+
 - [FEAT]: Short descriptive title
 - [FIX]: Short descriptive title
-

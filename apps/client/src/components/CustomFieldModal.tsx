@@ -1,11 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { useCreateCustomField, useUpdateCustomField } from '../hooks/queries/custom-fields';
-import { useToast } from '@/hooks/use-toast';
-import { ServiceCustomField } from '@OpsiMate/shared';
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import {
+  useCreateCustomField,
+  useUpdateCustomField,
+} from "../hooks/queries/custom-fields";
+import { useToast } from "@/hooks/use-toast";
+import { ServiceCustomField } from "@OpsiMate/shared";
 
 interface CustomFieldModalProps {
   open: boolean;
@@ -16,9 +26,9 @@ interface CustomFieldModalProps {
 export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
   open,
   onOpenChange,
-  editingField
+  editingField,
 }) => {
-  const [fieldName, setFieldName] = useState('');
+  const [fieldName, setFieldName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createCustomField = useCreateCustomField();
@@ -31,7 +41,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
     if (editingField) {
       setFieldName(editingField.name);
     } else {
-      setFieldName('');
+      setFieldName("");
     }
   }, [editingField, open]);
 
@@ -53,7 +63,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
       if (isEditing && editingField) {
         await updateCustomField.mutateAsync({
           id: editingField.id,
-          name: fieldName.trim()
+          name: fieldName.trim(),
         });
         toast({
           title: "Success",
@@ -70,7 +80,9 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error?.message || `Failed to ${isEditing ? 'update' : 'create'} custom field`,
+        description:
+          error?.message ||
+          `Failed to ${isEditing ? "update" : "create"} custom field`,
         variant: "destructive",
       });
     } finally {
@@ -80,7 +92,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && !isSubmitting) {
-      setFieldName('');
+      setFieldName("");
       onOpenChange(false);
     } else if (newOpen) {
       onOpenChange(true);
@@ -92,13 +104,12 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Edit Custom Field' : 'Create Custom Field'}
+            {isEditing ? "Edit Custom Field" : "Create Custom Field"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Update the name of this custom field.'
-              : 'Create a new custom field that can be used to store additional information for your services.'
-            }
+              ? "Update the name of this custom field."
+              : "Create a new custom field that can be used to store additional information for your services."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -127,14 +138,14 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !fieldName.trim()}
-            >
+            <Button type="submit" disabled={isSubmitting || !fieldName.trim()}>
               {isSubmitting
-                ? (isEditing ? 'Updating...' : 'Creating...')
-                : (isEditing ? 'Update Field' : 'Create Field')
-              }
+                ? isEditing
+                  ? "Updating..."
+                  : "Creating..."
+                : isEditing
+                  ? "Update Field"
+                  : "Create Field"}
             </Button>
           </DialogFooter>
         </form>

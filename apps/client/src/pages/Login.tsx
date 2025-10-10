@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { apiRequest } from '../lib/api';
-import { API_BASE_URL } from '../lib/api';
-import { useFormErrors } from '../hooks/useFormErrors';
-import { ErrorAlert } from '../components/ErrorAlert';
+import React, { useState, useEffect } from "react";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { apiRequest } from "../lib/api";
+import { API_BASE_URL } from "../lib/api";
+import { useFormErrors } from "../hooks/useFormErrors";
+import { ErrorAlert } from "../components/ErrorAlert";
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { generalError, clearErrors, handleApiResponse } = useFormErrors({ showFieldErrors: false });
+  const { generalError, clearErrors, handleApiResponse } = useFormErrors({
+    showFieldErrors: false,
+  });
 
   useEffect(() => {
-    if (localStorage.getItem('jwt')) {
-      window.location.href = '/';
+    if (localStorage.getItem("jwt")) {
+      window.location.href = "/";
     }
   }, []);
 
@@ -22,46 +24,51 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     clearErrors();
-    
+
     try {
-      const res = await apiRequest<{ token: string; data: any; error?: string }>(
-        '/users/login',
-        'POST',
-        { email, password }
-      );
-      
+      const res = await apiRequest<{
+        token: string;
+        data: any;
+        error?: string;
+      }>("/users/login", "POST", { email, password });
+
       if (res.success) {
         const token = (res.data && res.data.token) || res.token;
         if (token) {
-          localStorage.setItem('jwt', token);
-          window.location.href = '/';
+          localStorage.setItem("jwt", token);
+          window.location.href = "/";
         } else {
           // This shouldn't happen in normal flow, but handle it gracefully
-          console.error('Login successful but no token received');
+          console.error("Login successful but no token received");
         }
       } else {
         handleApiResponse(res);
       }
     } catch (err) {
-      handleApiResponse({ 
-        success: false, 
-        error: 'Network error. Please check your connection and try again.' 
+      handleApiResponse({
+        success: false,
+        error: "Network error. Please check your connection and try again.",
       });
     } finally {
       setLoading(false);
     }
   };
 
-   return (
-   <div className="min-h-screen flex items-center justify-center bg-background">
-      <form onSubmit={handleSubmit} className="bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80">
-        <h2 className="text-2xl font-bold mb-6 text-center text-foreground">Login</h2>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80"
+      >
+        <h2 className="text-2xl font-bold mb-6 text-center text-foreground">
+          Login
+        </h2>
         <div className="mb-4">
           <Input
             type="email"
             placeholder="Email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
@@ -70,17 +77,17 @@ const Login: React.FC = () => {
             type="password"
             placeholder="Password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
         {generalError && <ErrorAlert message={generalError} className="mb-4" />}
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? "Logging in..." : "Login"}
         </Button>
       </form>
     </div>
   );
 };
 
-export default Login; 
+export default Login;

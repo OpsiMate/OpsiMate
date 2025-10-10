@@ -2,7 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { providerApi } from "@/lib/api";
 import { Tag } from "@OpsiMate/shared";
@@ -14,19 +21,23 @@ interface CreateTagDialogProps {
 }
 
 const predefinedColors = [
-  '#3B82F6', // blue
-  '#EF4444', // red
-  '#10B981', // green
-  '#F59E0B', // yellow
-  '#8B5CF6', // purple
-  '#F97316', // orange
-  '#06B6D4', // cyan
-  '#EC4899', // pink
-  '#84CC16', // lime
-  '#6B7280', // gray
+  "#3B82F6", // blue
+  "#EF4444", // red
+  "#10B981", // green
+  "#F59E0B", // yellow
+  "#8B5CF6", // purple
+  "#F97316", // orange
+  "#06B6D4", // cyan
+  "#EC4899", // pink
+  "#84CC16", // lime
+  "#6B7280", // gray
 ];
 
-export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialogProps) {
+export function CreateTagDialog({
+  open,
+  onClose,
+  onTagCreated,
+}: CreateTagDialogProps) {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [color, setColor] = useState(predefinedColors[0]);
@@ -34,39 +45,42 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
       toast({
         title: "Error",
         description: "Tag name is required",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
     try {
-      const response = await providerApi.createTag({ name: name.trim(), color });
-      
+      const response = await providerApi.createTag({
+        name: name.trim(),
+        color,
+      });
+
       if (response.success && response.data) {
         onTagCreated(response.data);
         toast({
           title: "Success",
-          description: "Tag created successfully"
+          description: "Tag created successfully",
         });
         handleClose();
       } else {
         toast({
           title: "Error",
           description: response.error || "Failed to create tag",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create tag",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -86,7 +100,8 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
         <DialogHeader>
           <DialogTitle>Create New Tag</DialogTitle>
           <DialogDescription>
-            Create a new tag to organize your services. Choose a name and color for your tag.
+            Create a new tag to organize your services. Choose a name and color
+            for your tag.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -109,7 +124,9 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
                     key={colorOption}
                     type="button"
                     className={`w-8 h-8 rounded-full border-2 transition-all ${
-                      color === colorOption ? 'border-gray-800 scale-110' : 'border-gray-300 hover:border-gray-500'
+                      color === colorOption
+                        ? "border-gray-800 scale-110"
+                        : "border-gray-300 hover:border-gray-500"
                     }`}
                     style={{ backgroundColor: colorOption }}
                     onClick={() => setColor(colorOption)}
@@ -130,4 +147,4 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
       </DialogContent>
     </Dialog>
   );
-} 
+}

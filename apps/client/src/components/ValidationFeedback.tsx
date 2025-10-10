@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, X } from 'lucide-react';
+import React from "react";
+import { Check, X } from "lucide-react";
 
 export interface ValidationRule {
   id: string;
@@ -14,9 +14,12 @@ interface ValidationFeedbackProps {
   showValid?: boolean; // Whether to show green checkmarks for valid rules
 }
 
-const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-const hostnameRegex = /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || hostnameRegex.test(value);
+const ipRegex =
+  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const hostnameRegex =
+  /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const isValidHostnameOrIP = (value: string): boolean =>
+  ipRegex.test(value) || hostnameRegex.test(value);
 
 export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
   value,
@@ -28,14 +31,14 @@ export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
       {rules.map((rule) => {
         const isValid = rule.validator(value);
         const shouldShow = !isValid || showValid;
-        
+
         if (!shouldShow) return null;
-        
+
         return (
           <div
             key={rule.id}
             className={`flex items-center gap-2 text-sm ${
-              isValid ? 'text-green-600' : 'text-red-500'
+              isValid ? "text-green-600" : "text-red-500"
             }`}
           >
             {isValid ? (
@@ -55,13 +58,13 @@ export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
 export const validationRules = {
   email: [
     {
-      id: 'email-required',
-      label: 'Email is required',
+      id: "email-required",
+      label: "Email is required",
       validator: (value: string) => value.length > 0,
     },
     {
-      id: 'email-format',
-      label: 'Must be a valid email address',
+      id: "email-format",
+      label: "Must be a valid email address",
       validator: (value: string) => {
         if (value.length === 0) return true; // Don't validate empty
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,39 +74,39 @@ export const validationRules = {
   ],
   password: [
     {
-      id: 'password-required',
-      label: 'Password is required',
+      id: "password-required",
+      label: "Password is required",
       validator: (value: string) => value.length > 0,
     },
     {
-      id: 'password-length',
-      label: 'Must be at least 6 characters',
+      id: "password-length",
+      label: "Must be at least 6 characters",
       validator: (value: string) => value.length >= 6,
     },
   ],
   fullName: [
     {
-      id: 'fullname-required',
-      label: 'Full name is required',
+      id: "fullname-required",
+      label: "Full name is required",
       validator: (value: string) => value.length > 0,
     },
   ],
   providerName: [
     {
-      id: 'name-required',
-      label: 'Provider name is required',
+      id: "name-required",
+      label: "Provider name is required",
       validator: (value: string) => value.length > 0,
     },
   ],
   providerIP: [
     {
-      id: 'ip-required',
-      label: 'IP address is required',
+      id: "ip-required",
+      label: "IP address is required",
       validator: (value: string) => value.length > 0,
     },
     {
-      id: 'ip-format',
-      label: 'Must be a valid IP address or hostname',
+      id: "ip-format",
+      label: "Must be a valid IP address or hostname",
       validator: (value: string) => {
         if (value.length === 0) return true; // Don't validate empty
         return isValidHostnameOrIP(value);
@@ -112,15 +115,15 @@ export const validationRules = {
   ],
   username: [
     {
-      id: 'username-required',
-      label: 'Username is required',
+      id: "username-required",
+      label: "Username is required",
       validator: (value: string) => value.length > 0,
     },
   ],
   SSHPort: [
     {
-      id: 'port-range',
-      label: 'Port must be between 1 and 65535',
+      id: "port-range",
+      label: "Port must be between 1 and 65535",
       validator: (value: string) => {
         if (value.length === 0) return true; // Don't validate empty
         const port = parseInt(value);
@@ -130,25 +133,25 @@ export const validationRules = {
   ],
   tagName: [
     {
-      id: 'tag-required',
-      label: 'Tag name is required',
+      id: "tag-required",
+      label: "Tag name is required",
       validator: (value: string) => value.length > 0,
     },
     {
-      id: 'tag-length',
-      label: 'Must be less than 50 characters',
+      id: "tag-length",
+      label: "Must be less than 50 characters",
       validator: (value: string) => value.length <= 50,
     },
   ],
   color: [
     {
-      id: 'color-required',
-      label: 'Color is required',
+      id: "color-required",
+      label: "Color is required",
       validator: (value: string) => value.length > 0,
     },
     {
-      id: 'color-format',
-      label: 'Must be a valid hex color (e.g., #FF0000)',
+      id: "color-format",
+      label: "Must be a valid hex color (e.g., #FF0000)",
       validator: (value: string) => {
         if (value.length === 0) return true; // Don't validate empty
         const hexRegex = /^#[0-9A-F]{6}$/i;
@@ -156,4 +159,4 @@ export const validationRules = {
       },
     },
   ],
-}; 
+};

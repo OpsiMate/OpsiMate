@@ -14,12 +14,12 @@ export function TagBadge({ tag, onRemove, className }: TagBadgeProps) {
     <Badge
       className={cn(
         "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium",
-        className
+        className,
       )}
       style={{
         backgroundColor: tag.color,
         color: getContrastColor(tag.color),
-        border: `1px solid ${tag.color}`
+        border: `1px solid ${tag.color}`,
       }}
     >
       <span>{tag.name}</span>
@@ -41,16 +41,16 @@ export function TagBadge({ tag, onRemove, className }: TagBadgeProps) {
 // Helper function to determine text color based on background color
 function getContrastColor(hexColor: string): string {
   // Remove the # if present
-  const hex = hexColor.replace('#', '');
-  
+  const hex = hexColor.replace("#", "");
+
   // Convert to RGB
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
-  
+
   // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  
+
   // Return black or white based on luminance
-  return luminance > 0.5 ? '#000000' : '#ffffff';
-} 
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+}

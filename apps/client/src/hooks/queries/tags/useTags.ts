@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { providerApi } from '@/lib/api';
-import { queryKeys } from '../queryKeys';
+import { useQuery } from "@tanstack/react-query";
+import { providerApi } from "@/lib/api";
+import { queryKeys } from "../queryKeys";
 
 export const useTags = () => {
   return useQuery({
@@ -8,9 +8,9 @@ export const useTags = () => {
     queryFn: async () => {
       const response = await providerApi.getAllTags();
       if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch tags');
+        throw new Error(response.error || "Failed to fetch tags");
       }
       return response.data || [];
     },
   });
-}; 
+};

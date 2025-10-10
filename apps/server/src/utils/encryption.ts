@@ -1,89 +1,96 @@
-import * as crypto from 'crypto';
-import {Logger} from "@OpsiMate/shared";
+import * as crypto from "crypto";
+import { Logger } from "@OpsiMate/shared";
 
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16; // For GCM, this is always 16
 const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 
-const logger = new Logger('encryption-');
+const logger = new Logger("encryption-");
 
 /**
  * Get encryption key from environment variable or use default
  */
 function getEncryptionKey(): string {
-    return process.env.ENCRYPTION_KEY || 'test-key-should-be-changed';
+  return process.env.ENCRYPTION_KEY || "test-key-should-be-changed";
 }
 
 /**
  * Derive a key from the master key using PBKDF2
  */
 function deriveKey(masterKey: string, salt: Buffer): Buffer {
-    return crypto.pbkdf2Sync(masterKey, salt, 100000, KEY_LENGTH, 'sha512');
+  return crypto.pbkdf2Sync(masterKey, salt, 100000, KEY_LENGTH, "sha512");
 }
 
 /**
  * Encrypt a password string
  */
-export function encryptPassword(password: string | undefined): string | undefined {
-    if (!password) {
-        return password;
-    }
+export function encryptPassword(
+  password: string | undefined,
+): string | undefined {
+  if (!password) {
+    return password;
+  }
 
-    const masterKey = getEncryptionKey();
-    const salt = crypto.randomBytes(SALT_LENGTH);
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const key = deriveKey(masterKey, salt);
+  const masterKey = getEncryptionKey();
+  const salt = crypto.randomBytes(SALT_LENGTH);
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const key = deriveKey(masterKey, salt);
 
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    
-    let encrypted = cipher.update(password, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    
-    const authTag = cipher.getAuthTag();
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-    // Combine salt + iv + authTag + encrypted data
-    const combined = Buffer.concat([
-        salt,
-        iv,
-        authTag,
-        Buffer.from(encrypted, 'hex')
-    ]);
+  let encrypted = cipher.update(password, "utf8", "hex");
+  encrypted += cipher.final("hex");
 
-    return combined.toString('base64');
+  const authTag = cipher.getAuthTag();
+
+  // Combine salt + iv + authTag + encrypted data
+  const combined = Buffer.concat([
+    salt,
+    iv,
+    authTag,
+    Buffer.from(encrypted, "hex"),
+  ]);
+
+  return combined.toString("base64");
 }
 
 /**
  * Decrypt a password string
  */
-export function decryptPassword(encryptedPassword: string | undefined): string | undefined {
-    if (!encryptedPassword) {
-        return encryptedPassword;
-    }
+export function decryptPassword(
+  encryptedPassword: string | undefined,
+): string | undefined {
+  if (!encryptedPassword) {
+    return encryptedPassword;
+  }
 
-    try {
-        const masterKey = getEncryptionKey();
-        const combined = Buffer.from(encryptedPassword, 'base64');
+  try {
+    const masterKey = getEncryptionKey();
+    const combined = Buffer.from(encryptedPassword, "base64");
 
-        // Extract components
-        const salt = combined.subarray(0, SALT_LENGTH);
-        const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-        const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
-        const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+    // Extract components
+    const salt = combined.subarray(0, SALT_LENGTH);
+    const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+    const authTag = combined.subarray(
+      SALT_LENGTH + IV_LENGTH,
+      SALT_LENGTH + IV_LENGTH + TAG_LENGTH,
+    );
+    const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
 
-        const key = deriveKey(masterKey, salt);
+    const key = deriveKey(masterKey, salt);
 
-        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-        decipher.setAuthTag(authTag);
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
 
-        let decrypted = decipher.update(encrypted, undefined, 'utf8');
-        decrypted += decipher.final('utf8');
+    let decrypted = decipher.update(encrypted, undefined, "utf8");
+    decrypted += decipher.final("utf8");
 
-        return decrypted;
-    } catch (error) {
-        logger.error('Failed to decrypt password:', error);
-        // Return the original value if decryption fails (for backward compatibility)
-        return encryptedPassword;
-    }
+    return decrypted;
+  } catch (error) {
+    logger.error("Failed to decrypt password:", error);
+    // Return the original value if decryption fails (for backward compatibility)
+    return encryptedPassword;
+  }
 }

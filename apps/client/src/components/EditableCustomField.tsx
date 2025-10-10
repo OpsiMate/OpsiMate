@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Input } from './ui/input';
-import { Edit, Check, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useRef, useEffect } from "react";
+import { Input } from "./ui/input";
+import { Edit, Check, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface EditableCustomFieldProps {
   fieldId: number;
@@ -19,10 +19,10 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
   value,
   serviceId,
   onValueChange,
-  className
+  className,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value || '');
+  const [editValue, setEditValue] = useState(value || "");
   const [isHovered, setIsHovered] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +36,7 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
   }, [isEditing]);
 
   const handleEdit = () => {
-    setEditValue(value || '');
+    setEditValue(value || "");
     setIsEditing(true);
   };
 
@@ -66,19 +66,19 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
   };
 
   const handleCancel = () => {
-    setEditValue(value || '');
+    setEditValue(value || "");
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSave();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancel();
     }
   };
 
-  const displayValue = value || '-';
+  const displayValue = value || "-";
 
   return (
     <div
@@ -112,7 +112,9 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
             </button>
           )}
           {isSaving && (
-            <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">Saving...</div>
+            <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+              Saving...
+            </div>
           )}
         </div>
       )}

@@ -22,7 +22,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SavedView } from "@/types/SavedView";
 import { Filters } from "@/components/Dashboard";
-import { BookmarkPlus, Check, ChevronDown, Edit, Search, Trash, X } from "lucide-react";
+import {
+  BookmarkPlus,
+  Check,
+  ChevronDown,
+  Edit,
+  Search,
+  Trash,
+  X,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SavedViewsManagerProps {
@@ -54,14 +62,17 @@ export function SavedViewsManager({
   const [searchQuery, setSearchQuery] = useState("");
 
   const hasActiveFilters = useMemo(() => {
-    return Object.values(currentFilters).some(filterValues => 
-      Array.isArray(filterValues) && filterValues.length > 0
-    ) || currentSearchTerm.trim() !== '';
+    return (
+      Object.values(currentFilters).some(
+        (filterValues) =>
+          Array.isArray(filterValues) && filterValues.length > 0,
+      ) || currentSearchTerm.trim() !== ""
+    );
   }, [currentFilters, currentSearchTerm]);
 
   const displayViewName = useMemo(() => {
     if (activeViewId) {
-      const view = savedViews.find(v => v.id === activeViewId);
+      const view = savedViews.find((v) => v.id === activeViewId);
       return view?.name || "Current View";
     }
     if (hasActiveFilters) {
@@ -69,14 +80,15 @@ export function SavedViewsManager({
     }
     return "All Services";
   }, [activeViewId, savedViews, hasActiveFilters]);
-  
+
   const filteredViews = useMemo(() => {
     if (!searchQuery.trim()) return savedViews;
-    
+
     const query = searchQuery.toLowerCase();
-    return savedViews.filter(view => 
-      view.name.toLowerCase().includes(query) || 
-      (view.description && view.description.toLowerCase().includes(query))
+    return savedViews.filter(
+      (view) =>
+        view.name.toLowerCase().includes(query) ||
+        (view.description && view.description.toLowerCase().includes(query)),
     );
   }, [savedViews, searchQuery]);
 
@@ -196,7 +208,9 @@ export function SavedViewsManager({
             <DropdownMenuSeparator />
             {filteredViews.length === 0 ? (
               <DropdownMenuItem disabled>
-                {savedViews.length === 0 ? "No saved views" : "No matching views"}
+                {savedViews.length === 0
+                  ? "No saved views"
+                  : "No matching views"}
               </DropdownMenuItem>
             ) : (
               filteredViews.map((view) => (
@@ -264,9 +278,12 @@ export function SavedViewsManager({
 
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editingViewId ? "Edit View" : "Save Current View"}</DialogTitle>
+            <DialogTitle>
+              {editingViewId ? "Edit View" : "Save Current View"}
+            </DialogTitle>
             <DialogDescription>
-              Save your current filters, column selections, and search term for quick access later.
+              Save your current filters, column selections, and search term for
+              quick access later.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

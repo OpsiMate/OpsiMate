@@ -25,7 +25,7 @@ export function FileDropzone({
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
     if (multiple) {
-      files.forEach(file => onFile(file));
+      files.forEach((file) => onFile(file));
     } else {
       const file = files[0];
       if (file) onFile(file);
@@ -35,7 +35,7 @@ export function FileDropzone({
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (multiple) {
-      files.forEach(file => onFile(file));
+      files.forEach((file) => onFile(file));
     } else {
       const file = files[0];
       if (file) onFile(file);
@@ -48,10 +48,17 @@ export function FileDropzone({
       onDrop={onDrop}
       className={cn(
         "relative group flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 py-12 text-center hover:bg-accent",
-        className
+        className,
       )}
     >
-      <input id={id} type="file" accept={accept} multiple={multiple} onChange={onSelect} className="hidden" />
+      <input
+        id={id}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        onChange={onSelect}
+        className="hidden"
+      />
       <Label
         htmlFor={id}
         className="absolute inset-0 flex items-center justify-center cursor-pointer transition-colors group-hover:text-white"
@@ -61,5 +68,3 @@ export function FileDropzone({
     </div>
   );
 }
-
-

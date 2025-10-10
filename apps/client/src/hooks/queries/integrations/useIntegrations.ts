@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { integrationApi } from '@/lib/api';
-import { queryKeys } from '../queryKeys';
+import { useQuery } from "@tanstack/react-query";
+import { integrationApi } from "@/lib/api";
+import { queryKeys } from "../queryKeys";
 
 export const useIntegrations = () => {
   return useQuery({
@@ -8,9 +8,9 @@ export const useIntegrations = () => {
     queryFn: async () => {
       const response = await integrationApi.getIntegrations();
       if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch integrations');
+        throw new Error(response.error || "Failed to fetch integrations");
       }
       return response.data?.integrations || [];
     },
   });
-}; 
+};

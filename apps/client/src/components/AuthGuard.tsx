@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useUsersExist } from '@/hooks/queries';
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useUsersExist } from "@/hooks/queries";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -13,10 +13,10 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
   useEffect(() => {
     // Check if user is already authenticated
-    const jwt = localStorage.getItem('jwt');
-    const isOnRegisterPage = location.pathname === '/register';
-    const isOnLoginPage = location.pathname === '/login';
-    
+    const jwt = localStorage.getItem("jwt");
+    const isOnRegisterPage = location.pathname === "/register";
+    const isOnLoginPage = location.pathname === "/login";
+
     if (isLoading) {
       // Still loading, don't redirect yet
       return;
@@ -24,9 +24,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
     if (error) {
       // If there's an error checking users, default to login page
-      console.error('Error checking if users exist:', error);
+      console.error("Error checking if users exist:", error);
       if (!jwt && !isOnLoginPage) {
-        navigate('/login');
+        navigate("/login");
       }
       return;
     }
@@ -35,7 +35,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     if (!usersExist && !jwt) {
       // Only redirect to register if not already on register page
       if (!isOnRegisterPage) {
-        navigate('/register');
+        navigate("/register");
       }
       return;
     }
@@ -44,14 +44,14 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     if (usersExist && !jwt) {
       // Only redirect to login if not already on login page
       if (!isOnLoginPage) {
-        navigate('/login');
+        navigate("/login");
       }
       return;
     }
 
     // If user is authenticated and trying to access register/login pages, redirect to dashboard
     if (jwt && (isOnRegisterPage || isOnLoginPage)) {
-      navigate('/');
+      navigate("/");
       return;
     }
 
@@ -72,7 +72,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   // If there's an error and no JWT, show error state
-  if (error && !localStorage.getItem('jwt')) {
+  if (error && !localStorage.getItem("jwt")) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg text-red-500">Error loading application</div>
@@ -81,4 +81,4 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   return <>{children}</>;
-}; 
+};
