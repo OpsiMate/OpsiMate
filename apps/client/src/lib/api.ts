@@ -4,11 +4,11 @@ import { SavedView } from '@/types/SavedView';
 const { protocol, hostname } = window.location;
 
 export const API_BASE_URL = `${protocol}//${hostname}:3001/api/v1`;
-export type ApiResponse<T = any> = {
+export type ApiResponse<T = unknown> = {
   success: boolean;
   data?: T;
   error?: string;
-  [key: string]: any; // Allow extra properties like token
+  [key: string]: unknown; // Allow extra properties like token
 };
 
 /**
@@ -132,11 +132,11 @@ export const providerApi = {
   // Get all providers
   getProviders: async () => {
     try {
-      const response = await apiRequest<{providers: any[]}>('/providers');
+      const response = await apiRequest<{providers: Array<{ id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; providerType: string }>}>('/providers');
 
       // The server already returns camelCase, so no transformation needed
       if (response.success && response.data && response.data.providers) {
-        const transformedProviders = response.data.providers.map((provider: any) => ({
+        const transformedProviders = response.data.providers.map((provider: { id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; providerType: string }) => ({
           id: provider.id,
           name: provider.name,
           providerIP: provider.providerIP,
@@ -203,14 +203,14 @@ export const providerApi = {
 
   // Add services in bulk
   addServicesBulk: (providerId: number, serviceNames: string[]) => {
-    return apiRequest<any[]>(`/providers/${providerId}/instance/bulk`, 'POST', {
+    return apiRequest<Array<{ id: string; name: string }>>(`/providers/${providerId}/instance/bulk`, 'POST', {
       service_names: serviceNames,
     });
   },
 
   // Get services for a provider
   getProviderServices: (providerId: number) => {
-    return apiRequest<any[]>(`/providers/${providerId}/services`);
+    return apiRequest<Array<{ id: string; name: string; serviceIP: string; serviceStatus: string; serviceType: string }>>(`/providers/${providerId}/services`);
   },
 
   // Delete a provider
@@ -398,7 +398,7 @@ export const integrationApi = {
     name: string;
     type: IntegrationType;
     externalUrl: string;
-    credentials: Record<string, any>;
+    credentials: Record<string, string>;
   }) => {
     try {
       const response = await apiRequest<Integration>('/integrations', 'POST', integrationData);
@@ -417,7 +417,7 @@ export const integrationApi = {
     name: string;
     type: IntegrationType;
     externalUrl: string;
-    credentials: Record<string, any>;
+    credentials: Record<string, string>;
   }) => {
     try {
       const response = await apiRequest<Integration>(`/integrations/${integrationId}`, 'PUT', integrationData);
@@ -528,7 +528,7 @@ export const secretsApi = {
   // Get all secrets
   getSecrets: async () => {
     try {
-      const response = await apiRequest<{ secrets: any[] }>('/secrets');
+      const response = await apiRequest<{ secrets: Array<{ id: string; name: string; value: string }> }>('/secrets');
       return response;
     } catch (error) {
       console.error('Error getting secrets:', error);

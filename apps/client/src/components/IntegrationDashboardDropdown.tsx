@@ -56,7 +56,7 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 
   // Find the specific integration from cached data
   const integration = useMemo(() => {
-    return integrations.find((integration: any) => integration.type === integrationType);
+    return integrations.find((integration: { type: string; id: string; externalUrl?: string }) => integration.type === integrationType);
   }, [integrations, integrationType]);
 
   const integrationId = integration?.id;

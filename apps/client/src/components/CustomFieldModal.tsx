@@ -67,10 +67,10 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
         });
       }
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error?.message || `Failed to ${isEditing ? 'update' : 'create'} custom field`,
+        description: (error as Error)?.message || `Failed to ${isEditing ? 'update' : 'create'} custom field`,
         variant: "destructive",
       });
     } finally {
