@@ -9,8 +9,6 @@ import fs from "fs";
 import {encryptPassword} from "../../../utils/encryption";
 import { isZodError } from "../../../utils/isZodError";
 import { validateKubeConfig, validatePublicSSHKey } from "../../../utils/validators/validators";
-import { success } from "zod/v4";
-import { error } from "console";
 
 const logger = new Logger("v1/integrations/controller");
 

@@ -46,7 +46,6 @@ import {AuditLog} from "@OpsiMate/shared";
 import {useToast} from "@/hooks/use-toast";
 import {Settings as SettingsIcon} from "lucide-react";
 import {CustomFieldsTable} from "../components/CustomFieldsTable";
-import { set } from 'zod';
 const PAGE_SIZE = 20;
 
 const Settings: React.FC = () => {
