@@ -800,22 +800,8 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
     const {toast} = useToast();
 
     const handleFile = async (file: File) => {
-        const sshFormats=['pem',"ppk","pub"]
-        const kubeConfigs=['yaml','yml']
-        const fileExtension = file.name.split('.').pop().toLowerCase();
-        if(secretType==="ssh" && sshFormats.includes(fileExtension) ){
-            setIsFileValid(true);
-            setSelectedFile(file);
-            setFileName(file.name);
-            return
-        }else if(secretType==="kubeconfig" && kubeConfigs.includes(fileExtension)){
-            setIsFileValid(true);
-            setSelectedFile(file);
-            setFileName(file.name);
-            return 
-        }
-        setIsFileValid(false)
-        setSelectedFile(null)
+        setIsFileValid(true)
+        setSelectedFile(file)
         setFileName(file.name)
     };
 
@@ -909,7 +895,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
                     </div>
                     <FileDropzone
                         id="secret-upload"
-                        accept=".pem,.pub,.ppk,.yaml,.yml"
+                        accept="*"
                         loading={uploading}
                         onFile={handleFile}
                         multiple={false}

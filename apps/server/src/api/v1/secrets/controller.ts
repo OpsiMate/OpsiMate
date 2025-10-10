@@ -8,6 +8,9 @@ import {SecretsMetadataBL} from "../../../bl/secrets/secretsMetadata.bl";
 import fs from "fs";
 import {encryptPassword} from "../../../utils/encryption";
 import { isZodError } from "../../../utils/isZodError";
+import { validateKubeConfig, validatePublicSSHKey } from "../../../utils/validators/validators";
+import { success } from "zod/v4";
+import { error } from "console";
 
 const logger = new Logger("v1/integrations/controller");
 
@@ -30,14 +33,28 @@ export class SecretsController {
             // Read the just-saved file
             const filePath = req.file!.path;
             const originalContent = fs.readFileSync(filePath, 'utf-8');
-
+            const {displayName, secretType} = CreateSecretsMetadataSchema.parse(req.body);
+            let isValidFile:boolean=false
+           
+            if(secretType==="ssh"){
+                isValidFile=validatePublicSSHKey(originalContent)
+            }else{
+                isValidFile=validateKubeConfig(originalContent)
+            }
+            if(!isValidFile){
+                return res.status(422).json({
+                    success:false,
+                    error:'Invalid file content',
+                    
+                })
+            }
             // Encrypt it
             const encryptedContent = encryptPassword(originalContent);
 
             // Overwrite file with encrypted content
             fs.writeFileSync(filePath, encryptedContent ?? "");
 
-            const {displayName, secretType} = CreateSecretsMetadataSchema.parse(req.body);
+            
             const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename, secretType);
             return res.status(201).json({success: true, data: {id: createdSecretId}});
         } catch (error) {
@@ -67,7 +84,19 @@ export class SecretsController {
                 // Read the just-saved file
                 const filePath = req.file.path;
                 const originalContent = fs.readFileSync(filePath, 'utf-8');
-
+                let isValidFile:boolean=false
+                if(secretType==="ssh"){
+                isValidFile=validatePublicSSHKey(originalContent)
+            }else{
+                isValidFile=validateKubeConfig(originalContent)
+            }
+            if(!isValidFile){
+                return res.status(422).json({
+                    success:false,
+                    error:'Invalid file content',
+                    
+                })
+            }
                 // Encrypt it
                 const encryptedContent = encryptPassword(originalContent);
 
