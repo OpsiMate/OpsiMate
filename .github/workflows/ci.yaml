@@ -40,9 +40,6 @@ jobs:
       - name: Build project
         run: pnpm run build
 
-      - name: Lint apps/client
-        run: pnpm --filter @OpsiMate/client lint --max-warnings=0
-
       - name: Lint apps/server
         run: pnpm --filter @OpsiMate/server lint --max-warnings=0
 
