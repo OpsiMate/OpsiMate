@@ -8,16 +8,16 @@ export class K8SProviderConnector implements ProviderConnector {
         return [await getK8RLogs(provider, service.name, service.containerDetails?.namespace || 'default')];
     }
 
-    startService(provider: Provider, serviceName: string): Promise<void> {
-        return restartK8RServicePods(provider, serviceName)
+    async startService(provider: Provider, serviceName: string): Promise<void> {
+        await restartK8RServicePods(provider, serviceName);
     }
 
     getServicePods(provider: Provider, service: Service): Promise<DiscoveredPod[]> {
-        return getK8RPods(provider, service);
+        return getK8RPods(provider);
     }
 
-    stopService(provider: Provider, serviceName: string): Promise<void> {
-        return restartK8RServicePods(provider, serviceName)
+    async stopService(provider: Provider, serviceName: string): Promise<void> {
+        await restartK8RServicePods(provider, serviceName);
     }
 
     async discoverServices(provider: Provider): Promise<DiscoveredService[]> {
