@@ -1,0 +1,19 @@
+// This file is crucial for Jest. It extends your base config but forces 
+// all imports/exports to be compiled to CommonJS, which Jest understands 
+// natively, resolving the 'Unexpected token export' error in node_modules.
+{
+  "extends": "./tsconfig.json", // Ensure this points to your project's base tsconfig
+  "compilerOptions": {
+    // CRITICAL: Force CommonJS module system for the Jest environment
+    "module": "CommonJS",
+    "target": "ES2022", 
+    "outDir": "dist-jest",
+    "sourceMap": true, 
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

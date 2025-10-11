@@ -1,5 +1,5 @@
-// Global test setup
-import { Logger } from '@OpsiMate/shared';
+// Global test setup using CommonJS structure to prevent the 'export' SyntaxError
+const { Logger } = require('@OpsiMate/shared');
 
 // Mock the Kubernetes client to avoid ES module issues
 jest.mock('@kubernetes/client-node', () => ({

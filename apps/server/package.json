@@ -32,7 +32,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-env": "^7.28.3",
     "@babel/preset-typescript": "^7.27.1",
     "@types/bcrypt": "^5.0.2",
     "@types/better-sqlite3": "^7.6.13",
