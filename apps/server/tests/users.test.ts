@@ -45,10 +45,7 @@ describe("Users API", () => {
         role: Role.Editor,
       };
 
-      const res = await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send(userData);
+      const res = await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send(userData);
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -61,10 +58,7 @@ describe("Users API", () => {
       });
 
       // Verify user was created in database
-      const userRow = db
-        .prepare("SELECT * FROM users WHERE email = ?")
-        .get("newuser@example.com") as any;
-
+      const userRow = db.prepare("SELECT * FROM users WHERE email = ?").get("newuser@example.com") as any;
       expect(userRow).toBeDefined();
       expect(userRow.full_name).toBe("New User");
       expect(userRow.role).toBe(Role.Editor);
@@ -72,15 +66,12 @@ describe("Users API", () => {
 
     test("should return 403 for non-admin users", async () => {
       // Create an editor user (as admin)
-      await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          email: "editor@example.com",
-          fullName: "Editor User",
-          password: "password123",
-          role: Role.Editor,
-        });
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "editor@example.com",
+        fullName: "Editor User",
+        password: "password123",
+        role: Role.Editor,
+      });
 
       // Login as editor
       const loginRes = await app.post("/api/v1/users/login").send({
@@ -90,15 +81,12 @@ describe("Users API", () => {
       const editorToken = loginRes.body.token;
 
       // Try to create another user as editor
-      const res = await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${editorToken}`)
-        .send({
-          email: "another@example.com",
-          fullName: "Another User",
-          password: "password123",
-          role: Role.Viewer,
-        });
+      const res = await app.post("/api/v1/users").set("Authorization", `Bearer ${editorToken}`).send({
+        email: "another@example.com",
+        fullName: "Another User",
+        password: "password123",
+        role: Role.Viewer,
+      });
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
@@ -111,10 +99,7 @@ describe("Users API", () => {
         // missing fullName, password, role
       };
 
-      const res = await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send(invalidData);
+      const res = await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send(invalidData);
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -130,10 +115,7 @@ describe("Users API", () => {
         role: Role.Viewer,
       };
 
-      const res = await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send(invalidData);
+      const res = await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send(invalidData);
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -149,10 +131,7 @@ describe("Users API", () => {
         role: Role.Viewer,
       };
 
-      const res = await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send(invalidData);
+      const res = await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send(invalidData);
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -162,26 +141,20 @@ describe("Users API", () => {
 
     test("should return 400 for duplicate email", async () => {
       // Create first user
-      await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          email: "duplicate@example.com",
-          fullName: "First User",
-          password: "password123",
-          role: Role.Editor,
-        });
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "duplicate@example.com",
+        fullName: "First User",
+        password: "password123",
+        role: Role.Editor,
+      });
 
       // Try to create second user with same email
-      const res = await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          email: "duplicate@example.com",
-          fullName: "Second User",
-          password: "password123",
-          role: Role.Viewer,
-        });
+      const res = await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "duplicate@example.com",
+        fullName: "Second User",
+        password: "password123",
+        role: Role.Viewer,
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -204,9 +177,7 @@ describe("Users API", () => {
 
   describe("GET /api/v1/users", () => {
     test("should successfully retrieve all users as an admin", async () => {
-      const res = await app
-        .get("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`);
+      const res = await app.get("/api/v1/users").set("Authorization", `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -225,15 +196,12 @@ describe("Users API", () => {
 
     test("should reject access for non-admin user", async () => {
       // Create a viewer user
-      await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          email: "viewer@example.com",
-          fullName: "Viewer User",
-          password: "securepassword",
-          role: Role.Viewer,
-        });
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "viewer@example.com",
+        fullName: "Viewer User",
+        password: "securepassword",
+        role: Role.Viewer,
+      });
 
       // Login as viewer
       const viewerLogin = await app.post("/api/v1/users/login").send({
@@ -243,9 +211,7 @@ describe("Users API", () => {
       const viewerToken = viewerLogin.body.token;
 
       // Attempt to get all users as viewer
-      const res = await app
-        .get("/api/v1/users")
-        .set("Authorization", `Bearer ${viewerToken}`);
+      const res = await app.get("/api/v1/users").set("Authorization", `Bearer ${viewerToken}`);
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
@@ -260,30 +226,22 @@ describe("Users API", () => {
 
     test("should return multiple users correctly", async () => {
       // Create additional users
-      await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          email: "editor@example.com",
-          fullName: "Editor User",
-          password: "securepassword",
-          role: Role.Editor,
-        });
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "editor@example.com",
+        fullName: "Editor User",
+        password: "securepassword",
+        role: Role.Editor,
+      });
 
-      await app
-        .post("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          email: "viewer@example.com",
-          fullName: "Viewer User",
-          password: "securepassword",
-          role: Role.Viewer,
-        });
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "viewer@example.com",
+        fullName: "Viewer User",
+        password: "securepassword",
+        role: Role.Viewer,
+      });
 
       // Get all users
-      const res = await app
-        .get("/api/v1/users")
-        .set("Authorization", `Bearer ${adminToken}`);
+      const res = await app.get("/api/v1/users").set("Authorization", `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -297,6 +255,103 @@ describe("Users API", () => {
         "editor@example.com",
         "viewer@example.com",
       ]);
+    });
+  });
+
+  describe("PATCH /api/v1/users/role", () => {
+    test("should successfully update user role with valid data and admin permissions", async () => {
+      // Create a user to update
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "updateme@example.com",
+        fullName: "Update Me",
+        password: "password123",
+        role: Role.Viewer,
+      });
+
+      // Update the user's role
+      const updateData = {
+        email: "updateme@example.com",
+        newRole: Role.Editor,
+      };
+
+      const res = await app.patch("/api/v1/users/role").set("Authorization", `Bearer ${adminToken}`).send(updateData);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe("User role updated successfully");
+
+      // Verify the role was updated in the database
+      const userRow = db.prepare("SELECT role FROM users WHERE email = ?").get("updateme@example.com") as any;
+      expect(userRow.role).toBe(Role.Editor);
+    });
+
+    test("should return 400 for invalid role values", async () => {
+      const invalidUpdateData = {
+        email: "updateme@example.com",
+        newRole: "invalid-role", // Invalid role value
+      };
+
+      const res = await app.patch("/api/v1/users/role").set("Authorization", `Bearer ${adminToken}`).send(invalidUpdateData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe("Validation error");
+      expect(res.body.details).toBeDefined();
+    });
+
+    test("should return 400 for invalid email format", async () => {
+      const invalidUpdateData = {
+        email: "invalid-email-format",
+        newRole: Role.Editor,
+      };
+
+      const res = await app.patch("/api/v1/users/role").set("Authorization", `Bearer ${adminToken}`).send(invalidUpdateData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe("Validation error");
+      expect(res.body.details).toBeDefined();
+    });
+
+    test("should return 403 for non-admin users", async () => {
+      // Create an editor user
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "editoruser@example.com",
+        fullName: "Editor User",
+        password: "password123",
+        role: Role.Editor,
+      });
+
+      // Login as editor
+      const loginRes = await app.post("/api/v1/users/login").send({
+        email: "editoruser@example.com",
+        password: "password123",
+      });
+      const editorToken = loginRes.body.token;
+
+      // Try to update role as editor
+      const updateData = {
+        email: "updateme@example.com",
+        newRole: Role.Admin,
+      };
+
+      const res = await app.patch("/api/v1/users/role").set("Authorization", `Bearer ${editorToken}`).send(updateData);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe("Forbidden: Admins only");
+    });
+
+    test("should return 401 for unauthenticated requests", async () => {
+      const updateData = {
+        email: "updateme@example.com",
+        newRole: Role.Editor,
+      };
+
+      const res = await app.patch("/api/v1/users/role").send(updateData);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
     });
   });
 });
