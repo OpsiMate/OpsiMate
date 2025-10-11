@@ -30,6 +30,11 @@ export function isEditor(): boolean {
   return user?.role !== 'viewer';
 }
 
+export function  isViewer(): boolean{
+  const user = getCurrentUser();
+  return user?.role ==='viewer';
+}
+
 export function getUserRole(): 'admin' | 'editor' | 'viewer' | null {
   const user = getCurrentUser();
   return user?.role || null;
