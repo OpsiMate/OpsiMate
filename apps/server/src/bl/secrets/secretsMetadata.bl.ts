@@ -1,8 +1,9 @@
-import {Logger, SecretMetadata, SecretType} from "@OpsiMate/shared";
+import {Logger, SecretMetadata, SecretType, AuditActionType, AuditResourceType, User} from "@OpsiMate/shared";
 
 
 import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository";
 import {getSecurityConfig} from "../../config/config";
+import { AuditBL } from '../audit/audit.bl';
 import path from "path";
 
 const logger = new Logger('bl/secrets/secret.bl');
@@ -10,16 +11,26 @@ const logger = new Logger('bl/secrets/secret.bl');
 export class SecretsMetadataBL {
     constructor(
         private secretsMetadataRepository: SecretsMetadataRepository,
+        private auditBL: AuditBL
     ) {
     }
 
-    async createSecretMetadata(displayName: string, newName: string, secretType: SecretType = SecretType.SSH): Promise<number> {
+    async createSecretMetadata(displayName: string, newName: string, secretType: SecretType = SecretType.SSH, user?: User): Promise<number> {
         try {
             logger.info(`Creating Secret named ${displayName} in ${newName}`)
             const createdSecret = await this.secretsMetadataRepository.createSecret({name: displayName, fileName: newName, type: secretType})
 
             logger.info(`Successfully created secret named ${displayName} in ${newName} in ${createdSecret.lastID}`)
 
+            await this.auditBL.logAction({
+                actionType: AuditActionType.CREATE,
+                resourceType: AuditResourceType.SECRET,
+                resourceId: createdSecret.lastID.toString(),
+                resourceName: displayName,
+                userId: user?.id ?? -1,
+                userName: user?.fullName ?? 'system',
+                details: `Secret created; filename=${newName}; type=${secretType}`
+            });
             return createdSecret.lastID
         } catch (e) {
             logger.error("Error occurred creating Secret", e);
@@ -43,7 +54,7 @@ export class SecretsMetadataBL {
         }
     }
 
-    async updateSecretMetadata(id: number, displayName?: string, newFileName?: string, secretType?: SecretType): Promise<boolean> {
+    async updateSecretMetadata(id: number, displayName?: string, newFileName?: string, secretType?: SecretType, user?: User): Promise<boolean> {
         try {
             logger.info(`Updating secret with id ${id}`);
             
@@ -94,6 +105,16 @@ export class SecretsMetadataBL {
                 }
             }
 
+            await this.auditBL.logAction({
+                actionType: AuditActionType.UPDATE,
+                resourceType: AuditResourceType.SECRET,
+                resourceId: id.toString(),
+                resourceName: displayName ?? existingSecret.name,
+                userId: user?.id ?? -1,
+                userName: user?.fullName ?? 'system',
+                details: `Secret updated; ${displayName !== undefined ? 'displayName_updated; ' : ''}${newFileName !== undefined ? 'fileName_updated; ' : ''}${secretType !== undefined ? `type=${secretType};` : ''}`
+            });
+
             logger.info(`Successfully updated secret with id ${id}`);
             return true;
         } catch (e) {
@@ -102,7 +123,7 @@ export class SecretsMetadataBL {
         }
     }
 
-    async deleteSecret(id: number): Promise<boolean> {
+    async deleteSecret(id: number, user?: User): Promise<boolean> {
         try {
             logger.info(`Deleting secret with id ${id}`);
             
@@ -138,6 +159,16 @@ export class SecretsMetadataBL {
                 logger.error(`Error deleting secret file: ${secretToDelete.fileName}`, fileError);
                 // Don't throw here - the database record is already deleted
             }
+
+            await this.auditBL.logAction({
+                actionType: AuditActionType.DELETE,
+                resourceType: AuditResourceType.SECRET,
+                resourceId: id.toString(),
+                resourceName: secretToDelete.name,
+                userId: user?.id ?? -1,
+                userName: user?.fullName ?? 'system',
+                details: `Secret deleted; filename=${secretToDelete.fileName}; type=${secretToDelete.type}`
+            });
 
             logger.info(`Successfully deleted secret with id ${id}`);
             return true;
