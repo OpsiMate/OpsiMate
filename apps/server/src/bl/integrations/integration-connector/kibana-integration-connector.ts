@@ -1,6 +1,6 @@
 import { Integration, IntegrationUrls, Logger } from "@OpsiMate/shared";
-import { IntegrationConnector } from "./integration-connector";
-import {DashboardResult, KibanaClient} from "../../../dal/external-client/kibana-client";
+import { IntegrationConnector } from "./integration-connector.js";
+import {DashboardResult, KibanaClient} from "../../../dal/external-client/kibana-client.js";
 
 
 export class KibanaIntegrationConnector implements IntegrationConnector {

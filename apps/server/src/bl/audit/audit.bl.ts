@@ -1,4 +1,4 @@
-import { AuditLogRepository } from '../../dal/auditLogRepository';
+import { AuditLogRepository } from '../../dal/auditLogRepository.js';
 import { AuditLog } from '@OpsiMate/shared';
 
 export class AuditBL {
