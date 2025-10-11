@@ -1,8 +1,6 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { ArrowUp } from "lucide-react";
-
-
 
 const SCROLL_DURATION = 480; // ms
 
@@ -12,91 +10,59 @@ function easeOutCubic(t: number) {
 
 function animateScroll(element: HTMLElement | Window, to = 0, duration = SCROLL_DURATION) {
   const isWindow = element === window;
-  const start = isWindow ? window.scrollY || window.pageYOffset || 0 : (element as HTMLElement).scrollTop;
+  const start = isWindow ? window.scrollY : (element as HTMLElement).scrollTop;
   const change = start - to;
   if (change <= 0) return;
-
   const startTime = performance.now();
-
   function step(now: number) {
     const elapsed = Math.min(1, (now - startTime) / duration);
     const t = easeOutCubic(elapsed);
     const current = Math.round(start - change * t);
-    if (isWindow) {
-      window.scrollTo(0, current);
-    } else {
-      (element as HTMLElement).scrollTop = current;
-    }
-
+    if (isWindow) window.scrollTo(0, current);
+    else (element as HTMLElement).scrollTop = current;
     if (elapsed < 1) requestAnimationFrame(step);
   }
-
   requestAnimationFrame(step);
 }
 
 function tryNativeSmoothScroll(el: HTMLElement | Window) {
   try {
-    if (el === window) {
-      window.scrollTo({ top: 0, behavior: "smooth" as ScrollBehavior });
-    } else {
-      (el as HTMLElement).scrollTo({ top: 0, behavior: "smooth" as ScrollBehavior });
-    }
+    el.scrollTo({ top: 0, behavior: "smooth" as ScrollBehavior });
     return true;
   } catch {
     return false;
   }
 }
 
+// A slightly optimization in find function
 function findScrollableElements(): Array<HTMLElement | Window> {
   const results: Array<HTMLElement | Window> = [];
+  if (typeof document === "undefined") return [window];
 
-  if (typeof document !== "undefined") {
-    if (document.scrollingElement) results.push(document.scrollingElement as HTMLElement);
-    else results.push(window);
-  } else {
-    results.push(window);
-  }
+  results.push(window);
 
   const all = Array.from(document.querySelectorAll<HTMLElement>("*"));
   for (const el of all) {
     const style = window.getComputedStyle(el);
     const overflowY = style.overflowY;
-    if ((overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay" || overflowY === "visible") 
-        && el.scrollHeight > el.clientHeight + 1) {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        results.push(el);
-      }
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      el.scrollHeight > el.clientHeight
+    ) {
+      results.push(el);
     }
   }
-
-  const uniq = Array.from(new Set(results)).sort((a, b) => {
-    const depth = (node: HTMLElement | Window) => {
-      let d = 0;
-      while (node && (node as HTMLElement).parentElement) {
-        d++;
-        node = (node as HTMLElement).parentElement as HTMLElement;
-      }
-      return d;
-    };
-    if (a === window) return 1;
-    if (b === window) return -1;
-    return depth(b) - depth(a);
-  });
-
-  return uniq;
+  return Array.from(new Set(results));
 }
 
 function scrollAllToTop() {
   const containers = findScrollableElements();
   for (const c of containers) {
-    const pos = c === window ? (window.scrollY || window.pageYOffset || 0) : (c as HTMLElement).scrollTop;
+    const pos = c === window ? c.scrollY : (c as HTMLElement).scrollTop;
     if (pos <= 0) continue;
 
     const usedNative = tryNativeSmoothScroll(c);
-    if (!usedNative) {
-      animateScroll(c, 0, SCROLL_DURATION);
-    }
+    if (!usedNative) animateScroll(c);
   }
 }
 
@@ -104,7 +70,44 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({
   right = "22px",
   bottom = "22px",
 }) => {
-  if (typeof document === "undefined") return null;
+  const [isVisible, setIsVisible] = useState(false);
+  // Use a ref to keep track of the main scroll container
+  const scrollContainerRef = useRef<HTMLElement | Window | null>(null);
+
+  useEffect(() => {
+    // Find the most likely primary scroll container on mount.
+    // This could be a specific element or the window itself.
+    const primaryContainer = document.querySelector<HTMLElement>('main') || document.body.parentElement || window;
+    scrollContainerRef.current = primaryContainer;
+    
+    const handleScroll = () => {
+      if (!scrollContainerRef.current) return;
+      
+      const container = scrollContainerRef.current;
+      // Check scroll position for both window and HTML elements
+      const scrollTop = (container as Window).scrollY ?? (container as HTMLElement).scrollTop;
+      
+      setIsVisible(scrollTop > 100);
+    };
+
+    // Initial check
+    handleScroll();
+
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll, { passive: true });
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  if (typeof document === "undefined" || !isVisible) {
+    return null;
+  }
 
   const button = (
     <button
@@ -114,13 +117,13 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({
         e.preventDefault();
         scrollAllToTop();
       }}
-      
+
       style={{
         right,
         bottom,
         WebkitTapHighlightColor: "transparent",
       }}
-className="fixed z-[999999] p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-transform transform hover:scale-105 active:scale-95 bg-slate-800/80 text-white"
+      className="fixed z-[999999] p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all duration-200 transform hover:scale-105 active:scale-95 bg-slate-800/80 text-white"
     >
       <ArrowUp size={18} />
     </button>

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { CustomFieldsController } from './controller';
+import { CustomFieldsController } from './controller.js';
 
 export default function createCustomFieldsRouter(customFieldsController: CustomFieldsController) {
     const router = PromiseRouter();
