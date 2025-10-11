@@ -18,6 +18,22 @@ export interface OpsimateConfig {
     vm: {
         try_with_sudo: boolean;
     };
+    mailer?: {
+        enabled: boolean;
+        default_encoding?: string;        
+        host?: string;                    
+        port?: number;                    
+        secure?: boolean;                 
+        from?: string;                    
+        replyTo?: string;                 
+        auth?: {
+            user: string;
+            pass: string;
+        };
+        tls?: {
+            rejectUnauthorized: boolean;
+        };
+    };
 }
 
 let cachedConfig: OpsimateConfig | null = null;
@@ -53,6 +69,11 @@ export function loadConfig(): OpsimateConfig {
         };
     }
 
+    // Set default mailer config if not provided
+    if (!config.mailer) {
+        config.mailer = { enabled: false };
+    }
+
     cachedConfig = config;
     logger.info(`Configuration loaded from ${configPath}`);
     return config;
@@ -72,6 +93,9 @@ function getDefaultConfig(): OpsimateConfig {
         },
         vm: {
             try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false'
+        },
+        mailer: {
+            enabled: false,
         }
     };
 }
@@ -91,4 +115,8 @@ export function getSecurityConfig() {
 
 export function getVmConfig() {
     return loadConfig().vm;
+}
+
+export function getMailerConfig() {
+  return loadConfig().mailer;
 }
