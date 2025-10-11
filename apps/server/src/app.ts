@@ -87,7 +87,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
-    const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo);
+    const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
     const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
 
     // Controllers

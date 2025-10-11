@@ -4,6 +4,7 @@ import {
     UpdateSecretsMetadataSchema,
     Logger
 } from "@OpsiMate/shared";
+import { AuthenticatedRequest } from '../../../middleware/auth';
 import {SecretsMetadataBL} from "../../../bl/secrets/secretsMetadata.bl";
 import fs from "fs";
 import {encryptPassword} from "../../../utils/encryption";
@@ -25,7 +26,7 @@ export class SecretsController {
         }
     };
 
-    createSecret = async (req: Request, res: Response) => {
+    createSecret = async (req: AuthenticatedRequest, res: Response) => {
         try {
             // Read the just-saved file
             const filePath = req.file!.path;
@@ -38,7 +39,7 @@ export class SecretsController {
             fs.writeFileSync(filePath, encryptedContent ?? "");
 
             const {displayName, secretType} = CreateSecretsMetadataSchema.parse(req.body);
-            const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename, secretType);
+            const createdSecretId: number = await this.secretsBL.createSecretMetadata(displayName, req.file!.filename, secretType, req.user);
             return res.status(201).json({success: true, data: {id: createdSecretId}});
         } catch (error) {
             if (isZodError(error)) {
@@ -50,7 +51,7 @@ export class SecretsController {
         }
     };
 
-    updateSecret = async (req: Request, res: Response) => {
+    updateSecret = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const secretId = parseInt(req.params.id);
             if (isNaN(secretId)) {
@@ -81,7 +82,8 @@ export class SecretsController {
                 secretId, 
                 displayName, 
                 newFileName, 
-                secretType
+                secretType,
+                req.user
             );
             
             if (updated) {
@@ -99,14 +101,14 @@ export class SecretsController {
         }
     };
 
-    deleteSecret = async (req: Request, res: Response) => {
+    deleteSecret = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const secretId = parseInt(req.params.id);
             if (isNaN(secretId)) {
                 return res.status(400).json({success: false, error: 'Invalid secret ID'});
             }
 
-            const deleted = await this.secretsBL.deleteSecret(secretId);
+            const deleted = await this.secretsBL.deleteSecret(secretId, req.user);
             if (deleted) {
                 return res.json({success: true, message: 'Secret deleted successfully'});
             } else {
