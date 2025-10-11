@@ -21,7 +21,8 @@ import {
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthGuard } from "./components/AuthGuard";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
-
+import { isViewer } from "./lib/auth";
+import { Navigate } from "react-router-dom";
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
@@ -39,7 +40,7 @@ const App: React.FC = () => {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/tv-mode" element={<TVMode />} />
                 <Route path="/providers" element={<Providers />} />
-                <Route path="/my-providers" element={<MyProviders />} />
+                <Route path="/my-providers" element={isViewer() ? <Navigate to="/" replace /> : <MyProviders />} />
                 <Route path="/integrations" element={<Integrations />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/profile" element={<Profile />} />
