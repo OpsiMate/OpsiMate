@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -38,11 +40,18 @@ jobs:
       - name: Build project
         run: pnpm run build
 
+      - name: Lint apps/client
+        run: pnpm --filter @OpsiMate/client lint --max-warnings=22
+
       - name: Lint apps/server
         run: pnpm --filter @OpsiMate/server lint --max-warnings=0
 
       - name: Lint packages/shared
         run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 
-#      - name: Test apps/server
-#        run: pnpm --filter @OpsiMate/server test
+      # TODO: Uncomment this when the server tests are fixed
+      # - name: Test apps/server
+      #   run: pnpm --filter @OpsiMate/server test
+
+      - name: Test apps/client
+        run: pnpm --filter @OpsiMate/client test:run

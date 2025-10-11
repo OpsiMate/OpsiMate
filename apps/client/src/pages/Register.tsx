@@ -19,7 +19,7 @@ const Register: React.FC = () => {
     clearErrors();
     
     try {
-      const res = await apiRequest<{ token: string; data: any; error?: string }>(
+      const res = await apiRequest<{ token: string; data: { user: { id: string; email: string; name: string } }; error?: string }>(
         '/users/register',
         'POST',
         { email, fullName, password }
