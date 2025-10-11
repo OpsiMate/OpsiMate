@@ -1,6 +1,6 @@
-import { IntegrationRepository } from "../../dal/integrationRepository";
+import { IntegrationRepository } from "../../dal/integrationRepository.js";
 import {Integration, IntegrationType, Logger} from "@OpsiMate/shared";
-import {integrationConnectorFactory} from "./integration-connector/integration-connector-factory";
+import {integrationConnectorFactory} from "./integration-connector/integration-connector-factory.js";
 
 const logger = new Logger('bl/integrations/integration.bl');
 

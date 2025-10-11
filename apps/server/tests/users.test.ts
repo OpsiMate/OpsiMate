@@ -1,6 +1,6 @@
 import request, { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app';
+import { createApp } from '../src/app.js';
 import { Role } from '@OpsiMate/shared';
 
 describe('Users API', () => {
