@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { ViewController } from './controller';
+import { ViewController } from './controller.js';
 
 export default function createViewRouter(controller: ViewController) {
     const router = PromiseRouter();

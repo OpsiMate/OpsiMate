@@ -1,4 +1,4 @@
-import { encryptPassword, decryptPassword } from '../src/utils/encryption';
+import { encryptPassword, decryptPassword } from '../src/utils/encryption.js';
 
 describe('Password Encryption', () => {
     test('should encrypt and decrypt password correctly', () => {

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AuditBL } from '../../../bl/audit/audit.bl';
+import { AuditBL } from '../../../bl/audit/audit.bl.js';
 import {Logger} from "@OpsiMate/shared";
 
 const logger = new Logger('api/v1/audit/controller');

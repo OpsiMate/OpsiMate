@@ -1,12 +1,12 @@
 import {DiscoveredService, Provider, Service, Logger, User, ServiceType} from "@OpsiMate/shared";
-import { ProviderNotFound } from "./ProviderNotFound";
-import { providerConnectorFactory } from "./provider-connector/providerConnectorFactory";
-import {ProviderRepository} from "../../dal/providerRepository";
-import {ServiceRepository} from "../../dal/serviceRepository";
-import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository";
-import { AuditBL } from '../audit/audit.bl';
+import { ProviderNotFound } from "./ProviderNotFound.js";
+import { providerConnectorFactory } from "./provider-connector/providerConnectorFactory.js";
+import {ProviderRepository} from "../../dal/providerRepository.js";
+import {ServiceRepository} from "../../dal/serviceRepository.js";
+import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository.js";
+import { AuditBL } from '../audit/audit.bl.js';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
-import { checkSystemServiceStatus } from "../../dal/sshClient";
+import { checkSystemServiceStatus } from "../../dal/sshClient.js";
 
 const logger = new Logger('bl/providers/provider.bl');
 

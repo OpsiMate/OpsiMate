@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { Logger } from '@OpsiMate/shared';
-import { getDatabaseConfig } from '../config/config';
+import { getDatabaseConfig } from '../config/config.js';
 
 const logger = new Logger('dal/db');
 

@@ -1,6 +1,6 @@
-import {ProviderConnector} from "./providerConnector";
+import {ProviderConnector} from "./providerConnector.js";
 import {DiscoveredService, Provider, Service} from "@OpsiMate/shared";
-import {getK8RLogs, getK8SServices, getK8RPods, restartK8RServicePods} from "../../../dal/kubeConnector";
+import {getK8RLogs, getK8SServices, getK8RPods, restartK8RServicePods} from "../../../dal/kubeConnector.js";
 import {DiscoveredPod} from "@OpsiMate/shared";
 
 export class K8SProviderConnector implements ProviderConnector {

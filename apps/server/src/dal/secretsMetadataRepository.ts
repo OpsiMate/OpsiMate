@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import {SecretMetadata} from '@OpsiMate/shared';
-import {runAsync} from "./db";
+import {runAsync} from "./db.js";
 
 export class SecretsMetadataRepository {
     private db: Database.Database;

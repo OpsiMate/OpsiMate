@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
-import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepository';
-import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository';
+import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepository.js';
+import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository.js';
 
 async function testCustomFieldsBasic() {
   console.log('Testing basic custom fields table creation...');

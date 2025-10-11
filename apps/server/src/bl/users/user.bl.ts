@@ -1,4 +1,4 @@
-import { UserRepository } from '../../dal/userRepository';
+import { UserRepository } from '../../dal/userRepository.js';
 import bcrypt from 'bcrypt';
 import { Role, User } from '@OpsiMate/shared';
 

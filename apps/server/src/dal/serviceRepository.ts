@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import {Service, Provider, Tag, Logger, ServiceType, ContainerDetails, ProviderType} from '@OpsiMate/shared';
-import { runAsync } from './db';
-import {ServiceRow, ServiceRowWithProviderRow} from "./models";
+import { runAsync } from './db.js';
+import {ServiceRow, ServiceRowWithProviderRow} from "./models.js";
 
 type ServiceWithProvider = Service & { provider: Provider } & { tags: Tag[] };
 
