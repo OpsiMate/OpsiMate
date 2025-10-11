@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {Button} from '../components/ui/button';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '../components/ui/table';
 import {Badge} from '../components/ui/badge';
@@ -728,7 +728,7 @@ const AuditLogTable: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={actionProps.variant as any} className={actionProps.className}>
+                      <Badge variant={actionProps.variant as "default" | "destructive" | "outline" | "secondary"} className={actionProps.className}>
                         {log.actionType}
                       </Badge>
                     </TableCell>
@@ -774,12 +774,26 @@ const AuditLogTable: React.FC = () => {
   );
 };
 
-const AddSecretButton: React.FC = () => {
+interface AddSecretButtonProps {
+    triggerText?: string;
+    secretType?: 'ssh' | 'kubeconfig';
+    onSecretCreated?: (secretId?: number) => void;
+    children?: React.ReactNode;
+    className?: string;
+}
+
+export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
+    triggerText = "Add Secret",
+    secretType: defaultSecretType = 'ssh',
+    onSecretCreated,
+    children,
+    className
+}) => {
     const [open, setOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState<string>("");
-    const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>('ssh');
+    const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>(defaultSecretType);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
     const {toast} = useToast();
@@ -804,6 +818,11 @@ const AddSecretButton: React.FC = () => {
                     title: "Success",
                     description: "Secret created successfully",
                 });
+
+                if (onSecretCreated) {
+                    onSecretCreated(result.id);
+                }
+                
                 window.dispatchEvent(new Event('secrets-updated'));
                 setOpen(false);
                 resetForm();
@@ -829,7 +848,7 @@ const AddSecretButton: React.FC = () => {
     const resetForm = () => {
         setFileName(null);
         setDisplayName("");
-        setSecretType('ssh');
+        setSecretType(defaultSecretType);
         setSelectedFile(null);
         setIsFileValid(null);
     };
@@ -842,9 +861,12 @@ const AddSecretButton: React.FC = () => {
             }
         }}>
             <DialogTrigger asChild>
-                <Button>
-                    <Plus className="h-4 w-4 mr-2"/> Add Secret
-                </Button>
+                {children || (
+                    <Button className={className}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        {triggerText}
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
@@ -921,6 +943,18 @@ const SslKeysTable: React.FC = () => {
     const [deleting, setDeleting] = useState<number | null>(null);
     const [editingSecret, setEditingSecret] = useState<SecretMetadata | null>(null);
     const {toast} = useToast();
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredSecrets = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return secrets;
+
+        return secrets.filter((secret) => {
+            const nameMatch = secret.name.toLowerCase().includes(query);
+            return nameMatch;
+        });
+        }, [secrets, searchQuery]);
+
 
     const loadSecrets = async () => {
         setLoading(true);
@@ -983,6 +1017,26 @@ const SslKeysTable: React.FC = () => {
 
     return (
         <>
+            <div className="relative w-full md:w-96 mb-4">
+                <Input
+                    placeholder="Search by secret name or provider..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pr-8"  
+                />
+
+                {searchQuery && (
+                    <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Clear search"
+                    >
+                    ×
+                    </button>
+                )}
+            </div>
+
+
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -992,7 +1046,14 @@ const SslKeysTable: React.FC = () => {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {secrets.map(secret => (
+                    {filteredSecrets.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                    No secrets match your search.
+                    </TableCell>
+                </TableRow>
+                ) : (
+                    filteredSecrets.map(secret => (
                         <TableRow key={secret.id}>
                             <TableCell><b>{secret.name}</b></TableCell>
                             <TableCell>
@@ -1048,7 +1109,8 @@ const SslKeysTable: React.FC = () => {
                                 </div>
                             </TableCell>
                         </TableRow>
-                    ))}
+                     ))
+                    )}
                 </TableBody>
             </Table>
             

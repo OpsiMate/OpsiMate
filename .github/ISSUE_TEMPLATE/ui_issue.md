@@ -4,6 +4,7 @@ about: Report an issue related to the user interface
 title: "[UI]"
 labels: UI
 assignees: ''
+
 ---
 
 **Describe the UI issue**

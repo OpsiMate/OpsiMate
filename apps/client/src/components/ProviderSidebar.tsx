@@ -4,7 +4,7 @@ import {Label} from "@/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle} from "@/components/ui/sheet";
 import {Separator} from "@/components/ui/separator";
-import {X, Loader2, CheckCircle2, XCircle} from "lucide-react";
+import {X, Loader2, CheckCircle2, XCircle, Check} from "lucide-react";
 import {ProviderType} from "@/pages/Providers";
 import {useToast} from "@/hooks/use-toast";
 import {useForm, Controller, SubmitHandler, Control} from "react-hook-form";
@@ -17,6 +17,7 @@ import {useNavigate} from "react-router-dom";
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { getSecretsFromServer } from "@/lib/sslKeys";
 import { SecretMetadata } from "@OpsiMate/shared";
+import { AddSecretButton } from "@/pages/Settings";
 
 // --- FORM SCHEMAS ---
 
@@ -163,28 +164,33 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
     );
 };
 
-const KubeconfigSelector = ({ control }: { control: Control<KubernetesFormData> }) => {
+const KubeconfigSelector = ({ control, onSecretCreated }: { 
+    control: Control<KubernetesFormData>;
+    onSecretCreated?: (secretId: number) => void;
+}) => {
     const [keys, setKeys] = useState<SecretMetadata[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const loadKeys = async () => {
+        try {
+            setLoading(true);
+            const secrets = await getSecretsFromServer();
+            // Filter for kubeconfig type secrets
+            const kubeconfigSecrets = secrets.filter(secret => 
+                secret.type === 'kubeconfig' || secret.fileName?.endsWith('.yml') || secret.fileName?.endsWith('.yaml') || secret.fileName?.endsWith('.config')
+            );
+            setKeys(kubeconfigSecrets);
+            setError(null);
+        } catch (err) {
+            console.error('Error loading kubeconfig keys:', err);
+            setError('Failed to load kubeconfig keys');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const loadKeys = async () => {
-            try {
-                const secrets = await getSecretsFromServer();
-                // Filter for kubeconfig type secrets
-                const kubeconfigSecrets = secrets.filter(secret => 
-                    secret.type === 'kubeconfig' || secret.fileName?.endsWith('.yml') || secret.fileName?.endsWith('.yaml') || secret.fileName?.endsWith('.config')
-                );
-                setKeys(kubeconfigSecrets);
-                setError(null);
-            } catch (err) {
-                console.error('Error loading kubeconfig keys:', err);
-                setError('Failed to load kubeconfig keys');
-            } finally {
-                setLoading(false);
-            }
-        };
         loadKeys();
     }, []);
 
@@ -236,6 +242,11 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
     // --- Test Connection State ---
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState<null | { ok: boolean; message: string }>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
+    
+    const handleSecretCreated = (secretId: number) => {
+        setRefreshKey(prev => prev + 1);
+    };
 
     // Helper to get current form values
     const getValues = () => {
@@ -279,8 +290,8 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             } else {
                 setTestResult({ok: false, message: response.error || 'Connection test failed. Please check your credentials and network settings.'});
             }
-        } catch (err: any) {
-            setTestResult({ok: false, message: err?.message || 'An unexpected error occurred while testing the connection.'});
+        } catch (err: unknown) {
+            setTestResult({ok: false, message: (err as Error)?.message || 'An unexpected error occurred while testing the connection.'});
         } finally {
             setTestLoading(false);
         }
@@ -342,16 +353,19 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             {authType === 'key' && (
                 <FieldWrapper error={errors.sshKey}>
                     <Label>SSH Key</Label>
-                    <SSHKeySelector control={control} />
+                    <SSHKeySelector key={refreshKey} control={control} />
                     <div className="mt-2">
-                        <a
-                            href="/settings#secrets"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm text-primary hover:underline"
+                        <AddSecretButton 
+                            secretType="ssh"
+                            onSecretCreated={handleSecretCreated}
                         >
-                            + Add new key
-                        </a>
+                            <button
+                                type="button"
+                                className="text-sm text-primary hover:underline"
+                            >
+                                + Add new SSH key
+                            </button>
+                        </AddSecretButton>
                     </div>
                 </FieldWrapper>
             )}
@@ -387,7 +401,7 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             </div>
             {/* End Test Connection */}
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting} className="shadow-sm active:scale-95 dark:border dark:border-white">Cancel</Button>
                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                         <>
@@ -407,6 +421,13 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
     const {control, handleSubmit, formState: {errors}} = useForm<KubernetesFormData>({
         resolver: zodResolver(kubernetesSchema),
     });
+    
+    const [refreshKey, setRefreshKey] = useState(0);
+    
+    const handleSecretCreated = (secretId: number) => {
+        setRefreshKey(prev => prev + 1);
+    };
+    
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormSectionHeader title="Cluster Details"/>
@@ -417,21 +438,24 @@ const KubernetesForm = ({onSubmit, onClose}: ProviderFormProps<KubernetesFormDat
             </FieldWrapper>
             <FieldWrapper error={errors.kubeconfigKey}>
                 <Label>Kubeconfig Key <span className="text-destructive">*</span></Label>
-                <KubeconfigSelector control={control} />
+                <KubeconfigSelector key={refreshKey} control={control} onSecretCreated={handleSecretCreated} />
                 <div className="mt-2">
-                    <a
-                        href="/settings#secrets"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-primary hover:underline"
+                    <AddSecretButton 
+                        secretType="kubeconfig"
+                        onSecretCreated={handleSecretCreated}
                     >
-                        + Add new kubeconfig key
-                    </a>
+                        <button
+                            type="button"
+                            className="text-sm text-primary hover:underline"
+                        >
+                            + Add new kubeconfig key
+                        </button>
+                    </AddSecretButton>
                 </div>
             </FieldWrapper>
             
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose} className="shadow-sm active:scale-95 dark:border dark:border-white">Cancel</Button>
                 <Button type="submit">Add Provider</Button>
             </div>
         </form>
@@ -483,7 +507,7 @@ const AWSForm = ({onSubmit, onClose}: ProviderFormProps<AWSFormData>) => {
             </FieldWrapper>
 
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose} className="shadow-sm active:scale-95 dark:border dark:border-white">Cancel</Button>
                 <Button type="submit">Add Provider</Button>
             </div>
         </form>
@@ -623,7 +647,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                 throw new Error('Invalid JSON format. Expected an object with a providers array');
             }
             const allowedTypes = ['VM', 'K8S'];
-            const providersPayload = json.providers as any[];
+            const providersPayload = json.providers as Array<{ name: string; providerType: string }>;
             const isValid = providersPayload.every((p) => (
                 p && typeof p.name === 'string' && p.name.length > 0 && allowedTypes.includes(p.providerType)
             ));
@@ -637,10 +661,10 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                 onClose();
                 navigate('/my-providers');
             } else {
-                throw new Error((resp as any).error || 'Failed to import providers');
+                throw new Error((resp as { error?: string }).error || 'Failed to import providers');
             }
-        } catch (e: any) {
-            const message = e?.message || 'Invalid file';
+        } catch (e: unknown) {
+            const message = (e as Error)?.message || 'Invalid file';
             toast({ title: 'Import failed', description: message, variant: 'destructive' });
         } finally {
             setIsImporting(false);

@@ -1,4 +1,4 @@
-import { Filters } from "@/components/FilterPanel";
+import { Filters } from "@/components/Dashboard";
 
 export interface SavedView {
   id: string;
