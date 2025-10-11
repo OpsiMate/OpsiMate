@@ -1,6 +1,6 @@
 import { Integration, IntegrationUrls } from "@OpsiMate/shared";
-import { IntegrationConnector } from "./integration-connector";
-import { GrafanaClient, GrafanaDashboardSummary } from "../../../dal/external-client/grafana-client";
+import { IntegrationConnector } from "./integration-connector.js";
+import { GrafanaClient, GrafanaDashboardSummary } from "../../../dal/external-client/grafana-client.js";
 
 export class GrafanaIntegrationConnector implements IntegrationConnector {
     async getUrls(integration: Integration, tags: string[]): Promise<IntegrationUrls[]> {

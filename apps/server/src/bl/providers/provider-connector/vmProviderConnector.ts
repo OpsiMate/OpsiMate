@@ -1,6 +1,6 @@
 import {DiscoveredPod, DiscoveredService, Provider, Service, ServiceType} from "@OpsiMate/shared";
-import * as sshClient from "../../../dal/sshClient";
-import {ProviderConnector} from "./providerConnector";
+import * as sshClient from "../../../dal/sshClient.js";
+import {ProviderConnector} from "./providerConnector.js";
 
 
 export class VMProviderConnector implements ProviderConnector {
