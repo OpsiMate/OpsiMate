@@ -1,6 +1,6 @@
 import Database, {Statement} from 'better-sqlite3';
 import {Tag} from '@OpsiMate/shared';
-import {runAsync} from './db';
+import {runAsync} from './db.js';
 
 export class TagRepository {
     constructor(private db: Database.Database) {
