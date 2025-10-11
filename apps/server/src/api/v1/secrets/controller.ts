@@ -2,7 +2,8 @@ import {Request, Response} from "express";
 import {
     CreateSecretsMetadataSchema,
     UpdateSecretsMetadataSchema,
-    Logger
+    Logger,
+    SecretType
 } from "@OpsiMate/shared";
 import {SecretsMetadataBL} from "../../../bl/secrets/secretsMetadata.bl";
 import fs from "fs";
@@ -34,7 +35,7 @@ export class SecretsController {
             const {displayName, secretType} = CreateSecretsMetadataSchema.parse(req.body);
             let isValidFile:boolean=false
            
-            if(secretType==="ssh"){
+            if(secretType===SecretType.SSH){
                 isValidFile=validatePublicSSHKey(originalContent)
             }else{
                 isValidFile=validateKubeConfig(originalContent)
@@ -83,7 +84,7 @@ export class SecretsController {
                 const filePath = req.file.path;
                 const originalContent = fs.readFileSync(filePath, 'utf-8');
                 let isValidFile:boolean=false
-                if(secretType==="ssh"){
+                if(secretType===SecretType.SSH){
                 isValidFile=validatePublicSSHKey(originalContent)
             }else{
                 isValidFile=validateKubeConfig(originalContent)
