@@ -468,7 +468,7 @@ export const Dashboard = () => {
                             "border-r border-border transition-all duration-300 ease-in-out flex-shrink-0 relative",
                             filterPanelCollapsed ? "w-12" : "w-48"
                         )}>
-                            <div className="h-full flex flex-col px-4">
+                            <div className={cn("h-full flex flex-col",!filterPanelCollapsed ? "px-4":"")}>
                                 <div className="flex items-center justify-between p-2 border-b border-border">
                                     {!filterPanelCollapsed && (
                                         <h3 className="text-sm font-semibold text-foreground">Filters</h3>

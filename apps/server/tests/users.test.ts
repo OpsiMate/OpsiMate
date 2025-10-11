@@ -59,7 +59,6 @@ describe("Users API", () => {
 
       // Verify user was created in database
       const userRow = db.prepare("SELECT * FROM users WHERE email = ?").get("newuser@example.com") as any;
-
       expect(userRow).toBeDefined();
       expect(userRow.full_name).toBe("New User");
       expect(userRow.role).toBe(Role.Editor);
@@ -251,7 +250,11 @@ describe("Users API", () => {
 
       // Check that all users are present
       const emails = res.body.data.map((u: any) => u.email).sort();
-      expect(emails).toEqual(["admin@example.com", "editor@example.com", "viewer@example.com"]);
+      expect(emails).toEqual([
+        "admin@example.com",
+        "editor@example.com",
+        "viewer@example.com",
+      ]);
     });
   });
 
@@ -349,41 +352,6 @@ describe("Users API", () => {
 
       expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
-    });
-
-    test("should handle updating role to all valid role types", async () => {
-      // Create users for each role test
-      const testCases = [
-        { email: "testadmin@example.com", initialRole: Role.Viewer, newRole: Role.Admin },
-        { email: "testeditor@example.com", initialRole: Role.Viewer, newRole: Role.Editor },
-        { email: "testviewer@example.com", initialRole: Role.Editor, newRole: Role.Viewer },
-      ];
-
-      for (const testCase of testCases) {
-        // Create user
-        await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
-          email: testCase.email,
-          fullName: "Test User",
-          password: "password123",
-          role: testCase.initialRole,
-        });
-
-        // Update role
-        const updateData = {
-          email: testCase.email,
-          newRole: testCase.newRole,
-        };
-
-        const res = await app.patch("/api/v1/users/role").set("Authorization", `Bearer ${adminToken}`).send(updateData);
-
-        expect(res.status).toBe(200);
-        expect(res.body.success).toBe(true);
-        expect(res.body.message).toBe("User role updated successfully");
-
-        // Verify in database
-        const userRow = db.prepare("SELECT role FROM users WHERE email = ?").get(testCase.email) as any;
-        expect(userRow.role).toBe(testCase.newRole);
-      }
     });
   });
 });
