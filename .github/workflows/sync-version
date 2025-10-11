@@ -40,7 +40,7 @@ jobs:
       - name: Commit and push version sync
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          commit_message: "chore: sync version to ${{ env.NEXT_VERSION }} on release [skip ci]"
+          commit_message: "chore: sync version to ${{ env.NEXT_VERSION }} on release"
           author_name: github-actions[bot]
           author_email: github-actions[bot]@users.noreply.github.com
           branch: main
