@@ -6,9 +6,8 @@ import {
 } from "@/components/ui/accordion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Service } from "./ServiceTable"
+import { Service } from "../../ServiceTable"
 import { useMemo } from "react"
-import { cn } from "@/lib/utils"
 import { SlidersHorizontal } from "lucide-react"
 
 export type Filters = Record<string, string[]>
@@ -20,7 +19,6 @@ interface FilterPanelProps {
   collapsed: boolean
 }
 
-// Define all possible filter fields
 const FACET_FIELDS = [
   'serviceStatus',
   'serviceType', 
@@ -39,9 +37,7 @@ const FIELD_LABELS: Record<string, string> = {
   tags: 'Tags'
 };
 
-// Helper function to format filter values consistently
 const formatFilterValue = (value: string): string => {
-  // Handle specific abbreviations that should stay uppercase
   const uppercaseValues: Record<string, string> = {
     'vm': 'VM',
     'k8s': 'K8S', 
@@ -57,7 +53,6 @@ const formatFilterValue = (value: string): string => {
     return uppercaseValues[lowerValue];
   }
   
-  // Capitalize first letter and make rest lowercase for other values
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
 
@@ -65,43 +60,36 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
   const facets = useMemo(() => {
     const newFacets: Record<string, Record<string, number>> = {};
     
-    // Initialize all facet fields
     FACET_FIELDS.forEach(field => {
       newFacets[field] = {};
     });
 
     services.forEach(service => {
-      // Service status
       if (service.serviceStatus) {
         const value = String(service.serviceStatus.toLowerCase());
         newFacets.serviceStatus[value] = (newFacets.serviceStatus[value] || 0) + 1;
       }
 
-      // Service type
       if (service.serviceType) {
         const value = String(service.serviceType);
         newFacets.serviceType[value] = (newFacets.serviceType[value] || 0) + 1;
       }
 
-      // Provider type
       if (service.provider?.providerType) {
         const value = String(service.provider.providerType);
         newFacets.providerType[value] = (newFacets.providerType[value] || 0) + 1;
       }
 
-      // Provider name
       if (service.provider?.name) {
         const value = String(service.provider.name);
         newFacets.providerName[value] = (newFacets.providerName[value] || 0) + 1;
       }
 
-      // Container namespace
       if (service.containerDetails?.namespace) {
         const value = String(service.containerDetails.namespace);
         newFacets.containerNamespace[value] = (newFacets.containerNamespace[value] || 0) + 1;
       }
 
-      // Tags
       if (service.tags && service.tags.length > 0) {
         service.tags.forEach(tag => {
           const value = String(tag.name);
@@ -180,7 +168,6 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
             const fieldFacets = facets[field] || {};
             const hasValues = Object.keys(fieldFacets).length > 0;
             
-            // Only show fields that have values
             if (!hasValues) return null;
             
             return (
@@ -218,4 +205,5 @@ export function FilterPanel({ services, filters, onFilterChange, collapsed }: Fi
       </div>
     </div>
   )
-} 
+}
+

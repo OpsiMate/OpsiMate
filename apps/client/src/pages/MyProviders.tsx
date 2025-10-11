@@ -864,9 +864,9 @@ export function MyProviders() {
                                                                                                 const mappedService: Service = {
                                                                                                     id: service.id,
                                                                                                     name: service.name,
-                                                                                                    serviceStatus: (service as any).status || (service as any).serviceStatus || 'unknown',
-                                                                                                    serviceType: (service as any).type || (service as any).serviceType || 'MANUAL',
-                                                                                                    createdAt: (service as any).createdAt || new Date().toISOString(),
+                                                                                                    serviceStatus: (service as { status?: string; serviceStatus?: string }).status || (service as { status?: string; serviceStatus?: string }).serviceStatus || 'unknown',
+                                                                                                    serviceType: (service as { type?: string; serviceType?: string }).type || (service as { type?: string; serviceType?: string }).serviceType || 'MANUAL',
+                                                                                                    createdAt: (service as { createdAt?: string }).createdAt || new Date().toISOString(),
                                                                                                     provider: parentProvider || {
                                                                                                         id: -1,
                                                                                                         name: 'Unknown',
@@ -879,7 +879,7 @@ export function MyProviders() {
                                                                                                     },
                                                                                                     serviceIP: service.serviceIP || '',
                                                                                                     containerDetails: service.containerDetails || {},
-                                                                                                    tags: (service as any).tags || []
+                                                                                                    tags: (service as { tags?: string[] }).tags || []
                                                                                                 };
                                                                                                 setSelectedServiceForDrawer(mappedService);
                                                                                                 setIsServiceDrawerOpen(true);
