@@ -365,7 +365,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     if (anySelected) {
       // Just set selectedContainer to a non-null value to enable the Add button
       // We don't need specific container details since we're using multi-select
-      setSelectedContainer({ id: 'multi-select' } as any);
+      setSelectedContainer({ id: 'multi-select', name: 'Multi-select' });
     } else {
       setSelectedContainer(null);
     }
@@ -388,7 +388,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     // Update selectedContainer state
     if (!allSelected && containers.length > 0) {
       // If we're selecting all and there are containers, enable the Add button
-      setSelectedContainer({ id: 'multi-select' } as any);
+      setSelectedContainer({ id: 'multi-select', name: 'Multi-select' });
     } else {
       // If we're deselecting all, disable the Add button
       setSelectedContainer(null);

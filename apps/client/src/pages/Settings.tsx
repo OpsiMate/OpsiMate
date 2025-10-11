@@ -728,7 +728,7 @@ const AuditLogTable: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={actionProps.variant as any} className={actionProps.className}>
+                      <Badge variant={actionProps.variant as "default" | "destructive" | "outline" | "secondary"} className={actionProps.className}>
                         {log.actionType}
                       </Badge>
                     </TableCell>

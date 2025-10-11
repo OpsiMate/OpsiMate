@@ -119,7 +119,7 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const updateData: any = { fullName: formData.fullName };
+      const updateData: { fullName: string; newPassword?: string } = { fullName: formData.fullName };
       
       if (formData.newPassword) {
         updateData.newPassword = formData.newPassword;
