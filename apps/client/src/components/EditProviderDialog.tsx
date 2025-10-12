@@ -99,7 +99,6 @@ export function EditProviderDialog({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Validate username field
     if (name === "username") {
       if (/\s/.test(value)) {
         setUsernameError("Username cannot contain whitespace");
@@ -142,7 +141,6 @@ export function EditProviderDialog({
     e.preventDefault();
     if (!provider) return;
 
-    // Validate username before submitting
     if (!isKubernetes && /\s/.test(formData.username)) {
       setUsernameError("Username cannot contain whitespace");
       return;
