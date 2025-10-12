@@ -1,7 +1,7 @@
-import request, { SuperTest, Test } from 'supertest';
-import Database from 'better-sqlite3';
-import { createApp } from '../src/app.js';
-import { Role } from '@OpsiMate/shared';
+import request, { SuperTest, Test } from "supertest";
+import Database from "better-sqlite3";
+import { createApp } from "../src/app.js";
+import { Role } from "@OpsiMate/shared";
 
 describe("Users API", () => {
   let app: SuperTest<Test>;
@@ -250,11 +250,7 @@ describe("Users API", () => {
 
       // Check that all users are present
       const emails = res.body.data.map((u: any) => u.email).sort();
-      expect(emails).toEqual([
-        "admin@example.com",
-        "editor@example.com",
-        "viewer@example.com",
-      ]);
+      expect(emails).toEqual(["admin@example.com", "editor@example.com", "viewer@example.com"]);
     });
   });
 
@@ -352,6 +348,90 @@ describe("Users API", () => {
 
       expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe("GET /api/v1/users/profile", () => {
+    test("should successfully retrieve user profile with valid authentication", async () => {
+      const res = await app.get("/api/v1/users/profile").set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toMatchObject({
+        id: expect.any(Number),
+        email: "admin@example.com",
+        fullName: "Admin User",
+        role: Role.Admin,
+        createdAt: expect.any(String),
+      });
+
+      // Ensure no sensitive data like password
+      expect(res.body.data).not.toHaveProperty("password");
+      expect(res.body.data).not.toHaveProperty("passwordHash");
+    });
+
+    test("should return 401 for unauthenticated requests", async () => {
+      const res = await app.get("/api/v1/users/profile");
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe("Unauthorized");
+    });
+
+    test("should allow different user roles to access their own profile", async () => {
+      // Create an editor user
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "editorprofile@example.com",
+        fullName: "Editor Profile",
+        password: "password123",
+        role: Role.Editor,
+      });
+
+      // Login as editor
+      const loginRes = await app.post("/api/v1/users/login").send({
+        email: "editorprofile@example.com",
+        password: "password123",
+      });
+      const editorToken = loginRes.body.token;
+
+      // Get profile as editor
+      const res = await app.get("/api/v1/users/profile").set("Authorization", `Bearer ${editorToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toMatchObject({
+        id: expect.any(Number),
+        email: "editorprofile@example.com",
+        fullName: "Editor Profile",
+        role: Role.Editor,
+        createdAt: expect.any(String),
+      });
+    });
+
+    test("should return 404 for non-existent user", async () => {
+      // Create a user and then delete them from database directly
+      await app.post("/api/v1/users").set("Authorization", `Bearer ${adminToken}`).send({
+        email: "tempuser@example.com",
+        fullName: "Temp User",
+        password: "password123",
+        role: Role.Viewer,
+      });
+
+      const loginRes = await app.post("/api/v1/users/login").send({
+        email: "tempuser@example.com",
+        password: "password123",
+      });
+      const tempToken = loginRes.body.token;
+
+      // Delete user directly from database
+      db.exec("DELETE FROM users WHERE email = 'tempuser@example.com'");
+
+      // Try to get profile
+      const res = await app.get("/api/v1/users/profile").set("Authorization", `Bearer ${tempToken}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe("User not found");
     });
   });
 });
