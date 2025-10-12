@@ -23,8 +23,8 @@ export class DatadogIntegrationConnector implements IntegrationConnector {
             
             const datadogClient = new DatadogClient(
                 integration.externalUrl,
-                integration.credentials["apiKey"] as string,
-                integration.credentials["appKey"] as string
+                integration.credentials["apiKey"],
+                integration.credentials["appKey"]
             );
             
             // Get dashboards matching the provided tags
