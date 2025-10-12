@@ -34,7 +34,16 @@ export const CreateIntegrationSchema = z.object({
     name: z.string().min(1),
     type: z.nativeEnum(IntegrationType),
     externalUrl: z.string().url(),
-    credentials: z.record(z.any()),
+     credentials: z.object({
+        apiKey: z.string().refine(
+            (val) => !/\s/.test(val),
+            { message: 'API key cannot contain spaces' }
+        ).optional(),
+        appKey: z.string().refine(
+            (val) => !/\s/.test(val),
+            { message: 'Application key cannot contain spaces' }
+        ).optional(),
+    }).passthrough(),
 });
 
 export type Integration = z.infer<typeof CreateIntegrationSchema> & {

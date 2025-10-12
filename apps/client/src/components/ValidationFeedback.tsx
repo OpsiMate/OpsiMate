@@ -164,4 +164,26 @@ export const validationRules = {
       },
     },
   ],
+  apiKey: [
+    {
+      id: 'apikey-no-spaces',
+      label: 'API key cannot contain spaces',
+      validator: (value: string) => {
+        if (value.length === 0) return true; 
+        return !/\s/.test(value);
+      },
+    },
+  ],
+  
+  appKey: [
+    {
+      id: 'appkey-no-spaces',
+      label: 'Application key cannot contain spaces',
+      validator: (value: string) => {
+        if (value.length === 0) return true; 
+        return !/\s/.test(value);
+      },
+    },
+  ],
+
 }; 

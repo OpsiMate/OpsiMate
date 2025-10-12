@@ -49,6 +49,8 @@ import {
   FileText,
   Cloud
 } from 'lucide-react';
+import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
+
 
 interface Integration {
   id: string;
@@ -727,7 +729,8 @@ export default function Integrations() {
                             ))}
                           </select>
                         ) : (
-                          <Input
+                        <> 
+                         <Input 
                             id={`${selectedIntegration.id}-${field.name}`}
                             name={field.name}
                             type={field.type}
@@ -738,6 +741,14 @@ export default function Integrations() {
                             disabled={isSubmitting || !canManageIntegrations()}
                             autoComplete={field.type === 'password' ? 'new-password' : 'off'}
                           />
+                          {(field.name === 'apiKey' || field.name === 'appKey') && formData[field.name] && (
+                            <ValidationFeedback
+                              value={formData[field.name] || ''}
+                              rules={field.name === 'apiKey' ? validationRules.apiKey : validationRules.appKey}
+                              showValid={false}
+                            />
+                        )}
+                         </> 
                         )}
                       </div>
                     ))}
