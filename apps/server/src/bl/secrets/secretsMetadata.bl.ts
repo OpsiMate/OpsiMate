@@ -1,9 +1,9 @@
 import {Logger, SecretMetadata, SecretType, AuditActionType, AuditResourceType, User} from "@OpsiMate/shared";
 
 
-import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository";
-import {getSecurityConfig} from "../../config/config";
-import { AuditBL } from '../audit/audit.bl';
+import { SecretsMetadataRepository } from "../../dal/secretsMetadataRepository";
+import { getSecurityConfig } from "../../config/config";
+import { AuditBL } from "../audit/audit.bl";
 import path from "path";
 
 const logger = new Logger('bl/secrets/secret.bl');

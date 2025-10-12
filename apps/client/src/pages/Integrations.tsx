@@ -76,7 +76,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Open source analytics & monitoring solution for every database.',
     logo: 'https://grafana.com/static/img/menu/grafana2.svg',
     tags: ['Monitoring', 'Visualization', 'Alerts'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/grafana/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/grafana',
     configFields: [
       { name: 'url', label: 'Grafana URL', type: 'text', placeholder: 'https://your-grafana-instance.com', required: true },
       { name: 'apiKey', label: 'API Key', type: 'password', required: true },
@@ -89,7 +89,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Visualize and explore data from Elasticsearch.',
     logo: 'https://static-www.elastic.co/v3/assets/bltefdd0b53724fa2ce/blt8781708f8f37ed16/5c11ec2edf09df047814db23/logo-elastic-kibana-lt.svg',
     tags: ['Monitoring', 'Visualization', 'Elasticsearch'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/kibana/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/kibana',
     configFields: [
       { name: 'url', label: 'Kibana URL', type: 'text', placeholder: 'https://your-kibana-instance.com', required: true },
       { name: 'apiKey', label: 'API Key', type: 'password', required: true },
@@ -102,7 +102,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Cloud monitoring and analytics platform for infrastructure, applications, and logs.',
     logo: 'https://imgix.datadoghq.com/img/dd_logo_n_70x75.png',
     tags: ['Monitoring', 'APM', 'Logs', 'Metrics'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/datadog/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/datadog',
     configFields: [
       { name: 'url', label: 'Datadog URL', type: 'text', placeholder: 'https://api.datadoghq.com', required: true },
       { name: 'apiKey', label: 'API Key', type: 'password', required: true },
@@ -116,7 +116,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Open-source systems monitoring and alerting toolkit.',
     logo: 'https://icon.icepanel.io/Technology/svg/Prometheus.svg',
     tags: ['Monitoring', 'Metrics', 'Alerts'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/overview/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
     configFields: [
       { name: 'url', label: 'Prometheus URL', type: 'text', placeholder: 'http://prometheus:9090', required: true },
     ],
@@ -128,7 +128,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Log analytics platform powered by machine learning.',
     logo: 'https://cdn.brandfetch.io/idCh7aU0wN/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1667744703603',
     tags: ['Logging', 'Analytics', 'Monitoring'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/overview/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
     configFields: [
       { name: 'apiKey', label: 'API Key', type: 'password', required: true },
       { name: 'applicationName', label: 'Application Name', type: 'text', required: true },
@@ -142,7 +142,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Horizontally-scalable, highly-available log aggregation system.',
     logo: 'https://grafana.com/static/img/logos/logo-loki.svg',
     tags: ['Logging', 'Monitoring'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/overview/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
     configFields: [
       { name: 'url', label: 'Loki URL', type: 'text', placeholder: 'http://loki:3100', required: true },
     ],
@@ -154,7 +154,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Fast, cost-effective and scalable time series database.',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/c/c6/VictoriaMetrics_logo.svg',
     tags: ['Metrics', 'Monitoring', 'Storage'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/overview/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
     configFields: [
       { name: 'url', label: 'VictoriaMetrics URL', type: 'text', placeholder: 'http://victoria-metrics:8428', required: true },
     ],
@@ -166,7 +166,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Monitoring and observability service for AWS resources.',
     logo: 'https://icon.icepanel.io/AWS/svg/Management-Governance/CloudWatch.svg',
     tags: ['Monitoring', 'Metrics', 'Logs', 'AWS'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/overview/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
     configFields: [
       { name: 'accessKeyId', label: 'AWS Access Key ID', type: 'text', required: true },
       { name: 'secretAccessKey', label: 'AWS Secret Access Key', type: 'password', required: true },
@@ -181,7 +181,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Observability platform built to help engineers create perfect software.',
     logo: 'https://newrelic.com/themes/custom/erno/assets/mediakit/new_relic_logo_vertical.svg',
     tags: ['Monitoring', 'APM', 'Observability'],
-    documentationUrl: 'https://opsimate.vercel.app/integrations/overview/',
+    documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
     configFields: [
       { name: 'accountId', label: 'Account ID', type: 'text', required: true },
       { name: 'apiKey', label: 'API Key', type: 'password', required: true },
