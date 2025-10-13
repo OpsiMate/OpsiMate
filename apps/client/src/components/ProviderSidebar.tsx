@@ -28,7 +28,6 @@ const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || h
 const serverSchema = z.object({
     name: z.string().min(1, "Server name is required"),
     hostname: z.string().min(1, "Hostname/IP is required").refine((value) => {
-        // Allow both IP addresses and hostnames
         return isValidHostnameOrIP(value);
     }, {
         message: "Must be a valid IP address or hostname"
@@ -36,7 +35,12 @@ const serverSchema = z.object({
     port: z.coerce.number().min(1).max(65535),
     username: z.string().min(1, "Username is required"),
     authType: z.enum(["password", "key"]),
-    password: z.string().optional(),
+    password: z.string().refine((value) => {
+        if (!value || value.length === 0) return true;
+        return !/\s/.test(value);
+    }, {
+        message: "Password cannot contain whitespace"
+    }).optional(),
     sshKey: z.string().optional(),
 }).refine(data => data.authType === 'password' ? data.password && data.password.length > 0 : true, {
     message: "Password is required",
