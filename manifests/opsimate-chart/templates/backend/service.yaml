@@ -1,15 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "opsimate-chart.fullname" . }}
+  name: opsimate-backend-service
   labels:
-    {{- include "opsimate-chart.labels" . | nindent 4 }}
+    app: opsimate-backend-service
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
-      name: http
   selector:
-    {{- include "opsimate-chart.selectorLabels" . | nindent 4 }}
+    app: opsimate-backend

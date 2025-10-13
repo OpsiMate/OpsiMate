@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "opsimate-chart.fullname" . }}
+  name: opsimate-frontend-hpa
   labels:
-    {{- include "opsimate-chart.labels" . | nindent 4 }}
+    app: opsimate-frontend-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "opsimate-chart.fullname" . }}
+    name: opsimate-frontend
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:
