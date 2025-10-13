@@ -1,9 +1,9 @@
 import {Logger, SecretMetadata, SecretType, AuditActionType, AuditResourceType, User} from "@OpsiMate/shared";
 
 
-import { SecretsMetadataRepository } from "../../dal/secretsMetadataRepository";
-import { getSecurityConfig } from "../../config/config";
-import { AuditBL } from "../audit/audit.bl";
+import { SecretsMetadataRepository } from "../../dal/secretsMetadataRepository.js";
+import { getSecurityConfig } from "../../config/config.js";
+import { AuditBL } from "../audit/audit.bl.js";
 import path from "path";
 
 const logger = new Logger('bl/secrets/secret.bl');
@@ -129,7 +129,7 @@ export class SecretsMetadataBL {
             
             // First get the secret to get the file path before deleting
             const secrets = await this.secretsMetadataRepository.getSecrets();
-            const secretToDelete = secrets.find(secret => secret.id === id);
+            const secretToDelete = secrets.find((secret: SecretMetadata) => secret.id === id);
             
             if (!secretToDelete) {
                 logger.warn(`Secret with id ${id} not found`);
