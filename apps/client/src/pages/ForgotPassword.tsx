@@ -12,9 +12,11 @@ const ForgotPassword: React.FC = () => {
     showFieldErrors: false,
   });
   const [emailSent, setEmailSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const res = await apiRequest<{
         data: { id: string; email: string };
@@ -25,7 +27,9 @@ const ForgotPassword: React.FC = () => {
         clearErrors();
         setEmail("");
         setEmailSent(true);
+        setLoading(false);
       } else {
+        setLoading(false);
         handleApiResponse(res);
       }
     } catch (error) {
@@ -42,7 +46,7 @@ const ForgotPassword: React.FC = () => {
           <ForgotPasswordForm
             email={email}
             setEmail={setEmail}
-            loading={false}
+            loading={loading}
             error={generalError}
             handleSubmit={handleSubmit}
           />

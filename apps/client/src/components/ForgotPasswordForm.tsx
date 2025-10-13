@@ -36,7 +36,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         />
       </div>
       {error && <ErrorAlert message={error} className="mb-4" />}
-      <Button type="submit" className="w-full mt-2">
+      <Button type="submit" className="w-full mt-2" disabled={loading}>
         {loading ? "Sending..." : "Send Reset Link"}
       </Button>
     </form>
