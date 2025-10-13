@@ -198,6 +198,13 @@ export class UsersController {
                 });
             }
 
+            if (/\s/.test(newPassword)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password must not contain spaces'
+                });
+            }
+            
             // Don't allow admin to reset their own password this way
             if (userId === req.user.id) {
                 return res.status(400).json({

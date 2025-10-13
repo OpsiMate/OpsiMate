@@ -116,6 +116,14 @@ const Profile: React.FC = () => {
         setSaving(false);
         return;
       }
+      if (/\s/.test(formData.newPassword)) {
+        handleApiResponse({
+            success: false,
+            error: 'Password must not contain spaces'
+        });
+        setSaving(false);
+        return;
+      }
     }
 
     try {

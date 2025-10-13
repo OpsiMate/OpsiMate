@@ -42,6 +42,14 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
             return;
         }
 
+        if (/\s/.test(newPassword)) {
+            handleApiResponse({
+                success: false,
+                error: 'Password must not contain spaces'
+            });
+            return;
+        }
+
         clearErrors();
         setResetting(true);
 

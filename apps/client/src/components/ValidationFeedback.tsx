@@ -80,6 +80,11 @@ export const validationRules = {
       label: 'Must be at least 6 characters',
       validator: (value: string) => value.length >= 6,
     },
+    {
+      id: 'password-no-spaces',
+      label: 'Must not contain spaces',
+      validator: (value: string) => !/\s/.test(value),
+    },
   ],
   fullName: [
     {

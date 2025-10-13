@@ -145,7 +145,9 @@ export const UserSchema = z.object({
 export const CreateUserSchema = z.object({
     email: z.string().email(),
     fullName: z.string().min(1),
-    password: z.string().min(6),
+    password: z.string().min(6).refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    }),
     role: RoleSchema
 });
 
@@ -158,12 +160,16 @@ export const RegisterSchema = CreateUserSchema.omit({role: true});
 
 export const LoginSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(6)
+    password: z.string().min(6).refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    })
 });
 
 export const UpdateProfileSchema = z.object({
     fullName: z.string().min(1, 'Full name is required'),
-    newPassword: z.string().min(6, 'Password must be at least 6 characters').optional()
+    newPassword: z.string().min(6, 'Password must be at least 6 characters').refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    }).optional()
 });
 
 
