@@ -51,7 +51,7 @@ export class MailService {
   async sendMail(options: SendMailOptions): Promise<void> {
     try {
       await this.transporter.sendMail({
-        from: '"OpsiMate" <no-reply@opsimate.com>',
+        from: process.env.SMTP_FROM || '"OpsiMate" <no-reply@opsimate.com>',
         to: options.to,
         subject: options.subject,
         html: options.html,
