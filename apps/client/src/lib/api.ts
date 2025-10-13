@@ -54,7 +54,14 @@ async function apiRequest<T>(
       // Try to parse the error as JSON to handle validation errors properly
 
         if(response.status === 401){
-            window.location.href = "/login?expired=true";
+            if (
+              location.pathname !== "/login" && 
+              location.pathname !== "/register" && 
+              location.pathname !== "/forgot-password" && 
+              location.pathname !== "/reset-password"
+            ) {
+              window.location.href = "/login?expired=true";
+            }
             localStorage.removeItem('jwt');
 
             // navigate to login /login
