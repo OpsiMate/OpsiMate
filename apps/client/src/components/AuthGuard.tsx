@@ -16,7 +16,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     const jwt = localStorage.getItem('jwt');
     const isOnRegisterPage = location.pathname === '/register';
     const isOnLoginPage = location.pathname === '/login';
-    
+    const isOnForgotPasswordPage = location.pathname === '/forgot-password';
+    const isOnResetPasswordPage = location.pathname === '/reset-password';
+
     if (isLoading) {
       // Still loading, don't redirect yet
       return;
@@ -24,8 +26,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
     if (error) {
       // If there's an error checking users, default to login page
-      console.error('Error checking if users exist:', error);
-      if (!jwt && !isOnLoginPage) {
+      if (!jwt && (isOnLoginPage || isOnForgotPasswordPage || isOnResetPasswordPage)) {
+        return;
+      }
+      // Otherwise, redirect to login
+      if (!jwt) {
         navigate('/login');
       }
       return;
@@ -42,6 +47,10 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
     // If users exist but user is not authenticated
     if (usersExist && !jwt) {
+      if (isOnForgotPasswordPage || isOnResetPasswordPage) {
+        return;
+      }
+
       // Only redirect to login if not already on login page
       if (!isOnLoginPage) {
         navigate('/login');
@@ -50,7 +59,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     }
 
     // If user is authenticated and trying to access register/login pages, redirect to dashboard
-    if (jwt && (isOnRegisterPage || isOnLoginPage)) {
+    if (jwt && (isOnRegisterPage || isOnLoginPage || isOnForgotPasswordPage || isOnResetPasswordPage)) {
       navigate('/');
       return;
     }
