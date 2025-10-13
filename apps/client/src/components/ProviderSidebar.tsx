@@ -290,8 +290,8 @@ const ServerForm = ({onSubmit, onClose}: ProviderFormProps<ServerFormData>) => {
             } else {
                 setTestResult({ok: false, message: response.error || 'Connection test failed. Please check your credentials and network settings.'});
             }
-        } catch (err: any) {
-            setTestResult({ok: false, message: err?.message || 'An unexpected error occurred while testing the connection.'});
+        } catch (err: unknown) {
+            setTestResult({ok: false, message: (err as Error)?.message || 'An unexpected error occurred while testing the connection.'});
         } finally {
             setTestLoading(false);
         }
@@ -647,7 +647,7 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                 throw new Error('Invalid JSON format. Expected an object with a providers array');
             }
             const allowedTypes = ['VM', 'K8S'];
-            const providersPayload = json.providers as any[];
+            const providersPayload = json.providers as Array<{ name: string; providerType: string }>;
             const isValid = providersPayload.every((p) => (
                 p && typeof p.name === 'string' && p.name.length > 0 && allowedTypes.includes(p.providerType)
             ));
@@ -661,10 +661,10 @@ export function ProviderSidebar({provider, onClose}: ProviderSidebarProps) {
                 onClose();
                 navigate('/my-providers');
             } else {
-                throw new Error((resp as any).error || 'Failed to import providers');
+                throw new Error((resp as { error?: string }).error || 'Failed to import providers');
             }
-        } catch (e: any) {
-            const message = e?.message || 'Invalid file';
+        } catch (e: unknown) {
+            const message = (e as Error)?.message || 'Invalid file';
             toast({ title: 'Import failed', description: message, variant: 'destructive' });
         } finally {
             setIsImporting(false);

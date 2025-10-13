@@ -1,5 +1,5 @@
-import { AlertRepository } from "../../dal/alertRepository";
-import { AlertRow } from "../../dal/models";
+import { AlertRepository } from "../../dal/alertRepository.js";
+import { AlertRow } from "../../dal/models.js";
 import {Alert, Logger} from "@OpsiMate/shared";
 
 const logger = new Logger('bl/alert.bl');

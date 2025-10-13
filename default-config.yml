@@ -13,3 +13,18 @@ database:
 # Security configuration
 security:
   private_keys_path: "/app/data/private-keys"  # Container path for SSH keys
+
+# mailer configuration
+mailer:
+  enabled: true
+  default_encoding: "UTF-8"
+  host: "smtp.gmail.com"
+  port: 587                
+  secure: false             
+  from: "<no-reply@yourdomain.com>"
+  replyTo: "ops@yourdomain.com"
+  auth:
+    user: "<Gmail username>"
+    pass: "<Gmail password>"        
+  tls:
+    rejectUnauthorized: true

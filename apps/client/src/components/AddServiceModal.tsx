@@ -8,7 +8,7 @@ import { useState } from "react"
 interface AddServiceModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddService: (serviceData: any) => void
+  onAddService: (serviceData: { name: string; serverId: string; ipAddress: string; os: string; serviceType: string }) => void
 }
 
 export function AddServiceModal({ open, onOpenChange, onAddService }: AddServiceModalProps) {

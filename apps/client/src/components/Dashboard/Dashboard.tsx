@@ -6,9 +6,10 @@ import { RightSidebarWithLogs as RightSidebar } from "@/components/RightSidebarW
 import { ActionButtons } from "@/components/ActionButtons"
 import { TableSettingsModal } from "@/components/TableSettingsModal"
 import { AddServiceModal } from "@/components/AddServiceModal"
-import { FilterPanel, Filters } from "@/components/FilterPanel"
+import { FilterPanel } from "./FilterPanel"
+import { useServiceFilters } from "./useServiceFilters"
 import { SavedViewsManager } from "@/components/SavedViewsManager"
-import { DashboardLayout } from "../components/DashboardLayout"
+import { DashboardLayout } from "../DashboardLayout"
 import { SavedView } from "@/types/SavedView"
 import { useServices, useAlerts, useStartService, useStopService, useDismissAlert, useSaveView, useDeleteView, useViews, useActiveView, useCustomFields } from "@/hooks/queries"
 import { Alert } from "@OpsiMate/shared"
@@ -18,17 +19,28 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAlertServiceId } from "@/utils/alert.utils";
 
-
-const Dashboard = () => {
+export const Dashboard = () => {
     const navigate = useNavigate()
     const {toast} = useToast()
     
-    // React Query hooks for data fetching
     const { data: services = [], isLoading: servicesLoading, error: servicesError } = useServices();
     const { data: alerts = [], error: alertsError } = useAlerts();
     const { data: savedViews = [], error: viewsError } = useViews();
     const { activeViewId, setActiveView, error: activeViewError } = useActiveView();
     const { data: customFields = [] } = useCustomFields();
+
+    const {
+        filters,
+        searchTerm,
+        isInitialized,
+        handleFiltersChange,
+        handleSearchTermChange,
+        applyViewFilters
+    } = useServiceFilters({
+        activeViewId,
+        savedViews,
+        setActiveView
+    });
     // Update visibleColumns and columnOrder when customFields change
     useEffect(() => {
         if (customFields.length > 0) {
@@ -72,10 +84,8 @@ const Dashboard = () => {
         tags: true,
         alerts: true
     })
-    const [filters, setFilters] = useState<Filters>({})
     const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false)
     const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
-    const [searchTerm, setSearchTerm] = useState("")
     const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'serviceIP', 'serviceStatus', 'provider', 'containerDetails', 'tags', 'alerts'])
 
     // Enhanced alert calculation: each service gets alerts for ALL its tags
@@ -126,53 +136,8 @@ const Dashboard = () => {
         }
     }, [servicesWithAlerts, selectedService])
 
-    // Load saved views and active view on component mount
-    useEffect(() => {
-        const loadViews = async () => {
-            try {
-                if (activeViewId) {
-                    const activeView = savedViews.find(view => view.id === activeViewId);
-                    if (activeView) {
-                        applyView(activeView);
-                    } else if (activeViewId === 'default-view') {
-                        // If the active view is 'default-view' but it doesn't exist, create a default state
-                        // Apply default filters and settings
-                        setFilters({});
-                        setSearchTerm('');
-                        setVisibleColumns({
-                            name: true,
-                            serviceIP: true,
-                            serviceStatus: true,
-                            provider: true,
-                            containerDetails: true,
-                            tags: true,
-                            alerts: true
-                        });
-                    } else {
-                        // If the active view ID doesn't exist, fall back to the first available view or default
-                        const firstView = savedViews[0];
-                        if (firstView) {
-                            setActiveView(firstView.id);
-                            applyView(firstView);
-                        } else {
-                            setActiveView('default-view');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading saved views:', error);
-                toast({
-                    title: "Error",
-                    description: "Failed to load saved views",
-                    variant: "destructive"
-                });
-            }
-        };
+ 
 
-        if (savedViews.length > 0 && activeViewId) {
-            loadViews();
-        }
-    }, [savedViews, activeViewId, setActiveView, toast]);
 
     // Handle errors from React Query
     useEffect(() => {
@@ -283,16 +248,13 @@ const Dashboard = () => {
 
     const applyView = async (view: SavedView) => {
         try {
-            setFilters(view.filters);
-            // Ensure visibleColumns has all required properties
+            applyViewFilters(view);
             setVisibleColumns(prev => ({
                 ...prev,
                 ...view.visibleColumns
             }));
-            setSearchTerm(view.searchTerm);
             await setActiveView(view.id);
 
-            // Only show toast if not the default 'All Services' view
             if (view.name !== "All Services") {
                 toast({
                     title: "View Applied",
@@ -316,7 +278,7 @@ const Dashboard = () => {
         })
     }
 
-    const handleAddService = (serviceData: any) => {
+    const handleAddService = (serviceData: { name: string }) => {
         toast({
             title: "Service Added",
             description: `${serviceData.name} has been added successfully.`
@@ -511,7 +473,7 @@ const Dashboard = () => {
                             "border-r border-border transition-all duration-300 ease-in-out flex-shrink-0 relative",
                             filterPanelCollapsed ? "w-12" : "w-48"
                         )}>
-                            <div className="h-full flex flex-col px-4">
+                            <div className={cn("h-full flex flex-col",!filterPanelCollapsed ? "px-4":"")}>
                                 <div className="flex items-center justify-between p-2 border-b border-border">
                                     {!filterPanelCollapsed && (
                                         <h3 className="text-sm font-semibold text-foreground">Filters</h3>
@@ -521,7 +483,7 @@ const Dashboard = () => {
                                     <FilterPanel
                                         services={services}
                                         filters={filters}
-                                        onFilterChange={setFilters}
+                                        onFilterChange={handleFiltersChange}
                                         collapsed={filterPanelCollapsed}
                                     />
                                 </div>
@@ -563,7 +525,7 @@ const Dashboard = () => {
                                     onSettingsClick={() => setShowTableSettings(true)}
                                     visibleColumns={visibleColumns}
                                     searchTerm={searchTerm}
-                                    onSearchChange={setSearchTerm}
+                                    onSearchChange={handleSearchTermChange}
                                     loading={servicesLoading}
                                     columnOrder={columnOrder}
                                     onColumnOrderChange={setColumnOrder}
@@ -612,5 +574,3 @@ const Dashboard = () => {
         </div>
     )
 }
-
-export default Dashboard;
