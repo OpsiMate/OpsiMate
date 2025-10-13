@@ -1,27 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opsimate-backend
+  name: opsimate-frontend
   labels:
-    app: opsimate-backend
+    app: opsimate-frontend
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      app: opsimate-backend
+      app: opsimate-frontend
   template:
     metadata:
       labels:
-        app: opsimate-backend
+        app: opsimate-frontend
     spec:
       containers:
-        - name: opsimate-backend
+        - name: opsimate-frontend
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: NODE_ENV # will change this to use variables
+            value: "production"
+          - name: API_URL
+            value: opsimate-backend-service:3001 ## will change this to use variables
           ports:
             - name: http
               containerPort: 8080
@@ -38,3 +43,4 @@ spec:
             requests:
               cpu: {{ .Values.resources.requests.cpu}}
               memory: {{ .Values.resources.requests.memory}}
+            

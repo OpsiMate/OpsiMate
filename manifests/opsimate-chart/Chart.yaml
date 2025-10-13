@@ -2,12 +2,12 @@ apiVersion: v2
 name: opsimate-chart
 description: A Helm chart for Kubernetes
 dependencies:
-  - name: backend
+  - name: opsimate-chart-backend
     version: 0.1.0
-    repository: "/"
-  - name: frontend
+    repository: "file://charts/backend"
+  - name: opsimate-chart-frontend
     version:  0.1.0
-    repository: /
+    repository: "file://charts/frontend"
 
 # A chart can be either an 'application' or a 'library' chart.
 #

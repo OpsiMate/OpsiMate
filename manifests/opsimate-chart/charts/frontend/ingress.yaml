@@ -14,9 +14,9 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
-  name: opsimate-backend-ingress
+  name: opsimate-frontend-ingress
   labels:
-    app: opsimate-backend-ingress
+    app: opsimate-frontend-ingress
 spec:
   {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
   ingressClassName: {{ .Values.ingress.className }}
@@ -44,11 +44,11 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ $fullName }}
+                name: opsimate-frontend-svc
                 port:
                   number: {{ $svcPort }}
               {{- else }}
-              serviceName: {{ $fullName }}
+              serviceName: opsimate-frontend-svc
               servicePort: {{ $svcPort }}
               {{- end }}
           {{- end }}

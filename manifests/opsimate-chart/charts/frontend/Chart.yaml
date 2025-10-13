@@ -1,6 +1,7 @@
 apiVersion: v2
-name: opsimate-chart
-description: A Helm chart for Kubernetes
+name: opsimate-chart-frontend
+description: A Helm chart for deploying frontend
+
 
 # A chart can be either an 'application' or a 'library' chart.
 #

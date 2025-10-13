@@ -20,6 +20,8 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
+        - name: HOST
+          value: "0.0.0.0"
         ports:
-        - containerPort: 8080
+        - containerPort: 3001
     

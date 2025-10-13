@@ -1,27 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opsimate-frontend
+  name: opsimate-backend
   labels:
-    app: opsimate-frontend
+    app: opsimate-backend
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      app: opsimate-frontend
+      app: opsimate-backend
   template:
     metadata:
       labels:
-        app: opsimate-frontend
+        app: opsimate-backend
     spec:
       containers:
-        - name: opsimate-frontend
+        - name: opsimate-backend
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: NODE_ENV
+            value: "production" # will change this to use variables
+          - name: HOST
+            value: "0.0.0.0"  # will change this to use variables
+          volumeMounts:
+            - mountPath: "/data/database"
+              name: opsimate-pv-storage
           ports:
             - name: http
               containerPort: 8080
@@ -38,4 +46,7 @@ spec:
             requests:
               cpu: {{ .Values.resources.requests.cpu}}
               memory: {{ .Values.resources.requests.memory}}
-            
+          volumes:
+          - name: opsimate-pv-storage
+            persistentVolumeClaim:
+              claimName: opismate-backend-pvc
