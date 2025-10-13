@@ -28,6 +28,7 @@ const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || h
 const serverSchema = z.object({
     name: z.string().min(1, "Server name is required"),
     hostname: z.string().min(1, "Hostname/IP is required").refine((value) => {
+        // Allow both IP addresses and hostnames
         return isValidHostnameOrIP(value);
     }, {
         message: "Must be a valid IP address or hostname"
