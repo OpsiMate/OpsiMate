@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SavedView } from "@/types/SavedView";
-import { Filters } from "@/components/FilterPanel";
+import { Filters } from "@/components/Dashboard";
 import { BookmarkPlus, Check, ChevronDown, Edit, Search, Trash, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -52,6 +52,23 @@ export function SavedViewsManager({
   const [viewDescription, setViewDescription] = useState("");
   const [editingViewId, setEditingViewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const hasActiveFilters = useMemo(() => {
+    return Object.values(currentFilters).some(filterValues => 
+      Array.isArray(filterValues) && filterValues.length > 0
+    ) || currentSearchTerm.trim() !== '';
+  }, [currentFilters, currentSearchTerm]);
+
+  const displayViewName = useMemo(() => {
+    if (activeViewId) {
+      const view = savedViews.find(v => v.id === activeViewId);
+      return view?.name || "Current View";
+    }
+    if (hasActiveFilters) {
+      return "Custom View";
+    }
+    return "All Services";
+  }, [activeViewId, savedViews, hasActiveFilters]);
   
   const filteredViews = useMemo(() => {
     if (!searchQuery.trim()) return savedViews;
@@ -139,14 +156,10 @@ export function SavedViewsManager({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
-              {activeViewId ? (
-                <span className="flex items-center gap-1">
-                  <Check className="h-4 w-4" />
-                  {savedViews.find(view => view.id === activeViewId)?.name || "Current View"}
-                </span>
-              ) : (
-                "Views"
-              )}
+              <span className="flex items-center gap-1">
+                {activeViewId && <Check className="h-4 w-4" />}
+                {displayViewName}
+              </span>
               <ChevronDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

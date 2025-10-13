@@ -1,13 +1,15 @@
 import {Request, Response} from "express";
 import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
-import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
-import {ServiceNotFound} from "../../../bl/services/ServiceNotFound";
-import {ProviderRepository} from "../../../dal/providerRepository";
-import {ServiceRepository} from "../../../dal/serviceRepository";
-import {checkSystemServiceStatus} from "../../../dal/sshClient";
-import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
-import { isZodError } from "../../../utils/isZodError";
+import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
+import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
+import {ServiceNotFound} from "../../../bl/services/ServiceNotFound.js";
+import {ProviderRepository} from "../../../dal/providerRepository.js";
+import {ServiceRepository} from "../../../dal/serviceRepository.js";
+import {checkSystemServiceStatus} from "../../../dal/sshClient.js";
+import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl.js";
+import { ServicesBL } from "../../../bl/services/services.bl.js";
+import {AuthenticatedRequest} from '../../../middleware/auth.js';
+import { isZodError } from "../../../utils/isZodError.js";
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -15,6 +17,7 @@ export class ServiceController {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
+        private servicesBL: ServicesBL, 
         private customFieldBL?: ServiceCustomFieldBL
     ) {
     }
@@ -53,9 +56,14 @@ export class ServiceController {
         }
     }
 
-    createServiceHandler = async (req: Request, res: Response) => {
+    createServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const validatedData = CreateServiceSchema.parse(req.body);
+
+            if (!req.user) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
+            const service = await this.servicesBL.createService(validatedData, req.user);
 
             const provider = await this.providerRepo.getProviderById(validatedData.providerId);
 
@@ -64,24 +72,12 @@ export class ServiceController {
                 throw new ProviderNotFound(validatedData.providerId);
             }
 
-            const {lastID} = await this.serviceRepo.createService(validatedData);
-            logger.info(`service created with id ${lastID}`);
-
-            const service = await this.serviceRepo.getServiceById(lastID)
-
-            if (!service) {
-                logger.error(`No service found with id ${lastID}`);
-                throw new ProviderNotFound(validatedData.providerId);
-            }
-
             // If it's a systemd service, check its actual status
             if (service.serviceType === ServiceType.SYSTEMD) {
                 try {
-                    const actualStatus = await checkSystemServiceStatus(provider, service.name);
-
+                    const actualStatus = await checkSystemServiceStatus(provider, service.name);                    
                     // Update the service status in the database
-                    await this.serviceRepo.updateService(lastID, {serviceStatus: actualStatus});
-
+                    await this.serviceRepo.updateService(service.id, {serviceStatus: actualStatus});
                     // Update the service object for the response
                     service.serviceStatus = actualStatus;
                     logger.info(`Updated systemd service ${service.name} status to ${actualStatus}`);
@@ -171,35 +167,34 @@ export class ServiceController {
         }
     };
 
-    deleteServiceHandler = async (req: Request, res: Response) => {
+    deleteServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
-            const {serviceId} = ServiceIdSchema.parse({serviceId: req.params.serviceId});
-            const service = await this.serviceRepo.getServiceById(serviceId);
+            const { serviceId } = ServiceIdSchema.parse({ serviceId: req.params.serviceId });
 
-            if (!service) {
-                return res.status(404).json({success: false, error: 'Service not found'});
+            if (!req.user) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
             }
 
-            // Delete custom field values for this service (if custom field BL is available)
             if (this.customFieldBL) {
                 try {
                     const deletedValuesCount = await this.customFieldBL.deleteAllValuesForService(serviceId);
                     logger.info(`Deleted ${deletedValuesCount} custom field values for service ${serviceId}`);
                 } catch (error) {
                     logger.warn(`Failed to delete custom field values for service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`);
-                    // Continue with service deletion even if custom field cleanup fails
                 }
             }
 
-            await this.serviceRepo.deleteService(serviceId);
-            logger.info(`Successfully deleted service ${serviceId} (${service.name})`);
-            return res.json({success: true, message: 'Service deleted successfully'});
+            await this.servicesBL.deleteService(serviceId, req.user);
+
+            res.json({ success: true, message: 'Service deleted successfully' });
         } catch (error) {
             if (isZodError(error)) {
-                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            } else if (error instanceof ServiceNotFound) {
+                res.status(404).json({ success: false, error: `Service with ID ${error.serviceId} not found` });
             } else {
                 logger.error('Error deleting service:', error);
-                return res.status(500).json({success: false, error: 'Internal server error'});
+                res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };

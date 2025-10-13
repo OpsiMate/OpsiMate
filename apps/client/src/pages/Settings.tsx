@@ -728,7 +728,7 @@ const AuditLogTable: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={actionProps.variant as any} className={actionProps.className}>
+                      <Badge variant={actionProps.variant as "default" | "destructive" | "outline" | "secondary"} className={actionProps.className}>
                         {log.actionType}
                       </Badge>
                     </TableCell>
@@ -799,10 +799,9 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
     const {toast} = useToast();
 
     const handleFile = async (file: File) => {
-        // todo: implement file validation
-        setIsFileValid(true);
-        setSelectedFile(file);
-        setFileName(file.name);
+        setIsFileValid(true)
+        setSelectedFile(file)
+        setFileName(file.name)
     };
 
     const handleSave = async () => {
