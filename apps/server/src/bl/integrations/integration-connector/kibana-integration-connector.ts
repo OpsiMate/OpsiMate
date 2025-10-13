@@ -12,7 +12,7 @@ export class KibanaIntegrationConnector implements IntegrationConnector {
                 return [];
             }
             
-            const kibanaClient = new KibanaClient(integration.externalUrl, integration.credentials["apiKey"] as string);
+            const kibanaClient = new KibanaClient(integration.externalUrl, integration.credentials["apiKey"]);
             
             // Process all tags in parallel and collect dashboards
             const dashboardPromises: Promise<IntegrationUrls[]>[] = tags.map(async (tag: string) => {
