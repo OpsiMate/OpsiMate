@@ -12,13 +12,8 @@ services:
       - ./config.yml:/app/config/config.yml
     environment:
       - NODE_ENV=production
+      - HOST=0.0.0.0
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   frontend:
     image: opsimate/frontend:latest
@@ -28,13 +23,5 @@ services:
     environment:
       - NODE_ENV=production
       - API_URL=http://backend:3001   
-    depends_on:
-      backend:
-        condition: service_healthy
+      - HOST=0.0.0.0
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s

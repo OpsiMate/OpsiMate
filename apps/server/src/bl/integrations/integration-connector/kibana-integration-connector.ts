@@ -1,6 +1,6 @@
 import { Integration, IntegrationUrls, Logger } from "@OpsiMate/shared";
-import { IntegrationConnector } from "./integration-connector";
-import {DashboardResult, KibanaClient} from "../../../dal/external-client/kibana-client";
+import { IntegrationConnector } from "./integration-connector.js";
+import {DashboardResult, KibanaClient} from "../../../dal/external-client/kibana-client.js";
 
 
 export class KibanaIntegrationConnector implements IntegrationConnector {
@@ -12,7 +12,7 @@ export class KibanaIntegrationConnector implements IntegrationConnector {
                 return [];
             }
             
-            const kibanaClient = new KibanaClient(integration.externalUrl, integration.credentials["apiKey"] as string);
+            const kibanaClient = new KibanaClient(integration.externalUrl, integration.credentials["apiKey"]);
             
             // Process all tags in parallel and collect dashboards
             const dashboardPromises: Promise<IntegrationUrls[]>[] = tags.map(async (tag: string) => {
