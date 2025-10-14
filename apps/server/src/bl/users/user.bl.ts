@@ -1,11 +1,11 @@
 import { UserRepository } from '../../dal/userRepository.js';
 import bcrypt from 'bcrypt';
 import { AuditActionType, AuditResourceType, Logger, Role, User } from '@OpsiMate/shared';
-import { MailService } from '../../service/mail.service';
-import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
-import { AuditBL } from '../audit/audit.bl';
-import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
-import { passwordResetTemplate } from '../../utils/mailTemplate';
+import { MailService } from '../../service/mail.service.js';
+import { PasswordResetsRepository } from '../../dal/passwordResetsRepository.js';
+import { AuditBL } from '../audit/audit.bl.js';
+import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption.js';
+import { passwordResetTemplate } from '../../utils/mailTemplate.js';
 
 const logger = new Logger('bl/users/user.bl');
 
