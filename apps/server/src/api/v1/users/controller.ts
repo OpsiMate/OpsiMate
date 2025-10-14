@@ -269,4 +269,59 @@ export class UsersController {
             }
         }
     }
+
+    forgotPasswordHandler = async (req: Request, res: Response) => {
+        try {
+            await this.userBL.forgotPassword(req.body.email);
+            return res.status(200).json({ success: true, message: 'Password reset email sent' });
+        } catch (error) {
+            logger.error('Error processing forgot password request:', error);
+            if (error instanceof Error && error.message === 'User not found') {
+                return res.status(404).json({ success: false, error: error.message });
+            } else {
+                return res.status(500).json({ success: false, error: 'Internal server error' });
+            }
+        }
+    }
+
+    validateResetPasswordTokenHandler = async (req: Request, res: Response) => {
+        try {
+            const { token } = req.body as { token: string };
+            const isValid = await this.userBL.validateResetPasswordToken(token);
+            if (!isValid) {
+                return res.status(400).json({ success: false, error: 'Invalid or expired token' });
+            }
+            return res.status(200).json({ success: true, message: 'Token is valid' });
+        } catch (error) {
+            logger.error('Error validating reset password token:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
+    resetPasswordHandler = async (req: Request, res: Response) => {
+        try {
+            const { token, newPassword } = req.body as { token: string; newPassword: string };
+
+            if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password must be at least 8 characters long'
+                });
+            }
+
+            await this.userBL.resetPassword(token, newPassword);
+            return res.status(200).json({ success: true, message: 'Password has been reset successfully' });
+        } catch (error) {
+            logger.error('Error resetting password:', error);
+            if (error instanceof Error && (
+                error.message === 'Invalid or expired token' || 
+                error.message === 'User not found' ||
+                error.message === 'You cannot reuse an old password')
+            ) {
+                return res.status(400).json({ success: false, error: error.message });
+            } else {
+                return res.status(500).json({ success: false, error: 'Internal server error' });
+            }
+        }
+    }
 };
