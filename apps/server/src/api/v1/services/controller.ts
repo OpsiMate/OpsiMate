@@ -1,13 +1,17 @@
 import {Request, Response} from "express";
-import {z} from "zod";
 import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
-import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
-import {ServiceNotFound} from "../../../bl/services/ServiceNotFound";
-import {ProviderRepository} from "../../../dal/providerRepository";
-import {ServiceRepository} from "../../../dal/serviceRepository";
-import {checkSystemServiceStatus} from "../../../dal/sshClient";
-import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
+import {ProviderRepository} from "../../../dal/providerRepository.js";
+import {ServiceRepository} from "../../../dal/serviceRepository.js";
+import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl.js";
+import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
+import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
+import {ServiceNotFound} from "../../../bl/services/ServiceNotFound.js";
+import {checkSystemServiceStatus} from "../../../dal/sshClient.js";
+import { TagRepository } from '../../../dal/tagRepository.js';
+import { AlertBL } from '../../../bl/alerts/alert.bl.js';
+import { isZodError } from "../../../utils/isZodError.js";
+import { ServicesBL } from "../../../bl/services/services.bl.js";
+import { AuthenticatedRequest } from '../../../middleware/auth.js';
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -15,7 +19,11 @@ export class ServiceController {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
-        private customFieldBL?: ServiceCustomFieldBL
+        private servicesBL: ServicesBL,
+        private customFieldBL?: ServiceCustomFieldBL,
+        private tagRepo?: TagRepository,
+  private alertBL?: AlertBL
+
     ) {
     }
 
@@ -53,9 +61,14 @@ export class ServiceController {
         }
     }
 
-    createServiceHandler = async (req: Request, res: Response) => {
+    createServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
             const validatedData = CreateServiceSchema.parse(req.body);
+
+            if (!req.user) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
+            const service = await this.servicesBL.createService(validatedData, req.user);
 
             const provider = await this.providerRepo.getProviderById(validatedData.providerId);
 
@@ -64,24 +77,12 @@ export class ServiceController {
                 throw new ProviderNotFound(validatedData.providerId);
             }
 
-            const {lastID} = await this.serviceRepo.createService(validatedData);
-            logger.info(`service created with id ${lastID}`);
-
-            const service = await this.serviceRepo.getServiceById(lastID)
-
-            if (!service) {
-                logger.error(`No service found with id ${lastID}`);
-                throw new ProviderNotFound(validatedData.providerId);
-            }
-
             // If it's a systemd service, check its actual status
             if (service.serviceType === ServiceType.SYSTEMD) {
                 try {
                     const actualStatus = await checkSystemServiceStatus(provider, service.name);
-
                     // Update the service status in the database
-                    await this.serviceRepo.updateService(lastID, {serviceStatus: actualStatus});
-
+                    await this.serviceRepo.updateService(service.id, {serviceStatus: actualStatus});
                     // Update the service object for the response
                     service.serviceStatus = actualStatus;
                     logger.info(`Updated systemd service ${service.name} status to ${actualStatus}`);
@@ -92,21 +93,21 @@ export class ServiceController {
             }
 
             const enrichedServices = await this.enrichServicesWithCustomFields([{...service, provider}]);
-            res.status(201).json({
+            return res.status(201).json({
                 success: true,
                 data: enrichedServices[0],
                 message: 'Service created successfully'
             });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ProviderNotFound) {
-                res.status(404).json({success: false, error: `Provider with ID ${error.provider} not found`});
+                return res.status(404).json({success: false, error: `Provider with ID ${error.provider} not found`});
             } else if (error instanceof ServiceNotFound) {
-                res.status(404).json({success: false, error: `Service with ID ${error.serviceId} not found`});
+                return res.status(404).json({success: false, error: `Service with ID ${error.serviceId} not found`});
             } else {
                 logger.error('Error creating service:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     };
@@ -115,10 +116,10 @@ export class ServiceController {
         try {
             const services = await this.serviceRepo.getServicesWithProvider();
             const enrichedServices = await this.enrichServicesWithCustomFields(services);
-            res.json({success: true, data: enrichedServices});
+            return res.json({success: true, data: enrichedServices});
         } catch (error) {
             logger.error('Error getting services:', error);
-            res.status(500).json({success: false, error: 'Internal server error'});
+            return res.status(500).json({success: false, error: 'Internal server error'});
         }
     };
 
@@ -131,13 +132,13 @@ export class ServiceController {
             }
 
             const enrichedServices = await this.enrichServicesWithCustomFields([service]);
-            res.json({success: true, data: enrichedServices[0]});
+            return res.json({success: true, data: enrichedServices[0]});
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error getting service:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     };
@@ -157,49 +158,50 @@ export class ServiceController {
 
             if (updatedService) {
                 const enrichedServices = await this.enrichServicesWithCustomFields([updatedService]);
-                res.json({success: true, data: enrichedServices[0], message: 'Service updated successfully'});
+                return res.json({success: true, data: enrichedServices[0], message: 'Service updated successfully'});
             } else {
-                res.json({success: true, data: null, message: 'Service updated successfully'});
+                return res.json({success: true, data: null, message: 'Service updated successfully'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error updating service:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     };
 
-    deleteServiceHandler = async (req: Request, res: Response) => {
+    deleteServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
-            const {serviceId} = ServiceIdSchema.parse({serviceId: req.params.serviceId});
-            const service = await this.serviceRepo.getServiceById(serviceId);
+            const { serviceId } = ServiceIdSchema.parse({ serviceId: req.params.serviceId });
 
-            if (!service) {
-                return res.status(404).json({success: false, error: 'Service not found'});
+            if (!req.user) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
             }
 
-            // Delete custom field values for this service (if custom field BL is available)
             if (this.customFieldBL) {
                 try {
                     const deletedValuesCount = await this.customFieldBL.deleteAllValuesForService(serviceId);
                     logger.info(`Deleted ${deletedValuesCount} custom field values for service ${serviceId}`);
                 } catch (error) {
                     logger.warn(`Failed to delete custom field values for service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`);
-                    // Continue with service deletion even if custom field cleanup fails
                 }
             }
+await this.alertBL?.clearAlertsByService(serviceId);
+    await this.tagRepo?.deleteAllServiceTags(serviceId);
 
-            await this.serviceRepo.deleteService(serviceId);
-            logger.info(`Successfully deleted service ${serviceId} (${service.name})`);
-            res.json({success: true, message: 'Service deleted successfully'});
+            await this.servicesBL.deleteService(serviceId, req.user);
+
+            res.json({ success: true, message: 'Service deleted successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            } else if (error instanceof ServiceNotFound) {
+                res.status(404).json({ success: false, error: `Service with ID ${error.serviceId} not found` });
             } else {
                 logger.error('Error deleting service:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -225,17 +227,17 @@ export class ServiceController {
             const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
             if (updatedService) {
                 const enrichedServices = await this.enrichServicesWithCustomFields([updatedService]);
-                res.json({success: true, data: enrichedServices[0], message: 'Service started successfully'});
+                return res.json({success: true, data: enrichedServices[0], message: 'Service started successfully'});
             } else {
-                res.json({success: true, data: null, message: 'Service started successfully'});
+                return res.json({success: true, data: null, message: 'Service started successfully'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error starting service:', error);
                 const message = error instanceof Error ? error.message : String(error);
-                res.status(500).json({success: false, error: 'Internal server error', details: message});
+                return res.status(500).json({success: false, error: 'Internal server error', details: message});
             }
         }
     };
@@ -261,17 +263,17 @@ export class ServiceController {
             const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
             if (updatedService) {
                 const enrichedServices = await this.enrichServicesWithCustomFields([updatedService]);
-                res.json({success: true, data: enrichedServices[0], message: 'Service stopped successfully'});
+                return res.json({success: true, data: enrichedServices[0], message: 'Service stopped successfully'});
             } else {
-                res.json({success: true, data: null, message: 'Service stopped successfully'});
+                return res.json({success: true, data: null, message: 'Service stopped successfully'});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error stopping service:', error);
                 const message = error instanceof Error ? error.message : String(error);
-                res.status(500).json({success: false, error: 'Internal server error', details: message});
+                return res.status(500).json({success: false, error: 'Internal server error', details: message});
             }
         }
     };
@@ -293,14 +295,14 @@ export class ServiceController {
             const providerConnector = providerConnectorFactory(provider.providerType);
             const logs = await providerConnector.getServiceLogs(provider, service);
 
-            res.json({success: true, data: logs, message: 'Service logs retrieved successfully'});
+            return res.json({success: true, data: logs, message: 'Service logs retrieved successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error getting logs:', error);
                 const message = error instanceof Error ? error.message : String(error);
-                res.status(500).json({success: false, error: 'Internal server error', details: message});
+                return res.status(500).json({success: false, error: 'Internal server error', details: message});
             }
         }
     };
@@ -322,14 +324,14 @@ export class ServiceController {
             const providerConnector = providerConnectorFactory(provider.providerType);
             const pods = await providerConnector.getServicePods(provider, service);
 
-            res.json({success: true, data: pods, message: 'Service pods retrieved successfully'});
+            return res.json({success: true, data: pods, message: 'Service pods retrieved successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error getting pods:', error);
                 const message = error instanceof Error ? error.message : String(error);
-                res.status(500).json({success: false, error: 'Internal server error', details: message});
+                return res.status(500).json({success: false, error: 'Internal server error', details: message});
             }
         }
     };

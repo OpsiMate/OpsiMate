@@ -33,7 +33,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Service } from "@/components/ServiceTable"
 import { Alert } from "@OpsiMate/shared"
-import { Filters } from "@/components/FilterPanel"
+import { getAlertServiceId } from "@/utils/alert.utils";
+import { Filters } from "@/components/Dashboard"
 
 interface TVModeProps {
   autoRefresh?: boolean
@@ -54,7 +55,7 @@ const TVMode = ({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
-  
+
   // Service action mutations
   const startServiceMutation = useStartService()
   const stopServiceMutation = useStopService()
@@ -80,6 +81,9 @@ const TVMode = ({
       return {}
     }
   })()
+
+
+
   const savedVisibleColumns: Record<string, boolean> = (() => {
     try {
       const columnsParam = searchParams.get('visibleColumns')
@@ -114,27 +118,36 @@ const TVMode = ({
 
   // Enhanced alert calculation
   const servicesWithAlerts = useMemo(() => {
-    console.log('TV Mode - Total alerts available:', alerts.length)
-    return services.map(service => {
-      const serviceAlerts = alerts.filter(alert => 
-        service.tags?.some(tag => tag.name === alert.tag)
-      )
-      const uniqueAlerts = serviceAlerts.filter((alert, index, self) => 
-        index === self.findIndex(a => a.id === alert.id)
-      )
-      const activeAlerts = uniqueAlerts.filter(alert => !alert.isDismissed)
-      
-      if (activeAlerts.length > 0) {
-        console.log(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, activeAlerts)
-      }
-      
-      return {
-        ...service,
-        alertsCount: activeAlerts.length,
-        serviceAlerts: activeAlerts // Use activeAlerts instead of uniqueAlerts to only show non-dismissed alerts
-      }
-    })
-  }, [services, alerts])
+  console.log('TV Mode - Total alerts available:', alerts.length)
+  return services.map(service => {
+    const sid = Number(service.id);
+
+
+    const serviceAlerts = alerts.filter(alert => {
+    const explicitSid = getAlertServiceId(alert);
+    return explicitSid !== undefined
+      ? explicitSid === sid
+      : service.tags?.some(tag => tag.name === alert.tag);
+  })
+
+
+    const uniqueAlerts = serviceAlerts.filter((a, i, self) =>
+      i === self.findIndex(b => b.id === a.id)
+    );
+
+    const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed)
+
+    if (activeAlerts.length > 0) {
+      console.log(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, activeAlerts)
+    }
+
+    return {
+      ...service,
+      alertsCount: activeAlerts.length,
+      serviceAlerts: activeAlerts
+    }
+  })
+}, [services, alerts])
 
   // Apply saved view filters and search
   const baseFilteredServices = useMemo(() => {
@@ -552,44 +565,48 @@ const TVMode = ({
     <>
       <div className="h-screen overflow-y-auto bg-background text-foreground p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Monitor className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">OpsiMate TV Mode</h1>
-            <p className="text-muted-foreground">
-              {currentTime.toLocaleString()} • Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
-              {(isLoading || isRefreshing) && (
+      <div className="space-y-3 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Monitor className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">OpsiMate TV Mode</h1>
+              <div className="text-muted-foreground space-y-0.5">
+                <p>
+                  {currentTime.toLocaleString()} • Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
+                  {viewRotation && ' • View Rotation: ON'}
+                </p>
+                <p>
+                  Grid: {smartGridConfig.columns} cols ({smartGridConfig.cardSize})
+                  {(isLoading || isRefreshing) && (
                 <span className="inline-flex items-center gap-1 ml-2">
                   <RotateCcw className="h-3 w-3 animate-spin" />
                   <span className="text-xs">{isRefreshing ? 'Manual refresh' : 'Auto refresh'}</span>
                 </span>
               )}
-              {viewRotation && ' • View Rotation: ON'}
-              • Grid: {smartGridConfig.columns} cols ({smartGridConfig.cardSize})
-              {searchTerm && ` • Search: "${searchTerm}"`}
-              {Object.keys(savedFilters).length > 0 && (
-                <span>
-                  {' • Filters: '}
-                  {Object.entries(savedFilters)
-                    .filter(([_, values]) => values.length > 0)
-                    .map(([key, values]) => `${key}(${values.length})`)
-                    .join(', ')}
-                </span>
-              )}
-            </p>
+                  {searchTerm && ` • Search: "${searchTerm}"`}
+                  {Object.keys(savedFilters).length > 0 && (
+                    <span>
+                      {' • Filters: '}
+                      {Object.entries(savedFilters)
+                        .filter(([_, values]) => values.length > 0)
+                        .map(([key, values]) => `${key}(${values.length})`)
+                        .join(', ')}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {/* Control Buttons */}
-          <div className="flex gap-2">
+          
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Control Buttons */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 min-w-[120px]"
               title="Manual Refresh (Ctrl+R)"
             >
               <RotateCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -653,12 +670,25 @@ const TVMode = ({
                 </div>
               </PopoverContent>
             </Popover>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2"
+              title="Exit TV Mode (Escape)"
+            >
+              <X className="h-4 w-4" />
+              Exit TV Mode
+            </Button>
           </div>
-          
+        </div>
+        
+        <div className="flex flex-wrap items-center justify-center gap-6">
           {/* Multi-State Filter Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">Status:</span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {(['all', 'running', 'stopped', 'error'] as const).map((state, index) => {
                 const isSelected = selectedStates.has(state)
                 const isAllSelected = selectedStates.has('all')
@@ -675,10 +705,10 @@ const TVMode = ({
                         toggleStateSelection(state)
                       }
                     }}
-                    className="capitalize"
+                    className="capitalize min-w-[85px]"
                     title={`Toggle ${state} view (${index + 1})`}
                   >
-                    {state}
+                    <span className="inline-block min-w-[50px]">{state}</span>
                     {isSelected && state !== 'all' && !isAllSelected && (
                       <span className="ml-1 text-xs">✓</span>
                     )}
@@ -686,13 +716,13 @@ const TVMode = ({
                 )
               })}
             </div>
-            <div className="text-xs text-muted-foreground">
+            {/* <div className="text-xs text-muted-foreground">
               {selectedStates.has('all') ? 'All' : `${Array.from(selectedStates).join(', ')}`}
-            </div>
+            </div> */}
           </div>
           
           {/* Alert Filter Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-muted-foreground">Show:</span>
             <div className="flex gap-1 bg-muted/50 rounded-md p-1">
               <Button
@@ -716,21 +746,10 @@ const TVMode = ({
               </Button>
             </div>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2"
-            title="Exit TV Mode (Escape)"
-          >
-            <X className="h-4 w-4" />
-            Exit TV Mode
-          </Button>
         </div>
       </div>
 
-      {/* Compact Statistics Bar */}
+            {/* Compact Statistics Bar */}
       <div className="grid grid-cols-6 gap-2 mb-3">
         <Card className="border border-blue-500 bg-blue-50/50 dark:bg-blue-950/50">
           <CardContent className="p-2 text-center">
@@ -740,7 +759,7 @@ const TVMode = ({
                 <span className="text-xs text-blue-500 dark:text-blue-400">/{stats.total}</span>
               )}
             </div>
-            <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
               {stats.filtered.total !== stats.total ? 'Filtered/Total' : 'Total'}
             </div>
           </CardContent>
@@ -754,7 +773,7 @@ const TVMode = ({
                 <span className="text-xs text-green-500 dark:text-green-400">/{stats.running}</span>
               )}
             </div>
-            <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">Running</div>
+            <div className="text-xs text-green-600 dark:text-green-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">Running</div>
           </CardContent>
         </Card>
         
@@ -766,7 +785,7 @@ const TVMode = ({
                 <span className="text-xs text-gray-500 dark:text-gray-400">/{stats.stopped}</span>
               )}
             </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Stopped</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">Stopped</div>
           </CardContent>
         </Card>
         
@@ -778,7 +797,7 @@ const TVMode = ({
                 <span className="text-xs text-red-500 dark:text-red-400">/{stats.error}</span>
               )}
             </div>
-            <div className="text-xs text-red-600 dark:text-red-400 mt-0.5">Error</div>
+            <div className="text-xs text-red-600 dark:text-red-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">Error</div>
           </CardContent>
         </Card>
         
@@ -790,7 +809,7 @@ const TVMode = ({
                 <span className="text-xs text-yellow-500 dark:text-yellow-400">/{stats.unknown}</span>
               )}
             </div>
-            <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">Unknown</div>
+            <div className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">Unknown</div>
           </CardContent>
         </Card>
         
@@ -799,7 +818,7 @@ const TVMode = ({
             <div className="text-lg font-bold text-orange-700 dark:text-orange-300 leading-none">
               {stats.totalAlerts}
             </div>
-            <div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Alerts</div>
+            <div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">Alerts</div>
           </CardContent>
         </Card>
       </div>

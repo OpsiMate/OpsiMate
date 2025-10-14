@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { ViewBL } from '../../../bl/custom-views/custom-view.bl';
+import { ViewBL } from '../../../bl/custom-views/custom-view.bl.js';
 import { Logger } from '@OpsiMate/shared';
-import {SavedView} from "../../../dal/viewRepository";
-import { AuthenticatedRequest } from '../../../middleware/auth';
+import {SavedView} from "../../../dal/viewRepository.js";
+import { AuthenticatedRequest } from '../../../middleware/auth.js';
 
 const logger = new Logger('api/v1/views/controller');
 
@@ -12,10 +12,10 @@ export class ViewController {
     getViewsHandler = async (req: Request, res: Response) => {
         try {
             const views = await this.viewBL.getAllViews();
-            res.json({ success: true, data: views });
+            return res.json({ success: true, data: views });
         } catch (error) {
             logger.error('Error getting views:', error);
-            res.status(500).json({ success: false, error: 'Failed to get views' });
+            return res.status(500).json({ success: false, error: 'Failed to get views' });
         }
     };
 
@@ -28,10 +28,10 @@ export class ViewController {
                 return res.status(404).json({ success: false, error: 'View not found' });
             }
 
-            res.json({ success: true, data: view });
+            return res.json({ success: true, data: view });
         } catch (error) {
             logger.error('Error getting view:', error);
-            res.status(500).json({ success: false, error: 'Failed to get view' });
+            return res.status(500).json({ success: false, error: 'Failed to get view' });
         }
     };
 
@@ -61,11 +61,11 @@ export class ViewController {
                 .json({ success: false, error: "Failed to save view" });
             }
 
-            res.json({ success: true, data: savedView });
+            return res.json({ success: true, data: savedView });
           } catch (error) {
             logger.error("Error saving view:", error);
             const message = error instanceof Error ? error.message : String(error);
-            res
+            return res
               .status(500)
               .json({ success: false, error: message || "Failed to save view" });
           }
@@ -82,11 +82,11 @@ export class ViewController {
                     .json({ success: false, error: 'View not found or could not be deleted' });
             }
 
-            res.json({ success: true, message: 'View deleted successfully' });
+            return res.json({ success: true, message: 'View deleted successfully' });
         } catch (error) {
             logger.error('Error deleting view:', error);
             const message = error instanceof Error ? error.message : String(error);
-            res.status(500).json({ success: false, error: message || 'Failed to delete view' });
+            return res.status(500).json({ success: false, error: message || 'Failed to delete view' });
         }
     };
 
@@ -101,21 +101,21 @@ export class ViewController {
                     .json({ success: false, error: 'View not found or could not be set as active' });
             }
 
-            res.json({ success: true, message: 'Active view set successfully' });
+            return res.json({ success: true, message: 'Active view set successfully' });
         } catch (error) {
             logger.error('Error setting active view:', error);
             const message = error instanceof Error ? error.message : String(error);
-            res.status(500).json({ success: false, error: message || 'Failed to set active view' });
+            return res.status(500).json({ success: false, error: message || 'Failed to set active view' });
         }
     };
 
     getActiveViewHandler = async (req: Request, res: Response) => {
         try {
             const activeViewId = await this.viewBL.getActiveViewId();
-            res.json({ success: true, data: { activeViewId } });
+            return res.json({ success: true, data: { activeViewId } });
         } catch (error) {
             logger.error('Error getting active view ID:', error);
-            res.status(500).json({ success: false, error: 'Failed to get active view ID' });
+            return res.status(500).json({ success: false, error: 'Failed to get active view ID' });
         }
     };
 }

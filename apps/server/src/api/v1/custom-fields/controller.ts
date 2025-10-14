@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { Logger } from "@OpsiMate/shared";
 import { z } from "zod";
-import { ServiceCustomFieldBL } from "../../../bl/custom-fields/serviceCustomField.bl";
+import { ServiceCustomFieldBL } from "../../../bl/custom-fields/serviceCustomField.bl.js";
+import { isZodError } from "../../../utils/isZodError.js";
 
 const logger = new Logger("v1/custom-fields/controller");
 
@@ -29,20 +30,20 @@ export class CustomFieldsController {
             const { name } = CreateCustomFieldSchema.parse(req.body);
             const customFieldId = await this.customFieldsBL.createCustomField(name);
 
-            res.status(201).json({
+            return res.status(201).json({
                 success: true,
                 data: { id: customFieldId }
             });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({
+            if (isZodError(error)) {
+                return res.status(400).json({
                     success: false,
                     error: 'Validation error',
                     details: error.errors
                 });
             } else {
                 logger.error('Error creating custom field:', error);
-                res.status(500).json({
+                return res.status(500).json({
                     success: false,
                     error: 'Internal server error'
                 });
@@ -53,13 +54,13 @@ export class CustomFieldsController {
     getCustomFields = async (req: Request, res: Response) => {
         try {
             const customFields = await this.customFieldsBL.getCustomFields();
-            res.json({
+            return res.json({
                 success: true,
                 data: { customFields }
             });
         } catch (error) {
             logger.error('Error getting custom fields:', error);
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
             });
@@ -70,28 +71,27 @@ export class CustomFieldsController {
         try {
             const customFieldId = parseInt(req.params.id);
             if (isNaN(customFieldId)) {
-                res.status(400).json({
+                return res.status(400).json({
                     success: false,
                     error: 'Invalid custom field ID'
                 });
-                return;
             }
 
             const customField = await this.customFieldsBL.getCustomFieldById(customFieldId);
             if (customField) {
-                res.json({
+                return res.json({
                     success: true,
                     data: { customField }
                 });
             } else {
-                res.status(404).json({
+                return res.status(404).json({
                     success: false,
                     error: 'Custom field not found'
                 });
             }
         } catch (error) {
             logger.error('Error getting custom field:', error);
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
             });
@@ -102,37 +102,36 @@ export class CustomFieldsController {
         try {
             const customFieldId = parseInt(req.params.id);
             if (isNaN(customFieldId)) {
-                res.status(400).json({
+                return res.status(400).json({
                     success: false,
                     error: 'Invalid custom field ID'
                 });
-                return;
             }
 
             const { name } = UpdateCustomFieldSchema.parse(req.body);
             const updated = await this.customFieldsBL.updateCustomField(customFieldId, name);
 
             if (updated) {
-                res.json({
+                return res.json({
                     success: true,
                     message: 'Custom field updated successfully'
                 });
             } else {
-                res.status(404).json({
+                return res.status(404).json({
                     success: false,
                     error: 'Custom field not found'
                 });
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({
+            if (isZodError(error)) {
+                return res.status(400).json({
                     success: false,
                     error: 'Validation error',
                     details: error.errors
                 });
             } else {
                 logger.error('Error updating custom field:', error);
-                res.status(500).json({
+                return res.status(500).json({
                     success: false,
                     error: 'Internal server error'
                 });
@@ -144,28 +143,27 @@ export class CustomFieldsController {
         try {
             const customFieldId = parseInt(req.params.id);
             if (isNaN(customFieldId)) {
-                res.status(400).json({
+                return res.status(400).json({
                     success: false,
                     error: 'Invalid custom field ID'
                 });
-                return;
             }
 
             const deleted = await this.customFieldsBL.deleteCustomField(customFieldId);
             if (deleted) {
-                res.json({
+                return res.json({
                     success: true,
                     message: 'Custom field deleted successfully'
                 });
             } else {
-                res.status(404).json({
+                return res.status(404).json({
                     success: false,
                     error: 'Custom field not found'
                 });
             }
         } catch (error) {
             logger.error('Error deleting custom field:', error);
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
             });
@@ -178,20 +176,20 @@ export class CustomFieldsController {
             const { serviceId, customFieldId, value } = UpsertCustomFieldValueSchema.parse(req.body);
             await this.customFieldsBL.upsertCustomFieldValue(serviceId, customFieldId, value);
 
-            res.json({
+            return res.json({
                 success: true,
                 message: 'Custom field value upserted successfully'
             });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({
+            if (isZodError(error)) {
+                return res.status(400).json({
                     success: false,
                     error: 'Validation error',
                     details: error.errors
                 });
             } else {
                 logger.error('Error upserting custom field value:', error);
-                res.status(500).json({
+                return res.status(500).json({
                     success: false,
                     error: 'Internal server error'
                 });
@@ -203,21 +201,20 @@ export class CustomFieldsController {
         try {
             const serviceId = parseInt(req.params.serviceId);
             if (isNaN(serviceId)) {
-                res.status(400).json({
+                return res.status(400).json({
                     success: false,
                     error: 'Invalid service ID'
                 });
-                return;
             }
 
             const values = await this.customFieldsBL.getCustomFieldValuesForService(serviceId);
-            res.json({
+            return res.json({
                 success: true,
                 data: { values }
             });
         } catch (error) {
             logger.error('Error getting custom field values for service:', error);
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
             });
@@ -230,28 +227,27 @@ export class CustomFieldsController {
             const customFieldId = parseInt(req.params.customFieldId);
 
             if (isNaN(serviceId) || isNaN(customFieldId)) {
-                res.status(400).json({
+                return res.status(400).json({
                     success: false,
                     error: 'Invalid service ID or custom field ID'
                 });
-                return;
             }
 
             const deleted = await this.customFieldsBL.deleteCustomFieldValue(serviceId, customFieldId);
             if (deleted) {
-                res.json({
+                return res.json({
                     success: true,
                     message: 'Custom field value deleted successfully'
                 });
             } else {
-                res.status(404).json({
+                return res.status(404).json({
                     success: false,
                     error: 'Custom field value not found'
                 });
             }
         } catch (error) {
             logger.error('Error deleting custom field value:', error);
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
                 error: 'Internal server error'
             });

@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from "react";
 import {DashboardLayout} from "../components/DashboardLayout";
 import {providerApi} from "../lib/api";
 import {Button} from "@/components/ui/button";
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/hooks/queries';
 import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Input} from "@/components/ui/input";
@@ -160,6 +162,7 @@ const getServiceStatusBadgeColor = (status: ServiceConfig["status"]) => {
 
 export function MyProviders() {
     const {toast} = useToast();
+    const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState("all");
     const [providerInstances, setProviderInstances] = useState<Provider[]>([]);
@@ -473,6 +476,7 @@ export function MyProviders() {
         try {
             setIsAddServiceDialogOpen(false);
             updateUIAfterServiceAddition(providerId, service);
+            queryClient.invalidateQueries({ queryKey: queryKeys.services });
             toast({
                 title: "Service added",
                 description: `${service.name} has been successfully added`,
@@ -576,11 +580,12 @@ export function MyProviders() {
             const response = await providerApi.deleteService(serviceIdNum);
 
             if (response.success) {
-                // Force complete refresh of all data
                 await fetchProviders();
                 setTimeout(async () => {
                     await loadAllProviderServices();
                 }, 100);
+                
+                queryClient.invalidateQueries({ queryKey: queryKeys.services });
 
                 toast({
                     title: "Service deleted",
@@ -609,6 +614,8 @@ export function MyProviders() {
                     (provider) => provider.id !== selectedProvider.id
                 );
                 setProviderInstances(updatedProviders);
+                
+                queryClient.invalidateQueries({ queryKey: queryKeys.services });
 
                 toast({
                     title: "Provider deleted",
@@ -664,6 +671,8 @@ export function MyProviders() {
                         setSelectedProvider(updatedProvider);
                     }
                 }
+                
+                queryClient.invalidateQueries({ queryKey: queryKeys.services });
 
                 toast({
                     title: "Provider updated",
@@ -855,9 +864,9 @@ export function MyProviders() {
                                                                                                 const mappedService: Service = {
                                                                                                     id: service.id,
                                                                                                     name: service.name,
-                                                                                                    serviceStatus: (service as any).status || (service as any).serviceStatus || 'unknown',
-                                                                                                    serviceType: (service as any).type || (service as any).serviceType || 'MANUAL',
-                                                                                                    createdAt: (service as any).createdAt || new Date().toISOString(),
+                                                                                                    serviceStatus: (service as { status?: string; serviceStatus?: string }).status || (service as { status?: string; serviceStatus?: string }).serviceStatus || 'unknown',
+                                                                                                    serviceType: (service as { type?: string; serviceType?: string }).type || (service as { type?: string; serviceType?: string }).serviceType || 'MANUAL',
+                                                                                                    createdAt: (service as { createdAt?: string }).createdAt || new Date().toISOString(),
                                                                                                     provider: parentProvider || {
                                                                                                         id: -1,
                                                                                                         name: 'Unknown',
@@ -870,7 +879,7 @@ export function MyProviders() {
                                                                                                     },
                                                                                                     serviceIP: service.serviceIP || '',
                                                                                                     containerDetails: service.containerDetails || {},
-                                                                                                    tags: (service as any).tags || []
+                                                                                                    tags: (service as { tags?: string[] }).tags || []
                                                                                                 };
                                                                                                 setSelectedServiceForDrawer(mappedService);
                                                                                                 setIsServiceDrawerOpen(true);

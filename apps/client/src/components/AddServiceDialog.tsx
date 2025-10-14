@@ -166,17 +166,30 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     }
 
     setLoading(true);
-    const serviceData = {
-      providerId: parseInt(serverId),
-      name: serviceName,
-      serviceType: "SYSTEMD" as const,
-      serviceStatus: "unknown" as const
-    };
-
-    console.log('Creating systemd service with data:', serviceData);
-
     try {
+      const serverStatus = await providerApi.getProviderInstances(parseInt(serverId));
+      if (!serverStatus.success || !serverStatus.data) {
+        toast({
+          title: `Service '${serviceName}' was not added`,
+          description: `Unable to connect to server '${serverName}'. Please make sure this server is online.`,
+          variant: "destructive"
+        });
+        setLoading(false);
+
+        //Closes dialog if failed
+        onClose();
+        return;
+      }
+
       // Create service using the API
+      const serviceData = {
+        providerId: parseInt(serverId),
+        name: serviceName,
+        serviceType: "SYSTEMD" as const,
+        serviceStatus: "unknown" as const
+      };
+      console.log('Creating systemd service with data:', serviceData);
+
       const response = await providerApi.createService(serviceData);
 
       console.log('Create systemd service response:', response);
@@ -189,7 +202,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
           type: "SYSTEMD", // Match the API service_type
           status: response.data.serviceStatus as "running" | "stopped" | "error" | "unknown"
         };
-        
+
         console.log('Service status from server:', response.data.serviceStatus);
 
         onServiceAdded(newService);
@@ -365,7 +378,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     if (anySelected) {
       // Just set selectedContainer to a non-null value to enable the Add button
       // We don't need specific container details since we're using multi-select
-      setSelectedContainer({ id: 'multi-select' } as any);
+      setSelectedContainer({ id: 'multi-select', name: 'Multi-select' });
     } else {
       setSelectedContainer(null);
     }
@@ -388,7 +401,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     // Update selectedContainer state
     if (!allSelected && containers.length > 0) {
       // If we're selecting all and there are containers, enable the Add button
-      setSelectedContainer({ id: 'multi-select' } as any);
+      setSelectedContainer({ id: 'multi-select', name: 'Multi-select' });
     } else {
       // If we're deselecting all, disable the Add button
       setSelectedContainer(null);

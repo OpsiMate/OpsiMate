@@ -116,6 +116,14 @@ export const validationRules = {
       label: 'Username is required',
       validator: (value: string) => value.length > 0,
     },
+    {
+      id: 'username-no-whitespace',
+      label: 'Username cannot contain whitespace',
+      validator: (value: string) => {
+        if (value.length === 0) return true; // Don't validate empty
+        return !/\s/.test(value);
+      },
+    },
   ],
   SSHPort: [
     {
@@ -156,4 +164,26 @@ export const validationRules = {
       },
     },
   ],
+  apiKey: [
+    {
+      id: 'apikey-no-spaces',
+      label: 'API key cannot contain spaces',
+      validator: (value: string) => {
+        if (value.length === 0) return true; 
+        return !/\s/.test(value);
+      },
+    },
+  ],
+  
+  appKey: [
+    {
+      id: 'appkey-no-spaces',
+      label: 'Application key cannot contain spaces',
+      validator: (value: string) => {
+        if (value.length === 0) return true; 
+        return !/\s/.test(value);
+      },
+    },
+  ],
+
 }; 

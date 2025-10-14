@@ -7,12 +7,12 @@ import {
     Provider,
     User
 } from "@OpsiMate/shared";
-import {z} from "zod";
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
-import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
-import {ProviderBL} from "../../../bl/providers/provider.bl";
-import {AuthenticatedRequest} from '../../../middleware/auth';
-import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository";
+import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
+import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
+import {ProviderBL} from "../../../bl/providers/provider.bl.js";
+import {AuthenticatedRequest} from '../../../middleware/auth.js';
+import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository.js";
+import { isZodError } from "../../../utils/isZodError.js";
 
 const logger: Logger = new Logger('server');
 
@@ -26,10 +26,10 @@ export class ProviderController {
             providers.forEach(provider => {
                 delete provider.password;
             })
-            res.json({success: true, data: {providers}});
+            return res.json({success: true, data: {providers}});
         } catch (error) {
             logger.error('Error getting providers:', error);
-            res.status(500).json({success: false, error: 'Internal server error'});
+            return res.status(500).json({success: false, error: 'Internal server error'});
         }
     }
 
@@ -44,7 +44,7 @@ export class ProviderController {
             
             delete result.provider.password;
             
-            res.json({
+            return res.json({
                 success: true, 
                 data: {
                     provider: result.provider,
@@ -54,11 +54,11 @@ export class ProviderController {
             });
         } catch (error) {
             if (error instanceof ProviderNotFound) {
-                res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
+                return res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
             } else {
                 logger.error('Error refreshing provider:', error);
                 const message = error instanceof Error ? error.message : 'Unknown error';
-                res.status(500).json({success: false, error: 'Failed to refresh provider', details: message});
+                return res.status(500).json({success: false, error: 'Failed to refresh provider', details: message});
             }
         }
     }
@@ -70,13 +70,13 @@ export class ProviderController {
                 ...providerToCreate,
                 createdAt: (Date.now()).toString()
             }, req.user as User);
-            res.status(201).json({success: true, data: createdProvider});
+            return res.status(201).json({success: true, data: createdProvider});
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error creating provider:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     }
@@ -117,17 +117,17 @@ export class ProviderController {
             const testResult = await providerConnector.testConnection(resolvedProvider);
 
             if (testResult.success) {
-                res.status(200).json({success: true, data: {isValidConnection: true}});
+                return res.status(200).json({success: true, data: {isValidConnection: true}});
             } else {
-                res.status(200).json({success: false, error: testResult.error || 'Connection test failed', data: {isValidConnection: false}});
+                return res.status(200).json({success: false, error: testResult.error || 'Connection test failed', data: {isValidConnection: false}});
             }
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else {
                 logger.error('Error testing provider connection:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-                res.status(500).json({success: false, error: errorMessage});
+                return res.status(500).json({success: false, error: errorMessage});
             }
         }
     }
@@ -142,15 +142,15 @@ export class ProviderController {
             const validatedData = CreateProviderSchema.parse(req.body);
             const updatedProvider = await this.providerBL.updateProvider(providerId, validatedData, req.user as User);
 
-            res.json({success: true, data: updatedProvider, message: 'Provider updated successfully'});
+            return res.json({success: true, data: updatedProvider, message: 'Provider updated successfully'});
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ProviderNotFound) {
-                res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
+                return res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
             } else {
                 logger.error('Error updating provider:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     }
@@ -162,13 +162,13 @@ export class ProviderController {
                 return res.status(400).json({success: false, error: 'Invalid provider ID'});
             }
             await this.providerBL.deleteProvider(providerId, req.user as User);
-            res.json({success: true, message: 'Provider and associated services deleted successfully'});
+            return res.json({success: true, message: 'Provider and associated services deleted successfully'});
         } catch (error) {
             if (error instanceof ProviderNotFound) {
-                res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
+                return res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
             }
             logger.error('Error deleting provider:', error);
-            res.status(500).json({success: false, error: 'Internal server error'});
+            return res.status(500).json({success: false, error: 'Internal server error'});
         }
     }
 
@@ -182,15 +182,15 @@ export class ProviderController {
             const validatedData = AddBulkServiceSchema.parse(req.body);
             const newServices = await this.providerBL.addServicesToProvider(providerId, validatedData);
 
-            res.status(201).json({success: true, data: newServices});
+            return res.status(201).json({success: true, data: newServices});
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ProviderNotFound) {
-                res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
+                return res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
             } else {
                 logger.error('Error storing services:', error);
-                res.status(500).json({success: false, error: 'Internal server error'});
+                return res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     }
@@ -203,10 +203,10 @@ export class ProviderController {
             }
 
             const discoversServices = await this.providerBL.discoverServicesInProvider(providerId);
-            res.json({success: true, data: discoversServices});
+            return res.json({success: true, data: discoversServices});
         } catch (error) {
             logger.error('Error discovering services:', error);
-            res.status(500).json({success: false, error: 'Internal server error'});
+            return res.status(500).json({success: false, error: 'Internal server error'});
         }
     }
 }

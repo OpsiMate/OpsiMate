@@ -4,8 +4,8 @@ import {
     Integration, IntegrationResponse,
     IntegrationTagsquerySchema, Logger
 } from "@OpsiMate/shared";
-import { z } from "zod";
-import { IntegrationBL } from "../../../bl/integrations/integration.bl";
+import { IntegrationBL } from "../../../bl/integrations/integration.bl.js";
+import { isZodError } from "../../../utils/isZodError.js";
 
 const logger = new Logger("v1/integrations/controller");
 
@@ -21,10 +21,10 @@ export class IntegrationController {
     getIntegrations = async (req: Request, res: Response) => {
         try {
             const integrations = await this.integrationBL.getAllIntegrations();
-            res.json({ success: true, data: { integrations: integrations.map(toIntegrationResponse) } });
+            return res.json({ success: true, data: { integrations: integrations.map(toIntegrationResponse) } });
         } catch (error) {
             logger.error('Error getting integrations:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -32,13 +32,13 @@ export class IntegrationController {
         try {
             const integrationToCreate = CreateIntegrationSchema.parse(req.body);
             const createdIntegration: Integration = await this.integrationBL.createIntegration(integrationToCreate);
-            res.status(201).json({ success: true, data: createdIntegration });
+            return res.status(201).json({ success: true, data: createdIntegration });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error creating integration:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -53,13 +53,13 @@ export class IntegrationController {
             const validatedData = CreateIntegrationSchema.parse(req.body);
             const updatedIntegration = await this.integrationBL.updateIntegration(integrationId, validatedData);
 
-            res.json({ success: true, data: toIntegrationResponse(updatedIntegration), message: 'Integration updated successfully' });
+            return res.json({ success: true, data: toIntegrationResponse(updatedIntegration), message: 'Integration updated successfully' });
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             } else {
                 logger.error('Error updating integration:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }
     };
@@ -72,10 +72,10 @@ export class IntegrationController {
             }
 
             await this.integrationBL.deleteIntegration(integrationId);
-            res.json({ success: true, message: 'Integration and associated services deleted successfully' });
+            return res.json({ success: true, message: 'Integration and associated services deleted successfully' });
         } catch (error) {
             logger.error('Error deleting integration:', error);
-            res.status(500).json({ success: false, error: 'Internal server error' });
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
 
@@ -86,20 +86,22 @@ export class IntegrationController {
             const tags: string[] = Array.isArray(parsed.tags) ? parsed.tags : [parsed.tags];
             const response = await this.integrationBL.getIntegrationUrls(integrationId, tags)
             res.json({ success: true, data: response });
-
+            return;
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (isZodError(error)) {
                 res.status(400).json({
                     success: false,
                     error: 'Validation error',
                     details: error.errors
                 });
+                return;
             } else {
                 logger.error('Error in refreshServicesByTags:', error);
                 res.status(500).json({
                     success: false,
                     error: 'Internal server error'
                 });
+                return;
             }
         }
     }

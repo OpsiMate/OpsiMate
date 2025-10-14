@@ -279,8 +279,8 @@ export function ServiceTable({
     // Apply sorting
     if (sortConfig) {
       filtered = [...filtered].sort((a, b) => {
-        let aValue: any
-        let bValue: any
+        let aValue: string | number
+        let bValue: string | number
 
         switch (sortConfig.field) {
           case 'name':
@@ -345,7 +345,12 @@ export function ServiceTable({
   }
 
   const handleRowClick = (service: Service) => {
-    onServicesSelect([service]);
+    const isSelected = selectedServices.some(s => s.id === service.id);
+    if (isSelected) {
+      onServicesSelect(selectedServices.filter(s => s.id !== service.id));
+    } else {
+      onServicesSelect([...selectedServices, service]);
+    }
   };
 
   if (loading) {
@@ -373,11 +378,13 @@ export function ServiceTable({
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-10">
-                  <Checkbox
-                    checked={false}
-                    onCheckedChange={() => {}}
-                    aria-label="Select all services"
-                  />
+                  <div className="flex items-center justify-center">
+                    <Checkbox
+                      checked={false}
+                      onCheckedChange={() => {}}
+                      aria-label="Select all services"
+                    />
+                  </div>
                 </TableHead>
                 {visibleColumns.name && <TableHead className="font-medium">Name</TableHead>}
                 {visibleColumns.serviceIP && <TableHead className="font-medium">Service IP</TableHead>}
@@ -468,17 +475,19 @@ export function ServiceTable({
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-10 h-8 py-1 px-1">
-                  <Checkbox
-                    checked={filteredAndSortedServices.length > 0 && selectedServices.length === filteredAndSortedServices.length}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        onServicesSelect(filteredAndSortedServices);
-                      } else {
-                        onServicesSelect([]);
-                      }
-                    }}
-                    aria-label="Select all services"
-                  />
+                  <div className="flex items-center justify-center">
+                    <Checkbox
+                      checked={filteredAndSortedServices.length > 0 && selectedServices.length === filteredAndSortedServices.length}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          onServicesSelect(filteredAndSortedServices);
+                        } else {
+                          onServicesSelect([]);
+                        }
+                      }}
+                      aria-label="Select all services"
+                    />
+                  </div>
                 </TableHead>
                 <SortableContext 
                   items={columnOrder.filter(col => visibleColumns[col])}
@@ -538,18 +547,19 @@ export function ServiceTable({
                   onClick={() => handleRowClick(service)}
                 >
                   <TableCell className="w-10 p-1" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedServices.some(s => s.id === service.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          onServicesSelect([...selectedServices, service]);
-                        } else {
-                          onServicesSelect(selectedServices.filter(s => s.id !== service.id));
-                        }
-                      }}
-                      aria-label={`Select ${service.name}`}
-                      className="h-3 w-3"
-                    />
+                    <div className="flex items-center justify-center h-full">
+                      <Checkbox
+                        checked={selectedServices.some(s => s.id === service.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            onServicesSelect([...selectedServices, service]);
+                          } else {
+                            onServicesSelect(selectedServices.filter(s => s.id !== service.id));
+                          }
+                        }}
+                        aria-label={`Select ${service.name}`}
+                      />
+                    </div>
                   </TableCell>
                   {columnOrder.map(columnId => {
                     if (!visibleColumns[columnId]) return null;
