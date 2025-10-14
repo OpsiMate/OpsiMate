@@ -83,18 +83,18 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     // BL
     const auditBL = new AuditBL(auditLogRepo);
     const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-    const servicesBL = new ServicesBL(serviceRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
     const userBL = new UserBL(userRepo);
     const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo);
     const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
+    const servicesBL = new ServicesBL(serviceRepo, auditBL);
 
     // Controllers
     const providerController = new ProviderController(providerBL, secretsMetadataRepo);
-    const serviceController = new ServiceController(providerRepo, serviceRepo, servicesBL, serviceCustomFieldBL);
+    const serviceController = new ServiceController(providerRepo, serviceRepo, servicesBL,serviceCustomFieldBL,tagRepo,alertBL);
     const viewController = new ViewController(new ViewBL(viewRepo));
-    const tagController = new TagController(tagRepo, serviceRepo);
+    const tagController = new TagController(tagRepo, serviceRepo,alertBL);
     const integrationController = new IntegrationController(integrationBL);
     const alertController = new AlertController(alertBL);
     const usersController = new UsersController(userBL);

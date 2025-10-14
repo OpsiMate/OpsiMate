@@ -8,6 +8,8 @@ import { useState, useMemo } from "react";
 import { Alert } from "@OpsiMate/shared";
 import { ExternalLink, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useServices } from "@/hooks/queries/services";
+import {getAlertServiceId} from "@/utils/alert.utils.ts";
 
 export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
@@ -16,6 +18,13 @@ export default function Alerts() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
 
+
+  const { data: services = [] } = useServices();
+
+  const serviceNameById = useMemo(
+  () => Object.fromEntries(services.map((s) => [s.id, s.name])),
+  [services]
+);
   const filteredAlerts = useMemo(() => {
     if (!search.trim()) return alerts;
     const lower = search.toLowerCase();
@@ -43,6 +52,11 @@ export default function Alerts() {
       });
     }
   };
+const renderServiceName = (a: Alert) => {
+  const sid = getAlertServiceId(a);
+  if (!sid) return <span className="text-muted-foreground">-</span>;
+  return serviceNameById[sid] ?? `#${sid}`;
+};
 
   const handleUndismissAlert = async (alertId: string) => {
     try {
@@ -59,7 +73,6 @@ export default function Alerts() {
       });
     }
   };
-
   const getStatusBadge = (alert: Alert) => {
     if (alert.isDismissed) {
       return <Badge variant="secondary">dismissed</Badge>
@@ -93,6 +106,7 @@ export default function Alerts() {
                   <TableHead>Tag</TableHead>
                   <TableHead>Summary</TableHead>
                   <TableHead>Started</TableHead>
+                  <TableHead>Service</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -123,6 +137,7 @@ export default function Alerts() {
                       <TableCell>
                         {new Date(alert.startsAt).toLocaleString()}
                       </TableCell>
+                      <TableCell>{renderServiceName(alert)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button
