@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
-import { isAdmin, isEditor } from "../lib/auth"
+import { isAdmin, isEditor,isViewer } from "../lib/auth"
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -65,8 +65,8 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
               </Link>
             </Button>
         }
-        
-        <Button
+
+        {!isViewer() &&( <Button
           variant={location.pathname === "/my-providers" ? "default" : "ghost"}
           className={cn(
             "gap-3 h-10", 
@@ -80,6 +80,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             <span className={cn("font-medium", collapsed && "sr-only")}>My Providers</span>
           </Link>
         </Button>
+          )}
 
         {isEditor() &&
             <Button

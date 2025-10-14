@@ -1,15 +1,17 @@
 import {Request, Response} from "express";
 import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
-import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
-import {ServiceNotFound} from "../../../bl/services/ServiceNotFound";
-import {ProviderRepository} from "../../../dal/providerRepository";
-import {ServiceRepository} from "../../../dal/serviceRepository";
-import {checkSystemServiceStatus} from "../../../dal/sshClient";
-import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
-import { ServicesBL } from "../../../bl/services/services.bl";
-import {AuthenticatedRequest} from '../../../middleware/auth';
-import { isZodError } from "../../../utils/isZodError";
+import {ProviderRepository} from "../../../dal/providerRepository.js";
+import {ServiceRepository} from "../../../dal/serviceRepository.js";
+import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl.js";
+import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
+import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
+import {ServiceNotFound} from "../../../bl/services/ServiceNotFound.js";
+import {checkSystemServiceStatus} from "../../../dal/sshClient.js";
+import { TagRepository } from '../../../dal/tagRepository.js';
+import { AlertBL } from '../../../bl/alerts/alert.bl.js';
+import { isZodError } from "../../../utils/isZodError.js";
+import { ServicesBL } from "../../../bl/services/services.bl.js";
+import { AuthenticatedRequest } from '../../../middleware/auth.js';
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -17,8 +19,11 @@ export class ServiceController {
     constructor(
         private providerRepo: ProviderRepository,
         private serviceRepo: ServiceRepository,
-        private servicesBL: ServicesBL, 
-        private customFieldBL?: ServiceCustomFieldBL
+        private servicesBL: ServicesBL,
+        private customFieldBL?: ServiceCustomFieldBL,
+        private tagRepo?: TagRepository,
+  private alertBL?: AlertBL
+
     ) {
     }
 
@@ -75,7 +80,7 @@ export class ServiceController {
             // If it's a systemd service, check its actual status
             if (service.serviceType === ServiceType.SYSTEMD) {
                 try {
-                    const actualStatus = await checkSystemServiceStatus(provider, service.name);                    
+                    const actualStatus = await checkSystemServiceStatus(provider, service.name);
                     // Update the service status in the database
                     await this.serviceRepo.updateService(service.id, {serviceStatus: actualStatus});
                     // Update the service object for the response
@@ -183,6 +188,8 @@ export class ServiceController {
                     logger.warn(`Failed to delete custom field values for service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
+await this.alertBL?.clearAlertsByService(serviceId);
+    await this.tagRepo?.deleteAllServiceTags(serviceId);
 
             await this.servicesBL.deleteService(serviceId, req.user);
 
