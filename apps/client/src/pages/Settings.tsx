@@ -799,10 +799,9 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
     const {toast} = useToast();
 
     const handleFile = async (file: File) => {
-        // todo: implement file validation
-        setIsFileValid(true);
-        setSelectedFile(file);
-        setFileName(file.name);
+        setIsFileValid(true)
+        setSelectedFile(file)
+        setFileName(file.name)
     };
 
     const handleSave = async () => {
