@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Monitor } from "lucide-react"
-import { Filters } from "./FilterPanel"
+import { Filters } from "@/components/Dashboard"
 
 interface TVModeLauncherProps {
   children?: React.ReactNode

@@ -121,6 +121,14 @@ export const validationRules = {
       label: 'Username is required',
       validator: (value: string) => value.length > 0,
     },
+    {
+      id: 'username-no-whitespace',
+      label: 'Username cannot contain whitespace',
+      validator: (value: string) => {
+        if (value.length === 0) return true; // Don't validate empty
+        return !/\s/.test(value);
+      },
+    },
   ],
   SSHPort: [
     {
