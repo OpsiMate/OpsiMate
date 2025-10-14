@@ -12,7 +12,11 @@ export const CreateProviderSchema = z.object({
     }, {
         message: "Must be a valid IP address or hostname"
     }).optional(),
-    username: z.string().min(1, 'Username is required').optional(),
+    username: z.string().min(1, 'Username is required').refine((value) => {
+        return !/\s/.test(value);
+    }, {
+        message: "Username cannot contain whitespace"
+    }).optional(),
     secretId: z.number().optional(),
     password: z.string().min(1, 'Password is required').refine((value) => {
         return !/\s/.test(value);
@@ -34,7 +38,16 @@ export const CreateIntegrationSchema = z.object({
     name: z.string().min(1),
     type: z.nativeEnum(IntegrationType),
     externalUrl: z.string().url(),
-    credentials: z.record(z.any()),
+     credentials: z.object({
+        apiKey: z.string().refine(
+            (val) => !/\s/.test(val),
+            { message: 'API key cannot contain spaces' }
+        ).optional(),
+        appKey: z.string().refine(
+            (val) => !/\s/.test(val),
+            { message: 'Application key cannot contain spaces' }
+        ).optional(),
+    }).passthrough(),
 });
 
 export type Integration = z.infer<typeof CreateIntegrationSchema> & {

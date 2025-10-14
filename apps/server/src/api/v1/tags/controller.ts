@@ -5,10 +5,14 @@ import { TagRepository } from '../../../dal/tagRepository.js';
 import {ServiceRepository} from "../../../dal/serviceRepository.js"; // can be refactored to use DI as well
 import { isZodError } from '../../../utils/isZodError.js';
 
+import { AlertBL } from '../../../bl/alerts/alert.bl.js';
 const logger = new Logger('api/v1/tags/controller');
 
 export class TagController {
-    constructor(private tagRepo: TagRepository, private serviceRepo: ServiceRepository) {}
+    constructor(private tagRepo: TagRepository,
+                private serviceRepo: ServiceRepository,
+                private alertBL: AlertBL
+    ) {}
 
     getAllTagsHandler = async (req: Request, res: Response) => {
         try {
@@ -88,6 +92,8 @@ export class TagController {
             }
 
             await this.tagRepo.deleteTag(tagId);
+             await this.alertBL.clearAlertsByTag(existingTag.name);
+            
             return res.json({ success: true, message: 'Tag deleted successfully' });
         } catch (error) {
             if (isZodError(error)) {
@@ -140,7 +146,23 @@ export class TagController {
                 tagId: Number(tagId)
             });
 
-            await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
+
+    const tag = await this.tagRepo.getTagById(parsed.tagId);
+    if (!tag) {
+      return res.status(404).json({ success: false, error: 'Tag not found' });
+    }
+
+
+    await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
+    await this.alertBL.clearAlertsByServiceAndTag(parsed.serviceId, tag.name);
+
+
+    const usage = await this.tagRepo.countServicesUsingTag(parsed.tagId);
+    if (usage === 0) {
+      await this.alertBL.clearAlertsByTag(tag.name);
+    }
+            
+           
             return res.json({ success: true, message: 'Tag removed from service successfully' });
         } catch (error) {
             if (isZodError(error)) {

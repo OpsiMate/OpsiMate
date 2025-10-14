@@ -50,6 +50,7 @@ export function EditProviderDialog({
   const [secrets, setSecrets] = useState<SecretMetadata[]>([]);
   const [secretsLoading, setSecretsLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string>("");
+  const [usernameError, setUsernameError] = useState<string>("");
 
   // Load secrets when dialog opens
   useEffect(() => {
@@ -106,6 +107,13 @@ export function EditProviderDialog({
         setPasswordError("");
       }
     }
+    if (name === "username") {
+      if (/\s/.test(value)) {
+        setUsernameError("Username cannot contain whitespace");
+      } else {
+        setUsernameError("");
+      }
+    }
     
     setFormData((prev) => ({
       ...prev,
@@ -143,6 +151,9 @@ export function EditProviderDialog({
 
     if (authMethod === "password" && formData.password && /\s/.test(formData.password)) {
       setPasswordError("Password cannot contain whitespace");
+    }
+    if (!isKubernetes && /\s/.test(formData.username)) {
+      setUsernameError("Username cannot contain whitespace");
       return;
     }
 
@@ -282,14 +293,19 @@ export function EditProviderDialog({
                   <Label htmlFor="username" className="text-right">
                     Username
                   </Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    required
-                  />
+                  <div className="col-span-3 space-y-1">
+                    <Input
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      className={usernameError ? "border-red-500" : ""}
+                      required
+                    />
+                    {usernameError && (
+                      <p className="text-sm text-red-500">{usernameError}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="SSHPort" className="text-right">
