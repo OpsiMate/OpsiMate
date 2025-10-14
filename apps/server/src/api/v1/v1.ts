@@ -41,6 +41,9 @@ export default function createV1Router(
     router.post('/users/register', usersController.registerHandler);
     router.post('/users/login', usersController.loginHandler);
     router.get('/users/exists', usersController.usersExistHandler);
+    router.post('/users/forgot-password', usersController.forgotPasswordHandler);
+    router.post('/users/validate-reset-password-token', usersController.validateResetPasswordTokenHandler);
+    router.post('/users/reset-password', usersController.resetPasswordHandler);
 
     // JWT-protected endpoints
     router.use(authenticateJWT);

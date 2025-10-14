@@ -35,6 +35,8 @@ import {ServiceCustomFieldValueRepository} from "./dal/serviceCustomFieldValueRe
 import {ServiceCustomFieldBL} from "./bl/custom-fields/serviceCustomField.bl.js";
 import {CustomFieldsController} from "./api/v1/custom-fields/controller.js";
 import { ServicesBL } from './bl/services/services.bl.js';
+import { PasswordResetsRepository } from './dal/passwordResetsRepository.js';
+import { MailService } from './service/mail.service.js';
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -64,6 +66,10 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const secretsMetadataRepo = new SecretsMetadataRepository(db);
     const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
     const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
+    const passwordResetsRepo = new PasswordResetsRepository(db);
+
+    // Services
+    const mailService = new MailService();
 
     // Init tables
     await Promise.all([
@@ -77,7 +83,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         auditLogRepo.initAuditLogsTable(),
         secretsMetadataRepo.initSecretsMetadataTable(),
         serviceCustomFieldRepo.initServiceCustomFieldTable(),
-        serviceCustomFieldValueRepo.initServiceCustomFieldValueTable()
+        serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
+        passwordResetsRepo.initPasswordResetsTable()
     ]);
 
     // BL
@@ -85,7 +92,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
-    const userBL = new UserBL(userRepo);
+    const userBL = new UserBL(userRepo, mailService, passwordResetsRepo, auditBL);
     const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
     const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
     const servicesBL = new ServicesBL(serviceRepo, auditBL);

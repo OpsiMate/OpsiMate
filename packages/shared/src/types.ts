@@ -169,3 +169,17 @@ export interface ServiceCustomFieldValue {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface ResetPassword {
+    id: number;
+    userId: number;
+    tokenHash: string;
+    expiresAt: string;
+    createdAt: string;
+}
+
+export interface ResetPasswordType {
+    userId: number; 
+    tokenHash: string;
+    expiresAt: Date;
+}
