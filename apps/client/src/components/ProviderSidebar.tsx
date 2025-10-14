@@ -34,7 +34,11 @@ const serverSchema = z.object({
         message: "Must be a valid IP address or hostname"
     }),
     port: z.coerce.number().min(1).max(65535),
-    username: z.string().min(1, "Username is required"),
+    username: z.string().min(1, "Username is required").refine((value) => {
+        return !/\s/.test(value);
+    }, {
+        message: "Username cannot contain whitespace"
+    }),
     authType: z.enum(["password", "key"]),
     password: z.string().optional(),
     sshKey: z.string().optional(),
