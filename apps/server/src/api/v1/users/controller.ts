@@ -197,13 +197,6 @@ export class UsersController {
                     error: 'Password must be at least 8 characters long'
                 });
             }
-
-            if (/\s/.test(newPassword)) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Password must not contain spaces'
-                });
-            }
             
             // Don't allow admin to reset their own password this way
             if (userId === req.user.id) {
