@@ -49,6 +49,7 @@ export function EditProviderDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [secrets, setSecrets] = useState<SecretMetadata[]>([]);
   const [secretsLoading, setSecretsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string>("");
   const [usernameError, setUsernameError] = useState<string>("");
 
   // Load secrets when dialog opens
@@ -99,6 +100,13 @@ export function EditProviderDialog({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
+    if (name === "password") {
+      if (/\s/.test(value)) {
+        setPasswordError("Password cannot contain whitespace");
+      } else {
+        setPasswordError("");
+      }
+    }
     if (name === "username") {
       if (/\s/.test(value)) {
         setUsernameError("Username cannot contain whitespace");
@@ -141,6 +149,9 @@ export function EditProviderDialog({
     e.preventDefault();
     if (!provider) return;
 
+    if (authMethod === "password" && formData.password && /\s/.test(formData.password)) {
+      setPasswordError("Password cannot contain whitespace");
+    }
     if (!isKubernetes && /\s/.test(formData.username)) {
       setUsernameError("Username cannot contain whitespace");
       return;
@@ -356,16 +367,21 @@ export function EditProviderDialog({
                     <Label htmlFor="password" className="text-right">
                       Password
                     </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                      placeholder="Enter SSH password"
-                      required
-                    />
+                    <div className="col-span-3 space-y-1">
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className={passwordError ? "border-red-500" : ""}
+                        placeholder="Enter SSH password"
+                        required
+                      />
+                      {passwordError && (
+                        <p className="text-sm text-red-500">{passwordError}</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </>
