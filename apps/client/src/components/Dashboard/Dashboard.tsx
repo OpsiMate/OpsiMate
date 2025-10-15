@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAlertServiceId } from "@/utils/alert.utils";
+import DashboardPagination from "@/components/DashboardPagination"
 
 export const Dashboard = () => {
     const navigate = useNavigate()
@@ -87,6 +88,8 @@ export const Dashboard = () => {
     const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false)
     const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
     const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'serviceIP', 'serviceStatus', 'provider', 'containerDetails', 'tags', 'alerts'])
+    const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+    const [currentPage, setCurrentPage] = useState<number>(1)
 
     // Enhanced alert calculation: each service gets alerts for ALL its tags
     const servicesWithAlerts = useMemo(() => {
@@ -208,6 +211,17 @@ export const Dashboard = () => {
             });
         });
     }, [servicesWithAlerts, filters]);
+
+
+    // Pagination calculations
+    const servicesCount = filteredServices.length
+    const totalPages = Math.ceil(servicesCount / itemsPerPage)
+    const currentPageServices = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage
+        const end = start + itemsPerPage
+        return filteredServices.slice(start, end)
+    }, [filteredServices, currentPage, itemsPerPage])
+    
 
     const toggleFilterPanel = () => {
         setFilterPanelCollapsed(!filterPanelCollapsed)
@@ -519,7 +533,7 @@ export const Dashboard = () => {
                                     />
                                 </div>
                                 <ServiceTable
-                                    services={filteredServices}
+                                    services={currentPageServices}
                                     selectedServices={selectedServices}
                                     onServicesSelect={handleServicesSelect}
                                     onSettingsClick={() => setShowTableSettings(true)}
@@ -530,6 +544,13 @@ export const Dashboard = () => {
                                     columnOrder={columnOrder}
                                     onColumnOrderChange={setColumnOrder}
                                     customFields={customFields}
+                                />
+                                {/* Pagination Controls */}
+                                <DashboardPagination
+                                    setItemsPerPage={setItemsPerPage}
+                                    setCurrentPage={setCurrentPage}
+                                    totalPages={totalPages}
+                                    currentPage={currentPage}
                                 />
                             </div>
                             <div className="flex-shrink-0 p-2 border-t border-border">
