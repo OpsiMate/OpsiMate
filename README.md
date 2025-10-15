@@ -42,6 +42,13 @@
 - 🎛️ **Safe actions**: start/stop/restart from the dashboard  
 - 🏷️ **Smart tags** for quick filtering
 
+### MCP Server (GitHub)
+
+This repository includes an `mcp-server/` scaffold that lets you run the official GitHub MCP Server container locally. It is intended to make the repository compatible with MCP-host applications (Copilot, Claude, Cursor, etc.) and to allow CI or maintainer checks that expect an MCP server.
+
+See `mcp-server/README.md` for quick start instructions. Do NOT commit your real GitHub PAT — use `.env` locally and GitHub Secrets in CI.
+
+
 ### Main Dashboard
 
 ![OpsiMate Dashboard](assets/images/dashboard.png)

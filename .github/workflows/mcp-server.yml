@@ -1,0 +1,24 @@
+name: MCP Server CI check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start GitHub MCP Server container
+        run: |
+          docker run -d --name github-mcp-server -e GITHUB_PERSONAL_ACCESS_TOKEN=${{ secrets.GITHUB_MCP_TOKEN }} ghcr.io/github/github-mcp-server:latest
+
+      - name: Wait for server to be ready (simple sleep)
+        run: sleep 5
+
+      - name: Show container logs
+        run: docker logs github-mcp-server || true
+
+      - name: Stop container
+        run: docker rm -f github-mcp-server || true

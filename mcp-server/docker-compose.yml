@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  mcp-server:
+    image: ghcr.io/github/github-mcp-server:latest
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN
+      - GITHUB_TOOLSETS
+      - GITHUB_HOST
+    stdin_open: true
+    tty: false
+    restart: 'no'
