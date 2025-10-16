@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
 import { isAdmin, isEditor, isViewer } from "../lib/auth"
-import { Tooltip,TooltipTrigger,TooltipContent } from "@radix-ui/react-tooltip"
+import { Tooltip,TooltipTrigger,TooltipContent, TooltipProvider } from "@radix-ui/react-tooltip"
  
 interface LeftSidebarProps {
   collapsed: boolean
@@ -137,79 +137,80 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           )}
           <ProfileButton collapsed={collapsed} />
 
-        
-<div
-  className={cn(
-    "flex gap-2",
-    collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
-  )}
->
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn(
-          "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
-          collapsed ? "flex-col" : "flex-row"
-        )}
-        onClick={() =>
-          window.open(
-            "https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA",
-            "_blank"
-          )
-        }
-      >
-        <img
-          src="images/slack.png"
-          alt="Slack"
-          className="h-5 w-5 object-contain invert dark:invert-0"
-        />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent
-      side="top"
-      align="center"
-      className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-    >
-      Join our Slack community
-    </TooltipContent>
-  </Tooltip>
+          <TooltipProvider>        
+          <div
+            className={cn(
+              "flex gap-2",
+              collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
+            )}
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
+                    collapsed ? "flex-col" : "flex-row"
+                  )}
+                  onClick={() =>
+                    window.open(
+                      "https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA",
+                      "_blank"
+                    )
+                  }
+                >
+                  <img
+                    src="images/slack.png"
+                    alt="Slack"
+                    className="h-5 w-5 object-contain invert dark:invert-0"
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                align="center"
+                className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+              >
+                Join our Slack community
+              </TooltipContent>
+            </Tooltip>
 
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn(
-          "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
-          collapsed ? "flex-col" : "flex-row"
-        )}
-        onClick={() => window.open("https://github.com/opsimate/opsimate", "_blank")}
-      >
-        <img
-          src="images/git.png"
-          alt="GitHub"
-          className="h-5 w-5 object-contain invert dark:invert-0"
-        />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent
-      side="top"
-      align="center"
-      className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-    >
-      Star us on GitHub ⭐
-    </TooltipContent>
-  </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
+                    collapsed ? "flex-col" : "flex-row"
+                  )}
+                  onClick={() => window.open("https://github.com/opsimate/opsimate", "_blank")}
+                >
+                  <img
+                    src="images/git.png"
+                    alt="GitHub"
+                    className="h-5 w-5 object-contain invert dark:invert-0"
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                align="center"
+                className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+              >
+                Star us on GitHub ⭐
+              </TooltipContent>
+            </Tooltip>
 
-  <p
-    className={cn(
-      "text-xs text-muted-foreground",
-      collapsed && "sr-only"
-    )}
-  >
-    © 2024 OpsiMate
-  </p>
-</div> 
+            <p
+              className={cn(
+                "text-xs text-muted-foreground",
+                collapsed && "sr-only"
+              )}
+            >
+              © 2024 OpsiMate
+            </p>
+          </div> 
+          </TooltipProvider>
         
         </div>
  
