@@ -4,10 +4,6 @@
 
 <h1 align="center">OpsiMate</h1>
 <p align="center"><b>One console for servers, Docker, and Kubernetes—discover, monitor, and act.</b></p>
-<p align="center">
-  Built for DevOps/NOC/IT teams that need a single place to see service health,
-  jump to dashboards, and perform safe start/stop/restart operations.
-</p>
 
 <p align="center">
   <a href="https://img.shields.io/github/commit-activity/m/OpsiMate/OpsiMate">
@@ -117,7 +113,7 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 docker run -d \
   --name opsimate-backend \
   --rm \
-  -p 3001:3001 \
+  -p 3001:any_port_available_for_backend \
   opsimate/backend
 
 ```
@@ -128,7 +124,7 @@ docker run -d \
 docker run -d \
   --name opsimate-frontend \
   --rm \
-  -p 8080:8080 \
+  -p 8080:any_port_available_for_frontend \
   opsimate/frontend
 
 ```
