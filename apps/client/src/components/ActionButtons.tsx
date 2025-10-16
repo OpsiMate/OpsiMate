@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Play, Square, RotateCcw } from "lucide-react"
 import { Service } from "./ServiceTable"
+import {canOperate} from "@/lib/permissions.ts";
 
 interface ActionButtonsProps {
   selectedService: Service | null
@@ -18,7 +19,7 @@ export function ActionButtons({
   onRestart
 }: ActionButtonsProps) {
   const isDisabled = selectedServices.length === 0
-
+if (!canOperate()) return null;
   return (
     <div className="bg-card border-t border-border p-3 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
