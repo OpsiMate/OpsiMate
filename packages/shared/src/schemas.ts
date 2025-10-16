@@ -12,9 +12,17 @@ export const CreateProviderSchema = z.object({
     }, {
         message: "Must be a valid IP address or hostname"
     }).optional(),
-    username: z.string().min(1, 'Username is required').optional(),
+    username: z.string().min(1, 'Username is required').refine((value) => {
+        return !/\s/.test(value);
+    }, {
+        message: "Username cannot contain whitespace"
+    }).optional(),
     secretId: z.number().optional(),
-    password: z.string().min(1, 'Password is required').optional(),
+    password: z.string().min(1, 'Password is required').refine((value) => {
+        return !/\s/.test(value);
+    }, {
+        message: "Password cannot contain whitespace"
+    }).optional(),
     SSHPort: z.number().int().min(1).max(65535).optional().default(22),
     providerType: z.nativeEnum(ProviderType),
 }).refine(data => data.secretId || data.password, {
@@ -145,7 +153,9 @@ export const UserSchema = z.object({
 export const CreateUserSchema = z.object({
     email: z.string().email(),
     fullName: z.string().min(1),
-    password: z.string().min(6),
+    password: z.string().min(6).refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    }),
     role: RoleSchema
 });
 
@@ -158,12 +168,16 @@ export const RegisterSchema = CreateUserSchema.omit({role: true});
 
 export const LoginSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(6)
+    password: z.string().min(6).refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    })
 });
 
 export const UpdateProfileSchema = z.object({
     fullName: z.string().min(1, 'Full name is required'),
-    newPassword: z.string().min(6, 'Password must be at least 6 characters').optional()
+    newPassword: z.string().min(6, 'Password must be at least 6 characters').refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    }).optional()
 });
 
 

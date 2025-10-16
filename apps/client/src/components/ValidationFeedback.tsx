@@ -80,6 +80,11 @@ export const validationRules = {
       label: 'Must be at least 6 characters',
       validator: (value: string) => value.length >= 6,
     },
+    {
+      id: 'password-no-spaces',
+      label: 'Must not contain spaces',
+      validator: (value: string) => !/\s/.test(value),
+    },
   ],
   fullName: [
     {
@@ -115,6 +120,14 @@ export const validationRules = {
       id: 'username-required',
       label: 'Username is required',
       validator: (value: string) => value.length > 0,
+    },
+    {
+      id: 'username-no-whitespace',
+      label: 'Username cannot contain whitespace',
+      validator: (value: string) => {
+        if (value.length === 0) return true; // Don't validate empty
+        return !/\s/.test(value);
+      },
     },
   ],
   SSHPort: [
