@@ -197,7 +197,7 @@ export class UsersController {
                     error: 'Password must be at least 8 characters long'
                 });
             }
-
+            
             // Don't allow admin to reset their own password this way
             if (userId === req.user.id) {
                 return res.status(400).json({

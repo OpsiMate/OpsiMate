@@ -81,12 +81,9 @@ export const validationRules = {
       validator: (value: string) => value.length >= 6,
     },
     {
-      id: 'password-no-whitespace',
-      label: 'Password cannot contain whitespace',
-      validator: (value: string) => {
-        if (value.length === 0) return true;
-        return !/\s/.test(value);
-      },
+      id: 'password-no-spaces',
+      label: 'Must not contain spaces',
+      validator: (value: string) => !/\s/.test(value),
     },
   ],
   fullName: [
