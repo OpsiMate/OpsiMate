@@ -134,6 +134,7 @@ export enum AuditResourceType {
     SERVICE = 'SERVICE',
     USER = 'USER',
     VIEW = 'VIEW',
+    SECRET = 'SECRET',
     // Add more as needed
 }
 

@@ -49,6 +49,8 @@ export function EditProviderDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [secrets, setSecrets] = useState<SecretMetadata[]>([]);
   const [secretsLoading, setSecretsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string>("");
+  const [usernameError, setUsernameError] = useState<string>("");
 
   // Load secrets when dialog opens
   useEffect(() => {
@@ -97,6 +99,22 @@ export function EditProviderDialog({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    if (name === "password") {
+      if (/\s/.test(value)) {
+        setPasswordError("Password cannot contain whitespace");
+      } else {
+        setPasswordError("");
+      }
+    }
+    if (name === "username") {
+      if (/\s/.test(value)) {
+        setUsernameError("Username cannot contain whitespace");
+      } else {
+        setUsernameError("");
+      }
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: name === "SSHPort" ? parseInt(value) || 22 : value,
@@ -130,6 +148,14 @@ export function EditProviderDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!provider) return;
+
+    if (authMethod === "password" && formData.password && /\s/.test(formData.password)) {
+      setPasswordError("Password cannot contain whitespace");
+    }
+    if (!isKubernetes && /\s/.test(formData.username)) {
+      setUsernameError("Username cannot contain whitespace");
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -267,14 +293,19 @@ export function EditProviderDialog({
                   <Label htmlFor="username" className="text-right">
                     Username
                   </Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    required
-                  />
+                  <div className="col-span-3 space-y-1">
+                    <Input
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      className={usernameError ? "border-red-500" : ""}
+                      required
+                    />
+                    {usernameError && (
+                      <p className="text-sm text-red-500">{usernameError}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="SSHPort" className="text-right">
@@ -336,16 +367,21 @@ export function EditProviderDialog({
                     <Label htmlFor="password" className="text-right">
                       Password
                     </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                      placeholder="Enter SSH password"
-                      required
-                    />
+                    <div className="col-span-3 space-y-1">
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className={passwordError ? "border-red-500" : ""}
+                        placeholder="Enter SSH password"
+                        required
+                      />
+                      {passwordError && (
+                        <p className="text-sm text-red-500">{passwordError}</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </>

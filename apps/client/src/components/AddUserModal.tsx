@@ -30,6 +30,16 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
     setCreatingUser(true);
     clearErrors();
     
+    // Validate password doesn't contain spaces
+    if (/\s/.test(formData.password)) {
+      handleApiResponse({
+        success: false,
+        error: 'Password must not contain spaces'
+      });
+      setCreatingUser(false);
+      return;
+    }
+    
     try {
       const response = await apiRequest<User>('/users', 'POST', formData);
       if (response.success && response.data) {
@@ -113,6 +123,8 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                 required
                 minLength={6}
+                pattern='^[^\s]*$'
+                title="Password must be at least 6 characters and contain no spaces"
                 disabled={creatingUser}
               />
             </div>
