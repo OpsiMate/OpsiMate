@@ -5,13 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { integrationApi } from '@/lib/api';
 import { canManageIntegrations, canDelete } from '@/lib/permissions';
-// Define IntegrationType locally until shared package export is fixed
-enum IntegrationType {
-  Grafana = 'Grafana',
-  Kibana = 'Kibana',
-  Datadog = 'Datadog',
-}
 import { useToast } from '@/components/ui/use-toast';
+import { Integration, IntegrationType } from '@OpsiMate/shared';
+import { getIntegrationUrlHistory, saveIntegrationUrl } from '@/lib/integrationUrlHistory';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +48,7 @@ import {
 import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
 
 
-interface Integration {
+interface IntegrationCatalog {
   id: string;
   supported: boolean;
   name: string;
@@ -70,7 +66,7 @@ interface Integration {
   }[];
 }
 
-const INTEGRATIONS: Integration[] = [
+const INTEGRATIONS: IntegrationCatalog[] = [
   {
     id: 'grafana',
     supported: true,
@@ -255,14 +251,15 @@ const TAG_COLORS: Record<string, { bg: string, text: string, icon: React.ReactNo
 export default function Integrations() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationCatalog | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [configuredInstances, setConfiguredInstances] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
-  const [savedIntegrations, setSavedIntegrations] = useState<Array<{ id: string; type: string; name: string; url: string }>>([]);
+  const [savedIntegrations, setSavedIntegrations] = useState<Integration[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [integrationToDelete, setIntegrationToDelete] = useState<{ id: string; type: string; name: string; url: string } | null>(null);
+  const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
+  const [urlHistory, setUrlHistory] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Fetch saved integrations on component mount
@@ -381,17 +378,15 @@ export default function Integrations() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredIntegrations.map(integration => {
-            const hasConfiguredInstances = configuredInstances[integration.id] > 0;
-            return (
+          {filteredIntegrations.map(integration => (
             <Card
               key={integration.id}
               className={cn(
                 "transition-all duration-200 overflow-hidden",
-                hoveredCard === integration.id && hasConfiguredInstances
+                hoveredCard === integration.id && configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                   ? "border-primary shadow-md"
                   : "",
-                hasConfiguredInstances
+                configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                   ? "border-muted/60 hover:shadow-md"
                   : "border-muted/20 bg-gray-100 dark:bg-gray-800/40"
               )}
@@ -406,7 +401,7 @@ export default function Integrations() {
               }
               <CardHeader className={cn(
                 "pb-2",
-                hasConfiguredInstances
+                configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                   ? ""
                   : "opacity-75"
               )}>
@@ -414,7 +409,7 @@ export default function Integrations() {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "h-10 w-10 rounded-md overflow-hidden border flex items-center justify-center",
-                      hasConfiguredInstances
+                      configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                         ? "bg-background"
                         : "bg-gray-200 dark:bg-gray-700"
                     )}>
@@ -423,7 +418,7 @@ export default function Integrations() {
                         alt={`${integration.name} logo`}
                         className={cn(
                           "h-8 w-8 object-contain",
-                          hasConfiguredInstances
+                          configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                             ? ""
                             : "opacity-50 grayscale"
                         )}
@@ -443,7 +438,7 @@ export default function Integrations() {
               </CardHeader>
               <CardContent className={cn(
                 "pb-2",
-                hasConfiguredInstances
+                configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                   ? ""
                   : "opacity-75"
               )}>
@@ -458,10 +453,10 @@ export default function Integrations() {
                       variant="outline"
                       className={cn(
                         "text-xs px-2 py-0.5 flex items-center",
-                        hasConfiguredInstances
+                        configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                           ? TAG_COLORS[tag]?.bg || "bg-gray-100 dark:bg-gray-800"
                           : "bg-gray-200 dark:bg-gray-700",
-                        hasConfiguredInstances
+                        configuredInstances[integration.id] && configuredInstances[integration.id] > 0
                           ? TAG_COLORS[tag]?.text || "text-gray-700 dark:text-gray-300"
                           : "text-gray-500 dark:text-gray-400"
                       )}
@@ -476,17 +471,21 @@ export default function Integrations() {
               <CardFooter className="pt-2 flex gap-2">
                 <Button
                     disabled={!integration.supported}
-
+                  variant={configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "default" : "secondary"}
                   className={cn(
                     "w-full transition-all",
-                    hoveredCard === integration.id && hasConfiguredInstances ? "ring-2 ring-primary-foreground/20" : "",
-                    !integration.supported ? "border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600" : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95"
+                    hoveredCard === integration.id && configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "bg-primary" : "",
+                    !configuredInstances[integration.id] || configuredInstances[integration.id] === 0 ? "border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600" : ""
                   )}
                   onClick={() => {
                     // Find existing integration of this type if it exists
                     const existingIntegration = savedIntegrations.find(
                       integration2 => integration2.type === integration.id.charAt(0).toUpperCase() + integration.id.slice(1)
                     );
+
+                    // Load URL history for this integration type
+                    const history = getIntegrationUrlHistory(integration.name);
+                    setUrlHistory(history);
 
                     // If integration exists, pre-fill form data
                     if (existingIntegration) {
@@ -511,15 +510,15 @@ export default function Integrations() {
 
                     setSelectedIntegration(integration);
                   }}
-                  title={hasConfiguredInstances ?
+                  title={configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ?
                     `Configure ${integration.name} integration` :
                     `Add ${integration.name} integration`}
                 >
                   <Settings className="mr-2 h-4 w-4" />
-                  {hasConfiguredInstances ? "Configure" : "Add Integration"}
+                  {configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "Configure" : "Add Integration"}
                 </Button>
               </CardFooter>
-              {hasConfiguredInstances ? (
+              {configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? (
                 <div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                   <Server className="h-3 w-3" />
                   <span>{configuredInstances[integration.id]} {configuredInstances[integration.id] === 1 ? 'instance' : 'instances'} configured</span>
@@ -530,8 +529,8 @@ export default function Integrations() {
                   <span>Not configured</span>
                 </div>
               )}
-            </Card>);
-})}
+            </Card>
+          ))}
 
           {filteredIntegrations.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center p-8 text-center">
@@ -692,6 +691,11 @@ export default function Integrations() {
                       }
 
                       if (response.success) {
+                        // Save URL to history
+                        if (formData.url && formData.url.trim() !== '') {
+                          saveIntegrationUrl(selectedIntegration.name, formData.url);
+                        }
+
                         // Fetch updated integrations
                         const updatedIntegrations = await integrationApi.getIntegrations();
                         if (updatedIntegrations.success && updatedIntegrations.data?.integrations) {
@@ -712,6 +716,15 @@ export default function Integrations() {
                       setIsSubmitting(false);
                     }
                   }}>
+                    {/* URL History Datalist - only for URL fields */}
+                    {selectedIntegration.configFields.some(f => f.name === 'url') && urlHistory.length > 0 && (
+                      <datalist id={`${selectedIntegration.id}-url-history`}>
+                        {urlHistory.map((url, index) => (
+                          <option key={index} value={url} />
+                        ))}
+                      </datalist>
+                    )}
+
                     {selectedIntegration.configFields.map(field => (
                       <div key={field.name} className="space-y-2">
                         <label htmlFor={`${selectedIntegration.id}-${field.name}`} className="text-sm font-medium">
@@ -745,6 +758,7 @@ export default function Integrations() {
                             onChange={(e) => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
                             disabled={isSubmitting || !canManageIntegrations()}
                             autoComplete={field.type === 'password' ? 'new-password' : 'off'}
+                            list={field.name === 'url' && urlHistory.length > 0 ? `${selectedIntegration.id}-url-history` : undefined}
                           />
                           {(field.name === 'apiKey' || field.name === 'appKey') && formData[field.name] && (
                             <ValidationFeedback
