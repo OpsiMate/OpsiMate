@@ -1,21 +1,25 @@
-comment:
-  single_comment: true          
-  chat: true                   
-  sections:
-    - Summary                  
-    - Walkthrough              
-    - Changes                  
-    - Estimated code review effort
-  exclude_sections:
-    - Poem                     
-    - Pre-merge checks and finishing touches
-    - Sequence Diagram(s)
-    - Possibly related issues
-  inline_comments: true        
-  actionable_comment: true     
-  nitpick_comment: true       
-summary:
-  enabled: true
-  format: |
-    ## Summary
-    Concisely describe the pull request's main purpose, key fixes or features, and reference any closed issues here.
+chat:
+  auto_reply: true
+reviews:
+  poem: false
+  profile: chill
+  high_level_summary: true
+  estimate_code_review_effort: false
+  sequence_diagrams: false
+  request_changes_workflow: false
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+  pre_merge_checks:
+    docstrings:
+      mode: off
+    title:
+      mode: off
+    description:
+      mode: off
+    issue_assessment:
+      mode: off
+    custom_checks: []
+  related_issues: false
