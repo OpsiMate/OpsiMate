@@ -17,6 +17,15 @@ const Register: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     clearErrors();
+    // Validate password doesn't contain spaces
+    if (/\s/.test(password)) {
+      handleApiResponse({
+        success: false,
+        error: 'Password must not contain spaces'
+      });
+      setLoading(false);
+      return;
+    }
     
     try {
       const res = await apiRequest<{ token: string; data: { user: { id: string; email: string; name: string } }; error?: string }>(
