@@ -34,6 +34,11 @@ const ForgotPassword: React.FC = () => {
       }
     } catch (error) {
       console.error("Error sending password reset link:", error);
+      setLoading(false);
+      handleApiResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to send reset link"
+      });
     }
   };
 
