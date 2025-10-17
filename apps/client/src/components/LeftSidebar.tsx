@@ -4,8 +4,9 @@ import { cn } from "@/lib/utils"
 import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
-import { isAdmin, isEditor,isViewer } from "../lib/auth"
-
+import { isAdmin, isEditor, isViewer } from "../lib/auth"
+import { Tooltip,TooltipTrigger,TooltipContent, TooltipProvider } from "@radix-ui/react-tooltip"
+ 
 interface LeftSidebarProps {
   collapsed: boolean
 }
@@ -50,53 +51,53 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
 
 
         {isEditor() &&
-            <Button
-                variant={location.pathname === "/providers" ? "default" : "ghost"}
-                className={cn(
-                    "gap-3 h-10",
-                    collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
-                    location.pathname === "/providers" && "text-primary-foreground"
-                )}
-                asChild
-            >
-              <Link to="/providers">
-                <Layers className="h-5 w-5 flex-shrink-0"/>
-                <span className={cn("font-medium", collapsed && "sr-only")}>Add Provider</span>
-              </Link>
-            </Button>
+          <Button
+            variant={location.pathname === "/providers" ? "default" : "ghost"}
+            className={cn(
+              "gap-3 h-10",
+              collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
+              location.pathname === "/providers" && "text-primary-foreground"
+            )}
+            asChild
+          >
+            <Link to="/providers">
+              <Layers className="h-5 w-5 flex-shrink-0"/>
+              <span className={cn("font-medium", collapsed && "sr-only")}>Add Provider</span>
+            </Link>
+          </Button>
         }
 
         {!isViewer() &&( <Button
-          variant={location.pathname === "/my-providers" ? "default" : "ghost"}
-          className={cn(
-            "gap-3 h-10", 
-            collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
-            location.pathname === "/my-providers" && "text-primary-foreground"
-          )}
-          asChild
-        >
-          <Link to="/my-providers">
-            <Database className="h-5 w-5 flex-shrink-0" />
-            <span className={cn("font-medium", collapsed && "sr-only")}>My Providers</span>
-          </Link>
-        </Button>
-          )}
+            variant={location.pathname === "/my-providers" ? "default" : "ghost"}
+            className={cn(
+              "gap-3 h-10", 
+              collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
+              location.pathname === "/my-providers" && "text-primary-foreground"
+            )}
+            asChild
+          >
+            <Link to="/my-providers">
+              <Database className="h-5 w-5 flex-shrink-0" />
+              <span className={cn("font-medium", collapsed && "sr-only")}>My Providers</span>
+            </Link>
+          </Button>
+        )}
 
         {isEditor() &&
-            <Button
-                variant={location.pathname === "/integrations" ? "default" : "ghost"}
-                className={cn(
-                    "gap-3 h-10",
-                    collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
-                    location.pathname === "/integrations" && "text-primary-foreground"
-                )}
-                asChild
-            >
-              <Link to="/integrations">
-                <Puzzle className="h-5 w-5 flex-shrink-0"/>
-                <span className={cn("font-medium", collapsed && "sr-only")}>Integrations</span>
-              </Link>
-            </Button>
+          <Button
+            variant={location.pathname === "/integrations" ? "default" : "ghost"}
+            className={cn(
+              "gap-3 h-10",
+              collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
+              location.pathname === "/integrations" && "text-primary-foreground"
+            )}
+            asChild
+          >
+            <Link to="/integrations">
+              <Puzzle className="h-5 w-5 flex-shrink-0"/>
+              <span className={cn("font-medium", collapsed && "sr-only")}>Integrations</span>
+            </Link>
+          </Button>
         }
         
         <Button 
@@ -114,15 +115,16 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           </Link>
         </Button>
       </div>
-      
+
       <div className={cn("p-4 mt-auto flex flex-col gap-3", collapsed && "items-center")}>
-        <div className={cn("flex flex-col gap-3 items-center")}>
+      
+        <div className={cn("flex flex-col gap-2 items-center")}>
           {isAdmin() && (
             <Button 
               variant={location.pathname === "/settings" ? "default" : "ghost"}
               className={cn(
                 "gap-3 h-10 items-center", 
-                collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
+                collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-1",
                 location.pathname === "/settings" && "text-primary-foreground"
               )}
               asChild
@@ -134,9 +136,85 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             </Button>
           )}
           <ProfileButton collapsed={collapsed} />
+
+          <TooltipProvider>        
+          <div
+            className={cn(
+              "flex gap-2",
+              collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
+            )}
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
+                    collapsed ? "flex-col" : "flex-row"
+                  )}
+                  onClick={() =>
+                    window.open(
+                      "https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA",
+                      "_blank"
+                    )
+                  }
+                >
+                  <img
+                    src="images/slack.png"
+                    alt="Slack"
+                    className="h-5 w-5 object-contain invert dark:invert-0"
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                align="center"
+                className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+              >
+                Join our Slack community
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
+                    collapsed ? "flex-col" : "flex-row"
+                  )}
+                  onClick={() => window.open("https://github.com/opsimate/opsimate", "_blank")}
+                >
+                  <img
+                    src="images/git.png"
+                    alt="GitHub"
+                    className="h-5 w-5 object-contain invert dark:invert-0"
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                align="center"
+                className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+              >
+                Star us on GitHub ⭐
+              </TooltipContent>
+            </Tooltip>
+
+            <p
+              className={cn(
+                "text-xs text-muted-foreground",
+                collapsed && "sr-only"
+              )}
+            >
+              © 2024 OpsiMate
+            </p>
+          </div> 
+          </TooltipProvider>
+        
         </div>
-        <p className={cn("text-xs text-muted-foreground", collapsed && "sr-only")}>© 2024 OpsiMate</p>
-      </div>
+ 
+</div>
     </div>
   )
 }
