@@ -104,7 +104,7 @@ export function hashString(token: string): string {
  * The reset URL is in the format: `${APP_BASE_URL}/reset-password?token=${token}`
  */
 export function generatePasswordResetInfo(): {
-    token: string;
+    encryptedToken: string;
     tokenHash: string;
     expiresAt: Date;
     resetUrl: string;
@@ -113,6 +113,8 @@ export function generatePasswordResetInfo(): {
     const encryptedToken = encryptPassword(token)!;
     const tokenHash = hashString(token);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
-    const resetUrl = `${process.env.APP_BASE_URL}/reset-password?token=${encodeURIComponent(encryptedToken)}`;
-    return { token: encryptedToken, tokenHash, expiresAt, resetUrl };
+    const appBase = process.env.APP_BASE_URL;
+    if (!appBase) throw new Error('APP_BASE_URL is required to build reset URLs');
+    const resetUrl = `${appBase}/reset-password?token=${encodeURIComponent(encryptedToken)}`;
+    return { encryptedToken, tokenHash, expiresAt, resetUrl };
 }
