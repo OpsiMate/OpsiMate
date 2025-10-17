@@ -14,7 +14,7 @@ const logger = new Logger("service/mail.service");
  * Service for sending emails using nodemailer
  */
 export class MailService {
-  private transporter: nodemailer.Transporter = null as any;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
     this.initTransporter();
@@ -47,6 +47,7 @@ export class MailService {
         })
         .catch((error) => {
           logger.error("MailService: Error verifying SMTP transporter", error);
+          this.transporter = null;
         });
     } else {
       logger.warn(
