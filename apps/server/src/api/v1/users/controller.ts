@@ -287,7 +287,10 @@ export class UsersController {
 
     validateResetPasswordTokenHandler = async (req: Request, res: Response) => {
         try {
-            const { token } = req.body as { token: string };
+            const { token } = req.body as { token?: string };
+            if (!token || typeof token !== 'string') {
+                return res.status(400).json({ success: false, error: 'Token is required' });
+            }
             const isValid = await this.userBL.validateResetPasswordToken(token);
             if (!isValid) {
                 return res.status(400).json({ success: false, error: 'Invalid or expired token' });
