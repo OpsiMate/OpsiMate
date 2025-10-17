@@ -21,7 +21,10 @@ const ResetPasswordByEmail: React.FC = () => {
   });
 
   const validateToken = async () => {
-    if (!token) return;
+    if (!token) {
+      setValid(false);
+      return;
+    }
     const res = await apiRequest<{
       data: { success: boolean; message: string };
       error?: string;
