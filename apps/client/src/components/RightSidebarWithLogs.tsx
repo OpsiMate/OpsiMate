@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Copy,
   ExternalLink,
   FileText,
   Package,
@@ -18,7 +19,8 @@ import {
   Tag as TagIcon,
   X
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LogSearchInput } from "./LogSearchInput";
 import { AlertsSection } from "./AlertsSection";
 import { IntegrationDashboardDropdown } from "./IntegrationDashboardDropdown";
 import { Service } from "./ServiceTable";
@@ -26,6 +28,7 @@ import { TagSelector } from "./TagSelector";
 import { EditableCustomField } from "./EditableCustomField";
 import { useCustomFields, useUpsertCustomFieldValue } from "../hooks/queries/custom-fields";
 import { ServiceCustomField } from "@OpsiMate/shared";
+
 
 interface RightSidebarProps {
   service: Service | null;
@@ -36,13 +39,37 @@ interface RightSidebarProps {
   onAlertDismiss?: (alertId: string) => void;
 }
 
-export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpdate, alerts = [], onAlertDismiss }: RightSidebarProps) {
+// helper function to format date to local datetime-local input format
+const formatDateTimeLocal = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpdate, alerts = [], onAlertDismiss }: RightSidebarProps) {
   const { toast } = useToast();
   const [logs, setLogs] = useState<string[]>([]);
   const [pods, setPods] = useState<{ name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serviceTags, setServiceTags] = useState<Tag[]>(service?.tags || []);
+  const previousServiceIdRef = useRef<string | undefined>(service?.id);
+  
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [timeFilter, setTimeFilter] = useState<"all" | "30m" | "1h" | "6h" | "12h" | "24h" | "custom">("all");
+  const [customTimeRange, setCustomTimeRange] = useState<{ start: string; end: string } | null>(null);
+  const [showCustomTimeDialog, setShowCustomTimeDialog] = useState(false);
+
+  useEffect(() => {
+    if (service?.id !== previousServiceIdRef.current) {
+      setSearchKeyword("");
+      setLogs([]);
+      previousServiceIdRef.current = service?.id;
+    }
+  }, [service?.id]);
 
   // Custom fields hooks
   const { data: customFields } = useCustomFields();
@@ -93,6 +120,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
     }));
   }, []);
 
+
   const fetchLogs = useCallback(async () => {
     if (!service) return;
 
@@ -123,6 +151,202 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
       setLoading(false);
     }
   }, [service, toast]);
+  const filteredLogs = useMemo(() => {
+    if (!logs.length) return [];
+
+    let filtered = [...logs];
+
+    if (searchKeyword.trim()) {
+      const keywords = searchKeyword.toLowerCase().trim().split(/\s+/); // Split by whitespace
+      
+      filtered = filtered.filter(log => {
+        const logLower = log.toLowerCase();
+        
+        // Fuzzy search: match if ALL keywords appear in the log
+        return keywords.every(keyword => {
+          // check for exact substring match
+          if (logLower.includes(keyword)) return true;
+          //threshold
+          if (keyword.length > 3) {
+            // Simple fuzzy: check if keyword chars appear in sequence (not necessarily consecutive)
+            let keywordIdx = 0;
+            for (let i = 0; i < logLower.length && keywordIdx < keyword.length; i++) {
+              if (logLower[i] === keyword[keywordIdx]) {
+                keywordIdx++;
+              }
+            }
+            return keywordIdx === keyword.length;
+          }
+          
+          return false;
+        });
+      });
+    }
+
+    // apply time filter only if timeFilter is not "all"
+    if (timeFilter !== "all") {
+      if (timeFilter === "custom" && customTimeRange) {
+        const startTime = new Date(customTimeRange.start);
+        const endTime = new Date(customTimeRange.end);
+        
+        filtered = filtered.filter(log => {
+          // format 1: [YYYY-MM-DD HH:MM:SS] (ISO with brackets)
+          let match = log.match(/\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]/);
+          if (match) {
+            const logTime = new Date(match[1]); // parse as-is (system timezone)
+            return logTime >= startTime && logTime <= endTime;
+          }
+
+          // format 2: systemd/journalctl format (Month DD HH:MM:SS)
+          match = log.match(/(\w{3}\s+\d{1,2}\s\d{2}:\d{2}:\d{2})/);
+          if (match) {
+            // convert systemd format to ISO and parse as-is (system timezone)
+            const currentYear = new Date().getFullYear();
+            const systemdTime = match[1];
+
+            // look for year pattern in the log line (YYYY format)
+            const yearMatch = log.match(/(\d{4})/);
+            const logYear = yearMatch ? parseInt(yearMatch[1]) : currentYear;
+
+            const isoTime = `${logYear} ${systemdTime}`;
+            const logTime = new Date(isoTime);
+            return logTime >= startTime && logTime <= endTime;
+          }
+
+          // format 3: ISO format without brackets (YYYY-MM-DDTHH:MM:SS)
+          match = log.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+          if (match) {
+            const logTime = new Date(match[1]);
+            return logTime >= startTime && logTime <= endTime;
+          }
+
+          // format 4: try to parse any timestamp-like pattern (fallback)
+          match = log.match(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})|(\d{2}:\d{2}:\d{2})/);
+          if (match) {
+            const timeStr = match[1] || match[2];
+            if (timeStr) {
+              try {
+                const logTime = new Date(timeStr);
+                if (!isNaN(logTime.getTime())) {
+                  return logTime >= startTime && logTime <= endTime;
+                }
+              } catch (e) {
+                // invalid date, continue to next format
+              }
+            }
+          }
+
+          return true; // include logs without recognizable timestamp
+        });
+      } else {
+        const now = new Date();
+        let cutoffTime: Date;
+
+        switch (timeFilter) {
+          case "30m":
+            cutoffTime = new Date(now.getTime() - 30 * 60 * 1000);
+            break;
+          case "1h":
+            cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
+            break;
+          case "6h":
+            cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+            break;
+          case "12h":
+            cutoffTime = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+            break;
+          case "24h":
+            cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+          default:
+            return filtered;
+        }
+
+        filtered = filtered.filter(log => {
+          // format 1: [YYYY-MM-DD HH:MM:SS] (ISO with brackets)
+          let match = log.match(/\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]/);
+          if (match) {
+            const logTime = new Date(match[1]); // parse as-is (system timezone)
+            return logTime >= cutoffTime;
+          }
+
+          // format 2: systemd/journalctl format (Month DD HH:MM:SS)
+          match = log.match(/(\w{3}\s+\d{1,2}\s\d{2}:\d{2}:\d{2})/);
+          if (match) {
+            // convert systemd format to ISO and parse as-is (system timezone)
+            const currentYear = new Date().getFullYear();
+            const systemdTime = match[1];
+
+            // look for year pattern in the log line (YYYY format)
+            const yearMatch = log.match(/(\d{4})/);
+            const logYear = yearMatch ? parseInt(yearMatch[1]) : currentYear;
+
+            const isoTime = `${logYear} ${systemdTime}`;
+            const logTime = new Date(isoTime);
+            return logTime >= cutoffTime;
+          }
+
+          // format 3: ISO format without brackets (YYYY-MM-DDTHH:MM:SS)
+          match = log.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+          if (match) {
+            const logTime = new Date(match[1]);
+            return logTime >= cutoffTime;
+          }
+
+          // format 4: try to parse any timestamp-like pattern
+          match = log.match(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})|(\d{2}:\d{2}:\d{2})/);
+          if (match) {
+            const timeStr = match[1] || match[2];
+            if (timeStr) {
+              try {
+                const logTime = new Date(timeStr);
+                if (!isNaN(logTime.getTime())) {
+                  return logTime >= cutoffTime;
+                }
+              } catch (e) {
+                // invalid date, continue to next format
+              }
+            }
+          }
+
+          return true; // include logs without recognizable timestamp
+        });
+      }
+    }
+
+    return filtered;
+  }, [logs, searchKeyword, timeFilter, customTimeRange]);
+
+  // copy filtered logs to clipboard
+  const copyLogsToClipboard = useCallback(async () => {
+    if (filteredLogs.length === 0) return;
+
+    try {
+      const logsText = filteredLogs.join('\n');
+      await navigator.clipboard.writeText(logsText);
+
+      toast({
+        title: "logs copied",
+        description: `${filteredLogs.length} logs copied to clipboard`,
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "copy failed",
+        description: "failed to copy logs to clipboard",
+        variant: "destructive"
+      });
+    }
+  }, [filteredLogs, toast]);
+
+  // highlight search keyword in logs
+  const highlightLog = useCallback((log: string) => {
+    if (!searchKeyword.trim()) return log;
+
+    const keyword = searchKeyword.trim();
+    const regex = new RegExp(`(${keyword})`, 'gi');
+    return log.replace(regex, '⚡$1⚡'); // Use markers for highlighting
+  }, [searchKeyword]);
 
   const fetchPods = useCallback(async () => {
     if (!service) return;
@@ -429,32 +653,190 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
             isOpen={sectionsOpen.logs}
             onToggle={() => toggleSection('logs')}
           >
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-muted-foreground text-xs">Recent logs</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchLogs}
-                  disabled={loading}
-                  className="h-6 w-6 p-0"
-                >
-                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                </Button>
+            <div className="pt-2 space-y-2">
+              {/* Header with counter, copy, and refresh */}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-xs">
+                  Recent logs{logs.length > 0 ?
+                    ` (${filteredLogs.length}/${logs.length})` :
+                    ': No current logs'}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyLogsToClipboard}
+                    disabled={filteredLogs.length === 0}
+                    className="h-6 w-6 p-0"
+                    title="Copy filtered logs to clipboard"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchLogs}
+                    disabled={loading}
+                    className="h-6 w-6 p-0"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {/* persists across remounts using sessionStorage */}
+                <LogSearchInput
+                  persistKey={`service-${service?.id || 'unknown'}`}
+                  onSearchChange={setSearchKeyword}
+                  placeholder="Search logs..."
+                />
+
+                {/* Time filter */}
+                <div className="flex gap-1">
+                  <select
+                    value={timeFilter}
+                    onChange={(e) => {
+                      const value = e.target.value as typeof timeFilter;
+                      if (value === "custom") {
+                        setShowCustomTimeDialog(true);
+                      } else {
+                        setTimeFilter(value);
+                        // Clear custom range when selecting other options
+                        if (customTimeRange) {
+                          setCustomTimeRange(null);
+                        }
+                      }
+                    }}
+                    className="flex-1 h-7 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="custom">{customTimeRange ? '✓ Custom range' : 'Custom range...'}</option>
+                    <option value="30m">Last 30 minutes</option>
+                    <option value="1h">Last 1 hour</option>
+                    <option value="6h">Last 6 hours</option>
+                    <option value="12h">Last 12 hours</option>
+                    <option value="24h">Last 24 hours</option>
+                    <option value="all">All time</option>
+                    {/* additional time ranges - uncomment if needed
+                    <option value="3d">Last 3 days</option>
+                    <option value="7d">Last 7 days</option>
+                    */}
+                  </select>
+                  {timeFilter === "custom" && customTimeRange && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setTimeFilter("all");
+                        setCustomTimeRange(null);
+                      }}
+                      className="h-7 px-2"
+                      title="Clear custom range"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
+              {/* Custom Time Range Dialog */}
+              {showCustomTimeDialog && (
+                <div 
+                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                  onClick={() => setShowCustomTimeDialog(false)}
+                >
+                  <div 
+                    className="bg-background border border-border rounded-lg p-4 w-[320px] shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 className="text-sm font-semibold mb-3">Custom Time Range</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Start Time</label>
+                        <input
+                          type="datetime-local"
+                          defaultValue={customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000))}
+                          onChange={(e) => {
+                            setCustomTimeRange(prev => ({
+                              start: e.target.value,
+                              end: prev?.end || formatDateTimeLocal(new Date())
+                            }));
+                          }}
+                          className="w-full h-8 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">End Time</label>
+                        <input
+                          type="datetime-local"
+                          defaultValue={customTimeRange?.end || formatDateTimeLocal(new Date())}
+                          onChange={(e) => {
+                            setCustomTimeRange(prev => ({
+                              start: prev?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000)),
+                              end: e.target.value
+                            }));
+                          }}
+                          className="w-full h-8 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCustomTimeDialog(false)}
+                          className="h-7 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            // Auto-set defaults if not set (using local time)
+                            const start = customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000));
+                            const end = customTimeRange?.end || formatDateTimeLocal(new Date());
+                            
+                            setCustomTimeRange({ start, end });
+                            setTimeFilter("custom");
+                            setShowCustomTimeDialog(false);
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {loading ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-pulse text-muted-foreground text-xs">Loading logs...</div>
                 </div>
               ) : error ? (
-                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{error}</div>
+                <div className="text-red-500 py-2 text-xs bg-red-50 dark:bg-red-950 rounded p-2">{error}</div>
               ) : logs.length === 0 ? (
                 <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">No logs available</div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">
+                  No logs match your search
+                </div>
               ) : (
-                <div className="bg-muted rounded-md p-3 overflow-auto max-h-[200px] border">
-                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground">
-                    {logs.join('\n')}
+                <div className="bg-muted rounded-md p-3 overflow-auto max-h-[300px] border">
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground leading-relaxed">
+                    {filteredLogs.map((log, i) => {
+                      const highlighted = highlightLog(log);
+                      const parts = highlighted.split('⚡');
+                      return (
+                        <div key={i} className="hover:bg-muted/50 px-1 -mx-1 rounded">
+                          {parts.map((part, j) => 
+                            j % 2 === 1 ? (
+                              <span key={j} className="bg-yellow-200 dark:bg-yellow-500/30 text-foreground font-semibold px-0.5 rounded">{part}</span>
+                            ) : (
+                              <span key={j}>{part}</span>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
                   </pre>
                 </div>
               )}
@@ -523,4 +905,4 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
       </div>
     </div>
   );
-});
+}
