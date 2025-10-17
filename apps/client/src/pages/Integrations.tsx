@@ -477,8 +477,8 @@ export default function Integrations() {
                   variant={configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "default" : "secondary"}
                   className={cn(
                     "w-full transition-all",
-                    hoveredCard === integration.id && configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "bg-primary" : "",
-                    !configuredInstances[integration.id] || configuredInstances[integration.id] === 0 ? "border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600" : ""
+                    hoveredCard === integration.id && configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "ring-2 ring-primary-foreground/20" : "",
+                    !integration.supported ? "border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600" : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95"
                   )}
                   onClick={() => {
                     // Find existing integration of this type if it exists
