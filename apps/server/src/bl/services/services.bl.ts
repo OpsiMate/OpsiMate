@@ -1,8 +1,8 @@
 import { Service, Logger, User } from '@OpsiMate/shared';
-import { ServiceRepository } from '../../dal/serviceRepository';
-import { AuditBL } from '../audit/audit.bl';
+import { ServiceRepository } from '../../dal/serviceRepository.js';
+import { AuditBL } from '../audit/audit.bl.js';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
-import { ServiceNotFound } from './ServiceNotFound';
+import { ServiceNotFound } from './ServiceNotFound.js';
 
 const logger = new Logger('bl/services/service.bl');
 

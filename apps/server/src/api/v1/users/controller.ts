@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { isZodError } from '../../../utils/isZodError';
-import { UserBL } from '../../../bl/users/user.bl';
+import { isZodError } from '../../../utils/isZodError.js';
+import { UserBL } from '../../../bl/users/user.bl.js';
 import {CreateUserSchema, Logger, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema, UpdateProfileSchema} from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
-import { AuthenticatedRequest } from '../../../middleware/auth';
+import { AuthenticatedRequest } from '../../../middleware/auth.js';
 import { User } from '@OpsiMate/shared';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
@@ -197,7 +197,7 @@ export class UsersController {
                     error: 'Password must be at least 8 characters long'
                 });
             }
-
+            
             // Don't allow admin to reset their own password this way
             if (userId === req.user.id) {
                 return res.status(400).json({

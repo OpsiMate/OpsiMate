@@ -1,6 +1,6 @@
 import { Integration, IntegrationUrls, Logger } from "@OpsiMate/shared";
-import { IntegrationConnector } from "./integration-connector";
-import { DatadogClient, DatadogDashboardSummary } from "../../../dal/external-client/datadog-client";
+import { IntegrationConnector } from "./integration-connector.js";
+import { DatadogClient, DatadogDashboardSummary } from "../../../dal/external-client/datadog-client.js";
 
 export class DatadogIntegrationConnector implements IntegrationConnector {
     private logger = new Logger('bl/integrations/datadog-integration-connector');
@@ -23,8 +23,8 @@ export class DatadogIntegrationConnector implements IntegrationConnector {
             
             const datadogClient = new DatadogClient(
                 integration.externalUrl,
-                integration.credentials["apiKey"] as string,
-                integration.credentials["appKey"] as string
+                integration.credentials["apiKey"],
+                integration.credentials["appKey"]
             );
             
             // Get dashboards matching the provided tags
