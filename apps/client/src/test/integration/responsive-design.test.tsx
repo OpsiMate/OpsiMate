@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@/test/test-utils'
 import { Dashboard } from '@/components/Dashboard'
@@ -69,12 +68,13 @@ const queryMobileHeaderButton = () => screen.queryByRole('button', { name: /togg
 
 beforeAll(() => {
   // Ensure matchMedia from setup returns dynamic matches based on width
-  const original = window.matchMedia
+  const original = typeof window.matchMedia === 'function' ? window.matchMedia : undefined
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => {
       const maxMatch = /max-width:\s*(\d+)px/.exec(query)
       const minMatch = /min-width:\s*(\d+)px/.exec(query)
+      const orientationMatch = /orientation:\s*(portrait|landscape)/i.exec(query)
       let matches = false
       if (maxMatch) {
         const px = Number(maxMatch[1])
@@ -82,8 +82,12 @@ beforeAll(() => {
       } else if (minMatch) {
         const px = Number(minMatch[1])
         matches = window.innerWidth >= px
+      } else if (orientationMatch) {
+        const requested = orientationMatch[1].toLowerCase()
+        const isPortrait = window.innerHeight >= window.innerWidth
+        matches = requested === 'portrait' ? isPortrait : !isPortrait
       } else {
-        matches = original(query).matches
+        matches = typeof original === 'function' ? !!original(query).matches : false
       }
       return {
         matches,
@@ -210,7 +214,7 @@ describe('Responsive design integration', () => {
     const toggle = await screen.findByRole('button', { name: /toggle menu/i })
     // Ensure minimum touch target size (mock bounding box in JSDOM)
     const originalGetBBox = toggle.getBoundingClientRect
-    ;(toggle as HTMLElement).getBoundingClientRect = () => ({
+    const mockBoundingClientRect = () => ({
       x: 0,
       y: 0,
       width: 48,
@@ -220,7 +224,8 @@ describe('Responsive design integration', () => {
       bottom: 48,
       left: 0,
       toJSON: () => {},
-    }) as any
+    })
+    ;(toggle as HTMLElement).getBoundingClientRect = mockBoundingClientRect as () => DOMRect
     expect(toggle.getBoundingClientRect().width).toBeGreaterThanOrEqual(44)
     expect(toggle.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     fireEvent.click(toggle)
