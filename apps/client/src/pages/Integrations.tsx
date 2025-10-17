@@ -396,11 +396,12 @@ export default function Integrations() {
               onMouseEnter={() => setHoveredCard(integration.id)}
               onMouseLeave={() => setHoveredCard(null)}
             >
-              {!integration.supported && (
-                  <div className="text-center bg-yellow-100 text-yellow-800 text-xs font-medium py-1 border-b border-yellow-300">
+              {!integration.supported ? (
+                  <div className="text-center bg-yellow-100 text-yellow-800 text-xs font-medium  border-b border-yellow-300">
                     🚧 Coming Soon
                   </div>
-              )}
+              ): <div className="h-[16.8px]"></div>
+              }
               <CardHeader className={cn(
                 "pb-2",
                 configuredInstances[integration.id] && configuredInstances[integration.id] > 0
@@ -444,9 +445,10 @@ export default function Integrations() {
                   ? ""
                   : "opacity-75"
               )}>
-                <CardDescription className="line-clamp-2 text-sm">
+                <CardDescription className="text-sm h-16 sm:h-14 md:h-12 lg:h-10 line-clamp-2 overflow-hidden">
                   {integration.description}
                 </CardDescription>
+                <div className='md:h-[52px] mt-3'>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {integration.tags.map(tag => (
                     <Badge
@@ -466,6 +468,7 @@ export default function Integrations() {
                       {tag}
                     </Badge>
                   ))}
+                </div>
                 </div>
               </CardContent>
               <CardFooter className="pt-2 flex gap-2">
