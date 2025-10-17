@@ -14,6 +14,11 @@ function setViewport(width: number, height: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: height })
   window.dispatchEvent(new Event('resize'))
+  // Notify matchMedia listeners in tests when viewport changes
+  const w = window as unknown as { __notifyMatchMediaChange?: () => void }
+  if (typeof w.__notifyMatchMediaChange === 'function') {
+    w.__notifyMatchMediaChange()
+  }
 }
 
 function setOrientation(orientation: 'portrait' | 'landscape') {
@@ -67,40 +72,101 @@ vi.mock('@/components/ui/toaster', () => ({ Toaster: () => null }))
 const queryMobileHeaderButton = () => screen.queryByRole('button', { name: /toggle menu/i })
 
 beforeAll(() => {
-  // Ensure matchMedia from setup returns dynamic matches based on width
-  const original = typeof window.matchMedia === 'function' ? window.matchMedia : undefined
+  // Ensure matchMedia from setup returns dynamic matches based on width and orientation,
+  // and notifies listeners on viewport changes.
+  const original = typeof window.matchMedia === 'function' ? window.matchMedia.bind(window) : undefined
+
+  type Listener = (event: MediaQueryListEvent) => void
+
+  const registry: Array<{
+    query: string
+    compute: () => boolean
+    mql: {
+      matches: boolean
+      media: string
+      onchange: Listener | null
+      addListener: (listener: Listener) => void
+      removeListener: (listener: Listener) => void
+      addEventListener: (type: string, listener: Listener) => void
+      removeEventListener: (type: string, listener: Listener) => void
+      dispatchEvent: (event: Event) => boolean
+    }
+  }> = []
+
+  const computeMatches = (query: string): (() => boolean) => {
+    const maxMatch = /max-width:\s*(\d+)px/.exec(query)
+    const minMatch = /min-width:\s*(\d+)px/.exec(query)
+    const orientationMatch = /orientation:\s*(portrait|landscape)/i.exec(query)
+    return () => {
+      if (maxMatch) {
+        const px = Number(maxMatch[1])
+        return window.innerWidth <= px
+      }
+      if (minMatch) {
+        const px = Number(minMatch[1])
+        return window.innerWidth >= px
+      }
+      if (orientationMatch) {
+        const requested = orientationMatch[1].toLowerCase()
+        const isPortrait = window.innerHeight >= window.innerWidth
+        return requested === 'portrait' ? isPortrait : !isPortrait
+      }
+      return typeof original === 'function' ? !!original(query).matches : false
+    }
+  }
+
+  const notifyAll = () => {
+    for (const entry of registry) {
+      const next = entry.compute()
+      if (next !== entry.mql.matches) {
+        entry.mql.matches = next
+        const evt = { matches: next, media: entry.query } as unknown as MediaQueryListEvent
+        // Fire onchange first (if any)
+        if (typeof entry.mql.onchange === 'function') {
+          entry.mql.onchange(evt)
+        }
+        // Then fire any listeners registered via addEventListener/addListener
+        const listeners = (entry.mql as unknown as { __listeners?: Set<Listener>; __legacy?: Set<Listener> }).__listeners
+        const legacy = (entry.mql as unknown as { __listeners?: Set<Listener>; __legacy?: Set<Listener> }).__legacy
+        listeners?.forEach(l => l(evt))
+        legacy?.forEach(l => l(evt))
+      }
+    }
+  }
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => {
-      const maxMatch = /max-width:\s*(\d+)px/.exec(query)
-      const minMatch = /min-width:\s*(\d+)px/.exec(query)
-      const orientationMatch = /orientation:\s*(portrait|landscape)/i.exec(query)
-      let matches = false
-      if (maxMatch) {
-        const px = Number(maxMatch[1])
-        matches = window.innerWidth <= px
-      } else if (minMatch) {
-        const px = Number(minMatch[1])
-        matches = window.innerWidth >= px
-      } else if (orientationMatch) {
-        const requested = orientationMatch[1].toLowerCase()
-        const isPortrait = window.innerHeight >= window.innerWidth
-        matches = requested === 'portrait' ? isPortrait : !isPortrait
-      } else {
-        matches = typeof original === 'function' ? !!original(query).matches : false
-      }
-      return {
-        matches,
+      const compute = computeMatches(query)
+      const listeners = new Set<Listener>()
+      const legacy = new Set<Listener>()
+      const mql = {
+        matches: compute(),
         media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
+        onchange: null as Listener | null,
+        addListener: (listener: Listener) => {
+          legacy.add(listener)
+        },
+        removeListener: (listener: Listener) => {
+          legacy.delete(listener)
+        },
+        addEventListener: (type: string, listener: Listener) => {
+          if (type === 'change') listeners.add(listener)
+        },
+        removeEventListener: (type: string, listener: Listener) => {
+          if (type === 'change') listeners.delete(listener)
+        },
+        dispatchEvent: (_event: Event) => true,
       }
+      ;(mql as unknown as { __listeners: Set<Listener>; __legacy: Set<Listener> }).__listeners = listeners
+      ;(mql as unknown as { __listeners: Set<Listener>; __legacy: Set<Listener> }).__legacy = legacy
+      registry.push({ query, compute, mql })
+      return mql
     }),
   })
+
+  // Expose a notifier that our viewport helpers can invoke
+  ;(window as unknown as { __notifyMatchMediaChange?: () => void }).__notifyMatchMediaChange = notifyAll
 })
 
 beforeEach(() => {
