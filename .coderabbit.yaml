@@ -1,0 +1,25 @@
+chat:
+  auto_reply: true
+reviews:
+  poem: false
+  profile: chill
+  high_level_summary: true
+  estimate_code_review_effort: false
+  sequence_diagrams: false
+  request_changes_workflow: false
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+  pre_merge_checks:
+    docstrings:
+      mode: off
+    title:
+      mode: off
+    description:
+      mode: off
+    issue_assessment:
+      mode: off
+    custom_checks: []
+  related_issues: false

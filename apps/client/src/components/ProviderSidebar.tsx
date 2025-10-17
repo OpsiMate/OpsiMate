@@ -40,7 +40,12 @@ const serverSchema = z.object({
         message: "Username cannot contain whitespace"
     }),
     authType: z.enum(["password", "key"]),
-    password: z.string().optional(),
+    password: z.string().refine((value) => {
+        if (!value || value.length === 0) return true;
+        return !/\s/.test(value);
+    }, {
+        message: "Password cannot contain whitespace"
+    }).optional(),
     sshKey: z.string().optional(),
 }).refine(data => data.authType === 'password' ? data.password && data.password.length > 0 : true, {
     message: "Password is required",
