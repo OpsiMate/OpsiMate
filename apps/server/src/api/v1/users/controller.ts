@@ -275,12 +275,13 @@ export class UsersController {
             await this.userBL.forgotPassword(req.body.email);
             return res.status(200).json({ success: true, message: 'Password reset email sent' });
         } catch (error) {
-            logger.error('Error processing forgot password request:', error);
             if (error instanceof Error && error.message === 'User not found') {
-                return res.status(404).json({ success: false, error: error.message });
-            } else {
-                return res.status(500).json({ success: false, error: 'Internal server error' });
-            }
+                logger.warn('Forgot password requested for non-existing email', { extraArgs: { email: req.body.email } });
+                return res.status(200).json({ success: true, message: 'Password reset email sent' });
+            } 
+
+            logger.error('Error processing forgot password request:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     }
 
