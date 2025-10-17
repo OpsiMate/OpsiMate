@@ -276,7 +276,7 @@ export class UsersController {
             return res.status(200).json({ success: true, message: 'Password reset email sent' });
         } catch (error) {
             if (error instanceof Error && error.message === 'User not found') {
-                logger.warn('Forgot password requested for non-existing email', { extraArgs: { email: req.body.email } });
+                logger.warn('Forgot password requested for non-existing email');
                 return res.status(200).json({ success: true, message: 'Password reset email sent' });
             } 
 
@@ -302,6 +302,9 @@ export class UsersController {
     resetPasswordHandler = async (req: Request, res: Response) => {
         try {
             const { token, newPassword } = req.body as { token: string; newPassword: string };
+            if (!token || typeof token !== 'string') {
+                return res.status(400).json({ success: false, error: 'Token is required' });
+            }
 
             if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
                 return res.status(400).json({

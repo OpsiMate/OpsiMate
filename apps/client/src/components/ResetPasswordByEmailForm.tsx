@@ -8,7 +8,7 @@ interface ResetPasswordFormProps {
   confirm: string;
   setConfirm: (confirm: string) => void;
   loading: boolean;
-  error: string;
+  error?: string | null;
   handleSubmit: (e: React.FormEvent) => void;
 }
 
