@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '../test-utils'
 import { Toaster } from '@/components/ui/toaster'
+import type { ToastActionElement } from '@/components/ui/toast'
 import { useToast } from '@/hooks/use-toast'
 import { AlertsSection } from '@/components/AlertsSection'
 
@@ -17,13 +18,17 @@ class MockWebSocket {
     MockWebSocket.instances.push(this)
     setTimeout(() => {
       this.readyState = 1
-      this.onopen && this.onopen()
+      if (this.onopen) {
+        this.onopen()
+      }
     }, 0)
   }
 
   // helper for tests to simulate server -> client
   sendFromServer(payload: string) {
-    this.onmessage && this.onmessage({ data: payload })
+    if (this.onmessage) {
+      this.onmessage({ data: payload })
+    }
   }
 
   send() {
@@ -32,7 +37,9 @@ class MockWebSocket {
 
   close() {
     this.readyState = 3
-    this.onclose && this.onclose()
+    if (this.onclose) {
+      this.onclose()
+    }
   }
 }
 
@@ -76,7 +83,7 @@ function ComponentWithAction({ onAction }: { onAction: () => void }) {
             <button onClick={onAction} aria-label="retry-action">
               Retry
             </button>
-          ) as any,
+          ) as unknown as ToastActionElement,
         })
       }
     >
@@ -90,9 +97,8 @@ function RealTimeNotifier() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const WS = (window as any).WebSocket
-    const ws = new WS('wss://test')
+  const WS = (window as unknown as { WebSocket: typeof MockWebSocket }).WebSocket
+  const ws = new WS('wss://test')
     ws.onmessage = (ev: { data: string }) => {
       try {
         const payload = JSON.parse(ev.data)
@@ -123,7 +129,8 @@ describe('notification system - integration', () => {
   })
 
   afterAll(() => {
-    delete (global as any).WebSocket
+    // remove the stubbed WebSocket
+    delete (globalThis as unknown as { WebSocket?: typeof MockWebSocket }).WebSocket
   })
 
   it('shows notifications triggered from different components', async () => {
