@@ -161,6 +161,17 @@ export class UserBL {
                 throw new Error("Invalid or expired token");
             }
 
+            const now = new Date();
+            const expiresAt = new Date(resetPassword.expiresAt);
+            if (expiresAt < now) {
+                try {
+                    await this.passwordResetsRepo.deletePasswordResetsByUserId(resetPassword.userId);
+                } catch (err) {
+                    logger.error('Failed to delete expired password reset token(s)', err);
+                }
+                throw new Error("Invalid or expired token");
+            }
+
             const user = await this.userRepo.getUserById(resetPassword.userId);
 
             if (!user) {
@@ -173,8 +184,6 @@ export class UserBL {
             }
 
             const isSamePassword = await bcrypt.compare(newPassword, userLoginInfo.passwordHash);
-
-            console.log('isSamePassword: ', isSamePassword);
 
             if (isSamePassword) {
                 throw new Error("You cannot reuse an old password");

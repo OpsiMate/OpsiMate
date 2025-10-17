@@ -32,18 +32,21 @@ export class PasswordResetsRepository {
     resetPassword: ResetPasswordType
   ): Promise<void> {
     return runAsync(() => {
-      this.db
-        .prepare("DELETE FROM password_resets WHERE user_id = ?")
-        .run(resetPassword.userId);
-      this.db
-        .prepare(
-          "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)"
-        )
-        .run(
-          resetPassword.userId,
-          resetPassword.tokenHash,
-          resetPassword.expiresAt.toISOString()
-        );
+      const transaction = this.db.transaction(() => {
+        this.db
+          .prepare("DELETE FROM password_resets WHERE user_id = ?")
+          .run(resetPassword.userId);
+        this.db
+          .prepare(
+            "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)"
+          )
+          .run(
+            resetPassword.userId,
+            resetPassword.tokenHash,
+            resetPassword.expiresAt.toISOString()
+          );
+      });
+      transaction();
     });
   }
 
