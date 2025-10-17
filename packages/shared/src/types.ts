@@ -19,6 +19,7 @@ export enum Role {
     Admin = 'admin',
     Editor = 'editor',
     Viewer = 'viewer',
+    NOC = 'noc',
 }
 
 export enum SecretType {

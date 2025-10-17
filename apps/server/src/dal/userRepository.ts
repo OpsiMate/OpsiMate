@@ -18,14 +18,44 @@ export class UserRepository {
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
                     full_name TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer')),
+                    role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer','noc')),
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `).run();
+            const row = this.db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get() as { sql?: string } | undefined;
+    const hasNoc = !!row?.sql?.includes(`'noc'`);
+    if (!hasNoc) {
+      this.db.exec('BEGIN');
+      try {
+        this.db.prepare(`
+          CREATE TABLE users_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            full_name TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('admin','editor','viewer','noc')),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+
+        this.db.prepare(`
+          INSERT INTO users_new (id,email,password_hash,full_name,role,created_at)
+          SELECT id,email,password_hash,full_name,role,created_at FROM users
+        `).run();
+
+        this.db.prepare(`DROP TABLE users`).run();
+        this.db.prepare(`ALTER TABLE users_new RENAME TO users`).run();
+
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
         });
     }
 
-    async createUser(email: string, password_hash: string, full_name: string, role: 'admin' | 'editor' | 'viewer'): Promise<{ lastID: number }> {
+    async createUser(email: string, password_hash: string, full_name: string, role: 'admin' | 'editor' | 'viewer' |'noc'): Promise<{ lastID: number }> {
         return runAsync<{ lastID: number }>(() => {
             const stmt = this.db.prepare(
                 'INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)' 
@@ -51,7 +81,7 @@ export class UserRepository {
         });
     }
 
-    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'): Promise<void> {
+    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'|'noc'): Promise<void> {
         return runAsync(() => {
             const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ?');
             stmt.run(newRole, email);
