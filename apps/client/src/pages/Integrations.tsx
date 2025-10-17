@@ -381,15 +381,17 @@ export default function Integrations() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredIntegrations.map(integration => (
+          {filteredIntegrations.map(integration => {
+            const hasConfiguredInstances = configuredInstances[integration.id] > 0;
+            return (
             <Card
               key={integration.id}
               className={cn(
                 "transition-all duration-200 overflow-hidden",
-                hoveredCard === integration.id && configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                hoveredCard === integration.id && hasConfiguredInstances
                   ? "border-primary shadow-md"
                   : "",
-                configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                hasConfiguredInstances
                   ? "border-muted/60 hover:shadow-md"
                   : "border-muted/20 bg-gray-100 dark:bg-gray-800/40"
               )}
@@ -404,7 +406,7 @@ export default function Integrations() {
               }
               <CardHeader className={cn(
                 "pb-2",
-                configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                hasConfiguredInstances
                   ? ""
                   : "opacity-75"
               )}>
@@ -412,7 +414,7 @@ export default function Integrations() {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "h-10 w-10 rounded-md overflow-hidden border flex items-center justify-center",
-                      configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                      hasConfiguredInstances
                         ? "bg-background"
                         : "bg-gray-200 dark:bg-gray-700"
                     )}>
@@ -421,7 +423,7 @@ export default function Integrations() {
                         alt={`${integration.name} logo`}
                         className={cn(
                           "h-8 w-8 object-contain",
-                          configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                          hasConfiguredInstances
                             ? ""
                             : "opacity-50 grayscale"
                         )}
@@ -441,7 +443,7 @@ export default function Integrations() {
               </CardHeader>
               <CardContent className={cn(
                 "pb-2",
-                configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                hasConfiguredInstances
                   ? ""
                   : "opacity-75"
               )}>
@@ -456,10 +458,10 @@ export default function Integrations() {
                       variant="outline"
                       className={cn(
                         "text-xs px-2 py-0.5 flex items-center",
-                        configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                        hasConfiguredInstances
                           ? TAG_COLORS[tag]?.bg || "bg-gray-100 dark:bg-gray-800"
                           : "bg-gray-200 dark:bg-gray-700",
-                        configuredInstances[integration.id] && configuredInstances[integration.id] > 0
+                        hasConfiguredInstances
                           ? TAG_COLORS[tag]?.text || "text-gray-700 dark:text-gray-300"
                           : "text-gray-500 dark:text-gray-400"
                       )}
@@ -474,11 +476,11 @@ export default function Integrations() {
               <CardFooter className="pt-2 flex gap-2">
                 <Button
                     disabled={!integration.supported}
-                  variant={configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "default" : "secondary"}
+
                   className={cn(
                     "w-full transition-all",
-                    hoveredCard === integration.id && configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "bg-primary" : "",
-                    !configuredInstances[integration.id] || configuredInstances[integration.id] === 0 ? "border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600" : ""
+                    hoveredCard === integration.id && hasConfiguredInstances ? "ring-2 ring-primary-foreground/20" : "",
+                    !integration.supported ? "border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600" : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95"
                   )}
                   onClick={() => {
                     // Find existing integration of this type if it exists
@@ -509,15 +511,15 @@ export default function Integrations() {
 
                     setSelectedIntegration(integration);
                   }}
-                  title={configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ?
+                  title={hasConfiguredInstances ?
                     `Configure ${integration.name} integration` :
                     `Add ${integration.name} integration`}
                 >
                   <Settings className="mr-2 h-4 w-4" />
-                  {configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? "Configure" : "Add Integration"}
+                  {hasConfiguredInstances ? "Configure" : "Add Integration"}
                 </Button>
               </CardFooter>
-              {configuredInstances[integration.id] && configuredInstances[integration.id] > 0 ? (
+              {hasConfiguredInstances ? (
                 <div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                   <Server className="h-3 w-3" />
                   <span>{configuredInstances[integration.id]} {configuredInstances[integration.id] === 1 ? 'instance' : 'instances'} configured</span>
@@ -528,8 +530,8 @@ export default function Integrations() {
                   <span>Not configured</span>
                 </div>
               )}
-            </Card>
-          ))}
+            </Card>);
+})}
 
           {filteredIntegrations.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center p-8 text-center">
