@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opsimate-backend
+  labels:
+    app: opsimate-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opsimate-backend
+  template:
+    metadata:
+      labels:
+        app: opsimate-backend
+    spec:
+      containers:
+      - name: opsimate-backend
+        image: opsimate/backend:latest
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: HOST
+          value: "0.0.0.0"
+        ports:
+        - containerPort: 3001
+    
