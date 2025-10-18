@@ -4,7 +4,7 @@ import ResetPasswordByEmailSuccess from "@/components/ResetPasswordByEmailSucces
 import { useFormErrors } from "@/hooks/useFormErrors";
 import { apiRequest } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const ResetPasswordByEmail: React.FC = () => {
@@ -26,9 +26,12 @@ const ResetPasswordByEmail: React.FC = () => {
     showFieldErrors: true,
   });
 
+  const didClearRef = useRef(false);
   useEffect(() => {
+    if (didClearRef.current) return;
     clearErrors();
-  }, []);
+    didClearRef.current = true;
+  }, [clearErrors]);
 
   const validateToken = useCallback(async () => {
     if (!token) {
