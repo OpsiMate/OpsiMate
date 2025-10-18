@@ -4,7 +4,7 @@ import ResetPasswordByEmailSuccess from "@/components/ResetPasswordByEmailSucces
 import { useFormErrors } from "@/hooks/useFormErrors";
 import { apiRequest } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const ResetPasswordByEmail: React.FC = () => {
@@ -16,27 +16,37 @@ const ResetPasswordByEmail: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [valid, setValid] = useState<boolean | null>(null);
-  const { errors, generalError, clearErrors, handleApiResponse } =
-    useFormErrors({
-      showFieldErrors: true,
-    });
+  const {
+    errors,
+    generalError,
+    setGeneralError,
+    clearErrors,
+    handleApiResponse,
+  } = useFormErrors({
+    showFieldErrors: true,
+  });
 
   useEffect(() => {
     clearErrors();
   }, []);
 
-  const validateToken = async () => {
+  const validateToken = useCallback(async () => {
     if (!token) {
       setValid(false);
       return;
     }
-    const res = await apiRequest<{
-      data: { success: boolean; message: string };
-      error?: string;
-    }>("/users/validate-reset-password-token", "POST", { token });
 
-    setValid(res.success);
-  };
+    try {
+      const res = await apiRequest<{
+        data: { success: boolean; message: string };
+        error?: string;
+      }>("/users/validate-reset-password-token", "POST", { token });
+
+      setValid(res.success);
+    } catch {
+      setValid(false);
+    }
+  }, [token]);
 
   useEffect(() => {
     if (token) validateToken();
@@ -47,14 +57,11 @@ const ResetPasswordByEmail: React.FC = () => {
     clearErrors();
 
     if (!password || !confirm) {
-      handleApiResponse({
-        success: false,
-        error: "Please fill in both fields.",
-      });
+      setGeneralError("Please fill in both fields.");
       return;
     }
     if (password !== confirm) {
-      handleApiResponse({ success: false, error: "Passwords do not match." });
+      setGeneralError("Passwords do not match.");
       return;
     }
 
