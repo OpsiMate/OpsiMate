@@ -1,6 +1,6 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {DashboardLayout} from "../components/DashboardLayout";
-import {providerApi} from "../lib/api";
+import {providerApi, ApiProvider} from "../lib/api";
 import {Button} from "@/components/ui/button";
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/queries';
@@ -55,9 +55,11 @@ import { Provider as SharedProvider } from '@OpsiMate/shared';
 import { AddServiceDialog, ServiceConfig } from "@/components/AddServiceDialog";
 import { RightSidebarWithLogs } from "@/components/RightSidebarWithLogs";
 import type { Service } from "@/components/ServiceTable";
+import type { ProviderType } from '@OpsiMate/shared';
 
 interface Provider extends SharedProvider {
     services?: ServiceConfig[];
+    status?: string;
 }
 
 
@@ -132,7 +134,7 @@ const getProviderCategory = (type: Provider["providerType"]): string => {
     }
 };
 
-export const getStatusBadgeColor = (status: Provider["status"]) => {
+export const getStatusBadgeColor = (status: string) => {
     switch (status) {
         case "online":
             return "bg-green-500/20 text-green-700 hover:bg-green-500/30";
@@ -177,23 +179,27 @@ export function MyProviders() {
     const [selectedServiceForDrawer, setSelectedServiceForDrawer] = useState<Service | null>(null);
     const [isServiceDrawerOpen, setIsServiceDrawerOpen] = useState(false);
 
+    // callback for closing service drawer
+    const handleCloseServiceDrawer = useCallback(() => setIsServiceDrawerOpen(false), []);
+
     const fetchProviders = async () => {
         setIsLoading(true);
         try {
             const response = await providerApi.getProviders();
 
             if (response.success && response.data && response.data.providers) {
-                const apiProviders: Provider[] = response.data.providers.map(provider => {
-                    const mappedProvider = {
+                const apiProviders: Provider[] = response.data.providers.map((provider: ApiProvider) => {
+                    const mappedProvider: Provider = {
                         id: Number(provider.id),
                         name: provider.name || '',
                         providerIP: provider.providerIP || '',
                         username: provider.username || '',
                         privateKeyFilename: provider.privateKeyFilename || '',
                         SSHPort: provider.SSHPort || 22,
-                        providerType: provider.providerType || 'VM',
+                        providerType: (provider.providerType || 'VM') as ProviderType,
                         createdAt: provider.createdAt ? new Date(provider.createdAt).toISOString() : new Date().toISOString(),
-                        services: []
+                        services: [],
+                        status: provider.status
                     };
 
                     return mappedProvider;
@@ -279,12 +285,12 @@ export function MyProviders() {
 
     const filteredProviders = providerInstances.filter(provider => {
         const name = provider?.name || '';
-        const type = provider?.providerType || 'VM';
+        const type = provider?.providerType || ('VM' as ProviderType);
         const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             type.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesTab = activeTab === "all" ||
-            getProviderCategory(type) === activeTab;
+            getProviderCategory(type as ProviderType) === activeTab;
 
         return matchesSearch && matchesTab;
     });
@@ -325,10 +331,10 @@ export function MyProviders() {
                     username: refreshedProvider.username || '',
                     privateKeyFilename: refreshedProvider.privateKeyFilename,
                     SSHPort: refreshedProvider.SSHPort || 22,
-                    providerType: refreshedProvider.providerType as Provider["providerType"],
+                    providerType: refreshedProvider.providerType as ProviderType,
+                    createdAt: refreshedProvider.createdAt || new Date().toISOString(),
                     status: services.some(s => s.serviceStatus === 'running') ? 'running' : 'stopped',
-                    services: serviceConfigs,
-                    details: {}
+                    services: serviceConfigs
                 };
 
                 const updatedProviders = providerInstances.map(provider =>
@@ -861,25 +867,52 @@ export function MyProviders() {
                                                                                         <DropdownMenuItem
                                                                                             onClick={() => {
                                                                                                 const parentProvider = providerInstances.find(p => p.services && p.services.some(s => s.id === service.id));
+                                                                                                
+                                                                                                // map ServiceConfig properties to Service type
+                                                                                                // ServiceConfig has 'status' and 'type', Service has 'serviceStatus' and 'serviceType'
+                                                                                                const normalizeStatus = (status: string): 'running' | 'stopped' | 'error' | 'unknown' => {
+                                                                                                    const lowerStatus = status.toLowerCase();
+                                                                                                    if (lowerStatus === 'running') return 'running';
+                                                                                                    if (lowerStatus === 'stopped') return 'stopped';
+                                                                                                    if (lowerStatus === 'error') return 'error';
+                                                                                                    return 'unknown';
+                                                                                                };
+                                                                                                
+                                                                                                const normalizeType = (type: string): 'MANUAL' | 'DOCKER' | 'SYSTEMD' => {
+                                                                                                    const upperType = type.toUpperCase();
+                                                                                                    if (upperType === 'DOCKER') return 'DOCKER';
+                                                                                                    if (upperType === 'SYSTEMD') return 'SYSTEMD';
+                                                                                                    return 'MANUAL';
+                                                                                                };
+                                                                                                
                                                                                                 const mappedService: Service = {
                                                                                                     id: service.id,
                                                                                                     name: service.name,
-                                                                                                    serviceStatus: (service as { status?: string; serviceStatus?: string }).status || (service as { status?: string; serviceStatus?: string }).serviceStatus || 'unknown',
-                                                                                                    serviceType: (service as { type?: string; serviceType?: string }).type || (service as { type?: string; serviceType?: string }).serviceType || 'MANUAL',
-                                                                                                    createdAt: (service as { createdAt?: string }).createdAt || new Date().toISOString(),
-                                                                                                    provider: parentProvider || {
+                                                                                                    serviceStatus: normalizeStatus(service.status),
+                                                                                                    serviceType: normalizeType(service.type),
+                                                                                                    createdAt: service.containerDetails?.created || new Date().toISOString(),
+                                                                                                    provider: parentProvider ? {
+                                                                                                        id: parentProvider.id,
+                                                                                                        name: parentProvider.name,
+                                                                                                        providerIP: parentProvider.providerIP || '',
+                                                                                                        username: parentProvider.username || '',
+                                                                                                        privateKeyFilename: parentProvider.privateKeyFilename || '',
+                                                                                                        SSHPort: parentProvider.SSHPort || 22,
+                                                                                                        createdAt: new Date(parentProvider.createdAt).getTime(),
+                                                                                                        providerType: parentProvider.providerType
+                                                                                                    } : {
                                                                                                         id: -1,
                                                                                                         name: 'Unknown',
                                                                                                         providerIP: '',
                                                                                                         username: '',
                                                                                                         privateKeyFilename: '',
                                                                                                         SSHPort: 22,
-                                                                                                        createdAt: '',
+                                                                                                        createdAt: 0,
                                                                                                         providerType: 'VM'
                                                                                                     },
                                                                                                     serviceIP: service.serviceIP || '',
                                                                                                     containerDetails: service.containerDetails || {},
-                                                                                                    tags: (service as { tags?: string[] }).tags || []
+                                                                                                    tags: []
                                                                                                 };
                                                                                                 setSelectedServiceForDrawer(mappedService);
                                                                                                 setIsServiceDrawerOpen(true);
@@ -1026,7 +1059,7 @@ export function MyProviders() {
                     {selectedServiceForDrawer && (
                         <RightSidebarWithLogs
                             service={selectedServiceForDrawer}
-                            onClose={() => setIsServiceDrawerOpen(false)}
+                            onClose={handleCloseServiceDrawer}
                             collapsed={false}
                         />
                     )}
