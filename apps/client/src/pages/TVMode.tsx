@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -57,6 +57,8 @@ const TVMode = ({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Service action mutations
   const startServiceMutation = useStartService()
@@ -482,11 +484,8 @@ const TVMode = ({
           break
         case '/': {
           // Focus search input when user presses '/'
-           event.preventDefault()
-          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
-          if (searchInput) {
-            searchInput.focus()
-          }
+          event.preventDefault()
+          searchInputRef.current?.focus()
           break 
         }
       }
@@ -620,7 +619,8 @@ const TVMode = ({
               <div className="relative min-w-[300px] max-w-[400px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search services, providers, or integrations..."
+                ref={searchInputRef}
+                  placeholder="Search services, providers, IPs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-10 h-9 text-sm"
@@ -632,7 +632,7 @@ const TVMode = ({
                     size="sm"
                     onClick={() => setSearchTerm('')}
                     className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                    title="Clear search"
+                    aria-label="Clear search"
                   >
                     <X className="h-4 w-4" />
                   </Button>
