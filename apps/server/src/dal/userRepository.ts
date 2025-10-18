@@ -138,4 +138,11 @@ export class UserRepository {
             createdAt: row.created_at
         };
     };
+
+    async getUserByEmail(email: string): Promise<User | null> {
+        return runAsync(() => {
+             const row = this.db.prepare('SELECT id, email, full_name, role, created_at FROM users WHERE email = ?').get(email) as UserRow | undefined;
+            return row ? this.toSharedUser(row) : null;
+        });
+    }
 }

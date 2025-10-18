@@ -191,6 +191,21 @@ export const UpdateSecretsMetadataSchema = z.object({
     secretType: z.nativeEnum(SecretType).optional(),
 })
 
+export const ForgotPasswordSchema = z.object({
+    email: z.string().email('Invalid email format')
+});
+
+export const ValidateResetTokenSchema = z.object({
+    token: z.string().min(1, 'Token is required')
+});
+
+export const ResetPasswordSchema = z.object({
+    token: z.string().min(1, 'Token is required'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters').refine(val => !/\s/.test(val), {
+        message: 'Password must not contain spaces'
+    })
+});
+
 
 export type UserSchemaType = z.infer<typeof UserSchema>;
 export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
