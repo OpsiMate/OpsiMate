@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
 import { 
   Monitor, 
   X, 
@@ -24,7 +25,8 @@ import {
   MoreVertical,
   Eye,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Search
 } from "lucide-react"
 import { useServices, useAlerts, useStartService, useStopService } from "@/hooks/queries"
 import { useToast } from "@/hooks/use-toast"
@@ -442,6 +444,11 @@ const TVMode = ({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // disable shortcuts if user is typing in search input
+      if (event.target instanceof HTMLInputElement && event.target.placeholder?.includes('Search')) {
+        return
+      }
+
       switch (event.key) {
         case 'Escape':
           navigate('/')
@@ -473,6 +480,15 @@ const TVMode = ({
           event.preventDefault()
           toggleFullscreen()
           break
+        case '/': {
+          // Focus search input when user presses '/'
+           event.preventDefault()
+          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+          if (searchInput) {
+            searchInput.focus()
+          }
+          break 
+        }
       }
     }
 
@@ -600,6 +616,29 @@ const TVMode = ({
           </div>
           
           <div className="flex flex-wrap items-center gap-4">
+            {/* Search Bar */}
+              <div className="relative min-w-[300px] max-w-[400px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search services, providers, or integrations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-10 h-9 text-sm"
+                  title="Search services by name, provider, IP, or container image"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                    title="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
             {/* Control Buttons */}
             <Button
               variant="outline"
@@ -641,6 +680,10 @@ const TVMode = ({
                   <p className="font-semibold text-sm">⌨️ Keyboard Shortcuts</p>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Focus Search:</span>
+                      <span className="font-mono">/</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground">Status Views:</span>
                       <span className="font-mono">1-4</span>
                     </div>
@@ -666,6 +709,7 @@ const TVMode = ({
                     <p>• Click alert badges for detailed information</p>
                     <p>• Use three-dot menu for service actions</p>
                     <p>• Grid automatically adapts to service count</p>
+                    <p>• Use search bar to quickly find services</p>
                   </div>
                 </div>
               </PopoverContent>
