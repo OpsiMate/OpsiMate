@@ -11,16 +11,34 @@ const STORAGE_KEY = 'log-search-value';
 
 export const LogSearchInput = ({ onSearchChange, placeholder = "Search logs...", persistKey = 'default' }: LogSearchInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
-    const [value, setValue] = useState(() => {
+  // initialize with empty string, then load from session storage in useEffect
+  const [value, setValue] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasTypingRef = useRef(false);
+  // use ref for onSearchChange to avoid dependency issues
+  const onSearchChangeRef = useRef(onSearchChange);
+  
+  // keep ref up to date
+  useEffect(() => {
+    onSearchChangeRef.current = onSearchChange;
+  }, [onSearchChange]);
+
+  // load persisted value on mount and when persistKey changes
+  useEffect(() => {
     try {
       const stored = sessionStorage.getItem(`${STORAGE_KEY}-${persistKey}`);
-      return stored || "";
+      const loadedValue = stored || "";
+      setValue(loadedValue);
+      // emit the loaded value so parent component knows about it
+      onSearchChangeRef.current(loadedValue);
     } catch {
-      return "";
+      // ignore storage errors
+      setValue("");
+      onSearchChangeRef.current("");
     }
-  });
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const wasTypingRef = useRef(false);
+  }, [persistKey]);
+
+  // save to session storage whenever value changes
   useEffect(() => {
     try {
       sessionStorage.setItem(`${STORAGE_KEY}-${persistKey}`, value);
@@ -49,7 +67,7 @@ export const LogSearchInput = ({ onSearchChange, placeholder = "Search logs...",
 
     // set new timer to trigger search after 700ms
     timerRef.current = setTimeout(() => {
-      onSearchChange(newValue);
+      onSearchChangeRef.current(newValue);
     }, 700);
   };
 
@@ -59,16 +77,16 @@ export const LogSearchInput = ({ onSearchChange, placeholder = "Search logs...",
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-    onSearchChange("");
+    onSearchChangeRef.current("");
   };
 
-  // handle Enter key
+  // handle enter key
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
-      onSearchChange(value);
+      onSearchChangeRef.current(value);
     }
   };
 
@@ -99,6 +117,7 @@ export const LogSearchInput = ({ onSearchChange, placeholder = "Search logs...",
           type="button"
           onClick={handleClear}
           className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 hover:bg-muted rounded"
+          aria-label="Clear search"
         >
           <X className="h-3 w-3" />
         </button>
