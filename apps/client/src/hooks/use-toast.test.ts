@@ -115,7 +115,7 @@ describe("useToast hook", () => {
     // open should be false immediately after dismiss
     expect(result.current.toasts[0].open).toBe(false)
 
-    // The hook schedules removal with a timeout (TOAST_REMOVE_DELAY = 1000000 in module)
+    // The hook schedules removal with a timeout (TOAST_REMOVE_DELAY = 1000 in module)
     // advance timers by that delay to simulate removal
     act(() => {
       vi.advanceTimersByTime(TOAST_REMOVE_DELAY)
