@@ -339,14 +339,21 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
     }
   }, [filteredLogs, toast]);
 
+  // escape special regex characters to prevent regex errors
+  const escapeRegExp = useCallback((str: string): string => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }, []);
+
   // highlight search keyword in logs
   const highlightLog = useCallback((log: string) => {
     if (!searchKeyword.trim()) return log;
 
     const keyword = searchKeyword.trim();
-    const regex = new RegExp(`(${keyword})`, 'gi');
-    return log.replace(regex, '⚡$1⚡'); // Use markers for highlighting
-  }, [searchKeyword]);
+    // escape special regex characters before building regex
+    const escapedKeyword = escapeRegExp(keyword);
+    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+    return log.replace(regex, '⚡$1⚡'); // use markers for highlighting
+  }, [searchKeyword, escapeRegExp]);
 
   const fetchPods = useCallback(async () => {
     if (!service) return;
