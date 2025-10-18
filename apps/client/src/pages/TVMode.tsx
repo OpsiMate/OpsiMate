@@ -447,7 +447,7 @@ const TVMode = ({
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // disable shortcuts if user is typing in search input
-      if (event.target instanceof HTMLInputElement && event.target.placeholder?.includes('Search')) {
+      if (event.target === searchInputRef.current) {
         return
       }
 
