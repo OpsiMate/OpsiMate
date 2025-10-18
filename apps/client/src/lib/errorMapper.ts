@@ -125,6 +125,10 @@ const FIELD_ERROR_MESSAGES: Record<string, Record<string, string>> = {
     too_small: 'Resource Group is required',
     invalid_type: 'Resource Group is required',
   },
+  newPassword: {
+    too_small: 'New password must be at least 8 characters long',
+    invalid_type: 'New password is required',
+  },
 };
 
 // Generic error message mappings based on error codes

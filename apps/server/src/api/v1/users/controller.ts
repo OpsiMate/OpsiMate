@@ -309,17 +309,6 @@ export class UsersController {
     resetPasswordHandler = async (req: Request, res: Response) => {
         try {
             const { token, newPassword } = ResetPasswordSchema.parse(req.body);
-            if (!token || typeof token !== 'string') {
-                return res.status(400).json({ success: false, error: 'Token is required' });
-            }
-
-            if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Password must be at least 8 characters long'
-                });
-            }
-
             await this.userBL.resetPassword(token, newPassword);
             return res.status(200).json({ success: true, message: 'Password has been reset successfully' });
         } catch (error) {

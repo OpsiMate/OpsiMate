@@ -8,7 +8,8 @@ interface ResetPasswordFormProps {
   confirm: string;
   setConfirm: (confirm: string) => void;
   loading: boolean;
-  error?: string | null;
+  error?: Record<string, string>;
+  generalError?: string | null;
   handleSubmit: (e: React.FormEvent) => void;
 }
 
@@ -19,6 +20,7 @@ const ResetPasswordByEmailForm: React.FC<ResetPasswordFormProps> = ({
   setConfirm,
   loading,
   error,
+  generalError,
   handleSubmit,
 }) => {
   return (
@@ -47,9 +49,12 @@ const ResetPasswordByEmailForm: React.FC<ResetPasswordFormProps> = ({
           required
         />
       </div>
-      {error && (
-        <ErrorAlert message={error} className="mb-4" />
+      
+      {generalError && <ErrorAlert message={generalError} className="mb-4" />}
+      {error?.newPassword && (
+        <ErrorAlert message={error.newPassword} className="mb-4" />
       )}
+
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Resetting..." : "Reset Password"}
       </Button>

@@ -16,9 +16,14 @@ const ResetPasswordByEmail: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [valid, setValid] = useState<boolean | null>(null);
-  const { generalError, clearErrors, handleApiResponse } = useFormErrors({
-    showFieldErrors: false,
-  });
+  const { errors, generalError, clearErrors, handleApiResponse } =
+    useFormErrors({
+      showFieldErrors: true,
+    });
+
+  useEffect(() => {
+    clearErrors();
+  }, []);
 
   const validateToken = async () => {
     if (!token) {
@@ -40,16 +45,21 @@ const ResetPasswordByEmail: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearErrors();
+
     if (!password || !confirm) {
-      handleApiResponse({ success: false, error: "Please fill in both fields." });
+      handleApiResponse({
+        success: false,
+        error: "Please fill in both fields.",
+      });
       return;
     }
     if (password !== confirm) {
       handleApiResponse({ success: false, error: "Passwords do not match." });
       return;
     }
-    setLoading(true);
+
     try {
+      setLoading(true);
       const res = await apiRequest<{
         data: { id: string; email: string };
         error?: string;
@@ -61,7 +71,10 @@ const ResetPasswordByEmail: React.FC = () => {
         handleApiResponse(res);
       }
     } catch {
-      handleApiResponse({ success: false, error: "Network error. Please try again." });
+      handleApiResponse({
+        success: false,
+        error: "Network error. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -84,7 +97,8 @@ const ResetPasswordByEmail: React.FC = () => {
               confirm={confirm}
               setConfirm={setConfirm}
               loading={loading}
-              error={generalError}
+              error={errors}
+              generalError={generalError}
               handleSubmit={handleSubmit}
             />
           )}
