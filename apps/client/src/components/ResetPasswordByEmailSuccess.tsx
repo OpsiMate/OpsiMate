@@ -1,3 +1,5 @@
+import React from "react";
+
 const ResetPasswordByEmailSuccess: React.FC = () => {
   return (
     <div className="text-center">
