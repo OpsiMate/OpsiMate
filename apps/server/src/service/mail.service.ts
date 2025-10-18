@@ -17,6 +17,7 @@ const logger = new Logger("service/mail.service");
 export class MailService {
   private transporter: nodemailer.Transporter | null = null;
   private mailerConfig = getMailerConfig();
+  private verified = false;
 
   constructor() {
     this.initTransporter();
@@ -25,7 +26,7 @@ export class MailService {
   /**
    * Initialize the nodemailer transporter with SMTP settings
    */
-  initTransporter() {
+  private async initTransporter() {
     if (
       !this.mailerConfig ||
       !this.mailerConfig.enabled ||
@@ -52,9 +53,10 @@ export class MailService {
         },
       });
 
-      this.transporter
+      await this.transporter
         .verify()
         .then(() => {
+          this.verified = true;
           logger.info("MailService: SMTP transporter is ready to send emails");
         })
         .catch((error) => {
@@ -73,7 +75,7 @@ export class MailService {
    * @param options
    */
   async sendMail(options: SendMailOptions): Promise<void> {
-    if (!this.transporter) {
+    if (!this.transporter || !this.verified) {
       logger.error("MailService: SMTP transporter is not configured");
       throw new Error("SMTP transporter is not configured");
     }
@@ -82,6 +84,7 @@ export class MailService {
       to: options.to,
       subject: options.subject,
       html: options.html,
+      text: options.text,
     });
   }
 }
