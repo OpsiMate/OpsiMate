@@ -87,6 +87,7 @@ export function Providers() {
                       variant="default" 
                       className="w-full"
                       onClick={() => setSelectedProvider(provider)}
+                      aria-label="Configure provider"
                     >
                       Configure
                     </Button>
@@ -96,6 +97,7 @@ export function Providers() {
                       className="w-full"
                       disabled
                       title="You don't have permission to configure providers"
+                      aria-label="View only"
                     >
                       View Only
                     </Button>
