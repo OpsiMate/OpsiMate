@@ -95,7 +95,14 @@ function getDefaultConfig(): OpsimateConfig {
             try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false'
         },
         mailer: {
-            enabled: false,
+            enabled: true,
+            host: process.env.SMTP_HOST || undefined,
+            port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined,
+            from: process.env.SMTP_FROM || undefined,
+            auth: {
+                user: process.env.SMTP_USER || '',
+                pass: process.env.SMTP_PASS || ''
+            }
         }
     };
 }

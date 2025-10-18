@@ -1,5 +1,6 @@
 import { Logger } from "@OpsiMate/shared";
 import nodemailer from "nodemailer";
+import { getMailerConfig } from "../config/config.js";
 
 interface SendMailOptions {
   to: string;
@@ -15,6 +16,7 @@ const logger = new Logger("service/mail.service");
  */
 export class MailService {
   private transporter: nodemailer.Transporter | null = null;
+  private mailerConfig = getMailerConfig();
 
   constructor() {
     this.initTransporter();
@@ -25,18 +27,28 @@ export class MailService {
    */
   initTransporter() {
     if (
-      process.env.SMTP_HOST &&
-      process.env.SMTP_PORT &&
-      process.env.SMTP_USER &&
-      process.env.SMTP_PASS
+      !this.mailerConfig ||
+      !this.mailerConfig.enabled ||
+      !this.mailerConfig.auth
+    ) {
+      logger.info("MailService: SMTP config is not available");
+      this.transporter = null;
+      return;
+    }
+
+    if (
+      this.mailerConfig.host &&
+      this.mailerConfig.port &&
+      this.mailerConfig.auth.user &&
+      this.mailerConfig.auth.pass
     ) {
       this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
+        host: this.mailerConfig.host,
+        port: this.mailerConfig.port,
         secure: false,
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
+          user: this.mailerConfig.auth.user,
+          pass: this.mailerConfig.auth.pass,
         },
       });
 
@@ -66,7 +78,7 @@ export class MailService {
       throw new Error("SMTP transporter is not configured");
     }
     await this.transporter.sendMail({
-      from: process.env.SMTP_FROM || '"OpsiMate" <no-reply@opsimate.com>',
+      from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.com>',
       to: options.to,
       subject: options.subject,
       html: options.html,
