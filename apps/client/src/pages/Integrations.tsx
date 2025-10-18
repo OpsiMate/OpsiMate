@@ -484,7 +484,7 @@ export default function Integrations() {
                     );
 
                     // Load URL history for this integration type
-                    const history = getIntegrationUrlHistory(integration.name);
+                    const history = getIntegrationUrlHistory(integration.id);
                     setUrlHistory(history);
 
                     // If integration exists, pre-fill form data
@@ -693,7 +693,7 @@ export default function Integrations() {
                       if (response.success) {
                         // Save URL to history
                         if (formData.url && formData.url.trim() !== '') {
-                          saveIntegrationUrl(selectedIntegration.name, formData.url);
+                          saveIntegrationUrl(selectedIntegration.id, formData.url);
                         }
 
                         // Fetch updated integrations
