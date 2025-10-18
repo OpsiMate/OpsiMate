@@ -14,7 +14,7 @@ const Login: React.FC = () => {
   const { generalError, clearErrors, handleApiResponse } = useFormErrors({ showFieldErrors: false });
 
   useEffect(() => {
-    if (localStorage.getItem('jwt') && location.pathname === '/login') {
+    if (localStorage.getItem('jwt') && window.location.pathname === '/login') {
       window.location.href = '/';
     }
   }, []);
