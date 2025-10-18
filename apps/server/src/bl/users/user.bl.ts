@@ -102,31 +102,27 @@ export class UserBL {
     }
 
     async forgotPassword(email: string): Promise<void> {
-        try {
-            const user = await this.userRepo.getUserByEmail(email);
-            if (!user) {
-                throw new Error("User not found");
-            }
-    
-            const resetPasswordConfig = generatePasswordResetInfo();
-            const passwordResetHtml = passwordResetTemplate(
-                resetPasswordConfig.resetUrl,
-                user.fullName
-            );
-            await this.passwordResetsRepo.savePasswordResetToken({
-                userId: user.id,
-                tokenHash: resetPasswordConfig.tokenHash,
-                expiresAt: resetPasswordConfig.expiresAt,
-            });
-    
-            await this.mailService.sendMail({
-                to: user.email,
-                subject: "Password Reset Request",
-                html: passwordResetHtml,
-            });
-        } catch (error) {
-            throw error;
+        const user = await this.userRepo.getUserByEmail(email);
+        if (!user) {
+            throw new Error("User not found");
         }
+
+        const resetPasswordConfig = generatePasswordResetInfo();
+        const passwordResetHtml = passwordResetTemplate(
+            resetPasswordConfig.resetUrl,
+            user.fullName
+        );
+        await this.passwordResetsRepo.savePasswordResetToken({
+            userId: user.id,
+            tokenHash: resetPasswordConfig.tokenHash,
+            expiresAt: resetPasswordConfig.expiresAt,
+        });
+
+        await this.mailService.sendMail({
+            to: user.email,
+            subject: "Password Reset Request",
+            html: passwordResetHtml,
+        });
     }
 
     async validateResetPasswordToken(token: string): Promise<boolean> {
