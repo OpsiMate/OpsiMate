@@ -125,7 +125,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
               variant={location.pathname === "/settings" ? "default" : "ghost"}
               className={cn(
                 "gap-3 h-10 items-center", 
-                collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-1",
+                collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
                 location.pathname === "/settings" && "text-primary-foreground"
               )}
               asChild
@@ -139,68 +139,57 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           <ProfileButton collapsed={collapsed} />
 
           <TooltipProvider>        
-          <div
-            className={cn(
-              "flex gap-2",
-              collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
-            )}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
-                    collapsed ? "flex-col" : "flex-row"
-                  )}
-                  onClick={() =>
-                    window.open(
-                      "https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA",
-                      "_blank"
-                    )
-                  }
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
+                    onClick={() =>
+                      window.open(
+                        "https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA",
+                        "_blank"
+                      )
+                    }
+                  >
+                    <img
+                      src="images/slack.png"
+                      alt="Slack"
+                      className="h-5 w-5 object-contain invert dark:invert-0"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  align="center"
+                  className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
                 >
-                  <img
-                    src="images/slack.png"
-                    alt="Slack"
-                    className="h-5 w-5 object-contain invert dark:invert-0"
-                  />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                align="center"
-                className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-              >
-                Join our Slack community
-              </TooltipContent>
-            </Tooltip>
+                  Join our Slack community
+                </TooltipContent>
+              </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
-                    collapsed ? "flex-col" : "flex-row"
-                  )}
-                  onClick={() => window.open("https://github.com/opsimate/opsimate", "_blank")}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
+                    onClick={() => window.open("https://github.com/opsimate/opsimate", "_blank")}
+                  >
+                    <img
+                      src="images/git.png"
+                      alt="GitHub"
+                      className="h-5 w-5 object-contain invert dark:invert-0"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  align="center"
+                  className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
                 >
-                  <img
-                    src="images/git.png"
-                    alt="GitHub"
-                    className="h-5 w-5 object-contain invert dark:invert-0"
-                  />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                align="center"
-                className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-              >
-                Star us on GitHub ⭐
-              </TooltipContent>
-            </Tooltip>
+                  Star us on GitHub ⭐
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
             <p
               className={cn(
