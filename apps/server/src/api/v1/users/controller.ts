@@ -279,10 +279,6 @@ export class UsersController {
             if (isZodError(error)) {
                 return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             }
-            if (error instanceof Error && error.message === 'User not found') {
-                logger.warn('Forgot password requested for non-existing email');
-                return res.status(200).json({ success: true, message: 'Password reset email sent' });
-            } 
 
             logger.error('Error processing forgot password request:', error);
             return res.status(500).json({ success: false, error: 'Internal server error' });

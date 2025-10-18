@@ -104,7 +104,8 @@ export class UserBL {
     async forgotPassword(email: string): Promise<void> {
         const user = await this.userRepo.getUserByEmail(email);
         if (!user) {
-            throw new Error("User not found");
+            logger.info('Password reset requested for non-existent email');
+            return;
         }
 
         const resetPasswordConfig = generatePasswordResetInfo();
@@ -118,11 +119,17 @@ export class UserBL {
             expiresAt: resetPasswordConfig.expiresAt,
         });
 
-        await this.mailService.sendMail({
-            to: user.email,
-            subject: "Password Reset Request",
-            html: passwordResetHtml,
-        });
+        try {
+            await this.mailService.sendMail({
+                to: user.email,
+                subject: "Password Reset Request",
+                html: passwordResetHtml,
+            });
+        } catch (error) {
+            logger.error('Failed to send password reset email', error);
+            await this.passwordResetsRepo.deletePasswordResetsByUserId(user.id);
+            throw new Error('Failed to send password reset email. Please try again later.');
+        }
     }
 
     async validateResetPasswordToken(token: string): Promise<boolean> {
@@ -131,7 +138,11 @@ export class UserBL {
         }
 
         const decryptedToken = decryptPassword(token);
-        const tokenHash = hashString(decryptedToken!);
+        if (!decryptedToken) {
+            return false;
+        }
+
+        const tokenHash = hashString(decryptedToken);
         const record = await this.passwordResetsRepo.getPasswordResetByTokenHash(tokenHash);
 
         if (!record) {
