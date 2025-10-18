@@ -1,5 +1,6 @@
 import { renderHook, act } from "@testing-library/react"
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import { TOAST_REMOVE_DELAY } from "./use-toast"
 
 describe("useToast hook", () => {
   beforeEach(() => {
@@ -117,7 +118,7 @@ describe("useToast hook", () => {
     // The hook schedules removal with a timeout (TOAST_REMOVE_DELAY = 1000000 in module)
     // advance timers by that delay to simulate removal
     act(() => {
-      vi.advanceTimersByTime(1000000)
+      vi.advanceTimersByTime(TOAST_REMOVE_DELAY)
     })
 
     // After the removal timeout the toast should be removed from state
@@ -165,7 +166,7 @@ describe("useToast hook", () => {
 
     // Advance timers to remove all toasts
     act(() => {
-      vi.advanceTimersByTime(1000000)
+      vi.advanceTimersByTime(TOAST_REMOVE_DELAY)
     })
 
     expect(result.current.toasts.length).toBe(0)
