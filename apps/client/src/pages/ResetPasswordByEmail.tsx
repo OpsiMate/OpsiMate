@@ -38,6 +38,7 @@ const ResetPasswordByEmail: React.FC = () => {
 
     try {
       const res = await apiRequest<{
+        success: boolean;
         data: { success: boolean; message: string };
         error?: string;
       }>("/users/validate-reset-password-token", "POST", { token });
@@ -49,8 +50,8 @@ const ResetPasswordByEmail: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    if (token) validateToken();
-  }, [token]);
+    validateToken();
+  }, [token, validateToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +69,7 @@ const ResetPasswordByEmail: React.FC = () => {
     try {
       setLoading(true);
       const res = await apiRequest<{
+        success: boolean;
         data: { id: string; email: string };
         error?: string;
       }>("/users/reset-password", "POST", { token, newPassword: password });
