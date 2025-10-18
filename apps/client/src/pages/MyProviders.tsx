@@ -188,16 +188,16 @@ export function MyProviders() {
             const response = await providerApi.getProviders();
 
             if (response.success && response.data && response.data.providers) {
-                const apiProviders: Provider[] = response.data.providers.map((provider: any) => {
+                const apiProviders: Provider[] = response.data.providers.map((provider: Record<string, unknown>) => {
                     const mappedProvider: Provider = {
                         id: Number(provider.id),
-                        name: provider.name || '',
-                        providerIP: provider.providerIP || '',
-                        username: provider.username || '',
-                        privateKeyFilename: provider.privateKeyFilename || '',
-                        SSHPort: provider.SSHPort || 22,
-                        providerType: (provider.providerType || 'VM') as ProviderType,
-                        createdAt: provider.createdAt ? new Date(provider.createdAt).toISOString() : new Date().toISOString(),
+                        name: (provider.name as string) || '',
+                        providerIP: (provider.providerIP as string) || '',
+                        username: (provider.username as string) || '',
+                        privateKeyFilename: (provider.privateKeyFilename as string) || '',
+                        SSHPort: (provider.SSHPort as number) || 22,
+                        providerType: ((provider.providerType as string) || 'VM') as ProviderType,
+                        createdAt: provider.createdAt ? new Date(provider.createdAt as string).toISOString() : new Date().toISOString(),
                         services: [],
                         status: undefined
                     };
@@ -867,16 +867,16 @@ export function MyProviders() {
                                                                                         <DropdownMenuItem
                                                                                             onClick={() => {
                                                                                                 const parentProvider = providerInstances.find(p => p.services && p.services.some(s => s.id === service.id));
-                                                                                                const statusString = (service as any).status || (service as any).serviceStatus || 'unknown';
-                                                                                                const typeString = (service as any).type || (service as any).serviceType || 'MANUAL';
-                                                                                                const createdAtString = (service as any).createdAt || new Date().toISOString();
+                                                                                                const statusString = (service as unknown as { status?: string; serviceStatus?: string }).status || (service as unknown as { status?: string; serviceStatus?: string }).serviceStatus || 'unknown';
+                                                                                                const typeString = (service as unknown as { type?: string; serviceType?: string }).type || (service as unknown as { type?: string; serviceType?: string }).serviceType || 'MANUAL';
+                                                                                                const createdAtString = (service as unknown as { createdAt?: string }).createdAt || new Date().toISOString();
                                                                                                 
                                                                                                 const mappedService: Service = {
                                                                                                     id: service.id,
                                                                                                     name: service.name,
                                                                                                     serviceStatus: statusString as 'running' | 'stopped' | 'error' | 'unknown',
                                                                                                     serviceType: typeString as 'MANUAL' | 'DOCKER' | 'SYSTEMD',
-                                                                                                    createdAt: createdAtString,
+                                                                                                    createdAt: createdAtString as string,
                                                                                                     provider: parentProvider ? {
                                                                                                         id: parentProvider.id,
                                                                                                         name: parentProvider.name,
