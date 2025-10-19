@@ -165,10 +165,10 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
     }
   }, [service]);
 
+  // fetch tags when service changes (fetchLogs is already handled by useServiceLogs hook)
   useEffect(() => {
-    fetchLogs();
     fetchTags();
-  }, [service?.id, fetchLogs, fetchTags]);
+  }, [service?.id, fetchTags]);
 
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     setServiceTags(newTags);
@@ -436,6 +436,7 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                     disabled={filteredLogs.length === 0}
                     className="h-6 w-6 p-0"
                     title="Copy filtered logs to clipboard"
+                    aria-label="Copy filtered logs to clipboard"
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
@@ -445,6 +446,8 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                     onClick={fetchLogs}
                     disabled={loading}
                     className="h-6 w-6 p-0"
+                    title="Refresh logs"
+                    aria-label="Refresh logs"
                   >
                     <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
                   </Button>
@@ -521,7 +524,7 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                         <label className="text-xs text-muted-foreground block mb-1">Start Time</label>
                         <input
                           type="datetime-local"
-                          defaultValue={customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000))}
+                          value={customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000))}
                           onChange={(e) => {
                             const newStart = e.target.value;
                             const newEnd = customTimeRange?.end || formatDateTimeLocal(new Date());
@@ -534,7 +537,7 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                         <label className="text-xs text-muted-foreground block mb-1">End Time</label>
                         <input
                           type="datetime-local"
-                          defaultValue={customTimeRange?.end || formatDateTimeLocal(new Date())}
+                          value={customTimeRange?.end || formatDateTimeLocal(new Date())}
                           onChange={(e) => {
                             const newEnd = e.target.value;
                             const newStart = customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000));
@@ -559,7 +562,12 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                             const start = customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000));
                             const end = customTimeRange?.end || formatDateTimeLocal(new Date());
                             
-                            setCustomTimeRange({ start, end });
+                            // ensure start <= end (swap if needed)
+                            const startDate = new Date(start);
+                            const endDate = new Date(end);
+                            const normalized = startDate > endDate ? { start: end, end: start } : { start, end };
+                            
+                            setCustomTimeRange(normalized);
                             setTimeFilter("custom");
                             setShowCustomTimeDialog(false);
                           }}
