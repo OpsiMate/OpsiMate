@@ -108,18 +108,18 @@ export class UserBL {
             return;
         }
 
-        const resetPasswordConfig = generatePasswordResetInfo();
-        const passwordResetHtml = passwordResetTemplate(
-            resetPasswordConfig.resetUrl,
-            user.fullName
-        );
-        await this.passwordResetsRepo.createPasswordResetToken({
-            userId: user.id,
-            tokenHash: resetPasswordConfig.tokenHash,
-            expiresAt: resetPasswordConfig.expiresAt,
-        });
-
         try {
+            const resetPasswordConfig = generatePasswordResetInfo();
+            const passwordResetHtml = passwordResetTemplate(
+                resetPasswordConfig.resetUrl,
+                user.fullName
+            );
+            await this.passwordResetsRepo.createPasswordResetToken({
+                userId: user.id,
+                tokenHash: resetPasswordConfig.tokenHash,
+                expiresAt: resetPasswordConfig.expiresAt,
+            });
+
             await this.mailClient.sendMail({
                 to: user.email,
                 subject: "Password Reset Request",
