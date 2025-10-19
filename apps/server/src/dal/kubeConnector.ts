@@ -1,5 +1,5 @@
 import * as k8s from '@kubernetes/client-node';
-import { DiscoveredPod, DiscoveredService, Logger, Provider, Service } from "@OpsiMate/shared";
+import { DiscoveredPod, DiscoveredService, Logger, Provider, Service, LogOptions } from "@OpsiMate/shared";
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -38,12 +38,12 @@ const createClient = (_provider: Provider): k8s.CoreV1Api => {
     return kc.makeApiClient(k8s.CoreV1Api);
 }
 
-const getK8RLogs = async (_provider: Provider, serviceName: string, namespace: string) => {
+const getK8RLogs = async (_provider: Provider, serviceName: string, namespace: string, options?: LogOptions) => {
     const k8sApi = createClient(_provider);
-    return getServicePodLogs(k8sApi, serviceName, namespace);
+    return getServicePodLogs(k8sApi, serviceName, namespace, options);
 }
 
-async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, namespace: string): Promise<string> {
+async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, namespace: string, options?: LogOptions): Promise<string> {
     // Get the Service
     const service = await coreV1.readNamespacedService({ name: serviceName, namespace });
 
@@ -64,13 +64,53 @@ async function getServicePodLogs(coreV1: k8s.CoreV1Api, serviceName: string, nam
         return "No logs available for service.";
     }
 
+    const rowLimit = options?.rowLimit || 100;
+    const sizeLimitMB = options?.sizeLimitMB || 10;
+    const includeErrors = options?.includeErrors !== false;
+
     const logs: string[] = [];
+    let totalSize = 0;
+    const sizeLimitBytes = sizeLimitMB * 1024 * 1024;
+
     for (const pod of pods) {
         const podName = pod.metadata?.name;
         if (!podName) continue;
 
-        const logText = await coreV1.readNamespacedPodLog({ name: podName, namespace });
-        logs.push(logText || "");
+        try {
+            const logText = await coreV1.readNamespacedPodLog({ name: podName, namespace });
+            if (!logText) continue;
+
+            const logLines = logText.split('\n');
+
+            for (const logLine of logLines) {
+                // Skip empty lines
+                if (!logLine.trim()) continue;
+
+                // Filter logs based on includeErrors flag
+                if (!includeErrors) {
+                    const lowerLine = logLine.toLowerCase();
+                    if (lowerLine.includes('error') || lowerLine.includes('exception') || 
+                        lowerLine.includes('critical') || lowerLine.includes('fatal')) {
+                        logs.push(logLine);
+                    }
+                } else {
+                    logs.push(logLine);
+                }
+
+                // Check size limit
+                totalSize += Buffer.byteLength(logLine, 'utf8');
+                if (totalSize > sizeLimitBytes || logs.length >= rowLimit) {
+                    break;
+                }
+            }
+
+            // Exit outer loop if we've hit limits
+            if (totalSize > sizeLimitBytes || logs.length >= rowLimit) {
+                break;
+            }
+        } catch (error) {
+            logger.warn(`Failed to read logs for pod ${podName}: ${error}`);
+        }
     }
 
     return logs.join("\n");

@@ -132,11 +132,11 @@ export const providerApi = {
   // Get all providers
   getProviders: async () => {
     try {
-      const response = await apiRequest<{providers: Array<{ id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; providerType: string }>}>('/providers');
+      const response = await apiRequest<{providers: Array<{ id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; SSHPort?: number; createdAt: string; providerType: string }>}>('/providers');
 
       // The server already returns camelCase, so no transformation needed
       if (response.success && response.data && response.data.providers) {
-        const transformedProviders = response.data.providers.map((provider: { id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; providerType: string }) => ({
+        const transformedProviders = response.data.providers.map((provider: { id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; SSHPort?: number; createdAt: string; providerType: string }) => ({
           id: provider.id,
           name: provider.name,
           providerIP: provider.providerIP,
@@ -319,10 +319,16 @@ export const providerApi = {
   },
 
   // Get service logs
-  getServiceLogs: (serviceId: number) => {
-    console.log('API getServiceLogs called with ID:', serviceId);
-    // Make sure we're using the correct path
-    return apiRequest<string[]>(`/services/${serviceId}/logs`, 'GET');
+  getServiceLogs: (serviceId: number, options?: { rowLimit?: number; sizeLimitMB?: number; includeErrors?: boolean }) => {
+    console.log('API getServiceLogs called with ID:', serviceId, 'options:', options);
+    const params = new URLSearchParams();
+    if (options?.rowLimit !== undefined) params.append('rowLimit', options.rowLimit.toString());
+    if (options?.sizeLimitMB !== undefined) params.append('sizeLimitMB', options.sizeLimitMB.toString());
+    if (options?.includeErrors !== undefined) params.append('includeErrors', options.includeErrors.toString());
+    
+    const queryString = params.toString();
+    const url = queryString ? `/services/${serviceId}/logs?${queryString}` : `/services/${serviceId}/logs`;
+    return apiRequest<string[]>(url, 'GET');
   },
 
   // Get service logs

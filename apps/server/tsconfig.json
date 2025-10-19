@@ -16,7 +16,11 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@OpsiMate/shared": ["../../packages/shared/src"]
+    }
   },
   "include": [
     "src/**/*",

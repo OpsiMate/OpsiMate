@@ -14,6 +14,13 @@ database:
 security:
   private_keys_path: "/app/data/private-keys"  # Container path for SSH keys
 
+# Logging configuration
+logging:
+  # Default limits for fetching container and service logs
+  rowLimit: 100              # Maximum number of log lines to retrieve per request
+  sizeLimitMB: 10            # Maximum total size of logs to fetch (in MB)
+  includeErrors: false       # If false, filters logs to show only errors/warnings/critical messages
+
 # mailer configuration
 mailer:
   enabled: true

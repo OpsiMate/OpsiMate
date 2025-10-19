@@ -1,4 +1,4 @@
-import {DiscoveredPod, DiscoveredService, Provider, Service, ServiceType} from "@OpsiMate/shared";
+import {DiscoveredPod, DiscoveredService, Provider, Service, ServiceType, LogOptions} from "@OpsiMate/shared";
 import * as sshClient from "../../../dal/sshClient.js";
 import {ProviderConnector} from "./providerConnector.js";
 
@@ -26,12 +26,12 @@ export class VMProviderConnector implements ProviderConnector {
         }
     }
 
-    async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
+    async getServiceLogs(provider: Provider, service: Service, options?: LogOptions): Promise<string[]> {
         if (service.serviceType === ServiceType.SYSTEMD) {
-            return sshClient.getSystemServiceLogs(provider, service.name);
+            return sshClient.getSystemServiceLogs(provider, service.name, options);
         } else {
             // Default to Docker service
-            return sshClient.getServiceLogs(provider, service.name);
+            return sshClient.getServiceLogs(provider, service.name, options);
         }
     }
 

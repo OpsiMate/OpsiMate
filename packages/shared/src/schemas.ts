@@ -204,3 +204,12 @@ export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
 
 export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
 export type UpdateSecretRequest = z.infer<typeof UpdateSecretsMetadataSchema>;
+
+// Log retrieval options schema
+export const LogOptionsSchema = z.object({
+    rowLimit: z.number().int().positive('Row limit must be a positive integer').optional().default(100),
+    sizeLimitMB: z.number().positive('Size limit must be a positive number').optional().default(10),
+    includeErrors: z.boolean().optional().default(false),
+});
+
+export type LogOptions = z.infer<typeof LogOptionsSchema>;

@@ -1,5 +1,5 @@
 import {Request, Response} from "express";
-import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
+import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider, LogOptionsSchema} from "@OpsiMate/shared";
 import {ProviderRepository} from "../../../dal/providerRepository.js";
 import {ServiceRepository} from "../../../dal/serviceRepository.js";
 import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl.js";
@@ -292,8 +292,15 @@ await this.alertBL?.clearAlertsByService(serviceId);
                 return res.status(404).json({success: false, error: 'Provider not found for this service'});
             }
 
+            // Parse log options from query parameters
+            const logOptions = LogOptionsSchema.parse({
+                rowLimit: req.query.rowLimit ? parseInt(req.query.rowLimit as string) : undefined,
+                sizeLimitMB: req.query.sizeLimitMB ? parseFloat(req.query.sizeLimitMB as string) : undefined,
+                includeErrors: req.query.includeErrors ? req.query.includeErrors === 'true' : undefined,
+            });
+
             const providerConnector = providerConnectorFactory(provider.providerType);
-            const logs = await providerConnector.getServiceLogs(provider, service);
+            const logs = await providerConnector.getServiceLogs(provider, service, logOptions);
 
             return res.json({success: true, data: logs, message: 'Service logs retrieved successfully'});
         } catch (error) {
