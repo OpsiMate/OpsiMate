@@ -25,7 +25,6 @@ export function usePersistedSearch({
   // initialize with empty string, then load from session storage in useEffect
   const [value, setValue] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wasTypingRef = useRef(false);
   // use ref for onSearchChange to avoid dependency issues
   const onSearchChangeRef = useRef(onSearchChange);
 
@@ -42,6 +41,12 @@ export function usePersistedSearch({
 
   // load persisted value on mount and when persistKey changes
   useEffect(() => {
+    // cancel any pending debounced emit tied to previous key
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    
     try {
       const stored = sessionStorage.getItem(`${STORAGE_KEY}-${persistKey}`);
       const loadedValue = stored || "";
@@ -59,20 +64,10 @@ export function usePersistedSearch({
   useEffect(() => {
     try {
       sessionStorage.setItem(`${STORAGE_KEY}-${persistKeyRef.current}`, value);
-      if (value) {
-        wasTypingRef.current = true;
-      }
     } catch {
       // ignore storage errors
     }
   }, [value]);
-
-  // focus input if user was typing
-  useEffect(() => {
-    if (wasTypingRef.current && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
 
   // cleanup on unmount
   useEffect(() => {
