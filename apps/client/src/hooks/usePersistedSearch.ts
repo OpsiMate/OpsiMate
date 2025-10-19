@@ -34,6 +34,12 @@ export function usePersistedSearch({
     onSearchChangeRef.current = onSearchChange;
   }, [onSearchChange]);
 
+  // keep current persistKey in a ref to avoid clobber on key change
+  const persistKeyRef = useRef(persistKey);
+  useEffect(() => {
+    persistKeyRef.current = persistKey;
+  }, [persistKey]);
+
   // load persisted value on mount and when persistKey changes
   useEffect(() => {
     try {
@@ -49,17 +55,17 @@ export function usePersistedSearch({
     }
   }, [persistKey]);
 
-  // save to session storage whenever value changes
+  // save to session storage whenever value changes (not on key change)
   useEffect(() => {
     try {
-      sessionStorage.setItem(`${STORAGE_KEY}-${persistKey}`, value);
+      sessionStorage.setItem(`${STORAGE_KEY}-${persistKeyRef.current}`, value);
       if (value) {
         wasTypingRef.current = true;
       }
     } catch {
       // ignore storage errors
     }
-  }, [value, persistKey]);
+  }, [value]);
 
   // focus input if user was typing
   useEffect(() => {
