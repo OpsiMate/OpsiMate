@@ -631,20 +631,20 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                   variant="ghost"
                   size="sm"
                   onClick={fetchPods}
-                  disabled={loading}
+                  disabled={podsLoading}
                   className="h-6 w-6 p-0"
                 >
-                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-3 w-3 ${podsLoading ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
 
-              {loading ? (
+              {podsLoading ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-pulse text-muted-foreground text-xs">Loading pods...</div>
                 </div>
-              ) : error ? (
-                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{error}</div>
-              ) : logs.length === 0 ? (
+              ) : podsError ? (
+                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{podsError}</div>
+              ) : pods.length === 0 ? (
                 <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">No pods available</div>
               ) : (
                 <div className="bg-muted rounded-md p-3 overflow-auto max-h-[200px] border">
