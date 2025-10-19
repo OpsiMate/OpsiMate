@@ -68,8 +68,9 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
     const passwordResetsRepo = new PasswordResetsRepository(db);
 
-    // Services
+    // Initialize Mail Service
     const mailService = new MailService();
+    await mailService.initialize();
 
     // Init tables
     await Promise.all([

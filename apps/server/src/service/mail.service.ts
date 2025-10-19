@@ -19,8 +19,8 @@ export class MailService {
   private mailerConfig = getMailerConfig();
   private verified = false;
 
-  constructor() {
-    this.initTransporter();
+  async initialize() {
+    await this.initTransporter();
   }
 
   /**
@@ -46,7 +46,7 @@ export class MailService {
       this.transporter = nodemailer.createTransport({
         host: this.mailerConfig.host,
         port: this.mailerConfig.port,
-        secure: false,
+        secure: this.mailerConfig.secure ?? false,
         auth: {
           user: this.mailerConfig.auth.user,
           pass: this.mailerConfig.auth.pass,
