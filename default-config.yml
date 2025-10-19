@@ -24,7 +24,7 @@ mailer:
   from: "<no-reply@yourdomain.com>"
   replyTo: "ops@yourdomain.com"
   auth:
-    user: "<Gmail username>"
-    pass: "<Gmail password>"        
+    user: ${SMTP_USER}
+    pass: ${SMTP_PASS}
   tls:
     rejectUnauthorized: true
