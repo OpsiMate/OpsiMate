@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { runAsync } from "./db.js";
 import { ResetPassword, ResetPasswordType } from "@OpsiMate/shared";
+import { ResetPasswordRow } from "./models.js";
 
 export class PasswordResetsRepository {
   private db: Database.Database;
@@ -28,7 +29,7 @@ export class PasswordResetsRepository {
     });
   }
 
-  async savePasswordResetToken(
+  async createPasswordResetToken(
     resetPassword: ResetPasswordType
   ): Promise<void> {
     return runAsync(() => {
@@ -50,36 +51,24 @@ export class PasswordResetsRepository {
     });
   }
 
-  async getPasswordResetByTokenHash(
-    tokenHash: string
-  ): Promise<ResetPassword | undefined> {
-    return runAsync((): ResetPassword | undefined => {
-      const stmt = this.db.prepare(
-        "SELECT * FROM password_resets WHERE token_hash = ?"
-      );
+  async getPasswordResetByTokenHash(tokenHash: string): Promise<ResetPassword | null> {
+    return runAsync((): ResetPassword | null => {
+      const row = this.db
+        .prepare("SELECT * FROM password_resets WHERE token_hash = ?")
+        .get(tokenHash) as ResetPasswordRow | undefined;
 
-      const row = stmt.get(tokenHash) as
-        | {
-            id: number;
-            user_id: number;
-            token_hash: string;
-            expires_at: string;
-            created_at: string;
-          }
-        | undefined;
-
-      if (!row) {
-        return undefined;
-      }
-
-      return {
-        id: row.id,
-        userId: Number(row.user_id),
-        tokenHash: row.token_hash,
-        expiresAt: row.expires_at,
-        createdAt: row.created_at,
-      };
+      return row ? this.toSharedResetPassword(row) : null;
     });
+  }
+
+  private toSharedResetPassword = (row: ResetPasswordRow): ResetPassword => {
+    return {
+      id: row.id,
+      userId: row.user_id,
+      tokenHash: row.token_hash,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+    };
   }
 
   async deletePasswordResetsByUserId(userId: number): Promise<void> {

@@ -36,7 +36,7 @@ import {ServiceCustomFieldBL} from "./bl/custom-fields/serviceCustomField.bl.js"
 import {CustomFieldsController} from "./api/v1/custom-fields/controller.js";
 import { ServicesBL } from './bl/services/services.bl.js';
 import { PasswordResetsRepository } from './dal/passwordResetsRepository.js';
-import { MailService } from './service/mail.service.js';
+import { MailClient } from './dal/external-client/mail-client.js';
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -69,8 +69,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const passwordResetsRepo = new PasswordResetsRepository(db);
 
     // Initialize Mail Service
-    const mailService = new MailService();
-    await mailService.initialize();
+    const mailClient = new MailClient();
+    await mailClient.initialize();
 
     // Init tables
     await Promise.all([
@@ -93,7 +93,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
-    const userBL = new UserBL(userRepo, mailService, passwordResetsRepo, auditBL);
+    const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
     const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
     const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
     const servicesBL = new ServicesBL(serviceRepo, auditBL);

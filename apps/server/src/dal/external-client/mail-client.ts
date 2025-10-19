@@ -1,6 +1,6 @@
 import { Logger } from "@OpsiMate/shared";
 import nodemailer from "nodemailer";
-import { getMailerConfig } from "../config/config.js";
+import { getMailerConfig } from "../../config/config.js";
 
 interface SendMailOptions {
   to: string;
@@ -14,7 +14,7 @@ const logger = new Logger("service/mail.service");
 /**
  * Service for sending emails using nodemailer
  */
-export class MailService {
+export class MailClient {
   private transporter: nodemailer.Transporter | null = null;
   private mailerConfig = getMailerConfig();
   private verified = false;
@@ -32,7 +32,7 @@ export class MailService {
       !this.mailerConfig.enabled ||
       !this.mailerConfig.auth
     ) {
-      logger.info("MailService: SMTP config is not available");
+      logger.info("MailClient: SMTP config is not available");
       this.transporter = null;
       return;
     }
@@ -57,15 +57,15 @@ export class MailService {
         .verify()
         .then(() => {
           this.verified = true;
-          logger.info("MailService: SMTP transporter is ready to send emails");
+          logger.info("MailClient: SMTP transporter is ready to send emails");
         })
         .catch((error) => {
-          logger.error("MailService: Error verifying SMTP transporter", error);
+          logger.error("MailClient: Error verifying SMTP transporter", error);
           this.transporter = null;
         });
     } else {
       logger.warn(
-        "MailService: SMTP settings are not fully configured. Email sending is disabled."
+        "MailClient: SMTP settings are not fully configured. Email sending is disabled."
       );
     }
   }
@@ -76,7 +76,7 @@ export class MailService {
    */
   async sendMail(options: SendMailOptions): Promise<void> {
     if (!this.transporter || !this.verified) {
-      logger.error("MailService: SMTP transporter is not configured");
+      logger.error("MailClient: SMTP transporter is not configured");
       throw new Error("SMTP transporter is not configured");
     }
     await this.transporter.sendMail({
