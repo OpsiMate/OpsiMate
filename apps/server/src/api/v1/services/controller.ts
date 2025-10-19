@@ -68,7 +68,24 @@ export class ServiceController {
             if (!req.user) {
                 return res.status(401).json({ success: false, error: 'Unauthorized' });
             }
-            const service = await this.servicesBL.createService(validatedData, req.user);
+            const trimmedName = validatedData.name.trim();
+            if (!trimmedName) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Validation error',
+                    details: [{
+                        path: ['name'],
+                        message: 'Service name is required'
+                    }]
+                });
+            }
+
+            const servicePayload = {
+                ...validatedData,
+                name: trimmedName
+            };
+
+            const service = await this.servicesBL.createService(servicePayload, req.user);
 
             const provider = await this.providerRepo.getProviderById(validatedData.providerId);
 
@@ -146,11 +163,37 @@ export class ServiceController {
     updateServiceHandler = async (req: Request, res: Response) => {
         try {
             const {serviceId} = ServiceIdSchema.parse({serviceId: req.params.serviceId});
-            const validatedData = UpdateServiceSchema.partial().parse(req.body);
+            const validatedData = UpdateServiceSchema.parse(req.body);
             const service = await this.serviceRepo.getServiceById(serviceId);
 
             if (!service) {
                 return res.status(404).json({success: false, error: 'Service not found'});
+            }
+
+            if (validatedData.name !== undefined) {
+                validatedData.name = validatedData.name.trim();
+                if (!validatedData.name) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Validation error',
+                        details: [{
+                            path: ['name'],
+                            message: 'Service name is required'
+                        }]
+                    });
+                }
+            }
+
+            const targetServiceType = validatedData.serviceType ?? service.serviceType;
+            if (validatedData.name && targetServiceType === ServiceType.SYSTEMD && /\s/.test(validatedData.name)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Validation error',
+                    details: [{
+                        path: ['name'],
+                        message: 'Systemd service names cannot contain spaces.'
+                    }]
+                });
             }
 
             await this.serviceRepo.updateService(serviceId, validatedData);

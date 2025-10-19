@@ -65,6 +65,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
   const [error, setError] = useState<string | null>(null);
   const [selectedContainer, setSelectedContainer] = useState<(Container & { id: string; selected: boolean; name: string; created: string }) | null>(null);
   const [existingServices, setExistingServices] = useState<ServiceWithProvider[]>([]);
+  const [systemdNameError, setSystemdNameError] = useState<string | null>(null);
 
   // Function to fetch existing services for this provider
   const fetchExistingServices = async () => {
@@ -152,11 +153,14 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
       setServiceName("");
       setSelectedContainer(null);
       setContainers(containers.map(container => ({ ...container, selected: false })));
+      setSystemdNameError(null);
     }
   }, [open]);
 
   const handleAddSystemdService = async () => {
-    if (!serviceName) {
+    const trimmedName = serviceName.trim();
+
+    if (!trimmedName) {
       toast({
         title: "Service name required",
         description: "Please enter a name for the systemd service",
@@ -165,12 +169,24 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
       return;
     }
 
+    if (/\s/.test(trimmedName)) {
+      setSystemdNameError('Systemd service names cannot contain spaces.');
+      toast({
+        title: "Invalid systemd service name",
+        description: "Systemd service names cannot contain spaces. Use hyphens or underscores instead.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSystemdNameError(null);
+
     setLoading(true);
     try {
       const serverStatus = await providerApi.getProviderInstances(parseInt(serverId));
       if (!serverStatus.success || !serverStatus.data) {
         toast({
-          title: `Service '${serviceName}' was not added`,
+          title: `Service '${trimmedName}' was not added`,
           description: `Unable to connect to server '${serverName}'. Please make sure this server is online.`,
           variant: "destructive"
         });
@@ -184,7 +200,7 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
       // Create service using the API
       const serviceData = {
         providerId: parseInt(serverId),
-        name: serviceName,
+        name: trimmedName,
         serviceType: "SYSTEMD" as const,
         serviceStatus: "unknown" as const
       };
@@ -207,11 +223,12 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
 
         onServiceAdded(newService);
         setServiceName("");
+        setSystemdNameError(null);
         onClose();
 
         toast({
           title: "Systemd service added",
-          description: `${serviceName} has been added to server ${serverName}`
+          description: `${trimmedName} has been added to server ${serverName}`
         });
       } else {
         toast({
@@ -408,6 +425,8 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
     }
   };
 
+
+  const isSystemdNameInvalid = !serviceName.trim() || /\s/.test(serviceName);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -629,12 +648,24 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
                   id="systemdServiceName"
                   placeholder="Enter systemd service name (e.g. nginx.service)"
                   value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setServiceName(value);
+                    if (value && /\s/.test(value)) {
+                      setSystemdNameError('Systemd service names cannot contain spaces.');
+                    } else {
+                      setSystemdNameError(null);
+                    }
+                  }}
+                  aria-invalid={Boolean(systemdNameError)}
                 />
               </div>
+              {systemdNameError ? (
+                <p className="text-sm text-destructive" role="alert">{systemdNameError}</p>
+              ) : null}
               <div className="text-sm text-muted-foreground mt-2">
                 <p>Enter the exact name of the systemd service as it appears in the system.</p>
-                <p className="mt-1">Example: nginx.service, docker.service, etc.</p>
+                <p className="mt-1">Use hyphens or underscores instead of spaces (e.g., my-service).</p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-4">
                 <div className="flex items-start">
@@ -666,7 +697,11 @@ export function AddServiceDialog({ serverId, serverName, providerType, open, onC
               Apply Changes
             </Button>
           ) : (
-            <Button type="button" onClick={handleAddSystemdService} disabled={loading}>
+            <Button
+              type="button"
+              onClick={handleAddSystemdService}
+              disabled={loading || isSystemdNameInvalid}
+            >
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Add Systemd Service
             </Button>

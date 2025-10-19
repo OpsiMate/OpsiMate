@@ -4,6 +4,7 @@ import {IntegrationType, ProviderType, ServiceType, Role, SecretType} from './ty
 const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 const hostnameRegex = /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || hostnameRegex.test(value);
+const hasWhitespace = (value: string): boolean => /\s/.test(value);
 
 export const CreateProviderSchema = z.object({
     name: z.string().min(1, 'Provider name is required'),
@@ -71,6 +72,14 @@ export const AddBulkServiceSchema = z.array(
         }).optional(),
         serviceStatus: z.string().min(1),
         serviceType: z.nativeEnum(ServiceType),
+    }).superRefine((data: { name: string; serviceType: ServiceType }, ctx: z.RefinementCtx) => {
+        if (data.serviceType === ServiceType.SYSTEMD && hasWhitespace(data.name)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Systemd service names cannot contain spaces.',
+                path: ['name']
+            });
+        }
     })
 )
 
@@ -96,12 +105,39 @@ export const ServiceSchema = z.object({
         created: z.string().optional(),
         namespace: z.string().optional(),
     }).optional(),
+}).superRefine((data: { name?: string; serviceType?: ServiceType }, ctx: z.RefinementCtx) => {
+    if (data.serviceType === ServiceType.SYSTEMD && typeof data.name === 'string' && hasWhitespace(data.name)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Systemd service names cannot contain spaces.',
+            path: ['name']
+        });
+    }
 });
 
 export const CreateServiceSchema = ServiceSchema;
 
-export const UpdateServiceSchema = ServiceSchema.partial().extend({
-    id: z.number()
+export const UpdateServiceSchema = z.object({
+    providerId: z.number().optional(),
+    name: z.string().min(1, 'Service name is required').optional(),
+    serviceIP: z.string().optional(),
+    serviceStatus: z.string().optional(),
+    serviceType: z.nativeEnum(ServiceType).optional(),
+    containerDetails: z.object({
+        id: z.string().optional(),
+        image: z.string().optional(),
+        created: z.string().optional(),
+        namespace: z.string().optional(),
+    }).optional(),
+    id: z.number(),
+}).superRefine((data: { name?: string; serviceType?: ServiceType }, ctx: z.RefinementCtx) => {
+    if (data.serviceType === ServiceType.SYSTEMD && typeof data.name === 'string' && hasWhitespace(data.name)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Systemd service names cannot contain spaces.',
+            path: ['name']
+        });
+    }
 });
 
 export const ServiceIdSchema = z.object({
