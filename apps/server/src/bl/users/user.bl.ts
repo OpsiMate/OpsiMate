@@ -128,7 +128,7 @@ export class UserBL {
         } catch (error) {
             logger.error('Failed to send password reset email', error);
             await this.passwordResetsRepo.deletePasswordResetsByUserId(user.id);
-            throw new Error('Failed to send password reset email. Please try again later.');
+            return;
         }
     }
 
