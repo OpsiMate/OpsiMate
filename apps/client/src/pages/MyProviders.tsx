@@ -1070,9 +1070,16 @@ export function MyProviders() {
                                                         SSHPort:
                                                           parentProvider.SSHPort ||
                                                           22,
-                                                        createdAt: new Date(
-                                                          parentProvider.createdAt,
-                                                        ).getTime(),
+                                                        createdAt: (() => {
+                                                          try {
+                                                            const timestamp = new Date(
+                                                              parentProvider.createdAt,
+                                                            ).getTime();
+                                                            return isNaN(timestamp) ? 0 : timestamp;
+                                                          } catch {
+                                                            return 0;
+                                                          }
+                                                        })(),
                                                         providerType:
                                                           parentProvider.providerType,
                                                       }

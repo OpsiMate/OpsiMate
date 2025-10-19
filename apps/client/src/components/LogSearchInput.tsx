@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
+import { usePersistedSearch } from "../hooks/usePersistedSearch";
 
 interface LogSearchInputProps {
   onSearchChange: (value: string) => void;
@@ -7,97 +7,12 @@ interface LogSearchInputProps {
   persistKey?: string;
 }
 
-const STORAGE_KEY = 'log-search-value';
-
-export const LogSearchInput = ({ onSearchChange, placeholder = "Search logs...", persistKey = 'default' }: LogSearchInputProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  // initialize with empty string, then load from session storage in useEffect
-  const [value, setValue] = useState("");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wasTypingRef = useRef(false);
-  // use ref for onSearchChange to avoid dependency issues
-  const onSearchChangeRef = useRef(onSearchChange);
-  
-  // keep ref up to date
-  useEffect(() => {
-    onSearchChangeRef.current = onSearchChange;
-  }, [onSearchChange]);
-
-  // load persisted value on mount and when persistKey changes
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(`${STORAGE_KEY}-${persistKey}`);
-      const loadedValue = stored || "";
-      setValue(loadedValue);
-      // emit the loaded value so parent component knows about it
-      onSearchChangeRef.current(loadedValue);
-    } catch {
-      // ignore storage errors
-      setValue("");
-      onSearchChangeRef.current("");
-    }
-  }, [persistKey]);
-
-  // save to session storage whenever value changes
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(`${STORAGE_KEY}-${persistKey}`, value);
-      if (value) {
-        wasTypingRef.current = true;
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, [value, persistKey]);
-
-  useEffect(() => {
-    if (wasTypingRef.current && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
-
-  // handle input change
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setValue(newValue);
-
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    // set new timer to trigger search after 700ms
-    timerRef.current = setTimeout(() => {
-      onSearchChangeRef.current(newValue);
-    }, 700);
-  };
-
-  // handle clear button
-  const handleClear = () => {
-    setValue("");
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    onSearchChangeRef.current("");
-  };
-
-  // handle enter key
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      onSearchChangeRef.current(value);
-    }
-  };
-
-  // cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+export const LogSearchInput = ({ onSearchChange, placeholder = "Search logs...", persistKey = "default" }: LogSearchInputProps) => {
+  const { value, inputRef, handleChange, handleClear, handleKeyDown } = usePersistedSearch({
+    onSearchChange,
+    persistKey,
+    debounceMs: 700,
+  });
 
   return (
     <div className="relative">

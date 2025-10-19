@@ -19,7 +19,7 @@ import {
   Tag as TagIcon,
   X
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LogSearchInput } from "./LogSearchInput";
 import { AlertsSection } from "./AlertsSection";
 import { IntegrationDashboardDropdown } from "./IntegrationDashboardDropdown";
@@ -28,6 +28,7 @@ import { TagSelector } from "./TagSelector";
 import { EditableCustomField } from "./EditableCustomField";
 import { useCustomFields, useUpsertCustomFieldValue } from "../hooks/queries/custom-fields";
 import { ServiceCustomField } from "@OpsiMate/shared";
+import { useServiceLogs, formatDateTimeLocal } from "../hooks/useServiceLogs";
 
 
 interface RightSidebarProps {
@@ -39,37 +40,31 @@ interface RightSidebarProps {
   onAlertDismiss?: (alertId: string) => void;
 }
 
-// helper function to format date to local datetime-local input format
-const formatDateTimeLocal = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
 export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpdate, alerts = [], onAlertDismiss }: RightSidebarProps) {
   const { toast } = useToast();
-  const [logs, setLogs] = useState<string[]>([]);
   const [pods, setPods] = useState<{ name: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [podsLoading, setPodsLoading] = useState(false);
+  const [podsError, setPodsError] = useState<string | null>(null);
   const [serviceTags, setServiceTags] = useState<Tag[]>(service?.tags || []);
-  const previousServiceIdRef = useRef<string | undefined>(service?.id);
-  
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [timeFilter, setTimeFilter] = useState<"all" | "30m" | "1h" | "6h" | "12h" | "24h" | "custom">("all");
-  const [customTimeRange, setCustomTimeRange] = useState<{ start: string; end: string } | null>(null);
-  const [showCustomTimeDialog, setShowCustomTimeDialog] = useState(false);
 
-  useEffect(() => {
-    if (service?.id !== previousServiceIdRef.current) {
-      setSearchKeyword("");
-      setLogs([]);
-      previousServiceIdRef.current = service?.id;
-    }
-  }, [service?.id]);
+  // Use the custom hook for logs-related functionality
+  const {
+    logs,
+    filteredLogs,
+    loading,
+    error,
+    searchKeyword,
+    timeFilter,
+    customTimeRange,
+    showCustomTimeDialog,
+    setSearchKeyword,
+    setTimeFilter,
+    setCustomTimeRange,
+    setShowCustomTimeDialog,
+    fetchLogs,
+    copyLogsToClipboard,
+    highlightLog,
+  } = useServiceLogs({ serviceId: service?.id });
 
   // Custom fields hooks
   const { data: customFields } = useCustomFields();
@@ -120,241 +115,6 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
     }));
   }, []);
 
-
-  const fetchLogs = useCallback(async () => {
-    if (!service) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await providerApi.getServiceLogs(parseInt(service.id));
-
-      if (response.success && response.data) {
-        setLogs(response.data);
-      } else {
-        setError(response.error || "Failed to fetch logs");
-        toast({
-          title: "Error fetching logs",
-          description: response.error || "Failed to fetch logs",
-          variant: "destructive"
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
-      toast({
-        title: "Error fetching logs",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [service, toast]);
-  const filteredLogs = useMemo(() => {
-    if (!logs.length) return [];
-
-    let filtered = [...logs];
-
-    if (searchKeyword.trim()) {
-      const keywords = searchKeyword.toLowerCase().trim().split(/\s+/); // Split by whitespace
-      
-      filtered = filtered.filter(log => {
-        const logLower = log.toLowerCase();
-        
-        // Fuzzy search: match if ALL keywords appear in the log
-        return keywords.every(keyword => {
-          // check for exact substring match
-          if (logLower.includes(keyword)) return true;
-          //threshold
-          if (keyword.length > 3) {
-            // Simple fuzzy: check if keyword chars appear in sequence (not necessarily consecutive)
-            let keywordIdx = 0;
-            for (let i = 0; i < logLower.length && keywordIdx < keyword.length; i++) {
-              if (logLower[i] === keyword[keywordIdx]) {
-                keywordIdx++;
-              }
-            }
-            return keywordIdx === keyword.length;
-          }
-          
-          return false;
-        });
-      });
-    }
-
-    // apply time filter only if timeFilter is not "all"
-    if (timeFilter !== "all") {
-      if (timeFilter === "custom" && customTimeRange) {
-        const startTime = new Date(customTimeRange.start);
-        const endTime = new Date(customTimeRange.end);
-        
-        filtered = filtered.filter(log => {
-          // format 1: [YYYY-MM-DD HH:MM:SS] (ISO with brackets)
-          let match = log.match(/\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]/);
-          if (match) {
-            const logTime = new Date(match[1]); // parse as-is (system timezone)
-            return logTime >= startTime && logTime <= endTime;
-          }
-
-          // format 2: systemd/journalctl format (Month DD HH:MM:SS)
-          match = log.match(/(\w{3}\s+\d{1,2}\s\d{2}:\d{2}:\d{2})/);
-          if (match) {
-            // convert systemd format to ISO and parse as-is (system timezone)
-            const currentYear = new Date().getFullYear();
-            const systemdTime = match[1];
-
-            // look for year pattern in the log line (YYYY format)
-            const yearMatch = log.match(/(\d{4})/);
-            const logYear = yearMatch ? parseInt(yearMatch[1]) : currentYear;
-
-            const isoTime = `${logYear} ${systemdTime}`;
-            const logTime = new Date(isoTime);
-            return logTime >= startTime && logTime <= endTime;
-          }
-
-          // format 3: ISO format without brackets (YYYY-MM-DDTHH:MM:SS)
-          match = log.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
-          if (match) {
-            const logTime = new Date(match[1]);
-            return logTime >= startTime && logTime <= endTime;
-          }
-
-          // format 4: try to parse any timestamp-like pattern (fallback)
-          match = log.match(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})|(\d{2}:\d{2}:\d{2})/);
-          if (match) {
-            const timeStr = match[1] || match[2];
-            if (timeStr) {
-              try {
-                const logTime = new Date(timeStr);
-                if (!isNaN(logTime.getTime())) {
-                  return logTime >= startTime && logTime <= endTime;
-                }
-              } catch (e) {
-                // invalid date, continue to next format
-              }
-            }
-          }
-
-          return true; // include logs without recognizable timestamp
-        });
-      } else {
-        const now = new Date();
-        let cutoffTime: Date;
-
-        switch (timeFilter) {
-          case "30m":
-            cutoffTime = new Date(now.getTime() - 30 * 60 * 1000);
-            break;
-          case "1h":
-            cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
-            break;
-          case "6h":
-            cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-            break;
-          case "12h":
-            cutoffTime = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-            break;
-          case "24h":
-            cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            break;
-          default:
-            return filtered;
-        }
-
-        filtered = filtered.filter(log => {
-          // format 1: [YYYY-MM-DD HH:MM:SS] (ISO with brackets)
-          let match = log.match(/\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]/);
-          if (match) {
-            const logTime = new Date(match[1]); // parse as-is (system timezone)
-            return logTime >= cutoffTime;
-          }
-
-          // format 2: systemd/journalctl format (Month DD HH:MM:SS)
-          match = log.match(/(\w{3}\s+\d{1,2}\s\d{2}:\d{2}:\d{2})/);
-          if (match) {
-            // convert systemd format to ISO and parse as-is (system timezone)
-            const currentYear = new Date().getFullYear();
-            const systemdTime = match[1];
-
-            // look for year pattern in the log line (YYYY format)
-            const yearMatch = log.match(/(\d{4})/);
-            const logYear = yearMatch ? parseInt(yearMatch[1]) : currentYear;
-
-            const isoTime = `${logYear} ${systemdTime}`;
-            const logTime = new Date(isoTime);
-            return logTime >= cutoffTime;
-          }
-
-          // format 3: ISO format without brackets (YYYY-MM-DDTHH:MM:SS)
-          match = log.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
-          if (match) {
-            const logTime = new Date(match[1]);
-            return logTime >= cutoffTime;
-          }
-
-          // format 4: try to parse any timestamp-like pattern
-          match = log.match(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})|(\d{2}:\d{2}:\d{2})/);
-          if (match) {
-            const timeStr = match[1] || match[2];
-            if (timeStr) {
-              try {
-                const logTime = new Date(timeStr);
-                if (!isNaN(logTime.getTime())) {
-                  return logTime >= cutoffTime;
-                }
-              } catch (e) {
-                // invalid date, continue to next format
-              }
-            }
-          }
-
-          return true; // include logs without recognizable timestamp
-        });
-      }
-    }
-
-    return filtered;
-  }, [logs, searchKeyword, timeFilter, customTimeRange]);
-
-  // copy filtered logs to clipboard
-  const copyLogsToClipboard = useCallback(async () => {
-    if (filteredLogs.length === 0) return;
-
-    try {
-      const logsText = filteredLogs.join('\n');
-      await navigator.clipboard.writeText(logsText);
-
-      toast({
-        title: "logs copied",
-        description: `${filteredLogs.length} logs copied to clipboard`,
-        variant: "default"
-      });
-    } catch (err) {
-      toast({
-        title: "copy failed",
-        description: "failed to copy logs to clipboard",
-        variant: "destructive"
-      });
-    }
-  }, [filteredLogs, toast]);
-
-  // escape special regex characters to prevent regex errors
-  const escapeRegExp = useCallback((str: string): string => {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }, []);
-
-  // highlight search keyword in logs
-  const highlightLog = useCallback((log: string) => {
-    if (!searchKeyword.trim()) return log;
-
-    const keyword = searchKeyword.trim();
-    // escape special regex characters before building regex
-    const escapedKeyword = escapeRegExp(keyword);
-    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
-    return log.replace(regex, '⚡$1⚡'); // use markers for highlighting
-  }, [searchKeyword, escapeRegExp]);
-
   const fetchPods = useCallback(async () => {
     if (!service) return;
     
@@ -363,15 +123,15 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setPodsLoading(true);
+    setPodsError(null);
     try {
       const response = await providerApi.getServicePods(parseInt(service.id));
 
       if (response.success && response.data) {
           setPods(response.data);
       } else {
-        setError(response.error || "Failed to fetch pods");
+        setPodsError(response.error || "Failed to fetch pods");
         toast({
           title: "Error fetching pods",
           description: response.error || "Failed to fetch pods",
@@ -380,14 +140,14 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
+      setPodsError(errorMessage);
       toast({
         title: "Error fetching pods",
         description: errorMessage,
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setPodsLoading(false);
     }
   }, [service, toast]);
 
@@ -763,10 +523,9 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                           type="datetime-local"
                           defaultValue={customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000))}
                           onChange={(e) => {
-                            setCustomTimeRange(prev => ({
-                              start: e.target.value,
-                              end: prev?.end || formatDateTimeLocal(new Date())
-                            }));
+                            const newStart = e.target.value;
+                            const newEnd = customTimeRange?.end || formatDateTimeLocal(new Date());
+                            setCustomTimeRange({ start: newStart, end: newEnd });
                           }}
                           className="w-full h-8 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         />
@@ -777,10 +536,9 @@ export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpd
                           type="datetime-local"
                           defaultValue={customTimeRange?.end || formatDateTimeLocal(new Date())}
                           onChange={(e) => {
-                            setCustomTimeRange(prev => ({
-                              start: prev?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000)),
-                              end: e.target.value
-                            }));
+                            const newEnd = e.target.value;
+                            const newStart = customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000));
+                            setCustomTimeRange({ start: newStart, end: newEnd });
                           }}
                           className="w-full h-8 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         />
