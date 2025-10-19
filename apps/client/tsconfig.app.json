@@ -21,9 +21,9 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["src/*"],
       "@OpsiMate/shared": ["../../packages/shared/src"]
     }
   },
