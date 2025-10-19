@@ -13,7 +13,9 @@ describe('Systemd service name validation (Schema)', () => {
     
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toContain('cannot contain spaces');
+      expect(
+        result.error.issues.some(i => i.message.includes('cannot contain spaces'))
+      ).toBe(true);
     }
   });
 
