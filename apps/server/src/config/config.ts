@@ -38,29 +38,6 @@ export interface OpsimateConfig {
 
 let cachedConfig: OpsimateConfig | null = null;
 
-/**
- * Recursively replaces ${VAR} placeholders in all string fields of an object
- * with the corresponding process.env.VAR value.
- */
-function resolveEnvPlaceholders<T>(input: T): T {
-  if (typeof input === 'string') {
-    return input.replace(/\$\{(\w+)\}/g, (_, varName) => process.env[varName] ?? '') as unknown as T;
-  }
-  if (Array.isArray(input)) {
-    return input.map(resolveEnvPlaceholders) as unknown as T;
-  }
-  if (typeof input === 'object' && input !== null) {
-    const resolved: Record<string, unknown> = {};
-    for (const key in input) {
-      if (Object.prototype.hasOwnProperty.call(input, key)) {
-        resolved[key] = resolveEnvPlaceholders((input as any)[key]);
-      }
-    }
-    return resolved as T;
-  }
-  return input;
-}
-
 export function loadConfig(): OpsimateConfig {
     if (cachedConfig) {
         return cachedConfig;
@@ -78,7 +55,6 @@ export function loadConfig(): OpsimateConfig {
     logger.info(`Loading config from: ${configPath}`);
     const configFile = fs.readFileSync(configPath, 'utf8');
     let config = yaml.load(configFile) as OpsimateConfig;
-    config = resolveEnvPlaceholders(config);
 
     // Validate required fields
     if (!config.server?.port || !config.database?.path || !config.security?.private_keys_path) {
