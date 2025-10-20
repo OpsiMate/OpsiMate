@@ -1,12 +1,19 @@
 import { Logger } from "@OpsiMate/shared";
 import nodemailer from "nodemailer";
 import { getMailerConfig } from "../../config/config.js";
+import { passwordResetTemplate } from "../../utils/mailTemplate.js";
+
+export enum MailType {
+  PASSWORD_RESET = "PASSWORD_RESET",
+}
 
 interface SendMailOptions {
   to: string;
+  userName?: string;
   subject: string;
-  html?: string;
+  mailType?: MailType;
   text?: string;
+  token?: string;
 }
 
 const logger = new Logger("service/mail.service");
@@ -19,6 +26,9 @@ export class MailClient {
   private mailerConfig = getMailerConfig();
   private verified = false;
 
+  /**
+   * Initialize the MailClient
+   */
   async initialize() {
     await this.initTransporter();
   }
@@ -70,6 +80,37 @@ export class MailClient {
     }
   }
 
+  private getResetPasswordTemplate(userName?: string, token?: string): string {
+    const mailLinkBaseUrl = this.mailerConfig?.mailLinkBaseUrl;
+    if (!mailLinkBaseUrl) {
+      throw new Error("mailLinkBaseUrl is required to build mail templates");
+    }
+
+    if (!token) {
+      throw new Error("Token is required to build reset password template");
+    }
+
+    const passwordResetHtml = passwordResetTemplate(
+      `${mailLinkBaseUrl}/reset-password?token=${encodeURIComponent(token)}`,
+      userName
+    );
+
+    return passwordResetHtml;
+  }
+
+  private getMailTemplate(
+    mailType: MailType,
+    userName?: string,
+    token?: string
+  ): string {
+    switch (mailType) {
+      case MailType.PASSWORD_RESET:
+        return this.getResetPasswordTemplate(userName, token);
+      default:
+        throw new Error(`Unsupported mail type: ${mailType}`);
+    }
+  }
+
   /**
    * Send an email
    * @param options
@@ -79,11 +120,16 @@ export class MailClient {
       logger.error("MailClient: SMTP transporter is not configured");
       throw new Error("SMTP transporter is not configured");
     }
+
+    const mailTemplate = options.mailType
+      ? this.getMailTemplate(options.mailType, options.userName, options.token)
+      : undefined;
+
     await this.transporter.sendMail({
       from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.com>',
       to: options.to,
       subject: options.subject,
-      html: options.html,
+      html: mailTemplate || undefined,
       text: options.text,
     });
   }

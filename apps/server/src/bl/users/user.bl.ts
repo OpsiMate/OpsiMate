@@ -1,11 +1,10 @@
 import { UserRepository } from '../../dal/userRepository.js';
 import bcrypt from 'bcrypt';
 import { AuditActionType, AuditResourceType, Logger, Role, User } from '@OpsiMate/shared';
-import { MailClient } from '../../dal/external-client/mail-client.js';
+import { MailClient, MailType } from '../../dal/external-client/mail-client.js';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository.js';
 import { AuditBL } from '../audit/audit.bl.js';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption.js';
-import { passwordResetTemplate } from '../../utils/mailTemplate.js';
 
 const logger = new Logger('bl/users/user.bl');
 
@@ -110,10 +109,6 @@ export class UserBL {
 
         try {
             const resetPasswordConfig = generatePasswordResetInfo();
-            const passwordResetHtml = passwordResetTemplate(
-                resetPasswordConfig.resetUrl,
-                user.fullName
-            );
             await this.passwordResetsRepo.createPasswordResetToken({
                 userId: user.id,
                 tokenHash: resetPasswordConfig.tokenHash,
@@ -123,7 +118,9 @@ export class UserBL {
             await this.mailClient.sendMail({
                 to: user.email,
                 subject: "Password Reset Request",
-                html: passwordResetHtml,
+                mailType: MailType.PASSWORD_RESET,
+                token: resetPasswordConfig.encryptedToken,
+                userName: user.fullName,
             });
         } catch (error) {
             logger.error('Failed to send password reset email', error);

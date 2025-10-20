@@ -20,7 +20,8 @@ mailer:
   default_encoding: "UTF-8"
   host: "smtp.gmail.com"
   port: 587                
-  secure: false             
+  secure: false
+  mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
   from: "<no-reply@yourdomain.com>"
   replyTo: "ops@yourdomain.com"
   auth:

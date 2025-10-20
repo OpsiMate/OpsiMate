@@ -107,14 +107,10 @@ export function generatePasswordResetInfo(): {
     encryptedToken: string;
     tokenHash: string;
     expiresAt: Date;
-    resetUrl: string;
 } {
     const token = crypto.randomBytes(32).toString("hex");
     const encryptedToken = encryptPassword(token)!;
     const tokenHash = hashString(token);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
-    const appBase = process.env.APP_BASE_URL;
-    if (!appBase) throw new Error('APP_BASE_URL is required to build reset URLs');
-    const resetUrl = `${appBase}/reset-password?token=${encodeURIComponent(encryptedToken)}`;
-    return { encryptedToken, tokenHash, expiresAt, resetUrl };
+    return { encryptedToken, tokenHash, expiresAt };
 }
