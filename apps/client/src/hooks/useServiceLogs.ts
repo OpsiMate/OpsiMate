@@ -36,6 +36,7 @@ export function useServiceLogs({ serviceId }: UseServiceLogsOptions): UseService
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const previousServiceIdRef = useRef<string | undefined>(serviceId);
+  const requestIdRef = useRef(0);
 
   const [searchKeyword, setSearchKeyword] = useState("");
   const [timeFilter, setTimeFilter] = useState<"all" | "30m" | "1h" | "6h" | "12h" | "24h" | "custom">("all");
@@ -55,10 +56,16 @@ export function useServiceLogs({ serviceId }: UseServiceLogsOptions): UseService
   const fetchLogs = useCallback(async () => {
     if (!serviceId) return;
 
+    // prevent stale writes from older requests
+    requestIdRef.current += 1;
+    const currentRequestId = requestIdRef.current;
+
     setLoading(true);
     setError(null);
     try {
       const response = await providerApi.getServiceLogs(parseInt(serviceId));
+
+      if (currentRequestId !== requestIdRef.current) return;
 
       if (response.success && response.data) {
         setLogs(response.data);
@@ -71,6 +78,9 @@ export function useServiceLogs({ serviceId }: UseServiceLogsOptions): UseService
         });
       }
     } catch (err) {
+      // ignore errors if a newer request was made
+      if (currentRequestId !== requestIdRef.current) return;
+
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
       setError(errorMessage);
       toast({
@@ -79,7 +89,10 @@ export function useServiceLogs({ serviceId }: UseServiceLogsOptions): UseService
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      // only update loading if this is still the current request
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [serviceId, toast]);
 
