@@ -126,7 +126,7 @@ const Settings: React.FC = () => {
                 return 'default';
             case Role.Viewer:
                 return 'secondary';
-                case Role.NOC:
+                case Role.Operation:
                     return 'info';
             default:
                 return 'outline';
@@ -280,7 +280,7 @@ const Settings: React.FC = () => {
                                                                 <SelectItem value={Role.Viewer}>Set as Viewer</SelectItem>
                                                                 <SelectItem value={Role.Editor}>Set as Editor</SelectItem>
                                                                 <SelectItem value={Role.Admin}>Set as Admin</SelectItem>
-                                                                <SelectItem value={Role.NOC}>Set as NOC</SelectItem>
+                                                                <SelectItem value={Role.Operation}>Set as Operation</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                         <Button
@@ -391,7 +391,7 @@ const Settings: React.FC = () => {
                                                                                 <SelectItem value={Role.Viewer}>Viewer</SelectItem>
                                                                                 <SelectItem value={Role.Editor}>Editor</SelectItem>
                                                                                 <SelectItem value={Role.Admin}>Admin</SelectItem>
-                                                                                <SelectItem value={Role.NOC}>NOC</SelectItem>
+                                                                                <SelectItem value={Role.Operation}>Operation</SelectItem>
                                                                             </SelectContent>
                                                                         </Select>
                                                                         {isAdmin && user.email !== currentUser?.email && (

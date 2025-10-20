@@ -18,13 +18,13 @@ export class UserRepository {
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
                     full_name TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer','noc')),
+                    role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer','operation')),
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `).run();
             const row = this.db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get() as { sql?: string } | undefined;
-    const hasNoc = !!row?.sql?.includes(`'noc'`);
-    if (!hasNoc) {
+    const hasOperation = !!row?.sql?.includes(`'operation'`);
+    if (!hasOperation) {
       this.db.exec('BEGIN');
       try {
         this.db.prepare(`
@@ -33,7 +33,7 @@ export class UserRepository {
             email TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             full_name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin','editor','viewer','noc')),
+            role TEXT NOT NULL CHECK(role IN ('admin','editor','viewer','operation')),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `).run();
@@ -55,7 +55,7 @@ export class UserRepository {
         });
     }
 
-    async createUser(email: string, password_hash: string, full_name: string, role: 'admin' | 'editor' | 'viewer' |'noc'): Promise<{ lastID: number }> {
+    async createUser(email: string, password_hash: string, full_name: string, role: 'admin' | 'editor' | 'viewer' |'operation'): Promise<{ lastID: number }> {
         return runAsync<{ lastID: number }>(() => {
             const stmt = this.db.prepare(
                 'INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)' 
@@ -81,7 +81,7 @@ export class UserRepository {
         });
     }
 
-    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'|'noc'): Promise<void> {
+    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'|'operation'): Promise<void> {
         return runAsync(() => {
             const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ?');
             stmt.run(newRole, email);

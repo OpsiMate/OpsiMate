@@ -5,7 +5,7 @@ enum Role {
   Admin = 'admin',
   Editor = 'editor',
   Viewer = 'viewer',
-  NOC = 'noc',
+  Operation = 'operation',
 }
 
 export type Permission = 'create' | 'edit' | 'delete' | 'view' |'operate';
@@ -20,7 +20,7 @@ export function hasPermission(permission: Permission): boolean {
       return permission !== 'delete'; // Editors can create, edit, view but not delete
     case Role.Viewer:
       return permission === 'view'; // Viewers can only view
-    case Role.NOC:
+    case Role.Operation:
       return permission === 'view' || permission === 'operate';
     default:
       return false;
@@ -56,7 +56,7 @@ export function canManageUsers(): boolean {
       return false;
     case Role.Viewer:
       return false;
-    case  Role.NOC:
+    case  Role.Operation:
       return false;
     default:
       return false;
@@ -73,7 +73,7 @@ export function canManageProviders(): boolean {
       return true;
     case Role.Viewer:
       return false;
-    case Role.NOC:
+    case Role.Operation:
       return false;
     default:
       return false;
@@ -90,7 +90,7 @@ export function canViewServices(): boolean {
       return true;
     case Role.Viewer:
       return true;
-    case Role.NOC:
+    case Role.Operation:
       return true;
     default:
       return false;
