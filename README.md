@@ -50,6 +50,15 @@
 
 ![OpsiMate TV Mode](assets/images/tv-mode.png)
 
+**Full-screen monitoring interface optimized for wall displays and operations centers.**
+
+- 📺 Auto-refresh with real-time updates
+- 🎯 Smart grid layout that adapts to service count  
+- 🔄 View rotation for comprehensive monitoring
+- ⌨️ Keyboard shortcuts for hands-free operation
+
+👉 **[Read the full TV Mode documentation](docs/tv-mode.md)**
+
 </br>
 
 ## Supported Infrastructure
