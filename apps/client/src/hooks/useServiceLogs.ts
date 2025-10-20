@@ -204,10 +204,17 @@ export function useServiceLogs({ serviceId }: UseServiceLogsOptions): UseService
     (log: string) => {
       if (!searchKeyword.trim()) return log;
 
-      const keyword = searchKeyword.trim();
-      const escapedKeyword = escapeRegExp(keyword);
-      const regex = new RegExp(`(${escapedKeyword})`, "gi");
-      return log.replace(regex, "⚡$1⚡"); // use markers for highlighting
+      // split by whitespace to highlight individual keywords
+      const keywords = searchKeyword.toLowerCase().trim().split(/\s+/);
+      let result = log;
+      
+      keywords.forEach((keyword) => {
+        const escapedKeyword = escapeRegExp(keyword);
+        const regex = new RegExp(`(${escapedKeyword})`, "gi");
+        result = result.replace(regex, "⚡$1⚡");
+      });
+      
+      return result;
     },
     [searchKeyword, escapeRegExp]
   );
@@ -246,18 +253,30 @@ function filterLogByTimeRange(log: string, startTime: Date, endTime: Date | null
   }
 
   // format 2: systemd/journalctl format (Month DD HH:MM:SS)
-  match = log.match(/(\w{3}\s+\d{1,2}\s\d{2}:\d{2}:\d{2})/);
+  match = log.match(/(\w{3})\s+(\d{1,2})\s(\d{2}):(\d{2}):(\d{2})/);
   if (match) {
-    const currentYear = new Date().getFullYear();
-    const systemdTime = match[1];
-
-    // look for year pattern in the log line
-    const yearMatch = log.match(/(\d{4})/);
-    const logYear = yearMatch ? parseInt(yearMatch[1]) : currentYear;
-
-    const isoTime = `${logYear} ${systemdTime}`;
-    const logTime = new Date(isoTime);
-    return endTime ? logTime >= startTime && logTime <= endTime : logTime >= startTime;
+    const monthMap: { [key: string]: number } = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+    };
+    
+    const month = monthMap[match[1]];
+    const day = parseInt(match[2]);
+    const hour = parseInt(match[3]);
+    const minute = parseInt(match[4]);
+    const second = parseInt(match[5]);
+    
+    if (month !== undefined) {
+      const currentYear = new Date().getFullYear();
+      const logTime = new Date(currentYear, month, day, hour, minute, second);
+      
+      // if parsed date is in future, it's likely from previous year
+      if (logTime > new Date()) {
+        logTime.setFullYear(currentYear - 1);
+      }
+      
+      return endTime ? logTime >= startTime && logTime <= endTime : logTime >= startTime;
+    }
   }
 
   // format 3: ISO format without brackets (YYYY-MM-DDTHH:MM:SS)
