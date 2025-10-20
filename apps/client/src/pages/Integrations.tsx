@@ -262,6 +262,11 @@ export default function Integrations() {
   const [urlHistory, setUrlHistory] = useState<string[]>([]);
   const { toast } = useToast();
 
+  // Helper function to convert catalog ID to integration type
+  const catalogIdToIntegrationType = (catalogId: string): string => {
+    return catalogId.charAt(0).toUpperCase() + catalogId.slice(1);
+  };
+
   // Fetch saved integrations on component mount
   useEffect(() => {
     const fetchIntegrations = async () => {
@@ -480,7 +485,7 @@ export default function Integrations() {
                   onClick={() => {
                     // Find existing integration of this type if it exists
                     const existingIntegration = savedIntegrations.find(
-                      integration2 => integration2.type === integration.id.charAt(0).toUpperCase() + integration.id.slice(1)
+                      integration2 => integration2.type === catalogIdToIntegrationType(integration.id)
                     );
 
                     // Load URL history for this integration type
@@ -614,7 +619,7 @@ export default function Integrations() {
                     try {
                       // Check if an integration of this type already exists
                       const existingIntegration = savedIntegrations.find(
-                        integration => integration.type === selectedIntegration.id.charAt(0).toUpperCase() + selectedIntegration.id.slice(1)
+                        integration => integration.type === catalogIdToIntegrationType(selectedIntegration.id)
                       );
 
                       // Map integration id to the correct IntegrationType
@@ -776,7 +781,7 @@ export default function Integrations() {
                       <div className="flex justify-between mt-6">
                       {/* Delete button - only show for existing integrations */}
                       {canDelete() && savedIntegrations.find(
-                        integration => integration.type === selectedIntegration.id.charAt(0).toUpperCase() + selectedIntegration.id.slice(1)
+                        integration => integration.type === catalogIdToIntegrationType(selectedIntegration.id)
                       ) && (
                         <Button
                           type="button"
@@ -784,7 +789,7 @@ export default function Integrations() {
                           disabled={isSubmitting}
                           onClick={() => {
                             const existingIntegration = savedIntegrations.find(
-                              integration => integration.type === selectedIntegration.id.charAt(0).toUpperCase() + selectedIntegration.id.slice(1)
+                              integration => integration.type === catalogIdToIntegrationType(selectedIntegration.id)
                             );
 
                             if (!existingIntegration) {
