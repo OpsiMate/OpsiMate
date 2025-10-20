@@ -602,6 +602,7 @@ const AuditLogTable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -611,7 +612,7 @@ const AuditLogTable: React.FC = () => {
       if (mounted) {
         if (res && Array.isArray(res.logs)) {
           setLogs(res.logs);
-          setTotal(res.total || 0);
+          setTotal(typeof res.total === 'number' ? res.total : 0);
           setError(null);
         } else {
           setError(res?.error || 'Failed to fetch audit logs');
@@ -626,9 +627,15 @@ const AuditLogTable: React.FC = () => {
   }, [page, pageSize]);
 
   const totalPages = Math.ceil(total / pageSize);
-  const filteredLogs = logs.filter(log =>
-    filter === 'ALL' ? true : log.actionType === filter
-  );
+  const filteredLogs = logs.filter(log => {
+    const matchesFilter = filter === 'ALL' ? true : log.actionType === filter;
+    const matchesSearch = searchQuery.trim() === '' || 
+      log.resourceName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.resourceType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.actionType?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   const getActionBadgeProps = (action: string) => {
     switch (action) {
@@ -681,7 +688,20 @@ const AuditLogTable: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-end items-center mb-4">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Search Audit Logs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md"
+          />
+          {searchQuery && (
+            <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
+              Clear
+            </Button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <label className="text-sm text-muted-foreground">Items per page:</label>
           <select
