@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
 import { 
   Monitor, 
   X, 
@@ -24,7 +25,8 @@ import {
   MoreVertical,
   Eye,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Search
 } from "lucide-react"
 import { useServices, useAlerts, useStartService, useStopService } from "@/hooks/queries"
 import { useToast } from "@/hooks/use-toast"
@@ -33,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Service } from "@/components/ServiceTable"
 import { Alert } from "@OpsiMate/shared"
+import { getAlertServiceId } from "@/utils/alert.utils";
 import { Filters } from "@/components/Dashboard"
 import {canOperate} from "@/lib/permissions.ts";
 
@@ -55,7 +58,9 @@ const TVMode = ({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
-  
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Service action mutations
   const startServiceMutation = useStartService()
   const stopServiceMutation = useStopService()
@@ -81,6 +86,9 @@ const TVMode = ({
       return {}
     }
   })()
+
+
+
   const savedVisibleColumns: Record<string, boolean> = (() => {
     try {
       const columnsParam = searchParams.get('visibleColumns')
@@ -115,27 +123,36 @@ const TVMode = ({
 
   // Enhanced alert calculation
   const servicesWithAlerts = useMemo(() => {
-    console.log('TV Mode - Total alerts available:', alerts.length)
-    return services.map(service => {
-      const serviceAlerts = alerts.filter(alert => 
-        service.tags?.some(tag => tag.name === alert.tag)
-      )
-      const uniqueAlerts = serviceAlerts.filter((alert, index, self) => 
-        index === self.findIndex(a => a.id === alert.id)
-      )
-      const activeAlerts = uniqueAlerts.filter(alert => !alert.isDismissed)
-      
-      if (activeAlerts.length > 0) {
-        console.log(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, activeAlerts)
-      }
-      
-      return {
-        ...service,
-        alertsCount: activeAlerts.length,
-        serviceAlerts: activeAlerts // Use activeAlerts instead of uniqueAlerts to only show non-dismissed alerts
-      }
-    })
-  }, [services, alerts])
+  console.log('TV Mode - Total alerts available:', alerts.length)
+  return services.map(service => {
+    const sid = Number(service.id);
+
+
+    const serviceAlerts = alerts.filter(alert => {
+    const explicitSid = getAlertServiceId(alert);
+    return explicitSid !== undefined
+      ? explicitSid === sid
+      : service.tags?.some(tag => tag.name === alert.tag);
+  })
+
+
+    const uniqueAlerts = serviceAlerts.filter((a, i, self) =>
+      i === self.findIndex(b => b.id === a.id)
+    );
+
+    const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed)
+
+    if (activeAlerts.length > 0) {
+      console.log(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, activeAlerts)
+    }
+
+    return {
+      ...service,
+      alertsCount: activeAlerts.length,
+      serviceAlerts: activeAlerts
+    }
+  })
+}, [services, alerts])
 
   // Apply saved view filters and search
   const baseFilteredServices = useMemo(() => {
@@ -430,6 +447,11 @@ const TVMode = ({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // disable shortcuts if user is typing in search input
+      if (event.target === searchInputRef.current) {
+        return
+      }
+
       switch (event.key) {
         case 'Escape':
           navigate('/')
@@ -461,6 +483,12 @@ const TVMode = ({
           event.preventDefault()
           toggleFullscreen()
           break
+        case '/': {
+          // Focus search input when user presses '/'
+          event.preventDefault()
+          searchInputRef.current?.focus()
+          break 
+        }
       }
     }
 
@@ -588,6 +616,30 @@ const TVMode = ({
           </div>
           
           <div className="flex flex-wrap items-center gap-4">
+            {/* Search Bar */}
+              <div className="relative min-w-[300px] max-w-[400px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                ref={searchInputRef}
+                  placeholder="Search services, providers, IPs..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-10 h-9 text-sm"
+                  title="Search services by name, provider, IP, or container image"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
             {/* Control Buttons */}
             <Button
               variant="outline"
@@ -629,6 +681,10 @@ const TVMode = ({
                   <p className="font-semibold text-sm">⌨️ Keyboard Shortcuts</p>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Focus Search:</span>
+                      <span className="font-mono">/</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground">Status Views:</span>
                       <span className="font-mono">1-4</span>
                     </div>
@@ -654,6 +710,7 @@ const TVMode = ({
                     <p>• Click alert badges for detailed information</p>
                     <p>• Use three-dot menu for service actions</p>
                     <p>• Grid automatically adapts to service count</p>
+                    <p>• Use search bar to quickly find services</p>
                   </div>
                 </div>
               </PopoverContent>
