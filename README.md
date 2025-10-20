@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/client/images/logo.png" width="86" alt="OpsiMate logo" />
+  <img src="apps/client/public/images/logo.png" width="86" alt="OpsiMate logo" />
 </p>
 
 <h1 align="center">OpsiMate</h1>
