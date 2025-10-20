@@ -54,7 +54,7 @@ export function loadConfig(): OpsimateConfig {
 
     logger.info(`Loading config from: ${configPath}`);
     const configFile = fs.readFileSync(configPath, 'utf8');
-    let config = yaml.load(configFile) as OpsimateConfig;
+    const config = yaml.load(configFile) as OpsimateConfig;
 
     // Validate required fields
     if (!config.server?.port || !config.database?.path || !config.security?.private_keys_path) {
