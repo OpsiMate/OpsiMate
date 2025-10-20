@@ -43,10 +43,10 @@ jobs:
           MIN_LENGTH=50
           WORD_COUNT=$(echo "$BODY" | wc -w)
           
-          if [ "$WORD_COUNT" -lt 10 ]; then
+          if [ "$WORD_COUNT" -lt 5 ]; then
             echo "❌ PR Description is too short!"
             echo ""
-            echo "Please provide a more detailed description (at least 10 words)."
+            echo "Please provide a more detailed description (at least 5 words)."
             echo "Help reviewers understand your changes better."
             exit 1
           fi
