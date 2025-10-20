@@ -39,7 +39,7 @@ TV Mode transforms OpsiMate into a dedicated monitoring dashboard perfect for:
 
 Access TV Mode directly through the URL:
 
-```
+```url
 http://your-opsimate-instance:8080/tv-mode
 ```
 
@@ -47,7 +47,7 @@ http://your-opsimate-instance:8080/tv-mode
 
 TV Mode supports URL parameters for customization. Access it with parameters:
 
-```
+```url
 http://your-opsimate-instance:8080/tv-mode?autoRefresh=true&refreshInterval=30000&gridColumns=6
 ```
 
@@ -73,31 +73,31 @@ TV Mode can be customized using URL parameters:
 ### Configuration Examples
 
 #### Example 1: Basic TV Mode with Fast Refresh
-```
+```url
 /tv-mode?autoRefresh=true&refreshInterval=15000
 ```
 Refreshes every 15 seconds
 
 #### Example 2: Auto-Rotating View for Large Screens
-```
+```url
 /tv-mode?viewRotation=true&rotationInterval=60000
 ```
 Rotates through different service states every minute
 
 #### Example 3: Only Show Running Services
-```
+```url
 /tv-mode?defaultView=running
 ```
 Start with only running services visible
 
 #### Example 4: Filtered View with Tags
-```
+```url
 /tv-mode?filters={"tags":["production","critical"]}
 ```
 Display only services tagged with "production" and "critical"
 
 #### Example 5: Complete Custom Configuration
-```
+```url
 /tv-mode?autoRefresh=true&refreshInterval=20000&viewRotation=true&rotationInterval=90000&defaultView=all
 ```
 
@@ -233,7 +233,7 @@ A network indicator shows the connection status, alerting you to any connectivit
 **Scenario:** Display critical production services on a wall screen
 
 **Configuration:**
-```
+```url
 /tv-mode?filters={"tags":["production"]}&autoRefresh=true&refreshInterval=20000
 ```
 
@@ -247,7 +247,7 @@ A network indicator shows the connection status, alerting you to any connectivit
 **Scenario:** Show team's service status in the office
 
 **Configuration:**
-```
+```url
 /tv-mode?filters={"providerName":["team-cluster"]}&viewRotation=true
 ```
 
@@ -261,7 +261,7 @@ A network indicator shows the connection status, alerting you to any connectivit
 **Scenario:** Dedicated screen for monitoring errors
 
 **Configuration:**
-```
+```url
 /tv-mode?defaultView=error&autoRefresh=true&refreshInterval=10000
 ```
 
@@ -275,7 +275,7 @@ A network indicator shows the connection status, alerting you to any connectivit
 **Scenario:** Rotate through different environments
 
 **Configuration:**
-```
+```url
 /tv-mode?viewRotation=true&rotationInterval=60000&autoRefresh=true
 ```
 
@@ -331,19 +331,19 @@ When filtering to show only services with alerts:
 ### 2. Set Appropriate Refresh Intervals
 
 **High-Priority/Production Systems:**
-```
+```url
 ?refreshInterval=10000
 ```
 (10 seconds)
 
 **Standard Monitoring:**
-```
+```url
 ?refreshInterval=30000
 ```
 (30 seconds - default)
 
 **Low-Priority Systems:**
-```
+```url
 ?refreshInterval=60000
 ```
 (60 seconds)
@@ -353,22 +353,22 @@ When filtering to show only services with alerts:
 ### 3. Use Filters Effectively
 
 **Production Services:**
-```
+```url
 ?filters={"tags":["production"]}
 ```
 
 **Specific Provider:**
-```
+```url
 ?filters={"providerName":["aws-prod-cluster"]}
 ```
 
 **Docker Services Only:**
-```
+```url
 ?filters={"serviceType":["DOCKER"]}
 ```
 
 **Kubernetes Namespace:**
-```
+```url
 ?filters={"containerNamespace":["default"]}
 ```
 
@@ -376,7 +376,7 @@ When filtering to show only services with alerts:
 
 Ideal for comprehensive monitoring without manual intervention:
 
-```
+```url
 ?viewRotation=true&rotationInterval=90000
 ```
 
@@ -386,7 +386,7 @@ Cycles through all service states every 90 seconds, ensuring nothing is missed.
 
 Create powerful monitoring setups by combining parameters:
 
-```
+```url
 /tv-mode?autoRefresh=true&refreshInterval=20000&viewRotation=true&rotationInterval=120000&filters={"tags":["production"]}
 ```
 
@@ -450,12 +450,12 @@ This configuration:
 When using filters in URLs, ensure proper JSON encoding:
 
 **Correct:**
-```
+```url
 ?filters={"tags":["production"]}
 ```
 
 **URL-Encoded:**
-```
+```url
 ?filters=%7B%22tags%22%3A%5B%22production%22%5D%7D
 ```
 

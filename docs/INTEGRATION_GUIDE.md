@@ -175,17 +175,17 @@ keywords: [tv mode, monitoring, dashboard, operations center, noc]
 
 Recommended URL structure for the TV Mode documentation:
 
-```
+```url
 https://opsimate.vercel.app/docs/tv-mode
 ```
 
 Or:
-```
+```url
 https://opsimate.vercel.app/core-features/tv-mode
 ```
 
 Or:
-```
+```url
 https://opsimate.vercel.app/interface/tv-mode
 ```
 
@@ -195,7 +195,7 @@ Choose based on your existing documentation organization.
 
 Recommended sidebar structure:
 
-```
+```text
 📚 Documentation
 ├── 🚀 Getting Started
 │   ├── Installation
