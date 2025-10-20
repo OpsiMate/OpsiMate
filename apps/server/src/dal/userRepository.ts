@@ -18,40 +18,10 @@ export class UserRepository {
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
                     full_name TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer','operation')),
+                    role TEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `).run();
-            const row = this.db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get() as { sql?: string } | undefined;
-    const hasOperation = !!row?.sql?.includes(`'operation'`);
-    if (!hasOperation) {
-      this.db.exec('BEGIN');
-      try {
-        this.db.prepare(`
-          CREATE TABLE users_new (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            full_name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin','editor','viewer','operation')),
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          )
-        `).run();
-
-        this.db.prepare(`
-          INSERT INTO users_new (id,email,password_hash,full_name,role,created_at)
-          SELECT id,email,password_hash,full_name,role,created_at FROM users
-        `).run();
-
-        this.db.prepare(`DROP TABLE users`).run();
-        this.db.prepare(`ALTER TABLE users_new RENAME TO users`).run();
-
-        this.db.exec('COMMIT');
-      } catch (e) {
-        this.db.exec('ROLLBACK');
-        throw e;
-      }
-    }
         });
     }
 
