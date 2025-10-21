@@ -25,7 +25,8 @@ export interface OpsimateConfig {
         port?: number;                    
         secure?: boolean;                 
         from?: string;                    
-        replyTo?: string;                 
+        replyTo?: string;
+        mailLinkBaseUrl?: string;
         auth?: {
             user: string;
             pass: string;
@@ -95,7 +96,15 @@ function getDefaultConfig(): OpsimateConfig {
             try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false'
         },
         mailer: {
-            enabled: false,
+            enabled: true,
+            host: process.env.SMTP_HOST || undefined,
+            port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined,
+            from: process.env.SMTP_FROM || undefined,
+            mailLinkBaseUrl: process.env.APP_BASE_URL || undefined,
+            auth: {
+                user: process.env.SMTP_USER || '',
+                pass: process.env.SMTP_PASS || ''
+            }
         }
     };
 }

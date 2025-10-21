@@ -23,6 +23,9 @@ import { AuthGuard } from "./components/AuthGuard";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import {isEditor} from "./lib/auth";
 import { Navigate } from "react-router-dom";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPasswordByEmail from "./pages/ResetPasswordByEmail";
+
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
@@ -47,6 +50,8 @@ const App: React.FC = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/alerts" element={<Alerts />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPasswordByEmail />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthGuard>
