@@ -42,6 +42,31 @@
     },
     "clean": {
       "cache": false
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**",
+        "test-results/**"
+      ]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": []
+    },
+    "test:coverage": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
     }
   }
 } 
