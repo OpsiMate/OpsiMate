@@ -4,7 +4,7 @@ import { queryKeys } from '../queryKeys';
 
 export const useDeleteView = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (viewId: string) => {
       const response = await viewsApi.deleteView(viewId);
@@ -18,4 +18,4 @@ export const useDeleteView = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.views });
     },
   });
-}; 
+};

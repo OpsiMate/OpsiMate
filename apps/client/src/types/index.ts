@@ -12,4 +12,4 @@ export interface User {
   fullName: string;
   role: Role;
   createdAt: string;
-} 
+}

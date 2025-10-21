@@ -1,5 +1,8 @@
+import { Logger } from '@OpsiMate/shared';
 import { useState } from 'react';
-import { mapValidationErrors, mapApiError, isValidationError } from '../lib/errorMapper';
+import { isValidationError, mapApiError, mapValidationErrors } from '../lib/errorMapper';
+
+const logger = new Logger('useFormErrors');
 
 export interface FormErrorState {
   errors: Record<string, string>;
@@ -7,7 +10,11 @@ export interface FormErrorState {
   setErrors: (errors: Record<string, string>) => void;
   setGeneralError: (error: string | null) => void;
   clearErrors: () => void;
-  handleApiResponse: (response: { success: boolean; error?: string; errors?: Record<string, string> }) => void;
+  handleApiResponse: (response: {
+    success: boolean;
+    error?: string;
+    errors?: Record<string, string>;
+  }) => void;
   getFieldError: (fieldName: string) => string | null;
 }
 
@@ -28,9 +35,13 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
     setGeneralError(null);
   };
 
-  const handleApiResponse = (response: { success: boolean; error?: string; errors?: Record<string, string> }) => {
-    console.log('handleApiResponse called with:', response);
-    
+  const handleApiResponse = (response: {
+    success: boolean;
+    error?: string;
+    errors?: Record<string, string>;
+  }) => {
+    logger.debug('handleApiResponse called with:', response);
+
     if (response.success) {
       clearErrors();
       return;
@@ -38,21 +49,21 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
 
     // Handle validation errors
     if (isValidationError(response)) {
-      console.log('Detected validation error, mapping fields...');
+      logger.debug('Detected validation error, mapping fields...');
       if (showFieldErrors) {
         const fieldErrors = mapValidationErrors(response);
-        console.log('Mapped field errors:', fieldErrors);
+        logger.debug('Mapped field errors:', fieldErrors);
         setErrors(fieldErrors);
         setGeneralError(null);
       } else {
         // For login, show a general error instead of field-specific ones
-        console.log('Field errors disabled, showing general error...');
+        logger.debug('Field errors disabled, showing general error...');
         setErrors({});
         setGeneralError('Invalid email or password. Please check your credentials and try again.');
       }
     } else {
       // Handle general errors
-      console.log('Detected general error, mapping message...');
+      logger.debug('Detected general error, mapping message...');
       setErrors({});
       setGeneralError(mapApiError(response.error || 'An error occurred'));
     }
@@ -71,4 +82,4 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
     handleApiResponse,
     getFieldError,
   };
-} 
+}

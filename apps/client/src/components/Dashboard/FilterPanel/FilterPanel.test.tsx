@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@/test/test-utils'
-import { FilterPanel } from '../FilterPanel'
-import type { Service } from '@/components/ServiceTable'
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@/test/test-utils';
+import { FilterPanel } from '../FilterPanel';
+import type { Service } from '@/components/ServiceTable';
 
 const mockServices: Service[] = [
   {
@@ -42,11 +42,11 @@ const mockServices: Service[] = [
     tags: [{ id: 2, name: 'development' }],
     createdAt: '2024-01-01',
   },
-]
+];
 
 describe('FilterPanel', () => {
   it('renders filter panel in expanded mode', () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -54,14 +54,14 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={false}
       />
-    )
+    );
 
-    expect(screen.getByText(/no filters/i)).toBeInTheDocument()
-    expect(screen.getByText(/reset/i)).toBeInTheDocument()
-  })
+    expect(screen.getByText(/no filters/i)).toBeInTheDocument();
+    expect(screen.getByText(/reset/i)).toBeInTheDocument();
+  });
 
   it('renders filter panel in collapsed mode', () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -69,15 +69,15 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={true}
       />
-    )
+    );
 
     // In collapsed mode, we should see the slider icon container
-    const containers = screen.getAllByRole('generic')
-    expect(containers.length).toBeGreaterThan(0)
-  })
+    const containers = screen.getAllByRole('generic');
+    expect(containers.length).toBeGreaterThan(0);
+  });
 
   it('displays filter facets based on services', () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -85,15 +85,15 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={false}
       />
-    )
+    );
 
-    expect(screen.getByText('Status')).toBeInTheDocument()
-    expect(screen.getByText('Service Type')).toBeInTheDocument()
-    expect(screen.getByText('Provider Type')).toBeInTheDocument()
-  })
+    expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getByText('Service Type')).toBeInTheDocument();
+    expect(screen.getByText('Provider Type')).toBeInTheDocument();
+  });
 
   it('calls onFilterChange when a filter is selected', async () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -101,19 +101,19 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={false}
       />
-    )
+    );
 
     // Status section is open by default, so we can click the Running checkbox
-    const runningCheckbox = screen.getByRole('checkbox', { name: /running/i })
-    fireEvent.click(runningCheckbox)
+    const runningCheckbox = screen.getByRole('checkbox', { name: /running/i });
+    fireEvent.click(runningCheckbox);
 
     expect(onFilterChange).toHaveBeenCalledWith({
       serviceStatus: ['running'],
-    })
-  })
+    });
+  });
 
   it('calls onFilterChange with empty object when reset is clicked', () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -121,16 +121,16 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={false}
       />
-    )
+    );
 
-    const resetButton = screen.getByText(/reset/i)
-    fireEvent.click(resetButton)
+    const resetButton = screen.getByText(/reset/i);
+    fireEvent.click(resetButton);
 
-    expect(onFilterChange).toHaveBeenCalledWith({})
-  })
+    expect(onFilterChange).toHaveBeenCalledWith({});
+  });
 
   it('displays active filter count', () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -138,13 +138,13 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={false}
       />
-    )
+    );
 
-    expect(screen.getByText(/2 active filters/i)).toBeInTheDocument()
-  })
+    expect(screen.getByText(/2 active filters/i)).toBeInTheDocument();
+  });
 
   it('shows filter counts for each option', () => {
-    const onFilterChange = vi.fn()
+    const onFilterChange = vi.fn();
     render(
       <FilterPanel
         services={mockServices}
@@ -152,11 +152,10 @@ describe('FilterPanel', () => {
         onFilterChange={onFilterChange}
         collapsed={false}
       />
-    )
+    );
 
     // Service Type section is open by default, so we should see counts
-    const badges = screen.getAllByText(/1/)
-    expect(badges.length).toBeGreaterThan(0)
-  })
-})
-
+    const badges = screen.getAllByText(/1/);
+    expect(badges.length).toBeGreaterThan(0);
+  });
+});

@@ -14,9 +14,12 @@ interface ValidationFeedbackProps {
   showValid?: boolean; // Whether to show green checkmarks for valid rules
 }
 
-const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-const hostnameRegex = /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || hostnameRegex.test(value);
+const ipRegex =
+  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const hostnameRegex =
+  /^(?![\d.]+$)(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const isValidHostnameOrIP = (value: string): boolean =>
+  ipRegex.test(value) || hostnameRegex.test(value);
 
 export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
   value,
@@ -24,13 +27,13 @@ export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
   showValid = true,
 }) => {
   return (
-    <div className="space-y-1 mt-1">
-      {rules.map((rule) => {
+    <div className='space-y-1 mt-1'>
+      {rules.map(rule => {
         const isValid = rule.validator(value);
         const shouldShow = !isValid || showValid;
-        
+
         if (!shouldShow) return null;
-        
+
         return (
           <div
             key={rule.id}
@@ -38,11 +41,7 @@ export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
               isValid ? 'text-green-600' : 'text-red-500'
             }`}
           >
-            {isValid ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <X className="h-4 w-4" />
-            )}
+            {isValid ? <Check className='h-4 w-4' /> : <X className='h-4 w-4' />}
             <span>{rule.label}</span>
           </div>
         );
@@ -174,21 +173,20 @@ export const validationRules = {
       id: 'apikey-no-spaces',
       label: 'API key cannot contain spaces',
       validator: (value: string) => {
-        if (value.length === 0) return true; 
-        return !/\s/.test(value);
-      },
-    },
-  ],
-  
-  appKey: [
-    {
-      id: 'appkey-no-spaces',
-      label: 'Application key cannot contain spaces',
-      validator: (value: string) => {
-        if (value.length === 0) return true; 
+        if (value.length === 0) return true;
         return !/\s/.test(value);
       },
     },
   ],
 
-}; 
+  appKey: [
+    {
+      id: 'appkey-no-spaces',
+      label: 'Application key cannot contain spaces',
+      validator: (value: string) => {
+        if (value.length === 0) return true;
+        return !/\s/.test(value);
+      },
+    },
+  ],
+};

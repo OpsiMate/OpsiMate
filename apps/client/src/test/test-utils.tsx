@@ -1,11 +1,9 @@
-import { ReactElement } from 'react'
-import { render, RenderOptions } from '@testing-library/react'
-import { AllTheProviders } from './TestProviders'
+import { ReactElement } from 'react';
+import { render, RenderOptions } from '@testing-library/react';
+import { AllTheProviders } from './TestProviders';
 
-const customRender = (
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
-) => render(ui, { wrapper: AllTheProviders, ...options })
+const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
+  render(ui, { wrapper: AllTheProviders, ...options });
 
 export {
   screen,
@@ -45,7 +43,6 @@ export {
   findAllByLabelText,
   findAllByPlaceholderText,
   findAllByTestId,
-} from '@testing-library/react'
+} from '@testing-library/react';
 
-export { customRender as render }
-
+export { customRender as render };

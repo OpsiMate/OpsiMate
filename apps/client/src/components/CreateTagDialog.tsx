@@ -1,11 +1,18 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
-import { providerApi } from "@/lib/api";
-import { Tag } from "@OpsiMate/shared";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { providerApi } from '@/lib/api';
+import { Tag } from '@OpsiMate/shared';
 
 interface CreateTagDialogProps {
   open: boolean;
@@ -26,20 +33,20 @@ const predefinedColors = [
   '#6B7280', // gray
 ];
 
-export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialogProps) {
+export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialogProps) => {
   const { toast } = useToast();
-  const [name, setName] = useState("");
+  const [name, setName] = useState('');
   const [color, setColor] = useState(predefinedColors[0]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
       toast({
-        title: "Error",
-        description: "Tag name is required",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Tag name is required',
+        variant: 'destructive',
       });
       return;
     }
@@ -47,26 +54,26 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
     setLoading(true);
     try {
       const response = await providerApi.createTag({ name: name.trim(), color });
-      
+
       if (response.success && response.data) {
         onTagCreated(response.data);
         toast({
-          title: "Success",
-          description: "Tag created successfully"
+          title: 'Success',
+          description: 'Tag created successfully',
         });
         handleClose();
       } else {
         toast({
-          title: "Error",
-          description: response.error || "Failed to create tag",
-          variant: "destructive"
+          title: 'Error',
+          description: response.error || 'Failed to create tag',
+          variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create tag",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to create tag',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -74,7 +81,7 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
   };
 
   const handleClose = () => {
-    setName("");
+    setName('');
     setColor(predefinedColors[0]);
     setLoading(false);
     onClose();
@@ -82,7 +89,7 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
           <DialogTitle>Create New Tag</DialogTitle>
           <DialogDescription>
@@ -90,26 +97,28 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Tag Name</Label>
+          <div className='grid gap-4 py-4'>
+            <div className='grid gap-2'>
+              <Label htmlFor='name'>Tag Name</Label>
               <Input
-                id="name"
+                id='name'
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter tag name"
+                onChange={e => setName(e.target.value)}
+                placeholder='Enter tag name'
                 maxLength={50}
               />
             </div>
-            <div className="grid gap-2">
+            <div className='grid gap-2'>
               <Label>Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {predefinedColors.map((colorOption) => (
+              <div className='flex flex-wrap gap-2'>
+                {predefinedColors.map(colorOption => (
                   <button
                     key={colorOption}
-                    type="button"
+                    type='button'
                     className={`w-8 h-8 rounded-full border-2 transition-all ${
-                      color === colorOption ? 'border-gray-800 scale-110' : 'border-gray-300 hover:border-gray-500'
+                      color === colorOption
+                        ? 'border-gray-800 scale-110'
+                        : 'border-gray-300 hover:border-gray-500'
                     }`}
                     style={{ backgroundColor: colorOption }}
                     onClick={() => setColor(colorOption)}
@@ -119,15 +128,15 @@ export function CreateTagDialog({ open, onClose, onTagCreated }: CreateTagDialog
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
+            <Button type='button' variant='outline' onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()}>
-              {loading ? "Creating..." : "Create Tag"}
+            <Button type='submit' disabled={loading || !name.trim()}>
+              {loading ? 'Creating...' : 'Create Tag'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-} 
+};

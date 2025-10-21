@@ -19,7 +19,7 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
   value,
   serviceId,
   onValueChange,
-  className
+  className,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
@@ -51,14 +51,14 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
       await onValueChange(fieldId, editValue.trim());
       setIsEditing(false);
       toast({
-        title: "Success",
+        title: 'Success',
         description: `${fieldName} updated successfully`,
       });
     } catch (error) {
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to update ${fieldName}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setIsSaving(false);
@@ -82,7 +82,7 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
 
   return (
     <div
-      className={cn("relative group", className)}
+      className={cn('relative group', className)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -90,29 +90,27 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
         <Input
           ref={inputRef}
           value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          onChange={e => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
           disabled={isSaving}
-          className="h-6 text-sm font-mono w-full"
-          placeholder="Enter value..."
+          className='h-6 text-sm font-mono w-full'
+          placeholder='Enter value...'
         />
       ) : (
-        <div className="flex items-center justify-between min-h-[1.5rem]">
-          <div className="font-medium text-foreground font-mono text-sm flex-1">
-            {displayValue}
-          </div>
+        <div className='flex items-center justify-between min-h-[1.5rem]'>
+          <div className='font-medium text-foreground font-mono text-sm flex-1'>{displayValue}</div>
           {isHovered && !isSaving && (
             <button
               onClick={handleEdit}
-              className="p-1 rounded hover:bg-blue-100 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0"
+              className='p-1 rounded hover:bg-blue-100 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0'
               title={`Edit ${fieldName}`}
             >
-              <Edit className="h-3 w-3" />
+              <Edit className='h-3 w-3' />
             </button>
           )}
           {isSaving && (
-            <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">Saving...</div>
+            <div className='text-xs text-muted-foreground ml-2 flex-shrink-0'>Saving...</div>
           )}
         </div>
       )}

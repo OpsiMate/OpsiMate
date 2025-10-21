@@ -14,7 +14,7 @@
     --card-foreground: 224 71.4% 4.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
-    
+
     --primary: 210 100% 13%; /* Dark Blue from icon */
     --primary-foreground: 0 0% 100%;
 
@@ -62,10 +62,10 @@
     --card-foreground: 0 0% 100%;
     --popover: 224 71.4% 4.1%;
     --popover-foreground: 0 0% 100%;
-    
+
     --primary: 210 100% 25%; /* A slightly lighter blue for dark mode */
     --primary-foreground: 0 0% 100%;
-    
+
     --secondary: 174 100% 32%;
     --secondary-foreground: 0 0% 100%;
 
@@ -74,17 +74,17 @@
 
     --muted: 220 3.8% 15.9%;
     --muted-foreground: 215 27.9% 70.2%;
-    
+
     --accent: 210 100% 25%; /* A slightly lighter blue for dark mode */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 85.7% 97.3%;
-    
+
     --border: 220 3.8% 15.9%;
     --input: 220 3.8% 15.9%;
     --ring: 210 100% 25%; /* A slightly lighter blue for dark mode */
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -104,7 +104,9 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Nunito Sans', sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   *:focus-visible {

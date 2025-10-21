@@ -13,4 +13,4 @@ export const useViews = () => {
       return response.data || [];
     },
   });
-}; 
+};

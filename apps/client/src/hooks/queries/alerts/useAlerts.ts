@@ -15,4 +15,4 @@ export const useAlerts = () => {
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
   });
-}; 
+};

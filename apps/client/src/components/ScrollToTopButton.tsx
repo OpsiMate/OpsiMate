@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
-import ReactDOM from "react-dom";
-import { ArrowUp } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
+import { ArrowUp } from 'lucide-react';
 
 const SCROLL_DURATION = 480; // ms
 
@@ -27,7 +27,7 @@ function animateScroll(element: HTMLElement | Window, to = 0, duration = SCROLL_
 
 function tryNativeSmoothScroll(el: HTMLElement | Window) {
   try {
-    el.scrollTo({ top: 0, behavior: "smooth" as ScrollBehavior });
+    el.scrollTo({ top: 0, behavior: 'smooth' as ScrollBehavior });
     return true;
   } catch {
     return false;
@@ -37,18 +37,15 @@ function tryNativeSmoothScroll(el: HTMLElement | Window) {
 // A slightly optimization in find function
 function findScrollableElements(): Array<HTMLElement | Window> {
   const results: Array<HTMLElement | Window> = [];
-  if (typeof document === "undefined") return [window];
+  if (typeof document === 'undefined') return [window];
 
   results.push(window);
 
-  const all = Array.from(document.querySelectorAll<HTMLElement>("*"));
+  const all = Array.from(document.querySelectorAll<HTMLElement>('*'));
   for (const el of all) {
     const style = window.getComputedStyle(el);
     const overflowY = style.overflowY;
-    if (
-      (overflowY === "auto" || overflowY === "scroll") &&
-      el.scrollHeight > el.clientHeight
-    ) {
+    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
       results.push(el);
     }
   }
@@ -67,8 +64,8 @@ function scrollAllToTop() {
 }
 
 const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({
-  right = "22px",
-  bottom = "22px",
+  right = '22px',
+  bottom = '22px',
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   // Use a ref to keep track of the main scroll container
@@ -77,16 +74,17 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({
   useEffect(() => {
     // Find the most likely primary scroll container on mount.
     // This could be a specific element or the window itself.
-    const primaryContainer = document.querySelector<HTMLElement>('main') || document.body.parentElement || window;
+    const primaryContainer =
+      document.querySelector<HTMLElement>('main') || document.body.parentElement || window;
     scrollContainerRef.current = primaryContainer;
-    
+
     const handleScroll = () => {
       if (!scrollContainerRef.current) return;
-      
+
       const container = scrollContainerRef.current;
       // Check scroll position for both window and HTML elements
       const scrollTop = (container as Window).scrollY ?? (container as HTMLElement).scrollTop;
-      
+
       setIsVisible(scrollTop > 100);
     };
 
@@ -95,35 +93,34 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({
 
     const container = scrollContainerRef.current;
     if (container) {
-      container.addEventListener("scroll", handleScroll, { passive: true });
+      container.addEventListener('scroll', handleScroll, { passive: true });
     }
 
     return () => {
       if (container) {
-        container.removeEventListener("scroll", handleScroll);
+        container.removeEventListener('scroll', handleScroll);
       }
     };
   }, []); // Empty dependency array ensures this runs only once on mount
 
-  if (typeof document === "undefined" || !isVisible) {
+  if (typeof document === 'undefined' || !isVisible) {
     return null;
   }
 
   const button = (
     <button
-      aria-label="Scroll to top"
-      title="Scroll to top"
-      onClick={(e) => {
+      aria-label='Scroll to top'
+      title='Scroll to top'
+      onClick={e => {
         e.preventDefault();
         scrollAllToTop();
       }}
-
       style={{
         right,
         bottom,
-        WebkitTapHighlightColor: "transparent",
+        WebkitTapHighlightColor: 'transparent',
       }}
-      className="fixed z-[999999] p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all duration-200 transform hover:scale-105 active:scale-95 bg-slate-800/80 text-white"
+      className='fixed z-[999999] p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all duration-200 transform hover:scale-105 active:scale-95 bg-slate-800/80 text-white'
     >
       <ArrowUp size={18} />
     </button>

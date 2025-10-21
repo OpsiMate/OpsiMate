@@ -1,28 +1,22 @@
-import ResetPasswordByEmailForm from "@/components/ResetPasswordByEmailForm";
-import ResetPasswordByEmailInvalid from "@/components/ResetPasswordByEmailInvalid";
-import ResetPasswordByEmailSuccess from "@/components/ResetPasswordByEmailSuccess";
-import { useFormErrors } from "@/hooks/useFormErrors";
-import { apiRequest } from "@/lib/api";
-import { ArrowLeft } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import ResetPasswordByEmailForm from '@/components/ResetPasswordByEmailForm';
+import ResetPasswordByEmailInvalid from '@/components/ResetPasswordByEmailInvalid';
+import ResetPasswordByEmailSuccess from '@/components/ResetPasswordByEmailSuccess';
+import { useFormErrors } from '@/hooks/useFormErrors';
+import { apiRequest } from '@/lib/api';
+import { ArrowLeft } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 const ResetPasswordByEmail: React.FC = () => {
   const location = useLocation();
   const query = new URLSearchParams(location.search);
-  const token = query.get("token");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const token = query.get('token');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [valid, setValid] = useState<boolean | null>(null);
-  const {
-    errors,
-    generalError,
-    setGeneralError,
-    clearErrors,
-    handleApiResponse,
-  } = useFormErrors({
+  const { errors, generalError, setGeneralError, clearErrors, handleApiResponse } = useFormErrors({
     showFieldErrors: true,
   });
 
@@ -44,7 +38,7 @@ const ResetPasswordByEmail: React.FC = () => {
         success: boolean;
         data: { success: boolean; message: string };
         error?: string;
-      }>("/users/validate-reset-password-token", "POST", { token });
+      }>('/users/validate-reset-password-token', 'POST', { token });
 
       setValid(res.success);
     } catch {
@@ -61,11 +55,11 @@ const ResetPasswordByEmail: React.FC = () => {
     clearErrors();
 
     if (!password || !confirm) {
-      setGeneralError("Please fill in both fields.");
+      setGeneralError('Please fill in both fields.');
       return;
     }
     if (password !== confirm) {
-      setGeneralError("Passwords do not match.");
+      setGeneralError('Passwords do not match.');
       return;
     }
 
@@ -75,7 +69,7 @@ const ResetPasswordByEmail: React.FC = () => {
         success: boolean;
         data: { id: string; email: string };
         error?: string;
-      }>("/users/reset-password", "POST", { token, newPassword: password });
+      }>('/users/reset-password', 'POST', { token, newPassword: password });
 
       if (res.success) {
         setSuccess(true);
@@ -85,7 +79,7 @@ const ResetPasswordByEmail: React.FC = () => {
     } catch {
       handleApiResponse({
         success: false,
-        error: "Network error. Please try again.",
+        error: 'Network error. Please try again.',
       });
     } finally {
       setLoading(false);
@@ -93,11 +87,11 @@ const ResetPasswordByEmail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className='min-h-screen flex items-center justify-center bg-background'>
       {valid === null ? (
         <div>Loading...</div>
       ) : (
-        <div className="bg-card text-card-foreground border border-border p-8 rounded shadow-md w-180">
+        <div className='bg-card text-card-foreground border border-border p-8 rounded shadow-md w-180'>
           {!valid ? (
             <ResetPasswordByEmailInvalid />
           ) : success ? (
@@ -114,10 +108,10 @@ const ResetPasswordByEmail: React.FC = () => {
               handleSubmit={handleSubmit}
             />
           )}
-          <div className="mt-6 text-center">
+          <div className='mt-6 text-center'>
             <Link
-              to="/login"
-              className="text-primary hover:underline text-sm inline-flex items-center gap-1"
+              to='/login'
+              className='text-primary hover:underline text-sm inline-flex items-center gap-1'
             >
               <ArrowLeft size={16} />
               Back to login

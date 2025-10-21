@@ -4,7 +4,7 @@ import { queryKeys } from '../queryKeys';
 
 export const useStopService = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (serviceId: number) => {
       const response = await providerApi.stopService(serviceId);
@@ -19,4 +19,4 @@ export const useStopService = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.service(serviceId) });
     },
   });
-}; 
+};

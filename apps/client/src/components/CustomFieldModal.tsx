@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -16,7 +23,7 @@ interface CustomFieldModalProps {
 export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
   open,
   onOpenChange,
-  editingField
+  editingField,
 }) => {
   const [fieldName, setFieldName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,9 +47,9 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
 
     if (!fieldName.trim()) {
       toast({
-        title: "Error",
-        description: "Field name is required",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Field name is required',
+        variant: 'destructive',
       });
       return;
     }
@@ -53,25 +60,26 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
       if (isEditing && editingField) {
         await updateCustomField.mutateAsync({
           id: editingField.id,
-          name: fieldName.trim()
+          name: fieldName.trim(),
         });
         toast({
-          title: "Success",
-          description: "Custom field updated successfully",
+          title: 'Success',
+          description: 'Custom field updated successfully',
         });
       } else {
         await createCustomField.mutateAsync(fieldName.trim());
         toast({
-          title: "Success",
-          description: "Custom field created successfully",
+          title: 'Success',
+          description: 'Custom field created successfully',
         });
       }
       onOpenChange(false);
     } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: (error as Error)?.message || `Failed to ${isEditing ? 'update' : 'create'} custom field`,
-        variant: "destructive",
+        title: 'Error',
+        description:
+          (error as Error)?.message || `Failed to ${isEditing ? 'update' : 'create'} custom field`,
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
@@ -91,50 +99,47 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Edit Custom Field' : 'Create Custom Field'}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Custom Field' : 'Create Custom Field'}</DialogTitle>
           <DialogDescription>
             {isEditing
               ? 'Update the name of this custom field.'
-              : 'Create a new custom field that can be used to store additional information for your services.'
-            }
+              : 'Create a new custom field that can be used to store additional information for your services.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="field-name">Field Name</Label>
+          <div className='space-y-4 py-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='field-name'>Field Name</Label>
               <Input
-                id="field-name"
-                placeholder="e.g., Environment, Version, Owner"
+                id='field-name'
+                placeholder='e.g., Environment, Version, Owner'
                 value={fieldName}
-                onChange={(e) => setFieldName(e.target.value)}
+                onChange={e => setFieldName(e.target.value)}
                 disabled={isSubmitting}
                 autoFocus
               />
-              <p className="text-sm text-muted-foreground">
+              <p className='text-sm text-muted-foreground'>
                 This name will be displayed when managing service custom fields.
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button
-              type="button"
-              variant="ghost"
+              type='button'
+              variant='ghost'
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !fieldName.trim()}
-            >
+            <Button type='submit' disabled={isSubmitting || !fieldName.trim()}>
               {isSubmitting
-                ? (isEditing ? 'Updating...' : 'Creating...')
-                : (isEditing ? 'Update Field' : 'Create Field')
-              }
+                ? isEditing
+                  ? 'Updating...'
+                  : 'Creating...'
+                : isEditing
+                  ? 'Update Field'
+                  : 'Create Field'}
             </Button>
           </DialogFooter>
         </form>

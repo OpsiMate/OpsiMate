@@ -4,7 +4,7 @@ import { queryKeys } from '../queryKeys';
 
 export const useStartService = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (serviceId: number) => {
       const response = await providerApi.startService(serviceId);
@@ -19,4 +19,4 @@ export const useStartService = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.service(serviceId) });
     },
   });
-}; 
+};

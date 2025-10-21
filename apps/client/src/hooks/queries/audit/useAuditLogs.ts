@@ -13,4 +13,4 @@ export const useAuditLogs = (page = 1, pageSize = 20) => {
       return response.data || { logs: [], total: 0 };
     },
   });
-}; 
+};

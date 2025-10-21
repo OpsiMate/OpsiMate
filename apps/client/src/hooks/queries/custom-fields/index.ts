@@ -105,8 +105,20 @@ export const useUpsertCustomFieldValue = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ serviceId, customFieldId, value }: { serviceId: number; customFieldId: number; value: string }) => {
-      const response = await apiRequest('/custom-fields/values', 'POST', { serviceId, customFieldId, value });
+    mutationFn: async ({
+      serviceId,
+      customFieldId,
+      value,
+    }: {
+      serviceId: number;
+      customFieldId: number;
+      value: string;
+    }) => {
+      const response = await apiRequest('/custom-fields/values', 'POST', {
+        serviceId,
+        customFieldId,
+        value,
+      });
       if (!response.success) {
         throw new Error(response.error || 'Failed to update custom field value');
       }

@@ -14,4 +14,4 @@ export const useServiceTags = (id: number) => {
     },
     enabled: !!id,
   });
-}; 
+};

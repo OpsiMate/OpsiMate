@@ -5,7 +5,7 @@ import { SavedView } from '@/types/SavedView';
 
 export const useSaveView = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (view: SavedView) => {
       const response = await viewsApi.saveView(view);
@@ -19,4 +19,4 @@ export const useSaveView = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.views });
     },
   });
-}; 
+};

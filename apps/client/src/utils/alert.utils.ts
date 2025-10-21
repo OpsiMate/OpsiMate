@@ -1,5 +1,4 @@
-import type { Alert } from "@OpsiMate/shared";
-
+import type { Alert } from '@OpsiMate/shared';
 
 type Dict = Record<string, unknown>;
 

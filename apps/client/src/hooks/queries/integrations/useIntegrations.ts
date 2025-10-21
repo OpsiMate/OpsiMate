@@ -13,4 +13,4 @@ export const useIntegrations = () => {
       return response.data?.integrations || [];
     },
   });
-}; 
+};

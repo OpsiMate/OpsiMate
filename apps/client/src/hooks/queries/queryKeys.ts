@@ -12,4 +12,4 @@ export const queryKeys = {
   serviceLogs: (id: number) => ['serviceLogs', id] as const,
   serviceTags: (id: number) => ['serviceTags', id] as const,
   auditLogs: (page: number, pageSize: number) => ['audit', page, pageSize] as const,
-}; 
+};

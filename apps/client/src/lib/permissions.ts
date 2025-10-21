@@ -8,11 +8,11 @@ enum Role {
   Operation = 'operation',
 }
 
-export type Permission = 'create' | 'edit' | 'delete' | 'view' |'operate';
+export type Permission = 'create' | 'edit' | 'delete' | 'view' | 'operate';
 
 export function hasPermission(permission: Permission): boolean {
   const userRole = getUserRole();
-  
+
   switch (userRole) {
     case Role.Admin:
       return true; // Admins can do everything
@@ -48,7 +48,7 @@ export function canOperate(): boolean {
 // Specific permission checks for different features
 export function canManageUsers(): boolean {
   const userRole = getUserRole();
-  
+
   switch (userRole) {
     case Role.Admin:
       return true;
@@ -56,7 +56,7 @@ export function canManageUsers(): boolean {
       return false;
     case Role.Viewer:
       return false;
-    case  Role.Operation:
+    case Role.Operation:
       return false;
     default:
       return false;
@@ -65,7 +65,7 @@ export function canManageUsers(): boolean {
 
 export function canManageProviders(): boolean {
   const userRole = getUserRole();
-  
+
   switch (userRole) {
     case Role.Admin:
       return true;
@@ -82,7 +82,7 @@ export function canManageProviders(): boolean {
 
 export function canViewServices(): boolean {
   const userRole = getUserRole();
-  
+
   switch (userRole) {
     case Role.Admin:
       return true;
@@ -107,4 +107,4 @@ export function canManageServices(): boolean {
 
 export function canManageTags(): boolean {
   return hasPermission('create') || hasPermission('edit');
-} 
+}

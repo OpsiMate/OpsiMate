@@ -16,4 +16,4 @@ export const useServiceLogs = (id: number) => {
     staleTime: 10 * 1000, // 10 seconds
     refetchInterval: 10 * 1000, // Auto-refresh every 10 seconds
   });
-}; 
+};

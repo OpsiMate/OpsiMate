@@ -3,7 +3,7 @@ import { jwtDecode } from 'jwt-decode';
 export interface JWTPayload {
   id: number;
   email: string;
-  role: 'admin' | 'editor' | 'viewer' |'operation';
+  role: 'admin' | 'editor' | 'viewer' | 'operation';
   iat: number;
   exp: number;
 }
@@ -11,7 +11,7 @@ export interface JWTPayload {
 export function getCurrentUser(): JWTPayload | null {
   const token = localStorage.getItem('jwt');
   if (!token) return null;
-  
+
   try {
     return jwtDecode<JWTPayload>(token);
   } catch (error) {
@@ -30,15 +30,15 @@ export function isEditor(): boolean {
   return user?.role === 'admin' || user?.role === 'editor';
 }
 
-export function  isViewer(): boolean{
+export function isViewer(): boolean {
   const user = getCurrentUser();
-  return user?.role ==='viewer';
+  return user?.role === 'viewer';
 }
-export function  isOperation(): boolean{
+export function isOperation(): boolean {
   const user = getCurrentUser();
-  return user?.role ==='operation';
+  return user?.role === 'operation';
 }
-export function getUserRole(): 'admin' | 'editor' | 'viewer' | 'operation'| null {
+export function getUserRole(): 'admin' | 'editor' | 'viewer' | 'operation' | null {
   const user = getCurrentUser();
   return user?.role || null;
-} 
+}

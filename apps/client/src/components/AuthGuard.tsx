@@ -59,7 +59,10 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     }
 
     // If user is authenticated and trying to access register/login pages, redirect to dashboard
-    if (jwt && (isOnRegisterPage || isOnLoginPage || isOnForgotPasswordPage || isOnResetPasswordPage)) {
+    if (
+      jwt &&
+      (isOnRegisterPage || isOnLoginPage || isOnForgotPasswordPage || isOnResetPasswordPage)
+    ) {
       navigate('/');
       return;
     }
@@ -74,8 +77,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   // Show loading state while checking
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+      <div className='flex items-center justify-center min-h-screen'>
+        <div className='text-lg'>Loading...</div>
       </div>
     );
   }
@@ -83,11 +86,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   // If there's an error and no JWT, show error state
   if (error && !localStorage.getItem('jwt')) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-500">Error loading application</div>
+      <div className='flex items-center justify-center min-h-screen'>
+        <div className='text-lg text-red-500'>Error loading application</div>
       </div>
     );
   }
 
   return <>{children}</>;
-}; 
+};

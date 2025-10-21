@@ -2,36 +2,40 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { viewsApi } from '@/lib/api';
 import { queryKeys } from '../queryKeys';
 
-const ACTIVE_VIEW_STORAGE_KEY = "OpsiMate-active-view-id";
+const ACTIVE_VIEW_STORAGE_KEY = 'OpsiMate-active-view-id';
 
 export const useActiveView = () => {
   const queryClient = useQueryClient();
 
-  const { data: activeViewId, isLoading, error } = useQuery({
+  const {
+    data: activeViewId,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: [...queryKeys.views, 'active'],
     queryFn: async () => {
       try {
         const response = await viewsApi.getActiveViewId();
-        
+
         if (response.success && response.data) {
           return response.data.activeViewId || 'default-view';
         }
-        
+
         // If API returns error (like 404 when no active view is set), handle gracefully
         if (response.error && response.error.includes('404')) {
           // No active view is set on server, this is expected - check localStorage or return default
           const localStorageViewId = localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY);
           return localStorageViewId || 'default-view';
         }
-        
+
         // For other API errors, fall back to localStorage
-        console.warn("API get active view failed, falling back to localStorage", response.error);
+        console.warn('API get active view failed, falling back to localStorage', response.error);
         const localStorageViewId = localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY);
-        
+
         // If no active view is set, return the default view ID
         return localStorageViewId || 'default-view';
       } catch (error) {
-        console.error("Failed to get active view ID:", error);
+        console.error('Failed to get active view ID:', error);
         // Return default view ID as fallback
         return 'default-view';
       }
@@ -43,9 +47,9 @@ export const useActiveView = () => {
     mutationFn: async (viewId: string | undefined) => {
       if (viewId) {
         const response = await viewsApi.setActiveView(viewId);
-        
+
         if (!response.success) {
-          console.warn("API set active view failed, falling back to localStorage", response.error);
+          console.warn('API set active view failed, falling back to localStorage', response.error);
           // Fall back to localStorage
           localStorage.setItem(ACTIVE_VIEW_STORAGE_KEY, viewId);
         }
@@ -67,4 +71,4 @@ export const useActiveView = () => {
     setActiveView: setActiveViewMutation.mutateAsync,
     isSettingActiveView: setActiveViewMutation.isPending,
   };
-}; 
+};

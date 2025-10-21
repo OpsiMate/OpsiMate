@@ -156,22 +156,22 @@ const GENERIC_ERROR_MESSAGES: Record<string, string> = {
  */
 function mapValidationErrorDetail(detail: ValidationErrorDetail): string {
   const fieldName = detail.path[detail.path.length - 1] || 'field';
-  
+
   // Try field-specific error message first
   if (FIELD_ERROR_MESSAGES[fieldName] && FIELD_ERROR_MESSAGES[fieldName][detail.code]) {
     return FIELD_ERROR_MESSAGES[fieldName][detail.code];
   }
-  
+
   // Try generic error message
   if (GENERIC_ERROR_MESSAGES[detail.code]) {
     return GENERIC_ERROR_MESSAGES[detail.code];
   }
-  
+
   // Fallback to server message or create a generic one
   if (detail.message && detail.message !== 'Required') {
     return detail.message;
   }
-  
+
   // Create a generic message based on the error code
   switch (detail.code) {
     case 'too_small':
@@ -198,14 +198,14 @@ function mapValidationErrorDetail(detail: ValidationErrorDetail): string {
  */
 export function mapValidationErrors(response: ValidationErrorResponse): Record<string, string> {
   const fieldErrors: Record<string, string> = {};
-  
+
   if (response.details && Array.isArray(response.details)) {
-    response.details.forEach((detail) => {
+    response.details.forEach(detail => {
       const fieldName = detail.path[detail.path.length - 1] || 'unknown';
       fieldErrors[fieldName] = mapValidationErrorDetail(detail);
     });
   }
-  
+
   return fieldErrors;
 }
 
@@ -229,7 +229,7 @@ export function mapApiError(error: string): string {
   if (error.includes('HTTP 500:')) {
     return 'Server error. Please try again later.';
   }
-  
+
   // Handle specific error messages
   if (error.includes('Email already registered')) {
     return 'This email is already registered. Please use a different email or try logging in.';
@@ -240,7 +240,7 @@ export function mapApiError(error: string): string {
   if (error.includes('Network error') || error.includes('fetch')) {
     return 'Network error. Please check your connection and try again.';
   }
-  
+
   // Return the original error if no mapping is found
   return error;
 }
@@ -248,7 +248,10 @@ export function mapApiError(error: string): string {
 /**
  * Extracts field-specific errors from a validation error response
  */
-export function getFieldError(fieldName: string, response: { details?: ValidationErrorDetail[] }): string | null {
+export function getFieldError(
+  fieldName: string,
+  response: { details?: ValidationErrorDetail[] }
+): string | null {
   if (response?.details && Array.isArray(response.details)) {
     const fieldError = response.details.find(
       (detail: ValidationErrorDetail) => detail.path[detail.path.length - 1] === fieldName
@@ -262,7 +265,9 @@ export function getFieldError(fieldName: string, response: { details?: Validatio
  * Checks if a response contains validation errors
  */
 export function isValidationError(response: unknown): response is ValidationErrorResponse {
-  return response?.success === false && 
-         (response?.error === 'Validation error' || response?.error?.includes('Validation error')) && 
-         Array.isArray(response?.details);
-} 
+  return (
+    response?.success === false &&
+    (response?.error === 'Validation error' || response?.error?.includes('Validation error')) &&
+    Array.isArray(response?.details)
+  );
+}

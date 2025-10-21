@@ -14,4 +14,4 @@ export const useProvider = (id: number) => {
     },
     enabled: !!id,
   });
-}; 
+};

@@ -4,7 +4,7 @@ import { queryKeys } from '../queryKeys';
 
 export const useUndismissAlert = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (alertId: string) => {
       const response = await alertsApi.undismissAlert(alertId);
@@ -18,4 +18,4 @@ export const useUndismissAlert = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
     },
   });
-}; 
+};

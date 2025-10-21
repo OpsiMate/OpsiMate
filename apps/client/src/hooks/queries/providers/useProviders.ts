@@ -13,4 +13,4 @@ export const useProviders = () => {
       return response.data?.providers || [];
     },
   });
-}; 
+};
