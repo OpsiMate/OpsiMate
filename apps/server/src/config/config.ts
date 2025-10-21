@@ -20,11 +20,11 @@ export interface OpsimateConfig {
     };
     mailer?: {
         enabled: boolean;
-        default_encoding?: string;        
-        host?: string;                    
-        port?: number;                    
-        secure?: boolean;                 
-        from?: string;                    
+        default_encoding?: string;
+        host?: string;
+        port?: number;
+        secure?: boolean;
+        from?: string;
         replyTo?: string;
         mailLinkBaseUrl?: string;
         auth?: {
@@ -72,7 +72,7 @@ export function loadConfig(): OpsimateConfig {
 
     // Set default mailer config if not provided
     if (!config.mailer) {
-        config.mailer = { enabled: false };
+        config.mailer = {enabled: false};
     }
 
     cachedConfig = config;
@@ -84,7 +84,7 @@ function getDefaultConfig(): OpsimateConfig {
     return {
         server: {
             port: 3001,
-            host: '0.0.0.0'
+            host: process.env.SERVER_HOST || '0.0.0.0'
         },
         database: {
             path: '../../data/database/opsimate.db'
@@ -127,5 +127,5 @@ export function getVmConfig() {
 }
 
 export function getMailerConfig() {
-  return loadConfig().mailer;
+    return loadConfig().mailer;
 }
