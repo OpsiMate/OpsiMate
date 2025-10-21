@@ -516,9 +516,29 @@ export const alertsApi = {
 };
 
 export const auditApi = {
-  getAuditLogs: async (page = 1, pageSize = 20) => {
-    return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
-  },
+  getAuditLogs: async (
+    page = 1, 
+    pageSize = 20, 
+    filters: { userName?: string; actionType?: string; resourceType?: string; resourceName?: string;}) => {
+      const params = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+      });
+      
+     if (filters.userName?.trim()) {
+         params.append('userName', filters.userName.trim());
+     }
+     if (filters.actionType?.trim()) {
+         params.append('actionType', filters.actionType.trim());
+     }
+     if (filters.resourceType?.trim()) {
+         params.append('resourceType', filters.resourceType.trim());
+     }
+     if (filters.resourceName?.trim()) {
+         params.append('resourceName', filters.resourceName.trim());
+     }
+      return apiRequest<{ logs: AuditLog[]; total: number}>(`/audit?${params.toString()}`);
+    },
 };
 
 /**
