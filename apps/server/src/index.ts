@@ -1,12 +1,12 @@
-import { initializeDb } from './dal/db.js';
-import { createApp } from './app.js';
-import { getServerConfig } from './config/config.js';
+import { initializeDb } from './dal/db';
+import { createApp } from './app';
+import { getServerConfig } from './config/config';
 import { Logger } from '@OpsiMate/shared';
-import { initializePrivateKeysDir } from './dal/sshClient.js';
+import { initializePrivateKeysDir } from './dal/sshClient';
 
 const logger = new Logger('server');
-
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
+logger.fun()
+ 
 (async () => {
     const serverConfig = getServerConfig();
     
@@ -22,3 +22,4 @@ const logger = new Logger('server');
         logger.info(`Server running on ${HOST}:${PORT}`);
     });
 })();
+

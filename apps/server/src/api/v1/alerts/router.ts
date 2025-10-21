@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { AlertController } from './controller.js';
+import { AlertController } from './controller';
 
 export default function createAlertRouter(controller: AlertController) {
     const router = PromiseRouter();

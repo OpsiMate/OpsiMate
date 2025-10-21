@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
-import { runAsync } from './db.js';
-import { AlertRow } from './models.js';
+import { runAsync } from './db';
+import { AlertRow } from './models';
 import { Alert as SharedAlert } from '@OpsiMate/shared';
 
 export class AlertRepository {

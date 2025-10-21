@@ -7,11 +7,11 @@ import {providerConnectorFactory} from "../../../bl/providers/provider-connector
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
 import {ServiceNotFound} from "../../../bl/services/ServiceNotFound.js";
 import {checkSystemServiceStatus} from "../../../dal/sshClient.js";
-import { TagRepository } from '../../../dal/tagRepository.js';
-import { AlertBL } from '../../../bl/alerts/alert.bl.js';
+import { TagRepository } from '../../../dal/tagRepository';
+import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { isZodError } from "../../../utils/isZodError.js";
 import { ServicesBL } from "../../../bl/services/services.bl.js";
-import { AuthenticatedRequest } from '../../../middleware/auth.js';
+import { AuthenticatedRequest } from '../../../middleware/auth';
 
 const logger = new Logger('api/v1/services/controller');
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import {SecretsController} from './controller.js';
+import {SecretsController} from './controller';
 import multer from "multer";
 import {getSecurityConfig} from "../../../config/config.js";
 import * as path from 'node:path';

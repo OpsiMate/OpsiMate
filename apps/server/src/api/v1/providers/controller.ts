@@ -10,7 +10,7 @@ import {
 import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
 import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
 import {ProviderBL} from "../../../bl/providers/provider.bl.js";
-import {AuthenticatedRequest} from '../../../middleware/auth.js';
+import {AuthenticatedRequest} from '../../../middleware/auth';
 import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository.js";
 import { isZodError } from "../../../utils/isZodError.js";
 

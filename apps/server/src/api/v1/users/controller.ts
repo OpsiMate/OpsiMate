@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { isZodError } from '../../../utils/isZodError.js';
-import { UserBL } from '../../../bl/users/user.bl.js';
+import { isZodError } from '../../../utils/isZodError';
+import { UserBL } from '../../../bl/users/user.bl';
 import {CreateUserSchema, Logger, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema, UpdateProfileSchema} from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
-import { AuthenticatedRequest } from '../../../middleware/auth.js';
+import { AuthenticatedRequest } from '../../../middleware/auth';
 import { User } from '@OpsiMate/shared';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';

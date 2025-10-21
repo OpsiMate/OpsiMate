@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { IntegrationController } from './controller.js';
+import { IntegrationController } from './controller';
 
 export default function createIntegrationRouter(controller: IntegrationController) {
     const router = PromiseRouter();

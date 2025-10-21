@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { CreateTagSchema, UpdateTagSchema, TagIdSchema, ServiceTagSchema, Logger } from '@OpsiMate/shared';
-import { TagRepository } from '../../../dal/tagRepository.js';
+import { TagRepository } from '../../../dal/tagRepository';
 import {ServiceRepository} from "../../../dal/serviceRepository.js"; // can be refactored to use DI as well
-import { isZodError } from '../../../utils/isZodError.js';
+import { isZodError } from '../../../utils/isZodError';
 
-import { AlertBL } from '../../../bl/alerts/alert.bl.js';
+import { AlertBL } from '../../../bl/alerts/alert.bl';
 const logger = new Logger('api/v1/tags/controller');
 
 export class TagController {

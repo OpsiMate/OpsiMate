@@ -2,18 +2,20 @@
   "name": "@OpsiMate/server",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/src/index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/src/index.js",
-    "dev": "tsx src/index.ts",
-    "debug": "node --inspect=0.0.0.0:9229 --import=tsx/esm src/index.ts",
-    "build": "tsc",
+    "start": "node dist/index.js",
+    "debug": "node --inspect=0.0.0.0:9229 dist/index.js",
+    "build": "vite build --mode production",
+    "build-dev": "vite build --mode development",
     "clean": "rm -rf dist",
     "lint": "eslint src --ext .ts",
     "lint-fix": "eslint src --ext .ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "dev": "vite",
+    "preview": "node dist/index.js"
   },
   "dependencies": {
     "@OpsiMate/shared": "workspace:*",
@@ -28,6 +30,8 @@
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "vite": "^7.1.11",
+    "vite-plugin-node": "^7.0.0",
     "node-ssh": "^13.1.0",
     "sshpk": "^1.18.0",
     "zod": "^3.23.8"

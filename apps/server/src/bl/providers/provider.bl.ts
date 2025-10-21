@@ -4,7 +4,7 @@ import { providerConnectorFactory } from "./provider-connector/providerConnector
 import {ProviderRepository} from "../../dal/providerRepository.js";
 import {ServiceRepository} from "../../dal/serviceRepository.js";
 import {SecretsMetadataRepository} from "../../dal/secretsMetadataRepository.js";
-import { AuditBL } from '../audit/audit.bl.js';
+import { AuditBL } from '../audit/audit.bl';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
 import { checkSystemServiceStatus } from "../../dal/sshClient.js";
 

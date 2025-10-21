@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { getSecurityConfig } from '../config/config.js';
+import { getSecurityConfig } from '../config/config';
 import { decryptPassword } from "../utils/encryption.js";
 
 const __filename = fileURLToPath(import.meta.url);
