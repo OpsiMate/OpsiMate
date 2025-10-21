@@ -1,4 +1,4 @@
-name: CI
+name: Test Coverage
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  ci:
-    name: Run CI
+  coverage:
+    name: Generate Test Coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -40,38 +40,27 @@ jobs:
       - name: Build project
         run: pnpm run build
 
-      - name: Lint apps/client
-        run: pnpm --filter @OpsiMate/client lint --max-warnings=22
+      - name: Run server tests with coverage
+        run: pnpm --filter @OpsiMate/server test:coverage
 
-      - name: Lint apps/server
-        run: pnpm --filter @OpsiMate/server lint --max-warnings=0
+      - name: Run client tests with coverage
+        run: pnpm --filter @OpsiMate/client test:coverage
 
-      - name: Lint packages/shared
-        run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: |
+            apps/server/coverage/lcov.info
+            apps/client/coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
 
-      - name: Test apps/server
-        run: pnpm --filter @OpsiMate/server test
-
-      - name: Test apps/client
-        run: pnpm --filter @OpsiMate/client test:run
-
-      - name: Generate test coverage
-        run: |
-          pnpm --filter @OpsiMate/server test:coverage
-
-      - name: Upload test coverage
+      - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: test-coverage
+          name: coverage-reports
           path: |
             apps/server/coverage/
+            apps/client/coverage/
           retention-days: 30
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: |
-            apps/server/test-results/
-          retention-days: 7

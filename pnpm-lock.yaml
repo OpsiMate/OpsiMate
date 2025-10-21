@@ -263,7 +263,7 @@ importers:
         version: 5.4.19(@types/node@22.17.2)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.1)
+        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
 
   apps/server:
     dependencies:
@@ -358,6 +358,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      '@vitest/coverage-v8':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4)
       axios:
         specifier: ^1.7.9
         version: 1.11.0
@@ -385,6 +388,9 @@ importers:
       typescript:
         specifier: ^5.5.3
         version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
 
   packages/shared:
     dependencies:
@@ -10198,7 +10204,7 @@ snapshots:
       std-env: 3.9.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.1)
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -10247,7 +10253,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.1)
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -14026,7 +14032,7 @@ snapshots:
       tsx: 4.20.6
       yaml: 2.8.1
 
-  vitest@3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.1):
+  vitest@3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4

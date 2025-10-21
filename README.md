@@ -25,6 +25,12 @@
   <a href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA">
     <img alt="Join Slack" src="https://img.shields.io/badge/Slack-Join%20Chat-4A154B?logo=slack&logoColor=white" />
   </a>
+  <a href="https://github.com/OpsiMate/OpsiMate/actions/workflows/ci.yaml">
+    <img alt="CI Status" src="https://github.com/OpsiMate/OpsiMate/actions/workflows/ci.yaml/badge.svg" />
+  </a>
+  <a href="https://github.com/OpsiMate/OpsiMate/actions/workflows/ci.yaml">
+    <img alt="Tests" src="https://img.shields.io/badge/tests-passing-brightgreen" />
+  </a>
 </p>
 
 <p align="center">

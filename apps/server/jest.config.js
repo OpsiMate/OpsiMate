@@ -1,10 +1,16 @@
 export default {
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest',
+    '^.+\\.ts$': ['ts-jest', {
+      useESM: true,
+      tsconfig: {
+        module: 'ESNext',
+        moduleResolution: 'bundler'
+      }
+    }],
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [
@@ -13,16 +19,21 @@ export default {
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   transformIgnorePatterns: [
-    'node_modules/(?!(@kubernetes/client-node)/)'
+    'node_modules/(?!(@kubernetes/client-node|@OpsiMate/shared)/)'
   ],
   moduleNameMapper: {
-    '^@OpsiMate/shared$': '<rootDir>/../../packages/shared/dist/index.js',
+    '^@OpsiMate/shared$': '<rootDir>/../../packages/shared/src/index.ts',
   },
-  // Handle ES modules in node_modules
+  // Handle ES modules
   extensionsToTreatAsEsm: ['.ts'],
+  // Mock import.meta for Jest
   globals: {
     'ts-jest': {
-      useESM: true
+      useESM: true,
+      tsconfig: {
+        module: 'ESNext',
+        moduleResolution: 'bundler'
+      }
     }
   }
 };
