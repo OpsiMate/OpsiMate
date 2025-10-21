@@ -111,3 +111,10 @@ export type ServiceCustomFieldValueRow = {
     updated_at: string;
 };
 
+export type ResetPasswordRow = {
+    id: number;
+    user_id: number;
+    token_hash: string;
+    expires_at: string;
+    created_at: string;
+};

@@ -87,3 +87,30 @@ export function decryptPassword(encryptedPassword: string | undefined): string |
         return encryptedPassword;
     }
 }
+
+/**
+ * Hash a string using SHA-512
+ */
+export function hashString(token: string): string {
+    return crypto.createHash("sha512").update(token).digest("hex");
+}
+
+/**
+ * Generate a secure random token and its hash for password reset
+ * Returns the token, its hash, expiration time, and reset URL
+ * The token is valid for 15 minutes
+ * The reset URL is constructed using the APP_BASE_URL environment variable
+ * The token hash is generated using SHA-512
+ * The reset URL is in the format: `${APP_BASE_URL}/reset-password?token=${token}`
+ */
+export function generatePasswordResetInfo(): {
+    encryptedToken: string;
+    tokenHash: string;
+    expiresAt: Date;
+} {
+    const token = crypto.randomBytes(32).toString("hex");
+    const encryptedToken = encryptPassword(token)!;
+    const tokenHash = hashString(token);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
+    return { encryptedToken, tokenHash, expiresAt };
+}
