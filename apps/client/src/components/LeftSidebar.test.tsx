@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@/test/test-utils'
 import { LeftSidebar } from './LeftSidebar'
 import * as auth from '@/lib/auth'
 import { useLocation } from 'react-router-dom'
+import type { Location } from 'react-router-dom'
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -66,18 +67,27 @@ describe('LeftSidebar', () => {
     // Reset mocks
     vi.clearAllMocks()
     
-    // Setup localStorage mock
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    // Clear localStorage mock store to prevent state leakage
+    localStorageMock.clear()
+    
+    // Setup localStorage mock with configurable: true to allow re-definition
+    Object.defineProperty(window, 'localStorage', { 
+      value: localStorageMock,
+      configurable: true,
+      writable: true
+    })
     
     // Default to desktop viewport
     setViewport(VIEWPORTS.desktop.width, VIEWPORTS.desktop.height)
     mockMatchMedia(false)
     
     // Mock useLocation to return a default pathname
-    vi.mocked(useLocation).mockReturnValue({ pathname: '/' } as any)
+    vi.mocked(useLocation).mockReturnValue({ pathname: '/' } as Location)
   })
 
   afterEach(() => {
+    // Clear localStorage mock store after each test
+    localStorageMock.clear()
     vi.restoreAllMocks()
   })
 
@@ -186,7 +196,7 @@ describe('LeftSidebar', () => {
 
   describe('Active Route Highlighting', () => {
     it('highlights the active navigation item based on the current route', () => {
-      vi.mocked(useLocation).mockReturnValue({ pathname: '/providers' } as any)
+      vi.mocked(useLocation).mockReturnValue({ pathname: '/providers' } as Location)
       renderWithRole('admin')
       
       const providerLink = screen.getByRole('link', { name: /add provider/i })
@@ -194,7 +204,7 @@ describe('LeftSidebar', () => {
     })
 
     it('does not highlight non-active navigation items', () => {
-      vi.mocked(useLocation).mockReturnValue({ pathname: '/providers' } as any)
+      vi.mocked(useLocation).mockReturnValue({ pathname: '/providers' } as Location)
       renderWithRole('admin')
       
       const dashboardLink = screen.getByRole('link', { name: /dashboard/i })
@@ -464,11 +474,13 @@ describe('LeftSidebar', () => {
     it('hides branding text in collapsed state', () => {
       renderWithRole('admin', true)
       
+      // Find the branding container (parent div of the title/subtitle)
       const brandingTitle = screen.getByText('OpsiMate')
-      expect(brandingTitle).toBeInTheDocument()
+      const brandingContainer = brandingTitle.parentElement
       
-      const brandingSubtitle = screen.getByText('Operational Insights')
-      expect(brandingSubtitle).toBeInTheDocument()
+      // Assert the branding container has sr-only class when collapsed
+      expect(brandingContainer).toBeInTheDocument()
+      expect(brandingContainer).toHaveClass('sr-only')
     })
 
     it('logo link navigates to home page', () => {
@@ -486,7 +498,7 @@ describe('LeftSidebar', () => {
 
   describe('Visual Styling and Layout', () => {
     it('applies correct styling to active navigation item', () => {
-      vi.mocked(useLocation).mockReturnValue({ pathname: '/alerts' } as any)
+      vi.mocked(useLocation).mockReturnValue({ pathname: '/alerts' } as Location)
       renderWithRole('admin')
       
       const alertsLink = screen.getByRole('link', { name: /alerts/i })
@@ -494,7 +506,7 @@ describe('LeftSidebar', () => {
     })
 
     it('applies correct styling to inactive navigation items', () => {
-      vi.mocked(useLocation).mockReturnValue({ pathname: '/alerts' } as any)
+      vi.mocked(useLocation).mockReturnValue({ pathname: '/alerts' } as Location)
       renderWithRole('admin')
       
       const dashboardLink = screen.getByRole('link', { name: /dashboard/i })
@@ -539,7 +551,7 @@ describe('LeftSidebar', () => {
     })
 
     it('highlights profile button when on profile page', () => {
-      vi.mocked(useLocation).mockReturnValue({ pathname: '/profile' } as any)
+      vi.mocked(useLocation).mockReturnValue({ pathname: '/profile' } as Location)
       renderWithRole('admin')
       
       const profileLink = screen.getByRole('link', { name: /profile/i })
@@ -576,7 +588,7 @@ describe('LeftSidebar', () => {
       const routes = ['/', '/providers', '/my-providers', '/integrations', '/alerts', '/settings']
       
       routes.forEach(route => {
-        vi.mocked(useLocation).mockReturnValue({ pathname: route } as any)
+        vi.mocked(useLocation).mockReturnValue({ pathname: route } as Location)
         const { unmount } = renderWithRole('admin')
         
         // Verify component renders without errors
