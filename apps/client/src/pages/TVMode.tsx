@@ -625,6 +625,7 @@ const TVMode = ({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-10 h-9 text-sm"
                   title="Search services by name, provider, IP, or container image"
+                  aria-label="Search services"
                 />
                 {searchTerm && (
                   <Button

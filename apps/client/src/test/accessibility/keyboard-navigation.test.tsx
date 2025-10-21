@@ -8,7 +8,7 @@ import { Providers, TVMode } from "@/pages";
 import { LeftSidebar } from "@/components/LeftSidebar";
 
 
-{/*pages in <App/> */}
+/*pages in <App/> */
 /*
 <Route path="/" element={<Dashboard />} /> [✅]
 <Route path="/tv-mode" element={<TVMode />} /> [✅]
@@ -30,9 +30,12 @@ const testKeyboardNavigation = async (Component: React.ComponentType) => {
   const tabbables = Array.from(document.querySelectorAll(
     'button:not([disabled]):not([tabindex="-1"]):not([hidden]),' +
     'a[href]:not([tabindex="-1"]):not([hidden]),' +
-    'input:not([disabled]):not([tabindex="-1"]):not([hidden])'
+    'input:not([disabled]):not([tabindex="-1"]):not([hidden]),' +
+    'textarea:not([disabled]):not([tabindex="-1"]):not([hidden]),' +
+    'select:not([disabled]):not([tabindex="-1"]):not([hidden]),' +
+    '[tabindex="0"]:not([hidden])'
   ));
-
+ 
   expect(tabbables.length).toBeGreaterThan(1);
 
   await user.tab();
@@ -51,7 +54,7 @@ const testKeyboardNavigation = async (Component: React.ComponentType) => {
 const accessibleNameTest = async (Component: React.ComponentType) => {
   const user = userEvent.setup();
   render(<Component />);
-  const buttons= screen.queryAllByRole("button");
+  const buttons = screen.queryAllByRole("button");
   for(const button of buttons) {
     expect(button).toHaveAccessibleName();
   }
@@ -105,7 +108,7 @@ describe("Providers Accessibility", () => {
   });
 });
 
-describe("left sidebar accessibility", () => {
+describe("LeftSidebar Accessibility", () => {
   it("passes axe checks", async () => {
     const {container} = render(<LeftSidebar collapsed={false} />);
     const result = await axe(container);
