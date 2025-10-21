@@ -6,6 +6,10 @@ Welcome to the OpsiMate documentation directory. This contains detailed guides a
 
 ### Interface & Display
 - **[TV Mode](tv-mode.md)** - Full-screen monitoring interface for wall displays and operations centers
+- **[Secrets Management](secrets.md)** - Securely store and manage API keys, passwords, and tokens
+
+## Configuration
+- **[Secrets Management](secrets.md)** - How to add and reference secrets in OpsiMate
 
 ## Coming Soon
 
