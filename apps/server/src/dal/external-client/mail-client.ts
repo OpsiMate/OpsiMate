@@ -87,7 +87,7 @@ export class MailClient {
     }
 
     if (!token) {
-      throw new Error("Token is required to build reset password template");
+      throw new Error("Token is required for password reset email template");
     }
 
     const passwordResetHtml = passwordResetTemplate(
@@ -107,7 +107,7 @@ export class MailClient {
       case MailType.PASSWORD_RESET:
         return this.getResetPasswordTemplate(userName, token);
       default:
-        throw new Error(`Unsupported mail type: ${mailType}`);
+        throw new Error(`Unsupported mail type`);
     }
   }
 
