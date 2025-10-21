@@ -34,6 +34,7 @@
     "vite-plugin-node": "^7.0.0",
     "node-ssh": "^13.1.0",
     "sshpk": "^1.18.0",
+    "nodemailer": "^7.0.9",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -47,6 +48,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.5.5",
+    "@types/nodemailer": "^7.0.2",
     "@types/supertest": "^6.0.3",
     "axios": "^1.7.9",
     "babel-jest": "^30.0.4",

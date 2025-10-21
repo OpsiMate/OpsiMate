@@ -18,14 +18,14 @@ export class UserRepository {
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
                     full_name TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer')),
+                    role TEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `).run();
         });
     }
 
-    async createUser(email: string, password_hash: string, full_name: string, role: 'admin' | 'editor' | 'viewer'): Promise<{ lastID: number }> {
+    async createUser(email: string, password_hash: string, full_name: string, role: 'admin' | 'editor' | 'viewer' |'operation'): Promise<{ lastID: number }> {
         return runAsync<{ lastID: number }>(() => {
             const stmt = this.db.prepare(
                 'INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)' 
@@ -51,7 +51,7 @@ export class UserRepository {
         });
     }
 
-    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'): Promise<void> {
+    async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer'|'operation'): Promise<void> {
         return runAsync(() => {
             const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ?');
             stmt.run(newRole, email);
@@ -138,4 +138,11 @@ export class UserRepository {
             createdAt: row.created_at
         };
     };
+
+    async getUserByEmail(email: string): Promise<User | null> {
+        return runAsync(() => {
+             const row = this.db.prepare('SELECT id, email, full_name, role, created_at FROM users WHERE email = ?').get(email) as UserRow | undefined;
+            return row ? this.toSharedUser(row) : null;
+        });
+    }
 }

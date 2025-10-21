@@ -1,6 +1,3 @@
-// Global test setup
-import { Logger } from '@OpsiMate/shared';
-
 // Mock the Kubernetes client to avoid ES module issues
 jest.mock('@kubernetes/client-node', () => ({
     KubeConfig: jest.fn().mockImplementation(() => ({
