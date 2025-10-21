@@ -21,6 +21,9 @@
     --secondary: 174 100% 32%; /* Green - Babu */
     --secondary-foreground: 0 0% 100%;
 
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
+
     --muted: 220 13% 91%;
     --muted-foreground: 220 9% 45%; /* Medium Gray - Foggy */
 
@@ -65,7 +68,10 @@
     
     --secondary: 174 100% 32%;
     --secondary-foreground: 0 0% 100%;
-    
+
+    --info: 199 89% 50%;
+    --info-foreground: 210 40% 98%;
+
     --muted: 220 3.8% 15.9%;
     --muted-foreground: 215 27.9% 70.2%;
     

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { isZodError } from '../../../utils/isZodError.js';
 import { UserBL } from '../../../bl/users/user.bl.js';
-import {CreateUserSchema, Logger, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema, UpdateProfileSchema} from '@OpsiMate/shared';
+import {CreateUserSchema, Logger, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema, UpdateProfileSchema, ForgotPasswordSchema, ValidateResetTokenSchema, ResetPasswordSchema} from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth.js';
 import { User } from '@OpsiMate/shared';
@@ -265,6 +265,62 @@ export class UsersController {
                 return res.status(400).json({ success: false, error: 'Email already registered' });
             } else {
                 logger.error('Error updating user:', error);
+                return res.status(500).json({ success: false, error: 'Internal server error' });
+            }
+        }
+    }
+
+    forgotPasswordHandler = async (req: Request, res: Response) => {
+        try {
+            const { email } = ForgotPasswordSchema.parse(req.body);
+            await this.userBL.forgotPassword(email);
+            return res.status(200).json({ success: true, message: 'Password reset email sent' });
+        } catch (error) {
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            }
+
+            logger.error('Error processing forgot password request:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
+    validateResetPasswordTokenHandler = async (req: Request, res: Response) => {
+        try {
+            const { token } = ValidateResetTokenSchema.parse(req.body);
+            const isValid = await this.userBL.validateResetPasswordToken(token);
+            if (!isValid) {
+                return res.status(400).json({ success: false, error: 'Invalid or expired token' });
+            }
+            return res.status(200).json({ success: true, message: 'Token is valid' });
+        } catch (error) {
+            logger.error('Error validating reset password token:', error);
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            }
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
+    resetPasswordHandler = async (req: Request, res: Response) => {
+        try {
+            const { token, newPassword } = ResetPasswordSchema.parse(req.body);
+            await this.userBL.resetPassword(token, newPassword);
+            return res.status(200).json({ success: true, message: 'Password has been reset successfully' });
+        } catch (error) {
+            logger.error('Error resetting password:', error);
+            
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            }
+            
+            if (error instanceof Error && (
+                error.message === 'Invalid or expired token' || 
+                error.message === 'User not found' ||
+                error.message === 'You cannot reuse an old password')
+            ) {
+                return res.status(400).json({ success: false, error: error.message });
+            } else {
                 return res.status(500).json({ success: false, error: 'Internal server error' });
             }
         }

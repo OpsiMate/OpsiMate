@@ -71,10 +71,13 @@ async function apiRequest<T>(
       // Try to parse the error as JSON to handle validation errors properly
 
         if(response.status === 401){
-            window.location.href = "/login?expired=true";
-            localStorage.removeItem('jwt');
+          localStorage.removeItem('jwt');
 
+          const authPages = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
+          if (!authPages.has(location.pathname)) {
             // navigate to login /login
+            window.location.href = "/login?expired=true";
+          }
         }
 
       try {
