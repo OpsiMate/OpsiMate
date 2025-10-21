@@ -84,7 +84,7 @@ function getDefaultConfig(): OpsimateConfig {
     return {
         server: {
             port: 3001,
-            host: 'localhost'
+            host: '0.0.0.0'
         },
         database: {
             path: '../../data/database/opsimate.db'
