@@ -37,6 +37,7 @@ import { Service } from "@/components/ServiceTable"
 import { Alert } from "@OpsiMate/shared"
 import { getAlertServiceId } from "@/utils/alert.utils";
 import { Filters } from "@/components/Dashboard"
+import {canOperate} from "@/lib/permissions.ts";
 
 interface TVModeProps {
   autoRefresh?: boolean
@@ -971,7 +972,7 @@ const TVMode = ({
                         )}
                         
                         {/* Compact Actions Dropdown */}
-                        <DropdownMenu>
+                        {canOperate() &&(<DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
@@ -1023,7 +1024,7 @@ const TVMode = ({
                               Restart
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                        </DropdownMenu>)}
                       </div>
                     )}
                   </div>

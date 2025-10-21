@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils"
 import { Link, useLocation } from "react-router-dom"
 import { AppIcon } from "./icons/AppIcon"
 import { ProfileButton } from "./ProfileButton"
-import { isAdmin, isEditor, isViewer } from "../lib/auth"
+import {isAdmin, isEditor, isOperation, isViewer} from "../lib/auth"
+
 import { Tooltip,TooltipTrigger,TooltipContent, TooltipProvider } from "@radix-ui/react-tooltip"
- 
+
 interface LeftSidebarProps {
   collapsed: boolean
 }
@@ -67,10 +68,10 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           </Button>
         }
 
-        {!isViewer() &&( <Button
+        {isEditor() &&( <Button
             variant={location.pathname === "/my-providers" ? "default" : "ghost"}
             className={cn(
-              "gap-3 h-10", 
+              "gap-3 h-10",
               collapsed ? "w-10 justify-center p-0" : "w-full justify-start px-3",
               location.pathname === "/my-providers" && "text-primary-foreground"
             )}
@@ -117,7 +118,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
       </div>
 
       <div className={cn("p-4 mt-auto flex flex-col gap-3", collapsed && "items-center")}>
-      
+
         <div className={cn("flex flex-col gap-2 items-center")}>
           {isAdmin() && (
             <Button 
@@ -137,7 +138,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           )}
           <ProfileButton collapsed={collapsed} />
 
-          <TooltipProvider>        
+          <TooltipProvider>
           <div className="flex flex-col items-center gap-2">
             <div className="flex gap-2">
               <Tooltip>
@@ -198,11 +199,11 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             >
               © 2024 OpsiMate
             </p>
-          </div> 
+          </div>
           </TooltipProvider>
-        
+
         </div>
- 
+
 </div>
     </div>
   )
