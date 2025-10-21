@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { getSecurityConfig } from '../config/config';
-import { decryptPassword } from "../utils/encryption.js";
+import { decryptPassword } from "../utils/encryption";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,7 +29,7 @@ function getKeyPath(filename: string) {
 }
 
 const createClient = (_provider: Provider): k8s.CoreV1Api => {
-    const encryptedKubeConfig = fs.readFileSync(getKeyPath(_provider.privateKeyFilename!), 'utf-8');
+    const encryptedKubeConfig = fs.readFileSync(getKeyPath(_provider.privateKeyFilename), 'utf-8');
     const decryptedKubeConfig = decryptPassword(encryptedKubeConfig);
 
     const kc: k8s.KubeConfig = new k8s.KubeConfig();

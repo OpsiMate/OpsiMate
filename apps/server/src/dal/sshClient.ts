@@ -6,7 +6,7 @@ import { dirname } from 'node:path';
 
 import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
 import {getSecurityConfig, getVmConfig} from '../config/config';
-import {decryptPassword} from "../utils/encryption.js";
+import {decryptPassword} from "../utils/encryption";
 
 const logger = new Logger('dal/sshClient');
 

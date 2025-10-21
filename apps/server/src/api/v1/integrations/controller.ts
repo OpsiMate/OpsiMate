@@ -4,8 +4,8 @@ import {
     Integration, IntegrationResponse,
     IntegrationTagsquerySchema, Logger
 } from "@OpsiMate/shared";
-import { IntegrationBL } from "../../../bl/integrations/integration.bl.js";
-import { isZodError } from "../../../utils/isZodError.js";
+import { IntegrationBL } from "../../../bl/integrations/integration.bl";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger("v1/integrations/controller");
 

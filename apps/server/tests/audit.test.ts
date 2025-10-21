@@ -1,7 +1,7 @@
 import request, { SuperTest, Test } from 'supertest';
 import { Logger, AuditActionType, AuditResourceType, AuditLog } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/app';
 
 const logger = new Logger('test-audit');
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ViewBL } from '../../../bl/custom-views/custom-view.bl';
 import { Logger } from '@OpsiMate/shared';
-import {SavedView} from "../../../dal/viewRepository.js";
+import {SavedView} from "../../../dal/viewRepository";
 import { AuthenticatedRequest } from '../../../middleware/auth';
 
 const logger = new Logger('api/v1/views/controller');

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { CreateTagSchema, UpdateTagSchema, TagIdSchema, ServiceTagSchema, Logger } from '@OpsiMate/shared';
 import { TagRepository } from '../../../dal/tagRepository';
-import {ServiceRepository} from "../../../dal/serviceRepository.js"; // can be refactored to use DI as well
+import {ServiceRepository} from "../../../dal/serviceRepository"; // can be refactored to use DI as well
 import { isZodError } from '../../../utils/isZodError';
 
 import { AlertBL } from '../../../bl/alerts/alert.bl';

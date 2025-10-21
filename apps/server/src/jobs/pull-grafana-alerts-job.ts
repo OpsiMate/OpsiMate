@@ -2,8 +2,8 @@
 import {IntegrationType, Logger} from '@OpsiMate/shared';
 import {TagRepository} from '../dal/tagRepository';
 import {GrafanaClient} from '../dal/external-client/grafana-client';
-import {AlertBL} from "../bl/alerts/alert.bl.js";
-import {IntegrationBL} from "../bl/integrations/integration.bl.js";
+import {AlertBL} from "../bl/alerts/alert.bl";
+import {IntegrationBL} from "../bl/integrations/integration.bl";
 
 
 const logger = new Logger('pull-grafana-alerts-job');

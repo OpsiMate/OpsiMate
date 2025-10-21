@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isZodError } from '../src/utils/isZodError.js';
+import { isZodError } from '../src/utils/isZodError';
 
 describe('isZodError', () => {
   test('returns true for a real ZodError', () => {

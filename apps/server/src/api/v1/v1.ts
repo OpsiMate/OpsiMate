@@ -8,19 +8,19 @@ import integrationRouter from './integrations/router';
 import alertRouter from './alerts/router';
 import usersRouter from './users/router';
 import createAuditRouter from './audit/router';
-import {ProviderController} from "./providers/controller.js";
-import {ServiceController} from "./services/controller.js";
-import {ViewController} from "./views/controller.js";
-import {TagController} from "./tags/controller.js";
-import {IntegrationController} from "./integrations/controller.js";
-import {AlertController} from "./alerts/controller.js";
+import {ProviderController} from "./providers/controller";
+import {ServiceController} from "./services/controller";
+import {ViewController} from "./views/controller";
+import {TagController} from "./tags/controller";
+import {IntegrationController} from "./integrations/controller";
+import {AlertController} from "./alerts/controller";
 import {UsersController} from './users/controller';
 import {AuditController} from './audit/controller';
 import {authenticateJWT} from '../../middleware/auth';
-import createSecretsRouter from "./secrets/router.js";
-import {SecretsController} from "./secrets/controller.js";
-import createCustomFieldsRouter from "./custom-fields/router.js";
-import {CustomFieldsController} from "./custom-fields/controller.js";
+import createSecretsRouter from "./secrets/router";
+import {SecretsController} from "./secrets/controller";
+import createCustomFieldsRouter from "./custom-fields/router";
+import {CustomFieldsController} from "./custom-fields/controller";
 
 
 export default function createV1Router(

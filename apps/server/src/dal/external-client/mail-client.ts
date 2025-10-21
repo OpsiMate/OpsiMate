@@ -1,7 +1,7 @@
 import { Logger } from "@OpsiMate/shared";
 import nodemailer from "nodemailer";
-import { getMailerConfig } from "../../config/config.js";
-import { passwordResetTemplate } from "../../utils/mailTemplate.js";
+import { getMailerConfig } from "../../config/config";
+import { passwordResetTemplate } from "../../utils/mailTemplate";
 
 export enum MailType {
   PASSWORD_RESET = "PASSWORD_RESET",
