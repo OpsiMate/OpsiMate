@@ -19,6 +19,7 @@ export enum Role {
     Admin = 'admin',
     Editor = 'editor',
     Viewer = 'viewer',
+    Operation = 'operation',
 }
 
 export enum SecretType {
@@ -168,4 +169,18 @@ export interface ServiceCustomFieldValue {
     value: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface ResetPassword {
+    id: number;
+    userId: number;
+    tokenHash: string;
+    expiresAt: string;
+    createdAt: string;
+}
+
+export interface ResetPasswordType {
+    userId: number; 
+    tokenHash: string;
+    expiresAt: Date;
 }

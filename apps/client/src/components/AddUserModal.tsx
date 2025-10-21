@@ -142,6 +142,7 @@ export function AddUserModal({ isOpen, onClose, onUserCreated }: AddUserModalPro
                       <SelectItem value={Role.Viewer}>Viewer</SelectItem>
                       <SelectItem value={Role.Editor}>Editor</SelectItem>
                       <SelectItem value={Role.Admin}>Admin</SelectItem>
+                      <SelectItem value={Role.Operation}>Operation</SelectItem>
                     </SelectContent>
                   </Select>
             </div>

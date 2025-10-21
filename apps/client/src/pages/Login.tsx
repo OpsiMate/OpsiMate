@@ -5,6 +5,7 @@ import { apiRequest } from '../lib/api';
 import { API_BASE_URL } from '../lib/api';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { Link } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ const Login: React.FC = () => {
   const { generalError, clearErrors, handleApiResponse } = useFormErrors({ showFieldErrors: false });
 
   useEffect(() => {
-    if (localStorage.getItem('jwt')) {
+    if (localStorage.getItem('jwt') && window.location.pathname === '/login') {
       window.location.href = '/';
     }
   }, []);
@@ -78,6 +79,11 @@ const Login: React.FC = () => {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Logging in...' : 'Login'}
         </Button>
+        <div className="mt-4 text-center">
+          <Link to="/forgot-password" className="text-primary hover:underline text-sm">
+            Forgot password?
+          </Link>
+        </div>
       </form>
     </div>
   );
