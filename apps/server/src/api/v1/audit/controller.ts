@@ -10,8 +10,15 @@ export class AuditController {
     getAuditLogsPaginated = async (req: Request, res: Response) => {
         const page = parseInt(req.query.page as string) || 1;
         const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const filters = {
+         userName: req.query.userName as string | undefined,
+         actionType: req.query.actionType as string | undefined,
+         resourceType: req.query.resourceType as string | undefined,
+         resourceName: req.query.resourceName as string | undefined,
+        };
+
         try {
-            const result = await this.auditBL.getAuditLogsPaginated(page, pageSize);
+            const result = await this.auditBL.getAuditLogsPaginated(page, pageSize, filters);
             // result.logs now includes userName and resourceName
             return res.json(result);
         } catch (error) {

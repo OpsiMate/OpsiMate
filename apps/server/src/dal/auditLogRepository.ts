@@ -47,13 +47,50 @@ export class AuditLogRepository {
         });
     }
 
-    async getAuditLogs(offset: number, limit: number): Promise<AuditLog[]> {
+    private buildWhereClause( filters: {userName?: string; actionType?: string; resourceType?: string; resourceName?: string}) {
+       const where: string[] = [];
+       const params: unknown[] = [];
+    
+       if(filters.userName || filters.resourceName){
+           const searchQuery = filters.userName || filters.resourceName;
+            where.push('(LOWER(user_name) LIKE LOWER(?) OR LOWER(resource_name) LIKE LOWER(?))');
+            params.push(`%${searchQuery}%`, `%${searchQuery}%`);
+        }
+
+       if (filters.actionType) {
+            where.push('action_type = ?');
+            params.push(filters.actionType);
+        }
+
+        if (filters.resourceType) {
+            where.push('resource_type = ?');
+            params.push(filters.resourceType);
+        }
+
+               const result = {
+            clause: where.length ? `WHERE ${where.join(' AND ')}` : '',
+            params,
+        };
+
+
+        return result;
+
+    
+    
+    }
+    
+    async getAuditLogs(
+    offset: number,
+     limit: number,
+      filters:{userName?: string; actionType?: string; resourceType?: string; resourceName?:string }): Promise<AuditLog[]> {
         return runAsync(() => {
+            const { clause, params } = this.buildWhereClause(filters);
             const rows = this.db.prepare(`
                 SELECT * FROM audit_logs
+                ${clause}
                 ORDER BY timestamp DESC
                 LIMIT ? OFFSET ?
-            `).all(limit, offset) as AuditLogRow[];
+            `).all(...params,limit, offset) as AuditLogRow[];
             return rows.map(row => ({
                 id: row.id,
                 actionType: row.action_type,
@@ -68,10 +105,15 @@ export class AuditLogRepository {
         });
     }
 
-    async countAuditLogs(): Promise<number> {
+    async countAuditLogs(
+     filters: { userName?: string; actionType?: string; resourceType?: string; resourceName?: string }): Promise<number> {
         return runAsync(() => {
-            const stmt = this.db.prepare('SELECT COUNT(*) as count FROM audit_logs');
-            const row = stmt.get() as { count: number };
+            const { clause,params } = this.buildWhereClause(filters);
+            const stmt = this.db.prepare(`
+            SELECT COUNT(*) as count FROM audit_logs
+            ${clause}
+            `);
+            const row = stmt.get(...params) as { count: number };
             return row.count;
         });
     }
