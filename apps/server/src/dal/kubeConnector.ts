@@ -29,6 +29,9 @@ function getKeyPath(filename: string) {
 }
 
 const createClient = (_provider: Provider): k8s.CoreV1Api => {
+    if (!_provider.privateKeyFilename) {
+        throw new Error('Provider must have a private key filename');
+    }
     const encryptedKubeConfig = fs.readFileSync(getKeyPath(_provider.privateKeyFilename), 'utf-8');
     const decryptedKubeConfig = decryptPassword(encryptedKubeConfig);
 

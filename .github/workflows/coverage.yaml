@@ -50,7 +50,7 @@ jobs:
             apps/server/coverage/lcov.info
           flags: unittests
           name: server-coverage
-          fail_ci_if_error: false
+          fail_ci_if_error: true
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
