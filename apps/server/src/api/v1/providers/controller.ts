@@ -7,12 +7,12 @@ import {
     Provider,
     User
 } from "@OpsiMate/shared";
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
-import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
-import {ProviderBL} from "../../../bl/providers/provider.bl.js";
+import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
+import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
+import {ProviderBL} from "../../../bl/providers/provider.bl";
 import {AuthenticatedRequest} from '../../../middleware/auth';
-import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository.js";
-import { isZodError } from "../../../utils/isZodError.js";
+import {SecretsMetadataRepository} from "../../../dal/secretsMetadataRepository";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger: Logger = new Logger('server');
 
