@@ -2,11 +2,17 @@ import { useQuery } from '@tanstack/react-query';
 import { providerApi } from '@/lib/api';
 import { queryKeys } from '../queryKeys';
 
-export const useServiceLogs = (id: number) => {
+interface LogFetchOptions {
+  rowLimit?: number;
+  sizeLimitMB?: number;
+  includeErrors?: boolean;
+}
+
+export const useServiceLogs = (id: number, options?: LogFetchOptions) => {
   return useQuery({
-    queryKey: queryKeys.serviceLogs(id),
+    queryKey: [queryKeys.serviceLogs(id), options],
     queryFn: async () => {
-      const response = await providerApi.getServiceLogs(id);
+      const response = await providerApi.getServiceLogs(id, options);
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch service logs');
       }

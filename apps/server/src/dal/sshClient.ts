@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
-import {DiscoveredService, Provider, Logger} from "@OpsiMate/shared";
+import {DiscoveredService, Provider, Logger, LogOptions} from "@OpsiMate/shared";
 import {getSecurityConfig, getVmConfig} from '../config/config.js';
 import {decryptPassword} from "../utils/encryption.js";
 
@@ -188,14 +188,27 @@ export async function stopService(
     }
 }
 
-export async function getServiceLogs(provider: Provider, serviceName: string): Promise<string[]> {
+export async function getServiceLogs(provider: Provider, serviceName: string, options?: LogOptions): Promise<string[]> {
     const ssh = new NodeSSH();
 
     try {
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        const cmd = `docker logs --since 1h ${serviceName} 2>&1 | grep -i err | tail -n 10`;
+        const rowLimit = options?.rowLimit || 100;
+        const sizeLimitMB = options?.sizeLimitMB || 10;
+        const includeErrors = options?.includeErrors !== false;
+
+        // Build docker logs command with appropriate filters
+        let cmd = `docker logs --since 1h ${serviceName} 2>&1`;
+
+        if (!includeErrors) {
+            // Filter out lines that contain error keywords
+            cmd += ` | grep -v -i 'error\\|warn\\|exception\\|fail\\|critical'`;
+        }
+
+        // Limit output to specified number of lines
+        cmd += ` | tail -n ${rowLimit}`;
 
         const result = await execCommandWithAutoSudo(ssh, cmd);
 
@@ -204,11 +217,26 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
         }
 
         // Split logs into an array, filter out empty lines
-        const logs = result.stdout
+        const logLines = result.stdout
             .split('\n')
-            .filter(line => line.trim().length > 0);
+            .filter((line: string) => line.trim().length > 0);
 
-        return logs.length > 0 ? logs : ['No error logs found in the last 24 hours'];
+        // Apply size limit (approximately)
+        const sizeLimitBytes = sizeLimitMB * 1024 * 1024;
+        let totalSize = 0;
+        const limitedLogs: string[] = [];
+
+        for (const line of logLines) {
+            totalSize += Buffer.byteLength(line, 'utf8');
+            if (totalSize > sizeLimitBytes) {
+                break;
+            }
+            limitedLogs.push(line);
+        }
+
+        return limitedLogs.length > 0 
+            ? limitedLogs 
+            : ['No logs found in the last hour'];
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -263,24 +291,53 @@ export async function stopSystemService(
 /**
  * Gets logs for a system service
  */
-export async function getSystemServiceLogs(provider: Provider, serviceName: string): Promise<string[]> {
+export async function getSystemServiceLogs(provider: Provider, serviceName: string, options?: LogOptions): Promise<string[]> {
     const ssh = new NodeSSH();
     try {
         const sshConfig = getSshConfig(provider);
         await ssh.connect(sshConfig);
 
-        // Get logs using journalctl
-        const result = await execCommandWithAutoSudo(ssh, `journalctl -u ${serviceName} --since "24 hours ago" --no-pager`);
+        const rowLimit = options?.rowLimit || 100;
+        const sizeLimitMB = options?.sizeLimitMB || 10;
+        const includeErrors = options?.includeErrors !== false;
+
+        // Build journalctl command with appropriate filters
+        let cmd = `journalctl -u ${serviceName} --since "24 hours ago" --no-pager`;
+
+        if (!includeErrors) {
+            // Filter out lines by priority (exclude notice, info, debug)
+            cmd += ` -p err -p warning -p crit -p alert -p emerg`;
+        }
+
+        // Limit output to specified number of lines
+        cmd += ` | tail -n ${rowLimit}`;
+
+        const result = await execCommandWithAutoSudo(ssh, cmd);
         if (result.code !== 0) {
             throw new Error(`Failed to get logs for ${serviceName}: ${result.stderr}`);
         }
 
         // Split logs into an array, filter out empty lines
-        const logs = result.stdout
+        const logLines = result.stdout
             .split('\n')
-            .filter(line => line.trim().length > 0);
+            .filter((line: string) => line.trim().length > 0);
 
-        return logs.length > 0 ? logs : ['No logs found in the last 24 hours'];
+        // Apply size limit (approximately)
+        const sizeLimitBytes = sizeLimitMB * 1024 * 1024;
+        let totalSize = 0;
+        const limitedLogs: string[] = [];
+
+        for (const line of logLines) {
+            totalSize += Buffer.byteLength(line, 'utf8');
+            if (totalSize > sizeLimitBytes) {
+                break;
+            }
+            limitedLogs.push(line);
+        }
+
+        return limitedLogs.length > 0 
+            ? limitedLogs 
+            : ['No logs found in the last 24 hours'];
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
