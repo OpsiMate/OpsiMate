@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Copy,
   ExternalLink,
   FileText,
   Package,
@@ -18,7 +19,8 @@ import {
   Tag as TagIcon,
   X
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { LogSearchInput } from "./LogSearchInput";
 import { AlertsSection } from "./AlertsSection";
 import { IntegrationDashboardDropdown } from "./IntegrationDashboardDropdown";
 import { Service } from "./ServiceTable";
@@ -26,6 +28,8 @@ import { TagSelector } from "./TagSelector";
 import { EditableCustomField } from "./EditableCustomField";
 import { useCustomFields, useUpsertCustomFieldValue } from "../hooks/queries/custom-fields";
 import { ServiceCustomField } from "@OpsiMate/shared";
+import { useServiceLogs, formatDateTimeLocal } from "../hooks/useServiceLogs";
+
 
 interface RightSidebarProps {
   service: Service | null;
@@ -36,13 +40,31 @@ interface RightSidebarProps {
   onAlertDismiss?: (alertId: string) => void;
 }
 
-export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpdate, alerts = [], onAlertDismiss }: RightSidebarProps) {
+export function RightSidebarWithLogs({ service, onClose, collapsed, onServiceUpdate, alerts = [], onAlertDismiss }: RightSidebarProps) {
   const { toast } = useToast();
-  const [logs, setLogs] = useState<string[]>([]);
   const [pods, setPods] = useState<{ name: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [podsLoading, setPodsLoading] = useState(false);
+  const [podsError, setPodsError] = useState<string | null>(null);
   const [serviceTags, setServiceTags] = useState<Tag[]>(service?.tags || []);
+
+  // Use the custom hook for logs-related functionality
+  const {
+    logs,
+    filteredLogs,
+    loading,
+    error,
+    searchKeyword,
+    timeFilter,
+    customTimeRange,
+    showCustomTimeDialog,
+    setSearchKeyword,
+    setTimeFilter,
+    setCustomTimeRange,
+    setShowCustomTimeDialog,
+    fetchLogs,
+    copyLogsToClipboard,
+    highlightLog,
+  } = useServiceLogs({ serviceId: service?.id });
 
   // Custom fields hooks
   const { data: customFields } = useCustomFields();
@@ -93,37 +115,6 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
     }));
   }, []);
 
-  const fetchLogs = useCallback(async () => {
-    if (!service) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await providerApi.getServiceLogs(parseInt(service.id));
-
-      if (response.success && response.data) {
-        setLogs(response.data);
-      } else {
-        setError(response.error || "Failed to fetch logs");
-        toast({
-          title: "Error fetching logs",
-          description: response.error || "Failed to fetch logs",
-          variant: "destructive"
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
-      toast({
-        title: "Error fetching logs",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [service, toast]);
-
   const fetchPods = useCallback(async () => {
     if (!service) return;
     
@@ -132,15 +123,15 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setPodsLoading(true);
+    setPodsError(null);
     try {
       const response = await providerApi.getServicePods(parseInt(service.id));
 
       if (response.success && response.data) {
           setPods(response.data);
       } else {
-        setError(response.error || "Failed to fetch pods");
+        setPodsError(response.error || "Failed to fetch pods");
         toast({
           title: "Error fetching pods",
           description: response.error || "Failed to fetch pods",
@@ -149,14 +140,14 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
+      setPodsError(errorMessage);
       toast({
         title: "Error fetching pods",
         description: errorMessage,
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setPodsLoading(false);
     }
   }, [service, toast]);
 
@@ -174,10 +165,10 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
     }
   }, [service]);
 
+  // fetch tags when service changes (fetchLogs is already handled by useServiceLogs hook)
   useEffect(() => {
-    fetchLogs();
     fetchTags();
-  }, [service?.id, fetchLogs, fetchTags]);
+  }, [service?.id, fetchTags]);
 
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     setServiceTags(newTags);
@@ -429,32 +420,196 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
             isOpen={sectionsOpen.logs}
             onToggle={() => toggleSection('logs')}
           >
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-muted-foreground text-xs">Recent logs</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchLogs}
-                  disabled={loading}
-                  className="h-6 w-6 p-0"
-                >
-                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                </Button>
+            <div className="pt-2 space-y-2">
+              {/* Header with counter, copy, and refresh */}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-xs">
+                  Recent logs{logs.length > 0 ?
+                    ` (${filteredLogs.length}/${logs.length})` :
+                    ': No current logs'}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyLogsToClipboard}
+                    disabled={filteredLogs.length === 0}
+                    className="h-6 w-6 p-0"
+                    title="Copy filtered logs to clipboard"
+                    aria-label="Copy filtered logs to clipboard"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchLogs}
+                    disabled={loading}
+                    className="h-6 w-6 p-0"
+                    title="Refresh logs"
+                    aria-label="Refresh logs"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {/* persists across remounts using sessionStorage */}
+                <LogSearchInput
+                  persistKey={`service-${service?.id || 'unknown'}`}
+                  onSearchChange={setSearchKeyword}
+                  placeholder="Search logs..."
+                />
+
+                {/* Time filter */}
+                <div className="flex gap-1">
+                  <select
+                    value={timeFilter}
+                    onChange={(e) => {
+                      const value = e.target.value as typeof timeFilter;
+                      if (value === "custom") {
+                        setShowCustomTimeDialog(true);
+                      } else {
+                        setTimeFilter(value);
+                        // Clear custom range when selecting other options
+                        if (customTimeRange) {
+                          setCustomTimeRange(null);
+                        }
+                      }
+                    }}
+                    className="flex-1 h-7 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="custom">{customTimeRange ? '✓ Custom range' : 'Custom range...'}</option>
+                    <option value="30m">Last 30 minutes</option>
+                    <option value="1h">Last 1 hour</option>
+                    <option value="6h">Last 6 hours</option>
+                    <option value="12h">Last 12 hours</option>
+                    <option value="24h">Last 24 hours</option>
+                    <option value="all">All time</option>
+                    {/* additional time ranges - uncomment if needed
+                    <option value="3d">Last 3 days</option>
+                    <option value="7d">Last 7 days</option>
+                    */}
+                  </select>
+                  {timeFilter === "custom" && customTimeRange && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setTimeFilter("all");
+                        setCustomTimeRange(null);
+                      }}
+                      className="h-7 px-2"
+                      title="Clear custom range"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
+              {/* Custom Time Range Dialog */}
+              {showCustomTimeDialog && (
+                <div 
+                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                  onClick={() => setShowCustomTimeDialog(false)}
+                >
+                  <div 
+                    className="bg-background border border-border rounded-lg p-4 w-[320px] shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 className="text-sm font-semibold mb-3">Custom Time Range</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Start Time</label>
+                        <input
+                          type="datetime-local"
+                          value={customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000))}
+                          onChange={(e) => {
+                            const newStart = e.target.value;
+                            const newEnd = customTimeRange?.end || formatDateTimeLocal(new Date());
+                            setCustomTimeRange({ start: newStart, end: newEnd });
+                          }}
+                          className="w-full h-8 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">End Time</label>
+                        <input
+                          type="datetime-local"
+                          value={customTimeRange?.end || formatDateTimeLocal(new Date())}
+                          onChange={(e) => {
+                            const newEnd = e.target.value;
+                            const newStart = customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000));
+                            setCustomTimeRange({ start: newStart, end: newEnd });
+                          }}
+                          className="w-full h-8 px-2 text-xs border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCustomTimeDialog(false)}
+                          className="h-7 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            // Auto-set defaults if not set (using local time)
+                            const start = customTimeRange?.start || formatDateTimeLocal(new Date(Date.now() - 5 * 60 * 1000));
+                            const end = customTimeRange?.end || formatDateTimeLocal(new Date());
+                            
+                            // ensure start <= end (swap if needed)
+                            const startDate = new Date(start);
+                            const endDate = new Date(end);
+                            const normalized = startDate > endDate ? { start: end, end: start } : { start, end };
+                            
+                            setCustomTimeRange(normalized);
+                            setTimeFilter("custom");
+                            setShowCustomTimeDialog(false);
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {loading ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-pulse text-muted-foreground text-xs">Loading logs...</div>
                 </div>
               ) : error ? (
-                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{error}</div>
+                <div className="text-red-500 py-2 text-xs bg-red-50 dark:bg-red-950 rounded p-2">{error}</div>
               ) : logs.length === 0 ? (
                 <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">No logs available</div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">
+                  No logs match your search
+                </div>
               ) : (
-                <div className="bg-muted rounded-md p-3 overflow-auto max-h-[200px] border">
-                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground">
-                    {logs.join('\n')}
+                <div className="bg-muted rounded-md p-3 overflow-auto max-h-[300px] border">
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground leading-relaxed">
+                    {filteredLogs.map((log, i) => {
+                      const highlighted = highlightLog(log);
+                      const parts = highlighted.split('⚡');
+                      return (
+                        <div key={i} className="hover:bg-muted/50 px-1 -mx-1 rounded">
+                          {parts.map((part, j) => 
+                            j % 2 === 1 ? (
+                              <span key={j} className="bg-yellow-200 dark:bg-yellow-500/30 text-foreground font-semibold px-0.5 rounded">{part}</span>
+                            ) : (
+                              <span key={j}>{part}</span>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
                   </pre>
                 </div>
               )}
@@ -476,20 +631,20 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
                   variant="ghost"
                   size="sm"
                   onClick={fetchPods}
-                  disabled={loading}
+                  disabled={podsLoading}
                   className="h-6 w-6 p-0"
                 >
-                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-3 w-3 ${podsLoading ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
 
-              {loading ? (
+              {podsLoading ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-pulse text-muted-foreground text-xs">Loading pods...</div>
                 </div>
-              ) : error ? (
-                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{error}</div>
-              ) : logs.length === 0 ? (
+              ) : podsError ? (
+                <div className="text-red-500 py-2 text-xs bg-red-50 rounded p-2">{podsError}</div>
+              ) : pods.length === 0 ? (
                 <div className="text-muted-foreground py-2 text-xs bg-muted/30 rounded p-2 text-center">No pods available</div>
               ) : (
                 <div className="bg-muted rounded-md p-3 overflow-auto max-h-[200px] border">
@@ -523,4 +678,4 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({ service
       </div>
     </div>
   );
-});
+}

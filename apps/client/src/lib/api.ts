@@ -11,6 +11,19 @@ export type ApiResponse<T = unknown> = {
   [key: string]: unknown; // Allow extra properties like token
 };
 
+// API provider response type from backend
+export type ApiProvider = {
+  id: number;
+  name: string;
+  providerIP?: string;
+  username?: string;
+  privateKeyFilename?: string;
+  SSHPort?: number;
+  createdAt?: string;
+  providerType?: string;
+  status?: string;
+};
+
 /**
  * Generic API request handler
  */
@@ -45,12 +58,16 @@ async function apiRequest<T>(
   }
 
   try {
-    console.log(`API Request: ${method} ${url}`, data ? { data } : '');
+    if (import.meta?.env?.DEV) {
+      console.log(`API Request: ${method} ${url}`, data ? { data } : '');
+    }
     const response = await fetch(url, options);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`API Error (${response.status}):`, errorText);
+      if (import.meta?.env?.DEV) {
+        console.error(`API Error (${response.status}):`, errorText);
+      }
       // Try to parse the error as JSON to handle validation errors properly
 
         if(response.status === 401){
@@ -79,7 +96,9 @@ async function apiRequest<T>(
     }
 
     const result = await response.json();
-    console.log(`API Response (${method} ${url}):`, result);
+    if (import.meta?.env?.DEV) {
+      console.log(`API Response (${method} ${url}):`, result);
+    }
     return result as ApiResponse<T>;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -135,11 +154,11 @@ export const providerApi = {
   // Get all providers
   getProviders: async () => {
     try {
-      const response = await apiRequest<{providers: Array<{ id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; providerType: string }>}>('/providers');
+      const response = await apiRequest<{providers: ApiProvider[]}>('/providers');
 
       // The server already returns camelCase, so no transformation needed
       if (response.success && response.data && response.data.providers) {
-        const transformedProviders = response.data.providers.map((provider: { id: number; name: string; providerIP: string; username: string; privateKeyFilename: string; providerType: string }) => ({
+        const transformedProviders = response.data.providers.map((provider: ApiProvider) => ({
           id: provider.id,
           name: provider.name,
           providerIP: provider.providerIP,
@@ -147,7 +166,8 @@ export const providerApi = {
           privateKeyFilename: provider.privateKeyFilename,
           SSHPort: provider.SSHPort,
           createdAt: provider.createdAt,
-          providerType: provider.providerType
+          providerType: provider.providerType,
+          status: provider.status
         }));
 
         return {
