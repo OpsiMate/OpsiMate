@@ -126,6 +126,8 @@ const Settings: React.FC = () => {
                 return 'default';
             case Role.Viewer:
                 return 'secondary';
+                case Role.Operation:
+                    return 'info';
             default:
                 return 'outline';
         }
@@ -278,6 +280,7 @@ const Settings: React.FC = () => {
                                                                 <SelectItem value={Role.Viewer}>Set as Viewer</SelectItem>
                                                                 <SelectItem value={Role.Editor}>Set as Editor</SelectItem>
                                                                 <SelectItem value={Role.Admin}>Set as Admin</SelectItem>
+                                                                <SelectItem value={Role.Operation}>Set as Operation</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                         <Button
