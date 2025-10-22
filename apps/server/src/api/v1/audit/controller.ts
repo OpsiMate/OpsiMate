@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuditBL } from '../../../bl/audit/audit.bl.js';
 import {Logger} from "@OpsiMate/shared";
 
+
 const logger = new Logger('api/v1/audit/controller');
 
 export class AuditController {
@@ -15,32 +16,24 @@ export class AuditController {
         let startTime = req.query.startTime as string | undefined;
         let endTime = req.query.endTime as string | undefined;
 
-        const convertTimeFormat = (timestamp: Date) => {
-            return timestamp.toISOString().replace('T', ' ').substring(0, 19);
+       const validateAndConvertTime = (timeParam: string | undefined, paramName: string): string | undefined => {
+            if (!timeParam) return undefined;
+
+            const timeDate = new Date(timeParam);
+            if (isNaN(timeDate.getTime())) {
+                throw new Error(`Invalid ${paramName} format. Expected ISO 8601 format.`);
+            }
+            return timeDate.toISOString().replace('T', ' ').substring(0, 19);
         };
     
-        if (startTime) {
-            const timeDate = new Date(startTime);    
-            if (isNaN(timeDate.getTime())) {
-                return res.status(400).json({ 
-                    success: false, 
-                    error: 'Invalid startTime format. Expected ISO 8601 format.' 
-                });
-            }
-
-            startTime = convertTimeFormat(timeDate);
-        }
-        
-        if (endTime) {
-            const timeDate = new Date(endTime);    
-            if (isNaN(timeDate.getTime())) {
-                return res.status(400).json({ 
-                    success: false, 
-                    error: 'Invalid endTime format. Expected ISO 8601 format.' 
-                });
-            }
-
-            endTime = convertTimeFormat(timeDate);
+        try {
+           startTime = validateAndConvertTime(startTime,'startTime');
+           endTime = validateAndConvertTime(endTime,'endTime');
+        } catch(error) {
+           return res.status(400).json({
+             success:false,
+             error: (error as Error).message
+           });
         }
   
         if (startTime && endTime && new Date(startTime) > new Date(endTime)) {
@@ -48,17 +41,16 @@ export class AuditController {
         }
 
         const filters = {
-            userName: req.query.userName as string | undefined,
-            actionType: req.query.actionType as string | undefined,
-            resourceType: req.query.resourceType as string | undefined,
-            resourceName: req.query.resourceName as string | undefined,
+            userName: typeof req.query.userName === 'string' ? req.query.userName : undefined,
+            actionType: typeof req.query.actionType === 'string' ? req.query.actionType : undefined,
+            resourceType: typeof req.query.resourceType === 'string' ? req.query.resourceType : undefined,
+            resourceName: typeof req.query.resourceName === 'string' ? req.query.resourceName : undefined,
             startTime,
             endTime,
         };
 
         try {
             const result = await this.auditBL.getAuditLogsPaginated(page, pageSize, filters);
-            // result.logs now includes userName and resourceName
             return res.json({success: true, data: result });
         } catch (error) {
             logger.error('Error fetching audit logs:', error);
