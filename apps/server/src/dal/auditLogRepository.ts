@@ -47,13 +47,79 @@ export class AuditLogRepository {
         });
     }
 
-    async getAuditLogs(offset: number, limit: number): Promise<AuditLog[]> {
+    private buildWhereClause( filters: {
+      userName?: string;
+      actionType?: string; 
+      resourceType?: string; 
+      resourceName?: string;
+      startTime?: string;
+      endTime?: string;
+     }) {
+       const where: string[] = [];
+       const params: unknown[] = [];
+
+       if (filters.userName || filters.resourceName) {
+          const userQuery = filters.userName?.toLowerCase();
+          const resourceQuery  = filters.resourceName?.toLowerCase();
+          if (userQuery && resourceQuery && userQuery !== resourceQuery) {
+            where.push('(LOWER(user_name) LIKE ? OR LOWER(resource_name) LIKE ?)');
+            params.push(`%${userQuery}%`, `%${resourceQuery}%`);
+          } 
+          else {
+            const searchQuery = userQuery || resourceQuery;
+            where.push('(LOWER(user_name) LIKE ? OR LOWER(resource_name) LIKE ?)');
+            params.push(`%${searchQuery}%`, `%${searchQuery}%`);
+          }
+        }
+    
+        
+       if (filters.actionType) {
+            where.push('action_type = ?');
+            params.push(filters.actionType);
+        }
+        if (filters.resourceType) {
+            where.push('resource_type = ?');
+            params.push(filters.resourceType);
+        }
+        if (filters.startTime) {
+             where.push('timestamp >= ?');
+             params.push(filters.startTime);
+        }
+        if (filters.endTime) {
+             where.push('timestamp <= ?');
+             params.push(filters.endTime);
+        }
+
+         const result = {
+            clause: where.length ? `WHERE ${where.join(' AND ')}` : '',
+            params,
+        };
+        
+
+        return result;
+
+    
+    
+    }
+    
+    async getAuditLogs(
+    offset: number,
+     limit: number,
+      filters:{ 
+      userName?: string; 
+      actionType?: string; 
+      resourceType?: string; 
+      resourceName?:string;
+      startTime?: string;
+      endTime?: string; }): Promise<AuditLog[]> {
         return runAsync(() => {
+            const { clause, params } = this.buildWhereClause(filters);
             const rows = this.db.prepare(`
                 SELECT * FROM audit_logs
+                ${clause}
                 ORDER BY timestamp DESC
                 LIMIT ? OFFSET ?
-            `).all(limit, offset) as AuditLogRow[];
+            `).all(...params,limit, offset) as AuditLogRow[];
             return rows.map(row => ({
                 id: row.id,
                 actionType: row.action_type,
@@ -68,10 +134,21 @@ export class AuditLogRepository {
         });
     }
 
-    async countAuditLogs(): Promise<number> {
+    async countAuditLogs(
+     filters: { 
+     userName?: string; 
+     actionType?: string; 
+     resourceType?: string; 
+     resourceName?: string;
+     startTime?: string;
+     endTime?: string }): Promise<number> {
         return runAsync(() => {
-            const stmt = this.db.prepare('SELECT COUNT(*) as count FROM audit_logs');
-            const row = stmt.get() as { count: number };
+            const { clause,params } = this.buildWhereClause(filters);
+            const stmt = this.db.prepare(`
+            SELECT COUNT(*) as count FROM audit_logs
+            ${clause}
+            `);
+            const row = stmt.get(...params) as { count: number };
             return row.count;
         });
     }
