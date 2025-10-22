@@ -598,7 +598,7 @@ function formatRelativeTime(dateString: string) {
     return date.toLocaleDateString();
 }
 
-   export function useDebounce<T>(value: T, delay: number): T {
+ function useDebounce<T>(value: T, delay: number): T {
      const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
      useEffect(() => {
@@ -635,7 +635,7 @@ const AuditLogTable: React.FC = () => {
     if( page !== 1) {
      setPage(1);
     }
-  }, [filters]);
+  }, [page, filters]);
 
   useEffect(() => {
     let mounted = true;
@@ -668,7 +668,7 @@ const AuditLogTable: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [page, pageSize, filters]);
+  }, [page, pageSize, debouncedFilters, actionType, resourceType]);
 
   const totalPages = Math.ceil(total / pageSize);
 
