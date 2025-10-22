@@ -21,7 +21,7 @@ export class AuditLogRepository {
                     user_id INTEGER NOT NULL,
                     user_name TEXT,
                     resource_name TEXT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    timestamp DATETIME DEFAULT (datetime('now', 'utc')),
                     details TEXT
                 )
             `).run();
@@ -31,8 +31,8 @@ export class AuditLogRepository {
     async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
         return runAsync(() => {
             const stmt = this.db.prepare(`
-                INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, timestamp, details)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'utc'), ?)
             `);
             const result = stmt.run(
                 log.actionType as string,
