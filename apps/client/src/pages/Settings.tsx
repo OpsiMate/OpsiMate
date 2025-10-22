@@ -391,6 +391,7 @@ const Settings: React.FC = () => {
                                                                                 <SelectItem value={Role.Viewer}>Viewer</SelectItem>
                                                                                 <SelectItem value={Role.Editor}>Editor</SelectItem>
                                                                                 <SelectItem value={Role.Admin}>Admin</SelectItem>
+                                                                                <SelectItem value={Role.Operation}>Operation</SelectItem>
                                                                             </SelectContent>
                                                                         </Select>
                                                                         {isAdmin && user.email !== currentUser?.email && (
