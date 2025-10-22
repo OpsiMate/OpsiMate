@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opsimate-frontend
+  labels:
+    app: opsimate-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opsimate-frontend
+  template:
+    metadata:
+      labels:
+        app: opsimate-frontend
+    spec:
+      containers:
+      - name: opsimate-frontend
+        image: opsimate/frontend:latest
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: API_URL
+          value: opsimate-backend-service:3001
+        ports:
+        - containerPort: 8080
