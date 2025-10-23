@@ -57,3 +57,13 @@ jobs:
 
       - name: Test apps/client
         run: pnpm --filter @OpsiMate/client test:run
+
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            apps/server/test-results/
+          retention-days: 7
