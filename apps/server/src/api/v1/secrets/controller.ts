@@ -5,12 +5,12 @@ import {
     Logger,
     SecretType
 } from "@OpsiMate/shared";
-import { AuthenticatedRequest } from '../../../middleware/auth.js';
-import { SecretsMetadataBL } from '../../../bl/secrets/secretsMetadata.bl.js';
+import { AuthenticatedRequest } from '../../../middleware/auth';
+import { SecretsMetadataBL } from '../../../bl/secrets/secretsMetadata.bl';
 import fs from "fs";
-import {encryptPassword} from "../../../utils/encryption.js";
-import { isZodError } from "../../../utils/isZodError.js";
-import { validateKubeConfig, validatePublicSSHKey } from "../../../utils/validators/validators.js";
+import {encryptPassword} from "../../../utils/encryption";
+import { isZodError } from "../../../utils/isZodError";
+import { validateKubeConfig, validatePublicSSHKey } from "../../../utils/validators/validators";
 
 const logger = new Logger("v1/integrations/controller");
 

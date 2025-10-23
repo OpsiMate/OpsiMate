@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
-import { runAsync } from "./db.js";
-import {ViewRow} from "./models.js";
+import { runAsync } from "./db";
+import {ViewRow} from "./models";
 
 export interface SavedView {
   id: string;

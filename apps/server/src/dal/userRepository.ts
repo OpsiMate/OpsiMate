@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
-import { runAsync } from './db.js';
-import {UserRow} from './models.js';
+import { runAsync } from './db';
+import {UserRow} from './models';
 import {User} from "@OpsiMate/shared";
 
 export class UserRepository {

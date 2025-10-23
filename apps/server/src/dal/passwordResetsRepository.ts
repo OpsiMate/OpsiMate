@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
-import { runAsync } from "./db.js";
+import { runAsync } from "./db";
 import { ResetPassword, ResetPasswordType } from "@OpsiMate/shared";
-import { ResetPasswordRow } from "./models.js";
+import { ResetPasswordRow } from "./models";
 
 export class PasswordResetsRepository {
   private db: Database.Database;

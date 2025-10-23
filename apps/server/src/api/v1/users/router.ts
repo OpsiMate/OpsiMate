@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { UsersController } from './controller.js';
+import { UsersController } from './controller';
 
 export default function createUsersRouter(usersController: UsersController) {
     const router = PromiseRouter();

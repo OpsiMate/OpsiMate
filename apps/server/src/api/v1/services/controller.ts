@@ -1,17 +1,25 @@
 import {Request, Response} from "express";
-import {CreateServiceSchema, ServiceIdSchema, UpdateServiceSchema, Logger, ServiceType, Service, ServiceWithProvider} from "@OpsiMate/shared";
-import {ProviderRepository} from "../../../dal/providerRepository.js";
-import {ServiceRepository} from "../../../dal/serviceRepository.js";
-import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl.js";
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.js";
-import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound.js";
-import {ServiceNotFound} from "../../../bl/services/ServiceNotFound.js";
-import {checkSystemServiceStatus} from "../../../dal/sshClient.js";
-import { TagRepository } from '../../../dal/tagRepository.js';
-import { AlertBL } from '../../../bl/alerts/alert.bl.js';
-import { isZodError } from "../../../utils/isZodError.js";
-import { ServicesBL } from "../../../bl/services/services.bl.js";
-import { AuthenticatedRequest } from '../../../middleware/auth.js';
+import {
+    CreateServiceSchema,
+    ServiceIdSchema,
+    UpdateServiceSchema,
+    Logger,
+    ServiceType,
+    Service,
+    ServiceWithProvider
+} from "@OpsiMate/shared";
+import {ProviderRepository} from "../../../dal/providerRepository";
+import {ServiceRepository} from "../../../dal/serviceRepository";
+import {ServiceCustomFieldBL} from "../../../bl/custom-fields/serviceCustomField.bl";
+import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory";
+import {ProviderNotFound} from "../../../bl/providers/ProviderNotFound";
+import {ServiceNotFound} from "../../../bl/services/ServiceNotFound";
+import {checkSystemServiceStatus} from "../../../dal/sshClient";
+import {TagRepository} from '../../../dal/tagRepository';
+import {AlertBL} from '../../../bl/alerts/alert.bl';
+import {isZodError} from "../../../utils/isZodError";
+import {ServicesBL} from "../../../bl/services/services.bl";
+import {AuthenticatedRequest} from '../../../middleware/auth';
 
 const logger = new Logger('api/v1/services/controller');
 
@@ -22,8 +30,7 @@ export class ServiceController {
         private servicesBL: ServicesBL,
         private customFieldBL?: ServiceCustomFieldBL,
         private tagRepo?: TagRepository,
-  private alertBL?: AlertBL
-
+        private alertBL?: AlertBL
     ) {
     }
 
@@ -66,7 +73,7 @@ export class ServiceController {
             const validatedData = CreateServiceSchema.parse(req.body);
 
             if (!req.user) {
-                return res.status(401).json({ success: false, error: 'Unauthorized' });
+                return res.status(401).json({success: false, error: 'Unauthorized'});
             }
             const service = await this.servicesBL.createService(validatedData, req.user);
 
@@ -174,10 +181,10 @@ export class ServiceController {
 
     deleteServiceHandler = async (req: AuthenticatedRequest, res: Response) => {
         try {
-            const { serviceId } = ServiceIdSchema.parse({ serviceId: req.params.serviceId });
+            const {serviceId} = ServiceIdSchema.parse({serviceId: req.params.serviceId});
 
             if (!req.user) {
-                return res.status(401).json({ success: false, error: 'Unauthorized' });
+                return res.status(401).json({success: false, error: 'Unauthorized'});
             }
 
             if (this.customFieldBL) {
@@ -188,20 +195,20 @@ export class ServiceController {
                     logger.warn(`Failed to delete custom field values for service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
-await this.alertBL?.clearAlertsByService(serviceId);
-    await this.tagRepo?.deleteAllServiceTags(serviceId);
+            await this.alertBL?.clearAlertsByService(serviceId);
+            await this.tagRepo?.deleteAllServiceTags(serviceId);
 
             await this.servicesBL.deleteService(serviceId, req.user);
 
-            res.json({ success: true, message: 'Service deleted successfully' });
+            res.json({success: true, message: 'Service deleted successfully'});
         } catch (error) {
             if (isZodError(error)) {
-                res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+                res.status(400).json({success: false, error: 'Validation error', details: error.errors});
             } else if (error instanceof ServiceNotFound) {
-                res.status(404).json({ success: false, error: `Service with ID ${error.serviceId} not found` });
+                res.status(404).json({success: false, error: `Service with ID ${error.serviceId} not found`});
             } else {
                 logger.error('Error deleting service:', error);
-                res.status(500).json({ success: false, error: 'Internal server error' });
+                res.status(500).json({success: false, error: 'Internal server error'});
             }
         }
     };

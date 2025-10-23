@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { TagController } from './controller.js';
+import { TagController } from './controller';
 
 export default function createTagRouter(tagController: TagController) {
     const router = PromiseRouter();

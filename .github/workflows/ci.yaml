@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -27,7 +27,7 @@ jobs:
         run: corepack prepare pnpm@9.12.0 --activate
 
       - name: Cache pnpm store
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
@@ -49,9 +49,17 @@ jobs:
       - name: Lint packages/shared
         run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 
-      # TODO: Uncomment this when the server tests are fixed
-      # - name: Test apps/server
-      #   run: pnpm --filter @OpsiMate/server test
+      - name: Test apps/server
+        run: pnpm --filter @OpsiMate/server test
 
       - name: Test apps/client
         run: pnpm --filter @OpsiMate/client test:run
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            apps/server/test-results/
+          retention-days: 7

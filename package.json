@@ -10,6 +10,9 @@
     "lint": "turbo run lint",
     "lint-fix": "turbo run lint-fix",
     "clean": "turbo run clean",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:coverage": "turbo run test:coverage",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

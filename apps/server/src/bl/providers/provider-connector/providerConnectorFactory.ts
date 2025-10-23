@@ -1,7 +1,7 @@
 import { ProviderType } from '@OpsiMate/shared';
-import {ProviderConnector} from "./providerConnector.js";
-import {VMProviderConnector} from "./vmProviderConnector.js";
-import {K8SProviderConnector} from "./k8sProviderConnector.js";
+import {ProviderConnector} from "./providerConnector";
+import {VMProviderConnector} from "./vmProviderConnector";
+import {K8SProviderConnector} from "./k8sProviderConnector";
 
 
 export function providerConnectorFactory(type: ProviderType): ProviderConnector {

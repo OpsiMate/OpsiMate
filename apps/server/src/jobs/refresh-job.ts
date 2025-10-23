@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import { ProviderBL } from '../bl/providers/provider.bl.js';
+import { ProviderBL } from '../bl/providers/provider.bl';
 import { Logger, Provider } from '@OpsiMate/shared';
 
 const BATCH_SIZE = 10;

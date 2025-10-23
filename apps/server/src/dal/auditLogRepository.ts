@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
-import { runAsync } from './db.js';
+import { runAsync } from './db';
 import { AuditLog } from '@OpsiMate/shared';
-import { AuditLogRow } from './models.js';
+import { AuditLogRow } from './models';
 
 export class AuditLogRepository {
     private db: Database.Database;

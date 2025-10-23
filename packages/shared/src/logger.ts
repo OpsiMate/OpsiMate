@@ -3,10 +3,12 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 interface LogOptions {
     extraArgs?: Record<string, unknown>;
 }
+
 const getTimestamp = (): string => new Date().toISOString();
 
 export class Logger {
-    constructor(private context: string) {}
+    constructor(private context: string) {
+    }
 
     private readonly sensitiveKeyPattern = /(password|pass|token|secret|key)$/i;
 
@@ -62,7 +64,7 @@ export class Logger {
         if (options?.extraArgs) {
             const safeArgs = this.sanitize(options.extraArgs);
             // eslint-disable-next-line no-console
-            console.dir({ extraArgs: safeArgs }, { depth: null, colors: true });
+            console.dir({extraArgs: safeArgs}, {depth: null, colors: true});
         }
     }
 

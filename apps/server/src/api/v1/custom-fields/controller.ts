@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { Logger } from "@OpsiMate/shared";
 import { z } from "zod";
-import { ServiceCustomFieldBL } from "../../../bl/custom-fields/serviceCustomField.bl.js";
-import { isZodError } from "../../../utils/isZodError.js";
+import { ServiceCustomFieldBL } from "../../../bl/custom-fields/serviceCustomField.bl";
+import { isZodError } from "../../../utils/isZodError";
 
 const logger = new Logger("v1/custom-fields/controller");
 

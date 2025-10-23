@@ -1,7 +1,7 @@
 import request, { SuperTest, Test } from 'supertest';
 import { Logger, AuditActionType, AuditResourceType, AuditLog } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/app';
 
 const logger = new Logger('test-audit');
 
@@ -92,7 +92,7 @@ describe('Audit Logs API', () => {
       name: 'Audit Provider',
       providerIP: '192.168.1.1',
       username: 'audituser',
-      privateKeyFilename: 'audit.pem',
+      password: 'auditpassword',
       SSHPort: 22,
       providerType: 'VM',
     };
@@ -122,7 +122,7 @@ describe('Audit Logs API', () => {
         name: `Provider${i}`,
         providerIP: `10.0.0.${i}`,
         username: 'audituser',
-        privateKeyFilename: 'audit.pem',
+        password: 'auditpassword',
         SSHPort: 22,
         providerType: 'VM',
       });

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import { ProviderController } from './controller.js';
+import { ProviderController } from './controller';
 
 export default function createProviderRouter(controller: ProviderController) {
     const router = PromiseRouter();
