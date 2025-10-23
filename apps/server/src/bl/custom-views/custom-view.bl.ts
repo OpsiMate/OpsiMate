@@ -1,7 +1,7 @@
 import { AuditActionType, AuditResourceType, User } from '@OpsiMate/shared';
-import { AuditLogRepository } from '../../dal/auditLogRepository.js';
-import {SavedView, ViewRepository} from '../../dal/viewRepository.js';
-import { AuditBL } from '../audit/audit.bl.js';
+import { AuditLogRepository } from '../../dal/auditLogRepository';
+import {SavedView, ViewRepository} from '../../dal/viewRepository';
+import { AuditBL } from '../audit/audit.bl';
 
 export class ViewBL {
     constructor(private viewRepository: ViewRepository) {

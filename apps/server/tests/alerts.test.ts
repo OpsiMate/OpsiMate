@@ -1,8 +1,8 @@
 import request, { SuperTest, Test } from 'supertest';
 import { Logger, Alert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app.js';
-import {AlertRow} from "../src/dal/models.js";
+import { createApp } from '../src/app';
+import {AlertRow} from "../src/dal/models";
 
 const logger = new Logger('test-alerts');
 

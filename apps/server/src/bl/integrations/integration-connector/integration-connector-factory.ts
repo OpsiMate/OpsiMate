@@ -1,8 +1,8 @@
 import {IntegrationType} from '@OpsiMate/shared';
-import {IntegrationConnector} from "./integration-connector.js";
-import {GrafanaIntegrationConnector} from "./grafana-integration-connector.js";
-import {KibanaIntegrationConnector} from "./kibana-integration-connector.js";
-import {DatadogIntegrationConnector} from "./datadog-integration-connector.js";
+import {IntegrationConnector} from "./integration-connector";
+import {GrafanaIntegrationConnector} from "./grafana-integration-connector";
+import {KibanaIntegrationConnector} from "./kibana-integration-connector";
+import {DatadogIntegrationConnector} from "./datadog-integration-connector";
 
 
 export function integrationConnectorFactory(type: IntegrationType): IntegrationConnector {

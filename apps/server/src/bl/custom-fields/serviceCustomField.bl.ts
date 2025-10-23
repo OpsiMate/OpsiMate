@@ -1,6 +1,6 @@
 import { Logger, ServiceCustomField, ServiceCustomFieldValue } from "@OpsiMate/shared";
-import { ServiceCustomFieldRepository } from "../../dal/serviceCustomFieldRepository.js";
-import { ServiceCustomFieldValueRepository } from "../../dal/serviceCustomFieldValueRepository.js";
+import { ServiceCustomFieldRepository } from "../../dal/serviceCustomFieldRepository";
+import { ServiceCustomFieldValueRepository } from "../../dal/serviceCustomFieldValueRepository";
 
 const logger = new Logger('bl/custom-fields/serviceCustomField.bl');
 

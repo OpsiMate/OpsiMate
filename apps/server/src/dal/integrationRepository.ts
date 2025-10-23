@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
-import { runAsync } from './db.js';
+import { runAsync } from './db';
 import {Integration, IntegrationType} from '@OpsiMate/shared';
-import { IntegrationRow } from './models.js';
-import {decryptPassword, encryptPassword} from "../utils/encryption.js";
+import { IntegrationRow } from './models';
+import {decryptPassword, encryptPassword} from "../utils/encryption";
 
 const mapRowToIntegration = (row: IntegrationRow): Integration => ({
     id: row.id,

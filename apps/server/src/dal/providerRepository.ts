@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import {Provider} from '@OpsiMate/shared';
-import {runAsync} from "./db.js";
-import {encryptPassword, decryptPassword} from '../utils/encryption.js';
+import {runAsync} from "./db";
+import {encryptPassword, decryptPassword} from '../utils/encryption';
 
 export class ProviderRepository {
     private db: Database.Database;

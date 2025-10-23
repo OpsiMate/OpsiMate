@@ -1,121 +1,135 @@
-import { useCallback, useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
-import { Filters } from "./FilterPanel"
-import { SavedView } from "@/types/SavedView"
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Filters } from './FilterPanel';
+import { SavedView } from '@/types/SavedView';
 
 interface UseServiceFiltersProps {
-    activeViewId?: string
-    savedViews: SavedView[]
-    setActiveView: (id: string | undefined) => Promise<void>
+	activeViewId?: string;
+	savedViews: SavedView[];
+	setActiveView: (id: string | undefined) => Promise<void>;
 }
 
 interface UseServiceFiltersReturn {
-    filters: Filters
-    searchTerm: string
-    isInitialized: boolean
-    handleFiltersChange: (newFilters: Filters) => void
-    handleSearchTermChange: (newSearchTerm: string) => void
-    applyViewFilters: (view: SavedView) => void
+	filters: Filters;
+	searchTerm: string;
+	isInitialized: boolean;
+	handleFiltersChange: (newFilters: Filters) => void;
+	handleSearchTermChange: (newSearchTerm: string) => void;
+	applyViewFilters: (view: SavedView) => void;
 }
 
 export function useServiceFilters({
-    activeViewId,
-    savedViews,
-    setActiveView
+	activeViewId,
+	savedViews,
+	setActiveView,
 }: UseServiceFiltersProps): UseServiceFiltersReturn {
-    const [searchParams, setSearchParams] = useSearchParams()
-    const [filters, setFilters] = useState<Filters>({})
-    const [searchTerm, setSearchTerm] = useState("")
-    const [isInitialized, setIsInitialized] = useState(false)
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [filters, setFilters] = useState<Filters>({});
+	const [searchTerm, setSearchTerm] = useState('');
+	const [isInitialized, setIsInitialized] = useState(false);
 
-    const serializeFiltersToUrl = useCallback((filters: Filters, search: string) => {
-        const params = new URLSearchParams()
-        Object.entries(filters).forEach(([key, values]) => {
-            if (Array.isArray(values) && values.length > 0) {
-                params.set(key, values.join(','))
-            }
-        })
-        if (search) {
-            params.set('search', search)
-        }
-        return params
-    }, [])
+	const serializeFiltersToUrl = useCallback((filters: Filters, search: string) => {
+		const params = new URLSearchParams();
+		Object.entries(filters).forEach(([key, values]) => {
+			if (Array.isArray(values) && values.length > 0) {
+				params.set(key, values.join(','));
+			}
+		});
+		if (search) {
+			params.set('search', search);
+		}
+		return params;
+	}, []);
 
-    const deserializeFiltersFromUrl = useCallback(() => {
-        const filters: Filters = {}
-        const search = searchParams.get('search') || ''
-        
-        searchParams.forEach((value, key) => {
-            if (key !== 'search' && value) {
-                filters[key] = value.split(',')
-            }
-        })
-        
-        return { filters, search }
-    }, [searchParams])
+	const deserializeFiltersFromUrl = useCallback(() => {
+		const filters: Filters = {};
+		const search = searchParams.get('search') || '';
 
-    const hasUrlParams = Array.from(searchParams.keys()).length > 0
+		searchParams.forEach((value, key) => {
+			if (key !== 'search' && value) {
+				filters[key] = value.split(',');
+			}
+		});
 
-    const updateUrlParams = useCallback((newFilters: Filters, newSearch: string) => {
-        const params = serializeFiltersToUrl(newFilters, newSearch)
-        if (params.toString()) {
-            setSearchParams(params, { replace: true })
-        } else {
-            setSearchParams({}, { replace: true })
-        }
-    }, [serializeFiltersToUrl, setSearchParams])
+		return { filters, search };
+	}, [searchParams]);
 
-    const initializeFilters = useCallback((urlFilters: Filters, urlSearch: string) => {
-        setFilters(urlFilters)
-        setSearchTerm(urlSearch)
-        setActiveView(undefined)
-    }, [setActiveView])
+	const hasUrlParams = Array.from(searchParams.keys()).length > 0;
 
-    useEffect(() => {
-        if (isInitialized) {
-            return
-        }
-        
-        if (hasUrlParams) {
-            const { filters: urlFilters, search: urlSearch } = deserializeFiltersFromUrl()
-            initializeFilters(urlFilters, urlSearch)
-        } else if (activeViewId && savedViews.length > 0) {
-            const activeView = savedViews.find(view => view.id === activeViewId)
-            if (activeView) {
-                initializeFilters(activeView.filters, activeView.searchTerm)
-            }
-        }
+	const updateUrlParams = useCallback(
+		(newFilters: Filters, newSearch: string) => {
+			const params = serializeFiltersToUrl(newFilters, newSearch);
+			if (params.toString()) {
+				setSearchParams(params, { replace: true });
+			} else {
+				setSearchParams({}, { replace: true });
+			}
+		},
+		[serializeFiltersToUrl, setSearchParams]
+	);
 
-        setIsInitialized(true)
-    }, [hasUrlParams, deserializeFiltersFromUrl, activeViewId, savedViews, isInitialized, initializeFilters])
+	const initializeFilters = useCallback(
+		(urlFilters: Filters, urlSearch: string) => {
+			setFilters(urlFilters);
+			setSearchTerm(urlSearch);
+			setActiveView(undefined);
+		},
+		[setActiveView]
+	);
 
-    const handleFiltersChange = useCallback((newFilters: Filters) => {
-        setFilters(newFilters)
-        updateUrlParams(newFilters, searchTerm)
-        setActiveView(undefined)
-    }, [updateUrlParams, searchTerm, setActiveView])
+	useEffect(() => {
+		if (isInitialized) {
+			return;
+		}
 
-    const handleSearchTermChange = useCallback((newSearchTerm: string) => {
-        setSearchTerm(newSearchTerm)
-        updateUrlParams(filters, newSearchTerm)
-        if (activeViewId) {
-            setActiveView(undefined)
-        }
-    }, [updateUrlParams, filters, activeViewId, setActiveView])
+		if (hasUrlParams) {
+			const { filters: urlFilters, search: urlSearch } = deserializeFiltersFromUrl();
+			initializeFilters(urlFilters, urlSearch);
+		} else if (activeViewId && savedViews.length > 0) {
+			const activeView = savedViews.find((view) => view.id === activeViewId);
+			if (activeView) {
+				initializeFilters(activeView.filters, activeView.searchTerm);
+			}
+		}
 
-    const applyViewFilters = useCallback((view: SavedView) => {
-        setFilters(view.filters)
-        setSearchTerm(view.searchTerm)
-        setSearchParams({}, { replace: true })
-    }, [setSearchParams])
+		setIsInitialized(true);
+	}, [hasUrlParams, deserializeFiltersFromUrl, activeViewId, savedViews, isInitialized, initializeFilters]);
 
-    return {
-        filters,
-        searchTerm,
-        isInitialized,
-        handleFiltersChange,
-        handleSearchTermChange,
-        applyViewFilters
-    }
+	const handleFiltersChange = useCallback(
+		(newFilters: Filters) => {
+			setFilters(newFilters);
+			updateUrlParams(newFilters, searchTerm);
+			setActiveView(undefined);
+		},
+		[updateUrlParams, searchTerm, setActiveView]
+	);
+
+	const handleSearchTermChange = useCallback(
+		(newSearchTerm: string) => {
+			setSearchTerm(newSearchTerm);
+			updateUrlParams(filters, newSearchTerm);
+			if (activeViewId) {
+				setActiveView(undefined);
+			}
+		},
+		[updateUrlParams, filters, activeViewId, setActiveView]
+	);
+
+	const applyViewFilters = useCallback(
+		(view: SavedView) => {
+			setFilters(view.filters);
+			setSearchTerm(view.searchTerm);
+			setSearchParams({}, { replace: true });
+		},
+		[setSearchParams]
+	);
+
+	return {
+		filters,
+		searchTerm,
+		isInitialized,
+		handleFiltersChange,
+		handleSearchTermChange,
+		applyViewFilters,
+	};
 }
-

@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { isZodError } from '../../../utils/isZodError.js';
-import { UserBL } from '../../../bl/users/user.bl.js';
+import { isZodError } from '../../../utils/isZodError';
+import { UserBL } from '../../../bl/users/user.bl';
 import {CreateUserSchema, Logger, LoginSchema, RegisterSchema, Role, UpdateUserRoleSchema, UpdateProfileSchema, ForgotPasswordSchema, ValidateResetTokenSchema, ResetPasswordSchema} from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
-import { AuthenticatedRequest } from '../../../middleware/auth.js';
+import { AuthenticatedRequest } from '../../../middleware/auth';
 import { User } from '@OpsiMate/shared';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
@@ -309,13 +309,13 @@ export class UsersController {
             return res.status(200).json({ success: true, message: 'Password has been reset successfully' });
         } catch (error) {
             logger.error('Error resetting password:', error);
-            
+
             if (isZodError(error)) {
                 return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
             }
-            
+
             if (error instanceof Error && (
-                error.message === 'Invalid or expired token' || 
+                error.message === 'Invalid or expired token' ||
                 error.message === 'User not found' ||
                 error.message === 'You cannot reuse an old password')
             ) {

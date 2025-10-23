@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Logger } from "@OpsiMate/shared";
-import { AlertBL } from "../../../bl/alerts/alert.bl.js";
+import { AlertBL } from "../../../bl/alerts/alert.bl";
 
 const logger: Logger = new Logger('server');
 

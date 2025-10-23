@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { ServiceCustomField } from '@OpsiMate/shared';
-import { runAsync } from "./db.js";
+import { runAsync } from "./db";
 
 export class ServiceCustomFieldRepository {
     private db: Database.Database;
