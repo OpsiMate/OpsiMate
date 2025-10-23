@@ -1,7 +1,6 @@
 import {defineConfig} from 'vite'
 import {VitePluginNode} from 'vite-plugin-node'
 
-// https://github.com/axe-me/vite-plugin-node
 export default defineConfig(({mode}) => {
 
     // Development build - use vite-plugin-node
