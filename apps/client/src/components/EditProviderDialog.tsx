@@ -77,7 +77,7 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 			// For existing providers, find the secret ID that matches the privateKeyFilename
 			let secretId: number | undefined;
 			if (provider.privateKeyFilename && secrets.length > 0) {
-				const matchingSecret = secrets.find(secret => secret.fileName === provider.privateKeyFilename);
+				const matchingSecret = secrets.find((secret) => secret.fileName === provider.privateKeyFilename);
 				secretId = matchingSecret?.id;
 			}
 
@@ -115,21 +115,21 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 			}
 		}
 
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
 			[name]: name === 'SSHPort' ? parseInt(value) || 22 : value,
 		}));
 	};
 
 	const handleSelectChange = (value: string) => {
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
 			providerType: value,
 		}));
 	};
 
 	const handleSecretChange = (value: string) => {
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
 			secretId: value ? parseInt(value) : undefined,
 		}));
@@ -139,9 +139,9 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 		setAuthMethod(value as 'password' | 'key');
 		// Clear the other field when switching auth methods
 		if (value === 'password') {
-			setFormData(prev => ({ ...prev, secretId: undefined }));
+			setFormData((prev) => ({ ...prev, secretId: undefined }));
 		} else {
-			setFormData(prev => ({ ...prev, password: '' }));
+			setFormData((prev) => ({ ...prev, password: '' }));
 		}
 	};
 
@@ -268,8 +268,8 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 										</SelectTrigger>
 										<SelectContent>
 											{secrets
-												.filter(secret => secret.type === 'kubeconfig')
-												.map(secret => (
+												.filter((secret) => secret.type === 'kubeconfig')
+												.map((secret) => (
 													<SelectItem key={secret.id} value={secret.id.toString()}>
 														{secret.name}
 													</SelectItem>
@@ -357,8 +357,8 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 											</SelectTrigger>
 											<SelectContent>
 												{secrets
-													.filter(secret => secret.type === 'ssh')
-													.map(secret => (
+													.filter((secret) => secret.type === 'ssh')
+													.map((secret) => (
 														<SelectItem key={secret.id} value={secret.id.toString()}>
 															{secret.name}
 														</SelectItem>

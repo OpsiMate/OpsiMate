@@ -55,11 +55,11 @@ export const FilterPanel = ({ services, filters, onFilterChange, collapsed }: Fi
 	const facets = useMemo(() => {
 		const newFacets: Record<string, Record<string, number>> = {};
 
-		FACET_FIELDS.forEach(field => {
+		FACET_FIELDS.forEach((field) => {
 			newFacets[field] = {};
 		});
 
-		services.forEach(service => {
+		services.forEach((service) => {
 			if (service.serviceStatus) {
 				const value = String(service.serviceStatus.toLowerCase());
 				newFacets.serviceStatus[value] = (newFacets.serviceStatus[value] || 0) + 1;
@@ -86,7 +86,7 @@ export const FilterPanel = ({ services, filters, onFilterChange, collapsed }: Fi
 			}
 
 			if (service.tags && service.tags.length > 0) {
-				service.tags.forEach(tag => {
+				service.tags.forEach((tag) => {
 					const value = String(tag.name);
 					newFacets.tags[value] = (newFacets.tags[value] || 0) + 1;
 				});
@@ -99,7 +99,7 @@ export const FilterPanel = ({ services, filters, onFilterChange, collapsed }: Fi
 	const handleCheckboxChange = (field: string, value: string) => {
 		const currentFilters = filters[field] || [];
 		const newFilters = currentFilters.includes(value.toLowerCase())
-			? currentFilters.filter(v => v.toLowerCase() !== value.toLowerCase())
+			? currentFilters.filter((v) => v.toLowerCase() !== value.toLowerCase())
 			: [...currentFilters, value.toLowerCase()];
 		onFilterChange({
 			...filters,
@@ -160,8 +160,8 @@ export const FilterPanel = ({ services, filters, onFilterChange, collapsed }: Fi
 				</div>
 			</div>
 			<div className="px-1 py-1 flex-1 overflow-y-auto">
-				<Accordion type="multiple" className="w-full" defaultValue={FACET_FIELDS.map(f => String(f))}>
-					{FACET_FIELDS.map(field => {
+				<Accordion type="multiple" className="w-full" defaultValue={FACET_FIELDS.map((f) => String(f))}>
+					{FACET_FIELDS.map((field) => {
 						const fieldFacets = facets[field] || {};
 						const hasValues = Object.keys(fieldFacets).length > 0;
 

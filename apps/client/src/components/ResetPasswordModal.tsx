@@ -124,7 +124,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 							id="new-password"
 							type="password"
 							value={newPassword}
-							onChange={e => setNewPassword(e.target.value)}
+							onChange={(e) => setNewPassword(e.target.value)}
 							placeholder="Enter new password"
 						/>
 					</div>
@@ -135,7 +135,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 							id="confirm-password"
 							type="password"
 							value={confirmPassword}
-							onChange={e => setConfirmPassword(e.target.value)}
+							onChange={(e) => setConfirmPassword(e.target.value)}
 							placeholder="Confirm new password"
 						/>
 					</div>

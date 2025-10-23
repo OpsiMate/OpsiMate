@@ -97,7 +97,7 @@ export const AddServiceDialog = ({
 
 			if (response.success && response.data) {
 				// Filter services to only include those from this provider
-				const providerServices = response.data.filter(service => service.providerId === parseInt(serverId));
+				const providerServices = response.data.filter((service) => service.providerId === parseInt(serverId));
 
 				setExistingServices(providerServices);
 				return providerServices;
@@ -128,7 +128,7 @@ export const AddServiceDialog = ({
 					// Check if this container/pod is already added as a service by matching name
 					// We need to compare the name with existing service names
 					const isAlreadyAdded = existingServices.some(
-						existingService =>
+						(existingService) =>
 							existingService.serviceType === 'DOCKER' && existingService.name === service.name
 					);
 
@@ -142,7 +142,7 @@ export const AddServiceDialog = ({
 						created: new Date().toISOString(),
 						alreadyAdded: isAlreadyAdded, // Mark if already added
 						existingServiceId: isAlreadyAdded
-							? existingServices.find(es => es.name === service.name)?.id
+							? existingServices.find((es) => es.name === service.name)?.id
 							: undefined, // Store existing service ID for removal
 					};
 				});
@@ -174,7 +174,7 @@ export const AddServiceDialog = ({
 		if (!open) {
 			setServiceName('');
 			setSelectedContainer(null);
-			setContainers(containers.map(container => ({ ...container, selected: false })));
+			setContainers(containers.map((container) => ({ ...container, selected: false })));
 		}
 	}, [open]);
 
@@ -285,8 +285,8 @@ export const AddServiceDialog = ({
 	};
 
 	const handleAddContainersOrPods = async () => {
-		const selectedContainers = containers.filter(container => container.selected);
-		const deselectedContainers = containers.filter(container => !container.selected && container.alreadyAdded);
+		const selectedContainers = containers.filter((container) => container.selected);
+		const deselectedContainers = containers.filter((container) => !container.selected && container.alreadyAdded);
 
 		if (selectedContainers.length === 0 && deselectedContainers.length === 0) {
 			toast({
@@ -310,7 +310,7 @@ export const AddServiceDialog = ({
 			}
 
 			// Handle service additions (selected new services)
-			const newContainers = selectedContainers.filter(container => !container.alreadyAdded);
+			const newContainers = selectedContainers.filter((container) => !container.alreadyAdded);
 			for (const container of newContainers) {
 				const status =
 					container.serviceStatus === 'running'
@@ -356,7 +356,7 @@ export const AddServiceDialog = ({
 			}
 
 			// Update UI with successful operations
-			createdServices.forEach(service => onServiceAdded(service));
+			createdServices.forEach((service) => onServiceAdded(service));
 
 			// Show summary toast
 			const totalOperations = createdServices.length + removedServices.length;
@@ -403,9 +403,9 @@ export const AddServiceDialog = ({
 	// Toggle selection for a single container
 	const toggleContainerSelection = (containerId: string) => {
 		// Find the container being toggled
-		const containerToToggle = containers.find(c => c.id === containerId);
+		const containerToToggle = containers.find((c) => c.id === containerId);
 
-		const updatedContainers = containers.map(container => {
+		const updatedContainers = containers.map((container) => {
 			if (container.id === containerId) {
 				// Toggle selection state for the clicked container
 				const newSelected = !container.selected;
@@ -419,7 +419,7 @@ export const AddServiceDialog = ({
 		setContainers(updatedContainers);
 
 		// Update selectedContainer state based on any selected container
-		const anySelected = updatedContainers.some(c => c.selected);
+		const anySelected = updatedContainers.some((c) => c.selected);
 		if (anySelected) {
 			// Just set selectedContainer to a non-null value to enable the Add button
 			// We don't need specific container details since we're using multi-select
@@ -432,10 +432,10 @@ export const AddServiceDialog = ({
 	// Toggle selection for all containers at once
 	const toggleAllContainersSelection = () => {
 		// Check if all containers are already selected
-		const allSelected = containers.every(container => container.selected);
+		const allSelected = containers.every((container) => container.selected);
 
 		// Toggle all containers
-		const updatedContainers = containers.map(container => {
+		const updatedContainers = containers.map((container) => {
 			// Set all to the opposite of current state
 			return { ...container, selected: !allSelected };
 		});
@@ -504,7 +504,7 @@ export const AddServiceDialog = ({
 									<div className="flex items-center space-x-2 mb-4 p-2 border rounded bg-muted/20">
 										<Checkbox
 											id="select-all-containers"
-											checked={containers.every(c => c.selected)}
+											checked={containers.every((c) => c.selected)}
 											onCheckedChange={toggleAllContainersSelection}
 										/>
 										<Label htmlFor="select-all-containers" className="font-medium cursor-pointer">
@@ -512,7 +512,7 @@ export const AddServiceDialog = ({
 										</Label>
 									</div>
 									<div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-										{containers.map(container => (
+										{containers.map((container) => (
 											<div
 												key={container.id}
 												className={cn(
@@ -565,7 +565,7 @@ export const AddServiceDialog = ({
 					// For other providers, show all tabs
 					<Tabs
 						value={activeTab}
-						onValueChange={value => setActiveTab(value as 'container' | 'systemd')}
+						onValueChange={(value) => setActiveTab(value as 'container' | 'systemd')}
 						className="w-full"
 					>
 						<TabsList className="grid w-full grid-cols-2 mb-4">
@@ -615,7 +615,7 @@ export const AddServiceDialog = ({
 										<div className="flex items-center space-x-2 mb-4 p-2 border rounded bg-muted/20">
 											<Checkbox
 												id="select-all-containers"
-												checked={containers.every(c => c.selected)}
+												checked={containers.every((c) => c.selected)}
 												onCheckedChange={toggleAllContainersSelection}
 											/>
 											<Label
@@ -626,7 +626,7 @@ export const AddServiceDialog = ({
 											</Label>
 										</div>
 										<div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-											{containers.map(container => (
+											{containers.map((container) => (
 												<div
 													key={container.id}
 													className={cn(
@@ -683,7 +683,7 @@ export const AddServiceDialog = ({
 									id="systemdServiceName"
 									placeholder="Enter systemd service name (e.g. nginx.service)"
 									value={serviceName}
-									onChange={e => setServiceName(e.target.value)}
+									onChange={(e) => setServiceName(e.target.value)}
 								/>
 							</div>
 							<div className="text-sm text-muted-foreground mt-2">

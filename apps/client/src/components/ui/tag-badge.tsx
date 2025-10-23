@@ -22,7 +22,7 @@ export const TagBadge = ({ tag, onRemove, className }: TagBadgeProps) => {
 			<span>{tag.name}</span>
 			{onRemove && (
 				<button
-					onClick={e => {
+					onClick={(e) => {
 						e.stopPropagation();
 						onRemove();
 					}}

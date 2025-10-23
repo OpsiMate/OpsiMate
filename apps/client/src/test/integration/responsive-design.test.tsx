@@ -133,8 +133,8 @@ beforeAll(() => {
 					.__listeners;
 				const legacy = (entry.mql as unknown as { __listeners?: Set<Listener>; __legacy?: Set<Listener> })
 					.__legacy;
-				listeners?.forEach(l => l(evt));
-				legacy?.forEach(l => l(evt));
+				listeners?.forEach((l) => l(evt));
+				legacy?.forEach((l) => l(evt));
 			}
 		}
 	};
@@ -322,7 +322,7 @@ describe('Responsive design integration', () => {
 
 		const allButtons = screen.getAllByRole('button');
 		const unnamed = allButtons.find(
-			b => !b.getAttribute('aria-label') && !/table settings/i.test(b.textContent || '')
+			(b) => !b.getAttribute('aria-label') && !/table settings/i.test(b.textContent || '')
 		);
 		if (unnamed) {
 			fireEvent.click(unnamed);

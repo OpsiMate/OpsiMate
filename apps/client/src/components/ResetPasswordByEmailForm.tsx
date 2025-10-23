@@ -32,7 +32,7 @@ const ResetPasswordByEmailForm: React.FC<ResetPasswordFormProps> = ({
 					type="password"
 					placeholder="New password"
 					value={password}
-					onChange={e => setPassword(e.target.value)}
+					onChange={(e) => setPassword(e.target.value)}
 					required
 				/>
 			</div>
@@ -41,7 +41,7 @@ const ResetPasswordByEmailForm: React.FC<ResetPasswordFormProps> = ({
 					type="password"
 					placeholder="Confirm new password"
 					value={confirm}
-					onChange={e => setConfirm(e.target.value)}
+					onChange={(e) => setConfirm(e.target.value)}
 					required
 				/>
 			</div>

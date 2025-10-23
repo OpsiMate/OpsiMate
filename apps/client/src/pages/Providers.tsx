@@ -45,7 +45,7 @@ export const Providers = () => {
 	const [activeTab, setActiveTab] = useState<string>('all');
 
 	const filteredProviders =
-		activeTab === 'all' ? providers : providers.filter(provider => provider.category === activeTab);
+		activeTab === 'all' ? providers : providers.filter((provider) => provider.category === activeTab);
 
 	return (
 		<DashboardLayout>
@@ -67,7 +67,7 @@ export const Providers = () => {
 					</TabsList>
 					<TabsContent value={activeTab} className="mt-6">
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{filteredProviders.map(provider => (
+							{filteredProviders.map((provider) => (
 								<Card key={provider.id} className="overflow-hidden">
 									<CardHeader className="pb-3">
 										<div className="flex items-center gap-3">

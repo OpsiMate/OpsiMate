@@ -59,7 +59,7 @@ export const CustomFieldsTable: React.FC = () => {
 	// Filter fields based on search
 	const filteredFields = useMemo(() => {
 		if (!customFields) return [];
-		return customFields.filter(field => {
+		return customFields.filter((field) => {
 			const matchesSearch = field.name.toLowerCase().includes(searchQuery.toLowerCase());
 			return matchesSearch;
 		});
@@ -104,7 +104,7 @@ export const CustomFieldsTable: React.FC = () => {
 						<Input
 							placeholder="Search custom fields..."
 							value={searchQuery}
-							onChange={e => setSearchQuery(e.target.value)}
+							onChange={(e) => setSearchQuery(e.target.value)}
 							className="pl-9"
 						/>
 					</div>
@@ -145,7 +145,7 @@ export const CustomFieldsTable: React.FC = () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{filteredFields.map(field => (
+						{filteredFields.map((field) => (
 							<TableRow key={field.id}>
 								<TableCell>
 									<div className="font-medium">{field.name}</div>

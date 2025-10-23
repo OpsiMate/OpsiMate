@@ -51,9 +51,9 @@ export const Dashboard = () => {
 	// Update visibleColumns and columnOrder when customFields change
 	useEffect(() => {
 		if (customFields.length > 0) {
-			setVisibleColumns(prev => {
+			setVisibleColumns((prev) => {
 				const updated = { ...prev };
-				customFields.forEach(field => {
+				customFields.forEach((field) => {
 					const key = `custom-${field.id}`;
 					if (!(key in updated)) {
 						updated[key] = false; // Default to hidden for new custom fields
@@ -62,10 +62,10 @@ export const Dashboard = () => {
 				return updated;
 			});
 
-			setColumnOrder(prev => {
-				const customFieldKeys = customFields.map(field => `custom-${field.id}`);
+			setColumnOrder((prev) => {
+				const customFieldKeys = customFields.map((field) => `custom-${field.id}`);
 				// Add custom fields that aren't already in the order
-				const newFields = customFieldKeys.filter(key => !prev.includes(key));
+				const newFields = customFieldKeys.filter((key) => !prev.includes(key));
 				return [...prev, ...newFields];
 			});
 		}
@@ -106,25 +106,29 @@ export const Dashboard = () => {
 	// Enhanced alert calculation: each service gets alerts for ALL its tags
 	const servicesWithAlerts = useMemo(() => {
 		logger.info('Debug - Services:', { extraArgs: { servicesCount: services.length, alertsCount: alerts.length } });
-		return services.map(service => {
-			logger.info(`Service ${service.name} tags:`, { extraArgs: { tags: service.tags?.map(t => t.name) || [] } });
+		return services.map((service) => {
+			logger.info(`Service ${service.name} tags:`, {
+				extraArgs: { tags: service.tags?.map((t) => t.name) || [] },
+			});
 
 			const sid = Number(service.id);
 			// Get all unique alerts that match any of the service's tags (including dismissed)
-			const serviceAlerts = alerts.filter(alert => {
+			const serviceAlerts = alerts.filter((alert) => {
 				logger.info(`Checking alert ${alert.id} (tag: ${alert.tag}) against service ${service.name}`);
 				const explicitSid = getAlertServiceId(alert);
 				const matches =
-					explicitSid !== undefined ? explicitSid === sid : service.tags?.some(tag => tag.name === alert.tag);
+					explicitSid !== undefined
+						? explicitSid === sid
+						: service.tags?.some((tag) => tag.name === alert.tag);
 				logger.info(`Match result: ${matches}`);
 				return matches;
 			});
 
 			// Remove duplicates
-			const uniqueAlerts = serviceAlerts.filter((a, i, self) => i === self.findIndex(b => b.id === a.id));
+			const uniqueAlerts = serviceAlerts.filter((a, i, self) => i === self.findIndex((b) => b.id === a.id));
 
 			// Count only non-dismissed alerts for the badge count
-			const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed);
+			const activeAlerts = uniqueAlerts.filter((a) => !a.isDismissed);
 
 			logger.info(
 				`Service ${service.name} final result: ${activeAlerts.length} active, ${uniqueAlerts.length - activeAlerts.length} dismissed`
@@ -141,7 +145,7 @@ export const Dashboard = () => {
 	// Update selectedService when servicesWithAlerts changes
 	useEffect(() => {
 		if (selectedService) {
-			const updatedService = servicesWithAlerts.find(s => s.id === selectedService.id);
+			const updatedService = servicesWithAlerts.find((s) => s.id === selectedService.id);
 			if (updatedService) {
 				setSelectedService(updatedService);
 			}
@@ -170,13 +174,13 @@ export const Dashboard = () => {
 	}, [viewsError, toast]);
 
 	const filteredServices = useMemo(() => {
-		const activeFilterKeys = Object.keys(filters).filter(key => filters[key].length > 0);
+		const activeFilterKeys = Object.keys(filters).filter((key) => filters[key].length > 0);
 		if (activeFilterKeys.length === 0) {
 			return servicesWithAlerts;
 		}
 
-		return servicesWithAlerts.filter(service => {
-			return activeFilterKeys.every(key => {
+		return servicesWithAlerts.filter((service) => {
+			return activeFilterKeys.every((key) => {
 				const filterValues = filters[key];
 				if (Array.isArray(filterValues) && filterValues.length > 0) {
 					// Handle different filter field types
@@ -204,8 +208,8 @@ export const Dashboard = () => {
 								return false;
 							}
 							// Check if the service has ALL the selected tags
-							return filterValues.every(selectedTag =>
-								service.tags.some(tag => tag.name.toLowerCase() === selectedTag.toLowerCase())
+							return filterValues.every((selectedTag) =>
+								service.tags.some((tag) => tag.name.toLowerCase() === selectedTag.toLowerCase())
 							);
 
 						default:
@@ -258,7 +262,7 @@ export const Dashboard = () => {
 	const applyView = async (view: SavedView) => {
 		try {
 			applyViewFilters(view);
-			setVisibleColumns(prev => ({
+			setVisibleColumns((prev) => ({
 				...prev,
 				...view.visibleColumns,
 			}));
@@ -298,7 +302,7 @@ export const Dashboard = () => {
 		setSelectedServices(services);
 		if (services.length === 1) {
 			// Find the service with alerts from servicesWithAlerts
-			const serviceWithAlerts = servicesWithAlerts.find(s => s.id === services[0].id);
+			const serviceWithAlerts = servicesWithAlerts.find((s) => s.id === services[0].id);
 			setSelectedService(serviceWithAlerts || services[0]);
 		} else {
 			setSelectedService(null);
@@ -306,7 +310,7 @@ export const Dashboard = () => {
 	};
 
 	const handleColumnToggle = (column: string) => {
-		setVisibleColumns(prev => ({
+		setVisibleColumns((prev) => ({
 			...prev,
 			[column]: !prev[column],
 		}));

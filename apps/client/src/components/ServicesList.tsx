@@ -69,7 +69,7 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 				</Button>
 			</CollapsibleTrigger>
 			<CollapsibleContent className="pt-2 space-y-1">
-				{services.map(service => (
+				{services.map((service) => (
 					<div
 						key={service.id}
 						className="flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer"
@@ -111,19 +111,19 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 							{/* Dropdown menu */}
 							<DropdownMenu
 								open={openMenuId === service.id}
-								onOpenChange={isOpen => setOpenMenuId(isOpen ? service.id : null)}
+								onOpenChange={(isOpen) => setOpenMenuId(isOpen ? service.id : null)}
 							>
 								<DropdownMenuTrigger asChild>
 									<Button
 										variant="ghost"
 										size="icon"
 										className="h-6 w-6"
-										onClick={e => toggleDropdown(e, service.id)}
+										onClick={(e) => toggleDropdown(e, service.id)}
 									>
 										<MoreVertical className="h-4 w-4" />
 									</Button>
 								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+								<DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
 									<DropdownMenuItem onClick={() => onServiceClick(service)}>
 										<Terminal className="mr-2 h-4 w-4" /> View Details
 									</DropdownMenuItem>
@@ -146,7 +146,7 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 									</DropdownMenuItem>
 									{onDeleteService && (
 										<DropdownMenuItem
-											onClick={e => {
+											onClick={(e) => {
 												e.stopPropagation();
 												logger.info('Delete button clicked for service:', {
 													extraArgs: { serviceId: service.id },

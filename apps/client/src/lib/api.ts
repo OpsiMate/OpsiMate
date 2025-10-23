@@ -537,7 +537,7 @@ export const alertsApi = {
 	async getAlertsByTag(tag: string): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
 		const response = await this.getAllAlerts();
 		if (response.success && response.data) {
-			const filteredAlerts = response.data.alerts.filter(alert => alert.tag === tag);
+			const filteredAlerts = response.data.alerts.filter((alert) => alert.tag === tag);
 			return {
 				success: true,
 				data: { alerts: filteredAlerts },
@@ -550,10 +550,10 @@ export const alertsApi = {
 	async getAlertsByTags(tags: string[]): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
 		const response = await this.getAllAlerts();
 		if (response.success && response.data) {
-			const filteredAlerts = response.data.alerts.filter(alert => tags.includes(alert.tag));
+			const filteredAlerts = response.data.alerts.filter((alert) => tags.includes(alert.tag));
 			// Remove duplicates
 			const uniqueAlerts = filteredAlerts.filter(
-				(alert, index, self) => index === self.findIndex(a => a.id === alert.id)
+				(alert, index, self) => index === self.findIndex((a) => a.id === alert.id)
 			);
 			return {
 				success: true,

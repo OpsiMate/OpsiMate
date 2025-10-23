@@ -74,7 +74,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 		try {
 			const response = await providerApi.removeTagFromService(Number(serviceId), Number(tag.id));
 			if (response.success) {
-				onTagsChange(selectedTags.filter(t => t.id !== tag.id));
+				onTagsChange(selectedTags.filter((t) => t.id !== tag.id));
 				toast({
 					title: 'Success',
 					description: 'Tag removed from service',
@@ -103,11 +103,11 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 
 	const handleTagDeleted = (tagId: number) => {
 		// Remove the tag from all tags list
-		setAllTags(allTags.filter(tag => tag.id !== tagId));
+		setAllTags(allTags.filter((tag) => tag.id !== tagId));
 
 		// Remove the tag from selected tags if it was selected
-		if (selectedTags.some(tag => tag.id === tagId)) {
-			onTagsChange(selectedTags.filter(tag => tag.id !== tagId));
+		if (selectedTags.some((tag) => tag.id === tagId)) {
+			onTagsChange(selectedTags.filter((tag) => tag.id !== tagId));
 		}
 	};
 
@@ -118,12 +118,12 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 		setShowDeleteDialog(true);
 	};
 
-	const availableTags = allTags.filter(tag => !selectedTags.some(selected => selected.id === tag.id));
+	const availableTags = allTags.filter((tag) => !selectedTags.some((selected) => selected.id === tag.id));
 
 	return (
 		<>
 			<div className={cn('flex flex-wrap gap-1 items-center', className)}>
-				{selectedTags.map(tag => (
+				{selectedTags.map((tag) => (
 					<TagBadge key={tag.id} tag={tag} onRemove={() => removeTag(tag)} className="text-xs" />
 				))}
 				<Popover open={open} onOpenChange={setOpen}>
@@ -165,7 +165,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 									</div>
 								</CommandEmpty>
 								<CommandGroup>
-									{availableTags.map(tag => (
+									{availableTags.map((tag) => (
 										<CommandItem
 											key={tag.id}
 											onSelect={() => addTag(tag)}
@@ -179,7 +179,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 												<span>{tag.name}</span>
 											</div>
 											<button
-												onClick={e => handleDeleteClick(e, tag)}
+												onClick={(e) => handleDeleteClick(e, tag)}
 												className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded text-white hover:text-white/80"
 												title="Delete tag"
 											>

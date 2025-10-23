@@ -61,7 +61,7 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 						<Input
 							id="name"
 							value={formData.name}
-							onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+							onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
 							placeholder="e.g., Web Server, Database"
 							required
 						/>
@@ -72,7 +72,7 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 						<Input
 							id="serverId"
 							value={formData.serverId}
-							onChange={e => setFormData(prev => ({ ...prev, serverId: e.target.value }))}
+							onChange={(e) => setFormData((prev) => ({ ...prev, serverId: e.target.value }))}
 							placeholder="e.g., srv-001"
 							required
 						/>
@@ -83,7 +83,7 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 						<Input
 							id="ipAddress"
 							value={formData.ipAddress}
-							onChange={e => setFormData(prev => ({ ...prev, ipAddress: e.target.value }))}
+							onChange={(e) => setFormData((prev) => ({ ...prev, ipAddress: e.target.value }))}
 							placeholder="e.g., 192.168.1.100"
 							required
 						/>
@@ -93,7 +93,7 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 						<Label htmlFor="os">Operating System</Label>
 						<Select
 							value={formData.os}
-							onValueChange={value => setFormData(prev => ({ ...prev, os: value }))}
+							onValueChange={(value) => setFormData((prev) => ({ ...prev, os: value }))}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Select OS" />
@@ -114,7 +114,7 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 							id="port"
 							type="number"
 							value={formData.port}
-							onChange={e => setFormData(prev => ({ ...prev, port: e.target.value }))}
+							onChange={(e) => setFormData((prev) => ({ ...prev, port: e.target.value }))}
 							placeholder="e.g., 8080"
 						/>
 					</div>
@@ -124,7 +124,7 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 						<Input
 							id="sshUser"
 							value={formData.sshUser}
-							onChange={e => setFormData(prev => ({ ...prev, sshUser: e.target.value }))}
+							onChange={(e) => setFormData((prev) => ({ ...prev, sshUser: e.target.value }))}
 							placeholder="e.g., root, ubuntu"
 							required
 						/>

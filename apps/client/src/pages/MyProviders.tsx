@@ -176,7 +176,7 @@ export const MyProviders = () => {
 			const response = await providerApi.getProviders();
 
 			if (response.success && response.data && response.data.providers) {
-				const apiProviders: Provider[] = response.data.providers.map(provider => {
+				const apiProviders: Provider[] = response.data.providers.map((provider) => {
 					const mappedProvider = {
 						id: Number(provider.id),
 						name: provider.name || '',
@@ -249,7 +249,7 @@ export const MyProviders = () => {
 					{} as Record<string, ServiceConfig[]>
 				);
 
-				const updatedProviders = providerInstances.map(provider => ({
+				const updatedProviders = providerInstances.map((provider) => ({
 					...provider,
 					services: servicesByProvider[provider.id] || [],
 				}));
@@ -270,7 +270,7 @@ export const MyProviders = () => {
 		if (!isLoading && providerInstances.length > 0) {
 			// Only load services if providers don't already have services loaded
 			const hasServicesLoaded = providerInstances.some(
-				provider => provider.services && provider.services.length > 0
+				(provider) => provider.services && provider.services.length > 0
 			);
 			if (!hasServicesLoaded) {
 				loadAllProviderServices();
@@ -278,7 +278,7 @@ export const MyProviders = () => {
 		}
 	}, [isLoading, providerInstances.length]);
 
-	const filteredProviders = providerInstances.filter(provider => {
+	const filteredProviders = providerInstances.filter((provider) => {
 		const name = provider?.name || '';
 		const type = provider?.providerType || 'VM';
 		const matchesSearch =
@@ -310,7 +310,7 @@ export const MyProviders = () => {
 			if (response.success && response.data) {
 				const { provider: refreshedProvider, services } = response.data;
 
-				const serviceConfigs: ServiceConfig[] = services.map(service => ({
+				const serviceConfigs: ServiceConfig[] = services.map((service) => ({
 					id: service.id.toString(),
 					name: service.name,
 					status: service.serviceStatus as 'running' | 'stopped' | 'error' | 'unknown',
@@ -327,12 +327,12 @@ export const MyProviders = () => {
 					privateKeyFilename: refreshedProvider.privateKeyFilename,
 					SSHPort: refreshedProvider.SSHPort || 22,
 					providerType: refreshedProvider.providerType as Provider['providerType'],
-					status: services.some(s => s.serviceStatus === 'running') ? 'running' : 'stopped',
+					status: services.some((s) => s.serviceStatus === 'running') ? 'running' : 'stopped',
 					services: serviceConfigs,
 					details: {},
 				};
 
-				const updatedProviders = providerInstances.map(provider =>
+				const updatedProviders = providerInstances.map((provider) =>
 					provider.id === Number(id) ? updatedProvider : provider
 				);
 
@@ -369,10 +369,10 @@ export const MyProviders = () => {
 			const response = await providerApi.getAllServices();
 			if (response.success && response.data) {
 				const providerServices = response.data?.filter(
-					service => service.providerId && service.providerId === provider.id
+					(service) => service.providerId && service.providerId === provider.id
 				);
 
-				const serviceConfigs: ServiceConfig[] = providerServices.map(service => ({
+				const serviceConfigs: ServiceConfig[] = providerServices.map((service) => ({
 					id: service.id.toString(),
 					name: service.name,
 					status: service.serviceStatus as 'running' | 'stopped' | 'error' | 'unknown',
@@ -386,7 +386,7 @@ export const MyProviders = () => {
 					services: serviceConfigs,
 				};
 
-				const updatedProviders = providerInstances.map(item =>
+				const updatedProviders = providerInstances.map((item) =>
 					item.id === provider.id ? updatedProvider : item
 				);
 
@@ -444,7 +444,7 @@ export const MyProviders = () => {
 				description: `Service has been ${action}ed successfully`,
 			});
 
-			setTimeout(() => handleRowClick(providerInstances.find(i => i.id === Number(providerId))!), 2000);
+			setTimeout(() => handleRowClick(providerInstances.find((i) => i.id === Number(providerId))!), 2000);
 		} catch (error) {
 			logger.error(`Error ${action}ing service:`, error);
 			toast({
@@ -456,8 +456,8 @@ export const MyProviders = () => {
 	};
 
 	const updateUIAfterServiceAddition = (providerId: number, service: ServiceConfig) => {
-		setProviderInstances(prevProviders => {
-			const updatedProviders = prevProviders.map(provider => {
+		setProviderInstances((prevProviders) => {
+			const updatedProviders = prevProviders.map((provider) => {
 				if (provider.id === providerId) {
 					return {
 						...provider,
@@ -510,11 +510,11 @@ export const MyProviders = () => {
 				}
 			}
 
-			const updatedProviders = providerInstances.map(provider => {
+			const updatedProviders = providerInstances.map((provider) => {
 				if (provider.id === Number(providerId) && provider.services) {
 					return {
 						...provider,
-						services: provider.services.map(service =>
+						services: provider.services.map((service) =>
 							service.id === serviceId ? { ...service, status: newStatus } : service
 						),
 					};
@@ -527,7 +527,7 @@ export const MyProviders = () => {
 			if (selectedProvider && selectedProvider.id === Number(providerId) && selectedProvider.services) {
 				const updatedSelectedProvider = {
 					...selectedProvider,
-					services: selectedProvider.services.map(service =>
+					services: selectedProvider.services.map((service) =>
 						service.id === serviceId ? { ...service, status: newStatus } : service
 					),
 				};
@@ -547,14 +547,14 @@ export const MyProviders = () => {
 	};
 
 	const updateUIAfterServiceDeletion = (serviceId: string) => {
-		setProviderInstances(prevProviders => {
-			const updatedProviders = prevProviders.map(provider => {
+		setProviderInstances((prevProviders) => {
+			const updatedProviders = prevProviders.map((provider) => {
 				if (provider.services) {
-					const serviceExists = provider.services.some(service => service.id === serviceId);
+					const serviceExists = provider.services.some((service) => service.id === serviceId);
 					if (serviceExists) {
 						return {
 							...provider,
-							services: provider.services.filter(service => service.id !== serviceId),
+							services: provider.services.filter((service) => service.id !== serviceId),
 						};
 					}
 				}
@@ -569,8 +569,8 @@ export const MyProviders = () => {
 		try {
 			const serviceIdNum = parseInt(serviceId);
 
-			const containingProvider = providerInstances.find(provider =>
-				provider.services?.some(service => service.id === serviceId)
+			const containingProvider = providerInstances.find((provider) =>
+				provider.services?.some((service) => service.id === serviceId)
 			);
 
 			if (!containingProvider) {
@@ -615,7 +615,7 @@ export const MyProviders = () => {
 			const response = await providerApi.deleteProvider(selectedProvider.id);
 
 			if (response.success) {
-				const updatedProviders = providerInstances.filter(provider => provider.id !== selectedProvider.id);
+				const updatedProviders = providerInstances.filter((provider) => provider.id !== selectedProvider.id);
 				setProviderInstances(updatedProviders);
 
 				queryClient.invalidateQueries({ queryKey: queryKeys.services });
@@ -655,7 +655,7 @@ export const MyProviders = () => {
 			const response = await providerApi.updateProvider(Number(providerId), updatedData);
 
 			if (response.success && response.data) {
-				const updatedProviders = providerInstances.map(provider => {
+				const updatedProviders = providerInstances.map((provider) => {
 					if (provider.id === Number(providerId)) {
 						return {
 							...provider,
@@ -672,7 +672,7 @@ export const MyProviders = () => {
 				setProviderInstances(updatedProviders);
 
 				if (selectedProvider && selectedProvider.id === Number(providerId)) {
-					const updatedProvider = updatedProviders.find(i => i.id === Number(providerId));
+					const updatedProvider = updatedProviders.find((i) => i.id === Number(providerId));
 					if (updatedProvider) {
 						setSelectedProvider(updatedProvider);
 					}
@@ -718,7 +718,7 @@ export const MyProviders = () => {
 								placeholder="Search providers..."
 								className="pl-10"
 								value={searchQuery}
-								onChange={e => setSearchQuery(e.target.value)}
+								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
 						</div>
 					</div>
@@ -740,7 +740,7 @@ export const MyProviders = () => {
 						</div>
 					) : filteredProviders.length > 0 ? (
 						<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-							{filteredProviders.map(provider => {
+							{filteredProviders.map((provider) => {
 								const hasServices = Array.isArray(provider.services) && provider.services.length > 0;
 								const isLoading = loadingServices.has(provider.id);
 								const servicesToShow = hasServices ? provider.services : [];
@@ -771,13 +771,16 @@ export const MyProviders = () => {
 														variant="ghost"
 														size="icon"
 														className="h-8 w-8"
-														onClick={e => e.stopPropagation()}
+														onClick={(e) => e.stopPropagation()}
 													>
 														<MoreVertical className="h-4 w-4" />
 													</Button>
 												</DropdownMenuTrigger>
 												<DropdownMenuPortal>
-													<DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+													<DropdownMenuContent
+														align="end"
+														onClick={(e) => e.stopPropagation()}
+													>
 														<DropdownMenuItem
 															onClick={() => handleRefreshProvider(String(provider.id))}
 														>
@@ -831,7 +834,7 @@ export const MyProviders = () => {
 													<div className="overflow-y-scroll pr-2 max-h-[304px] h-full services-scrollbar">
 														{hasServices ? (
 															<div className="space-y-3">
-																{servicesToShow.map(service => (
+																{servicesToShow.map((service) => (
 																	<div
 																		key={service.id}
 																		className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
@@ -869,7 +872,7 @@ export const MyProviders = () => {
 																						variant="ghost"
 																						size="icon"
 																						className="h-6 w-6"
-																						onClick={e =>
+																						onClick={(e) =>
 																							e.stopPropagation()
 																						}
 																					>
@@ -879,7 +882,7 @@ export const MyProviders = () => {
 																				<DropdownMenuPortal>
 																					<DropdownMenuContent
 																						align="end"
-																						onClick={e =>
+																						onClick={(e) =>
 																							e.stopPropagation()
 																						}
 																					>
@@ -887,10 +890,10 @@ export const MyProviders = () => {
 																							onClick={() => {
 																								const parentProvider =
 																									providerInstances.find(
-																										p =>
+																										(p) =>
 																											p.services &&
 																											p.services.some(
-																												s =>
+																												(s) =>
 																													s.id ===
 																													service.id
 																											)
@@ -1073,7 +1076,7 @@ export const MyProviders = () => {
 																			<Button
 																				variant="outline"
 																				size="sm"
-																				onClick={e => {
+																				onClick={(e) => {
 																					e.stopPropagation();
 																					setSelectedServerForService(
 																						provider
@@ -1127,7 +1130,7 @@ export const MyProviders = () => {
 					providerType={selectedServerForService.providerType}
 					open={isAddServiceDialogOpen}
 					onClose={() => setIsAddServiceDialogOpen(false)}
-					onServiceAdded={service => handleAddService(selectedServerForService.id, service)}
+					onServiceAdded={(service) => handleAddService(selectedServerForService.id, service)}
 				/>
 			)}
 

@@ -75,7 +75,7 @@ export const ServiceDetailsSheet = ({
 							<h4 className="font-semibold text-lg mb-2">Services</h4>
 							<ServicesList
 								services={provider.services}
-								onServiceClick={service => {
+								onServiceClick={(service) => {
 									/* Handle service click if needed */
 								}}
 								onStatusChange={(serviceId, newStatus) => {

@@ -73,7 +73,7 @@ const Register: React.FC = () => {
 						type="email"
 						placeholder="Email"
 						value={email}
-						onChange={e => setEmail(e.target.value)}
+						onChange={(e) => setEmail(e.target.value)}
 						required
 					/>
 					{errors.email && <ErrorAlert message={errors.email} className="mt-6" />}
@@ -83,7 +83,7 @@ const Register: React.FC = () => {
 						type="text"
 						placeholder="Full Name"
 						value={fullName}
-						onChange={e => setFullName(e.target.value)}
+						onChange={(e) => setFullName(e.target.value)}
 						required
 					/>
 					{errors.fullName && <ErrorAlert message={errors.fullName} className="mt-6" />}
@@ -93,7 +93,7 @@ const Register: React.FC = () => {
 						type="password"
 						placeholder="Password"
 						value={password}
-						onChange={e => setPassword(e.target.value)}
+						onChange={(e) => setPassword(e.target.value)}
 						required
 					/>
 					{errors.password && <ErrorAlert message={errors.password} className="mt-6" />}

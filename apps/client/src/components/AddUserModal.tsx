@@ -98,7 +98,7 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 								id="email"
 								type="email"
 								value={formData.email}
-								onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+								onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
 								required
 								disabled={creatingUser}
 							/>
@@ -109,7 +109,7 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 								id="fullName"
 								type="text"
 								value={formData.fullName}
-								onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+								onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))}
 								required
 								disabled={creatingUser}
 							/>
@@ -120,7 +120,7 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 								id="password"
 								type="password"
 								value={formData.password}
-								onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+								onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
 								required
 								minLength={6}
 								pattern="^[^\s]*$"
@@ -132,7 +132,7 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 							<Label htmlFor="role">Role</Label>
 							<Select
 								value={formData.role}
-								onValueChange={value => setFormData(prev => ({ ...prev, role: value as Role }))}
+								onValueChange={(value) => setFormData((prev) => ({ ...prev, role: value as Role }))}
 								disabled={creatingUser}
 							>
 								<SelectTrigger>

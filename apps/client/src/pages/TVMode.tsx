@@ -127,19 +127,19 @@ const TVMode = ({
 	// Enhanced alert calculation
 	const servicesWithAlerts = useMemo(() => {
 		logger.info('TV Mode - Total alerts available:', { extraArgs: { alertsCount: alerts.length } });
-		return services.map(service => {
+		return services.map((service) => {
 			const sid = Number(service.id);
 
-			const serviceAlerts = alerts.filter(alert => {
+			const serviceAlerts = alerts.filter((alert) => {
 				const explicitSid = getAlertServiceId(alert);
 				return explicitSid !== undefined
 					? explicitSid === sid
-					: service.tags?.some(tag => tag.name === alert.tag);
+					: service.tags?.some((tag) => tag.name === alert.tag);
 			});
 
-			const uniqueAlerts = serviceAlerts.filter((a, i, self) => i === self.findIndex(b => b.id === a.id));
+			const uniqueAlerts = serviceAlerts.filter((a, i, self) => i === self.findIndex((b) => b.id === a.id));
 
-			const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed);
+			const activeAlerts = uniqueAlerts.filter((a) => !a.isDismissed);
 
 			if (activeAlerts.length > 0) {
 				logger.info(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, {
@@ -164,7 +164,7 @@ const TVMode = ({
 		if (searchTerm) {
 			const searchLower = searchTerm.toLowerCase();
 			filtered = filtered.filter(
-				service =>
+				(service) =>
 					service.name.toLowerCase().includes(searchLower) ||
 					service.provider.name.toLowerCase().includes(searchLower) ||
 					(service.serviceIP && service.serviceIP.toLowerCase().includes(searchLower)) ||
@@ -176,27 +176,27 @@ const TVMode = ({
 
 		// Apply saved filters
 		if (savedFilters.serviceStatus && savedFilters.serviceStatus.length > 0) {
-			filtered = filtered.filter(service => savedFilters.serviceStatus!.includes(service.serviceStatus));
+			filtered = filtered.filter((service) => savedFilters.serviceStatus!.includes(service.serviceStatus));
 		}
 
 		if (savedFilters.serviceType && savedFilters.serviceType.length > 0) {
-			filtered = filtered.filter(service => savedFilters.serviceType!.includes(service.serviceType));
+			filtered = filtered.filter((service) => savedFilters.serviceType!.includes(service.serviceType));
 		}
 
 		if (savedFilters.providerName && savedFilters.providerName.length > 0) {
-			filtered = filtered.filter(service => savedFilters.providerName!.includes(service.provider.name));
+			filtered = filtered.filter((service) => savedFilters.providerName!.includes(service.provider.name));
 		}
 
 		if (savedFilters.providerType && savedFilters.providerType.length > 0) {
 			filtered = filtered.filter(
-				service =>
+				(service) =>
 					service.provider?.providerType && savedFilters.providerType!.includes(service.provider.providerType)
 			);
 		}
 
 		if (savedFilters.containerNamespace && savedFilters.containerNamespace.length > 0) {
 			filtered = filtered.filter(
-				service =>
+				(service) =>
 					service.containerDetails?.namespace &&
 					savedFilters.containerNamespace!.includes(service.containerDetails.namespace)
 			);
@@ -206,7 +206,7 @@ const TVMode = ({
 			logger.info('TV Mode - Applying tags filter:', { extraArgs: { tags: savedFilters.tags } });
 			const beforeCount = filtered.length;
 			filtered = filtered.filter(
-				service => service.tags && service.tags.some(tag => savedFilters.tags!.includes(tag.name))
+				(service) => service.tags && service.tags.some((tag) => savedFilters.tags!.includes(tag.name))
 			);
 			logger.info('TV Mode - After tags filter:', {
 				extraArgs: { servicesCount: filtered.length, previousCount: beforeCount },
@@ -223,12 +223,12 @@ const TVMode = ({
 
 		// Apply multi-state filter
 		if (!selectedStates.has('all')) {
-			filtered = filtered.filter(s => selectedStates.has(s.serviceStatus));
+			filtered = filtered.filter((s) => selectedStates.has(s.serviceStatus));
 		}
 
 		// Apply alert filter
 		if (alertFilter === 'with-alerts') {
-			filtered = filtered.filter(s => s.alertsCount > 0);
+			filtered = filtered.filter((s) => s.alertsCount > 0);
 		}
 
 		return filtered;
@@ -267,18 +267,18 @@ const TVMode = ({
 	const stats = useMemo(() => {
 		// Overall stats (all services)
 		const totalServices = servicesWithAlerts.length;
-		const totalRunning = servicesWithAlerts.filter(s => s.serviceStatus === 'running').length;
-		const totalStopped = servicesWithAlerts.filter(s => s.serviceStatus === 'stopped').length;
-		const totalError = servicesWithAlerts.filter(s => s.serviceStatus === 'error').length;
-		const totalUnknown = servicesWithAlerts.filter(s => s.serviceStatus === 'unknown').length;
+		const totalRunning = servicesWithAlerts.filter((s) => s.serviceStatus === 'running').length;
+		const totalStopped = servicesWithAlerts.filter((s) => s.serviceStatus === 'stopped').length;
+		const totalError = servicesWithAlerts.filter((s) => s.serviceStatus === 'error').length;
+		const totalUnknown = servicesWithAlerts.filter((s) => s.serviceStatus === 'unknown').length;
 		const totalAlerts = servicesWithAlerts.reduce((sum, s) => sum + (s.alertsCount || 0), 0);
 
 		// Filtered stats (currently displayed)
 		const filteredTotal = baseFilteredServices.length;
-		const filteredRunning = baseFilteredServices.filter(s => s.serviceStatus === 'running').length;
-		const filteredStopped = baseFilteredServices.filter(s => s.serviceStatus === 'stopped').length;
-		const filteredError = baseFilteredServices.filter(s => s.serviceStatus === 'error').length;
-		const filteredUnknown = baseFilteredServices.filter(s => s.serviceStatus === 'unknown').length;
+		const filteredRunning = baseFilteredServices.filter((s) => s.serviceStatus === 'running').length;
+		const filteredStopped = baseFilteredServices.filter((s) => s.serviceStatus === 'stopped').length;
+		const filteredError = baseFilteredServices.filter((s) => s.serviceStatus === 'error').length;
+		const filteredUnknown = baseFilteredServices.filter((s) => s.serviceStatus === 'unknown').length;
 
 		return {
 			total: totalServices,
@@ -347,7 +347,7 @@ const TVMode = ({
 		try {
 			await refetch();
 			// Add a small delay to show the animation even if the request is very fast
-			await new Promise(resolve => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 500));
 		} catch (error) {
 			logger.error('Error refreshing data:', error);
 		} finally {
@@ -421,7 +421,7 @@ const TVMode = ({
 
 	// Helper function to toggle state selection
 	const toggleStateSelection = useCallback((state: string) => {
-		setSelectedStates(prev => {
+		setSelectedStates((prev) => {
 			const newStates = new Set(prev);
 			if (state === 'all') {
 				return new Set(['all']);
@@ -504,7 +504,7 @@ const TVMode = ({
 				.then(() => {
 					setIsFullscreen(true);
 				})
-				.catch(err => {
+				.catch((err) => {
 					logger.error('Error attempting to enable fullscreen:', err);
 				});
 		} else {
@@ -513,7 +513,7 @@ const TVMode = ({
 				.then(() => {
 					setIsFullscreen(false);
 				})
-				.catch(err => {
+				.catch((err) => {
 					logger.error('Error attempting to exit fullscreen:', err);
 				});
 		}
@@ -533,7 +533,7 @@ const TVMode = ({
 	useEffect(() => {
 		return () => {
 			if (document.fullscreenElement) {
-				document.exitFullscreen().catch(err => {
+				document.exitFullscreen().catch((err) => {
 					logger.error('Error exiting fullscreen on TV Mode exit:', err);
 				});
 			}
@@ -631,7 +631,7 @@ const TVMode = ({
 									ref={searchInputRef}
 									placeholder="Search services, providers, IPs..."
 									value={searchTerm}
-									onChange={e => setSearchTerm(e.target.value)}
+									onChange={(e) => setSearchTerm(e.target.value)}
 									className="pl-10 pr-10 h-9 text-sm"
 									title="Search services by name, provider, IP, or container image"
 								/>
@@ -913,7 +913,7 @@ const TVMode = ({
 						)}
 						style={{ gridTemplateColumns: `repeat(${smartGridConfig.columns}, minmax(0, 1fr))` }}
 					>
-						{filteredServices.map(service => {
+						{filteredServices.map((service) => {
 							const isCompact = smartGridConfig.cardSize === 'xs' || smartGridConfig.cardSize === 'sm';
 							const isExtraCompact = smartGridConfig.cardSize === 'xs';
 
@@ -961,7 +961,7 @@ const TVMode = ({
 																		'h-5 px-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200',
 																		isCompact && 'h-4 px-1'
 																	)}
-																	onClick={e => {
+																	onClick={(e) => {
 																		e.stopPropagation();
 																	}}
 																>
@@ -1032,7 +1032,7 @@ const TVMode = ({
 																		'h-5 w-5 p-0 hover:bg-muted',
 																		isCompact && 'h-4 w-4'
 																	)}
-																	onClick={e => e.stopPropagation()}
+																	onClick={(e) => e.stopPropagation()}
 																>
 																	<MoreVertical className="h-2.5 w-2.5" />
 																</Button>
@@ -1040,7 +1040,7 @@ const TVMode = ({
 															<DropdownMenuContent align="end" className="w-32">
 																{service.serviceStatus === 'stopped' ? (
 																	<DropdownMenuItem
-																		onClick={e => {
+																		onClick={(e) => {
 																			e.stopPropagation();
 																			handleStartService(service);
 																		}}
@@ -1052,7 +1052,7 @@ const TVMode = ({
 																	</DropdownMenuItem>
 																) : (
 																	<DropdownMenuItem
-																		onClick={e => {
+																		onClick={(e) => {
 																			e.stopPropagation();
 																			handleStopService(service);
 																		}}
@@ -1064,7 +1064,7 @@ const TVMode = ({
 																	</DropdownMenuItem>
 																)}
 																<DropdownMenuItem
-																	onClick={e => {
+																	onClick={(e) => {
 																		e.stopPropagation();
 																		handleRestartService(service);
 																	}}

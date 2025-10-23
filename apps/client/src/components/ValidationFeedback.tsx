@@ -22,7 +22,7 @@ const isValidHostnameOrIP = (value: string): boolean => ipRegex.test(value) || h
 export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({ value, rules, showValid = true }) => {
 	return (
 		<div className="space-y-1 mt-1">
-			{rules.map(rule => {
+			{rules.map((rule) => {
 				const isValid = rule.validator(value);
 				const shouldShow = !isValid || showValid;
 

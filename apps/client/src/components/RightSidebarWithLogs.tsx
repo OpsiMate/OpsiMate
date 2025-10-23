@@ -60,7 +60,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 	const customFieldMap = useMemo(() => {
 		const map = new Map<number, string>();
 		if (customFields) {
-			customFields.forEach(field => {
+			customFields.forEach((field) => {
 				map.set(field.id, field.name);
 			});
 		}
@@ -95,7 +95,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 
 	// Toggle section open/closed state
 	const toggleSection = useCallback((section: keyof typeof sectionsOpen) => {
-		setSectionsOpen(prev => ({
+		setSectionsOpen((prev) => ({
 			...prev,
 			[section]: !prev[section],
 		}));
@@ -207,7 +207,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 			try {
 				const response = await providerApi.removeTagFromService(parseInt(service.id), tagToRemove.id);
 				if (response.success) {
-					const updatedTags = serviceTags.filter(tag => tag.id !== tagToRemove.id);
+					const updatedTags = serviceTags.filter((tag) => tag.id !== tagToRemove.id);
 					setServiceTags(updatedTags);
 					if (onServiceUpdate) {
 						onServiceUpdate({
@@ -392,7 +392,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 
 						{/* Custom Fields - Integrated into main grid */}
 						{customFields &&
-							customFields.map(field => {
+							customFields.map((field) => {
 								const currentValue = service.customFields?.[field.id] || '';
 
 								return (
@@ -418,7 +418,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 							icon={AlertTriangle}
 							isOpen={sectionsOpen.alerts}
 							onToggle={() => toggleSection('alerts')}
-							badge={service?.serviceAlerts?.filter(a => !a.isDismissed).length || 0}
+							badge={service?.serviceAlerts?.filter((a) => !a.isDismissed).length || 0}
 							className="text-orange-600"
 						>
 							<AlertsSection alerts={service?.serviceAlerts || []} onAlertDismiss={onAlertDismiss} />
@@ -514,7 +514,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 								) : (
 									<div className="bg-muted rounded-md p-3 overflow-auto max-h-[200px] border">
 										<pre className="text-xs font-mono whitespace-pre-wrap text-foreground">
-											{pods.map(i => i.name).join('\n')}
+											{pods.map((i) => i.name).join('\n')}
 										</pre>
 									</div>
 								)}

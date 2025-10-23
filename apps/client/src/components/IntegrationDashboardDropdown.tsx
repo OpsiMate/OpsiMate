@@ -65,7 +65,7 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 	const integrationUrl = integration?.externalUrl || '';
 
 	// Use React Query to fetch dashboards
-	const tagNames = useMemo(() => tags.map(tag => tag.name), [tags]);
+	const tagNames = useMemo(() => tags.map((tag) => tag.name), [tags]);
 	const { data: dashboards = [], isLoading: loading, error } = useIntegrationUrls(integrationId, tagNames);
 
 	const handleDashboardClick = useCallback(
@@ -120,7 +120,7 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-64">
 				<DropdownMenuLabel className="text-xs">
-					Dashboards for tags: {tags.map(tag => tag.name).join(', ')}
+					Dashboards for tags: {tags.map((tag) => tag.name).join(', ')}
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 

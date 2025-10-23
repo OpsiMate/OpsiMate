@@ -62,7 +62,7 @@ export const TableSettingsModal = ({
 								<div className="border-t pt-3 mt-3">
 									<h4 className="text-sm font-semibold text-muted-foreground mb-2">Custom Fields</h4>
 								</div>
-								{customFields.map(field => (
+								{customFields.map((field) => (
 									<div key={`custom-${field.id}`} className="flex items-center space-x-2">
 										<Checkbox
 											id={`custom-${field.id}`}

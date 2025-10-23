@@ -121,7 +121,7 @@ describe('notification system - integration', () => {
 	});
 
 	afterEach(() => {
-		MockWebSocket.instances.forEach(i => i.close());
+		MockWebSocket.instances.forEach((i) => i.close());
 	});
 
 	afterAll(() => {
@@ -188,7 +188,7 @@ describe('notification system - integration', () => {
 			]);
 			const handleDismiss = async (id: string) => {
 				await Promise.resolve();
-				setAlerts(prev => prev.map(a => (a.id === id ? { ...a, isDismissed: true } : a)));
+				setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, isDismissed: true } : a)));
 			};
 
 			return (

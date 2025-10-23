@@ -56,7 +56,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 			>
 				<div
 					className={`fixed left-0 top-0 h-full z-50 bg-card w-72 shadow-xl transition-transform duration-200 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-					onClick={e => e.stopPropagation()}
+					onClick={(e) => e.stopPropagation()}
 				>
 					<LeftSidebar collapsed={false} />
 					<button

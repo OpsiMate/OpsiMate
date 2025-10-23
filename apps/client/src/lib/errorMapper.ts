@@ -200,7 +200,7 @@ export function mapValidationErrors(response: ValidationErrorResponse): Record<s
 	const fieldErrors: Record<string, string> = {};
 
 	if (response.details && Array.isArray(response.details)) {
-		response.details.forEach(detail => {
+		response.details.forEach((detail) => {
 			const fieldName = detail.path[detail.path.length - 1] || 'unknown';
 			fieldErrors[fieldName] = mapValidationErrorDetail(detail);
 		});

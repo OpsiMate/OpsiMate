@@ -241,7 +241,7 @@ export const ServiceTable = ({
 	};
 
 	const handleSort = (field: SortField) => {
-		setSortConfig(current => {
+		setSortConfig((current) => {
 			if (current?.field === field) {
 				// If clicking the same field, toggle direction
 				return {
@@ -279,7 +279,7 @@ export const ServiceTable = ({
 		// Apply search filter
 		if (searchTerm.trim()) {
 			const searchLower = searchTerm.toLowerCase();
-			filtered = services.filter(service => {
+			filtered = services.filter((service) => {
 				return (
 					service.name.toLowerCase().includes(searchLower) ||
 					service.serviceIP?.toLowerCase().includes(searchLower) ||
@@ -361,9 +361,9 @@ export const ServiceTable = ({
 	};
 
 	const handleRowClick = (service: Service) => {
-		const isSelected = selectedServices.some(s => s.id === service.id);
+		const isSelected = selectedServices.some((s) => s.id === service.id);
 		if (isSelected) {
-			onServicesSelect(selectedServices.filter(s => s.id !== service.id));
+			onServicesSelect(selectedServices.filter((s) => s.id !== service.id));
 		} else {
 			onServicesSelect([...selectedServices, service]);
 		}
@@ -451,7 +451,7 @@ export const ServiceTable = ({
 					<Input
 						placeholder="Search services..."
 						value={searchTerm}
-						onChange={e => {
+						onChange={(e) => {
 							const newValue = e.target.value;
 							if (onSearchChange) {
 								onSearchChange(newValue);
@@ -486,7 +486,7 @@ export const ServiceTable = ({
 												filteredAndSortedServices.length > 0 &&
 												selectedServices.length === filteredAndSortedServices.length
 											}
-											onCheckedChange={checked => {
+											onCheckedChange={(checked) => {
 												if (checked) {
 													onServicesSelect(filteredAndSortedServices);
 												} else {
@@ -498,10 +498,10 @@ export const ServiceTable = ({
 									</div>
 								</TableHead>
 								<SortableContext
-									items={columnOrder.filter(col => visibleColumns[col])}
+									items={columnOrder.filter((col) => visibleColumns[col])}
 									strategy={horizontalListSortingStrategy}
 								>
-									{columnOrder.map(columnId => {
+									{columnOrder.map((columnId) => {
 										if (!visibleColumns[columnId]) return null;
 
 										const columnLabels: Record<string, string> = {
@@ -553,25 +553,25 @@ export const ServiceTable = ({
 									</TableCell>
 								</TableRow>
 							) : (
-								filteredAndSortedServices.map(service => (
+								filteredAndSortedServices.map((service) => (
 									<TableRow
 										key={service.id}
 										className={cn(
 											'hover:bg-muted/50 transition-colors cursor-pointer h-8',
-											selectedServices.some(s => s.id === service.id) && 'bg-muted'
+											selectedServices.some((s) => s.id === service.id) && 'bg-muted'
 										)}
 										onClick={() => handleRowClick(service)}
 									>
-										<TableCell className="w-10 p-1" onClick={e => e.stopPropagation()}>
+										<TableCell className="w-10 p-1" onClick={(e) => e.stopPropagation()}>
 											<div className="flex items-center justify-center h-full">
 												<Checkbox
-													checked={selectedServices.some(s => s.id === service.id)}
-													onCheckedChange={checked => {
+													checked={selectedServices.some((s) => s.id === service.id)}
+													onCheckedChange={(checked) => {
 														if (checked) {
 															onServicesSelect([...selectedServices, service]);
 														} else {
 															onServicesSelect(
-																selectedServices.filter(s => s.id !== service.id)
+																selectedServices.filter((s) => s.id !== service.id)
 															);
 														}
 													}}
@@ -579,7 +579,7 @@ export const ServiceTable = ({
 												/>
 											</div>
 										</TableCell>
-										{columnOrder.map(columnId => {
+										{columnOrder.map((columnId) => {
 											if (!visibleColumns[columnId]) return null;
 
 											switch (columnId) {

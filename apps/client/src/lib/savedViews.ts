@@ -36,7 +36,7 @@ export async function saveView(view: SavedView): Promise<void> {
 			logger.warn('API save failed, falling back to localStorage', response.error);
 			// Fall back to localStorage
 			const savedViews = await getSavedViews();
-			const existingIndex = savedViews.findIndex(v => v.id === view.id);
+			const existingIndex = savedViews.findIndex((v) => v.id === view.id);
 
 			if (existingIndex >= 0) {
 				// Update existing view
@@ -57,7 +57,7 @@ export async function deleteView(viewId: string): Promise<boolean> {
 	try {
 		// Check if this is a default view
 		const savedViews = await getSavedViews();
-		const viewToDelete = savedViews.find(view => view.id === viewId);
+		const viewToDelete = savedViews.find((view) => view.id === viewId);
 
 		// Don't allow deletion of default views
 		if (viewToDelete?.isDefault) {
@@ -71,7 +71,7 @@ export async function deleteView(viewId: string): Promise<boolean> {
 		if (!response.success) {
 			logger.warn('API delete failed, falling back to localStorage', response.error);
 			// Fall back to localStorage
-			const updatedViews = savedViews.filter(view => view.id !== viewId);
+			const updatedViews = savedViews.filter((view) => view.id !== viewId);
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedViews));
 		}
 

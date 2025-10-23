@@ -35,7 +35,7 @@ const serverSchema = z
 			.string()
 			.min(1, 'Hostname/IP is required')
 			.refine(
-				value => {
+				(value) => {
 					// Allow both IP addresses and hostnames
 					return isValidHostnameOrIP(value);
 				},
@@ -48,7 +48,7 @@ const serverSchema = z
 			.string()
 			.min(1, 'Username is required')
 			.refine(
-				value => {
+				(value) => {
 					return !/\s/.test(value);
 				},
 				{
@@ -59,7 +59,7 @@ const serverSchema = z
 		password: z
 			.string()
 			.refine(
-				value => {
+				(value) => {
 					if (!value || value.length === 0) return true;
 					return !/\s/.test(value);
 				},
@@ -70,7 +70,7 @@ const serverSchema = z
 			.optional(),
 		sshKey: z.string().optional(),
 	})
-	.refine(data => (data.authType === 'password' ? data.password && data.password.length > 0 : true), {
+	.refine((data) => (data.authType === 'password' ? data.password && data.password.length > 0 : true), {
 		message: 'Password is required',
 		path: ['password'],
 	});
@@ -142,7 +142,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 			try {
 				const secrets = await getSecretsFromServer();
 				// Filter for SSH type secrets only
-				const sshSecrets = secrets.filter(secret => secret.type === 'ssh');
+				const sshSecrets = secrets.filter((secret) => secret.type === 'ssh');
 				setKeys(sshSecrets);
 				setError(null);
 			} catch (err) {
@@ -185,7 +185,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 						<SelectValue placeholder="Select a key" />
 					</SelectTrigger>
 					<SelectContent>
-						{keys.map(key => (
+						{keys.map((key) => (
 							<SelectItem key={key.id} value={key.id.toString()}>
 								<b>{key.name}</b>
 							</SelectItem>
@@ -214,7 +214,7 @@ const KubeconfigSelector = ({
 			const secrets = await getSecretsFromServer();
 			// Filter for kubeconfig type secrets
 			const kubeconfigSecrets = secrets.filter(
-				secret =>
+				(secret) =>
 					secret.type === 'kubeconfig' ||
 					secret.fileName?.endsWith('.yml') ||
 					secret.fileName?.endsWith('.yaml') ||
@@ -264,7 +264,7 @@ const KubeconfigSelector = ({
 						<SelectValue placeholder="Select a kubeconfig key" />
 					</SelectTrigger>
 					<SelectContent>
-						{keys.map(key => (
+						{keys.map((key) => (
 							<SelectItem key={key.id} value={key.id.toString()}>
 								<b>{key.name}</b>
 							</SelectItem>
@@ -295,7 +295,7 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const handleSecretCreated = (secretId: number) => {
-		setRefreshKey(prev => prev + 1);
+		setRefreshKey((prev) => prev + 1);
 	};
 
 	// Helper to get current form values
@@ -542,7 +542,7 @@ const KubernetesForm = ({ onSubmit, onClose }: ProviderFormProps<KubernetesFormD
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const handleSecretCreated = (secretId: number) => {
-		setRefreshKey(prev => prev + 1);
+		setRefreshKey((prev) => prev + 1);
 	};
 
 	return (
@@ -627,7 +627,7 @@ const AWSForm = ({ onSubmit, onClose }: ProviderFormProps<AWSFormData>) => {
 								<SelectValue placeholder="Select a region" />
 							</SelectTrigger>
 							<SelectContent>
-								{awsRegions.map(r => (
+								{awsRegions.map((r) => (
 									<SelectItem key={r.value} value={r.value}>
 										{r.label}
 									</SelectItem>
@@ -694,7 +694,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 	const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
 	const [isImporting, setIsImporting] = useState(false);
 
-	const handleFormSubmit: SubmitHandler<AnyFormData> = async data => {
+	const handleFormSubmit: SubmitHandler<AnyFormData> = async (data) => {
 		switch (provider.type) {
 			case 'kubernetes': {
 				try {
@@ -818,7 +818,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 			const allowedTypes = ['VM', 'K8S'];
 			const providersPayload = json.providers as Array<{ name: string; providerType: string }>;
 			const isValid = providersPayload.every(
-				p => p && typeof p.name === 'string' && p.name.length > 0 && allowedTypes.includes(p.providerType)
+				(p) => p && typeof p.name === 'string' && p.name.length > 0 && allowedTypes.includes(p.providerType)
 			);
 			if (!isValid) {
 				throw new Error('Invalid file structure. Ensure each provider has name and providerType (VM | K8S)');
@@ -851,7 +851,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 					accept="application/json,.json"
 					placeholder={isImporting ? 'Importing...' : 'Click to select a JSON file or drag & drop here'}
 					loading={isImporting}
-					onFile={file => void handleFile(file)}
+					onFile={(file) => void handleFile(file)}
 					multiple={false}
 				/>
 				<div className="text-sm text-muted-foreground space-y-2">
@@ -911,7 +911,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 					</div>
 				</SheetHeader>
 				<Separator className="my-4" />
-				<Tabs value={activeTab} onValueChange={v => setActiveTab(v as 'manual' | 'import')}>
+				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manual' | 'import')}>
 					<TabsList className="grid w-full grid-cols-2">
 						<TabsTrigger value="manual">Manual</TabsTrigger>
 						<TabsTrigger value="import">Import</TabsTrigger>

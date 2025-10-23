@@ -107,7 +107,7 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({ righ
 		<button
 			aria-label="Scroll to top"
 			title="Scroll to top"
-			onClick={e => {
+			onClick={(e) => {
 				e.preventDefault();
 				scrollAllToTop();
 			}}

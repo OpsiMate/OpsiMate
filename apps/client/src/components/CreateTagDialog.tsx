@@ -103,7 +103,7 @@ export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialog
 							<Input
 								id="name"
 								value={name}
-								onChange={e => setName(e.target.value)}
+								onChange={(e) => setName(e.target.value)}
 								placeholder="Enter tag name"
 								maxLength={50}
 							/>
@@ -111,7 +111,7 @@ export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialog
 						<div className="grid gap-2">
 							<Label>Color</Label>
 							<div className="flex flex-wrap gap-2">
-								{predefinedColors.map(colorOption => (
+								{predefinedColors.map((colorOption) => (
 									<button
 										key={colorOption}
 										type="button"

@@ -97,7 +97,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 						<Input
 							id="edit-fullName"
 							value={fullName}
-							onChange={e => setFullName(e.target.value)}
+							onChange={(e) => setFullName(e.target.value)}
 							placeholder="John Doe"
 						/>
 					</div>
@@ -108,7 +108,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 							id="edit-email"
 							type="email"
 							value={email}
-							onChange={e => setEmail(e.target.value)}
+							onChange={(e) => setEmail(e.target.value)}
 							placeholder="john@example.com"
 						/>
 					</div>

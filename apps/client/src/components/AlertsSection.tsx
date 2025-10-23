@@ -19,11 +19,11 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 	const [dismissingAlerts, setDismissingAlerts] = useState<Set<string>>(new Set());
 	const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
 
-	const activeAlerts = alerts.filter(alert => !alert.isDismissed);
+	const activeAlerts = alerts.filter((alert) => !alert.isDismissed);
 
 	const handleDismissAlert = async (alertId: string) => {
 		try {
-			setDismissingAlerts(prev => new Set(prev).add(alertId));
+			setDismissingAlerts((prev) => new Set(prev).add(alertId));
 
 			if (onAlertDismiss) {
 				await onAlertDismiss(alertId);
@@ -40,7 +40,7 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 				variant: 'destructive',
 			});
 		} finally {
-			setDismissingAlerts(prev => {
+			setDismissingAlerts((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(alertId);
 				return newSet;
@@ -61,7 +61,7 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 				{activeAlerts.length === 0 ? (
 					<div className="text-center py-8 text-muted-foreground">No active alerts</div>
 				) : (
-					activeAlerts.map(alert => (
+					activeAlerts.map((alert) => (
 						<div
 							key={alert.id}
 							className={cn(

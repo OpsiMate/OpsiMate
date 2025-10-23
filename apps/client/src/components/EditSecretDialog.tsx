@@ -108,7 +108,7 @@ export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecre
 							id="secret-name"
 							placeholder="My SSH Key"
 							value={displayName}
-							onChange={e => setDisplayName(e.target.value)}
+							onChange={(e) => setDisplayName(e.target.value)}
 						/>
 					</div>
 					<div className="space-y-2">

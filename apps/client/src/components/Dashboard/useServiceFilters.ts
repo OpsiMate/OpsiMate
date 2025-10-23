@@ -86,7 +86,7 @@ export function useServiceFilters({
 			const { filters: urlFilters, search: urlSearch } = deserializeFiltersFromUrl();
 			initializeFilters(urlFilters, urlSearch);
 		} else if (activeViewId && savedViews.length > 0) {
-			const activeView = savedViews.find(view => view.id === activeViewId);
+			const activeView = savedViews.find((view) => view.id === activeViewId);
 			if (activeView) {
 				initializeFilters(activeView.filters, activeView.searchTerm);
 			}

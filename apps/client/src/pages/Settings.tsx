@@ -94,8 +94,8 @@ const Settings: React.FC = () => {
 			const response = await apiRequest('/users/role', 'PATCH', { email, newRole });
 			if (response.success) {
 				// Update the local state
-				setUsers(prevUsers =>
-					prevUsers.map(user => (user.email === email ? { ...user, role: newRole as Role } : user))
+				setUsers((prevUsers) =>
+					prevUsers.map((user) => (user.email === email ? { ...user, role: newRole as Role } : user))
 				);
 			} else {
 				handleApiResponse(response);
@@ -111,7 +111,7 @@ const Settings: React.FC = () => {
 	};
 
 	const handleUserCreated = (newUser: User) => {
-		setUsers(prevUsers => [...prevUsers, newUser]);
+		setUsers((prevUsers) => [...prevUsers, newUser]);
 	};
 
 	const getRoleBadgeVariant = (role: Role) => {
@@ -130,7 +130,7 @@ const Settings: React.FC = () => {
 	};
 	// Filter users based on search query
 	const filteredUsers = users.filter(
-		user =>
+		(user) =>
 			user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			user.email.toLowerCase().includes(searchQuery.toLowerCase())
 	);
@@ -138,7 +138,7 @@ const Settings: React.FC = () => {
 	// Handle bulk role update
 	const handleBulkRoleUpdate = async (newRole: Role) => {
 		for (const userId of selectedUsers) {
-			const user = users.find(u => u.id === userId);
+			const user = users.find((u) => u.id === userId);
 			if (user && user.email !== currentUser?.email) {
 				await handleRoleUpdate(user.email, newRole);
 			}
@@ -149,7 +149,7 @@ const Settings: React.FC = () => {
 	// Handle bulk delete
 	const handleBulkDelete = async () => {
 		for (const userId of selectedUsers) {
-			if (users.find(u => u.id === userId)?.email !== currentUser?.email) {
+			if (users.find((u) => u.id === userId)?.email !== currentUser?.email) {
 				await handleDeleteUser(userId);
 			}
 		}
@@ -159,7 +159,7 @@ const Settings: React.FC = () => {
 
 	// Handle user update from edit modal
 	const handleUserUpdated = (updatedUser: User) => {
-		setUsers(prevUsers => prevUsers.map(user => (user.id === updatedUser.id ? updatedUser : user)));
+		setUsers((prevUsers) => prevUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
 	};
 
 	const formatDate = (dateString: string) => {
@@ -179,7 +179,7 @@ const Settings: React.FC = () => {
 		try {
 			const response = await apiRequest(`/users/${userId}`, 'DELETE');
 			if (response.success) {
-				setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
+				setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
 				setUserToDelete(null);
 			} else {
 				handleApiResponse(response);
@@ -221,7 +221,7 @@ const Settings: React.FC = () => {
 								if (h === 'custom-fields') return 'custom-fields';
 								return 'users';
 							})()}
-							onValueChange={v => {
+							onValueChange={(v) => {
 								const map: Record<string, string> = {
 									users: 'Users',
 									audit: 'Audit_Log',
@@ -268,7 +268,7 @@ const Settings: React.FC = () => {
 													<>
 														<Select
 															value=""
-															onValueChange={newRole =>
+															onValueChange={(newRole) =>
 																handleBulkRoleUpdate(newRole as Role)
 															}
 														>
@@ -309,7 +309,7 @@ const Settings: React.FC = () => {
 											<Input
 												placeholder="Search users by name or email..."
 												value={searchQuery}
-												onChange={e => setSearchQuery(e.target.value)}
+												onChange={(e) => setSearchQuery(e.target.value)}
 												className="max-w-md"
 											/>
 											{searchQuery && (
@@ -335,10 +335,10 @@ const Settings: React.FC = () => {
 																		selectedUsers.length === filteredUsers.length &&
 																		filteredUsers.length > 0
 																	}
-																	onChange={e => {
+																	onChange={(e) => {
 																		if (e.target.checked) {
 																			setSelectedUsers(
-																				filteredUsers.map(u => u.id)
+																				filteredUsers.map((u) => u.id)
 																			);
 																		} else {
 																			setSelectedUsers([]);
@@ -355,21 +355,21 @@ const Settings: React.FC = () => {
 														</TableRow>
 													</TableHeader>
 													<TableBody>
-														{filteredUsers.map(user => (
+														{filteredUsers.map((user) => (
 															<TableRow key={user.id}>
 																<TableCell>
 																	<input
 																		type="checkbox"
 																		checked={selectedUsers.includes(user.id)}
-																		onChange={e => {
+																		onChange={(e) => {
 																			if (e.target.checked) {
-																				setSelectedUsers(prev => [
+																				setSelectedUsers((prev) => [
 																					...prev,
 																					user.id,
 																				]);
 																			} else {
-																				setSelectedUsers(prev =>
-																					prev.filter(id => id !== user.id)
+																				setSelectedUsers((prev) =>
+																					prev.filter((id) => id !== user.id)
 																				);
 																			}
 																		}}
@@ -399,7 +399,7 @@ const Settings: React.FC = () => {
 																	<div className="flex items-center gap-2">
 																		<Select
 																			value={user.role}
-																			onValueChange={newRole =>
+																			onValueChange={(newRole) =>
 																				handleRoleUpdate(
 																					user.email,
 																					newRole as Role
@@ -674,7 +674,7 @@ const AuditLogTable: React.FC = () => {
 		let mounted = true;
 		setLoading(true);
 
-		auditApi.getAuditLogs(page, pageSize).then(res => {
+		auditApi.getAuditLogs(page, pageSize).then((res) => {
 			if (mounted) {
 				if (res && Array.isArray(res.logs)) {
 					setLogs(res.logs);
@@ -693,7 +693,7 @@ const AuditLogTable: React.FC = () => {
 	}, [page, pageSize]);
 
 	const totalPages = Math.ceil(total / pageSize);
-	const filteredLogs = logs.filter(log => (filter === 'ALL' ? true : log.actionType === filter));
+	const filteredLogs = logs.filter((log) => (filter === 'ALL' ? true : log.actionType === filter));
 
 	const getActionBadgeProps = (action: string) => {
 		switch (action) {
@@ -754,10 +754,10 @@ const AuditLogTable: React.FC = () => {
 					<label className="text-sm text-muted-foreground">Items per page:</label>
 					<select
 						value={pageSize}
-						onChange={e => handlePageSizeChange(Number(e.target.value))}
+						onChange={(e) => handlePageSizeChange(Number(e.target.value))}
 						className="border rounded px-3 py-1 text-sm"
 					>
-						{[5, 10, 15, 20].map(size => (
+						{[5, 10, 15, 20].map((size) => (
 							<option key={size} value={size}>
 								{size}
 							</option>
@@ -786,7 +786,7 @@ const AuditLogTable: React.FC = () => {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{filteredLogs.map(log => {
+							{filteredLogs.map((log) => {
 								const actionProps = getActionBadgeProps(log.actionType);
 								return (
 									<TableRow key={log.id}>
@@ -930,7 +930,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 	return (
 		<Dialog
 			open={open}
-			onOpenChange={newOpen => {
+			onOpenChange={(newOpen) => {
 				setOpen(newOpen);
 				if (!newOpen) {
 					resetForm();
@@ -959,7 +959,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 							id="secret-name"
 							placeholder="My SSH Key"
 							value={displayName}
-							onChange={e => setDisplayName(e.target.value)}
+							onChange={(e) => setDisplayName(e.target.value)}
 						/>
 					</div>
 					<div className="space-y-2">
@@ -1038,7 +1038,7 @@ const SslKeysTable: React.FC = () => {
 		const query = searchQuery.trim().toLowerCase();
 		if (!query) return secrets;
 
-		return secrets.filter(secret => {
+		return secrets.filter((secret) => {
 			const nameMatch = secret.name.toLowerCase().includes(query);
 			return nameMatch;
 		});
@@ -1109,7 +1109,7 @@ const SslKeysTable: React.FC = () => {
 				<Input
 					placeholder="Search by secret name or provider..."
 					value={searchQuery}
-					onChange={e => setSearchQuery(e.target.value)}
+					onChange={(e) => setSearchQuery(e.target.value)}
 					className="pr-8"
 				/>
 
@@ -1140,7 +1140,7 @@ const SslKeysTable: React.FC = () => {
 							</TableCell>
 						</TableRow>
 					) : (
-						filteredSecrets.map(secret => (
+						filteredSecrets.map((secret) => (
 							<TableRow key={secret.id}>
 								<TableCell>
 									<b>{secret.name}</b>

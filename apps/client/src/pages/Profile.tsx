@@ -53,7 +53,7 @@ const Profile: React.FC = () => {
 						role: response.data.role,
 						createdAt: response.data.createdAt,
 					});
-					setFormData(prev => ({ ...prev, fullName: response.data.fullName }));
+					setFormData((prev) => ({ ...prev, fullName: response.data.fullName }));
 				} else {
 					// Fallback to JWT data if server request fails
 					logger.warn('Failed to fetch user profile from server, using JWT data as fallback');
@@ -64,7 +64,7 @@ const Profile: React.FC = () => {
 						role: currentUser.role,
 						createdAt: new Date().toISOString(),
 					});
-					setFormData(prev => ({ ...prev, fullName: currentUser.email.split('@')[0] }));
+					setFormData((prev) => ({ ...prev, fullName: currentUser.email.split('@')[0] }));
 				}
 			}
 		} catch (error) {
@@ -84,7 +84,7 @@ const Profile: React.FC = () => {
 
 	const handleCancel = () => {
 		setIsEditing(false);
-		setFormData(prev => ({ ...prev, fullName: profile?.fullName || '' }));
+		setFormData((prev) => ({ ...prev, fullName: profile?.fullName || '' }));
 		clearErrors();
 	};
 
@@ -154,7 +154,7 @@ const Profile: React.FC = () => {
 				}
 
 				setIsEditing(false);
-				setFormData(prev => ({
+				setFormData((prev) => ({
 					...prev,
 					newPassword: '',
 					confirmPassword: '',
@@ -183,7 +183,7 @@ const Profile: React.FC = () => {
 	const getInitials = (name: string) => {
 		return name
 			.split(' ')
-			.map(word => word.charAt(0))
+			.map((word) => word.charAt(0))
 			.join('')
 			.toUpperCase()
 			.slice(0, 2);
@@ -325,8 +325,8 @@ const Profile: React.FC = () => {
 												<Input
 													type="text"
 													value={formData.fullName}
-													onChange={e =>
-														setFormData(prev => ({ ...prev, fullName: e.target.value }))
+													onChange={(e) =>
+														setFormData((prev) => ({ ...prev, fullName: e.target.value }))
 													}
 													className="mt-1"
 													disabled={saving}
@@ -349,8 +349,8 @@ const Profile: React.FC = () => {
 														<Input
 															type="password"
 															value={formData.newPassword}
-															onChange={e =>
-																setFormData(prev => ({
+															onChange={(e) =>
+																setFormData((prev) => ({
 																	...prev,
 																	newPassword: e.target.value,
 																}))
@@ -368,8 +368,8 @@ const Profile: React.FC = () => {
 														<Input
 															type="password"
 															value={formData.confirmPassword}
-															onChange={e =>
-																setFormData(prev => ({
+															onChange={(e) =>
+																setFormData((prev) => ({
 																	...prev,
 																	confirmPassword: e.target.value,
 																}))

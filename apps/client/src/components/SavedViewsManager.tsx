@@ -56,14 +56,14 @@ export const SavedViewsManager = ({
 	const hasActiveFilters = useMemo(() => {
 		return (
 			Object.values(currentFilters).some(
-				filterValues => Array.isArray(filterValues) && filterValues.length > 0
+				(filterValues) => Array.isArray(filterValues) && filterValues.length > 0
 			) || currentSearchTerm.trim() !== ''
 		);
 	}, [currentFilters, currentSearchTerm]);
 
 	const displayViewName = useMemo(() => {
 		if (activeViewId) {
-			const view = savedViews.find(v => v.id === activeViewId);
+			const view = savedViews.find((v) => v.id === activeViewId);
 			return view?.name || 'Current View';
 		}
 		if (hasActiveFilters) {
@@ -77,7 +77,7 @@ export const SavedViewsManager = ({
 
 		const query = searchQuery.toLowerCase();
 		return savedViews.filter(
-			view =>
+			(view) =>
 				view.name.toLowerCase().includes(query) ||
 				(view.description && view.description.toLowerCase().includes(query))
 		);
@@ -173,7 +173,7 @@ export const SavedViewsManager = ({
 								<Input
 									placeholder="Search views..."
 									value={searchQuery}
-									onChange={e => setSearchQuery(e.target.value)}
+									onChange={(e) => setSearchQuery(e.target.value)}
 									className="pl-8 pr-8 h-8"
 								/>
 								{searchQuery && (
@@ -202,11 +202,11 @@ export const SavedViewsManager = ({
 								{savedViews.length === 0 ? 'No saved views' : 'No matching views'}
 							</DropdownMenuItem>
 						) : (
-							filteredViews.map(view => (
+							filteredViews.map((view) => (
 								<DropdownMenuItem
 									key={view.id}
 									className="flex justify-between items-center"
-									onSelect={async e => {
+									onSelect={async (e) => {
 										e.preventDefault();
 										try {
 											await onLoadView(view);
@@ -225,7 +225,7 @@ export const SavedViewsManager = ({
 											variant="ghost"
 											size="icon"
 											className="h-6 w-6"
-											onClick={e => {
+											onClick={(e) => {
 												e.stopPropagation();
 												handleEditView(view);
 											}}
@@ -236,7 +236,7 @@ export const SavedViewsManager = ({
 											variant="ghost"
 											size="icon"
 											className="h-6 w-6 text-destructive"
-											onClick={async e => {
+											onClick={async (e) => {
 												e.stopPropagation();
 												try {
 													await onDeleteView(view.id);
@@ -257,7 +257,7 @@ export const SavedViewsManager = ({
 						)}
 						<DropdownMenuSeparator />
 						<DialogTrigger asChild>
-							<DropdownMenuItem onSelect={e => e.preventDefault()}>
+							<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
 								<BookmarkPlus className="mr-2 h-4 w-4" />
 								<span>Save Current View</span>
 							</DropdownMenuItem>
@@ -280,7 +280,7 @@ export const SavedViewsManager = ({
 							<Input
 								id="name"
 								value={viewName}
-								onChange={e => setViewName(e.target.value)}
+								onChange={(e) => setViewName(e.target.value)}
 								className="col-span-3"
 								placeholder="My Custom View"
 							/>
@@ -292,7 +292,7 @@ export const SavedViewsManager = ({
 							<Textarea
 								id="description"
 								value={viewDescription}
-								onChange={e => setViewDescription(e.target.value)}
+								onChange={(e) => setViewDescription(e.target.value)}
 								className="col-span-3"
 								placeholder="Optional description of this view"
 							/>

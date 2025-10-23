@@ -20,7 +20,7 @@ const Alerts = () => {
 
 	const { data: services = [] } = useServices();
 
-	const serviceNameById = useMemo(() => Object.fromEntries(services.map(s => [s.id, s.name])), [services]);
+	const serviceNameById = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s.name])), [services]);
 	const filteredAlerts = useMemo(() => {
 		if (!search.trim()) return alerts;
 		const lower = search.toLowerCase();
@@ -89,7 +89,7 @@ const Alerts = () => {
 						<Input
 							placeholder="Search alerts..."
 							value={search}
-							onChange={e => setSearch(e.target.value)}
+							onChange={(e) => setSearch(e.target.value)}
 							className="max-w-xs"
 						/>
 					</div>
@@ -120,7 +120,7 @@ const Alerts = () => {
 										</TableCell>
 									</TableRow>
 								) : (
-									filteredAlerts.map(alert => (
+									filteredAlerts.map((alert) => (
 										<TableRow key={alert.id}>
 											<TableCell className="font-medium">{alert.alertName}</TableCell>
 											<TableCell>{getStatusBadge(alert)}</TableCell>

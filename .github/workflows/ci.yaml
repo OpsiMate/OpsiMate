@@ -58,7 +58,6 @@ jobs:
       - name: Test apps/client
         run: pnpm --filter @OpsiMate/client test:run
 
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()

@@ -102,7 +102,7 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ open, onOpen
 								id="field-name"
 								placeholder="e.g., Environment, Version, Owner"
 								value={fieldName}
-								onChange={e => setFieldName(e.target.value)}
+								onChange={(e) => setFieldName(e.target.value)}
 								disabled={isSubmitting}
 								autoFocus
 							/>

@@ -25,7 +25,7 @@ export const FileDropzone = ({
 		e.preventDefault();
 		const files = Array.from(e.dataTransfer.files);
 		if (multiple) {
-			files.forEach(file => onFile(file));
+			files.forEach((file) => onFile(file));
 		} else {
 			const file = files[0];
 			if (file) onFile(file);
@@ -35,7 +35,7 @@ export const FileDropzone = ({
 	const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || []);
 		if (multiple) {
-			files.forEach(file => onFile(file));
+			files.forEach((file) => onFile(file));
 		} else {
 			const file = files[0];
 			if (file) onFile(file);
@@ -44,7 +44,7 @@ export const FileDropzone = ({
 
 	return (
 		<div
-			onDragOver={e => e.preventDefault()}
+			onDragOver={(e) => e.preventDefault()}
 			onDrop={onDrop}
 			className={cn(
 				'relative group flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 py-12 text-center hover:bg-accent',

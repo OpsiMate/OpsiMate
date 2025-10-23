@@ -241,7 +241,7 @@ const INTEGRATIONS: Integration[] = [
 	},
 ];
 
-const ALL_TAGS = Array.from(new Set(INTEGRATIONS.flatMap(integration => integration.tags)));
+const ALL_TAGS = Array.from(new Set(INTEGRATIONS.flatMap((integration) => integration.tags)));
 
 // Tag color mapping
 const TAG_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
@@ -332,10 +332,10 @@ const Integrations = () => {
 
 					// Update configured instances based on saved integrations
 					const instances: Record<string, number> = {};
-					response.data.integrations.forEach(integration => {
+					response.data.integrations.forEach((integration) => {
 						// Use the integration ID from INTEGRATIONS array that matches this type
 						const matchingIntegrationType = Object.values(IntegrationType).find(
-							type => type === integration.type
+							(type) => type === integration.type
 						);
 						if (matchingIntegrationType) {
 							const id = matchingIntegrationType.toLowerCase();
@@ -353,19 +353,20 @@ const Integrations = () => {
 	}, []);
 
 	const filteredIntegrations = useMemo(() => {
-		return INTEGRATIONS.filter(integration => {
+		return INTEGRATIONS.filter((integration) => {
 			const matchesSearch =
 				integration.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				integration.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-			const matchesTags = selectedTags.length === 0 || selectedTags.every(tag => integration.tags.includes(tag));
+			const matchesTags =
+				selectedTags.length === 0 || selectedTags.every((tag) => integration.tags.includes(tag));
 
 			return matchesSearch && matchesTags;
 		});
 	}, [searchQuery, selectedTags]);
 
 	const handleTagToggle = (tag: string) => {
-		setSelectedTags(prev => (prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]));
+		setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
 	};
 
 	const handleIntegrationButtonClick = () => {
@@ -396,7 +397,7 @@ const Integrations = () => {
 										placeholder="Search integrations..."
 										className="pl-10"
 										value={searchQuery}
-										onChange={e => setSearchQuery(e.target.value)}
+										onChange={(e) => setSearchQuery(e.target.value)}
 									/>
 								</div>
 							</div>
@@ -406,7 +407,7 @@ const Integrations = () => {
 							<div>
 								<h3 className="text-sm font-medium mb-3">Filter by category</h3>
 								<div className="flex flex-wrap gap-2">
-									{ALL_TAGS.map(tag => (
+									{ALL_TAGS.map((tag) => (
 										<Badge
 											key={tag}
 											variant={selectedTags.includes(tag) ? 'default' : 'outline'}
@@ -434,7 +435,7 @@ const Integrations = () => {
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{filteredIntegrations.map(integration => {
+						{filteredIntegrations.map((integration) => {
 							const hasConfiguredInstances = configuredInstances[integration.id] > 0;
 							return (
 								<Card
@@ -496,7 +497,7 @@ const Integrations = () => {
 										</CardDescription>
 										<div className="md:h-[52px] mt-3">
 											<div className="flex flex-wrap gap-1.5 mt-3">
-												{integration.tags.map(tag => (
+												{integration.tags.map((tag) => (
 													<Badge
 														key={tag}
 														variant="outline"
@@ -533,7 +534,7 @@ const Integrations = () => {
 											onClick={() => {
 												// Find existing integration of this type if it exists
 												const existingIntegration = savedIntegrations.find(
-													integration2 =>
+													(integration2) =>
 														integration2.type ===
 														integration.id.charAt(0).toUpperCase() + integration.id.slice(1)
 												);
@@ -607,7 +608,7 @@ const Integrations = () => {
 					</div>
 				</div>
 
-				<Sheet open={!!selectedIntegration} onOpenChange={open => !open && setSelectedIntegration(null)}>
+				<Sheet open={!!selectedIntegration} onOpenChange={(open) => !open && setSelectedIntegration(null)}>
 					<SheetContent className="w-full sm:max-w-md overflow-y-auto">
 						{selectedIntegration && (
 							<>
@@ -679,7 +680,7 @@ const Integrations = () => {
 
 										<form
 											className="space-y-5"
-											onSubmit={async e => {
+											onSubmit={async (e) => {
 												e.preventDefault();
 												if (!selectedIntegration) return;
 
@@ -687,7 +688,7 @@ const Integrations = () => {
 												try {
 													// Check if an integration of this type already exists
 													const existingIntegration = savedIntegrations.find(
-														integration =>
+														(integration) =>
 															integration.type ===
 															selectedIntegration.id.charAt(0).toUpperCase() +
 																selectedIntegration.id.slice(1)
@@ -761,7 +762,7 @@ const Integrations = () => {
 															});
 
 															// Update configured instances
-															setConfiguredInstances(prev => ({
+															setConfiguredInstances((prev) => ({
 																...prev,
 																[selectedIntegration.id]:
 																	(prev[selectedIntegration.id] || 0) + 1,
@@ -802,7 +803,7 @@ const Integrations = () => {
 												}
 											}}
 										>
-											{selectedIntegration.configFields.map(field => (
+											{selectedIntegration.configFields.map((field) => (
 												<div key={field.name} className="space-y-2">
 													<label
 														htmlFor={`${selectedIntegration.id}-${field.name}`}
@@ -818,8 +819,8 @@ const Integrations = () => {
 															className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 															required={field.required}
 															value={formData[field.name] || ''}
-															onChange={e =>
-																setFormData(prev => ({
+															onChange={(e) =>
+																setFormData((prev) => ({
 																	...prev,
 																	[field.name]: e.target.value,
 																}))
@@ -828,7 +829,7 @@ const Integrations = () => {
 															autoComplete="off"
 														>
 															<option value="">Select {field.label}</option>
-															{field.options?.map(option => (
+															{field.options?.map((option) => (
 																<option key={option} value={option}>
 																	{option}
 																</option>
@@ -843,8 +844,8 @@ const Integrations = () => {
 																placeholder={field.placeholder}
 																required={field.required}
 																value={formData[field.name] || ''}
-																onChange={e =>
-																	setFormData(prev => ({
+																onChange={(e) =>
+																	setFormData((prev) => ({
 																		...prev,
 																		[field.name]: e.target.value,
 																	}))
@@ -876,7 +877,7 @@ const Integrations = () => {
 													{/* Delete button - only show for existing integrations */}
 													{canDelete() &&
 														savedIntegrations.find(
-															integration =>
+															(integration) =>
 																integration.type ===
 																selectedIntegration.id.charAt(0).toUpperCase() +
 																	selectedIntegration.id.slice(1)
@@ -887,7 +888,7 @@ const Integrations = () => {
 																disabled={isSubmitting}
 																onClick={() => {
 																	const existingIntegration = savedIntegrations.find(
-																		integration =>
+																		(integration) =>
 																			integration.type ===
 																			selectedIntegration.id
 																				.charAt(0)
@@ -959,7 +960,7 @@ const Integrations = () => {
 											<div>
 												<h4 className="text-sm font-medium mb-3">Features</h4>
 												<div className="grid grid-cols-2 gap-3">
-													{selectedIntegration.tags.map(tag => (
+													{selectedIntegration.tags.map((tag) => (
 														<div
 															key={tag}
 															className={cn(
@@ -1029,7 +1030,7 @@ const Integrations = () => {
 
 										// Update configured instances
 										const integrationType = integrationToDelete.type.toLowerCase();
-										setConfiguredInstances(prev => ({
+										setConfiguredInstances((prev) => ({
 											...prev,
 											[integrationType]: 0,
 										}));

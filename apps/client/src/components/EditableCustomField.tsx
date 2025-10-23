@@ -90,7 +90,7 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
 				<Input
 					ref={inputRef}
 					value={editValue}
-					onChange={e => setEditValue(e.target.value)}
+					onChange={(e) => setEditValue(e.target.value)}
 					onKeyDown={handleKeyDown}
 					onBlur={handleSave}
 					disabled={isSaving}
