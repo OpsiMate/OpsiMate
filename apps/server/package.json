@@ -14,8 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dev": "vite",
-    "preview": "node dist/index.js"
+    "dev": "vite"
   },
   "dependencies": {
     "@OpsiMate/shared": "workspace:*",
