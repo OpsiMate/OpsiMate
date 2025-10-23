@@ -55,18 +55,6 @@ jobs:
       - name: Test apps/client
         run: pnpm --filter @OpsiMate/client test:run
 
-      - name: Generate test coverage
-        run: |
-          pnpm --filter @OpsiMate/server test:coverage
-
-      - name: Upload test coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-coverage
-          path: |
-            apps/server/coverage/
-          retention-days: 30
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
