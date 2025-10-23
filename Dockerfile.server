@@ -44,4 +44,4 @@ RUN mkdir -p node_modules/@OpsiMate && \
 
 EXPOSE 3001
 ENV NODE_ENV=production
-CMD ["node", "apps/server/dist/index.js"]
+CMD ["node", "apps/server/dist/vite-app.cjs"]
