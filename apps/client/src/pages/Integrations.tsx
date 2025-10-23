@@ -248,57 +248,57 @@ const TAG_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNo
 	Monitoring: {
 		bg: 'bg-blue-100 dark:bg-blue-900/40',
 		text: 'text-blue-700 dark:text-blue-300',
-		icon: <Activity className='h-3 w-3 mr-1' />,
+		icon: <Activity className="h-3 w-3 mr-1" />,
 	},
 	Visualization: {
 		bg: 'bg-purple-100 dark:bg-purple-900/40',
 		text: 'text-purple-700 dark:text-purple-300',
-		icon: <BarChart3 className='h-3 w-3 mr-1' />,
+		icon: <BarChart3 className="h-3 w-3 mr-1" />,
 	},
 	Alerts: {
 		bg: 'bg-red-100 dark:bg-red-900/40',
 		text: 'text-red-700 dark:text-red-300',
-		icon: <Bell className='h-3 w-3 mr-1' />,
+		icon: <Bell className="h-3 w-3 mr-1" />,
 	},
 	Metrics: {
 		bg: 'bg-green-100 dark:bg-green-900/40',
 		text: 'text-green-700 dark:text-green-300',
-		icon: <LineChart className='h-3 w-3 mr-1' />,
+		icon: <LineChart className="h-3 w-3 mr-1" />,
 	},
 	Logging: {
 		bg: 'bg-yellow-100 dark:bg-yellow-900/40',
 		text: 'text-yellow-700 dark:text-yellow-300',
-		icon: <FileText className='h-3 w-3 mr-1' />,
+		icon: <FileText className="h-3 w-3 mr-1" />,
 	},
 	Analytics: {
 		bg: 'bg-indigo-100 dark:bg-indigo-900/40',
 		text: 'text-indigo-700 dark:text-indigo-300',
-		icon: <Eye className='h-3 w-3 mr-1' />,
+		icon: <Eye className="h-3 w-3 mr-1" />,
 	},
 	Storage: {
 		bg: 'bg-pink-100 dark:bg-pink-900/40',
 		text: 'text-pink-700 dark:text-pink-300',
-		icon: <Database className='h-3 w-3 mr-1' />,
+		icon: <Database className="h-3 w-3 mr-1" />,
 	},
 	AWS: {
 		bg: 'bg-orange-100 dark:bg-orange-900/40',
 		text: 'text-orange-700 dark:text-orange-300',
-		icon: <Cloud className='h-3 w-3 mr-1' />,
+		icon: <Cloud className="h-3 w-3 mr-1" />,
 	},
 	APM: {
 		bg: 'bg-cyan-100 dark:bg-cyan-900/40',
 		text: 'text-cyan-700 dark:text-cyan-300',
-		icon: <Activity className='h-3 w-3 mr-1' />,
+		icon: <Activity className="h-3 w-3 mr-1" />,
 	},
 	Logs: {
 		bg: 'bg-amber-100 dark:bg-amber-900/40',
 		text: 'text-amber-700 dark:text-amber-300',
-		icon: <FileText className='h-3 w-3 mr-1' />,
+		icon: <FileText className="h-3 w-3 mr-1" />,
 	},
 	Observability: {
 		bg: 'bg-teal-100 dark:bg-teal-900/40',
 		text: 'text-teal-700 dark:text-teal-300',
-		icon: <Eye className='h-3 w-3 mr-1' />,
+		icon: <Eye className="h-3 w-3 mr-1" />,
 	},
 };
 
@@ -375,26 +375,26 @@ const Integrations = () => {
 	return (
 		<>
 			<DashboardLayout>
-				<div className='flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto'>
-					<div className='flex justify-between items-center'>
+				<div className="flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto">
+					<div className="flex justify-between items-center">
 						<div>
-							<h1 className='text-3xl font-bold tracking-tight'>Integrations</h1>
-							<p className='text-muted-foreground mt-1'>Connect your favorite tools and services</p>
+							<h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
+							<p className="text-muted-foreground mt-1">Connect your favorite tools and services</p>
 						</div>
-						<Button className='gap-2' onClick={handleIntegrationButtonClick}>
-							<Plus className='h-4 w-4' />
+						<Button className="gap-2" onClick={handleIntegrationButtonClick}>
+							<Plus className="h-4 w-4" />
 							<span>Request Integration via GitHub</span>
 						</Button>
 					</div>
 
-					<div className='bg-card rounded-lg border shadow-sm p-6'>
-						<div className='flex flex-col gap-5'>
-							<div className='flex gap-4 items-center'>
-								<div className='relative flex-1'>
-									<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+					<div className="bg-card rounded-lg border shadow-sm p-6">
+						<div className="flex flex-col gap-5">
+							<div className="flex gap-4 items-center">
+								<div className="relative flex-1">
+									<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 									<Input
-										placeholder='Search integrations...'
-										className='pl-10'
+										placeholder="Search integrations..."
+										className="pl-10"
 										value={searchQuery}
 										onChange={e => setSearchQuery(e.target.value)}
 									/>
@@ -404,8 +404,8 @@ const Integrations = () => {
 							<Separator />
 
 							<div>
-								<h3 className='text-sm font-medium mb-3'>Filter by category</h3>
-								<div className='flex flex-wrap gap-2'>
+								<h3 className="text-sm font-medium mb-3">Filter by category</h3>
+								<div className="flex flex-wrap gap-2">
 									{ALL_TAGS.map(tag => (
 										<Badge
 											key={tag}
@@ -421,11 +421,11 @@ const Integrations = () => {
 									))}
 									{selectedTags.length > 0 && (
 										<Badge
-											variant='outline'
-											className='cursor-pointer flex items-center gap-1 hover:bg-accent transition-all'
+											variant="outline"
+											className="cursor-pointer flex items-center gap-1 hover:bg-accent transition-all"
 											onClick={() => setSelectedTags([])}
 										>
-											Clear all <X className='h-3 w-3' />
+											Clear all <X className="h-3 w-3" />
 										</Badge>
 									)}
 								</div>
@@ -433,7 +433,7 @@ const Integrations = () => {
 						</div>
 					</div>
 
-					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{filteredIntegrations.map(integration => {
 							const hasConfiguredInstances = configuredInstances[integration.id] > 0;
 							return (
@@ -452,15 +452,15 @@ const Integrations = () => {
 									onMouseLeave={() => setHoveredCard(null)}
 								>
 									{!integration.supported ? (
-										<div className='text-center bg-yellow-100 text-yellow-800 text-xs font-medium  border-b border-yellow-300'>
+										<div className="text-center bg-yellow-100 text-yellow-800 text-xs font-medium  border-b border-yellow-300">
 											🚧 Coming Soon
 										</div>
 									) : (
-										<div className='h-[16.8px]'></div>
+										<div className="h-[16.8px]"></div>
 									)}
 									<CardHeader className={cn('pb-2', hasConfiguredInstances ? '' : 'opacity-75')}>
-										<div className='flex items-center justify-between'>
-											<div className='flex items-center gap-3'>
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-3">
 												<div
 													className={cn(
 														'h-10 w-10 rounded-md overflow-hidden border flex items-center justify-center',
@@ -478,28 +478,28 @@ const Integrations = () => {
 														)}
 													/>
 												</div>
-												<CardTitle className='text-base'>{integration.name}</CardTitle>
+												<CardTitle className="text-base">{integration.name}</CardTitle>
 											</div>
 											<Button
-												variant='ghost'
-												size='icon'
-												className='rounded-full h-8 w-8'
+												variant="ghost"
+												size="icon"
+												className="rounded-full h-8 w-8"
 												onClick={() => window.open(integration.documentationUrl, '_blank')}
 											>
-												<ExternalLink className='h-4 w-4' />
+												<ExternalLink className="h-4 w-4" />
 											</Button>
 										</div>
 									</CardHeader>
 									<CardContent className={cn('pb-2', hasConfiguredInstances ? '' : 'opacity-75')}>
-										<CardDescription className='text-sm h-16 sm:h-14 md:h-12 lg:h-10 line-clamp-2 overflow-hidden'>
+										<CardDescription className="text-sm h-16 sm:h-14 md:h-12 lg:h-10 line-clamp-2 overflow-hidden">
 											{integration.description}
 										</CardDescription>
-										<div className='md:h-[52px] mt-3'>
-											<div className='flex flex-wrap gap-1.5 mt-3'>
+										<div className="md:h-[52px] mt-3">
+											<div className="flex flex-wrap gap-1.5 mt-3">
 												{integration.tags.map(tag => (
 													<Badge
 														key={tag}
-														variant='outline'
+														variant="outline"
 														className={cn(
 															'text-xs px-2 py-0.5 flex items-center',
 															hasConfiguredInstances
@@ -518,7 +518,7 @@ const Integrations = () => {
 											</div>
 										</div>
 									</CardContent>
-									<CardFooter className='pt-2 flex gap-2'>
+									<CardFooter className="pt-2 flex gap-2">
 										<Button
 											disabled={!integration.supported}
 											className={cn(
@@ -567,13 +567,13 @@ const Integrations = () => {
 													: `Add ${integration.name} integration`
 											}
 										>
-											<Settings className='mr-2 h-4 w-4' />
+											<Settings className="mr-2 h-4 w-4" />
 											{hasConfiguredInstances ? 'Configure' : 'Add Integration'}
 										</Button>
 									</CardFooter>
 									{hasConfiguredInstances ? (
-										<div className='px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400'>
-											<Server className='h-3 w-3' />
+										<div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+											<Server className="h-3 w-3" />
 											<span>
 												{configuredInstances[integration.id]}{' '}
 												{configuredInstances[integration.id] === 1 ? 'instance' : 'instances'}{' '}
@@ -581,8 +581,8 @@ const Integrations = () => {
 											</span>
 										</div>
 									) : (
-										<div className='px-6 pb-3 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400'>
-											<AlertCircle className='h-3 w-3' />
+										<div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+											<AlertCircle className="h-3 w-3" />
 											<span>Not configured</span>
 										</div>
 									)}
@@ -591,10 +591,10 @@ const Integrations = () => {
 						})}
 
 						{filteredIntegrations.length === 0 && (
-							<div className='col-span-full flex flex-col items-center justify-center p-8 text-center'>
-								<p className='text-muted-foreground'>No integrations found matching your criteria.</p>
+							<div className="col-span-full flex flex-col items-center justify-center p-8 text-center">
+								<p className="text-muted-foreground">No integrations found matching your criteria.</p>
 								<Button
-									variant='link'
+									variant="link"
 									onClick={() => {
 										setSearchQuery('');
 										setSelectedTags([]);
@@ -608,16 +608,16 @@ const Integrations = () => {
 				</div>
 
 				<Sheet open={!!selectedIntegration} onOpenChange={open => !open && setSelectedIntegration(null)}>
-					<SheetContent className='w-full sm:max-w-md overflow-y-auto'>
+					<SheetContent className="w-full sm:max-w-md overflow-y-auto">
 						{selectedIntegration && (
 							<>
-								<SheetHeader className='pb-6'>
-									<div className='flex items-center gap-4'>
-										<div className='h-16 w-16 overflow-hidden flex items-center justify-center bg-muted rounded-lg p-2 border'>
+								<SheetHeader className="pb-6">
+									<div className="flex items-center gap-4">
+										<div className="h-16 w-16 overflow-hidden flex items-center justify-center bg-muted rounded-lg p-2 border">
 											<img
 												src={selectedIntegration.logo}
 												alt={`${selectedIntegration.name} logo`}
-												className='max-h-12 max-w-12 object-contain'
+												className="max-h-12 max-w-12 object-contain"
 											/>
 										</div>
 										<div>
@@ -627,23 +627,23 @@ const Integrations = () => {
 													? `Configure ${selectedIntegration.name} Integration`
 													: `Add ${selectedIntegration.name} Integration`}
 											</SheetTitle>
-											<div className='flex items-center gap-1 mt-1'>
+											<div className="flex items-center gap-1 mt-1">
 												<Badge
-													variant='outline'
-													className='text-xs bg-primary/10 text-primary border-primary/20'
+													variant="outline"
+													className="text-xs bg-primary/10 text-primary border-primary/20"
 												>
 													Official
 												</Badge>
 												<Badge
-													variant='outline'
-													className='text-xs bg-green-500/10 text-green-600 border-green-500/20'
+													variant="outline"
+													className="text-xs bg-green-500/10 text-green-600 border-green-500/20"
 												>
 													Verified
 												</Badge>
 											</div>
 										</div>
 									</div>
-									<SheetDescription className='mt-4'>
+									<SheetDescription className="mt-4">
 										{configuredInstances[selectedIntegration.id] &&
 										configuredInstances[selectedIntegration.id] > 0
 											? `Update your ${selectedIntegration.name} integration settings or remove the integration.`
@@ -651,25 +651,25 @@ const Integrations = () => {
 									</SheetDescription>
 								</SheetHeader>
 
-								<Tabs defaultValue='configuration' className='w-full'>
-									<TabsList className='grid w-full grid-cols-2 mb-4'>
-										<TabsTrigger value='configuration' className='flex items-center gap-2'>
-											<Settings className='h-4 w-4' />
+								<Tabs defaultValue="configuration" className="w-full">
+									<TabsList className="grid w-full grid-cols-2 mb-4">
+										<TabsTrigger value="configuration" className="flex items-center gap-2">
+											<Settings className="h-4 w-4" />
 											Configuration
 										</TabsTrigger>
-										<TabsTrigger value='about' className='flex items-center gap-2'>
-											<Info className='h-4 w-4' />
+										<TabsTrigger value="about" className="flex items-center gap-2">
+											<Info className="h-4 w-4" />
 											About
 										</TabsTrigger>
 									</TabsList>
 
-									<TabsContent value='configuration' className='space-y-6 py-4'>
-										<div className='bg-muted/50 rounded-lg p-4 border border-muted'>
-											<div className='flex items-start gap-3'>
-												<Info className='h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0' />
+									<TabsContent value="configuration" className="space-y-6 py-4">
+										<div className="bg-muted/50 rounded-lg p-4 border border-muted">
+											<div className="flex items-start gap-3">
+												<Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
 												<div>
-													<h4 className='font-medium text-sm'>Integration Information</h4>
-													<p className='text-xs text-muted-foreground mt-1'>
+													<h4 className="font-medium text-sm">Integration Information</h4>
+													<p className="text-xs text-muted-foreground mt-1">
 														Configure your {selectedIntegration.name} integration by
 														providing the required credentials below.
 													</p>
@@ -678,7 +678,7 @@ const Integrations = () => {
 										</div>
 
 										<form
-											className='space-y-5'
+											className="space-y-5"
 											onSubmit={async e => {
 												e.preventDefault();
 												if (!selectedIntegration) return;
@@ -803,19 +803,19 @@ const Integrations = () => {
 											}}
 										>
 											{selectedIntegration.configFields.map(field => (
-												<div key={field.name} className='space-y-2'>
+												<div key={field.name} className="space-y-2">
 													<label
 														htmlFor={`${selectedIntegration.id}-${field.name}`}
-														className='text-sm font-medium'
+														className="text-sm font-medium"
 													>
 														{field.label}{' '}
-														{field.required && <span className='text-destructive'>*</span>}
+														{field.required && <span className="text-destructive">*</span>}
 													</label>
 													{field.type === 'select' ? (
 														<select
 															id={`${selectedIntegration.id}-${field.name}`}
 															name={field.name}
-															className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+															className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 															required={field.required}
 															value={formData[field.name] || ''}
 															onChange={e =>
@@ -825,9 +825,9 @@ const Integrations = () => {
 																}))
 															}
 															disabled={isSubmitting || !canManageIntegrations()}
-															autoComplete='off'
+															autoComplete="off"
 														>
-															<option value=''>Select {field.label}</option>
+															<option value="">Select {field.label}</option>
 															{field.options?.map(option => (
 																<option key={option} value={option}>
 																	{option}
@@ -871,8 +871,8 @@ const Integrations = () => {
 												</div>
 											))}
 
-											<div className='pt-4 space-y-3'>
-												<div className='flex justify-between mt-6'>
+											<div className="pt-4 space-y-3">
+												<div className="flex justify-between mt-6">
 													{/* Delete button - only show for existing integrations */}
 													{canDelete() &&
 														savedIntegrations.find(
@@ -882,8 +882,8 @@ const Integrations = () => {
 																	selectedIntegration.id.slice(1)
 														) && (
 															<Button
-																type='button'
-																variant='destructive'
+																type="button"
+																variant="destructive"
 																disabled={isSubmitting}
 																onClick={() => {
 																	const existingIntegration = savedIntegrations.find(
@@ -910,7 +910,7 @@ const Integrations = () => {
 															>
 																{isSubmitting ? (
 																	<>
-																		<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+																		<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 																		Deleting...
 																	</>
 																) : (
@@ -920,10 +920,10 @@ const Integrations = () => {
 														)}
 
 													{canManageIntegrations() ? (
-														<Button type='submit' disabled={isSubmitting}>
+														<Button type="submit" disabled={isSubmitting}>
 															{isSubmitting ? (
 																<>
-																	<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+																	<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 																	Saving...
 																</>
 															) : (
@@ -931,25 +931,25 @@ const Integrations = () => {
 															)}
 														</Button>
 													) : (
-														<Button type='button' variant='outline' disabled>
+														<Button type="button" variant="outline" disabled>
 															View Only - No Permission to Save
 														</Button>
 													)}
 												</div>
-												<p className='text-xs text-center text-muted-foreground'>
+												<p className="text-xs text-center text-muted-foreground">
 													You can configure multiple instances of the same integration
 												</p>
 											</div>
 										</form>
 									</TabsContent>
 
-									<TabsContent value='about' className='space-y-6 py-4'>
-										<div className='space-y-5'>
+									<TabsContent value="about" className="space-y-6 py-4">
+										<div className="space-y-5">
 											<div>
-												<h3 className='text-lg font-medium'>
+												<h3 className="text-lg font-medium">
 													About {selectedIntegration.name}
 												</h3>
-												<p className='text-muted-foreground mt-2'>
+												<p className="text-muted-foreground mt-2">
 													{selectedIntegration.description}
 												</p>
 											</div>
@@ -957,8 +957,8 @@ const Integrations = () => {
 											<Separator />
 
 											<div>
-												<h4 className='text-sm font-medium mb-3'>Features</h4>
-												<div className='grid grid-cols-2 gap-3'>
+												<h4 className="text-sm font-medium mb-3">Features</h4>
+												<div className="grid grid-cols-2 gap-3">
 													{selectedIntegration.tags.map(tag => (
 														<div
 															key={tag}
@@ -969,9 +969,9 @@ const Integrations = () => {
 															)}
 														>
 															{TAG_COLORS[tag]?.icon || (
-																<CheckCircle2 className='h-4 w-4' />
+																<CheckCircle2 className="h-4 w-4" />
 															)}
-															<span className='text-sm'>{tag}</span>
+															<span className="text-sm">{tag}</span>
 														</div>
 													))}
 												</div>
@@ -980,15 +980,15 @@ const Integrations = () => {
 											<Separator />
 
 											<div>
-												<h4 className='text-sm font-medium mb-3'>Documentation</h4>
+												<h4 className="text-sm font-medium mb-3">Documentation</h4>
 												<Button
-													variant='outline'
-													className='w-full justify-start gap-2'
+													variant="outline"
+													className="w-full justify-start gap-2"
 													onClick={() =>
 														window.open(selectedIntegration.documentationUrl, '_blank')
 													}
 												>
-													<ExternalLink className='h-4 w-4' />
+													<ExternalLink className="h-4 w-4" />
 													View {selectedIntegration.name} Documentation
 												</Button>
 											</div>
@@ -1061,7 +1061,7 @@ const Integrations = () => {
 									setDeleteDialogOpen(false);
 								}
 							}}
-							className='bg-red-600 hover:bg-red-700'
+							className="bg-red-600 hover:bg-red-700"
 						>
 							Delete
 						</AlertDialogAction>

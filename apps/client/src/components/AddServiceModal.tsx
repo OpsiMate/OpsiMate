@@ -50,91 +50,91 @@ export const AddServiceModal = ({ open, onOpenChange, onAddService }: AddService
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-md'>
+			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>Add New Service</DialogTitle>
 				</DialogHeader>
 
-				<form onSubmit={handleSubmit} className='space-y-4'>
-					<div className='space-y-2'>
-						<Label htmlFor='name'>Service Name</Label>
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="name">Service Name</Label>
 						<Input
-							id='name'
+							id="name"
 							value={formData.name}
 							onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-							placeholder='e.g., Web Server, Database'
+							placeholder="e.g., Web Server, Database"
 							required
 						/>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='serverId'>Server ID</Label>
+					<div className="space-y-2">
+						<Label htmlFor="serverId">Server ID</Label>
 						<Input
-							id='serverId'
+							id="serverId"
 							value={formData.serverId}
 							onChange={e => setFormData(prev => ({ ...prev, serverId: e.target.value }))}
-							placeholder='e.g., srv-001'
+							placeholder="e.g., srv-001"
 							required
 						/>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='ipAddress'>IP Address</Label>
+					<div className="space-y-2">
+						<Label htmlFor="ipAddress">IP Address</Label>
 						<Input
-							id='ipAddress'
+							id="ipAddress"
 							value={formData.ipAddress}
 							onChange={e => setFormData(prev => ({ ...prev, ipAddress: e.target.value }))}
-							placeholder='e.g., 192.168.1.100'
+							placeholder="e.g., 192.168.1.100"
 							required
 						/>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='os'>Operating System</Label>
+					<div className="space-y-2">
+						<Label htmlFor="os">Operating System</Label>
 						<Select
 							value={formData.os}
 							onValueChange={value => setFormData(prev => ({ ...prev, os: value }))}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder='Select OS' />
+								<SelectValue placeholder="Select OS" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='Ubuntu 22.04'>Ubuntu 22.04</SelectItem>
-								<SelectItem value='CentOS 7'>CentOS 7</SelectItem>
-								<SelectItem value='RHEL 8'>RHEL 8</SelectItem>
-								<SelectItem value='Debian 11'>Debian 11</SelectItem>
-								<SelectItem value='Windows Server 2019'>Windows Server 2019</SelectItem>
+								<SelectItem value="Ubuntu 22.04">Ubuntu 22.04</SelectItem>
+								<SelectItem value="CentOS 7">CentOS 7</SelectItem>
+								<SelectItem value="RHEL 8">RHEL 8</SelectItem>
+								<SelectItem value="Debian 11">Debian 11</SelectItem>
+								<SelectItem value="Windows Server 2019">Windows Server 2019</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='port'>Port (Optional)</Label>
+					<div className="space-y-2">
+						<Label htmlFor="port">Port (Optional)</Label>
 						<Input
-							id='port'
-							type='number'
+							id="port"
+							type="number"
 							value={formData.port}
 							onChange={e => setFormData(prev => ({ ...prev, port: e.target.value }))}
-							placeholder='e.g., 8080'
+							placeholder="e.g., 8080"
 						/>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='sshUser'>SSH Username</Label>
+					<div className="space-y-2">
+						<Label htmlFor="sshUser">SSH Username</Label>
 						<Input
-							id='sshUser'
+							id="sshUser"
 							value={formData.sshUser}
 							onChange={e => setFormData(prev => ({ ...prev, sshUser: e.target.value }))}
-							placeholder='e.g., root, ubuntu'
+							placeholder="e.g., root, ubuntu"
 							required
 						/>
 					</div>
 
-					<div className='flex justify-end gap-2 pt-4'>
-						<Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
+					<div className="flex justify-end gap-2 pt-4">
+						<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
 							Cancel
 						</Button>
-						<Button type='submit'>Add Service</Button>
+						<Button type="submit">Add Service</Button>
 					</div>
 				</form>
 			</DialogContent>

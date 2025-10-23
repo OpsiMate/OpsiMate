@@ -65,10 +65,10 @@ export const DeleteTagDialog = ({ open, onClose, tag, onTagDeleted }: DeleteTagD
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
-			<DialogContent className='sm:max-w-[425px]'>
+			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
-					<DialogTitle className='flex items-center gap-2'>
-						<AlertTriangle className='h-5 w-5 text-destructive' />
+					<DialogTitle className="flex items-center gap-2">
+						<AlertTriangle className="h-5 w-5 text-destructive" />
 						Delete Tag
 					</DialogTitle>
 					<DialogDescription>
@@ -77,16 +77,16 @@ export const DeleteTagDialog = ({ open, onClose, tag, onTagDeleted }: DeleteTagD
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className='flex items-center gap-3 p-4 bg-muted/50 rounded-lg'>
-					<div className='w-4 h-4 rounded-full' style={{ backgroundColor: tag.color }} />
-					<span className='font-medium'>{tag.name}</span>
+				<div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+					<div className="w-4 h-4 rounded-full" style={{ backgroundColor: tag.color }} />
+					<span className="font-medium">{tag.name}</span>
 				</div>
 
 				<DialogFooter>
-					<Button type='button' variant='outline' onClick={handleClose} disabled={loading}>
+					<Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
 						Cancel
 					</Button>
-					<Button type='button' variant='destructive' onClick={handleDelete} disabled={loading}>
+					<Button type="button" variant="destructive" onClick={handleDelete} disabled={loading}>
 						{loading ? 'Deleting...' : 'Delete Tag'}
 					</Button>
 				</DialogFooter>

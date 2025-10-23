@@ -24,7 +24,7 @@ export const AllTheProviders = ({ children }: AllTheProvidersProps) => {
 
 	return (
 		<QueryClientProvider client={testQueryClient}>
-			<ThemeProvider defaultTheme='light'>
+			<ThemeProvider defaultTheme="light">
 				<BrowserRouter>{children}</BrowserRouter>
 			</ThemeProvider>
 		</QueryClientProvider>

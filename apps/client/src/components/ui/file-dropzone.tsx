@@ -51,10 +51,10 @@ export const FileDropzone = ({
 				className
 			)}
 		>
-			<input id={id} type='file' accept={accept} multiple={multiple} onChange={onSelect} className='hidden' />
+			<input id={id} type="file" accept={accept} multiple={multiple} onChange={onSelect} className="hidden" />
 			<Label
 				htmlFor={id}
-				className='absolute inset-0 flex items-center justify-center cursor-pointer transition-colors group-hover:text-white'
+				className="absolute inset-0 flex items-center justify-center cursor-pointer transition-colors group-hover:text-white"
 			>
 				{loading ? 'Uploading...' : placeholder}
 			</Label>

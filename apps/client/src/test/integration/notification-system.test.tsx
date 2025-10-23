@@ -76,7 +76,7 @@ const ComponentWithAction = ({ onAction }: { onAction: () => void }) => {
 					title: 'Action toast',
 					description: 'has action',
 					action: (
-						<button onClick={onAction} aria-label='retry-action'>
+						<button onClick={onAction} aria-label="retry-action">
 							Retry
 						</button>
 					) as unknown as ToastActionElement,

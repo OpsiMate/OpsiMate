@@ -74,8 +74,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 	// Show loading state while checking
 	if (isLoading) {
 		return (
-			<div className='flex items-center justify-center min-h-screen'>
-				<div className='text-lg'>Loading...</div>
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-lg">Loading...</div>
 			</div>
 		);
 	}
@@ -83,8 +83,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 	// If there's an error and no JWT, show error state
 	if (error && !localStorage.getItem('jwt')) {
 		return (
-			<div className='flex items-center justify-center min-h-screen'>
-				<div className='text-lg text-red-500'>Error loading application</div>
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-lg text-red-500">Error loading application</div>
 			</div>
 		);
 	}

@@ -89,7 +89,7 @@ export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialog
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
-			<DialogContent className='sm:max-w-[425px]'>
+			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Create New Tag</DialogTitle>
 					<DialogDescription>
@@ -97,24 +97,24 @@ export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialog
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
-					<div className='grid gap-4 py-4'>
-						<div className='grid gap-2'>
-							<Label htmlFor='name'>Tag Name</Label>
+					<div className="grid gap-4 py-4">
+						<div className="grid gap-2">
+							<Label htmlFor="name">Tag Name</Label>
 							<Input
-								id='name'
+								id="name"
 								value={name}
 								onChange={e => setName(e.target.value)}
-								placeholder='Enter tag name'
+								placeholder="Enter tag name"
 								maxLength={50}
 							/>
 						</div>
-						<div className='grid gap-2'>
+						<div className="grid gap-2">
 							<Label>Color</Label>
-							<div className='flex flex-wrap gap-2'>
+							<div className="flex flex-wrap gap-2">
 								{predefinedColors.map(colorOption => (
 									<button
 										key={colorOption}
-										type='button'
+										type="button"
 										className={`w-8 h-8 rounded-full border-2 transition-all ${
 											color === colorOption
 												? 'border-gray-800 scale-110'
@@ -128,10 +128,10 @@ export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialog
 						</div>
 					</div>
 					<DialogFooter>
-						<Button type='button' variant='outline' onClick={handleClose}>
+						<Button type="button" variant="outline" onClick={handleClose}>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={loading || !name.trim()}>
+						<Button type="submit" disabled={loading || !name.trim()}>
 							{loading ? 'Creating...' : 'Create Tag'}
 						</Button>
 					</DialogFooter>

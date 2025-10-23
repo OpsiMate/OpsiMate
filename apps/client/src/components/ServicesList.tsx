@@ -61,31 +61,31 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 	};
 
 	return (
-		<Collapsible open={isOpen} onOpenChange={setIsOpen} className='w-full'>
+		<Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
 			<CollapsibleTrigger asChild>
-				<Button variant='ghost' size='sm' className='flex w-full justify-between p-0 h-8'>
-					<span className='font-medium'>Services ({services.length})</span>
-					{isOpen ? <ChevronUp className='h-4 w-4' /> : <ChevronDown className='h-4 w-4' />}
+				<Button variant="ghost" size="sm" className="flex w-full justify-between p-0 h-8">
+					<span className="font-medium">Services ({services.length})</span>
+					{isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
 				</Button>
 			</CollapsibleTrigger>
-			<CollapsibleContent className='pt-2 space-y-1'>
+			<CollapsibleContent className="pt-2 space-y-1">
 				{services.map(service => (
 					<div
 						key={service.id}
-						className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'
+						className="flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer"
 					>
 						{/* Service info - clickable to view details */}
-						<div className='flex items-center gap-2 flex-1' onClick={() => onServiceClick(service)}>
+						<div className="flex items-center gap-2 flex-1" onClick={() => onServiceClick(service)}>
 							{service.type === 'DOCKER' ? (
-								<Container className='h-4 w-4 text-blue-500' />
+								<Container className="h-4 w-4 text-blue-500" />
 							) : service.type === 'SYSTEMD' ? (
-								<Terminal className='h-4 w-4 text-green-500' />
+								<Terminal className="h-4 w-4 text-green-500" />
 							) : (
-								<Server className='h-4 w-4 text-purple-500' />
+								<Server className="h-4 w-4 text-purple-500" />
 							)}
 							<div>
-								<div className='font-medium text-sm'>{service.name}</div>
-								<div className='text-xs text-muted-foreground'>
+								<div className="font-medium text-sm">{service.name}</div>
+								<div className="text-xs text-muted-foreground">
 									{service.type === 'DOCKER'
 										? `Container: ${service.containerDetails?.image || service.name}`
 										: service.serviceIP
@@ -96,7 +96,7 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 						</div>
 
 						{/* Status badge and dropdown menu */}
-						<div className='flex items-center gap-1'>
+						<div className="flex items-center gap-1">
 							<Badge
 								className={cn(
 									'text-xs',
@@ -115,34 +115,34 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 							>
 								<DropdownMenuTrigger asChild>
 									<Button
-										variant='ghost'
-										size='icon'
-										className='h-6 w-6'
+										variant="ghost"
+										size="icon"
+										className="h-6 w-6"
 										onClick={e => toggleDropdown(e, service.id)}
 									>
-										<MoreVertical className='h-4 w-4' />
+										<MoreVertical className="h-4 w-4" />
 									</Button>
 								</DropdownMenuTrigger>
-								<DropdownMenuContent align='end' onClick={e => e.stopPropagation()}>
+								<DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
 									<DropdownMenuItem onClick={() => onServiceClick(service)}>
-										<Terminal className='mr-2 h-4 w-4' /> View Details
+										<Terminal className="mr-2 h-4 w-4" /> View Details
 									</DropdownMenuItem>
 									{service.status !== 'running' && (
 										<DropdownMenuItem
 											onClick={() => handleAction(service.id, 'running', 'Starting')}
 										>
-											<Play className='mr-2 h-4 w-4' /> Start
+											<Play className="mr-2 h-4 w-4" /> Start
 										</DropdownMenuItem>
 									)}
 									{service.status === 'running' && (
 										<DropdownMenuItem
 											onClick={() => handleAction(service.id, 'stopped', 'Stopping')}
 										>
-											<Square className='mr-2 h-4 w-4' /> Stop
+											<Square className="mr-2 h-4 w-4" /> Stop
 										</DropdownMenuItem>
 									)}
 									<DropdownMenuItem onClick={() => handleAction(service.id, 'running', 'Restarting')}>
-										<RotateCcw className='mr-2 h-4 w-4' /> Restart
+										<RotateCcw className="mr-2 h-4 w-4" /> Restart
 									</DropdownMenuItem>
 									{onDeleteService && (
 										<DropdownMenuItem
@@ -156,9 +156,9 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 												// Call the delete handler
 												onDeleteService(service.id);
 											}}
-											className='text-red-500 focus:text-red-500'
+											className="text-red-500 focus:text-red-500"
 										>
-											<Trash className='mr-2 h-4 w-4' /> Delete
+											<Trash className="mr-2 h-4 w-4" /> Delete
 										</DropdownMenuItem>
 									)}
 								</DropdownMenuContent>

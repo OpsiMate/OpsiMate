@@ -57,9 +57,9 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 	return (
 		<div className={cn('space-y-4', className)}>
 			{/* Remove the internal Alerts title bar, just render the list */}
-			<div className='space-y-2 max-h-96 overflow-y-auto'>
+			<div className="space-y-2 max-h-96 overflow-y-auto">
 				{activeAlerts.length === 0 ? (
-					<div className='text-center py-8 text-muted-foreground'>No active alerts</div>
+					<div className="text-center py-8 text-muted-foreground">No active alerts</div>
 				) : (
 					activeAlerts.map(alert => (
 						<div
@@ -69,58 +69,58 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 								'bg-card border-border hover:bg-muted/50'
 							)}
 						>
-							<div className='flex flex-col min-w-0 flex-1'>
-								<div className='flex items-center gap-2 min-w-0'>
-									<span className='flex items-center justify-center h-7 w-7 rounded-full bg-muted'>
-										<GrafanaIcon className='h-5 w-5 text-[#F46800]' />
+							<div className="flex flex-col min-w-0 flex-1">
+								<div className="flex items-center gap-2 min-w-0">
+									<span className="flex items-center justify-center h-7 w-7 rounded-full bg-muted">
+										<GrafanaIcon className="h-5 w-5 text-[#F46800]" />
 									</span>
-									<h4 className='font-semibold text-base text-foreground truncate'>
+									<h4 className="font-semibold text-base text-foreground truncate">
 										{alert.alertName}
 									</h4>
 								</div>
 								{alert.summary && (
-									<div className='text-xs text-muted-foreground mt-1 whitespace-pre-line break-words w-full'>
+									<div className="text-xs text-muted-foreground mt-1 whitespace-pre-line break-words w-full">
 										{alert.summary}
 									</div>
 								)}
 							</div>
-							<div className='flex items-center gap-1 flex-shrink-0'>
+							<div className="flex items-center gap-1 flex-shrink-0">
 								{alert.runbookUrl && (
 									<Button
-										variant='ghost'
-										size='icon'
-										className='h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary'
-										title='Open Runbook'
+										variant="ghost"
+										size="icon"
+										className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
+										title="Open Runbook"
 										onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
 									>
-										<span className='sr-only'>Open Runbook</span>
+										<span className="sr-only">Open Runbook</span>
 										📖
 									</Button>
 								)}
 								{alert.alertUrl && (
 									<Button
-										variant='ghost'
-										size='icon'
-										className='h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary'
-										title='View in Grafana'
+										variant="ghost"
+										size="icon"
+										className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
+										title="View in Grafana"
 										onClick={() => handleAlertClick(alert.alertUrl)}
 									>
-										<ExternalLink className='h-4 w-4' />
+										<ExternalLink className="h-4 w-4" />
 									</Button>
 								)}
 								{onAlertDismiss && (
 									<Button
-										variant='ghost'
-										size='icon'
-										className='h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary'
-										title='Dismiss Alert'
+										variant="ghost"
+										size="icon"
+										className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
+										title="Dismiss Alert"
 										onClick={() => handleDismissAlert(alert.id)}
 										disabled={dismissingAlerts.has(alert.id)}
 									>
 										{dismissingAlerts.has(alert.id) ? (
-											<div className='h-3 w-3 rounded-full border-2 border-t-transparent animate-spin' />
+											<div className="h-3 w-3 rounded-full border-2 border-t-transparent animate-spin" />
 										) : (
-											<X className='h-4 w-4' />
+											<X className="h-4 w-4" />
 										)}
 									</Button>
 								)}

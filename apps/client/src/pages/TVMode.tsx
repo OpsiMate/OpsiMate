@@ -543,15 +543,15 @@ const TVMode = ({
 	const getStatusIcon = (status: Service['serviceStatus']) => {
 		switch (status.toLowerCase()) {
 			case 'running':
-				return <CheckCircle className='h-6 w-6 text-green-500' />;
+				return <CheckCircle className="h-6 w-6 text-green-500" />;
 			case 'stopped':
-				return <XCircle className='h-6 w-6 text-gray-500' />;
+				return <XCircle className="h-6 w-6 text-gray-500" />;
 			case 'error':
-				return <AlertTriangle className='h-6 w-6 text-red-500' />;
+				return <AlertTriangle className="h-6 w-6 text-red-500" />;
 			case 'unknown':
-				return <HelpCircle className='h-6 w-6 text-yellow-500' />;
+				return <HelpCircle className="h-6 w-6 text-yellow-500" />;
 			default:
-				return <HelpCircle className='h-6 w-6 text-gray-500' />;
+				return <HelpCircle className="h-6 w-6 text-gray-500" />;
 		}
 	};
 
@@ -573,27 +573,27 @@ const TVMode = ({
 	const getServiceTypeIcon = (serviceType: Service['serviceType']) => {
 		switch (serviceType) {
 			case 'DOCKER':
-				return <Container className='h-4 w-4' />;
+				return <Container className="h-4 w-4" />;
 			case 'SYSTEMD':
-				return <Settings className='h-4 w-4' />;
+				return <Settings className="h-4 w-4" />;
 			case 'MANUAL':
-				return <Server className='h-4 w-4' />;
+				return <Server className="h-4 w-4" />;
 			default:
-				return <Server className='h-4 w-4' />;
+				return <Server className="h-4 w-4" />;
 		}
 	};
 
 	return (
 		<>
-			<div className='h-screen overflow-y-auto bg-background text-foreground p-4'>
+			<div className="h-screen overflow-y-auto bg-background text-foreground p-4">
 				{/* Header */}
-				<div className='space-y-3 mb-6'>
-					<div className='flex flex-wrap items-center justify-between gap-4'>
-						<div className='flex items-center gap-4'>
-							<Monitor className='h-8 w-8 text-primary' />
+				<div className="space-y-3 mb-6">
+					<div className="flex flex-wrap items-center justify-between gap-4">
+						<div className="flex items-center gap-4">
+							<Monitor className="h-8 w-8 text-primary" />
 							<div>
-								<h1 className='text-3xl font-bold'>OpsiMate TV Mode</h1>
-								<div className='text-muted-foreground space-y-0.5'>
+								<h1 className="text-3xl font-bold">OpsiMate TV Mode</h1>
+								<div className="text-muted-foreground space-y-0.5">
 									<p>
 										{currentTime.toLocaleString()} • Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
 										{viewRotation && ' • View Rotation: ON'}
@@ -601,9 +601,9 @@ const TVMode = ({
 									<p>
 										Grid: {smartGridConfig.columns} cols ({smartGridConfig.cardSize})
 										{(isLoading || isRefreshing) && (
-											<span className='inline-flex items-center gap-1 ml-2'>
-												<RotateCcw className='h-3 w-3 animate-spin' />
-												<span className='text-xs'>
+											<span className="inline-flex items-center gap-1 ml-2">
+												<RotateCcw className="h-3 w-3 animate-spin" />
+												<span className="text-xs">
 													{isRefreshing ? 'Manual refresh' : 'Auto refresh'}
 												</span>
 											</span>
@@ -623,93 +623,93 @@ const TVMode = ({
 							</div>
 						</div>
 
-						<div className='flex flex-wrap items-center gap-4'>
+						<div className="flex flex-wrap items-center gap-4">
 							{/* Search Bar */}
-							<div className='relative min-w-[300px] max-w-[400px]'>
-								<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+							<div className="relative min-w-[300px] max-w-[400px]">
+								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
 									ref={searchInputRef}
-									placeholder='Search services, providers, IPs...'
+									placeholder="Search services, providers, IPs..."
 									value={searchTerm}
 									onChange={e => setSearchTerm(e.target.value)}
-									className='pl-10 pr-10 h-9 text-sm'
-									title='Search services by name, provider, IP, or container image'
+									className="pl-10 pr-10 h-9 text-sm"
+									title="Search services by name, provider, IP, or container image"
 								/>
 								{searchTerm && (
 									<Button
-										variant='ghost'
-										size='sm'
+										variant="ghost"
+										size="sm"
 										onClick={() => setSearchTerm('')}
-										className='absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0'
-										aria-label='Clear search'
+										className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+										aria-label="Clear search"
 									>
-										<X className='h-4 w-4' />
+										<X className="h-4 w-4" />
 									</Button>
 								)}
 							</div>
 
 							{/* Control Buttons */}
 							<Button
-								variant='outline'
-								size='sm'
+								variant="outline"
+								size="sm"
 								onClick={handleManualRefresh}
 								disabled={isRefreshing}
-								className='flex items-center gap-2 min-w-[120px]'
-								title='Manual Refresh (Ctrl+R)'
+								className="flex items-center gap-2 min-w-[120px]"
+								title="Manual Refresh (Ctrl+R)"
 							>
 								<RotateCcw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
 								{isRefreshing ? 'Refreshing...' : 'Refresh'}
 							</Button>
 
 							<Button
-								variant='outline'
-								size='sm'
+								variant="outline"
+								size="sm"
 								onClick={toggleFullscreen}
-								className='flex items-center gap-2'
-								title='Toggle Fullscreen (F11)'
+								className="flex items-center gap-2"
+								title="Toggle Fullscreen (F11)"
 							>
-								{isFullscreen ? <Minimize className='h-4 w-4' /> : <Maximize className='h-4 w-4' />}
+								{isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
 								{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
 							</Button>
 
 							{/* Help/Shortcuts Button */}
 							<Popover>
 								<PopoverTrigger asChild>
-									<Button variant='outline' size='sm' className='flex items-center gap-2'>
-										<HelpCircle className='h-4 w-4' />
+									<Button variant="outline" size="sm" className="flex items-center gap-2">
+										<HelpCircle className="h-4 w-4" />
 										Help
 									</Button>
 								</PopoverTrigger>
-								<PopoverContent side='bottom' className='max-w-sm p-4'>
-									<div className='space-y-3'>
-										<p className='font-semibold text-sm'>⌨️ Keyboard Shortcuts</p>
-										<div className='space-y-1 text-xs'>
-											<div className='flex justify-between gap-4'>
-												<span className='text-muted-foreground'>Focus Search:</span>
-												<span className='font-mono'>/</span>
+								<PopoverContent side="bottom" className="max-w-sm p-4">
+									<div className="space-y-3">
+										<p className="font-semibold text-sm">⌨️ Keyboard Shortcuts</p>
+										<div className="space-y-1 text-xs">
+											<div className="flex justify-between gap-4">
+												<span className="text-muted-foreground">Focus Search:</span>
+												<span className="font-mono">/</span>
 											</div>
-											<div className='flex justify-between gap-4'>
-												<span className='text-muted-foreground'>Status Views:</span>
-												<span className='font-mono'>1-4</span>
+											<div className="flex justify-between gap-4">
+												<span className="text-muted-foreground">Status Views:</span>
+												<span className="font-mono">1-4</span>
 											</div>
-											<div className='flex justify-between gap-4'>
-												<span className='text-muted-foreground'>Toggle Alerts:</span>
-												<span className='font-mono'>A</span>
+											<div className="flex justify-between gap-4">
+												<span className="text-muted-foreground">Toggle Alerts:</span>
+												<span className="font-mono">A</span>
 											</div>
-											<div className='flex justify-between gap-4'>
-												<span className='text-muted-foreground'>Manual Refresh:</span>
-												<span className='font-mono'>Ctrl+R</span>
+											<div className="flex justify-between gap-4">
+												<span className="text-muted-foreground">Manual Refresh:</span>
+												<span className="font-mono">Ctrl+R</span>
 											</div>
-											<div className='flex justify-between gap-4'>
-												<span className='text-muted-foreground'>Fullscreen:</span>
-												<span className='font-mono'>F11</span>
+											<div className="flex justify-between gap-4">
+												<span className="text-muted-foreground">Fullscreen:</span>
+												<span className="font-mono">F11</span>
 											</div>
-											<div className='flex justify-between gap-4'>
-												<span className='text-muted-foreground'>Exit TV Mode:</span>
-												<span className='font-mono'>Esc</span>
+											<div className="flex justify-between gap-4">
+												<span className="text-muted-foreground">Exit TV Mode:</span>
+												<span className="font-mono">Esc</span>
 											</div>
 										</div>
-										<div className='pt-2 border-t text-xs text-muted-foreground'>
+										<div className="pt-2 border-t text-xs text-muted-foreground">
 											<p>
 												💡 <strong>Tips:</strong>
 											</p>
@@ -723,23 +723,23 @@ const TVMode = ({
 							</Popover>
 
 							<Button
-								variant='outline'
-								size='sm'
+								variant="outline"
+								size="sm"
 								onClick={() => navigate('/')}
-								className='flex items-center gap-2'
-								title='Exit TV Mode (Escape)'
+								className="flex items-center gap-2"
+								title="Exit TV Mode (Escape)"
 							>
-								<X className='h-4 w-4' />
+								<X className="h-4 w-4" />
 								Exit TV Mode
 							</Button>
 						</div>
 					</div>
 
-					<div className='flex flex-wrap items-center justify-center gap-6'>
+					<div className="flex flex-wrap items-center justify-center gap-6">
 						{/* Multi-State Filter Buttons */}
-						<div className='flex flex-wrap items-center gap-3'>
-							<span className='text-sm font-medium text-muted-foreground'>Status:</span>
-							<div className='flex flex-wrap gap-1'>
+						<div className="flex flex-wrap items-center gap-3">
+							<span className="text-sm font-medium text-muted-foreground">Status:</span>
+							<div className="flex flex-wrap gap-1">
 								{(['all', 'running', 'stopped', 'error'] as const).map((state, index) => {
 									const isSelected = selectedStates.has(state);
 									const isAllSelected = selectedStates.has('all');
@@ -750,7 +750,7 @@ const TVMode = ({
 											variant={
 												isSelected || (state === 'all' && isAllSelected) ? 'default' : 'outline'
 											}
-											size='sm'
+											size="sm"
 											onClick={() => {
 												if (state === 'all') {
 													setSelectedStates(new Set(['all']));
@@ -758,12 +758,12 @@ const TVMode = ({
 													toggleStateSelection(state);
 												}
 											}}
-											className='capitalize min-w-[85px]'
+											className="capitalize min-w-[85px]"
 											title={`Toggle ${state} view (${index + 1})`}
 										>
-											<span className='inline-block min-w-[50px]'>{state}</span>
+											<span className="inline-block min-w-[50px]">{state}</span>
 											{isSelected && state !== 'all' && !isAllSelected && (
-												<span className='ml-1 text-xs'>✓</span>
+												<span className="ml-1 text-xs">✓</span>
 											)}
 										</Button>
 									);
@@ -775,26 +775,26 @@ const TVMode = ({
 						</div>
 
 						{/* Alert Filter Toggle */}
-						<div className='flex flex-wrap items-center gap-3'>
-							<span className='text-sm font-medium text-muted-foreground'>Show:</span>
-							<div className='flex gap-1 bg-muted/50 rounded-md p-1'>
+						<div className="flex flex-wrap items-center gap-3">
+							<span className="text-sm font-medium text-muted-foreground">Show:</span>
+							<div className="flex gap-1 bg-muted/50 rounded-md p-1">
 								<Button
 									variant={alertFilter === 'all' ? 'default' : 'ghost'}
-									size='sm'
+									size="sm"
 									onClick={() => setAlertFilter('all')}
-									className='h-7 px-3 text-xs'
-									title='Show all services (A)'
+									className="h-7 px-3 text-xs"
+									title="Show all services (A)"
 								>
 									All
 								</Button>
 								<Button
 									variant={alertFilter === 'with-alerts' ? 'default' : 'ghost'}
-									size='sm'
+									size="sm"
 									onClick={() => setAlertFilter('with-alerts')}
-									className='h-7 px-3 text-xs flex items-center gap-1'
-									title='Show only services with alerts (A)'
+									className="h-7 px-3 text-xs flex items-center gap-1"
+									title="Show only services with alerts (A)"
 								>
-									<AlertTriangle className='h-3 w-3' />
+									<AlertTriangle className="h-3 w-3" />
 									Alerts Only
 								</Button>
 							</div>
@@ -803,85 +803,85 @@ const TVMode = ({
 				</div>
 
 				{/* Compact Statistics Bar */}
-				<div className='grid grid-cols-6 gap-2 mb-3'>
-					<Card className='border border-blue-500 bg-blue-50/50 dark:bg-blue-950/50'>
-						<CardContent className='p-2 text-center'>
-							<div className='text-lg font-bold text-blue-700 dark:text-blue-300 leading-none'>
+				<div className="grid grid-cols-6 gap-2 mb-3">
+					<Card className="border border-blue-500 bg-blue-50/50 dark:bg-blue-950/50">
+						<CardContent className="p-2 text-center">
+							<div className="text-lg font-bold text-blue-700 dark:text-blue-300 leading-none">
 								{stats.filtered.total}
 								{stats.filtered.total !== stats.total && (
-									<span className='text-xs text-blue-500 dark:text-blue-400'>/{stats.total}</span>
+									<span className="text-xs text-blue-500 dark:text-blue-400">/{stats.total}</span>
 								)}
 							</div>
-							<div className='text-xs text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]'>
+							<div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								{stats.filtered.total !== stats.total ? 'Filtered/Total' : 'Total'}
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card className='border border-green-500 bg-green-50/50 dark:bg-green-950/50'>
-						<CardContent className='p-2 text-center'>
-							<div className='text-lg font-bold text-green-700 dark:text-green-300 leading-none'>
+					<Card className="border border-green-500 bg-green-50/50 dark:bg-green-950/50">
+						<CardContent className="p-2 text-center">
+							<div className="text-lg font-bold text-green-700 dark:text-green-300 leading-none">
 								{stats.filtered.running}
 								{stats.filtered.running !== stats.running && (
-									<span className='text-xs text-green-500 dark:text-green-400'>/{stats.running}</span>
+									<span className="text-xs text-green-500 dark:text-green-400">/{stats.running}</span>
 								)}
 							</div>
-							<div className='text-xs text-green-600 dark:text-green-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]'>
+							<div className="text-xs text-green-600 dark:text-green-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								Running
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card className='border border-gray-500 bg-gray-50/50 dark:bg-gray-950/50'>
-						<CardContent className='p-2 text-center'>
-							<div className='text-lg font-bold text-gray-700 dark:text-gray-300 leading-none'>
+					<Card className="border border-gray-500 bg-gray-50/50 dark:bg-gray-950/50">
+						<CardContent className="p-2 text-center">
+							<div className="text-lg font-bold text-gray-700 dark:text-gray-300 leading-none">
 								{stats.filtered.stopped}
 								{stats.filtered.stopped !== stats.stopped && (
-									<span className='text-xs text-gray-500 dark:text-gray-400'>/{stats.stopped}</span>
+									<span className="text-xs text-gray-500 dark:text-gray-400">/{stats.stopped}</span>
 								)}
 							</div>
-							<div className='text-xs text-gray-600 dark:text-gray-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]'>
+							<div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								Stopped
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card className='border border-red-500 bg-red-50/50 dark:bg-red-950/50'>
-						<CardContent className='p-2 text-center'>
-							<div className='text-lg font-bold text-red-700 dark:text-red-300 leading-none'>
+					<Card className="border border-red-500 bg-red-50/50 dark:bg-red-950/50">
+						<CardContent className="p-2 text-center">
+							<div className="text-lg font-bold text-red-700 dark:text-red-300 leading-none">
 								{stats.filtered.error}
 								{stats.filtered.error !== stats.error && (
-									<span className='text-xs text-red-500 dark:text-red-400'>/{stats.error}</span>
+									<span className="text-xs text-red-500 dark:text-red-400">/{stats.error}</span>
 								)}
 							</div>
-							<div className='text-xs text-red-600 dark:text-red-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]'>
+							<div className="text-xs text-red-600 dark:text-red-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								Error
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card className='border border-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/50'>
-						<CardContent className='p-2 text-center'>
-							<div className='text-lg font-bold text-yellow-700 dark:text-yellow-300 leading-none'>
+					<Card className="border border-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/50">
+						<CardContent className="p-2 text-center">
+							<div className="text-lg font-bold text-yellow-700 dark:text-yellow-300 leading-none">
 								{stats.filtered.unknown}
 								{stats.filtered.unknown !== stats.unknown && (
-									<span className='text-xs text-yellow-500 dark:text-yellow-400'>
+									<span className="text-xs text-yellow-500 dark:text-yellow-400">
 										/{stats.unknown}
 									</span>
 								)}
 							</div>
-							<div className='text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]'>
+							<div className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								Unknown
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card className='border border-orange-500 bg-orange-50/50 dark:bg-orange-950/50'>
-						<CardContent className='p-2 text-center'>
-							<div className='text-lg font-bold text-orange-700 dark:text-orange-300 leading-none'>
+					<Card className="border border-orange-500 bg-orange-50/50 dark:bg-orange-950/50">
+						<CardContent className="p-2 text-center">
+							<div className="text-lg font-bold text-orange-700 dark:text-orange-300 leading-none">
 								{stats.totalAlerts}
 							</div>
-							<div className='text-xs text-orange-600 dark:text-orange-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]'>
+							<div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								Alerts
 							</div>
 						</CardContent>
@@ -890,12 +890,12 @@ const TVMode = ({
 
 				{/* Services Grid */}
 				{isLoading ? (
-					<div className='flex items-center justify-center h-64'>
-						<div className='text-xl text-muted-foreground'>Loading services...</div>
+					<div className="flex items-center justify-center h-64">
+						<div className="text-xl text-muted-foreground">Loading services...</div>
 					</div>
 				) : filteredServices.length === 0 ? (
-					<div className='flex items-center justify-center h-64'>
-						<div className='text-xl text-muted-foreground'>
+					<div className="flex items-center justify-center h-64">
+						<div className="text-xl text-muted-foreground">
 							{alertFilter === 'with-alerts'
 								? 'No services with alerts found for current view'
 								: 'No services found for current view'}
@@ -942,21 +942,21 @@ const TVMode = ({
 											)}
 										>
 											{/* Left side: Status and Type Icons */}
-											<div className='flex items-center gap-1'>
+											<div className="flex items-center gap-1">
 												{getStatusIcon(service.serviceStatus)}
 												{!isExtraCompact && getServiceTypeIcon(service.serviceType)}
 											</div>
 
 											{/* Right side: Alert Badge and Action Menu */}
 											{!isExtraCompact && (
-												<div className='flex items-center gap-1'>
+												<div className="flex items-center gap-1">
 													{/* Alert Badge with Click-to-Open Popover - Only show if alerts exist */}
 													{service.alertsCount > 0 && (
 														<Popover>
 															<PopoverTrigger asChild>
 																<Button
-																	variant='ghost'
-																	size='sm'
+																	variant="ghost"
+																	size="sm"
 																	className={cn(
 																		'h-5 px-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200',
 																		isCompact && 'h-4 px-1'
@@ -965,13 +965,13 @@ const TVMode = ({
 																		e.stopPropagation();
 																	}}
 																>
-																	<AlertTriangle className='h-2.5 w-2.5 mr-0.5' />
+																	<AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
 																	{service.alertsCount}
 																</Button>
 															</PopoverTrigger>
-															<PopoverContent side='top' className='max-w-xs p-3'>
-																<div className='space-y-2'>
-																	<p className='font-medium text-[10px] text-red-700 leading-tight'>
+															<PopoverContent side="top" className="max-w-xs p-3">
+																<div className="space-y-2">
+																	<p className="font-medium text-[10px] text-red-700 leading-tight">
 																		🚨 {service.alertsCount} Alert
 																		{service.alertsCount !== 1 ? 's' : ''}
 																	</p>
@@ -980,17 +980,17 @@ const TVMode = ({
 																		.map((alert, idx) => (
 																			<div
 																				key={idx}
-																				className='text-xs bg-red-50 border-l-3 border-red-400 p-2 rounded-r'
+																				className="text-xs bg-red-50 border-l-3 border-red-400 p-2 rounded-r"
 																			>
-																				<p className='font-medium text-red-800'>
+																				<p className="font-medium text-red-800">
 																					{alert.alertName}
 																				</p>
 																				{alert.summary && (
-																					<p className='text-red-600 mt-1'>
+																					<p className="text-red-600 mt-1">
 																						{alert.summary}
 																					</p>
 																				)}
-																				<div className='flex items-center gap-2 mt-1 text-xs text-red-500'>
+																				<div className="flex items-center gap-2 mt-1 text-xs text-red-500">
 																					<span>Status: {alert.status}</span>
 																					{alert.startsAt && (
 																						<span>
@@ -1005,14 +1005,14 @@ const TVMode = ({
 																		))}
 																	{service.serviceAlerts &&
 																		service.serviceAlerts.length > 3 && (
-																			<p className='text-xs text-red-600 font-medium'>
+																			<p className="text-xs text-red-600 font-medium">
 																				+{service.serviceAlerts.length - 3} more
 																				alerts
 																			</p>
 																		)}
 																	{(!service.serviceAlerts ||
 																		service.serviceAlerts.length === 0) && (
-																		<p className='text-xs text-muted-foreground italic'>
+																		<p className="text-xs text-muted-foreground italic">
 																			No alert details available
 																		</p>
 																	)}
@@ -1026,18 +1026,18 @@ const TVMode = ({
 														<DropdownMenu>
 															<DropdownMenuTrigger asChild>
 																<Button
-																	variant='ghost'
-																	size='sm'
+																	variant="ghost"
+																	size="sm"
 																	className={cn(
 																		'h-5 w-5 p-0 hover:bg-muted',
 																		isCompact && 'h-4 w-4'
 																	)}
 																	onClick={e => e.stopPropagation()}
 																>
-																	<MoreVertical className='h-2.5 w-2.5' />
+																	<MoreVertical className="h-2.5 w-2.5" />
 																</Button>
 															</DropdownMenuTrigger>
-															<DropdownMenuContent align='end' className='w-32'>
+															<DropdownMenuContent align="end" className="w-32">
 																{service.serviceStatus === 'stopped' ? (
 																	<DropdownMenuItem
 																		onClick={e => {
@@ -1045,9 +1045,9 @@ const TVMode = ({
 																			handleStartService(service);
 																		}}
 																		disabled={startServiceMutation.isPending}
-																		className='text-xs'
+																		className="text-xs"
 																	>
-																		<Play className='h-3 w-3 mr-2' />
+																		<Play className="h-3 w-3 mr-2" />
 																		Start
 																	</DropdownMenuItem>
 																) : (
@@ -1057,9 +1057,9 @@ const TVMode = ({
 																			handleStopService(service);
 																		}}
 																		disabled={stopServiceMutation.isPending}
-																		className='text-xs'
+																		className="text-xs"
 																	>
-																		<Square className='h-3 w-3 mr-2' />
+																		<Square className="h-3 w-3 mr-2" />
 																		Stop
 																	</DropdownMenuItem>
 																)}
@@ -1072,9 +1072,9 @@ const TVMode = ({
 																		startServiceMutation.isPending ||
 																		stopServiceMutation.isPending
 																	}
-																	className='text-xs'
+																	className="text-xs"
 																>
-																	<RotateCcw className='h-3 w-3 mr-2' />
+																	<RotateCcw className="h-3 w-3 mr-2" />
 																	Restart
 																</DropdownMenuItem>
 															</DropdownMenuContent>
@@ -1096,15 +1096,15 @@ const TVMode = ({
 											</h3>
 
 											{!isExtraCompact && (
-												<div className='flex items-center gap-1 text-xs text-muted-foreground'>
+												<div className="flex items-center gap-1 text-xs text-muted-foreground">
 													{service.serviceType === 'SYSTEMD' ? (
-														<Wifi className='h-3 w-3' />
+														<Wifi className="h-3 w-3" />
 													) : service.serviceIP ? (
-														<Wifi className='h-3 w-3' />
+														<Wifi className="h-3 w-3" />
 													) : (
-														<WifiOff className='h-3 w-3' />
+														<WifiOff className="h-3 w-3" />
 													)}
-													<span className='truncate'>
+													<span className="truncate">
 														{service.serviceType === 'SYSTEMD'
 															? service.provider.providerIP
 															: service.serviceIP || 'No IP'}
@@ -1113,7 +1113,7 @@ const TVMode = ({
 											)}
 
 											{!isCompact && (
-												<div className='text-xs text-muted-foreground truncate'>
+												<div className="text-xs text-muted-foreground truncate">
 													Provider: {service.provider.name}
 												</div>
 											)}
@@ -1121,13 +1121,13 @@ const TVMode = ({
 											{!isCompact &&
 												service.serviceType === 'DOCKER' &&
 												service.containerDetails?.image && (
-													<div className='text-xs text-muted-foreground truncate'>
+													<div className="text-xs text-muted-foreground truncate">
 														Image: {service.containerDetails.image}
 													</div>
 												)}
 
 											<Badge
-												variant='outline'
+												variant="outline"
 												className={cn(
 													'w-full justify-center',
 													isExtraCompact ? 'text-xs px-1 py-0 h-5' : 'text-xs',

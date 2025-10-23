@@ -26,9 +26,9 @@ export const TagBadge = ({ tag, onRemove, className }: TagBadgeProps) => {
 						e.stopPropagation();
 						onRemove();
 					}}
-					className='ml-1 hover:bg-black/10 rounded-full p-0.5'
+					className="ml-1 hover:bg-black/10 rounded-full p-0.5"
 				>
-					<X className='h-3 w-3' />
+					<X className="h-3 w-3" />
 				</button>
 			)}
 		</Badge>

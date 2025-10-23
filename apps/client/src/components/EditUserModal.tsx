@@ -91,31 +91,31 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 
 				{generalError && <ErrorAlert message={generalError} />}
 
-				<div className='space-y-4'>
-					<div className='space-y-2'>
-						<Label htmlFor='edit-fullName'>Full Name</Label>
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="edit-fullName">Full Name</Label>
 						<Input
-							id='edit-fullName'
+							id="edit-fullName"
 							value={fullName}
 							onChange={e => setFullName(e.target.value)}
-							placeholder='John Doe'
+							placeholder="John Doe"
 						/>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='edit-email'>Email</Label>
+					<div className="space-y-2">
+						<Label htmlFor="edit-email">Email</Label>
 						<Input
-							id='edit-email'
-							type='email'
+							id="edit-email"
+							type="email"
 							value={email}
 							onChange={e => setEmail(e.target.value)}
-							placeholder='john@example.com'
+							placeholder="john@example.com"
 						/>
 					</div>
 				</div>
 
 				<DialogFooter>
-					<Button variant='ghost' onClick={handleClose} disabled={saving}>
+					<Button variant="ghost" onClick={handleClose} disabled={saving}>
 						Cancel
 					</Button>
 					<Button onClick={handleSave} disabled={saving || !fullName.trim() || !email.trim()}>

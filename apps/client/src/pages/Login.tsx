@@ -62,36 +62,36 @@ const Login: React.FC = () => {
 	};
 
 	return (
-		<div className='min-h-screen flex items-center justify-center bg-background'>
+		<div className="min-h-screen flex items-center justify-center bg-background">
 			<form
 				onSubmit={handleSubmit}
-				className='bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80'
+				className="bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80"
 			>
-				<h2 className='text-2xl font-bold mb-6 text-center text-foreground'>Login</h2>
-				<div className='mb-4'>
+				<h2 className="text-2xl font-bold mb-6 text-center text-foreground">Login</h2>
+				<div className="mb-4">
 					<Input
-						type='email'
-						placeholder='Email'
+						type="email"
+						placeholder="Email"
 						value={email}
 						onChange={e => setEmail(e.target.value)}
 						required
 					/>
 				</div>
-				<div className='mb-4'>
+				<div className="mb-4">
 					<Input
-						type='password'
-						placeholder='Password'
+						type="password"
+						placeholder="Password"
 						value={password}
 						onChange={e => setPassword(e.target.value)}
 						required
 					/>
 				</div>
-				{generalError && <ErrorAlert message={generalError} className='mb-4' />}
-				<Button type='submit' className='w-full' disabled={loading}>
+				{generalError && <ErrorAlert message={generalError} className="mb-4" />}
+				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? 'Logging in...' : 'Login'}
 				</Button>
-				<div className='mt-4 text-center'>
-					<Link to='/forgot-password' className='text-primary hover:underline text-sm'>
+				<div className="mt-4 text-center">
+					<Link to="/forgot-password" className="text-primary hover:underline text-sm">
 						Forgot password?
 					</Link>
 				</div>

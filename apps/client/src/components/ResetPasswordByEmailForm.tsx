@@ -25,31 +25,31 @@ const ResetPasswordByEmailForm: React.FC<ResetPasswordFormProps> = ({
 }) => {
 	return (
 		<form onSubmit={handleSubmit}>
-			<h1 className='text-2xl font-bold text-center mb-6 text-foreground'>Reset your password</h1>
-			<p className='text-sm text-muted-foreground text-center mb-4'>Enter your new password below.</p>
-			<div className='mb-4'>
+			<h1 className="text-2xl font-bold text-center mb-6 text-foreground">Reset your password</h1>
+			<p className="text-sm text-muted-foreground text-center mb-4">Enter your new password below.</p>
+			<div className="mb-4">
 				<Input
-					type='password'
-					placeholder='New password'
+					type="password"
+					placeholder="New password"
 					value={password}
 					onChange={e => setPassword(e.target.value)}
 					required
 				/>
 			</div>
-			<div className='mb-4'>
+			<div className="mb-4">
 				<Input
-					type='password'
-					placeholder='Confirm new password'
+					type="password"
+					placeholder="Confirm new password"
 					value={confirm}
 					onChange={e => setConfirm(e.target.value)}
 					required
 				/>
 			</div>
 
-			{generalError && <ErrorAlert message={generalError} className='mb-4' />}
-			{error?.newPassword && <ErrorAlert message={error.newPassword} className='mb-4' />}
+			{generalError && <ErrorAlert message={generalError} className="mb-4" />}
+			{error?.newPassword && <ErrorAlert message={error.newPassword} className="mb-4" />}
 
-			<Button type='submit' className='w-full' disabled={loading}>
+			<Button type="submit" className="w-full" disabled={loading}>
 				{loading ? 'Resetting...' : 'Reset Password'}
 			</Button>
 		</form>

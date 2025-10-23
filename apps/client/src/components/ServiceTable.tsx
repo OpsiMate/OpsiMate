@@ -109,17 +109,17 @@ const DraggableHeader = ({ id, children, field, currentSort, onSort, className }
 				className
 			)}
 		>
-			<div className='flex items-center gap-1'>
+			<div className="flex items-center gap-1">
 				<div
 					{...attributes}
 					{...listeners}
-					className='cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded'
+					className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
 				>
-					<GripVertical className='h-3 w-3 text-muted-foreground' />
+					<GripVertical className="h-3 w-3 text-muted-foreground" />
 				</div>
-				<div className='flex items-center gap-1 flex-1' onClick={() => onSort(field)}>
+				<div className="flex items-center gap-1 flex-1" onClick={() => onSort(field)}>
 					{children}
-					<div className='flex flex-col'>
+					<div className="flex flex-col">
 						<ChevronUp
 							className={cn(
 								'h-3 w-3 transition-colors',
@@ -149,9 +149,9 @@ const SortableHeader = ({ children, field, currentSort, onSort, className }: Sor
 			className={cn('font-medium cursor-pointer hover:bg-muted/50 transition-colors select-none', className)}
 			onClick={() => onSort(field)}
 		>
-			<div className='flex items-center gap-1'>
+			<div className="flex items-center gap-1">
 				{children}
-				<div className='flex flex-col'>
+				<div className="flex flex-col">
 					<ChevronUp
 						className={cn(
 							'h-3 w-3 transition-colors',
@@ -371,38 +371,38 @@ export const ServiceTable = ({
 
 	if (loading) {
 		return (
-			<div className='flex-1 flex flex-col bg-card border border-border rounded-lg overflow-hidden'>
-				<div className='p-2 border-b border-border space-y-2 flex-shrink-0'>
-					<div className='flex items-center justify-between'>
+			<div className="flex-1 flex flex-col bg-card border border-border rounded-lg overflow-hidden">
+				<div className="p-2 border-b border-border space-y-2 flex-shrink-0">
+					<div className="flex items-center justify-between">
 						<div>
-							<h3 className='text-sm font-semibold text-foreground'>Services</h3>
-							<p className='text-xs text-muted-foreground'>Loading...</p>
+							<h3 className="text-sm font-semibold text-foreground">Services</h3>
+							<p className="text-xs text-muted-foreground">Loading...</p>
 						</div>
-						<Button variant='outline' size='icon' onClick={onSettingsClick} className='h-7 w-7 rounded-md'>
-							<Settings className='h-3 w-3' />
-							<span className='sr-only'>Table Settings</span>
+						<Button variant="outline" size="icon" onClick={onSettingsClick} className="h-7 w-7 rounded-md">
+							<Settings className="h-3 w-3" />
+							<span className="sr-only">Table Settings</span>
 						</Button>
 					</div>
 				</div>
-				<div className='flex-1 relative min-h-[200px]'>
-					<Table className='relative'>
-						<TableHeader className='sticky top-0 bg-card z-10'>
-							<TableRow className='hover:bg-transparent'>
-								<TableHead className='w-10'>
-									<div className='flex items-center justify-center'>
+				<div className="flex-1 relative min-h-[200px]">
+					<Table className="relative">
+						<TableHeader className="sticky top-0 bg-card z-10">
+							<TableRow className="hover:bg-transparent">
+								<TableHead className="w-10">
+									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={false}
 											onCheckedChange={() => {}}
-											aria-label='Select all services'
+											aria-label="Select all services"
 										/>
 									</div>
 								</TableHead>
-								{visibleColumns.name && <TableHead className='font-medium'>Name</TableHead>}
-								{visibleColumns.serviceIP && <TableHead className='font-medium'>Service IP</TableHead>}
-								{visibleColumns.serviceStatus && <TableHead className='font-medium'>Status</TableHead>}
-								{visibleColumns.provider && <TableHead className='font-medium'>Provider</TableHead>}
+								{visibleColumns.name && <TableHead className="font-medium">Name</TableHead>}
+								{visibleColumns.serviceIP && <TableHead className="font-medium">Service IP</TableHead>}
+								{visibleColumns.serviceStatus && <TableHead className="font-medium">Status</TableHead>}
+								{visibleColumns.provider && <TableHead className="font-medium">Provider</TableHead>}
 								{visibleColumns.containerDetails && (
-									<TableHead className='font-medium'>Container Details</TableHead>
+									<TableHead className="font-medium">Container Details</TableHead>
 								)}
 							</TableRow>
 						</TableHeader>
@@ -410,9 +410,9 @@ export const ServiceTable = ({
 							<TableRow>
 								<TableCell
 									colSpan={Object.values(visibleColumns).filter(Boolean).length + 1}
-									className='text-center py-12 h-[200px]'
+									className="text-center py-12 h-[200px]"
 								>
-									<div className='text-muted-foreground'>Loading...</div>
+									<div className="text-muted-foreground">Loading...</div>
 								</TableCell>
 							</TableRow>
 						</TableBody>
@@ -423,33 +423,33 @@ export const ServiceTable = ({
 	}
 
 	return (
-		<div className='flex-1 flex flex-col bg-card border border-border rounded-lg overflow-hidden'>
-			<div className='p-2 border-b border-border space-y-2 flex-shrink-0'>
+		<div className="flex-1 flex flex-col bg-card border border-border rounded-lg overflow-hidden">
+			<div className="p-2 border-b border-border space-y-2 flex-shrink-0">
 				{/* Header with title and settings */}
-				<div className='flex items-center justify-between'>
+				<div className="flex items-center justify-between">
 					<div>
-						<h3 className='text-sm font-semibold text-foreground'>Services</h3>
-						<p className='text-xs text-muted-foreground'>
+						<h3 className="text-sm font-semibold text-foreground">Services</h3>
+						<p className="text-xs text-muted-foreground">
 							{filteredAndSortedServices.length} of {services.length} services
 							{searchTerm && ` matching "${searchTerm}"`}
 							{sortConfig && (
-								<span className='ml-1 text-xs bg-muted px-1.5 py-0.5 rounded'>
+								<span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded">
 									{sortConfig.field} ({sortConfig.direction})
 								</span>
 							)}
 						</p>
 					</div>
-					<Button variant='outline' size='icon' onClick={onSettingsClick} className='h-7 w-7 rounded-md'>
-						<Settings className='h-3 w-3' />
-						<span className='sr-only'>Table Settings</span>
+					<Button variant="outline" size="icon" onClick={onSettingsClick} className="h-7 w-7 rounded-md">
+						<Settings className="h-3 w-3" />
+						<span className="sr-only">Table Settings</span>
 					</Button>
 				</div>
 
 				{/* Search filter */}
-				<div className='relative'>
-					<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground' />
+				<div className="relative">
+					<Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
 					<Input
-						placeholder='Search services...'
+						placeholder="Search services..."
 						value={searchTerm}
 						onChange={e => {
 							const newValue = e.target.value;
@@ -459,28 +459,28 @@ export const ServiceTable = ({
 								setInternalSearchTerm(newValue);
 							}
 						}}
-						className='pl-8 pr-8 h-7 text-sm'
+						className="pl-8 pr-8 h-7 text-sm"
 					/>
 					{searchTerm && (
 						<Button
-							variant='ghost'
-							size='sm'
+							variant="ghost"
+							size="sm"
 							onClick={clearSearch}
-							className='absolute right-1 top-1/2 transform -translate-y-1/2 h-5 w-5 p-0'
+							className="absolute right-1 top-1/2 transform -translate-y-1/2 h-5 w-5 p-0"
 						>
-							<X className='h-3 w-3' />
+							<X className="h-3 w-3" />
 						</Button>
 					)}
 				</div>
 			</div>
 
-			<div className='flex-1 relative min-h-[200px]'>
+			<div className="flex-1 relative min-h-[200px]">
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-					<Table className='relative'>
-						<TableHeader className='sticky top-0 bg-card z-10'>
-							<TableRow className='hover:bg-transparent'>
-								<TableHead className='w-10 h-8 py-1 px-1'>
-									<div className='flex items-center justify-center'>
+					<Table className="relative">
+						<TableHeader className="sticky top-0 bg-card z-10">
+							<TableRow className="hover:bg-transparent">
+								<TableHead className="w-10 h-8 py-1 px-1">
+									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={
 												filteredAndSortedServices.length > 0 &&
@@ -493,7 +493,7 @@ export const ServiceTable = ({
 													onServicesSelect([]);
 												}
 											}}
-											aria-label='Select all services'
+											aria-label="Select all services"
 										/>
 									</div>
 								</TableHead>
@@ -543,9 +543,9 @@ export const ServiceTable = ({
 								<TableRow>
 									<TableCell
 										colSpan={Object.values(visibleColumns).filter(Boolean).length + 1}
-										className='text-center py-12 h-[200px]'
+										className="text-center py-12 h-[200px]"
 									>
-										<div className='text-muted-foreground'>
+										<div className="text-muted-foreground">
 											{searchTerm
 												? `No services found matching "${searchTerm}"`
 												: 'No services available'}
@@ -562,8 +562,8 @@ export const ServiceTable = ({
 										)}
 										onClick={() => handleRowClick(service)}
 									>
-										<TableCell className='w-10 p-1' onClick={e => e.stopPropagation()}>
-											<div className='flex items-center justify-center h-full'>
+										<TableCell className="w-10 p-1" onClick={e => e.stopPropagation()}>
+											<div className="flex items-center justify-center h-full">
 												<Checkbox
 													checked={selectedServices.some(s => s.id === service.id)}
 													onCheckedChange={checked => {
@@ -587,14 +587,14 @@ export const ServiceTable = ({
 													return (
 														<TableCell
 															key={columnId}
-															className='font-medium py-1 px-2 text-sm'
+															className="font-medium py-1 px-2 text-sm"
 														>
 															{service.name}
 														</TableCell>
 													);
 												case 'serviceIP':
 													return (
-														<TableCell key={columnId} className='py-1 px-2 text-sm'>
+														<TableCell key={columnId} className="py-1 px-2 text-sm">
 															{service.serviceType === 'SYSTEMD'
 																? service.provider.providerIP
 																: service.serviceIP || '-'}
@@ -602,7 +602,7 @@ export const ServiceTable = ({
 													);
 												case 'serviceStatus':
 													return (
-														<TableCell key={columnId} className='text-center py-1 px-2'>
+														<TableCell key={columnId} className="text-center py-1 px-2">
 															<Badge
 																className={cn(
 																	getStatusColor(service.serviceStatus),
@@ -615,23 +615,23 @@ export const ServiceTable = ({
 													);
 												case 'provider':
 													return (
-														<TableCell key={columnId} className='py-1 px-2 text-sm'>
+														<TableCell key={columnId} className="py-1 px-2 text-sm">
 															{service.provider.name}
 														</TableCell>
 													);
 												case 'providerType':
 													return (
-														<TableCell key={columnId} className='py-1 px-2 text-sm'>
+														<TableCell key={columnId} className="py-1 px-2 text-sm">
 															{service.provider.providerType}
 														</TableCell>
 													);
 												case 'containerDetails':
 													return (
-														<TableCell key={columnId} className='py-1 px-2 text-sm'>
+														<TableCell key={columnId} className="py-1 px-2 text-sm">
 															{service.serviceType === 'DOCKER' ? (
 																service.containerDetails?.image || '-'
 															) : service.serviceType === 'SYSTEMD' ? (
-																<span className='text-green-600 font-medium text-xs'>
+																<span className="text-green-600 font-medium text-xs">
 																	Systemd Service
 																</span>
 															) : (
@@ -641,41 +641,41 @@ export const ServiceTable = ({
 													);
 												case 'tags':
 													return (
-														<TableCell key={columnId} className='py-1 px-2'>
+														<TableCell key={columnId} className="py-1 px-2">
 															{service.tags && service.tags.length > 0 ? (
-																<div className='flex flex-wrap gap-1'>
+																<div className="flex flex-wrap gap-1">
 																	{service.tags.slice(0, 3).map((tag, index) => (
 																		<Badge
 																			key={index}
-																			variant='secondary'
-																			className='text-xs px-1.5 py-0.5'
+																			variant="secondary"
+																			className="text-xs px-1.5 py-0.5"
 																		>
 																			{tag.name}
 																		</Badge>
 																	))}
 																	{service.tags.length > 3 && (
-																		<span className='text-xs text-muted-foreground'>
+																		<span className="text-xs text-muted-foreground">
 																			+{service.tags.length - 3}
 																		</span>
 																	)}
 																</div>
 															) : (
-																<span className='text-muted-foreground text-xs'>-</span>
+																<span className="text-muted-foreground text-xs">-</span>
 															)}
 														</TableCell>
 													);
 												case 'alerts':
 													return (
-														<TableCell key={columnId} className='text-center py-1 px-2'>
+														<TableCell key={columnId} className="text-center py-1 px-2">
 															{service.alertsCount && service.alertsCount > 0 ? (
 																<Badge
-																	variant='destructive'
-																	className='font-medium text-xs px-1.5 py-0.5'
+																	variant="destructive"
+																	className="font-medium text-xs px-1.5 py-0.5"
 																>
 																	{service.alertsCount}
 																</Badge>
 															) : (
-																<span className='text-muted-foreground text-xs'>0</span>
+																<span className="text-muted-foreground text-xs">0</span>
 															)}
 														</TableCell>
 													);
@@ -685,9 +685,9 @@ export const ServiceTable = ({
 														const fieldId = parseInt(columnId.replace('custom-', ''));
 														const fieldValue = service.customFields?.[fieldId] || '';
 														return (
-															<TableCell key={columnId} className='py-1 px-2 text-sm'>
+															<TableCell key={columnId} className="py-1 px-2 text-sm">
 																{fieldValue || (
-																	<span className='text-muted-foreground'>-</span>
+																	<span className="text-muted-foreground">-</span>
 																)}
 															</TableCell>
 														);

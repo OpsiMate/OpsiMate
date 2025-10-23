@@ -93,7 +93,7 @@ export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecre
 
 	return (
 		<Dialog open={open} onOpenChange={onClose}>
-			<DialogContent className='sm:max-w-[425px]'>
+			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Edit Secret</DialogTitle>
 					<DialogDescription>
@@ -101,51 +101,51 @@ export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecre
 						current file.
 					</DialogDescription>
 				</DialogHeader>
-				<div className='space-y-3'>
-					<div className='space-y-2'>
-						<Label htmlFor='secret-name'>Secret name</Label>
+				<div className="space-y-3">
+					<div className="space-y-2">
+						<Label htmlFor="secret-name">Secret name</Label>
 						<Input
-							id='secret-name'
-							placeholder='My SSH Key'
+							id="secret-name"
+							placeholder="My SSH Key"
 							value={displayName}
 							onChange={e => setDisplayName(e.target.value)}
 						/>
 					</div>
-					<div className='space-y-2'>
-						<Label htmlFor='secret-type'>Type</Label>
+					<div className="space-y-2">
+						<Label htmlFor="secret-type">Type</Label>
 						<Select
 							value={secretType}
 							onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder='Select type' />
+								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='ssh'>SSH Key</SelectItem>
-								<SelectItem value='kubeconfig'>Kubeconfig</SelectItem>
+								<SelectItem value="ssh">SSH Key</SelectItem>
+								<SelectItem value="kubeconfig">Kubeconfig</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
-					<div className='space-y-2'>
-						<Label htmlFor='secret-upload'>New file (optional)</Label>
+					<div className="space-y-2">
+						<Label htmlFor="secret-upload">New file (optional)</Label>
 						<FileDropzone
-							id='secret-upload'
-							accept='*'
+							id="secret-upload"
+							accept="*"
 							loading={updating}
 							onFile={handleFile}
 							multiple={false}
 						/>
-						{selectedFile && <p className='text-sm text-muted-foreground'>Selected: {selectedFile.name}</p>}
+						{selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
 						{!selectedFile && (
-							<p className='text-sm text-muted-foreground'>Current file: {secret.fileName}</p>
+							<p className="text-sm text-muted-foreground">Current file: {secret.fileName}</p>
 						)}
 					</div>
 				</div>
 				<DialogFooter>
-					<Button type='button' variant='outline' onClick={handleCancel} disabled={updating}>
+					<Button type="button" variant="outline" onClick={handleCancel} disabled={updating}>
 						Cancel
 					</Button>
-					<Button type='button' onClick={handleSave} disabled={updating || !displayName.trim()}>
+					<Button type="button" onClick={handleSave} disabled={updating || !displayName.trim()}>
 						{updating ? 'Updating...' : 'Update Secret'}
 					</Button>
 				</DialogFooter>

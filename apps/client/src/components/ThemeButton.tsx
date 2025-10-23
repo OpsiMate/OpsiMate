@@ -20,12 +20,12 @@ export const ThemeButton = ({ collapsed }: ThemeButtonProps) => {
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button
-					variant='ghost'
+					variant="ghost"
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 				>
-					<div className='relative h-5 w-5 flex-shrink-0'>
-						<Sun className='h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0' />
-						<Moon className='h-5 w-5 absolute inset-0 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100' />
+					<div className="relative h-5 w-5 flex-shrink-0">
+						<Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+						<Moon className="h-5 w-5 absolute inset-0 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
 					</div>
 					<span className={cn('font-medium', collapsed && 'sr-only')}>Theme</span>
 				</Button>

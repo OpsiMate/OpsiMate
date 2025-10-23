@@ -120,13 +120,13 @@ interface ProviderFormProps<T extends AnyFormData> {
 // --- UI COMPONENTS ---
 
 const FormSectionHeader = ({ title }: { title: string }) => (
-	<h4 className='text-base font-semibold tracking-tight text-foreground pt-4'>{title}</h4>
+	<h4 className="text-base font-semibold tracking-tight text-foreground pt-4">{title}</h4>
 );
 
 const FieldWrapper = ({ children, error }: { children: React.ReactNode; error?: { message?: string } }) => (
-	<div className='space-y-2'>
+	<div className="space-y-2">
 		{children}
-		{error && <p className='text-sm text-destructive'>{error.message}</p>}
+		{error && <p className="text-sm text-destructive">{error.message}</p>}
 	</div>
 );
 
@@ -156,33 +156,33 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 	}, []);
 
 	if (loading) {
-		return <div className='text-sm text-muted-foreground'>Loading keys...</div>;
+		return <div className="text-sm text-muted-foreground">Loading keys...</div>;
 	}
 
 	if (error) {
 		return (
-			<div className='space-y-2'>
-				<div className='text-sm text-destructive'>Error loading keys: {error}</div>
+			<div className="space-y-2">
+				<div className="text-sm text-destructive">Error loading keys: {error}</div>
 			</div>
 		);
 	}
 
 	if (keys.length === 0) {
 		return (
-			<div className='space-y-2'>
-				<div className='text-sm text-muted-foreground'>No SSH keys available.</div>
+			<div className="space-y-2">
+				<div className="text-sm text-muted-foreground">No SSH keys available.</div>
 			</div>
 		);
 	}
 
 	return (
 		<Controller
-			name='sshKey'
+			name="sshKey"
 			control={control}
 			render={({ field }) => (
 				<Select onValueChange={field.onChange} defaultValue={field.value}>
 					<SelectTrigger>
-						<SelectValue placeholder='Select a key' />
+						<SelectValue placeholder="Select a key" />
 					</SelectTrigger>
 					<SelectContent>
 						{keys.map(key => (
@@ -235,33 +235,33 @@ const KubeconfigSelector = ({
 	}, []);
 
 	if (loading) {
-		return <div className='text-sm text-muted-foreground'>Loading kubeconfig keys...</div>;
+		return <div className="text-sm text-muted-foreground">Loading kubeconfig keys...</div>;
 	}
 
 	if (error) {
 		return (
-			<div className='space-y-2'>
-				<div className='text-sm text-destructive'>Error loading kubeconfig keys: {error}</div>
+			<div className="space-y-2">
+				<div className="text-sm text-destructive">Error loading kubeconfig keys: {error}</div>
 			</div>
 		);
 	}
 
 	if (keys.length === 0) {
 		return (
-			<div className='space-y-2'>
-				<div className='text-sm text-muted-foreground'>No kubeconfig keys available.</div>
+			<div className="space-y-2">
+				<div className="text-sm text-muted-foreground">No kubeconfig keys available.</div>
 			</div>
 		);
 	}
 
 	return (
 		<Controller
-			name='kubeconfigKey'
+			name="kubeconfigKey"
 			control={control}
 			render={({ field }) => (
 				<Select onValueChange={field.onChange} defaultValue={field.value}>
 					<SelectTrigger>
-						<SelectValue placeholder='Select a kubeconfig key' />
+						<SelectValue placeholder="Select a kubeconfig key" />
 					</SelectTrigger>
 					<SelectContent>
 						{keys.map(key => (
@@ -367,60 +367,60 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 	};
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className='space-y-4 py-4'>
-			<FormSectionHeader title='Server Details' />
+		<form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+			<FormSectionHeader title="Server Details" />
 			<FieldWrapper error={errors.name}>
-				<Label htmlFor='name'>
-					Server Name <span className='text-destructive'>*</span>
+				<Label htmlFor="name">
+					Server Name <span className="text-destructive">*</span>
 				</Label>
 				<Controller
-					name='name'
+					name="name"
 					control={control}
-					render={({ field }) => <Input id='name' placeholder='My Production Server' {...field} />}
+					render={({ field }) => <Input id="name" placeholder="My Production Server" {...field} />}
 				/>
 			</FieldWrapper>
 
-			<div className='grid grid-cols-3 gap-4'>
-				<div className='col-span-2'>
+			<div className="grid grid-cols-3 gap-4">
+				<div className="col-span-2">
 					<FieldWrapper error={errors.hostname}>
-						<Label htmlFor='hostname'>
-							Hostname / IP <span className='text-destructive'>*</span>
+						<Label htmlFor="hostname">
+							Hostname / IP <span className="text-destructive">*</span>
 						</Label>
 						<Controller
-							name='hostname'
+							name="hostname"
 							control={control}
-							render={({ field }) => <Input id='hostname' placeholder='192.168.1.100' {...field} />}
+							render={({ field }) => <Input id="hostname" placeholder="192.168.1.100" {...field} />}
 						/>
 					</FieldWrapper>
 				</div>
 				<FieldWrapper error={errors.port}>
-					<Label htmlFor='port'>
-						SSH Port <span className='text-destructive'>*</span>
+					<Label htmlFor="port">
+						SSH Port <span className="text-destructive">*</span>
 					</Label>
 					<Controller
-						name='port'
+						name="port"
 						control={control}
-						render={({ field }) => <Input id='port' type='number' {...field} />}
+						render={({ field }) => <Input id="port" type="number" {...field} />}
 					/>
 				</FieldWrapper>
 			</div>
 
-			<FormSectionHeader title='Authentication' />
-			<div className='grid grid-cols-2 gap-4'>
+			<FormSectionHeader title="Authentication" />
+			<div className="grid grid-cols-2 gap-4">
 				<FieldWrapper error={errors.username}>
-					<Label htmlFor='username'>
-						Username <span className='text-destructive'>*</span>
+					<Label htmlFor="username">
+						Username <span className="text-destructive">*</span>
 					</Label>
 					<Controller
-						name='username'
+						name="username"
 						control={control}
-						render={({ field }) => <Input id='username' placeholder='root' {...field} />}
+						render={({ field }) => <Input id="username" placeholder="root" {...field} />}
 					/>
 				</FieldWrapper>
 				<FieldWrapper error={errors.authType}>
 					<Label>Authentication Type</Label>
 					<Controller
-						name='authType'
+						name="authType"
 						control={control}
 						render={({ field }) => (
 							<Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -428,8 +428,8 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value='password'>Password</SelectItem>
-									<SelectItem value='key'>SSH Key</SelectItem>
+									<SelectItem value="password">Password</SelectItem>
+									<SelectItem value="key">SSH Key</SelectItem>
 								</SelectContent>
 							</Select>
 						)}
@@ -439,14 +439,14 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 
 			{authType === 'password' && (
 				<FieldWrapper error={errors.password}>
-					<Label htmlFor='password'>
-						Password <span className='text-destructive'>*</span>
+					<Label htmlFor="password">
+						Password <span className="text-destructive">*</span>
 					</Label>
 					<Controller
-						name='password'
+						name="password"
 						control={control}
 						render={({ field }) => (
-							<Input id='password' type='password' placeholder='Enter password' {...field} />
+							<Input id="password" type="password" placeholder="Enter password" {...field} />
 						)}
 					/>
 				</FieldWrapper>
@@ -455,9 +455,9 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 				<FieldWrapper error={errors.sshKey}>
 					<Label>SSH Key</Label>
 					<SSHKeySelector key={refreshKey} control={control} />
-					<div className='mt-2'>
-						<AddSecretButton secretType='ssh' onSecretCreated={handleSecretCreated}>
-							<button type='button' className='text-sm text-primary hover:underline'>
+					<div className="mt-2">
+						<AddSecretButton secretType="ssh" onSecretCreated={handleSecretCreated}>
+							<button type="button" className="text-sm text-primary hover:underline">
 								+ Add new SSH key
 							</button>
 						</AddSecretButton>
@@ -466,16 +466,16 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 			)}
 
 			{/* Test Connection Button and Result */}
-			<div className='flex flex-col items-start gap-3 pt-2'>
+			<div className="flex flex-col items-start gap-3 pt-2">
 				<Button
-					type='button'
-					variant='outline'
+					type="button"
+					variant="outline"
 					onClick={handleTestConnection}
 					disabled={testLoading || isSubmitting}
 				>
 					{testLoading ? (
 						<>
-							<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 							Testing...
 						</>
 					) : (
@@ -491,34 +491,34 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 						}`}
 					>
 						{testResult.ok ? (
-							<CheckCircle2 className='h-5 w-5 flex-shrink-0 mt-0.5' />
+							<CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
 						) : (
-							<XCircle className='h-5 w-5 flex-shrink-0 mt-0.5' />
+							<XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
 						)}
-						<div className='flex-1'>
-							<p className='font-medium text-sm'>
+						<div className="flex-1">
+							<p className="font-medium text-sm">
 								{testResult.ok ? 'Connection Successful' : 'Connection Failed'}
 							</p>
-							{testResult.message && <p className='text-sm mt-1'>{testResult.message}</p>}
+							{testResult.message && <p className="text-sm mt-1">{testResult.message}</p>}
 						</div>
 					</div>
 				)}
 			</div>
 			{/* End Test Connection */}
-			<div className='flex justify-end gap-2 pt-4'>
+			<div className="flex justify-end gap-2 pt-4">
 				<Button
-					type='button'
-					variant='ghost'
+					type="button"
+					variant="ghost"
 					onClick={onClose}
 					disabled={isSubmitting}
-					className='shadow-sm active:scale-95 dark:border dark:border-white'
+					className="shadow-sm active:scale-95 dark:border dark:border-white"
 				>
 					Cancel
 				</Button>
-				<Button type='submit' disabled={isSubmitting}>
+				<Button type="submit" disabled={isSubmitting}>
 					{isSubmitting ? (
 						<>
-							<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 							Adding...
 						</>
 					) : (
@@ -546,42 +546,42 @@ const KubernetesForm = ({ onSubmit, onClose }: ProviderFormProps<KubernetesFormD
 	};
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className='space-y-4 py-4'>
-			<FormSectionHeader title='Cluster Details' />
+		<form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+			<FormSectionHeader title="Cluster Details" />
 			<FieldWrapper error={errors.name}>
-				<Label htmlFor='name'>
-					Cluster Name <span className='text-destructive'>*</span>
+				<Label htmlFor="name">
+					Cluster Name <span className="text-destructive">*</span>
 				</Label>
 				<Controller
-					name='name'
+					name="name"
 					control={control}
-					render={({ field }) => <Input id='name' placeholder='Production Cluster' {...field} />}
+					render={({ field }) => <Input id="name" placeholder="Production Cluster" {...field} />}
 				/>
 			</FieldWrapper>
 			<FieldWrapper error={errors.kubeconfigKey}>
 				<Label>
-					Kubeconfig Key <span className='text-destructive'>*</span>
+					Kubeconfig Key <span className="text-destructive">*</span>
 				</Label>
 				<KubeconfigSelector key={refreshKey} control={control} onSecretCreated={handleSecretCreated} />
-				<div className='mt-2'>
-					<AddSecretButton secretType='kubeconfig' onSecretCreated={handleSecretCreated}>
-						<button type='button' className='text-sm text-primary hover:underline'>
+				<div className="mt-2">
+					<AddSecretButton secretType="kubeconfig" onSecretCreated={handleSecretCreated}>
+						<button type="button" className="text-sm text-primary hover:underline">
 							+ Add new kubeconfig key
 						</button>
 					</AddSecretButton>
 				</div>
 			</FieldWrapper>
 
-			<div className='flex justify-end gap-2 pt-4'>
+			<div className="flex justify-end gap-2 pt-4">
 				<Button
-					type='button'
-					variant='ghost'
+					type="button"
+					variant="ghost"
 					onClick={onClose}
-					className='shadow-sm active:scale-95 dark:border dark:border-white'
+					className="shadow-sm active:scale-95 dark:border dark:border-white"
 				>
 					Cancel
 				</Button>
-				<Button type='submit'>Add Provider</Button>
+				<Button type="submit">Add Provider</Button>
 			</div>
 		</form>
 	);
@@ -604,27 +604,27 @@ const AWSForm = ({ onSubmit, onClose }: ProviderFormProps<AWSFormData>) => {
 	];
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className='space-y-4 py-4'>
-			<FormSectionHeader title='Connection Details' />
+		<form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+			<FormSectionHeader title="Connection Details" />
 			<FieldWrapper error={errors.name}>
-				<Label htmlFor='name'>
-					Connection Name <span className='text-destructive'>*</span>
+				<Label htmlFor="name">
+					Connection Name <span className="text-destructive">*</span>
 				</Label>
 				<Controller
-					name='name'
+					name="name"
 					control={control}
-					render={({ field }) => <Input id='name' placeholder='AWS Production' {...field} />}
+					render={({ field }) => <Input id="name" placeholder="AWS Production" {...field} />}
 				/>
 			</FieldWrapper>
 			<FieldWrapper error={errors.region}>
 				<Label>AWS Region</Label>
 				<Controller
-					name='region'
+					name="region"
 					control={control}
 					render={({ field }) => (
 						<Select onValueChange={field.onChange} defaultValue={field.value}>
 							<SelectTrigger>
-								<SelectValue placeholder='Select a region' />
+								<SelectValue placeholder="Select a region" />
 							</SelectTrigger>
 							<SelectContent>
 								{awsRegions.map(r => (
@@ -638,38 +638,38 @@ const AWSForm = ({ onSubmit, onClose }: ProviderFormProps<AWSFormData>) => {
 				/>
 			</FieldWrapper>
 
-			<FormSectionHeader title='Credentials' />
+			<FormSectionHeader title="Credentials" />
 			<FieldWrapper error={errors.accessKeyId}>
-				<Label htmlFor='accessKeyId'>
-					Access Key ID <span className='text-destructive'>*</span>
+				<Label htmlFor="accessKeyId">
+					Access Key ID <span className="text-destructive">*</span>
 				</Label>
 				<Controller
-					name='accessKeyId'
+					name="accessKeyId"
 					control={control}
-					render={({ field }) => <Input id='accessKeyId' placeholder='AKIA...' {...field} />}
+					render={({ field }) => <Input id="accessKeyId" placeholder="AKIA..." {...field} />}
 				/>
 			</FieldWrapper>
 			<FieldWrapper error={errors.secretAccessKey}>
-				<Label htmlFor='secretAccessKey'>
-					Secret Access Key <span className='text-destructive'>*</span>
+				<Label htmlFor="secretAccessKey">
+					Secret Access Key <span className="text-destructive">*</span>
 				</Label>
 				<Controller
-					name='secretAccessKey'
+					name="secretAccessKey"
 					control={control}
-					render={({ field }) => <Input id='secretAccessKey' type='password' {...field} />}
+					render={({ field }) => <Input id="secretAccessKey" type="password" {...field} />}
 				/>
 			</FieldWrapper>
 
-			<div className='flex justify-end gap-2 pt-4'>
+			<div className="flex justify-end gap-2 pt-4">
 				<Button
-					type='button'
-					variant='ghost'
+					type="button"
+					variant="ghost"
 					onClick={onClose}
-					className='shadow-sm active:scale-95 dark:border dark:border-white'
+					className="shadow-sm active:scale-95 dark:border dark:border-white"
 				>
 					Cancel
 				</Button>
-				<Button type='submit'>Add Provider</Button>
+				<Button type="submit">Add Provider</Button>
 			</div>
 		</form>
 	);
@@ -803,7 +803,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 			case 'aws-eks':
 				return <AWSForm onSubmit={handleFormSubmit as SubmitHandler<AWSFormData>} onClose={onClose} />;
 			default:
-				return <div className='py-4'>This provider type is not yet supported with the new form.</div>;
+				return <div className="py-4">This provider type is not yet supported with the new form.</div>;
 		}
 	};
 
@@ -845,18 +845,18 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 
 	const ImportTab = () => {
 		return (
-			<div className='space-y-4 py-2'>
+			<div className="space-y-4 py-2">
 				<FileDropzone
-					id='provider-import'
-					accept='application/json,.json'
+					id="provider-import"
+					accept="application/json,.json"
 					placeholder={isImporting ? 'Importing...' : 'Click to select a JSON file or drag & drop here'}
 					loading={isImporting}
 					onFile={file => void handleFile(file)}
 					multiple={false}
 				/>
-				<div className='text-sm text-muted-foreground space-y-2'>
-					<div className='font-medium text-foreground'>JSON structure</div>
-					<pre className='bg-muted rounded-md p-3 overflow-auto text-xs'>
+				<div className="text-sm text-muted-foreground space-y-2">
+					<div className="font-medium text-foreground">JSON structure</div>
+					<pre className="bg-muted rounded-md p-3 overflow-auto text-xs">
 						{`{
   "providers": [
     {
@@ -876,19 +876,19 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
   ]
 }`}
 					</pre>
-					<ul className='list-disc pl-5'>
+					<ul className="list-disc pl-5">
 						<li>
-							<span className='font-medium'>providerType</span> must be either <code>VM</code> or{' '}
+							<span className="font-medium">providerType</span> must be either <code>VM</code> or{' '}
 							<code>K8S</code>.
 						</li>
 						<li>
-							<span className='font-medium'>providerIP</span>,{' '}
-							<span className='font-medium'>username</span>, <span className='font-medium'>password</span>
-							, <span className='font-medium'>privateKeyFilename</span>, and{' '}
-							<span className='font-medium'>SSHPort</span> are optional depending on the type.
+							<span className="font-medium">providerIP</span>,{' '}
+							<span className="font-medium">username</span>, <span className="font-medium">password</span>
+							, <span className="font-medium">privateKeyFilename</span>, and{' '}
+							<span className="font-medium">SSHPort</span> are optional depending on the type.
 						</li>
 						<li>
-							<span className='font-medium'>secretId</span> should reference a secret ID for the
+							<span className="font-medium">secretId</span> should reference a secret ID for the
 							kubeconfig file or SSH key.
 						</li>
 						<li>At least one provider is required.</li>
@@ -900,26 +900,26 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 
 	return (
 		<Sheet open={true} onOpenChange={() => onClose()}>
-			<SheetContent className='w-full sm:max-w-md overflow-auto'>
-				<SheetHeader className='flex flex-row items-center justify-between'>
-					<div className='flex items-center gap-2'>
-						<div className='bg-primary/10 p-2 rounded-md'>{provider.icon}</div>
+			<SheetContent className="w-full sm:max-w-md overflow-auto">
+				<SheetHeader className="flex flex-row items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="bg-primary/10 p-2 rounded-md">{provider.icon}</div>
 						<div>
 							<SheetTitle>{provider.name}</SheetTitle>
 							<SheetDescription>{provider.description}</SheetDescription>
 						</div>
 					</div>
 				</SheetHeader>
-				<Separator className='my-4' />
+				<Separator className="my-4" />
 				<Tabs value={activeTab} onValueChange={v => setActiveTab(v as 'manual' | 'import')}>
-					<TabsList className='grid w-full grid-cols-2'>
-						<TabsTrigger value='manual'>Manual</TabsTrigger>
-						<TabsTrigger value='import'>Import</TabsTrigger>
+					<TabsList className="grid w-full grid-cols-2">
+						<TabsTrigger value="manual">Manual</TabsTrigger>
+						<TabsTrigger value="import">Import</TabsTrigger>
 					</TabsList>
-					<TabsContent value='manual' className='mt-2'>
+					<TabsContent value="manual" className="mt-2">
 						{renderForm()}
 					</TabsContent>
-					<TabsContent value='import' className='mt-2'>
+					<TabsContent value="import" className="mt-2">
 						<ImportTab />
 					</TabsContent>
 				</Tabs>

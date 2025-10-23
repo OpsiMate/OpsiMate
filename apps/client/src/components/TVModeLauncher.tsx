@@ -50,12 +50,12 @@ export const TVModeLauncher = ({
 	};
 
 	return children ? (
-		<div onClick={handleLaunchTVMode} className='cursor-pointer'>
+		<div onClick={handleLaunchTVMode} className="cursor-pointer">
 			{children}
 		</div>
 	) : (
-		<Button variant='outline' size='sm' onClick={handleLaunchTVMode} className='flex items-center gap-2'>
-			<Monitor className='h-4 w-4' />
+		<Button variant="outline" size="sm" onClick={handleLaunchTVMode} className="flex items-center gap-2">
+			<Monitor className="h-4 w-4" />
 			TV Mode
 		</Button>
 	);

@@ -472,10 +472,10 @@ export const Dashboard = () => {
 	};
 
 	return (
-		<div className='flex flex-col h-screen'>
+		<div className="flex flex-col h-screen">
 			<DashboardLayout>
-				<div className='flex flex-col h-full'>
-					<div className='flex flex-row h-full'>
+				<div className="flex flex-col h-full">
+					<div className="flex flex-row h-full">
 						<div
 							className={cn(
 								'border-r border-border transition-all duration-300 ease-in-out flex-shrink-0 relative',
@@ -483,12 +483,12 @@ export const Dashboard = () => {
 							)}
 						>
 							<div className={cn('h-full flex flex-col', !filterPanelCollapsed ? 'px-4' : '')}>
-								<div className='flex items-center justify-between p-2 border-b border-border'>
+								<div className="flex items-center justify-between p-2 border-b border-border">
 									{!filterPanelCollapsed && (
-										<h3 className='text-sm font-semibold text-foreground'>Filters</h3>
+										<h3 className="text-sm font-semibold text-foreground">Filters</h3>
 									)}
 								</div>
-								<div className='flex-1 overflow-hidden'>
+								<div className="flex-1 overflow-hidden">
 									<FilterPanel
 										services={services}
 										filters={filters}
@@ -499,21 +499,21 @@ export const Dashboard = () => {
 							</div>
 							<Button
 								onClick={toggleFilterPanel}
-								variant='ghost'
-								size='icon'
-								className='z-10 absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8'
+								variant="ghost"
+								size="icon"
+								className="z-10 absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8"
 								title={filterPanelCollapsed ? 'Expand filters' : 'Collapse filters'}
 							>
 								{filterPanelCollapsed ? (
-									<ChevronRight className='h-4 w-4' />
+									<ChevronRight className="h-4 w-4" />
 								) : (
-									<ChevronLeft className='h-4 w-4' />
+									<ChevronLeft className="h-4 w-4" />
 								)}
 							</Button>
 						</div>
-						<div className='flex-1 flex flex-col'>
-							<div className='flex-1 p-2 flex flex-col overflow-auto'>
-								<div className='flex justify-between items-center mb-2'>
+						<div className="flex-1 flex flex-col">
+							<div className="flex-1 p-2 flex flex-col overflow-auto">
+								<div className="flex justify-between items-center mb-2">
 									<SavedViewsManager
 										currentFilters={filters}
 										currentVisibleColumns={visibleColumns}
@@ -545,7 +545,7 @@ export const Dashboard = () => {
 									customFields={customFields}
 								/>
 							</div>
-							<div className='flex-shrink-0 p-2 border-t border-border'>
+							<div className="flex-shrink-0 p-2 border-t border-border">
 								<ActionButtons
 									selectedService={selectedService}
 									selectedServices={selectedServices}
@@ -556,7 +556,7 @@ export const Dashboard = () => {
 							</div>
 						</div>
 						{selectedServices.length === 1 && selectedService && (
-							<div className='w-80 border-l border-border'>
+							<div className="w-80 border-l border-border">
 								<RightSidebar
 									service={selectedService}
 									onClose={() => setSelectedService(null)}

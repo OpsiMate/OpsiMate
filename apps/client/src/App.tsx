@@ -29,7 +29,7 @@ const queryClient = new QueryClient();
 
 const App: React.FC = () => {
 	return (
-		<ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 			<QueryClientProvider client={queryClient}>
 				<TooltipProvider>
 					<Toaster />
@@ -38,22 +38,22 @@ const App: React.FC = () => {
 					<BrowserRouter>
 						<AuthGuard>
 							<Routes>
-								<Route path='/' element={<Dashboard />} />
-								<Route path='/tv-mode' element={<TVMode />} />
-								<Route path='/providers' element={<Providers />} />
+								<Route path="/" element={<Dashboard />} />
+								<Route path="/tv-mode" element={<TVMode />} />
+								<Route path="/providers" element={<Providers />} />
 								<Route
-									path='/my-providers'
-									element={!isEditor() ? <Navigate to='/' replace /> : <MyProviders />}
+									path="/my-providers"
+									element={!isEditor() ? <Navigate to="/" replace /> : <MyProviders />}
 								/>
-								<Route path='/integrations' element={<Integrations />} />
-								<Route path='/settings' element={<Settings />} />
-								<Route path='/profile' element={<Profile />} />
-								<Route path='/login' element={<Login />} />
-								<Route path='/register' element={<Register />} />
-								<Route path='/alerts' element={<Alerts />} />
-								<Route path='/forgot-password' element={<ForgotPassword />} />
-								<Route path='/reset-password' element={<ResetPasswordByEmail />} />
-								<Route path='*' element={<NotFound />} />
+								<Route path="/integrations" element={<Integrations />} />
+								<Route path="/settings" element={<Settings />} />
+								<Route path="/profile" element={<Profile />} />
+								<Route path="/login" element={<Login />} />
+								<Route path="/register" element={<Register />} />
+								<Route path="/alerts" element={<Alerts />} />
+								<Route path="/forgot-password" element={<ForgotPassword />} />
+								<Route path="/reset-password" element={<ResetPasswordByEmail />} />
+								<Route path="*" element={<NotFound />} />
 							</Routes>
 						</AuthGuard>
 					</BrowserRouter>

@@ -17,19 +17,19 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<Link
-				to='/'
+				to="/"
 				className={cn(
 					'flex items-center h-20 px-5 border-b cursor-pointer transition-all duration-200',
 					collapsed && 'justify-center px-2'
 				)}
 			>
-				<div className='flex items-center'>
-					<div className='relative w-11 h-11 flex-shrink-0 transition-all duration-200 hover:drop-shadow-lg hover:scale-110'>
-						<AppIcon className='w-full h-full text-primary' />
+				<div className="flex items-center">
+					<div className="relative w-11 h-11 flex-shrink-0 transition-all duration-200 hover:drop-shadow-lg hover:scale-110">
+						<AppIcon className="w-full h-full text-primary" />
 					</div>
 					<div className={cn('ml-3', collapsed && 'sr-only')}>
-						<h2 className='text-xl font-bold text-foreground whitespace-nowrap tracking-tight'>OpsiMate</h2>
-						<p className='text-xs text-muted-foreground'>Operational Insights</p>
+						<h2 className="text-xl font-bold text-foreground whitespace-nowrap tracking-tight">OpsiMate</h2>
+						<p className="text-xs text-muted-foreground">Operational Insights</p>
 					</div>
 				</div>
 			</Link>
@@ -44,8 +44,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					)}
 					asChild
 				>
-					<Link to='/'>
-						<LayoutDashboard className='h-5 w-5 flex-shrink-0' />
+					<Link to="/">
+						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboard</span>
 					</Link>
 				</Button>
@@ -60,8 +60,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						)}
 						asChild
 					>
-						<Link to='/providers'>
-							<Layers className='h-5 w-5 flex-shrink-0' />
+						<Link to="/providers">
+							<Layers className="h-5 w-5 flex-shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>Add Provider</span>
 						</Link>
 					</Button>
@@ -77,8 +77,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						)}
 						asChild
 					>
-						<Link to='/my-providers'>
-							<Database className='h-5 w-5 flex-shrink-0' />
+						<Link to="/my-providers">
+							<Database className="h-5 w-5 flex-shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>My Providers</span>
 						</Link>
 					</Button>
@@ -94,8 +94,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						)}
 						asChild
 					>
-						<Link to='/integrations'>
-							<Puzzle className='h-5 w-5 flex-shrink-0' />
+						<Link to="/integrations">
+							<Puzzle className="h-5 w-5 flex-shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
 						</Link>
 					</Button>
@@ -110,8 +110,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					)}
 					asChild
 				>
-					<Link to='/alerts'>
-						<Bell className='h-5 w-5 flex-shrink-0' />
+					<Link to="/alerts">
+						<Bell className="h-5 w-5 flex-shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
 					</Link>
 				</Button>
@@ -129,8 +129,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							)}
 							asChild
 						>
-							<Link to='/settings'>
-								<Settings className='h-5 w-5 flex-shrink-0 items-center' />
+							<Link to="/settings">
+								<Settings className="h-5 w-5 flex-shrink-0 items-center" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Settings</span>
 							</Link>
 						</Button>
@@ -138,12 +138,12 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					<ProfileButton collapsed={collapsed} />
 
 					<TooltipProvider>
-						<div className='flex flex-col items-center gap-2'>
-							<div className='flex gap-2'>
+						<div className="flex flex-col items-center gap-2">
+							<div className="flex gap-2">
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<div
-											className='h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md'
+											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
 											onClick={() =>
 												window.open(
 													'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA',
@@ -152,16 +152,16 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											}
 										>
 											<img
-												src='images/slack.png'
-												alt='Slack'
-												className='h-5 w-5 object-contain invert dark:invert-0'
+												src="images/slack.png"
+												alt="Slack"
+												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
 										</div>
 									</TooltipTrigger>
 									<TooltipContent
-										side='top'
-										align='center'
-										className='rounded-md bg-gray-800 text-white px-2 py-1 text-sm'
+										side="top"
+										align="center"
+										className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
 									>
 										Join our Slack community
 									</TooltipContent>
@@ -170,22 +170,22 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<div
-											className='h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md'
+											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
 											onClick={() =>
 												window.open('https://github.com/opsimate/opsimate', '_blank')
 											}
 										>
 											<img
-												src='images/git.png'
-												alt='GitHub'
-												className='h-5 w-5 object-contain invert dark:invert-0'
+												src="images/git.png"
+												alt="GitHub"
+												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
 										</div>
 									</TooltipTrigger>
 									<TooltipContent
-										side='top'
-										align='center'
-										className='rounded-md bg-gray-800 text-white px-2 py-1 text-sm'
+										side="top"
+										align="center"
+										className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
 									>
 										Star us on GitHub ⭐
 									</TooltipContent>

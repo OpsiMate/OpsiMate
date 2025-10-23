@@ -75,7 +75,7 @@ export default tseslint.config(
 
 			// Code style (Prettier handles most formatting)
 			quotes: ['error', 'single', { avoidEscape: true }],
-			'jsx-quotes': ['error', 'prefer-single'],
+			'jsx-quotes': ['error', 'prefer-double'],
 			'comma-dangle': ['error', 'only-multiline'],
 
 			// Function rules

@@ -183,14 +183,14 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 
 	return (
 		<Dialog open={open} onOpenChange={onClose}>
-			<DialogContent className='sm:max-w-[425px]'>
+			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>
-						<div className='flex items-center gap-2'>
+						<div className="flex items-center gap-2">
 							{isKubernetes ? (
-								<Container className='h-5 w-5 text-blue-500' />
+								<Container className="h-5 w-5 text-blue-500" />
 							) : (
-								<Server className='h-5 w-5 text-purple-500' />
+								<Server className="h-5 w-5 text-purple-500" />
 							)}
 							Edit {isKubernetes ? 'Kubernetes Cluster' : 'Server'}
 						</div>
@@ -201,23 +201,23 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
-					<div className='grid gap-4 py-4'>
-						<div className='grid grid-cols-4 items-center gap-4'>
-							<Label htmlFor='name' className='text-right'>
+					<div className="grid gap-4 py-4">
+						<div className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor="name" className="text-right">
 								Name
 							</Label>
 							<Input
-								id='name'
-								name='name'
+								id="name"
+								name="name"
 								value={formData.name}
 								onChange={handleInputChange}
-								className='col-span-3'
+								className="col-span-3"
 								required
 							/>
 						</div>
 
-						<div className='grid grid-cols-4 items-center gap-4'>
-							<Label htmlFor='providerType' className='text-right'>
+						<div className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor="providerType" className="text-right">
 								Type
 							</Label>
 							<Select
@@ -225,12 +225,12 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 								onValueChange={handleSelectChange}
 								disabled={!!provider} // Disable changing type for existing providers
 							>
-								<SelectTrigger className='col-span-3'>
-									<SelectValue placeholder='Select provider type' />
+								<SelectTrigger className="col-span-3">
+									<SelectValue placeholder="Select provider type" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value='VM'>Server (VM)</SelectItem>
-									<SelectItem value='K8S'>Kubernetes</SelectItem>
+									<SelectItem value="VM">Server (VM)</SelectItem>
+									<SelectItem value="K8S">Kubernetes</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -238,22 +238,22 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 						{isKubernetes ? (
 							// Kubernetes-specific fields
 							<>
-								<div className='grid grid-cols-4 items-center gap-4'>
-									<Label htmlFor='providerIP' className='text-right'>
+								<div className="grid grid-cols-4 items-center gap-4">
+									<Label htmlFor="providerIP" className="text-right">
 										API Server
 									</Label>
 									<Input
-										id='providerIP'
-										name='providerIP'
+										id="providerIP"
+										name="providerIP"
 										value={formData.providerIP}
 										onChange={handleInputChange}
-										className='col-span-3'
-										placeholder='e.g., https://kubernetes.default.svc'
+										className="col-span-3"
+										placeholder="e.g., https://kubernetes.default.svc"
 										required
 									/>
 								</div>
-								<div className='grid grid-cols-4 items-center gap-4'>
-									<Label htmlFor='secretId' className='text-right'>
+								<div className="grid grid-cols-4 items-center gap-4">
+									<Label htmlFor="secretId" className="text-right">
 										Kubeconfig
 									</Label>
 									<Select
@@ -261,7 +261,7 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 										onValueChange={handleSecretChange}
 										disabled={secretsLoading}
 									>
-										<SelectTrigger className='col-span-3'>
+										<SelectTrigger className="col-span-3">
 											<SelectValue
 												placeholder={secretsLoading ? 'Loading...' : 'Select a kubeconfig'}
 											/>
@@ -281,68 +281,68 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 						) : (
 							// Server-specific fields
 							<>
-								<div className='grid grid-cols-4 items-center gap-4'>
-									<Label htmlFor='providerIP' className='text-right'>
+								<div className="grid grid-cols-4 items-center gap-4">
+									<Label htmlFor="providerIP" className="text-right">
 										Hostname/IP
 									</Label>
 									<Input
-										id='providerIP'
-										name='providerIP'
+										id="providerIP"
+										name="providerIP"
 										value={formData.providerIP}
 										onChange={handleInputChange}
-										className='col-span-3'
+										className="col-span-3"
 										required
 									/>
 								</div>
-								<div className='grid grid-cols-4 items-center gap-4'>
-									<Label htmlFor='username' className='text-right'>
+								<div className="grid grid-cols-4 items-center gap-4">
+									<Label htmlFor="username" className="text-right">
 										Username
 									</Label>
-									<div className='col-span-3 space-y-1'>
+									<div className="col-span-3 space-y-1">
 										<Input
-											id='username'
-											name='username'
+											id="username"
+											name="username"
 											value={formData.username}
 											onChange={handleInputChange}
 											className={usernameError ? 'border-red-500' : ''}
 											required
 										/>
-										{usernameError && <p className='text-sm text-red-500'>{usernameError}</p>}
+										{usernameError && <p className="text-sm text-red-500">{usernameError}</p>}
 									</div>
 								</div>
-								<div className='grid grid-cols-4 items-center gap-4'>
-									<Label htmlFor='SSHPort' className='text-right'>
+								<div className="grid grid-cols-4 items-center gap-4">
+									<Label htmlFor="SSHPort" className="text-right">
 										SSH Port
 									</Label>
 									<Input
-										id='SSHPort'
-										name='SSHPort'
-										type='number'
+										id="SSHPort"
+										name="SSHPort"
+										type="number"
 										value={formData.SSHPort}
 										onChange={handleInputChange}
-										className='col-span-3'
+										className="col-span-3"
 										required
 									/>
 								</div>
 
-								<div className='grid grid-cols-4 items-center gap-4'>
-									<Label htmlFor='authMethod' className='text-right'>
+								<div className="grid grid-cols-4 items-center gap-4">
+									<Label htmlFor="authMethod" className="text-right">
 										Auth Method
 									</Label>
 									<Select value={authMethod} onValueChange={handleAuthMethodChange}>
-										<SelectTrigger className='col-span-3'>
+										<SelectTrigger className="col-span-3">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value='key'>SSH Key</SelectItem>
-											<SelectItem value='password'>Password</SelectItem>
+											<SelectItem value="key">SSH Key</SelectItem>
+											<SelectItem value="password">Password</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
 
 								{authMethod === 'key' ? (
-									<div className='grid grid-cols-4 items-center gap-4'>
-										<Label htmlFor='secretId' className='text-right'>
+									<div className="grid grid-cols-4 items-center gap-4">
+										<Label htmlFor="secretId" className="text-right">
 											SSH Key
 										</Label>
 										<Select
@@ -350,7 +350,7 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 											onValueChange={handleSecretChange}
 											disabled={secretsLoading}
 										>
-											<SelectTrigger className='col-span-3'>
+											<SelectTrigger className="col-span-3">
 												<SelectValue
 													placeholder={secretsLoading ? 'Loading...' : 'Select an SSH key'}
 												/>
@@ -367,22 +367,22 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 										</Select>
 									</div>
 								) : (
-									<div className='grid grid-cols-4 items-center gap-4'>
-										<Label htmlFor='password' className='text-right'>
+									<div className="grid grid-cols-4 items-center gap-4">
+										<Label htmlFor="password" className="text-right">
 											Password
 										</Label>
-										<div className='col-span-3 space-y-1'>
+										<div className="col-span-3 space-y-1">
 											<Input
-												id='password'
-												name='password'
-												type='password'
+												id="password"
+												name="password"
+												type="password"
 												value={formData.password}
 												onChange={handleInputChange}
 												className={passwordError ? 'border-red-500' : ''}
-												placeholder='Enter SSH password'
+												placeholder="Enter SSH password"
 												required
 											/>
-											{passwordError && <p className='text-sm text-red-500'>{passwordError}</p>}
+											{passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
 										</div>
 									</div>
 								)}
@@ -390,10 +390,10 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 						)}
 					</div>
 					<DialogFooter>
-						<Button type='button' variant='outline' onClick={onClose}>
+						<Button type="button" variant="outline" onClick={onClose}>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={isLoading}>
+						<Button type="submit" disabled={isLoading}>
 							{isLoading ? 'Saving...' : 'Save changes'}
 						</Button>
 					</DialogFooter>

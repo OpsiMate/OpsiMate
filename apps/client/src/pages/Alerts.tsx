@@ -50,7 +50,7 @@ const Alerts = () => {
 	};
 	const renderServiceName = (a: Alert) => {
 		const sid = getAlertServiceId(a);
-		if (!sid) return <span className='text-muted-foreground'>-</span>;
+		if (!sid) return <span className="text-muted-foreground">-</span>;
 		return serviceNameById[sid] ?? `#${sid}`;
 	};
 
@@ -71,29 +71,29 @@ const Alerts = () => {
 	};
 	const getStatusBadge = (alert: Alert) => {
 		if (alert.isDismissed) {
-			return <Badge variant='secondary'>dismissed</Badge>;
+			return <Badge variant="secondary">dismissed</Badge>;
 		}
 
-		return <Badge variant='destructive'>firing</Badge>;
+		return <Badge variant="destructive">firing</Badge>;
 	};
 
 	return (
 		<DashboardLayout>
-			<div className='flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto'>
+			<div className="flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto">
 				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>Alerts</h1>
-					<p className='text-muted-foreground mt-1'>All system alerts</p>
+					<h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
+					<p className="text-muted-foreground mt-1">All system alerts</p>
 				</div>
-				<div className='bg-card rounded-lg border shadow-sm p-6 flex flex-col gap-4'>
-					<div className='flex items-center gap-4'>
+				<div className="bg-card rounded-lg border shadow-sm p-6 flex flex-col gap-4">
+					<div className="flex items-center gap-4">
 						<Input
-							placeholder='Search alerts...'
+							placeholder="Search alerts..."
 							value={search}
 							onChange={e => setSearch(e.target.value)}
-							className='max-w-xs'
+							className="max-w-xs"
 						/>
 					</div>
-					<div className='overflow-x-auto'>
+					<div className="overflow-x-auto">
 						<Table>
 							<TableHeader>
 								<TableRow>
@@ -109,34 +109,34 @@ const Alerts = () => {
 							<TableBody>
 								{isLoading ? (
 									<TableRow>
-										<TableCell colSpan={6} className='text-center py-8'>
+										<TableCell colSpan={6} className="text-center py-8">
 											Loading...
 										</TableCell>
 									</TableRow>
 								) : filteredAlerts.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={6} className='text-center py-8 text-muted-foreground'>
+										<TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
 											No alerts found.
 										</TableCell>
 									</TableRow>
 								) : (
 									filteredAlerts.map(alert => (
 										<TableRow key={alert.id}>
-											<TableCell className='font-medium'>{alert.alertName}</TableCell>
+											<TableCell className="font-medium">{alert.alertName}</TableCell>
 											<TableCell>{getStatusBadge(alert)}</TableCell>
 											<TableCell>
-												<Badge variant='outline'>{alert.tag}</Badge>
+												<Badge variant="outline">{alert.tag}</Badge>
 											</TableCell>
-											<TableCell className='max-w-xs truncate'>{alert.summary || '-'}</TableCell>
+											<TableCell className="max-w-xs truncate">{alert.summary || '-'}</TableCell>
 											<TableCell>{new Date(alert.startsAt).toLocaleString()}</TableCell>
 											<TableCell>{renderServiceName(alert)}</TableCell>
 											<TableCell>
-												<div className='flex items-center gap-1'>
+												<div className="flex items-center gap-1">
 													<Button
-														variant='ghost'
-														size='icon'
-														className='h-7 w-7 p-0 text-muted-foreground hover:bg-accent'
-														title='Open Runbook'
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
+														title="Open Runbook"
 														onClick={() =>
 															window.open(
 																alert.runbookUrl,
@@ -146,25 +146,25 @@ const Alerts = () => {
 														}
 														disabled={!alert.runbookUrl}
 													>
-														<span className='sr-only'>Open Runbook</span>
+														<span className="sr-only">Open Runbook</span>
 														📖
 													</Button>
 													<Button
-														variant='ghost'
-														size='icon'
-														className='h-7 w-7 p-0 text-muted-foreground hover:bg-accent'
-														title='View in Grafana'
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
+														title="View in Grafana"
 														onClick={() =>
 															window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')
 														}
 														disabled={!alert.alertUrl}
 													>
-														<ExternalLink className='h-4 w-4' />
+														<ExternalLink className="h-4 w-4" />
 													</Button>
 													<Button
-														variant='ghost'
-														size='icon'
-														className='h-7 w-7 p-0 text-muted-foreground hover:bg-accent'
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
 														title={alert.isDismissed ? 'Undismiss Alert' : 'Dismiss Alert'}
 														onClick={() =>
 															alert.isDismissed
@@ -178,11 +178,11 @@ const Alerts = () => {
 													>
 														{dismissAlertMutation.isPending ||
 														undismissAlertMutation.isPending ? (
-															<div className='h-3 w-3 rounded-full border-2 border-t-transparent animate-spin' />
+															<div className="h-3 w-3 rounded-full border-2 border-t-transparent animate-spin" />
 														) : alert.isDismissed ? (
-															<RotateCcw className='h-4 w-4' />
+															<RotateCcw className="h-4 w-4" />
 														) : (
-															<X className='h-4 w-4' />
+															<X className="h-4 w-4" />
 														)}
 													</Button>
 												</div>

@@ -32,7 +32,7 @@ export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 			)}
 			asChild
 		>
-			<Link to='/profile'>
+			<Link to="/profile">
 				<div
 					className={cn(
 						'flex items-center justify-center rounded-full border transition-colors duration-200',

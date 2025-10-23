@@ -158,40 +158,40 @@ export const SavedViewsManager = ({
 			<Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button variant='outline' className='gap-2'>
-							<span className='flex items-center gap-1'>
-								{activeViewId && <Check className='h-4 w-4' />}
+						<Button variant="outline" className="gap-2">
+							<span className="flex items-center gap-1">
+								{activeViewId && <Check className="h-4 w-4" />}
 								{displayViewName}
 							</span>
-							<ChevronDown className='h-4 w-4' />
+							<ChevronDown className="h-4 w-4" />
 						</Button>
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align='end' className='w-72'>
-						<div className='px-2 py-2'>
-							<div className='relative'>
-								<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+					<DropdownMenuContent align="end" className="w-72">
+						<div className="px-2 py-2">
+							<div className="relative">
+								<Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
-									placeholder='Search views...'
+									placeholder="Search views..."
 									value={searchQuery}
 									onChange={e => setSearchQuery(e.target.value)}
-									className='pl-8 pr-8 h-8'
+									className="pl-8 pr-8 h-8"
 								/>
 								{searchQuery && (
 									<Button
-										variant='ghost'
-										size='sm'
+										variant="ghost"
+										size="sm"
 										onClick={() => setSearchQuery('')}
-										className='absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0'
+										className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
 									>
-										<Trash className='h-3 w-3' />
+										<Trash className="h-3 w-3" />
 									</Button>
 								)}
 							</div>
 						</div>
-						<DropdownMenuLabel className='flex justify-between items-center'>
+						<DropdownMenuLabel className="flex justify-between items-center">
 							<span>Saved Views</span>
 							{savedViews.length > 0 && (
-								<span className='text-xs text-muted-foreground'>
+								<span className="text-xs text-muted-foreground">
 									{filteredViews.length} of {savedViews.length}
 								</span>
 							)}
@@ -205,7 +205,7 @@ export const SavedViewsManager = ({
 							filteredViews.map(view => (
 								<DropdownMenuItem
 									key={view.id}
-									className='flex justify-between items-center'
+									className="flex justify-between items-center"
 									onSelect={async e => {
 										e.preventDefault();
 										try {
@@ -219,23 +219,23 @@ export const SavedViewsManager = ({
 										}
 									}}
 								>
-									<span className='flex-1 truncate'>{view.name}</span>
-									<div className='flex gap-1'>
+									<span className="flex-1 truncate">{view.name}</span>
+									<div className="flex gap-1">
 										<Button
-											variant='ghost'
-											size='icon'
-											className='h-6 w-6'
+											variant="ghost"
+											size="icon"
+											className="h-6 w-6"
 											onClick={e => {
 												e.stopPropagation();
 												handleEditView(view);
 											}}
 										>
-											<Edit className='h-3 w-3' />
+											<Edit className="h-3 w-3" />
 										</Button>
 										<Button
-											variant='ghost'
-											size='icon'
-											className='h-6 w-6 text-destructive'
+											variant="ghost"
+											size="icon"
+											className="h-6 w-6 text-destructive"
 											onClick={async e => {
 												e.stopPropagation();
 												try {
@@ -249,7 +249,7 @@ export const SavedViewsManager = ({
 												}
 											}}
 										>
-											<Trash className='h-3 w-3' />
+											<Trash className="h-3 w-3" />
 										</Button>
 									</div>
 								</DropdownMenuItem>
@@ -258,48 +258,48 @@ export const SavedViewsManager = ({
 						<DropdownMenuSeparator />
 						<DialogTrigger asChild>
 							<DropdownMenuItem onSelect={e => e.preventDefault()}>
-								<BookmarkPlus className='mr-2 h-4 w-4' />
+								<BookmarkPlus className="mr-2 h-4 w-4" />
 								<span>Save Current View</span>
 							</DropdownMenuItem>
 						</DialogTrigger>
 					</DropdownMenuContent>
 				</DropdownMenu>
 
-				<DialogContent className='sm:max-w-[425px]'>
+				<DialogContent className="sm:max-w-[425px]">
 					<DialogHeader>
 						<DialogTitle>{editingViewId ? 'Edit View' : 'Save Current View'}</DialogTitle>
 						<DialogDescription>
 							Save your current filters, column selections, and search term for quick access later.
 						</DialogDescription>
 					</DialogHeader>
-					<div className='grid gap-4 py-4'>
-						<div className='grid grid-cols-4 items-center gap-4'>
-							<Label htmlFor='name' className='text-right'>
+					<div className="grid gap-4 py-4">
+						<div className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor="name" className="text-right">
 								Name
 							</Label>
 							<Input
-								id='name'
+								id="name"
 								value={viewName}
 								onChange={e => setViewName(e.target.value)}
-								className='col-span-3'
-								placeholder='My Custom View'
+								className="col-span-3"
+								placeholder="My Custom View"
 							/>
 						</div>
-						<div className='grid grid-cols-4 items-center gap-4'>
-							<Label htmlFor='description' className='text-right'>
+						<div className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor="description" className="text-right">
 								Description
 							</Label>
 							<Textarea
-								id='description'
+								id="description"
 								value={viewDescription}
 								onChange={e => setViewDescription(e.target.value)}
-								className='col-span-3'
-								placeholder='Optional description of this view'
+								className="col-span-3"
+								placeholder="Optional description of this view"
 							/>
 						</div>
 					</div>
 					<DialogFooter>
-						<Button type='submit' onClick={handleSaveView}>
+						<Button type="submit" onClick={handleSaveView}>
 							Save
 						</Button>
 					</DialogFooter>

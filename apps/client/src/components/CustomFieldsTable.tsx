@@ -72,20 +72,20 @@ export const CustomFieldsTable: React.FC = () => {
 	const hasActiveFilters = searchQuery;
 
 	if (isLoading) {
-		return <div className='py-6 text-center'>Loading custom fields...</div>;
+		return <div className="py-6 text-center">Loading custom fields...</div>;
 	}
 
 	if (error) {
-		return <div className='py-6 text-center text-red-600'>Error loading custom fields</div>;
+		return <div className="py-6 text-center text-red-600">Error loading custom fields</div>;
 	}
 
 	if (!customFields || customFields.length === 0) {
 		return (
 			<>
-				<div className='py-6 text-center'>
-					<div className='text-muted-foreground mb-4'>No custom fields created yet.</div>
+				<div className="py-6 text-center">
+					<div className="text-muted-foreground mb-4">No custom fields created yet.</div>
 					<Button onClick={() => setShowCreateModal(true)}>
-						<Plus className='h-4 w-4 mr-2' />
+						<Plus className="h-4 w-4 mr-2" />
 						Create First Field
 					</Button>
 				</div>
@@ -97,41 +97,41 @@ export const CustomFieldsTable: React.FC = () => {
 	return (
 		<>
 			{/* Search Section */}
-			<div className='space-y-3 mb-4'>
-				<div className='flex gap-2'>
-					<div className='relative flex-1'>
-						<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4' />
+			<div className="space-y-3 mb-4">
+				<div className="flex gap-2">
+					<div className="relative flex-1">
+						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
 						<Input
-							placeholder='Search custom fields...'
+							placeholder="Search custom fields..."
 							value={searchQuery}
 							onChange={e => setSearchQuery(e.target.value)}
-							className='pl-9'
+							className="pl-9"
 						/>
 					</div>
 					{searchQuery && (
-						<Button variant='ghost' size='sm' onClick={clearFilters}>
+						<Button variant="ghost" size="sm" onClick={clearFilters}>
 							Clear
 						</Button>
 					)}
 				</div>
 
-				<div className='flex gap-2 items-center justify-between'>
-					<div className='text-sm text-muted-foreground'>
+				<div className="flex gap-2 items-center justify-between">
+					<div className="text-sm text-muted-foreground">
 						Showing {filteredFields.length} of {customFields.length} fields
 					</div>
 
 					<Button onClick={() => setShowCreateModal(true)}>
-						<Plus className='h-4 w-4 mr-2' />
+						<Plus className="h-4 w-4 mr-2" />
 						Add Field
 					</Button>
 				</div>
 			</div>
 
 			{filteredFields.length === 0 ? (
-				<div className='py-12 text-center'>
-					<Search className='h-12 w-12 mx-auto mb-3 text-muted-foreground' />
-					<p className='text-muted-foreground font-medium'>No custom fields found</p>
-					<p className='text-sm text-muted-foreground mt-1'>
+				<div className="py-12 text-center">
+					<Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+					<p className="text-muted-foreground font-medium">No custom fields found</p>
+					<p className="text-sm text-muted-foreground mt-1">
 						{hasActiveFilters ? 'Try adjusting your search' : 'No custom fields match your criteria'}
 					</p>
 				</div>
@@ -148,31 +148,31 @@ export const CustomFieldsTable: React.FC = () => {
 						{filteredFields.map(field => (
 							<TableRow key={field.id}>
 								<TableCell>
-									<div className='font-medium'>{field.name}</div>
+									<div className="font-medium">{field.name}</div>
 								</TableCell>
 								<TableCell>
-									<Badge variant='secondary'>{new Date(field.createdAt).toLocaleDateString()}</Badge>
+									<Badge variant="secondary">{new Date(field.createdAt).toLocaleDateString()}</Badge>
 								</TableCell>
 								<TableCell>
-									<div className='flex items-center gap-2'>
+									<div className="flex items-center gap-2">
 										<Button
-											variant='ghost'
-											size='sm'
+											variant="ghost"
+											size="sm"
 											onClick={() => handleEdit(field)}
-											title='Edit custom field'
+											title="Edit custom field"
 										>
-											<Edit className='h-4 w-4' />
+											<Edit className="h-4 w-4" />
 										</Button>
 										<AlertDialog>
 											<AlertDialogTrigger asChild>
 												<Button
-													variant='ghost'
-													size='sm'
-													className='text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors'
-													title='Delete custom field'
+													variant="ghost"
+													size="sm"
+													className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+													title="Delete custom field"
 													disabled={deleteCustomField.isPending}
 												>
-													<Trash2 className='h-4 w-4' />
+													<Trash2 className="h-4 w-4" />
 												</Button>
 											</AlertDialogTrigger>
 											<AlertDialogContent>
@@ -189,7 +189,7 @@ export const CustomFieldsTable: React.FC = () => {
 														Cancel
 													</AlertDialogCancel>
 													<AlertDialogAction
-														className='bg-red-600 hover:bg-red-700 focus:ring-red-400'
+														className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
 														disabled={deleteCustomField.isPending}
 														onClick={() => handleDelete(field.id, field.name)}
 													>

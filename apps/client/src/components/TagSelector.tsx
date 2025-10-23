@@ -124,12 +124,12 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 		<>
 			<div className={cn('flex flex-wrap gap-1 items-center', className)}>
 				{selectedTags.map(tag => (
-					<TagBadge key={tag.id} tag={tag} onRemove={() => removeTag(tag)} className='text-xs' />
+					<TagBadge key={tag.id} tag={tag} onRemove={() => removeTag(tag)} className="text-xs" />
 				))}
 				<Popover open={open} onOpenChange={setOpen}>
 					<PopoverTrigger asChild>
 						<button
-							type='button'
+							type="button"
 							className={cn(
 								'inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border border-gray-200 bg-muted transition-colors',
 								'h-7 min-w-[32px] justify-center',
@@ -138,28 +138,28 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 								// Remove strong focus ring
 								// open && "ring-2 ring-ring"
 							)}
-							aria-label='Add tag'
+							aria-label="Add tag"
 						>
-							<Plus className='h-4 w-4' />
+							<Plus className="h-4 w-4" />
 						</button>
 					</PopoverTrigger>
-					<PopoverContent className='w-[300px] p-0'>
+					<PopoverContent className="w-[300px] p-0">
 						<Command>
-							<CommandInput placeholder='Search tags...' />
+							<CommandInput placeholder="Search tags..." />
 							<CommandList>
 								<CommandEmpty>
-									<div className='flex flex-col items-center gap-2 p-4'>
-										<p className='text-sm text-muted-foreground'>No tags found</p>
+									<div className="flex flex-col items-center gap-2 p-4">
+										<p className="text-sm text-muted-foreground">No tags found</p>
 										<Button
-											variant='outline'
-											size='sm'
+											variant="outline"
+											size="sm"
 											onClick={() => {
 												setOpen(false);
 												setShowCreateDialog(true);
 											}}
-											className='gap-2'
+											className="gap-2"
 										>
-											<Plus className='h-4 w-4' />
+											<Plus className="h-4 w-4" />
 											Create new tag
 										</Button>
 									</div>
@@ -169,21 +169,21 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 										<CommandItem
 											key={tag.id}
 											onSelect={() => addTag(tag)}
-											className='flex items-center justify-between gap-2 group'
+											className="flex items-center justify-between gap-2 group"
 										>
-											<div className='flex items-center gap-2 flex-1'>
+											<div className="flex items-center gap-2 flex-1">
 												<div
-													className='w-3 h-3 rounded-full'
+													className="w-3 h-3 rounded-full"
 													style={{ backgroundColor: tag.color }}
 												/>
 												<span>{tag.name}</span>
 											</div>
 											<button
 												onClick={e => handleDeleteClick(e, tag)}
-												className='opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded text-white hover:text-white/80'
-												title='Delete tag'
+												className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded text-white hover:text-white/80"
+												title="Delete tag"
 											>
-												<X className='h-3 w-3 font-bold' />
+												<X className="h-3 w-3 font-bold" />
 											</button>
 										</CommandItem>
 									))}
@@ -193,9 +193,9 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 												setOpen(false);
 												setShowCreateDialog(true);
 											}}
-											className='flex items-center gap-2 text-muted-foreground'
+											className="flex items-center gap-2 text-muted-foreground"
 										>
-											<Plus className='h-4 w-4' />
+											<Plus className="h-4 w-4" />
 											Create new tag
 										</CommandItem>
 									)}

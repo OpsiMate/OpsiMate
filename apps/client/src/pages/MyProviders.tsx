@@ -95,11 +95,11 @@ const mockProviderInstances = [
 const getProviderIcon = (type: Provider['providerType']) => {
 	switch (type) {
 		case 'VM':
-			return <Cloud className='h-5 w-5' />;
+			return <Cloud className="h-5 w-5" />;
 		case 'K8S':
-			return <Container className='h-5 w-5' />;
+			return <Container className="h-5 w-5" />;
 		default:
-			return <Server className='h-5 w-5' />;
+			return <Server className="h-5 w-5" />;
 	}
 };
 
@@ -700,23 +700,23 @@ export const MyProviders = () => {
 
 	return (
 		<DashboardLayout>
-			<div className='flex flex-col h-full'>
-				<header className='bg-background border-b border-border p-4'>
-					<div className='flex items-center justify-between'>
-						<h1 className='text-2xl font-bold'>My Providers</h1>
-						<Link to='/providers'>
+			<div className="flex flex-col h-full">
+				<header className="bg-background border-b border-border p-4">
+					<div className="flex items-center justify-between">
+						<h1 className="text-2xl font-bold">My Providers</h1>
+						<Link to="/providers">
 							<Button>
-								<Plus className='mr-2 h-4 w-4' />
+								<Plus className="mr-2 h-4 w-4" />
 								Add Provider
 							</Button>
 						</Link>
 					</div>
-					<div className='mt-4'>
-						<div className='relative'>
-							<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground' />
+					<div className="mt-4">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
 							<Input
-								placeholder='Search providers...'
-								className='pl-10'
+								placeholder="Search providers..."
+								className="pl-10"
 								value={searchQuery}
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
@@ -724,22 +724,22 @@ export const MyProviders = () => {
 					</div>
 				</header>
 
-				<Tabs value={activeTab} onValueChange={setActiveTab} className='p-4 bg-background'>
+				<Tabs value={activeTab} onValueChange={setActiveTab} className="p-4 bg-background">
 					<TabsList>
-						<TabsTrigger value='all'>All</TabsTrigger>
-						<TabsTrigger value='server'>Servers</TabsTrigger>
-						<TabsTrigger value='kubernetes'>Kubernetes</TabsTrigger>
-						<TabsTrigger value='cloud'>Cloud</TabsTrigger>
+						<TabsTrigger value="all">All</TabsTrigger>
+						<TabsTrigger value="server">Servers</TabsTrigger>
+						<TabsTrigger value="kubernetes">Kubernetes</TabsTrigger>
+						<TabsTrigger value="cloud">Cloud</TabsTrigger>
 					</TabsList>
 				</Tabs>
 
-				<div className='flex-1 overflow-auto p-4'>
+				<div className="flex-1 overflow-auto p-4">
 					{isLoading ? (
-						<div className='flex items-center justify-center h-full'>
-							<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary'></div>
+						<div className="flex items-center justify-center h-full">
+							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
 						</div>
 					) : filteredProviders.length > 0 ? (
-						<div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4'>
+						<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 							{filteredProviders.map(provider => {
 								const hasServices = Array.isArray(provider.services) && provider.services.length > 0;
 								const isLoading = loadingServices.has(provider.id);
@@ -749,18 +749,18 @@ export const MyProviders = () => {
 								return (
 									<Card
 										key={provider.id}
-										className='flex flex-col transition-all duration-300 hover:shadow-md'
+										className="flex flex-col transition-all duration-300 hover:shadow-md"
 									>
-										<CardHeader className='flex flex-row items-start justify-between space-y-0 pb-2'>
-											<div className='flex items-start gap-3'>
-												<div className='bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg flex-shrink-0'>
+										<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+											<div className="flex items-start gap-3">
+												<div className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg flex-shrink-0">
 													{getProviderIcon(provider.providerType)}
 												</div>
-												<div className='flex-1 min-w-0'>
-													<CardTitle className='text-lg font-semibold leading-snug truncate'>
+												<div className="flex-1 min-w-0">
+													<CardTitle className="text-lg font-semibold leading-snug truncate">
 														{provider.name}
 													</CardTitle>
-													<p className='text-sm text-muted-foreground'>
+													<p className="text-sm text-muted-foreground">
 														{getProviderTypeName(provider.providerType)}
 													</p>
 												</div>
@@ -768,20 +768,20 @@ export const MyProviders = () => {
 											<DropdownMenu>
 												<DropdownMenuTrigger asChild>
 													<Button
-														variant='ghost'
-														size='icon'
-														className='h-8 w-8'
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8"
 														onClick={e => e.stopPropagation()}
 													>
-														<MoreVertical className='h-4 w-4' />
+														<MoreVertical className="h-4 w-4" />
 													</Button>
 												</DropdownMenuTrigger>
 												<DropdownMenuPortal>
-													<DropdownMenuContent align='end' onClick={e => e.stopPropagation()}>
+													<DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
 														<DropdownMenuItem
 															onClick={() => handleRefreshProvider(String(provider.id))}
 														>
-															<RefreshCw className='mr-2 h-4 w-4' />
+															<RefreshCw className="mr-2 h-4 w-4" />
 															Refresh
 														</DropdownMenuItem>
 														{canManageProviders() && (
@@ -791,7 +791,7 @@ export const MyProviders = () => {
 																	setIsEditDialogOpen(true);
 																}}
 															>
-																<Edit className='mr-2 h-4 w-4' />
+																<Edit className="mr-2 h-4 w-4" />
 																Edit
 															</DropdownMenuItem>
 														)}
@@ -804,7 +804,7 @@ export const MyProviders = () => {
 																		setIsAddServiceDialogOpen(true);
 																	}}
 																>
-																	<ListPlus className='mr-2 h-4 w-4' />
+																	<ListPlus className="mr-2 h-4 w-4" />
 																	Add Service
 																</DropdownMenuItem>
 															)}
@@ -814,9 +814,9 @@ export const MyProviders = () => {
 																	setSelectedProvider(provider);
 																	setIsDeleteDialogOpen(true);
 																}}
-																className='text-red-500 focus:text-red-500'
+																className="text-red-500 focus:text-red-500"
 															>
-																<Trash className='mr-2 h-4 w-4' />
+																<Trash className="mr-2 h-4 w-4" />
 																Delete
 															</DropdownMenuItem>
 														)}
@@ -825,30 +825,30 @@ export const MyProviders = () => {
 											</DropdownMenu>
 										</CardHeader>
 
-										<CardContent className='flex-grow pt-2 px-6 pb-4 h-full'>
-											<div className='min-h-[320px] h-full flex flex-col justify-start'>
-												<div className='relative h-full'>
-													<div className='overflow-y-scroll pr-2 max-h-[304px] h-full services-scrollbar'>
+										<CardContent className="flex-grow pt-2 px-6 pb-4 h-full">
+											<div className="min-h-[320px] h-full flex flex-col justify-start">
+												<div className="relative h-full">
+													<div className="overflow-y-scroll pr-2 max-h-[304px] h-full services-scrollbar">
 														{hasServices ? (
-															<div className='space-y-3'>
+															<div className="space-y-3">
 																{servicesToShow.map(service => (
 																	<div
 																		key={service.id}
-																		className='flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm'
+																		className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
 																	>
-																		<div className='flex items-center gap-3'>
-																			<div className='flex-shrink-0'>
+																		<div className="flex items-center gap-3">
+																			<div className="flex-shrink-0">
 																				{service.type === 'DOCKER' ? (
-																					<Container className='h-4 w-4 text-blue-500' />
+																					<Container className="h-4 w-4 text-blue-500" />
 																				) : (
-																					<Server className='h-4 w-4 text-purple-500' />
+																					<Server className="h-4 w-4 text-purple-500" />
 																				)}
 																			</div>
-																			<div className='min-w-0 flex-1'>
-																				<p className='font-medium text-sm truncate'>
+																			<div className="min-w-0 flex-1">
+																				<p className="font-medium text-sm truncate">
 																					{service.name}
 																				</p>
-																				<p className='text-xs text-muted-foreground truncate'>
+																				<p className="text-xs text-muted-foreground truncate">
 																					{service.type === 'DOCKER'
 																						? `${provider.providerType === 'K8S' ? 'Pod' : 'Container'}: ${service.containerDetails?.image || service.name}`
 																						: service.serviceIP
@@ -857,7 +857,7 @@ export const MyProviders = () => {
 																				</p>
 																			</div>
 																		</div>
-																		<div className='flex items-center gap-2'>
+																		<div className="flex items-center gap-2">
 																			<Badge
 																				className={`text-xs ${getServiceStatusBadgeColor(service.status)}`}
 																			>
@@ -866,19 +866,19 @@ export const MyProviders = () => {
 																			<DropdownMenu>
 																				<DropdownMenuTrigger asChild>
 																					<Button
-																						variant='ghost'
-																						size='icon'
-																						className='h-6 w-6'
+																						variant="ghost"
+																						size="icon"
+																						className="h-6 w-6"
 																						onClick={e =>
 																							e.stopPropagation()
 																						}
 																					>
-																						<MoreVertical className='h-3 w-3' />
+																						<MoreVertical className="h-3 w-3" />
 																					</Button>
 																				</DropdownMenuTrigger>
 																				<DropdownMenuPortal>
 																					<DropdownMenuContent
-																						align='end'
+																						align="end"
 																						onClick={e =>
 																							e.stopPropagation()
 																						}
@@ -975,7 +975,7 @@ export const MyProviders = () => {
 																								);
 																							}}
 																						>
-																							<Terminal className='mr-2 h-3 w-3' />{' '}
+																							<Terminal className="mr-2 h-3 w-3" />{' '}
 																							Details
 																						</DropdownMenuItem>
 																						{canManageProviders() &&
@@ -992,7 +992,7 @@ export const MyProviders = () => {
 																										)
 																									}
 																								>
-																									<Play className='mr-2 h-3 w-3' />{' '}
+																									<Play className="mr-2 h-3 w-3" />{' '}
 																									Start
 																								</DropdownMenuItem>
 																							)}
@@ -1010,7 +1010,7 @@ export const MyProviders = () => {
 																										)
 																									}
 																								>
-																									<Square className='mr-2 h-3 w-3' />{' '}
+																									<Square className="mr-2 h-3 w-3" />{' '}
 																									Stop
 																								</DropdownMenuItem>
 																							)}
@@ -1026,7 +1026,7 @@ export const MyProviders = () => {
 																									)
 																								}
 																							>
-																								<RefreshCw className='mr-2 h-3 w-3' />{' '}
+																								<RefreshCw className="mr-2 h-3 w-3" />{' '}
 																								Restart
 																							</DropdownMenuItem>
 																						)}
@@ -1037,9 +1037,9 @@ export const MyProviders = () => {
 																										service.id
 																									)
 																								}
-																								className='text-red-500 focus:text-red-500'
+																								className="text-red-500 focus:text-red-500"
 																							>
-																								<Trash className='mr-2 h-3 w-3' />{' '}
+																								<Trash className="mr-2 h-3 w-3" />{' '}
 																								Delete
 																							</DropdownMenuItem>
 																						)}
@@ -1051,19 +1051,19 @@ export const MyProviders = () => {
 																))}
 															</div>
 														) : (
-															<div className='flex-1 h-full flex flex-col justify-center'>
+															<div className="flex-1 h-full flex flex-col justify-center">
 																<div
-																	className='border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center h-full'
+																	className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center h-full"
 																	style={{
 																		alignItems: 'center',
 																		justifyContent: 'center',
 																	}}
 																>
-																	<Server className='h-8 w-8 text-muted-foreground mb-2' />
-																	<h4 className='font-semibold text-sm text-foreground'>
+																	<Server className="h-8 w-8 text-muted-foreground mb-2" />
+																	<h4 className="font-semibold text-sm text-foreground">
 																		No Services Configured
 																	</h4>
-																	<p className='text-xs text-muted-foreground mt-1 mb-4'>
+																	<p className="text-xs text-muted-foreground mt-1 mb-4">
 																		Get started by adding a new service to this
 																		provider.
 																	</p>
@@ -1071,8 +1071,8 @@ export const MyProviders = () => {
 																		(provider.providerType === 'VM' ||
 																			provider.providerType === 'K8S') && (
 																			<Button
-																				variant='outline'
-																				size='sm'
+																				variant="outline"
+																				size="sm"
 																				onClick={e => {
 																					e.stopPropagation();
 																					setSelectedServerForService(
@@ -1081,7 +1081,7 @@ export const MyProviders = () => {
 																					setIsAddServiceDialogOpen(true);
 																				}}
 																			>
-																				<ListPlus className='mr-2 h-4 w-4' />
+																				<ListPlus className="mr-2 h-4 w-4" />
 																				Add New Service
 																			</Button>
 																		)}
@@ -1093,25 +1093,25 @@ export const MyProviders = () => {
 											</div>
 										</CardContent>
 
-										<CardFooter className='flex items-center justify-between text-xs text-muted-foreground'></CardFooter>
+										<CardFooter className="flex items-center justify-between text-xs text-muted-foreground"></CardFooter>
 									</Card>
 								);
 							})}
 						</div>
 					) : (
-						<div className='flex flex-col items-center justify-center h-full p-8 text-center'>
-							<div className='bg-muted/30 p-4 rounded-full mb-4'>
-								<Database className='h-10 w-10 text-muted-foreground' />
+						<div className="flex flex-col items-center justify-center h-full p-8 text-center">
+							<div className="bg-muted/30 p-4 rounded-full mb-4">
+								<Database className="h-10 w-10 text-muted-foreground" />
 							</div>
-							<h3 className='text-xl font-semibold mb-2'>No providers found</h3>
-							<p className='text-muted-foreground mb-4'>
+							<h3 className="text-xl font-semibold mb-2">No providers found</h3>
+							<p className="text-muted-foreground mb-4">
 								{searchQuery
 									? 'No providers match your search query.'
 									: "You haven't added any providers yet."}
 							</p>
-							<Link to='/providers'>
+							<Link to="/providers">
 								<Button>
-									<Plus className='mr-2 h-4 w-4' />
+									<Plus className="mr-2 h-4 w-4" />
 									Add Provider
 								</Button>
 							</Link>
@@ -1137,15 +1137,15 @@ export const MyProviders = () => {
 						<DialogTitle>Are you sure you want to delete this provider?</DialogTitle>
 						<DialogDescription>
 							This action cannot be undone. This will permanently delete the
-							<span className='font-semibold'> {selectedProvider?.name} </span>
+							<span className="font-semibold"> {selectedProvider?.name} </span>
 							provider.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button variant='outline' onClick={() => setIsDeleteDialogOpen(false)}>
+						<Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
 							Cancel
 						</Button>
-						<Button variant='destructive' onClick={handleDeleteProvider}>
+						<Button variant="destructive" onClick={handleDeleteProvider}>
 							Delete
 						</Button>
 					</DialogFooter>
@@ -1160,7 +1160,7 @@ export const MyProviders = () => {
 			/>
 
 			<Sheet open={isServiceDrawerOpen} onOpenChange={setIsServiceDrawerOpen}>
-				<SheetContent side='right' className='w-[400px] p-0' closable={false}>
+				<SheetContent side="right" className="w-[400px] p-0" closable={false}>
 					{selectedServiceForDrawer && (
 						<RightSidebarWithLogs
 							service={selectedServiceForDrawer}

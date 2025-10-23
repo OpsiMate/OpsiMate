@@ -105,8 +105,8 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({ righ
 
 	const button = (
 		<button
-			aria-label='Scroll to top'
-			title='Scroll to top'
+			aria-label="Scroll to top"
+			title="Scroll to top"
 			onClick={e => {
 				e.preventDefault();
 				scrollAllToTop();
@@ -116,7 +116,7 @@ const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({ righ
 				bottom,
 				WebkitTapHighlightColor: 'transparent',
 			}}
-			className='fixed z-[999999] p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all duration-200 transform hover:scale-105 active:scale-95 bg-slate-800/80 text-white'
+			className="fixed z-[999999] p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition-all duration-200 transform hover:scale-105 active:scale-95 bg-slate-800/80 text-white"
 		>
 			<ArrowUp size={18} />
 		</button>

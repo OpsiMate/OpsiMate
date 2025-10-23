@@ -80,7 +80,7 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleClose}>
-			<DialogContent className='sm:max-w-[500px]'>
+			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
 					<DialogTitle>Add New User</DialogTitle>
 					<DialogDescription>
@@ -88,48 +88,48 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 					</DialogDescription>
 				</DialogHeader>
 
-				{generalError && <ErrorAlert message={generalError} className='mb-4' />}
+				{generalError && <ErrorAlert message={generalError} className="mb-4" />}
 
-				<form onSubmit={handleSubmit} className='space-y-4'>
-					<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-						<div className='space-y-2'>
-							<Label htmlFor='email'>Email</Label>
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="email">Email</Label>
 							<Input
-								id='email'
-								type='email'
+								id="email"
+								type="email"
 								value={formData.email}
 								onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
 								required
 								disabled={creatingUser}
 							/>
 						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='fullName'>Full Name</Label>
+						<div className="space-y-2">
+							<Label htmlFor="fullName">Full Name</Label>
 							<Input
-								id='fullName'
-								type='text'
+								id="fullName"
+								type="text"
 								value={formData.fullName}
 								onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
 								required
 								disabled={creatingUser}
 							/>
 						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='password'>Password</Label>
+						<div className="space-y-2">
+							<Label htmlFor="password">Password</Label>
 							<Input
-								id='password'
-								type='password'
+								id="password"
+								type="password"
 								value={formData.password}
 								onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
 								required
 								minLength={6}
-								pattern='^[^\s]*$'
-								title='Password must be at least 6 characters and contain no spaces'
+								pattern="^[^\s]*$"
+								title="Password must be at least 6 characters and contain no spaces"
 								disabled={creatingUser}
 							/>
 						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='role'>Role</Label>
+						<div className="space-y-2">
+							<Label htmlFor="role">Role</Label>
 							<Select
 								value={formData.role}
 								onValueChange={value => setFormData(prev => ({ ...prev, role: value as Role }))}
@@ -149,10 +149,10 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 					</div>
 
 					<DialogFooter>
-						<Button type='button' variant='outline' onClick={handleClose} disabled={creatingUser}>
+						<Button type="button" variant="outline" onClick={handleClose} disabled={creatingUser}>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={creatingUser}>
+						<Button type="submit" disabled={creatingUser}>
 							{creatingUser ? 'Creating...' : 'Create User'}
 						</Button>
 					</DialogFooter>

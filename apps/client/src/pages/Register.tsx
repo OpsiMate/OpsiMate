@@ -59,47 +59,47 @@ const Register: React.FC = () => {
 	};
 
 	return (
-		<div className='min-h-screen flex items-center justify-center bg-background'>
+		<div className="min-h-screen flex items-center justify-center bg-background">
 			<form
 				onSubmit={handleSubmit}
-				className='bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80 min-w-[350px]'
+				className="bg-card text-card-foreground border border-border p-8 rounded shadow-md w-80 min-w-[350px]"
 			>
-				<h2 className='text-2xl font-bold mb-6 text-center text-foreground'>Create First Admin User</h2>
-				<p className='text-sm text-muted-foreground mb-6 text-center'>
+				<h2 className="text-2xl font-bold mb-6 text-center text-foreground">Create First Admin User</h2>
+				<p className="text-sm text-muted-foreground mb-6 text-center">
 					This will be the first user in the system with admin privileges.
 				</p>
-				<div className='mb-4'>
+				<div className="mb-4">
 					<Input
-						type='email'
-						placeholder='Email'
+						type="email"
+						placeholder="Email"
 						value={email}
 						onChange={e => setEmail(e.target.value)}
 						required
 					/>
-					{errors.email && <ErrorAlert message={errors.email} className='mt-6' />}
+					{errors.email && <ErrorAlert message={errors.email} className="mt-6" />}
 				</div>
-				<div className='mb-4'>
+				<div className="mb-4">
 					<Input
-						type='text'
-						placeholder='Full Name'
+						type="text"
+						placeholder="Full Name"
 						value={fullName}
 						onChange={e => setFullName(e.target.value)}
 						required
 					/>
-					{errors.fullName && <ErrorAlert message={errors.fullName} className='mt-6' />}
+					{errors.fullName && <ErrorAlert message={errors.fullName} className="mt-6" />}
 				</div>
-				<div className='mb-4'>
+				<div className="mb-4">
 					<Input
-						type='password'
-						placeholder='Password'
+						type="password"
+						placeholder="Password"
 						value={password}
 						onChange={e => setPassword(e.target.value)}
 						required
 					/>
-					{errors.password && <ErrorAlert message={errors.password} className='mt-6' />}
+					{errors.password && <ErrorAlert message={errors.password} className="mt-6" />}
 				</div>
-				{generalError && <ErrorAlert message={generalError} className='mb-4' />}
-				<Button type='submit' className='w-full' disabled={loading}>
+				{generalError && <ErrorAlert message={generalError} className="mb-4" />}
+				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? 'Creating Admin User...' : 'Create Admin User'}
 				</Button>
 			</form>

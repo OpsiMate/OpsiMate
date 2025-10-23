@@ -95,32 +95,32 @@ export const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ open, onOpen
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
-					<div className='space-y-4 py-4'>
-						<div className='space-y-2'>
-							<Label htmlFor='field-name'>Field Name</Label>
+					<div className="space-y-4 py-4">
+						<div className="space-y-2">
+							<Label htmlFor="field-name">Field Name</Label>
 							<Input
-								id='field-name'
-								placeholder='e.g., Environment, Version, Owner'
+								id="field-name"
+								placeholder="e.g., Environment, Version, Owner"
 								value={fieldName}
 								onChange={e => setFieldName(e.target.value)}
 								disabled={isSubmitting}
 								autoFocus
 							/>
-							<p className='text-sm text-muted-foreground'>
+							<p className="text-sm text-muted-foreground">
 								This name will be displayed when managing service custom fields.
 							</p>
 						</div>
 					</div>
 					<DialogFooter>
 						<Button
-							type='button'
-							variant='ghost'
+							type="button"
+							variant="ghost"
 							onClick={() => onOpenChange(false)}
 							disabled={isSubmitting}
 						>
 							Cancel
 						</Button>
-						<Button type='submit' disabled={isSubmitting || !fieldName.trim()}>
+						<Button type="submit" disabled={isSubmitting || !fieldName.trim()}>
 							{isSubmitting
 								? isEditing
 									? 'Updating...'

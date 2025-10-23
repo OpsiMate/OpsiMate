@@ -117,32 +117,32 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 
 				{generalError && <ErrorAlert message={generalError} />}
 
-				<div className='space-y-4'>
-					<div className='space-y-2'>
-						<Label htmlFor='new-password'>New Password</Label>
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="new-password">New Password</Label>
 						<Input
-							id='new-password'
-							type='password'
+							id="new-password"
+							type="password"
 							value={newPassword}
 							onChange={e => setNewPassword(e.target.value)}
-							placeholder='Enter new password'
+							placeholder="Enter new password"
 						/>
 					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='confirm-password'>Confirm Password</Label>
+					<div className="space-y-2">
+						<Label htmlFor="confirm-password">Confirm Password</Label>
 						<Input
-							id='confirm-password'
-							type='password'
+							id="confirm-password"
+							type="password"
 							value={confirmPassword}
 							onChange={e => setConfirmPassword(e.target.value)}
-							placeholder='Confirm new password'
+							placeholder="Confirm new password"
 						/>
 					</div>
 				</div>
 
 				<DialogFooter>
-					<Button variant='ghost' onClick={handleClose} disabled={resetting}>
+					<Button variant="ghost" onClick={handleClose} disabled={resetting}>
 						Cancel
 					</Button>
 					<Button onClick={handleReset} disabled={resetting || !newPassword || !confirmPassword}>

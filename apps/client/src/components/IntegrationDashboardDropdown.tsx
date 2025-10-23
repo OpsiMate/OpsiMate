@@ -88,16 +88,16 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 	if (integrationsError) {
 		return (
 			<Button
-				variant='outline'
-				size='sm'
+				variant="outline"
+				size="sm"
 				className={`justify-between gap-2 h-7 text-xs px-2 ${className}`}
 				disabled
 			>
-				<div className='flex items-center gap-2'>
-					<IconComponent className='h-3 w-3' />
+				<div className="flex items-center gap-2">
+					<IconComponent className="h-3 w-3" />
 					<span>{displayName}</span>
 				</div>
-				<span className='text-red-500'>Error</span>
+				<span className="text-red-500">Error</span>
 			</Button>
 		);
 	}
@@ -106,39 +106,39 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button
-					variant='outline'
-					size='sm'
+					variant="outline"
+					size="sm"
 					className={`justify-between gap-2 h-7 text-xs px-2 ${className}`}
 					disabled={loading}
 				>
-					<div className='flex items-center gap-2'>
-						<IconComponent className='h-3 w-3' />
+					<div className="flex items-center gap-2">
+						<IconComponent className="h-3 w-3" />
 						<span>{displayName}</span>
 					</div>
-					{loading ? <Loader2 className='h-3 w-3 animate-spin' /> : <ChevronDown className='h-3 w-3' />}
+					{loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChevronDown className="h-3 w-3" />}
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align='start' className='w-64'>
-				<DropdownMenuLabel className='text-xs'>
+			<DropdownMenuContent align="start" className="w-64">
+				<DropdownMenuLabel className="text-xs">
 					Dashboards for tags: {tags.map(tag => tag.name).join(', ')}
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 
 				{loading && (
-					<DropdownMenuItem disabled className='text-xs'>
-						<Loader2 className='h-3 w-3 mr-2 animate-spin' />
+					<DropdownMenuItem disabled className="text-xs">
+						<Loader2 className="h-3 w-3 mr-2 animate-spin" />
 						Loading dashboards...
 					</DropdownMenuItem>
 				)}
 
 				{error && (
-					<DropdownMenuItem disabled className='text-xs text-red-500'>
+					<DropdownMenuItem disabled className="text-xs text-red-500">
 						<span>Error: {error.message}</span>
 					</DropdownMenuItem>
 				)}
 
 				{!loading && !error && dashboards.length === 0 && (
-					<DropdownMenuItem disabled className='text-xs text-muted-foreground'>
+					<DropdownMenuItem disabled className="text-xs text-muted-foreground">
 						No dashboards found for these tags
 					</DropdownMenuItem>
 				)}
@@ -148,21 +148,21 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 						{dashboards.map((dashboard, index) => (
 							<DropdownMenuItem
 								key={index}
-								className='text-xs cursor-pointer'
+								className="text-xs cursor-pointer"
 								onClick={() => handleDashboardClick(dashboard.url, dashboard.name)}
 							>
-								<div className='flex items-center justify-between w-full'>
-									<span className='truncate'>{dashboard.name}</span>
-									<ExternalLink className='h-3 w-3 ml-2 flex-shrink-0' />
+								<div className="flex items-center justify-between w-full">
+									<span className="truncate">{dashboard.name}</span>
+									<ExternalLink className="h-3 w-3 ml-2 flex-shrink-0" />
 								</div>
 							</DropdownMenuItem>
 						))}
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
-							className='text-xs text-muted-foreground'
+							className="text-xs text-muted-foreground"
 							onClick={() => window.open(integrationUrl, '_blank')}
 						>
-							<IconComponent className='h-3 w-3 mr-2' />
+							<IconComponent className="h-3 w-3 mr-2" />
 							Open {integrationType}
 						</DropdownMenuItem>
 					</>

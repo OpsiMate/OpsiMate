@@ -193,24 +193,24 @@ const Settings: React.FC = () => {
 
 	if (loading) {
 		return (
-			<div className='flex items-center justify-center min-h-screen'>
-				<div className='text-lg'>Loading settings...</div>
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-lg">Loading settings...</div>
 			</div>
 		);
 	}
 
 	return (
 		<DashboardLayout>
-			<div className='flex flex-col h-full'>
+			<div className="flex flex-col h-full">
 				{/* Header */}
-				<div className='flex-shrink-0 bg-background border-b border-border px-6 py-4'>
-					<h1 className='text-2xl font-bold'>Settings</h1>
+				<div className="flex-shrink-0 bg-background border-b border-border px-6 py-4">
+					<h1 className="text-2xl font-bold">Settings</h1>
 				</div>
 
 				{/* Content */}
-				<div className='flex-1 overflow-auto p-6'>
-					<div className='max-w-6xl mx-auto'>
-						{generalError && <ErrorAlert message={generalError} className='mb-6' />}
+				<div className="flex-1 overflow-auto p-6">
+					<div className="max-w-6xl mx-auto">
+						{generalError && <ErrorAlert message={generalError} className="mb-6" />}
 
 						<Tabs
 							defaultValue={(function () {
@@ -231,49 +231,49 @@ const Settings: React.FC = () => {
 								const next = map[v] || v;
 								if (next) window.location.hash = next;
 							}}
-							className='space-y-6'
+							className="space-y-6"
 						>
-							<div className='flex gap-6'>
-								<div className='w-64 flex-shrink-0'>
-									<TabsList className='flex flex-col items-stretch h-auto p-2 gap-2'>
-										<TabsTrigger value='users' className='justify-start gap-2'>
-											<Users className='h-4 w-4' />
+							<div className="flex gap-6">
+								<div className="w-64 flex-shrink-0">
+									<TabsList className="flex flex-col items-stretch h-auto p-2 gap-2">
+										<TabsTrigger value="users" className="justify-start gap-2">
+											<Users className="h-4 w-4" />
 											Users
 										</TabsTrigger>
-										<TabsTrigger value='audit' className='justify-start gap-2'>
-											<FileText className='h-4 w-4' />
+										<TabsTrigger value="audit" className="justify-start gap-2">
+											<FileText className="h-4 w-4" />
 											Audit Log
 										</TabsTrigger>
-										<TabsTrigger value='secrets' className='justify-start gap-2'>
-											<KeyRound className='h-4 w-4' />
+										<TabsTrigger value="secrets" className="justify-start gap-2">
+											<KeyRound className="h-4 w-4" />
 											Secrets
 										</TabsTrigger>
-										<TabsTrigger value='custom-fields' className='justify-start gap-2'>
-											<SettingsIcon className='h-4 w-4' />
+										<TabsTrigger value="custom-fields" className="justify-start gap-2">
+											<SettingsIcon className="h-4 w-4" />
 											Custom Service Fields
 										</TabsTrigger>
 									</TabsList>
 								</div>
-								<div className='flex-1'>
-									<TabsContent value='users' className='space-y-6'>
-										<div className='flex justify-between items-center gap-4'>
-											<div className='flex-1'>
-												<h2 className='text-2xl font-semibold'>User Management</h2>
-												<p className='text-muted-foreground'>
+								<div className="flex-1">
+									<TabsContent value="users" className="space-y-6">
+										<div className="flex justify-between items-center gap-4">
+											<div className="flex-1">
+												<h2 className="text-2xl font-semibold">User Management</h2>
+												<p className="text-muted-foreground">
 													Manage user access and permissions for your Service instance.
 												</p>
 											</div>
-											<div className='flex gap-2'>
+											<div className="flex gap-2">
 												{selectedUsers.length > 0 && (
 													<>
 														<Select
-															value=''
+															value=""
 															onValueChange={newRole =>
 																handleBulkRoleUpdate(newRole as Role)
 															}
 														>
-															<SelectTrigger className='w-40'>
-																<SelectValue placeholder='Bulk Role Change' />
+															<SelectTrigger className="w-40">
+																<SelectValue placeholder="Bulk Role Change" />
 															</SelectTrigger>
 															<SelectContent>
 																<SelectItem value={Role.Viewer}>
@@ -289,31 +289,31 @@ const Settings: React.FC = () => {
 															</SelectContent>
 														</Select>
 														<Button
-															variant='destructive'
-															size='sm'
+															variant="destructive"
+															size="sm"
 															onClick={() => setShowBulkDeleteConfirm(true)}
 														>
 															Delete Selected ({selectedUsers.length})
 														</Button>
 													</>
 												)}
-												<Button onClick={() => setShowAddUserModal(true)} variant='default'>
-													<Plus className='h-4 w-4 mr-2' />
+												<Button onClick={() => setShowAddUserModal(true)} variant="default">
+													<Plus className="h-4 w-4 mr-2" />
 													Add User
 												</Button>
 											</div>
 										</div>
 
 										{/* Search Bar */}
-										<div className='flex gap-2'>
+										<div className="flex gap-2">
 											<Input
-												placeholder='Search users by name or email...'
+												placeholder="Search users by name or email..."
 												value={searchQuery}
 												onChange={e => setSearchQuery(e.target.value)}
-												className='max-w-md'
+												className="max-w-md"
 											/>
 											{searchQuery && (
-												<Button variant='ghost' size='sm' onClick={() => setSearchQuery('')}>
+												<Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
 													Clear
 												</Button>
 											)}
@@ -328,9 +328,9 @@ const Settings: React.FC = () => {
 												<Table>
 													<TableHeader>
 														<TableRow>
-															<TableHead className='w-12'>
+															<TableHead className="w-12">
 																<input
-																	type='checkbox'
+																	type="checkbox"
 																	checked={
 																		selectedUsers.length === filteredUsers.length &&
 																		filteredUsers.length > 0
@@ -344,7 +344,7 @@ const Settings: React.FC = () => {
 																			setSelectedUsers([]);
 																		}
 																	}}
-																	className='cursor-pointer'
+																	className="cursor-pointer"
 																/>
 															</TableHead>
 															<TableHead>User</TableHead>
@@ -359,7 +359,7 @@ const Settings: React.FC = () => {
 															<TableRow key={user.id}>
 																<TableCell>
 																	<input
-																		type='checkbox'
+																		type="checkbox"
 																		checked={selectedUsers.includes(user.id)}
 																		onChange={e => {
 																			if (e.target.checked) {
@@ -374,15 +374,15 @@ const Settings: React.FC = () => {
 																			}
 																		}}
 																		disabled={user.email === currentUser?.email}
-																		className='cursor-pointer'
+																		className="cursor-pointer"
 																	/>
 																</TableCell>
-																<TableCell className='font-medium'>
+																<TableCell className="font-medium">
 																	{user.fullName}
 																	{user.email === currentUser?.email && (
 																		<Badge
-																			variant='outline'
-																			className='ml-2 text-xs'
+																			variant="outline"
+																			className="ml-2 text-xs"
 																		>
 																			(me)
 																		</Badge>
@@ -396,7 +396,7 @@ const Settings: React.FC = () => {
 																</TableCell>
 																<TableCell>{formatDate(user.createdAt)}</TableCell>
 																<TableCell>
-																	<div className='flex items-center gap-2'>
+																	<div className="flex items-center gap-2">
 																		<Select
 																			value={user.role}
 																			onValueChange={newRole =>
@@ -410,7 +410,7 @@ const Settings: React.FC = () => {
 																				user.email === currentUser?.email
 																			}
 																		>
-																			<SelectTrigger className='w-32'>
+																			<SelectTrigger className="w-32">
 																				<SelectValue />
 																			</SelectTrigger>
 																			<SelectContent>
@@ -432,19 +432,19 @@ const Settings: React.FC = () => {
 																			user.email !== currentUser?.email && (
 																				<>
 																					<Button
-																						variant='ghost'
-																						size='icon'
+																						variant="ghost"
+																						size="icon"
 																						onClick={() => {
 																							setUserToEdit(user);
 																							setShowEditModal(true);
 																						}}
-																						title='Edit user'
+																						title="Edit user"
 																					>
-																						<Edit className='h-4 w-4' />
+																						<Edit className="h-4 w-4" />
 																					</Button>
 																					<Button
-																						variant='ghost'
-																						size='icon'
+																						variant="ghost"
+																						size="icon"
 																						onClick={() => {
 																							setUserToResetPassword(
 																								user
@@ -453,24 +453,24 @@ const Settings: React.FC = () => {
 																								true
 																							);
 																						}}
-																						title='Reset password'
+																						title="Reset password"
 																					>
-																						<KeyRound className='h-4 w-4' />
+																						<KeyRound className="h-4 w-4" />
 																					</Button>
 																					<AlertDialog>
 																						<AlertDialogTrigger asChild>
 																							<Button
-																								variant='ghost'
-																								size='icon'
-																								className='text-red-600 hover:bg-red-100 focus:bg-red-100 focus:ring-2 focus:ring-red-400'
-																								title='Delete user'
+																								variant="ghost"
+																								size="icon"
+																								className="text-red-600 hover:bg-red-100 focus:bg-red-100 focus:ring-2 focus:ring-red-400"
+																								title="Delete user"
 																								onClick={() =>
 																									setUserToDelete(
 																										user
 																									)
 																								}
 																							>
-																								<Trash2 className='h-4 w-4' />
+																								<Trash2 className="h-4 w-4" />
 																							</Button>
 																						</AlertDialogTrigger>
 																						<AlertDialogContent>
@@ -502,7 +502,7 @@ const Settings: React.FC = () => {
 																									Cancel
 																								</AlertDialogCancel>
 																								<AlertDialogAction
-																									className='bg-red-600 hover:bg-red-700 focus:ring-red-400'
+																									className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
 																									disabled={deleting}
 																									onClick={() =>
 																										handleDeleteUser(
@@ -530,10 +530,10 @@ const Settings: React.FC = () => {
 										</Card>
 									</TabsContent>
 
-									<TabsContent value='audit' className='space-y-6'>
+									<TabsContent value="audit" className="space-y-6">
 										<div>
-											<h2 className='text-2xl font-semibold'>Audit Log</h2>
-											<p className='text-muted-foreground'>
+											<h2 className="text-2xl font-semibold">Audit Log</h2>
+											<p className="text-muted-foreground">
 												View activity logs for all dashboard operations and user actions.
 											</p>
 										</div>
@@ -547,11 +547,11 @@ const Settings: React.FC = () => {
 										</Card>
 									</TabsContent>
 
-									<TabsContent value='secrets' className='space-y-6'>
-										<div className='flex justify-between items-center'>
+									<TabsContent value="secrets" className="space-y-6">
+										<div className="flex justify-between items-center">
 											<div>
-												<h2 className='text-2xl font-semibold'>Secrets</h2>
-												<p className='text-muted-foreground'>
+												<h2 className="text-2xl font-semibold">Secrets</h2>
+												<p className="text-muted-foreground">
 													Manage SSH keys and kubeconfig files used to access providers and
 													services securely.
 												</p>
@@ -569,10 +569,10 @@ const Settings: React.FC = () => {
 										</Card>
 									</TabsContent>
 
-									<TabsContent value='custom-fields' className='space-y-6'>
+									<TabsContent value="custom-fields" className="space-y-6">
 										<div>
-											<h2 className='text-2xl font-semibold'>Custom Service Fields</h2>
-											<p className='text-muted-foreground'>
+											<h2 className="text-2xl font-semibold">Custom Service Fields</h2>
+											<p className="text-muted-foreground">
 												Create and manage custom fields for your services. These fields can
 												store additional information like environment, version, or any other
 												metadata.
@@ -633,7 +633,7 @@ const Settings: React.FC = () => {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction className='bg-red-600 hover:bg-red-700' onClick={handleBulkDelete}>
+						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete}>
 							Delete {selectedUsers.length} User(s)
 						</AlertDialogAction>
 					</AlertDialogFooter>
@@ -737,9 +737,9 @@ const AuditLogTable: React.FC = () => {
 				<Button
 					key={pageNum}
 					variant={page === pageNum ? 'default' : 'outline'}
-					size='sm'
+					size="sm"
 					onClick={() => handlePageChange(pageNum)}
-					className='min-w-[40px]'
+					className="min-w-[40px]"
 				>
 					{pageNum}
 				</Button>
@@ -749,13 +749,13 @@ const AuditLogTable: React.FC = () => {
 
 	return (
 		<div>
-			<div className='flex justify-end items-center mb-4'>
-				<div className='flex items-center gap-2'>
-					<label className='text-sm text-muted-foreground'>Items per page:</label>
+			<div className="flex justify-end items-center mb-4">
+				<div className="flex items-center gap-2">
+					<label className="text-sm text-muted-foreground">Items per page:</label>
 					<select
 						value={pageSize}
 						onChange={e => handlePageSizeChange(Number(e.target.value))}
-						className='border rounded px-3 py-1 text-sm'
+						className="border rounded px-3 py-1 text-sm"
 					>
 						{[5, 10, 15, 20].map(size => (
 							<option key={size} value={size}>
@@ -767,11 +767,11 @@ const AuditLogTable: React.FC = () => {
 			</div>
 
 			{loading ? (
-				<div className='py-8 text-center'>Loading audit logs...</div>
+				<div className="py-8 text-center">Loading audit logs...</div>
 			) : error ? (
-				<ErrorAlert message={error} className='mb-4' />
+				<ErrorAlert message={error} className="mb-4" />
 			) : filteredLogs.length === 0 ? (
-				<div className='py-8 text-center text-muted-foreground'>No audit logs found.</div>
+				<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
 			) : (
 				<>
 					{/* Table */}
@@ -810,7 +810,7 @@ const AuditLogTable: React.FC = () => {
 											</Badge>
 										</TableCell>
 										<TableCell>
-											<Badge variant='secondary'>{log.resourceType}</Badge>
+											<Badge variant="secondary">{log.resourceType}</Badge>
 										</TableCell>
 										<TableCell>{log.resourceName || '-'}</TableCell>
 										<TableCell>{log.userName || '-'}</TableCell>
@@ -821,21 +821,21 @@ const AuditLogTable: React.FC = () => {
 					</Table>
 
 					{totalPages > 1 && (
-						<div className='flex justify-center items-center gap-3 mt-6 pt-4 border-t'>
+						<div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t">
 							<Button
-								variant='outline'
-								size='sm'
+								variant="outline"
+								size="sm"
 								onClick={() => handlePageChange(Math.max(1, page - 1))}
 								disabled={page === 1}
 							>
 								&larr; Previous
 							</Button>
 
-							<div className='flex items-center gap-2'>{renderPageNumbers()}</div>
+							<div className="flex items-center gap-2">{renderPageNumbers()}</div>
 
 							<Button
-								variant='outline'
-								size='sm'
+								variant="outline"
+								size="sm"
 								onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
 								disabled={page === totalPages}
 							>
@@ -940,7 +940,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 			<DialogTrigger asChild>
 				{children || (
 					<Button className={className}>
-						<Plus className='h-4 w-4 mr-2' />
+						<Plus className="h-4 w-4 mr-2" />
 						{triggerText}
 					</Button>
 				)}
@@ -952,57 +952,57 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 						Upload a secret file (SSH key or kubeconfig). It will be encrypted and stored securely.
 					</DialogDescription>
 				</DialogHeader>
-				<div className='space-y-3'>
-					<div className='space-y-2'>
-						<Label htmlFor='secret-name'>Secret name</Label>
+				<div className="space-y-3">
+					<div className="space-y-2">
+						<Label htmlFor="secret-name">Secret name</Label>
 						<Input
-							id='secret-name'
-							placeholder='My SSH Key'
+							id="secret-name"
+							placeholder="My SSH Key"
 							value={displayName}
 							onChange={e => setDisplayName(e.target.value)}
 						/>
 					</div>
-					<div className='space-y-2'>
-						<Label htmlFor='secret-type'>Type</Label>
+					<div className="space-y-2">
+						<Label htmlFor="secret-type">Type</Label>
 						<Select
 							value={secretType}
 							onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder='Select type' />
+								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='ssh'>SSH Key</SelectItem>
-								<SelectItem value='kubeconfig'>Kubeconfig</SelectItem>
+								<SelectItem value="ssh">SSH Key</SelectItem>
+								<SelectItem value="kubeconfig">Kubeconfig</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
 					<FileDropzone
-						id='secret-upload'
-						accept='*'
+						id="secret-upload"
+						accept="*"
 						loading={uploading}
 						onFile={handleFile}
 						multiple={false}
 					/>
 					{fileName && (
-						<div className='space-y-2'>
-							<div className='flex items-center gap-2 text-sm'>
+						<div className="space-y-2">
+							<div className="flex items-center gap-2 text-sm">
 								<span>
 									Selected: <b>{fileName}</b>
 								</span>
 								{isFileValid !== null &&
 									(isFileValid ? (
-										<Check className='h-4 w-4 text-green-600' />
+										<Check className="h-4 w-4 text-green-600" />
 									) : (
-										<X className='h-4 w-4 text-red-600' />
+										<X className="h-4 w-4 text-red-600" />
 									))}
 							</div>
 							{isFileValid === false && (
-								<div className='flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md'>
-									<X className='h-4 w-4 text-red-500 mt-0.5 flex-shrink-0' />
-									<div className='text-sm text-red-700'>
-										<p className='font-medium'>Invalid file format</p>
-										<p className='text-red-600 mt-1'>
+								<div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+									<X className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+									<div className="text-sm text-red-700">
+										<p className="font-medium">Invalid file format</p>
+										<p className="text-red-600 mt-1">
 											This file doesn't appear to be a valid secret file. Please ensure you're
 											uploading an SSH key or kubeconfig file.
 										</p>
@@ -1013,7 +1013,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 					)}
 				</div>
 				<DialogFooter>
-					<Button variant='ghost' onClick={() => setOpen(false)}>
+					<Button variant="ghost" onClick={() => setOpen(false)}>
 						Cancel
 					</Button>
 					<Button disabled={!fileName || isFileValid === false} onClick={handleSave}>
@@ -1099,25 +1099,25 @@ const SslKeysTable: React.FC = () => {
 		return () => window.removeEventListener('secrets-updated', handleSecretsUpdated);
 	}, []);
 
-	if (loading) return <div className='py-6 text-center'>Loading secrets...</div>;
-	if (error) return <div className='py-6 text-center text-red-600'>{error}</div>;
-	if (!secrets.length) return <div className='py-6 text-center text-muted-foreground'>No secrets added yet.</div>;
+	if (loading) return <div className="py-6 text-center">Loading secrets...</div>;
+	if (error) return <div className="py-6 text-center text-red-600">{error}</div>;
+	if (!secrets.length) return <div className="py-6 text-center text-muted-foreground">No secrets added yet.</div>;
 
 	return (
 		<>
-			<div className='relative w-full md:w-96 mb-4'>
+			<div className="relative w-full md:w-96 mb-4">
 				<Input
-					placeholder='Search by secret name or provider...'
+					placeholder="Search by secret name or provider..."
 					value={searchQuery}
 					onChange={e => setSearchQuery(e.target.value)}
-					className='pr-8'
+					className="pr-8"
 				/>
 
 				{searchQuery && (
 					<button
 						onClick={() => setSearchQuery('')}
-						className='absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600'
-						aria-label='Clear search'
+						className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+						aria-label="Clear search"
 					>
 						×
 					</button>
@@ -1135,7 +1135,7 @@ const SslKeysTable: React.FC = () => {
 				<TableBody>
 					{filteredSecrets.length === 0 ? (
 						<TableRow>
-							<TableCell colSpan={4} className='text-center text-gray-500'>
+							<TableCell colSpan={4} className="text-center text-gray-500">
 								No secrets match your search.
 							</TableCell>
 						</TableRow>
@@ -1151,26 +1151,26 @@ const SslKeysTable: React.FC = () => {
 									</Badge>
 								</TableCell>
 								<TableCell>
-									<div className='flex items-center gap-2'>
+									<div className="flex items-center gap-2">
 										<Button
-											variant='ghost'
-											size='sm'
-											className='text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors'
-											title='Edit secret'
+											variant="ghost"
+											size="sm"
+											className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+											title="Edit secret"
 											onClick={() => setEditingSecret(secret)}
 										>
-											<Edit className='h-4 w-4' />
+											<Edit className="h-4 w-4" />
 										</Button>
 										<AlertDialog>
 											<AlertDialogTrigger asChild>
 												<Button
-													variant='ghost'
-													size='sm'
-													className='text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors'
-													title='Delete SSL key'
+													variant="ghost"
+													size="sm"
+													className="text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+													title="Delete SSL key"
 													disabled={deleting === secret.id}
 												>
-													<Trash2 className='h-4 w-4' />
+													<Trash2 className="h-4 w-4" />
 												</Button>
 											</AlertDialogTrigger>
 											<AlertDialogContent>
@@ -1187,7 +1187,7 @@ const SslKeysTable: React.FC = () => {
 														Cancel
 													</AlertDialogCancel>
 													<AlertDialogAction
-														className='bg-red-600 hover:bg-red-700 focus:ring-red-400'
+														className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
 														disabled={deleting === secret.id}
 														onClick={() => handleDeleteSecret(secret.id)}
 													>
