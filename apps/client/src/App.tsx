@@ -1,5 +1,6 @@
 // src/App.tsx
 import React from "react";
+// import { Navbar } from "@/components/ui/Navbar"
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,47 +22,51 @@ import { Dashboard } from "@/components/Dashboard";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthGuard } from "./components/AuthGuard";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
-import {isEditor} from "./lib/auth";
+import { isEditor } from "./lib/auth";
 import { Navigate } from "react-router-dom";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPasswordByEmail from "./pages/ResetPasswordByEmail";
+//import your new Navbar
+import Navbar from "./components/ui/Navbar"
 
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+    <>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
 
-          <BrowserRouter>
-        
-            <AuthGuard>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/tv-mode" element={<TVMode />} />
-                <Route path="/providers" element={<Providers />} />
-                <Route path="/my-providers" element={!isEditor() ? <Navigate to="/" replace /> : <MyProviders />} />
-                <Route path="/integrations" element={<Integrations />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/alerts" element={<Alerts />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPasswordByEmail />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AuthGuard>
-          </BrowserRouter>
+            <BrowserRouter>
+              <Navbar />
+              <AuthGuard>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/tv-mode" element={<TVMode />} />
+                  <Route path="/providers" element={<Providers />} />
+                  <Route path="/my-providers" element={!isEditor() ? <Navigate to="/" replace /> : <MyProviders />} />
+                  <Route path="/integrations" element={<Integrations />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/alerts" element={<Alerts />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPasswordByEmail />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthGuard>
+            </BrowserRouter>
 
-         
-          <ScrollToTopButton  />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+
+            <ScrollToTopButton />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </>
   );
 };
 
