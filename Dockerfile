@@ -78,4 +78,4 @@ VOLUME ["/app/data/database", "/app/data/private-keys", "/app/config"]
 ENV NODE_ENV=production
 
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
-CMD ["sh", "-c", "serve -s /app/apps/client/dist -l 8080 & cd /app/apps/server && node dist/index.js"]
+CMD ["sh", "-c", "serve -s /app/apps/client/dist -l 8080 & cd /app/apps/server && node dist/vite-app.cjs"]
