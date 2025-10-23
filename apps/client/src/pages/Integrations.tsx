@@ -1,17 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { integrationApi } from '@/lib/api';
-import { canManageIntegrations, canDelete } from '@/lib/permissions';
-// Define IntegrationType locally until shared package export is fixed
-enum IntegrationType {
-  Grafana = 'Grafana',
-  Kibana = 'Kibana',
-  Datadog = 'Datadog',
-}
-import { useToast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -30,6 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
@@ -38,31 +29,41 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/components/ui/use-toast';
+import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
+import { integrationApi } from '@/lib/api';
+import { canDelete, canManageIntegrations } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
+import { Logger } from '@OpsiMate/shared';
 import {
-  Search,
-  X,
-  Plus,
-  ExternalLink,
-  Info,
-  Settings,
-  CheckCircle2,
+  Activity,
   AlertCircle,
-  Copy,
-  Server,
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  Cloud,
   Database,
+  ExternalLink,
+  Eye,
+  FileText,
+  Info,
   LineChart,
   Loader2,
-  Bell,
-  BarChart3,
-  Eye,
-  Activity,
-  FileText,
-  Cloud,
+  Plus,
+  Search,
+  Server,
+  Settings,
+  X
 } from 'lucide-react';
-import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
+import { useEffect, useMemo, useState } from 'react';
+
+const logger = new Logger('Integrations');
+// Define IntegrationType locally until shared package export is fixed
+enum IntegrationType {
+  Grafana = 'Grafana',
+  Kibana = 'Kibana',
+  Datadog = 'Datadog',
+}
 
 interface Integration {
   id: string;
@@ -315,7 +316,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNo
   },
 };
 
-export default function Integrations() {
+const Integrations = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -358,7 +359,7 @@ export default function Integrations() {
           setConfiguredInstances(instances);
         }
       } catch (error) {
-        console.error('Failed to fetch integrations:', error);
+        logger.error('Failed to fetch integrations:', error);
       }
     };
 
@@ -803,7 +804,7 @@ export default function Integrations() {
                             setSelectedIntegration(null);
                           }
                         } catch (error) {
-                          console.error('Error managing integration:', error);
+                          logger.error('Error managing integration:', error);
                           toast({
                             title: 'Error',
                             description: 'An unexpected error occurred',
@@ -1048,7 +1049,7 @@ export default function Integrations() {
                     });
                   }
                 } catch (error) {
-                  console.error('Error deleting integration:', error);
+                  logger.error('Error deleting integration:', error);
                   toast({
                     title: 'Error',
                     description: 'An unexpected error occurred',
@@ -1068,4 +1069,6 @@ export default function Integrations() {
       </AlertDialog>
     </>
   );
-}
+};
+
+export default Integrations;

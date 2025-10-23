@@ -1,6 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { integrationApi } from '@/lib/api';
+import { Logger } from '@OpsiMate/shared';
+import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
+
+const logger = new Logger('useIntegrationUrls');
 
 export const useIntegrationUrls = (integrationId: number | null, tags: string[]) => {
   return useQuery({
@@ -18,11 +21,11 @@ export const useIntegrationUrls = (integrationId: number | null, tags: string[])
           if (response.success && response.data) {
             return response.data;
           } else {
-            console.warn(`Failed to fetch dashboards for tag ${tagName}:`, response.error);
+            logger.warn(`Failed to fetch dashboards for tag ${tagName}:`, response.error);
             return [];
           }
         } catch (error) {
-          console.error(`Error fetching dashboards for tag ${tagName}:`, error);
+          logger.error(`Error fetching dashboards for tag ${tagName}:`, error);
           return [];
         }
       });

@@ -1,21 +1,15 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import {
-  AlertTriangle,
-  X,
-  Eye,
-  EyeOff,
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-} from 'lucide-react';
 import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
-import { Alert as SharedAlert } from '@OpsiMate/shared';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
+import { Logger, Alert as SharedAlert } from '@OpsiMate/shared';
+import {
+  ExternalLink,
+  X
+} from 'lucide-react';
+import { useState } from 'react';
+
+const logger = new Logger('AlertsSection');
 
 interface AlertsSectionProps {
   alerts: SharedAlert[];
@@ -42,7 +36,7 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
         });
       }
     } catch (error) {
-      console.error('Error dismissing alert:', error);
+      logger.error('Error dismissing alert:', error);
       toast({
         title: 'Error dismissing alert',
         description: 'An unexpected error occurred',

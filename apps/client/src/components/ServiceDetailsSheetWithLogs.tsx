@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { ExternalLink, X, RefreshCw } from 'lucide-react';
-import { Provider } from '@OpsiMate/shared';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useToast } from '@/hooks/use-toast';
+import { providerApi } from '@/lib/api';
 import { getProviderTypeName, getStatusBadgeColor } from '@/pages/MyProviders';
+import { Provider } from '@OpsiMate/shared';
+import { ExternalLink, RefreshCw, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ServiceConfig } from './AddServiceDialog';
 import { ServicesList } from './ServicesList';
-import { providerApi } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
 
 interface ServiceDetailsSheetProps {
   provider: Provider | null;

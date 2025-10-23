@@ -1,28 +1,31 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { Logger } from '@OpsiMate/shared';
+import {
+    ChevronDown,
+    ChevronUp,
+    Container,
+    MoreVertical,
+    Play,
+    RotateCcw,
+    Server,
+    Square,
+    Terminal,
+    Trash,
+} from 'lucide-react';
+import { useState } from 'react';
 import { ServiceConfig } from './AddServiceDialog';
 import {
-  ChevronDown,
-  ChevronUp,
-  Play,
-  Square,
-  RotateCcw,
-  Terminal,
-  Container,
-  Server,
-  MoreVertical,
-  Trash,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+
+const logger = new Logger('ServicesList');
 
 interface ServicesListProps {
   services: ServiceConfig[];
@@ -161,7 +164,7 @@ export const ServicesList = ({
                     <DropdownMenuItem
                       onClick={e => {
                         e.stopPropagation();
-                        console.log('Delete button clicked for service:', service.id);
+                        logger.info('Delete button clicked for service:', { extraArgs: { serviceId: service.id } });
                         // Close dropdown menu after clicking delete
                         setOpenMenuId(null);
                         // Call the delete handler

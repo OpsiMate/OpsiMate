@@ -1,9 +1,12 @@
+import { Logger } from '@OpsiMate/shared';
 import React, { useState } from 'react';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { apiRequest, API_BASE_URL } from '../lib/api';
-import { useFormErrors } from '../hooks/useFormErrors';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { useFormErrors } from '../hooks/useFormErrors';
+import { apiRequest } from '../lib/api';
+
+const logger = new Logger('Register');
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -40,7 +43,7 @@ const Register: React.FC = () => {
           window.location.href = '/';
         } else {
           // This shouldn't happen in normal flow, but handle it gracefully
-          console.error('Registration successful but no token received');
+          logger.error('Registration successful but no token received');
         }
       } else {
         handleApiResponse(res);

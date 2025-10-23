@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
+import { Plus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { CreateTagDialog } from './CreateTagDialog';
 import { DeleteTagDialog } from './DeleteTagDialog';
 import { TagBadge } from './ui/tag-badge';

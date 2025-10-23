@@ -1,4 +1,7 @@
+import { Logger } from '@OpsiMate/shared';
 import { jwtDecode } from 'jwt-decode';
+
+const logger = new Logger('auth');
 
 export interface JWTPayload {
   id: number;
@@ -15,7 +18,7 @@ export function getCurrentUser(): JWTPayload | null {
   try {
     return jwtDecode<JWTPayload>(token);
   } catch (error) {
-    console.error('Failed to decode JWT token:', error);
+    logger.error('Failed to decode JWT token:', error);
     return null;
   }
 }

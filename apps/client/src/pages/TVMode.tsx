@@ -1,48 +1,46 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Filters } from '@/components/Dashboard';
+import { Service } from '@/components/ServiceTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
-import {
-  Monitor,
-  X,
-  Server,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  HelpCircle,
-  Container,
-  Settings,
-  Wifi,
-  WifiOff,
-  Maximize,
-  Minimize,
-  RotateCcw,
-  Play,
-  Square,
-  MoreVertical,
-  Eye,
-  Clock,
-  RefreshCw,
-  Search,
-} from 'lucide-react';
-import { useServices, useAlerts, useStartService, useStopService } from '@/hooks/queries';
-import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Service } from '@/components/ServiceTable';
-import { Alert } from '@OpsiMate/shared';
-import { getAlertServiceId } from '@/utils/alert.utils';
-import { Filters } from '@/components/Dashboard';
+import { useAlerts, useServices, useStartService, useStopService } from '@/hooks/queries';
+import { useToast } from '@/hooks/use-toast';
 import { canOperate } from '@/lib/permissions.ts';
+import { cn } from '@/lib/utils';
+import { getAlertServiceId } from '@/utils/alert.utils';
+import { Logger } from '@OpsiMate/shared';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Container,
+  HelpCircle,
+  Maximize,
+  Minimize,
+  Monitor,
+  MoreVertical,
+  Play,
+  RotateCcw,
+  Search,
+  Server,
+  Settings,
+  Square,
+  Wifi,
+  WifiOff,
+  X,
+  XCircle
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+const logger = new Logger('TVMode');
 
 interface TVModeProps {
   autoRefresh?: boolean;
@@ -89,10 +87,10 @@ const TVMode = ({
     try {
       const filtersParam = searchParams.get('filters');
       const filters = filtersParam ? JSON.parse(filtersParam) : {};
-      console.log('TV Mode - Received filters:', filters);
+      logger.info('TV Mode - Received filters:', { extraArgs: { filters } });
       return filters;
     } catch (error) {
-      console.error('TV Mode - Error parsing filters:', error);
+      logger.error('TV Mode - Error parsing filters:', error);
       return {};
     }
   })();
@@ -133,7 +131,7 @@ const TVMode = ({
 
   // Enhanced alert calculation
   const servicesWithAlerts = useMemo(() => {
-    console.log('TV Mode - Total alerts available:', alerts.length);
+    logger.info('TV Mode - Total alerts available:', { extraArgs: { alertsCount: alerts.length } });
     return services.map(service => {
       const sid = Number(service.id);
 
@@ -151,9 +149,9 @@ const TVMode = ({
       const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed);
 
       if (activeAlerts.length > 0) {
-        console.log(
+        logger.info(
           `TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`,
-          activeAlerts
+          { extraArgs: { activeAlerts } }
         );
       }
 
@@ -168,7 +166,7 @@ const TVMode = ({
   // Apply saved view filters and search
   const baseFilteredServices = useMemo(() => {
     let filtered = servicesWithAlerts;
-    console.log('TV Mode - Starting with services:', filtered.length);
+    logger.info('TV Mode - Starting with services:', { extraArgs: { servicesCount: filtered.length } });
 
     // Apply search term
     if (searchTerm) {
@@ -181,7 +179,7 @@ const TVMode = ({
           (service.containerDetails?.image &&
             service.containerDetails.image.toLowerCase().includes(searchLower))
       );
-      console.log('TV Mode - After search filter:', filtered.length);
+      logger.info('TV Mode - After search filter:', { extraArgs: { servicesCount: filtered.length } });
     }
 
     // Apply saved filters
@@ -220,15 +218,15 @@ const TVMode = ({
     }
 
     if (savedFilters.tags && savedFilters.tags.length > 0) {
-      console.log('TV Mode - Applying tags filter:', savedFilters.tags);
+      logger.info('TV Mode - Applying tags filter:', { extraArgs: { tags: savedFilters.tags } });
       const beforeCount = filtered.length;
       filtered = filtered.filter(
         service => service.tags && service.tags.some(tag => savedFilters.tags!.includes(tag.name))
       );
-      console.log('TV Mode - After tags filter:', filtered.length, '(was', beforeCount, ')');
+      logger.info('TV Mode - After tags filter:', { extraArgs: { servicesCount: filtered.length, previousCount: beforeCount } });
     }
 
-    console.log('TV Mode - Final filtered services:', filtered.length);
+    logger.info('TV Mode - Final filtered services:', { extraArgs: { servicesCount: filtered.length } });
     return filtered;
   }, [servicesWithAlerts, searchTerm, savedFilters]);
 
@@ -355,7 +353,7 @@ const TVMode = ({
   }, []);
 
   // Manual refresh function with loading state
-  const handleManualRefresh = async () => {
+  const handleManualRefresh = useCallback(async () => {
     if (isRefreshing) return; // Prevent multiple simultaneous refreshes
 
     setIsRefreshing(true);
@@ -364,11 +362,11 @@ const TVMode = ({
       // Add a small delay to show the animation even if the request is very fast
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      logger.error('Error refreshing data:', error);
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [isRefreshing, refetch]);
 
   // Service action functions
   const handleStartService = async (service: Service) => {
@@ -380,7 +378,7 @@ const TVMode = ({
         description: `Successfully started ${service.name}`,
       });
     } catch (error) {
-      console.error(`Error starting service ${service.name}:`, error);
+      logger.error(`Error starting service ${service.name}:`, error);
       toast({
         title: 'Failed to Start Service',
         description: `Could not start ${service.name}. ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -398,7 +396,7 @@ const TVMode = ({
         description: `Successfully stopped ${service.name}`,
       });
     } catch (error) {
-      console.error(`Error stopping service ${service.name}:`, error);
+      logger.error(`Error stopping service ${service.name}:`, error);
       toast({
         title: 'Failed to Stop Service',
         description: `Could not stop ${service.name}. ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -425,7 +423,7 @@ const TVMode = ({
         description: `Successfully restarted ${service.name}`,
       });
     } catch (error) {
-      console.error(`Error restarting service ${service.name}:`, error);
+      logger.error(`Error restarting service ${service.name}:`, error);
       toast({
         title: 'Failed to Restart Service',
         description: `Could not restart ${service.name}. ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -435,7 +433,7 @@ const TVMode = ({
   };
 
   // Helper function to toggle state selection
-  const toggleStateSelection = (state: string) => {
+  const toggleStateSelection = useCallback((state: string) => {
     setSelectedStates(prev => {
       const newStates = new Set(prev);
       if (state === 'all') {
@@ -457,7 +455,7 @@ const TVMode = ({
 
       return newStates;
     });
-  };
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -520,7 +518,7 @@ const TVMode = ({
           setIsFullscreen(true);
         })
         .catch(err => {
-          console.error('Error attempting to enable fullscreen:', err);
+          logger.error('Error attempting to enable fullscreen:', err);
         });
     } else {
       document
@@ -529,7 +527,7 @@ const TVMode = ({
           setIsFullscreen(false);
         })
         .catch(err => {
-          console.error('Error attempting to exit fullscreen:', err);
+          logger.error('Error attempting to exit fullscreen:', err);
         });
     }
   };
@@ -549,7 +547,7 @@ const TVMode = ({
     return () => {
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(err => {
-          console.error('Error exiting fullscreen on TV Mode exit:', err);
+          logger.error('Error exiting fullscreen on TV Mode exit:', err);
         });
       }
     };

@@ -1,6 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { viewsApi } from '@/lib/api';
+import { Logger } from '@OpsiMate/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
+
+const logger = new Logger('useActiveView');
 
 const ACTIVE_VIEW_STORAGE_KEY = 'OpsiMate-active-view-id';
 
@@ -29,13 +32,13 @@ export const useActiveView = () => {
         }
 
         // For other API errors, fall back to localStorage
-        console.warn('API get active view failed, falling back to localStorage', response.error);
+        logger.warn('API get active view failed, falling back to localStorage', response.error);
         const localStorageViewId = localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY);
 
         // If no active view is set, return the default view ID
         return localStorageViewId || 'default-view';
       } catch (error) {
-        console.error('Failed to get active view ID:', error);
+        logger.error('Failed to get active view ID:', error);
         // Return default view ID as fallback
         return 'default-view';
       }
@@ -49,7 +52,7 @@ export const useActiveView = () => {
         const response = await viewsApi.setActiveView(viewId);
 
         if (!response.success) {
-          console.warn('API set active view failed, falling back to localStorage', response.error);
+          logger.warn('API set active view failed, falling back to localStorage', response.error);
           // Fall back to localStorage
           localStorage.setItem(ACTIVE_VIEW_STORAGE_KEY, viewId);
         }

@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+import { useFormErrors } from '../hooks/useFormErrors';
+import { apiRequest } from '../lib/api';
+import { User } from '../types';
+import { ErrorAlert } from './ErrorAlert';
 import { Button } from './ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { User } from '../types';
-import { apiRequest } from '../lib/api';
-import { useFormErrors } from '../hooks/useFormErrors';
-import { ErrorAlert } from './ErrorAlert';
 
 interface EditUserModalProps {
   user: User | null;
@@ -89,7 +89,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [isOpen, saving, fullName, email]);
+  }, [isOpen, saving, fullName, email, handleClose, handleSave]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

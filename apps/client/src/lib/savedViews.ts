@@ -1,5 +1,8 @@
 import { SavedView } from '@/types/SavedView';
+import { Logger } from '@OpsiMate/shared';
 import { viewsApi } from './api';
+
+const logger = new Logger('savedViews');
 
 const STORAGE_KEY = 'OpsiMate-saved-views';
 
@@ -14,12 +17,12 @@ export async function getSavedViews(): Promise<SavedView[]> {
     }
 
     // Fall back to localStorage if API fails
-    console.warn('API call failed, falling back to localStorage', response.error);
+    logger.warn('API call failed, falling back to localStorage', response.error);
     const savedViewsJson = localStorage.getItem(STORAGE_KEY);
     if (!savedViewsJson) return [];
     return JSON.parse(savedViewsJson);
   } catch (error) {
-    console.error('Failed to load saved views:', error);
+    logger.error('Failed to load saved views:', error);
     return [];
   }
 }
@@ -30,7 +33,7 @@ export async function saveView(view: SavedView): Promise<void> {
     const response = await viewsApi.saveView(view);
 
     if (!response.success) {
-      console.warn('API save failed, falling back to localStorage', response.error);
+      logger.warn('API save failed, falling back to localStorage', response.error);
       // Fall back to localStorage
       const savedViews = await getSavedViews();
       const existingIndex = savedViews.findIndex(v => v.id === view.id);
@@ -46,7 +49,7 @@ export async function saveView(view: SavedView): Promise<void> {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(savedViews));
     }
   } catch (error) {
-    console.error('Failed to save view:', error);
+    logger.error('Failed to save view:', error);
   }
 }
 
@@ -58,7 +61,7 @@ export async function deleteView(viewId: string): Promise<boolean> {
 
     // Don't allow deletion of default views
     if (viewToDelete?.isDefault) {
-      console.warn('Cannot delete default view');
+      logger.warn('Cannot delete default view');
       return false;
     }
 
@@ -66,7 +69,7 @@ export async function deleteView(viewId: string): Promise<boolean> {
     const response = await viewsApi.deleteView(viewId);
 
     if (!response.success) {
-      console.warn('API delete failed, falling back to localStorage', response.error);
+      logger.warn('API delete failed, falling back to localStorage', response.error);
       // Fall back to localStorage
       const updatedViews = savedViews.filter(view => view.id !== viewId);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedViews));
@@ -74,7 +77,7 @@ export async function deleteView(viewId: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('Failed to delete view:', error);
+    logger.error('Failed to delete view:', error);
     return false;
   }
 }
@@ -96,13 +99,13 @@ export async function getActiveViewId(): Promise<string | undefined> {
     }
 
     // For other API errors, fall back to localStorage
-    console.warn('API get active view failed, falling back to localStorage', response.error);
+    logger.warn('API get active view failed, falling back to localStorage', response.error);
     const localStorageViewId = localStorage.getItem('OpsiMate-active-view-id');
 
     // If no active view is set, return the default view ID
     return localStorageViewId || 'default-view';
   } catch (error) {
-    console.error('Failed to get active view ID:', error);
+    logger.error('Failed to get active view ID:', error);
     // Return default view ID as fallback
     return 'default-view';
   }
@@ -115,7 +118,7 @@ export async function setActiveViewId(viewId: string | undefined): Promise<void>
       const response = await viewsApi.setActiveView(viewId);
 
       if (!response.success) {
-        console.warn('API set active view failed, falling back to localStorage', response.error);
+        logger.warn('API set active view failed, falling back to localStorage', response.error);
         // Fall back to localStorage
         localStorage.setItem('OpsiMate-active-view-id', viewId);
       }
@@ -124,6 +127,6 @@ export async function setActiveViewId(viewId: string | undefined): Promise<void>
       localStorage.removeItem('OpsiMate-active-view-id');
     }
   } catch (error) {
-    console.error('Failed to set active view ID:', error);
+    logger.error('Failed to set active view ID:', error);
   }
 }

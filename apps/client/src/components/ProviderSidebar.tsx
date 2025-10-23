@@ -1,35 +1,37 @@
 import { Button } from '@/components/ui/button';
+import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { X, Loader2, CheckCircle2, XCircle, Check } from 'lucide-react';
-import { ProviderType } from '@/pages/Providers';
-import { useToast } from '@/hooks/use-toast';
-import { useForm, Controller, SubmitHandler, Control } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { providerApi } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useNavigate } from 'react-router-dom';
-import { FileDropzone } from '@/components/ui/file-dropzone';
+import { useToast } from '@/hooks/use-toast';
+import { providerApi } from '@/lib/api';
 import { getSecretsFromServer } from '@/lib/sslKeys';
-import { SecretMetadata } from '@OpsiMate/shared';
+import { ProviderType } from '@/pages/Providers';
 import { AddSecretButton } from '@/pages/Settings';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Logger, SecretMetadata } from '@OpsiMate/shared';
+import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Control, Controller, SubmitHandler, useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
+
+const logger = new Logger('ProviderSidebar');
 
 // --- FORM SCHEMAS ---
 
@@ -167,7 +169,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
         setKeys(sshSecrets);
         setError(null);
       } catch (err) {
-        console.error('Error loading SSH keys:', err);
+        logger.error('Error loading SSH keys:', err);
         setError('Failed to load SSH keys');
       } finally {
         setLoading(false);
@@ -244,7 +246,7 @@ const KubeconfigSelector = ({
       setKeys(kubeconfigSecrets);
       setError(null);
     } catch (err) {
-      console.error('Error loading kubeconfig keys:', err);
+      logger.error('Error loading kubeconfig keys:', err);
       setError('Failed to load kubeconfig keys');
     } finally {
       setLoading(false);
@@ -748,7 +750,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
             throw new Error(response.error || 'Failed to create provider');
           }
         } catch (error) {
-          console.error('Error creating server provider:', error);
+          logger.error('Error creating server provider:', error);
           toast({
             title: 'Error adding provider',
             description:
@@ -799,7 +801,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
             throw new Error(response.error || 'Failed to create provider');
           }
         } catch (error) {
-          console.error('Error creating server provider:', error);
+          logger.error('Error creating server provider:', error);
           toast({
             title: 'Error adding provider',
             description:

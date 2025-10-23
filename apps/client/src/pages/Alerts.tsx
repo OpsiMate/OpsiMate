@@ -1,24 +1,24 @@
-import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useState, useMemo } from 'react';
-import { Alert } from '@OpsiMate/shared';
-import { ExternalLink, X, RotateCcw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
+import { useToast } from '@/hooks/use-toast';
 import { getAlertServiceId } from '@/utils/alert.utils.ts';
+import { Alert } from '@OpsiMate/shared';
+import { ExternalLink, RotateCcw, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-export default function Alerts() {
+const Alerts = () => {
   const { data: alerts = [], isLoading } = useAlerts();
   const dismissAlertMutation = useDismissAlert();
   const undismissAlertMutation = useUndismissAlert();
@@ -201,4 +201,6 @@ export default function Alerts() {
       </div>
     </DashboardLayout>
   );
-}
+};
+
+export default Alerts;

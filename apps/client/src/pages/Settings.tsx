@@ -1,29 +1,29 @@
 import { EditSecretDialog } from '@/components/EditSecretDialog';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
-import { AuditLog, SecretMetadata } from '@OpsiMate/shared';
+import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
 import {
-    Check,
-    Edit,
-    FileText,
-    KeyRound,
-    Plus,
-    Settings as SettingsIcon,
-    Trash2,
-    Users,
-    X,
+  Check,
+  Edit,
+  FileText,
+  KeyRound,
+  Plus,
+  Settings as SettingsIcon,
+  Trash2,
+  Users,
+  X,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
@@ -33,39 +33,41 @@ import { EditUserModal } from '../components/EditUserModal';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from '../components/ui/alert-dialog';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '../components/ui/select';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest, auditApi } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
 import { Role, User } from '../types';
+
+const logger = new Logger('Settings');
 const PAGE_SIZE = 20;
 
 const Settings: React.FC = () => {
@@ -870,7 +872,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
         });
       }
     } catch (error) {
-      console.error('Error creating SSL key:', error);
+      logger.error('Error creating SSL key:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred while creating the secret',
@@ -1013,7 +1015,7 @@ const SslKeysTable: React.FC = () => {
       setSecrets(secretsData);
       setError(null);
     } catch (error) {
-      console.error('Error loading secrets:', error);
+      logger.error('Error loading secrets:', error);
       setError('Failed to load secrets');
     } finally {
       setLoading(false);
@@ -1038,7 +1040,7 @@ const SslKeysTable: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error deleting SSL key:', error);
+      logger.error('Error deleting SSL key:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred while deleting the secret',

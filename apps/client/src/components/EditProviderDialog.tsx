@@ -1,25 +1,27 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Provider, SecretMetadata } from '@OpsiMate/shared';
-import { Container, Server } from 'lucide-react';
 import { getSecretsFromServer } from '@/lib/sslKeys';
+import { Logger, Provider, SecretMetadata } from '@OpsiMate/shared';
+import { Container, Server } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+const logger = new Logger('EditProviderDialog');
 
 interface EditProviderDialogProps {
   provider: Provider | null;
@@ -74,7 +76,7 @@ export const EditProviderDialog = ({
       const secretsData = await getSecretsFromServer();
       setSecrets(secretsData);
     } catch (error) {
-      console.error('Error loading secrets:', error);
+      logger.error('Error loading secrets:', error);
     } finally {
       setSecretsLoading(false);
     }
@@ -184,7 +186,7 @@ export const EditProviderDialog = ({
       await onSave(provider.id.toString(), submitData);
       onClose();
     } catch (error) {
-      console.error('Error updating provider:', error);
+      logger.error('Error updating provider:', error);
     } finally {
       setIsLoading(false);
     }

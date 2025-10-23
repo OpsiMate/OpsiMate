@@ -1,27 +1,15 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
-import { providerApi } from '../lib/api';
+import { AddServiceDialog, ServiceConfig } from '@/components/AddServiceDialog';
+import { RightSidebarWithLogs } from '@/components/RightSidebarWithLogs';
+import type { Service } from '@/components/ServiceTable';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/hooks/queries';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuPortal,
-} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -30,35 +18,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
-  Server,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { queryKeys } from '@/hooks/queries';
+import { useToast } from '@/hooks/use-toast';
+import { Logger, Provider as SharedProvider } from '@OpsiMate/shared';
+import { useQueryClient } from '@tanstack/react-query';
+import {
   Cloud,
-  Database,
-  Globe,
-  MoreVertical,
-  Search,
-  Plus,
-  Trash,
-  RefreshCw,
-  Settings,
-  ListPlus,
-  Edit,
   Container,
-  ChevronDown,
-  ChevronUp,
+  Database,
+  Edit,
+  ListPlus,
+  MoreVertical,
   Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
   Square,
   Terminal,
+  Trash
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { canManageProviders, canDelete } from '../lib/permissions';
-import { Provider as SharedProvider } from '@OpsiMate/shared';
-import { AddServiceDialog, ServiceConfig } from '@/components/AddServiceDialog';
-import { RightSidebarWithLogs } from '@/components/RightSidebarWithLogs';
-import type { Service } from '@/components/ServiceTable';
+import { DashboardLayout } from '../components/DashboardLayout';
+import { providerApi } from '../lib/api';
+import { canDelete, canManageProviders } from '../lib/permissions';
+
+const logger = new Logger('MyProviders');
 
 interface Provider extends SharedProvider {
   services?: ServiceConfig[];
@@ -212,7 +208,7 @@ export const MyProviders = () => {
         setProviderInstances(mockProviderInstances);
       }
     } catch (error) {
-      console.error('Error loading providers:', error);
+      logger.error('Error loading providers:', error);
       toast({
         title: 'Error loading providers',
         description: 'There was a problem loading your providers',
@@ -267,7 +263,7 @@ export const MyProviders = () => {
         setProviderInstances(updatedProviders);
       }
     } catch (error) {
-      console.error('Error loading all provider services:', error);
+      logger.error('Error loading all provider services:', error);
       toast({
         title: 'Error loading services',
         description: 'There was a problem loading services for your providers',
@@ -301,7 +297,7 @@ export const MyProviders = () => {
   });
 
   useEffect(() => {
-    console.log(providerInstances);
+    logger.info('Provider instances:', { extraArgs: { providerInstances } });
   }, [providerInstances]);
 
   const handleRefreshProvider = async (id: string) => {
@@ -356,7 +352,7 @@ export const MyProviders = () => {
         throw new Error('Failed to refresh provider');
       }
     } catch (error) {
-      console.error('Error refreshing provider:', error);
+      logger.error('Error refreshing provider:', error);
       toast({
         title: 'Error refreshing',
         description: 'There was a problem updating the provider status',
@@ -403,7 +399,7 @@ export const MyProviders = () => {
         setProviderInstances(updatedProviders);
       }
     } catch (error) {
-      console.error('Error fetching services for provider:', error);
+      logger.error('Error fetching services for provider:', error);
       toast({
         title: 'Error loading services',
         description: 'There was a problem loading services for this provider',
@@ -463,7 +459,7 @@ export const MyProviders = () => {
         2000
       );
     } catch (error) {
-      console.error(`Error ${action}ing service:`, error);
+      logger.error(`Error ${action}ing service:`, error);
       toast({
         title: `Error ${action}ing service`,
         description: error instanceof Error ? error.message : `Failed to ${action} service`,
@@ -483,7 +479,7 @@ export const MyProviders = () => {
         }
         return provider;
       });
-      console.log('Updated providers after service addition:', updatedProviders);
+      logger.info('Updated providers after service addition:', { extraArgs: { updatedProviders } });
       return updatedProviders;
     });
   };
@@ -498,7 +494,7 @@ export const MyProviders = () => {
         description: `${service.name} has been successfully added`,
       });
     } catch (error) {
-      console.error('Error adding service:', error);
+      logger.error('Error adding service:', error);
       toast({
         title: 'Error adding service',
         description: 'There was a problem adding the service',
@@ -555,7 +551,7 @@ export const MyProviders = () => {
         setSelectedProvider(updatedSelectedProvider);
       }
     } catch (error) {
-      console.error('Error updating service status:', error);
+      logger.error('Error updating service status:', error);
       toast({
         title: 'Error updating service',
         description:
@@ -581,7 +577,7 @@ export const MyProviders = () => {
         }
         return provider;
       });
-      console.log('Updated providers after service deletion:', updatedProviders);
+      logger.info('Updated providers after service deletion:', { extraArgs: { updatedProviders } });
       return updatedProviders;
     });
   };
@@ -621,7 +617,7 @@ export const MyProviders = () => {
         throw new Error(response.error || 'Failed to delete service');
       }
     } catch (error) {
-      console.error('Error deleting service:', error);
+      logger.error('Error deleting service:', error);
       toast({
         title: 'Error deleting service',
         description:
@@ -654,7 +650,7 @@ export const MyProviders = () => {
         throw new Error(response.error || 'Failed to delete provider');
       }
     } catch (error) {
-      console.error('Error deleting provider:', error);
+      logger.error('Error deleting provider:', error);
       toast({
         title: 'Error deleting provider',
         description: 'There was a problem deleting your provider.',
@@ -712,7 +708,7 @@ export const MyProviders = () => {
         throw new Error(response.error || 'Failed to update provider');
       }
     } catch (error) {
-      console.error('Error updating provider:', error);
+      logger.error('Error updating provider:', error);
       toast({
         title: 'Error updating provider',
         description: 'There was a problem updating your provider.',

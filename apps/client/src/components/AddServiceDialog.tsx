@@ -1,8 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -11,12 +8,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
-import { Loader2, RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
-import { DiscoveredService, ServiceWithProvider } from '@OpsiMate/shared';
+import { cn } from '@/lib/utils';
+import { DiscoveredService, Logger, ServiceWithProvider } from '@OpsiMate/shared';
+import { AlertCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 // Define service types
 export interface ServiceConfig {
@@ -31,6 +31,9 @@ export interface ServiceConfig {
     created?: string;
   };
 }
+
+// Logger instance
+const logger = new Logger('AddServiceDialog');
 
 // Container interface
 interface Container {
@@ -103,11 +106,11 @@ export const AddServiceDialog = ({
         setExistingServices(providerServices);
         return providerServices;
       } else {
-        console.error('Failed to fetch existing services');
+        logger.error('Failed to fetch existing services');
         return [];
       }
     } catch (err) {
-      console.error('Error fetching existing services:', err);
+      logger.error('Error fetching existing services:', err);
       return [];
     }
   };
@@ -155,7 +158,7 @@ export const AddServiceDialog = ({
         setContainers([]);
       }
     } catch (err) {
-      console.error(`Error fetching ${isKubernetes ? 'pods' : 'containers'}:`, err);
+      logger.error(`Error fetching ${isKubernetes ? 'pods' : 'containers'}:`, err);
       setError(`Error loading ${isKubernetes ? 'pods' : 'containers'}. Please try again.`);
       setContainers([]);
     } finally {
@@ -212,11 +215,11 @@ export const AddServiceDialog = ({
         serviceType: 'SYSTEMD' as const,
         serviceStatus: 'unknown' as const,
       };
-      console.log('Creating systemd service with data:', serviceData);
+      logger.info('Creating systemd service with data:', { extraArgs: { serviceData } });
 
       const response = await providerApi.createService(serviceData);
 
-      console.log('Create systemd service response:', response);
+      logger.info('Create systemd service response:', { extraArgs: { response } });
 
       if (response.success && response.data) {
         // Create UI service object from API response
@@ -227,7 +230,7 @@ export const AddServiceDialog = ({
           status: response.data.serviceStatus as 'running' | 'stopped' | 'error' | 'unknown',
         };
 
-        console.log('Service status from server:', response.data.serviceStatus);
+        logger.info('Service status from server:', { extraArgs: { serviceStatus: response.data.serviceStatus } });
 
         onServiceAdded(newService);
         setServiceName('');
@@ -245,7 +248,7 @@ export const AddServiceDialog = ({
         });
       }
     } catch (err) {
-      console.error('Error adding systemd service:', err);
+      logger.error('Error adding systemd service:', err);
       toast({
         title: 'Error adding systemd service',
         description: 'An unexpected error occurred',
@@ -253,6 +256,29 @@ export const AddServiceDialog = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const removeService = async (container: Container & {
+    id: string;
+    selected: boolean;
+    name: string;
+    created: string;
+    alreadyAdded?: boolean;
+    existingServiceId?: number;
+  }, removedServices: string[], failedOperations: string[]) => {
+    if (!container.existingServiceId) return;
+
+    try {
+      const response = await providerApi.deleteService(container.existingServiceId);
+      if (response.success) {
+        removedServices.push(container.name);
+      } else {
+        failedOperations.push(`Failed to remove ${container.name}`);
+      }
+    } catch (error) {
+      logger.error(`Error removing service ${container.name}:`, error);
+      failedOperations.push(`Failed to remove ${container.name}`);
     }
   };
 
@@ -280,19 +306,7 @@ export const AddServiceDialog = ({
 
       // Handle service removals (deselected previously added services)
       for (const container of deselectedContainers) {
-        if (container.existingServiceId) {
-          try {
-            const response = await providerApi.deleteService(container.existingServiceId);
-            if (response.success) {
-              removedServices.push(container.name);
-            } else {
-              failedOperations.push(`Failed to remove ${container.name}`);
-            }
-          } catch (error) {
-            console.error(`Error removing service ${container.name}:`, error);
-            failedOperations.push(`Failed to remove ${container.name}`);
-          }
-        }
+        await removeService(container, removedServices, failedOperations);
       }
 
       // Handle service additions (selected new services)
@@ -336,7 +350,7 @@ export const AddServiceDialog = ({
             failedOperations.push(`Failed to add ${container.name}`);
           }
         } catch (error) {
-          console.error(`Error creating service for container ${container.name}:`, error);
+          logger.error(`Error creating service for container ${container.name}:`, error);
           failedOperations.push(`Failed to add ${container.name}`);
         }
       }
@@ -377,7 +391,7 @@ export const AddServiceDialog = ({
         });
       }
     } catch (err) {
-      console.error('Error managing services:', err);
+      logger.error('Error managing services:', err);
       toast({
         title: 'Error managing services',
         description: 'An unexpected error occurred',

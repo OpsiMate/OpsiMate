@@ -1,21 +1,20 @@
+import { useToast } from '@/hooks/use-toast';
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+import { useFormErrors } from '../hooks/useFormErrors';
+import { apiRequest } from '../lib/api';
+import { User } from '../types';
+import { ErrorAlert } from './ErrorAlert';
 import { Button } from './ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { User } from '../types';
-import { apiRequest } from '../lib/api';
-import { useFormErrors } from '../hooks/useFormErrors';
-import { ErrorAlert } from './ErrorAlert';
-import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
 
 interface ResetPasswordModalProps {
   user: User | null;
@@ -114,7 +113,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, resetting, newPassword, confirmPassword]);
+  }, [isOpen, resetting, newPassword, confirmPassword, handleClose, handleReset]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

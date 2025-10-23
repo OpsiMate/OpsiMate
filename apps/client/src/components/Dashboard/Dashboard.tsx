@@ -1,34 +1,36 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
-import { ServiceTable, Service } from '@/components/ServiceTable';
-import { RightSidebarWithLogs as RightSidebar } from '@/components/RightSidebarWithLogs';
 import { ActionButtons } from '@/components/ActionButtons';
-import { TableSettingsModal } from '@/components/TableSettingsModal';
 import { AddServiceModal } from '@/components/AddServiceModal';
-import { FilterPanel } from './FilterPanel';
-import { useServiceFilters } from './useServiceFilters';
+import { RightSidebarWithLogs as RightSidebar } from '@/components/RightSidebarWithLogs';
 import { SavedViewsManager } from '@/components/SavedViewsManager';
-import { DashboardLayout } from '../DashboardLayout';
-import { SavedView } from '@/types/SavedView';
-import {
-  useServices,
-  useAlerts,
-  useStartService,
-  useStopService,
-  useDismissAlert,
-  useSaveView,
-  useDeleteView,
-  useViews,
-  useActiveView,
-  useCustomFields,
-} from '@/hooks/queries';
-import { Alert } from '@OpsiMate/shared';
+import { Service, ServiceTable } from '@/components/ServiceTable';
+import { TableSettingsModal } from '@/components/TableSettingsModal';
 import { TVModeLauncher } from '@/components/TVModeLauncher';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    useActiveView,
+    useAlerts,
+    useCustomFields,
+    useDeleteView,
+    useDismissAlert,
+    useSaveView,
+    useServices,
+    useStartService,
+    useStopService,
+    useViews,
+} from '@/hooks/queries';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { SavedView } from '@/types/SavedView';
 import { getAlertServiceId } from '@/utils/alert.utils';
+import { Logger } from '@OpsiMate/shared';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { DashboardLayout } from '../DashboardLayout';
+import { FilterPanel } from './FilterPanel';
+import { useServiceFilters } from './useServiceFilters';
+
+const logger = new Logger('Dashboard');
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -109,14 +111,14 @@ export const Dashboard = () => {
 
   // Enhanced alert calculation: each service gets alerts for ALL its tags
   const servicesWithAlerts = useMemo(() => {
-    console.log('Debug - Services:', services.length, 'Alerts:', alerts.length);
+    logger.info('Debug - Services:', { extraArgs: { servicesCount: services.length, alertsCount: alerts.length } });
     return services.map(service => {
-      console.log(`Service ${service.name} tags:`, service.tags?.map(t => t.name) || []);
+      logger.info(`Service ${service.name} tags:`, { extraArgs: { tags: service.tags?.map(t => t.name) || [] } });
 
       const sid = Number(service.id);
       // Get all unique alerts that match any of the service's tags (including dismissed)
       const serviceAlerts = alerts.filter(alert => {
-        console.log(
+        logger.info(
           `Checking alert ${alert.id} (tag: ${alert.tag}) against service ${service.name}`
         );
         const explicitSid = getAlertServiceId(alert);
@@ -124,7 +126,7 @@ export const Dashboard = () => {
           explicitSid !== undefined
             ? explicitSid === sid
             : service.tags?.some(tag => tag.name === alert.tag);
-        console.log(`Match result: ${matches}`);
+        logger.info(`Match result: ${matches}`);
         return matches;
       });
 
@@ -136,7 +138,7 @@ export const Dashboard = () => {
       // Count only non-dismissed alerts for the badge count
       const activeAlerts = uniqueAlerts.filter(a => !a.isDismissed);
 
-      console.log(
+      logger.info(
         `Service ${service.name} final result: ${activeAlerts.length} active, ${uniqueAlerts.length - activeAlerts.length} dismissed`
       );
 
@@ -240,7 +242,7 @@ export const Dashboard = () => {
       await setActiveView(view.id);
       return Promise.resolve();
     } catch (error) {
-      console.error('Error saving view:', error);
+      logger.error('Error saving view:', error);
       return Promise.reject(error);
     }
   };
@@ -258,7 +260,7 @@ export const Dashboard = () => {
         description: 'The saved view has been deleted.',
       });
     } catch (error) {
-      console.error('Error deleting view:', error);
+      logger.error('Error deleting view:', error);
       toast({
         title: 'Error',
         description: 'Failed to delete view',
@@ -283,7 +285,7 @@ export const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Error applying view:', error);
+      logger.error('Error applying view:', error);
       toast({
         title: 'Error',
         description: 'Failed to apply view',
@@ -349,7 +351,7 @@ export const Dashboard = () => {
           successCount++;
         } catch (error) {
           failureCount++;
-          console.error(`Error starting service ${service.name}:`, error);
+          logger.error(`Error starting service ${service.name}:`, error);
         }
       }
 
@@ -394,7 +396,7 @@ export const Dashboard = () => {
           successCount++;
         } catch (error) {
           failureCount++;
-          console.error(`Error stopping service ${service.name}:`, error);
+          logger.error(`Error stopping service ${service.name}:`, error);
         }
       }
 
@@ -444,7 +446,7 @@ export const Dashboard = () => {
           successCount++;
         } catch (error) {
           failureCount++;
-          console.error(`Error restarting service ${service.name}:`, error);
+          logger.error(`Error restarting service ${service.name}:`, error);
         }
       }
 
@@ -474,7 +476,7 @@ export const Dashboard = () => {
     try {
       await dismissAlertMutation.mutateAsync(alertId);
     } catch (error) {
-      console.error('Error dismissing alert:', error);
+      logger.error('Error dismissing alert:', error);
       toast({
         title: 'Error',
         description: 'Failed to dismiss alert',

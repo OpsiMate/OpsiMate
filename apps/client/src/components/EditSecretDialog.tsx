@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+import { Logger, SecretMetadata } from '@OpsiMate/shared';
+import { useEffect, useState } from 'react';
+import { useToast } from '../hooks/use-toast';
+import { updateSecretOnServer } from '../lib/sslKeys';
 import { Button } from './ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from './ui/dialog';
+import { FileDropzone } from './ui/file-dropzone';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileDropzone } from './ui/file-dropzone';
-import { useToast } from '../hooks/use-toast';
-import { updateSecretOnServer } from '../lib/sslKeys';
-import { SecretMetadata } from '@OpsiMate/shared';
+
+const logger = new Logger('EditSecretDialog');
 
 interface EditSecretDialogProps {
   secret: SecretMetadata;
@@ -81,7 +83,7 @@ export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecre
         });
       }
     } catch (error) {
-      console.error('Error updating secret:', error);
+      logger.error('Error updating secret:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred while updating the secret',

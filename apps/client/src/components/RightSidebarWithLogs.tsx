@@ -4,27 +4,29 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Alert, Tag, ServiceCustomField } from '@OpsiMate/shared';
+import { Alert, Logger, Tag } from '@OpsiMate/shared';
 import {
-  Activity,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-  FileText,
-  Package,
-  RefreshCw,
-  Server,
-  Tag as TagIcon,
-  X,
+    Activity,
+    AlertTriangle,
+    ChevronDown,
+    ChevronRight,
+    ExternalLink,
+    FileText,
+    Package,
+    RefreshCw,
+    Server,
+    Tag as TagIcon,
+    X,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCustomFields, useUpsertCustomFieldValue } from '../hooks/queries/custom-fields';
 import { AlertsSection } from './AlertsSection';
+import { EditableCustomField } from './EditableCustomField';
 import { IntegrationDashboardDropdown } from './IntegrationDashboardDropdown';
 import { Service } from './ServiceTable';
 import { TagSelector } from './TagSelector';
-import { EditableCustomField } from './EditableCustomField';
-import { useCustomFields, useUpsertCustomFieldValue } from '../hooks/queries/custom-fields';
+
+const logger = new Logger('RightSidebarWithLogs');
 
 interface RightSidebarProps {
   service: Service | null;
@@ -76,7 +78,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
         value: value,
       });
     } catch (error) {
-      console.error('Failed to update custom field value:', error);
+      logger.error('Failed to update custom field value:', error);
       throw error; // Re-throw to let EditableCustomField handle the error
     }
   };

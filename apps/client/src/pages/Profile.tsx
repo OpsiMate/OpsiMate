@@ -1,5 +1,6 @@
-import { User as UserType } from '@OpsiMate/shared';
-import { Lock, LogOut, Save, User, X, Sun, Moon } from 'lucide-react';
+import { Logger, User as UserType } from '@OpsiMate/shared';
+import { Lock, LogOut, Moon, Save, Sun, User, X } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ErrorAlert } from '../components/ErrorAlert';
@@ -9,7 +10,8 @@ import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
-import { useTheme } from 'next-themes';
+
+const logger = new Logger('Profile');
 
 interface UserProfile {
   id: number;
@@ -54,7 +56,7 @@ const Profile: React.FC = () => {
           setFormData(prev => ({ ...prev, fullName: response.data.fullName }));
         } else {
           // Fallback to JWT data if server request fails
-          console.warn('Failed to fetch user profile from server, using JWT data as fallback');
+          logger.warn('Failed to fetch user profile from server, using JWT data as fallback');
           setProfile({
             id: currentUser.id,
             email: currentUser.email,
@@ -159,7 +161,7 @@ const Profile: React.FC = () => {
         }));
 
         // Show success message (you might want to add a toast here)
-        console.log('Profile updated successfully');
+        logger.info('Profile updated successfully');
       } else {
         handleApiResponse(response);
       }

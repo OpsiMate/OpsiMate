@@ -57,7 +57,7 @@ async function apiRequest<T>(
   }
 
   try {
-    logger.debug(`API Request: ${method} ${url}`, data ? { data } : '');
+    logger.debug(`API Request: ${method} ${url}`, data ? { extraArgs: { data } } : undefined);
     const response = await fetch(url, options);
 
     if (!response.ok) {
@@ -155,6 +155,8 @@ export const providerApi = {
           username: string;
           privateKeyFilename: string;
           providerType: string;
+          SSHPort: number;
+          createdAt: string;
         }>;
       }>('/providers');
 
@@ -168,6 +170,8 @@ export const providerApi = {
             username: string;
             privateKeyFilename: string;
             providerType: string;
+            SSHPort: number;
+            createdAt: string;
           }) => ({
             id: provider.id,
             name: provider.name,
