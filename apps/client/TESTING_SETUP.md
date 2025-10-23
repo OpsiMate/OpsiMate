@@ -48,10 +48,10 @@ Added to `package.json`:
 
 ```json
 {
-  "test": "vitest", // Watch mode
-  "test:ui": "vitest --ui", // UI mode
-  "test:run": "vitest run", // Single run
-  "test:coverage": "vitest run --coverage"
+	"test": "vitest", // Watch mode
+	"test:ui": "vitest --ui", // UI mode
+	"test:run": "vitest run", // Single run
+	"test:coverage": "vitest run --coverage"
 }
 ```
 
@@ -123,10 +123,10 @@ import { renderHook } from '@testing-library/react';
 import { useMyHook } from '../useMyHook';
 
 describe('useMyHook', () => {
-  it('returns expected value', () => {
-    const { result } = renderHook(() => useMyHook());
-    expect(result.current.value).toBe('expected');
-  });
+	it('returns expected value', () => {
+		const { result } = renderHook(() => useMyHook());
+		expect(result.current.value).toBe('expected');
+	});
 });
 ```
 

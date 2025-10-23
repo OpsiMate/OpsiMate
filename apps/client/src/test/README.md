@@ -70,10 +70,10 @@ import { renderHook } from '@testing-library/react';
 import { useMyHook } from '../useMyHook';
 
 describe('useMyHook', () => {
-  it('returns expected value', () => {
-    const { result } = renderHook(() => useMyHook());
-    expect(result.current.value).toBe('expected');
-  });
+	it('returns expected value', () => {
+		const { result } = renderHook(() => useMyHook());
+		expect(result.current.value).toBe('expected');
+	});
 });
 ```
 
@@ -94,32 +94,32 @@ import { render, screen } from '@/test/test-utils';
 ## Best Practices
 
 1. **Test user behavior, not implementation details**
-   - Query by accessible roles/labels
-   - Avoid testing internal state
+    - Query by accessible roles/labels
+    - Avoid testing internal state
 
 2. **Use meaningful test descriptions**
 
-   ```typescript
-   it('displays error message when form submission fails', () => {
-     // test code
-   });
-   ```
+    ```typescript
+    it('displays error message when form submission fails', () => {
+    	// test code
+    });
+    ```
 
 3. **Mock external dependencies**
 
-   ```typescript
-   vi.mock('@/hooks/queries', () => ({
-     useServices: vi.fn().mockReturnValue({ data: [] }),
-   }));
-   ```
+    ```typescript
+    vi.mock('@/hooks/queries', () => ({
+    	useServices: vi.fn().mockReturnValue({ data: [] }),
+    }));
+    ```
 
 4. **Clean up after tests**
-   - The setup file automatically cleans up after each test
-   - Use `beforeEach` and `afterEach` for test-specific setup
+    - The setup file automatically cleans up after each test
+    - Use `beforeEach` and `afterEach` for test-specific setup
 
 5. **Test accessibility**
-   - Use accessible queries: `getByRole`, `getByLabelText`
-   - Ensure interactive elements are keyboard accessible
+    - Use accessible queries: `getByRole`, `getByLabelText`
+    - Ensure interactive elements are keyboard accessible
 
 ## Common Patterns
 
@@ -200,7 +200,7 @@ Increase timeout for slow tests:
 
 ```typescript
 it('slow test', async () => {
-  // test code
+	// test code
 }, 10000); // 10 seconds
 ```
 
