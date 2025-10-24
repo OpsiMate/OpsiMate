@@ -139,15 +139,16 @@ export enum AuditResourceType {
 }
 
 export interface AuditLog {
-	id: number;
-	actionType: AuditActionType;
-	resourceType: AuditResourceType;
-	resourceId: string;
-	userId: number;
-	timestamp: string;
-	resourceName: string;
-	userName: string;
-	details?: string;
+    id: number;
+    actionType: AuditActionType;
+    resourceType: AuditResourceType;
+    resourceId: string;
+    userId: number;
+    timestamp: string;
+    resourceName: string;
+    userName: string;
+    role?: Role;
+    details?: string;
 }
 
 export type SecretMetadata = {

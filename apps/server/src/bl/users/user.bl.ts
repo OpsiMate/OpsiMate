@@ -1,10 +1,10 @@
 import { UserRepository } from '../../dal/userRepository';
 import bcrypt from 'bcrypt';
-import { AuditActionType, AuditResourceType, Logger, Role, User } from '@OpsiMate/shared';
-import { MailClient, MailType } from '../../dal/external-client/mail-client';
-import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
-import { AuditBL } from '../audit/audit.bl';
-import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
+import { AuditActionType, AuditResourceType, Logger, Role, User, RoleSchema } from '@OpsiMate/shared';
+import { MailClient, MailType } from '../../dal/external-client/mail-client.js';
+import { PasswordResetsRepository } from '../../dal/passwordResetsRepository.js';
+import { AuditBL } from '../audit/audit.bl.js';
+import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption.js';
 
 const logger = new Logger('bl/users/user.bl');
 
@@ -16,17 +16,28 @@ export class UserBL {
 		private auditBL: AuditBL
 	) {}
 
-	async register(email: string, fullName: string, password: string): Promise<User> {
-		const userCount = await this.userRepo.countUsers();
-		if (userCount > 0) {
-			throw new Error('Registration is disabled after first admin');
-		}
-		const hash = await bcrypt.hash(password, 10);
-		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
-		const user = await this.userRepo.getUserById(result.lastID);
-		if (!user) throw new Error('User creation failed');
+    async register(email: string, fullName: string, password: string): Promise<User> {
+        const userCount = await this.userRepo.countUsers();
+        if (userCount > 0) {
+            throw new Error('Registration is disabled after first admin');
+        }
+        const hash = await bcrypt.hash(password, 10);
+        const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
+        const user = await this.userRepo.getUserById(result.lastID);
+        if (!user) throw new Error('User creation failed');
+        await this.auditBL.logAction({
+            actionType: AuditActionType.CREATE,
+            resourceType: AuditResourceType.USER,
+            resourceId: String(user.id),
+            userId: user.id,
+            userName: user.fullName,
+            resourceName: user.email,
+            role: Role.Admin,
+            details: "Admin user created via initial registration",
+            createdBy: user.email
+        });
 
-		// Send welcome email
+        // Send welcome email
 		try {
 			await this.mailClient.sendMail({
 				to: user.email,
@@ -37,16 +48,28 @@ export class UserBL {
 			logger.error('Failed to send welcome email', error);
 		}
 
-		return user;
-	}
+        return user;
+    }
 
-	async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
-		const hash = await bcrypt.hash(password, 10);
-		const result = await this.userRepo.createUser(email, hash, fullName, role);
-		const user = await this.userRepo.getUserById(result.lastID);
-		if (!user) throw new Error('User creation failed');
-		return user;
-	}
+    async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
+        const hash = await bcrypt.hash(password, 10);
+        const result = await this.userRepo.createUser(email, hash, fullName, role);
+        const user = await this.userRepo.getUserById(result.lastID);
+        if (!user) throw new Error('User creation failed');
+        const roleValidation = RoleSchema.safeParse(role);
+        if (!roleValidation.success) throw new Error('Invalid role');
+        await this.auditBL.logAction({
+            actionType: AuditActionType.CREATE,
+            resourceType: AuditResourceType.USER,
+            resourceId: String(user.id),
+            userId: user.id,
+            userName: user.fullName,
+            resourceName: user.email,
+            role: role as Role,
+            details: "User created via admin panel",
+        });
+        return user;
+    }
 
 	async updateUserRole(email: string, newRole: Role): Promise<void> {
 		await this.userRepo.updateUserRole(email, newRole);
