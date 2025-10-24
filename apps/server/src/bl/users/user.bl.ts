@@ -1,6 +1,6 @@
 import { UserRepository } from '../../dal/userRepository.js';
 import bcrypt from 'bcrypt';
-import { AuditActionType, AuditResourceType, Logger, Role, User } from '@OpsiMate/shared';
+import { AuditActionType, AuditResourceType, Logger, Role, User, RoleSchema } from '@OpsiMate/shared';
 import { MailClient, MailType } from '../../dal/external-client/mail-client.js';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository.js';
 import { AuditBL } from '../audit/audit.bl.js';
@@ -25,6 +25,16 @@ export class UserBL {
         const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
         const user = await this.userRepo.getUserById(result.lastID);
         if (!user) throw new Error('User creation failed');
+        await this.auditBL.logAction({
+            actionType: AuditActionType.CREATE,
+            resourceType: AuditResourceType.USER,
+            resourceId: String(user.id),
+            userId: user.id,
+            userName: user.fullName,
+            resourceName: user.email,
+            role: Role.Admin,
+            details: "Admin user created via initial registration",
+        });
         return user;
     }
 
@@ -33,6 +43,18 @@ export class UserBL {
         const result = await this.userRepo.createUser(email, hash, fullName, role);
         const user = await this.userRepo.getUserById(result.lastID);
         if (!user) throw new Error('User creation failed');
+        const roleValidation = RoleSchema.safeParse(role);
+        if (!roleValidation.success) throw new Error('Invalid role');
+        await this.auditBL.logAction({
+            actionType: AuditActionType.CREATE,
+            resourceType: AuditResourceType.USER,
+            resourceId: String(user.id),
+            userId: user.id,
+            userName: user.fullName,
+            resourceName: user.email,
+            role: role as Role,
+            details: "User created via admin panel",
+        });
         return user;
     }
 
