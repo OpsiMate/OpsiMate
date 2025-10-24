@@ -5,7 +5,7 @@
  * @returns
  */
 export function passwordResetTemplate(resetUrl: string, userName?: string) {
-  return `
+	return `
     <div style="font-family: Arial, sans-serif; background: #f9f9f9; padding: 32px;">
       <div style="max-width: 480px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 32px;">
         <div style="text-align: left; margin-bottom: 24px;">
@@ -13,7 +13,7 @@ export function passwordResetTemplate(resetUrl: string, userName?: string) {
           <h2 style="color: #2d3748; margin: 8px 0 16px 0; font-size: 20px;">Reset your password</h2>
         </div>
         <p style="color: #4a5568; margin-bottom: 24px;">
-          ${userName ? `Hi ${userName},` : "Hello,"}<br/>
+          ${userName ? `Hi ${userName},` : 'Hello,'}<br/>
           We received a request to reset your password for your OpsiMate account.
         </p>
         <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: bold;">
