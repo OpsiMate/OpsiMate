@@ -103,9 +103,9 @@ describe('Audit Logs API', () => {
     // Fetch audit logs
     const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
     expect(auditRes.status).toBe(200);
-    expect(Array.isArray(auditRes.body.logs)).toBe(true);
-    expect(auditRes.body.logs.length).toBeGreaterThan(0);
-    const log: AuditLog = auditRes.body.logs[0];
+    expect(Array.isArray(auditRes.body.data.logs)).toBe(true);
+    expect(auditRes.body.data.logs.length).toBeGreaterThan(0);
+    const log: AuditLog = auditRes.body.data.logs[0];
     expect(log.actionType).toBe(AuditActionType.CREATE);
     expect(log.resourceType).toBe(AuditResourceType.PROVIDER);
     expect(log.userId).toBeDefined();
@@ -130,19 +130,19 @@ describe('Audit Logs API', () => {
     // Fetch first page
     const res1 = await app.get('/api/v1/audit?page=1&pageSize=3').set('Authorization', `Bearer ${jwtToken}`);
     expect(res1.status).toBe(200);
-    expect(res1.body.logs.length).toBe(3);
-    expect(res1.body.total).toBeGreaterThanOrEqual(5);
+    expect(res1.body.data.logs.length).toBe(3);
+    expect(res1.body.data.total).toBeGreaterThanOrEqual(5);
     // Fetch second page
     const res2 = await app.get('/api/v1/audit?page=2&pageSize=3').set('Authorization', `Bearer ${jwtToken}`);
     expect(res2.status).toBe(200);
-    expect(res2.body.logs.length).toBeGreaterThan(0);
+    expect(res2.body.data.logs.length).toBeGreaterThan(0);
   });
 
   test('should return empty logs if none exist', async () => {
     db.exec('DELETE FROM audit_logs');
     const res = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.logs)).toBe(true);
-    expect(res.body.logs.length).toBe(0);
+    expect(Array.isArray(res.body.data.logs)).toBe(true);
+    expect(res.body.data.logs.length).toBe(0);
   });
 }); 
