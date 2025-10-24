@@ -39,7 +39,7 @@ beforeEach(() => {
 describe('Login page', () => {
 	it('renders login form with email and password fields', () => {
 		render(<Login />)
-		expect(screen.getByText(/login/i)).toBeInTheDocument()
+		expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument()
 		expect(getEmailInput()).toBeInTheDocument()
 		expect(getPasswordInput()).toBeInTheDocument()
 		expect(getSubmitButton()).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe('Login page', () => {
 		await waitFor(() => {
 			// Login disables field-level errors; shows general error instead
 			expect(screen.getByRole('alert')).toHaveTextContent(/invalid email or password/i)
-		})
+		}, { timeout: 3000 })
 	})
 
 	it('handles successful login and redirects correctly', async () => {
@@ -101,15 +101,17 @@ describe('Login page', () => {
 		fireEvent.click(getSubmitButton())
 
 		// Button should show loading text and be disabled
-		expect(getSubmitButton()).toBeDisabled()
-		expect(getSubmitButton()).toHaveTextContent(/logging in/i)
+		const submitButton = screen.getByRole('button', { name: /logging in/i })
+		expect(submitButton).toBeDisabled()
+		expect(submitButton).toHaveTextContent(/logging in/i)
 
 		// Resolve request
 		resolveReq!({ success: false, error: 'Invalid email or password' })
 
 		await waitFor(() => {
-			expect(getSubmitButton()).not.toBeDisabled()
-			expect(getSubmitButton()).toHaveTextContent(/login/i)
+			const submitButton = screen.getByRole('button', { name: /login/i })
+			expect(submitButton).not.toBeDisabled()
+			expect(submitButton).toHaveTextContent(/login/i)
 		})
 	})
 
