@@ -9,12 +9,16 @@
     "build": "vite build --mode production",
     "build-dev": "vite build --mode development",
     "clean": "rm -rf dist",
-    "lint": "eslint src --ext .ts",
-    "lint-fix": "eslint src --ext .ts --fix",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dev": "vite"
+    "dev": "vite",
+    "lint": "eslint src --ext .ts",
+    "lint-fix": "eslint src --ext .ts --fix",
+    "format": "prettier --check .",
+    "format-fix": "prettier --write .",
+    "check": "npm run format && npm run lint",
+    "fix": "npm run format-fix && npm run lint-fix"
   },
   "dependencies": {
     "@OpsiMate/shared": "workspace:*",
