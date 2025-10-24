@@ -77,7 +77,7 @@ export const useViewManagement = ({ activeViewId, setActiveView }: UseViewManage
 				applyFilters(view);
 				setVisibleColumns((prev) => ({
 					...prev,
-					...view.visibleColumns,
+					...(view.visibleColumns ?? {}),
 				}));
 				await setActiveView(view.id);
 
