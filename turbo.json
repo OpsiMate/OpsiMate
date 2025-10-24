@@ -50,7 +50,8 @@
       "dependsOn": [
         "^build"
       ],
-      "outputs": []
+      "outputs": [],
+      "env": ["NODE_ENV"]
     },
     "debug": {
       "cache": false,
