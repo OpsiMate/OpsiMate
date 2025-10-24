@@ -53,6 +53,9 @@ describe('Login page', () => {
 		]})
 
 		render(<Login />)
+		// Fill in the form fields first
+		fireEvent.change(getEmailInput(), { target: { value: 'test@example.com' } })
+		fireEvent.change(getPasswordInput(), { target: { value: 'password123' } })
 		fireEvent.click(getSubmitButton())
 
 		await waitFor(() => {
