@@ -683,19 +683,20 @@ const AuditLogTable: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery,setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [actionType, setActionType] = useState('');
   const [resourceType, setResourceType] = useState('');
   const debouncedFilters = useDebounce(searchQuery, 350);
 
-  const filters = useMemo(() => ({
-   search:debouncedFilters,
-    actionType,
-    resourceType,
+  const filters = useMemo(
+    () => ({
+     search:debouncedFilters,
+     actionType,
+     resourceType,
   }), [debouncedFilters, actionType, resourceType]);
   
   useEffect(() => {
-    if( page !== 1) {
+    if(page !== 1) {
      setPage(1);
     }
   }, [page, filters]);
@@ -709,9 +710,10 @@ const AuditLogTable: React.FC = () => {
         actionType: actionType || undefined,
         resourceType: resourceType || undefined,
    };
-   
 
-    auditApi.getAuditLogs(page, pageSize, activeFilters).then(res => {
+    auditApi
+	.getAuditLogs(page, pageSize, activeFilters)
+	.then(res => {
         if (!mounted) return;
          if (res?.success && res.data) {
            setLogs(Array.isArray(res.data.logs) ? res.data.logs : []);
@@ -757,15 +759,13 @@ const AuditLogTable: React.FC = () => {
     setPage(1);
   };
 
-  
-
     const clearAllFilters = () => {
       setSearchQuery('');
       setActionType('');
       setResourceType('');
   };
 
-    const hasActiveFilters = searchQuery || actionType ||  resourceType;
+  const hasActiveFilters = searchQuery || actionType ||  resourceType;
 
   const renderPageNumbers = () => {
     return Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -783,7 +783,7 @@ const AuditLogTable: React.FC = () => {
       return (
         <Button
           key={pageNum}
-          variant={page === pageNum ? "default" : "outline"}
+          variant={page === pageNum ? 'default' : 'outline'}
           size="sm"
           onClick={() => handlePageChange(pageNum)}
           className="min-w-[40px]"
@@ -881,7 +881,7 @@ const AuditLogTable: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={actionProps.variant as "default" | "destructive" | "outline" | "secondary"} className={actionProps.className}>
+                      <Badge variant={actionProps.variant as 'default' | 'destructive' | 'outline' | 'secondary'} className={actionProps.className}>
                         {log.actionType}
                       </Badge>
                     </TableCell>
