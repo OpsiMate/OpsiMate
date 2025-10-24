@@ -55,8 +55,10 @@ jobs:
           echo "description_valid=true" >> $GITHUB_OUTPUT
 
       - name: Custom Title Validation
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
+          TITLE="$PR_TITLE"
 
           echo "Checking PR title: $TITLE"
 
