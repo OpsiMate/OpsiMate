@@ -661,270 +661,279 @@ function formatRelativeTime(dateString: string) {
 	return date.toLocaleDateString();
 }
 
- function useDebounce<T>(value: T, delay: number): T {
-     const [debouncedValue, setDebouncedValue] = useState<T>(value);
+function useDebounce<T>(value: T, delay: number): T {
+	const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-     useEffect(() => {
-        const handler = setTimeout(() => {
-         setDebouncedValue(value);
-        }, delay);
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delay);
 
-        return () => {
-         clearTimeout(handler);
-        };
-    }, [value, delay]);
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [value, delay]);
 
-   return debouncedValue;
+	return debouncedValue;
 }
 const AuditLogTable: React.FC = () => {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [actionType, setActionType] = useState('');
-  const [resourceType, setResourceType] = useState('');
-  const debouncedFilters = useDebounce(searchQuery, 350);
+	const [logs, setLogs] = useState<AuditLog[]>([]);
+	const [total, setTotal] = useState(0);
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [actionType, setActionType] = useState('');
+	const [resourceType, setResourceType] = useState('');
+	const debouncedFilters = useDebounce(searchQuery, 350);
 
-  const filters = useMemo(
-    () => ({
-     search:debouncedFilters,
-     actionType,
-     resourceType,
-  }), [debouncedFilters, actionType, resourceType]);
-  
-  useEffect(() => {
-    if(page !== 1) {
-     setPage(1);
-    }
-  }, [page, filters]);
+	const filters = useMemo(
+		() => ({
+			search: debouncedFilters,
+			actionType,
+			resourceType,
+		}),
+		[debouncedFilters, actionType, resourceType]
+	);
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    const activeFilters = {
-        userName: debouncedFilters || undefined,
-        resourceName: debouncedFilters || undefined,
-        actionType: actionType || undefined,
-        resourceType: resourceType || undefined,
-   };
+	useEffect(() => {
+		if (page !== 1) {
+			setPage(1);
+		}
+	}, [page, filters]);
 
-    auditApi
-	.getAuditLogs(page, pageSize, activeFilters)
-	.then(res => {
-        if (!mounted) return;
-         if (res?.success && res.data) {
-           setLogs(Array.isArray(res.data.logs) ? res.data.logs : []);
-           setTotal(typeof res.data.total === 'number' ? res.data.total : 0);
-           setError(null);
-         } else {
-           setError(res?.error || 'Failed to fetch audit logs');
-         }
-       })
-       .catch(() => {
-         if (mounted) setError('Failed to fetch audit logs');
-       })
-       .finally(() => {
-         if (mounted) setLoading(false);
-       });
+	useEffect(() => {
+		let mounted = true;
+		setLoading(true);
+		const activeFilters = {
+			userName: debouncedFilters || undefined,
+			resourceName: debouncedFilters || undefined,
+			actionType: actionType || undefined,
+			resourceType: resourceType || undefined,
+		};
 
-    return () => {
-      mounted = false;
-    };
-  }, [page, pageSize, debouncedFilters, actionType, resourceType]);
+		auditApi
+			.getAuditLogs(page, pageSize, activeFilters)
+			.then((res) => {
+				if (!mounted) return;
+				if (res?.success && res.data) {
+					setLogs(Array.isArray(res.data.logs) ? res.data.logs : []);
+					setTotal(typeof res.data.total === 'number' ? res.data.total : 0);
+					setError(null);
+				} else {
+					setError(res?.error || 'Failed to fetch audit logs');
+				}
+			})
+			.catch(() => {
+				if (mounted) setError('Failed to fetch audit logs');
+			})
+			.finally(() => {
+				if (mounted) setLoading(false);
+			});
 
-  const totalPages = Math.ceil(total / pageSize);
+		return () => {
+			mounted = false;
+		};
+	}, [page, pageSize, debouncedFilters, actionType, resourceType]);
 
-  const getActionBadgeProps = (action: string) => {
-    switch (action) {
-      case 'CREATE':
-        return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
-      case 'UPDATE':
-        return { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
-      case 'DELETE':
-        return { variant: 'destructive', className: '' };
-      default:
-        return { variant: 'outline', className: '' };
-    }
-  };
+	const totalPages = Math.ceil(total / pageSize);
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
+	const getActionBadgeProps = (action: string) => {
+		switch (action) {
+			case 'CREATE':
+				return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
+			case 'UPDATE':
+				return { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+			case 'DELETE':
+				return { variant: 'destructive', className: '' };
+			default:
+				return { variant: 'outline', className: '' };
+		}
+	};
 
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setPage(1);
-  };
+	const handlePageChange = (newPage: number) => {
+		setPage(newPage);
+	};
 
-    const clearAllFilters = () => {
-      setSearchQuery('');
-      setActionType('');
-      setResourceType('');
-  };
+	const handlePageSizeChange = (newSize: number) => {
+		setPageSize(newSize);
+		setPage(1);
+	};
 
-  const hasActiveFilters = searchQuery || actionType ||  resourceType;
+	const clearAllFilters = () => {
+		setSearchQuery('');
+		setActionType('');
+		setResourceType('');
+	};
 
-  const renderPageNumbers = () => {
-    return Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-      let pageNum;
-      if (totalPages <= 5) {
-        pageNum = i + 1;
-      } else if (page <= 3) {
-        pageNum = i + 1;
-      } else if (page >= totalPages - 2) {
-        pageNum = totalPages - 4 + i;
-      } else {
-        pageNum = page - 2 + i;
-      }
-      
-      return (
-        <Button
-          key={pageNum}
-          variant={page === pageNum ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handlePageChange(pageNum)}
-          className="min-w-[40px]"
-        >
-          {pageNum}
-        </Button>
-      );
-    });
-  };
+	const hasActiveFilters = searchQuery || actionType || resourceType;
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search Audit Logs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
-          />
-           
-            <select
-            value={actionType}
-            onChange={(e) => setActionType(e.target.value)}
-            className="border rounded px-3 py-2 text-sm min-w-[130px]"
-          >
-            <option value="">All Actions</option>
-            <option value="CREATE">Create</option>
-            <option value="UPDATE">Update</option>
-            <option value="DELETE">Delete</option>
-          </select>
+	const renderPageNumbers = () => {
+		return Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+			let pageNum;
+			if (totalPages <= 5) {
+				pageNum = i + 1;
+			} else if (page <= 3) {
+				pageNum = i + 1;
+			} else if (page >= totalPages - 2) {
+				pageNum = totalPages - 4 + i;
+			} else {
+				pageNum = page - 2 + i;
+			}
 
-           <select
-            value={resourceType}
-            onChange={(e) => setResourceType(e.target.value)}
-            className="border rounded px-3 py-2 text-sm min-w-[140px]"
-          >
-            <option value="">All Resources</option>
-            <option value="PROVIDER">Provider</option>
-            <option value="SERVICE">Service</option>
-            <option value="USER">User</option>
-            <option value="VIEW">View</option>
-            <option value="SECRET">Secret</option>
-          </select>
-            
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground">Items per page:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="border rounded px-3 py-1 text-sm"
-          >
-            {[5, 10, 15, 20].map(size => (
-              <option key={size} value={size}>{size}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+			return (
+				<Button
+					key={pageNum}
+					variant={page === pageNum ? 'default' : 'outline'}
+					size="sm"
+					onClick={() => handlePageChange(pageNum)}
+					className="min-w-[40px]"
+				>
+					{pageNum}
+				</Button>
+			);
+		});
+	};
 
-      {loading ? (
-        <div className="py-8 text-center">Loading audit logs...</div>
-      ) : error ? (
-        <ErrorAlert message={error} className="mb-4" />
-      ) : logs.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground">
-          No audit logs found.
-        </div>
-      ) : (
-        <>
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Resource</TableHead>
-                <TableHead>Resource Name</TableHead>
-                <TableHead>User</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map(log => {
-                const actionProps = getActionBadgeProps(log.actionType);
-                return (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <span title={parseUTCDate(log.timestamp).toLocaleString()}>
-                        {formatRelativeTime(log.timestamp)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={actionProps.variant as 'default' | 'destructive' | 'outline' | 'secondary'} className={actionProps.className}>
-                        {log.actionType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{log.resourceType}</Badge>
-                    </TableCell>
-                    <TableCell>{log.resourceName || '-'}</TableCell>
-                    <TableCell>{log.userName || '-'}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+	return (
+		<div>
+			<div className="flex justify-between items-center mb-4">
+				<div className="flex gap-2">
+					<Input
+						placeholder="Search Audit Logs..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="max-w-md"
+					/>
 
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                disabled={page === 1}
-              >
-                &larr; Previous
-              </Button>
-              
-              <div className="flex items-center gap-2">
-                {renderPageNumbers()}
-              </div>
+					<select
+						value={actionType}
+						onChange={(e) => setActionType(e.target.value)}
+						className="border rounded px-3 py-2 text-sm min-w-[130px]"
+					>
+						<option value="">All Actions</option>
+						<option value="CREATE">Create</option>
+						<option value="UPDATE">Update</option>
+						<option value="DELETE">Delete</option>
+					</select>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-              >
-                Next &rarr;
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+					<select
+						value={resourceType}
+						onChange={(e) => setResourceType(e.target.value)}
+						className="border rounded px-3 py-2 text-sm min-w-[140px]"
+					>
+						<option value="">All Resources</option>
+						<option value="PROVIDER">Provider</option>
+						<option value="SERVICE">Service</option>
+						<option value="USER">User</option>
+						<option value="VIEW">View</option>
+						<option value="SECRET">Secret</option>
+					</select>
+
+					{hasActiveFilters && (
+						<Button variant="ghost" size="sm" onClick={clearAllFilters}>
+							Clear
+						</Button>
+					)}
+				</div>
+				<div className="flex items-center gap-2">
+					<label className="text-sm text-muted-foreground">Items per page:</label>
+					<select
+						value={pageSize}
+						onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+						className="border rounded px-3 py-1 text-sm"
+					>
+						{[5, 10, 15, 20].map((size) => (
+							<option key={size} value={size}>
+								{size}
+							</option>
+						))}
+					</select>
+				</div>
+			</div>
+
+			{loading ? (
+				<div className="py-8 text-center">Loading audit logs...</div>
+			) : error ? (
+				<ErrorAlert message={error} className="mb-4" />
+			) : logs.length === 0 ? (
+				<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
+			) : (
+				<>
+					{/* Table */}
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Time</TableHead>
+								<TableHead>Action</TableHead>
+								<TableHead>Resource</TableHead>
+								<TableHead>Resource Name</TableHead>
+								<TableHead>User</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{logs.map((log) => {
+								const actionProps = getActionBadgeProps(log.actionType);
+								return (
+									<TableRow key={log.id}>
+										<TableCell>
+											<span title={parseUTCDate(log.timestamp).toLocaleString()}>
+												{formatRelativeTime(log.timestamp)}
+											</span>
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													actionProps.variant as
+														| 'default'
+														| 'destructive'
+														| 'outline'
+														| 'secondary'
+												}
+												className={actionProps.className}
+											>
+												{log.actionType}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											<Badge variant="secondary">{log.resourceType}</Badge>
+										</TableCell>
+										<TableCell>{log.resourceName || '-'}</TableCell>
+										<TableCell>{log.userName || '-'}</TableCell>
+									</TableRow>
+								);
+							})}
+						</TableBody>
+					</Table>
+
+					{totalPages > 1 && (
+						<div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => handlePageChange(Math.max(1, page - 1))}
+								disabled={page === 1}
+							>
+								&larr; Previous
+							</Button>
+
+							<div className="flex items-center gap-2">{renderPageNumbers()}</div>
+
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+								disabled={page === totalPages}
+							>
+								Next &rarr;
+							</Button>
+						</div>
+					)}
+				</>
+			)}
+		</div>
+	);
 };
 
 interface AddSecretButtonProps {

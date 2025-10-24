@@ -565,42 +565,44 @@ export const alertsApi = {
 };
 
 export const auditApi = {
-  getAuditLogs: async (
-    page = 1, 
-    pageSize = 20, 
-    filters: { 
-     userName?: string; 
-     actionType?: string; 
-     resourceType?: string; 
-     resourceName?: string;
-     startTime?: string;
-     endTime?: string;}) => {
-      const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-      });
-      
-     if (filters.userName?.trim()) {
-         params.append('userName', filters.userName.trim());
-     }
-     if (filters.actionType?.trim()) {
-         params.append('actionType', filters.actionType.trim());
-     }
-     if (filters.resourceType?.trim()) {
-         params.append('resourceType', filters.resourceType.trim());
-     }
-     if (filters.resourceName?.trim()) {
-         params.append('resourceName', filters.resourceName.trim());
-     }
-      if (filters.startTime?.trim()) {
-        params.append('startTime', filters.startTime.trim());
-    }
-    
-    if (filters.endTime?.trim()) {
-        params.append('endTime', filters.endTime.trim());
-    }
-      return apiRequest<{ logs: AuditLog[]; total: number}>(`/audit?${params.toString()}`);
-    },
+	getAuditLogs: async (
+		page = 1,
+		pageSize = 20,
+		filters: {
+			userName?: string;
+			actionType?: string;
+			resourceType?: string;
+			resourceName?: string;
+			startTime?: string;
+			endTime?: string;
+		}
+	) => {
+		const params = new URLSearchParams({
+			page: page.toString(),
+			pageSize: pageSize.toString(),
+		});
+
+		if (filters.userName?.trim()) {
+			params.append('userName', filters.userName.trim());
+		}
+		if (filters.actionType?.trim()) {
+			params.append('actionType', filters.actionType.trim());
+		}
+		if (filters.resourceType?.trim()) {
+			params.append('resourceType', filters.resourceType.trim());
+		}
+		if (filters.resourceName?.trim()) {
+			params.append('resourceName', filters.resourceName.trim());
+		}
+		if (filters.startTime?.trim()) {
+			params.append('startTime', filters.startTime.trim());
+		}
+
+		if (filters.endTime?.trim()) {
+			params.append('endTime', filters.endTime.trim());
+		}
+		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?${params.toString()}`);
+	},
 };
 
 /**
