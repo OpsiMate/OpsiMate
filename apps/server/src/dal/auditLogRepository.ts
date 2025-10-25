@@ -24,7 +24,8 @@ export class AuditLogRepository {
                     user_name TEXT,
                     resource_name TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    details TEXT
+                    details TEXT,
+                    role TEXT
                 )
             `
 				)
