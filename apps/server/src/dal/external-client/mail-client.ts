@@ -106,9 +106,14 @@ export class MailClient {
 	 * @param options
 	 */
 	async sendMail(options: SendMailOptions): Promise<void> {
+		if (!this.mailerConfig?.enabled) {
+			logger.warn('MailClient: Email functionality is disabled. Cannot send email.');
+			throw new Error('Email functionality is disabled. Please configure SMTP settings in config.yml to enable email features.');
+		}
+
 		if (!this.transporter || !this.verified) {
 			logger.error('MailClient: SMTP transporter is not configured');
-			throw new Error('SMTP transporter is not configured');
+			throw new Error('SMTP transporter is not configured. Please check your SMTP settings in config.yml.');
 		}
 
 		const mailTemplate = options.mailType

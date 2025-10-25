@@ -20,6 +20,9 @@ export default function createUsersRouter(usersController: UsersController) {
 	// PATCH /users/profile - update user profile
 	router.patch('/profile', usersController.updateProfileHandler);
 
+	// GET /users/email-status - check if email functionality is enabled
+	router.get('/email-status', usersController.emailStatusHandler);
+
 	// DELETE /users/:id - delete user by ID (admin only)
 	router.delete('/:id', usersController.deleteUserHandler);
 

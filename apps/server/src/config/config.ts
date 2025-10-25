@@ -74,6 +74,14 @@ export function loadConfig(): OpsimateConfig {
 	if (!config.mailer) {
 		config.mailer = { enabled: false };
 	}
+	
+	// Ensure mailer is properly configured if enabled
+	if (config.mailer.enabled) {
+		if (!config.mailer.host || !config.mailer.port || !config.mailer.auth?.user || !config.mailer.auth?.pass) {
+			logger.warn('Mailer is enabled but SMTP configuration is incomplete. Email features will be disabled.');
+			config.mailer.enabled = false;
+		}
+	}
 
 	cachedConfig = config;
 	logger.info(`Configuration loaded from ${configPath}`);
@@ -96,7 +104,7 @@ function getDefaultConfig(): OpsimateConfig {
 			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',
 		},
 		mailer: {
-			enabled: true,
+			enabled: false,
 			host: process.env.SMTP_HOST || undefined,
 			port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined,
 			from: process.env.SMTP_FROM || undefined,
@@ -128,4 +136,9 @@ export function getVmConfig() {
 
 export function getMailerConfig() {
 	return loadConfig().mailer;
+}
+
+export function isEmailEnabled(): boolean {
+	const mailerConfig = getMailerConfig();
+	return mailerConfig?.enabled === true;
 }
