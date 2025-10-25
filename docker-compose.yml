@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   backend:
-    image: opsimate/backend:latest
+    image: karan076/backend:latest
     container_name: opsimate-backend
     ports:
       - "3001:3001"        
@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: opsimate/frontend:latest
+    image: karan076/frontend:latest
     container_name: opsimate-frontend
     ports:
       - "8080:8080"        
