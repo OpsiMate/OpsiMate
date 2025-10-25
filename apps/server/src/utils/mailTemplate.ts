@@ -58,7 +58,7 @@ export function passwordResetTemplate(resetUrl: string, userName?: string) {
 export function welcomeTemplate(customBody?: string, userName?: string) {
   const defaultBody = `
     <p style="color: #4a5568; margin-bottom: 24px;">
-      Hey ${userName ? ` ${userName}` : ""} 👋,<br>Welcome aboard! We’re happy to have you as part of the OpsiMate community.
+      Hey${userName ? ` ${userName}` : ""} 👋,<br>Welcome aboard! We’re happy to have you as part of the OpsiMate community.
     </p>`;
   const body =
     customBody === undefined || customBody === "" ? defaultBody : customBody;
