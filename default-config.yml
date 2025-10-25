@@ -26,9 +26,14 @@ mailer:
   host: "smtp.gmail.com"  # Replace with your SMTP server
   port: 587                
   secure: false
-  mailLinkBaseUrl: "http://localhost:8080" # Replace with your actual domain
-  from: "no-reply@yourdomain.com"  # Replace with your email
-  replyTo: "ops@yourdomain.com"    # Replace with your support email
+  mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
+  from: "<no-reply@yourdomain.com>"
+  replyTo: "ops@yourdomain.com"
+  templates:
+    welcomeTemplate: {
+        subject: 'Welcome to OpsiMate!',
+        content: 'Welcome aboard! We’re happy to have you as part of the OpsiMate community.'
+    }
   auth:
     user: "your-email@domain.com"  # Replace with your SMTP username
     pass: "your-smtp-password"     # Replace with your SMTP password

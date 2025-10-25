@@ -25,6 +25,18 @@ export class UserBL {
 		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
+
+		// Send welcome email
+		try {
+			await this.mailClient.sendMail({
+				to: user.email,
+				mailType: MailType.WELCOME,
+				userName: user.fullName,
+			});
+		} catch (error) {
+			logger.error('Failed to send welcome email', error);
+		}
+
 		return user;
 	}
 
