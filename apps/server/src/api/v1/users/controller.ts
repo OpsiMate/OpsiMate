@@ -349,7 +349,7 @@ export class UsersController {
 		}
 	};
 
-	emailStatusHandler = (req: Request, res: Response) => {
+	emailStatusHandler = async(req: Request, res: Response) => {
 		try {
 			const emailEnabled = isEmailEnabled();
 			return res.status(200).json({ 
