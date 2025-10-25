@@ -16,17 +16,29 @@ export class UserBL {
 		private auditBL: AuditBL
 	) {}
 
-	async register(email: string, fullName: string, password: string): Promise<User> {
-		const userCount = await this.userRepo.countUsers();
-		if (userCount > 0) {
-			throw new Error('Registration is disabled after first admin');
-		}
-		const hash = await bcrypt.hash(password, 10);
-		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
-		const user = await this.userRepo.getUserById(result.lastID);
-		if (!user) throw new Error('User creation failed');
-		return user;
-	}
+    async register(email: string, fullName: string, password: string): Promise<User> {
+        const userCount = await this.userRepo.countUsers();
+        if (userCount > 0) {
+            throw new Error('Registration is disabled after first admin');
+        }
+        const hash = await bcrypt.hash(password, 10);
+        const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
+        const user = await this.userRepo.getUserById(result.lastID);
+        if (!user) throw new Error('User creation failed');
+
+        // Send welcome email
+        try {
+            await this.mailClient.sendMail({
+                to: user.email,
+                mailType: MailType.WELCOME,
+                userName: user.fullName,
+            });
+        } catch (error) {
+            logger.error('Failed to send welcome email', error);
+        }
+
+        return user;
+    }
 
 	async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
 		const hash = await bcrypt.hash(password, 10);
