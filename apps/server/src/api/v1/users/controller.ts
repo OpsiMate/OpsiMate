@@ -285,12 +285,10 @@ export class UsersController {
 	forgotPasswordHandler = async (req: Request, res: Response) => {
 		try {
 			if (!isEmailEnabled()) {
-				return res
-					.status(400)
-					.json({
-						success: false,
-						error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.',
-					});
+				return res.status(400).json({
+					success: false,
+					error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.',
+				});
 			}
 			const { email } = ForgotPasswordSchema.parse(req.body);
 			await this.userBL.forgotPassword(email);
