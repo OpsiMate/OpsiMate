@@ -27,6 +27,12 @@ export interface OpsimateConfig {
 		from?: string;
 		replyTo?: string;
 		mailLinkBaseUrl?: string;
+		templates?: {
+			welcomeTemplate?: {
+				subject?: string;
+				content?: string;
+			};
+		};
 		auth?: {
 			user: string;
 			pass: string;

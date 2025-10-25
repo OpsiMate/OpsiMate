@@ -24,6 +24,11 @@ mailer:
   mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
   from: "<no-reply@yourdomain.com>"
   replyTo: "ops@yourdomain.com"
+  templates:
+    welcomeTemplate: {
+        subject: 'Welcome to OpsiMate!',
+        content: 'Welcome aboard! We’re happy to have you as part of the OpsiMate community.'
+    }
   auth:
     user: "my-mail@gmail.com"
     pass: "mypass"
