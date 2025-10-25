@@ -1,6 +1,6 @@
 import { Logger } from '@OpsiMate/shared';
 import nodemailer from 'nodemailer';
-import { getMailerConfig } from '../../config/config.js';
+import { getMailerConfig } from '../../config/config';
 import { passwordResetTemplate, welcomeTemplate } from '../../utils/mailTemplate';
 
 export enum MailType {
