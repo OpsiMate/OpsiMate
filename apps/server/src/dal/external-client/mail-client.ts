@@ -1,7 +1,7 @@
 import { Logger } from '@OpsiMate/shared';
 import nodemailer from 'nodemailer';
 import { getMailerConfig } from '../../config/config.js';
-import { passwordResetTemplate, welcomeTemplate } from '../../utils/mailTemplate.js';
+import { passwordResetTemplate, welcomeTemplate } from '../../utils/mailTemplate';
 
 export enum MailType {
 	PASSWORD_RESET = 'PASSWORD_RESET',
@@ -132,18 +132,16 @@ export class MailClient {
 	}
 
 	private getMailSubject(options: SendMailOptions): string {
-		if (this.mailerConfig?.templates?.welcomeTemplate?.subject) {
-			return this.mailerConfig.templates.welcomeTemplate.subject;
-		}
-
-		if (options.subject) {
-			return options.subject;
-		}
-
 		switch (options.mailType) {
 			case MailType.PASSWORD_RESET:
+				if (options.subject) {
+					return options.subject;
+				}
 				return 'OpsiMate - Password Reset Request';
 			case MailType.WELCOME:
+				if (this.mailerConfig?.templates?.welcomeTemplate?.subject) {
+					return this.mailerConfig.templates.welcomeTemplate.subject;
+				}
 				return 'Welcome to OpsiMate!';
 			default:
 				return 'OpsiMate Notification';
