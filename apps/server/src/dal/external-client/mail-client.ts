@@ -156,7 +156,9 @@ export class MailClient {
 	async sendMail(options: SendMailOptions): Promise<void> {
 		if (!this.mailerConfig?.enabled) {
 			logger.warn('MailClient: Email functionality is disabled. Cannot send email.');
-			throw new Error('Email functionality is disabled. Please configure SMTP settings in config.yml to enable email features.');
+			throw new Error(
+				'Email functionality is disabled. Please configure SMTP settings in config.yml to enable email features.'
+			);
 		}
 
 		if (!this.transporter || !this.verified) {

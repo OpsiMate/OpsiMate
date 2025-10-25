@@ -80,7 +80,7 @@ export function loadConfig(): OpsimateConfig {
 	if (!config.mailer) {
 		config.mailer = { enabled: false };
 	}
-	
+
 	// Ensure mailer is properly configured if enabled
 	if (config.mailer.enabled) {
 		if (!config.mailer.host || !config.mailer.port || !config.mailer.auth?.user || !config.mailer.auth?.pass) {

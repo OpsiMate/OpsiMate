@@ -18,17 +18,16 @@ router.get('/email-status', emailStatusHandler);
 function emailStatusHandler(req: Request, res: Response) {
 	try {
 		const emailEnabled = isEmailEnabled();
-		return res.status(200).json({ 
-			success: true, 
+		return res.status(200).json({
+			success: true,
 			emailEnabled,
-			message: emailEnabled ? 'Email functionality is enabled' : 'Email functionality is disabled'
+			message: emailEnabled ? 'Email functionality is enabled' : 'Email functionality is disabled',
 		});
 	} catch (error) {
 		logger.error('Error checking email status:', error);
 		return res.status(500).json({ success: false, error: 'Internal server error' });
 	}
-};
-
+}
 
 router.get('/', (_req: Request, res: Response) => {
 	res.json({

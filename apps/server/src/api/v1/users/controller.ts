@@ -285,7 +285,12 @@ export class UsersController {
 	forgotPasswordHandler = async (req: Request, res: Response) => {
 		try {
 			if (!isEmailEnabled()) {
-				return res.status(400).json({ success: false, error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.' });
+				return res
+					.status(400)
+					.json({
+						success: false,
+						error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.',
+					});
 			}
 			const { email } = ForgotPasswordSchema.parse(req.body);
 			await this.userBL.forgotPassword(email);
@@ -296,9 +301,9 @@ export class UsersController {
 			}
 
 			if (error instanceof Error && error.message.includes('Email functionality is disabled')) {
-				return res.status(503).json({ 
-					success: false, 
-					error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.' 
+				return res.status(503).json({
+					success: false,
+					error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.',
 				});
 			}
 
@@ -352,10 +357,10 @@ export class UsersController {
 	emailStatusHandler = (req: Request, res: Response) => {
 		try {
 			const emailEnabled = isEmailEnabled();
-			return res.status(200).json({ 
-				success: true, 
+			return res.status(200).json({
+				success: true,
 				emailEnabled,
-				message: emailEnabled ? 'Email functionality is enabled' : 'Email functionality is disabled'
+				message: emailEnabled ? 'Email functionality is enabled' : 'Email functionality is disabled',
 			});
 		} catch (error) {
 			logger.error('Error checking email status:', error);
