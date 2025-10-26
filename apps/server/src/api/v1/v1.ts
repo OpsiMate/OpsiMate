@@ -21,6 +21,10 @@ import createSecretsRouter from "./secrets/router.js";
 import {SecretsController} from "./secrets/controller.js";
 import createCustomFieldsRouter from "./custom-fields/router.js";
 import {CustomFieldsController} from "./custom-fields/controller.js";
+import createApiKeysRouter from "./apiKeys/router.js";
+import {ApiKeyController} from "./apiKeys/controller.js";
+import {createApiKeyAuthMiddleware} from '../../middleware/auth.js';
+import {ApiKeyBL} from '../../bl/apiKeys/apiKey.bl.js';
 
 
 export default function createV1Router(
@@ -34,6 +38,8 @@ export default function createV1Router(
     auditController: AuditController, // optional for backward compatibility
     secretsController: SecretsController,
     customFieldsController: CustomFieldsController,
+    apiKeyController: ApiKeyController,
+    apiKeyBL: ApiKeyBL,
 ) {
     const router = PromiseRouter();
 
@@ -43,7 +49,8 @@ export default function createV1Router(
     router.get('/users/exists', usersController.usersExistHandler);
 
     // JWT-protected endpoints
-    router.use(authenticateJWT);
+    const authMiddleware = createApiKeyAuthMiddleware(apiKeyBL);
+    router.use(authMiddleware);
     router.use('/providers', providerRouter(providerController));
     router.use('/services', serviceRouter(serviceController, tagController));
     router.use('/views', viewRouter(viewController));
@@ -52,6 +59,7 @@ export default function createV1Router(
     router.use('/alerts', alertRouter(alertController));
     router.use('/secrets', createSecretsRouter(secretsController));
     router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
+    router.use('/api-keys', createApiKeysRouter(apiKeyController));
     // All other /users endpoints (except /register and /login) are protected
     router.use('/users', usersRouter(usersController));
     router.use('/audit', createAuditRouter(auditController));

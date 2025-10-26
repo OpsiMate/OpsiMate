@@ -35,6 +35,10 @@ import {ServiceCustomFieldValueRepository} from "./dal/serviceCustomFieldValueRe
 import {ServiceCustomFieldBL} from "./bl/custom-fields/serviceCustomField.bl.js";
 import {CustomFieldsController} from "./api/v1/custom-fields/controller.js";
 import { ServicesBL } from './bl/services/services.bl.js';
+import { ApiKeyRepository } from './dal/apiKeyRepository.js';
+import { ApiKeyBL } from './bl/apiKeys/apiKey.bl.js';
+import { ApiKeyController } from './api/v1/apiKeys/controller.js';
+import { createApiKeyAuthMiddleware } from './middleware/auth.js';
 
 export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
     const app = express();
@@ -64,6 +68,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const secretsMetadataRepo = new SecretsMetadataRepository(db);
     const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
     const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
+    const apiKeyRepo = new ApiKeyRepository(db);
 
     // Init tables
     await Promise.all([
@@ -77,7 +82,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         auditLogRepo.initAuditLogsTable(),
         secretsMetadataRepo.initSecretsMetadataTable(),
         serviceCustomFieldRepo.initServiceCustomFieldTable(),
-        serviceCustomFieldValueRepo.initServiceCustomFieldValueTable()
+        serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
+        apiKeyRepo.initApiKeysTable()
     ]);
 
     // BL
@@ -86,9 +92,10 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const servicesBL = new ServicesBL(serviceRepo, auditBL);
     const integrationBL = new IntegrationBL(integrationRepo);
     const alertBL = new AlertBL(alertRepo);
-    const userBL = new UserBL(userRepo);
+    const userBL = new UserBL(userRepo, auditBL);
     const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo);
     const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
+    const apiKeyBL = new ApiKeyBL(apiKeyRepo, userRepo, auditBL);
 
     // Controllers
     const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -101,6 +108,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
     const auditController = new AuditController(auditBL);
     const secretController = new SecretsController(secretMetadataBL);
     const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
+    const apiKeyController = new ApiKeyController(apiKeyBL);
 
     app.use('/', healthRouter);
     app.use('/api/v1', createV1Router(
@@ -113,7 +121,9 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
         usersController,
         auditController,
         secretController,
-        customFieldsController
+        customFieldsController,
+        apiKeyController,
+        apiKeyBL
     ));
 
 

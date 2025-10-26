@@ -177,6 +177,55 @@ export const UpdateSecretsMetadataSchema = z.object({
     secretType: z.nativeEnum(SecretType).optional(),
 })
 
+export const CreateApiKeySchema = z.object({
+    name: z.string()
+        .min(1, 'API key name is required')
+        .max(100, 'API key name must be less than 100 characters')
+        .trim()
+        .refine((val) => val.length > 0, { message: 'API key name cannot be empty or whitespace only' }),
+    expiresAt: z.string()
+        .optional()
+        .transform((val) => {
+            if (!val) return undefined;
+            // Handle datetime-local format (YYYY-MM-DDTHH:mm) by adding seconds and timezone
+            if (val && val.length === 16 && !val.includes('Z') && !val.includes('+') && !val.includes('.')) {
+                return val + ':00.000Z';
+            }
+            // Return as-is if it's already in ISO format
+            return val;
+        })
+        .refine((val) => {
+            if (!val) return true;
+            const expirationDate = new Date(val);
+            if (isNaN(expirationDate.getTime())) return false;
+            const now = new Date();
+            return expirationDate > now;
+        }, { message: 'Expiration date must be a valid date in the future' }),
+});
+
+export const ApiKeyIdSchema = z.object({
+    apiKeyId: z.string().transform((val) => {
+        const parsed = parseInt(val);
+        if (isNaN(parsed) || parsed < 1) {
+            throw new Error('Invalid API key ID');
+        }
+        return parsed;
+    })
+});
+
+export const UpdateApiKeySchema = z.object({
+    name: z.string()
+        .min(1, 'API key name is required')
+        .max(100, 'API key name must be less than 100 characters')
+        .trim()
+        .refine((val) => val.length > 0, { message: 'API key name cannot be empty or whitespace only' })
+        .optional(),
+    isActive: z.boolean().optional(),
+}).refine((data) => {
+    // At least one field must be provided
+    return data.name !== undefined || data.isActive !== undefined;
+}, { message: 'At least one field (name or isActive) must be provided for update' });
+
 
 export type UserSchemaType = z.infer<typeof UserSchema>;
 export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
@@ -190,3 +239,7 @@ export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
 
 export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
 export type UpdateSecretRequest = z.infer<typeof UpdateSecretsMetadataSchema>;
+
+export type CreateApiKeyRequest = z.infer<typeof CreateApiKeySchema>;
+export type ApiKeyIdParams = z.infer<typeof ApiKeyIdSchema>;
+export type UpdateApiKeyRequest = z.infer<typeof UpdateApiKeySchema>;

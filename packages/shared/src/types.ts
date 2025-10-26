@@ -168,3 +168,25 @@ export interface ServiceCustomFieldValue {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface ApiKey {
+    id: number;
+    userId: number;
+    name: string;
+    keyHash: string;
+    lastUsedAt?: string;
+    expiresAt?: string;
+    createdAt: string;
+    isActive: boolean;
+}
+
+export interface ApiKeyResponse {
+    id: number;
+    userId: number;
+    name: string;
+    lastUsedAt?: string;
+    expiresAt?: string;
+    createdAt: string;
+    isActive: boolean;
+    key: string; // Only returned on creation
+}

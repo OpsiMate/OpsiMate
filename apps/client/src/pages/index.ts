@@ -1,4 +1,5 @@
 export { default as Alerts } from "./Alerts";
+export { default as ApiKeys } from "./ApiKeys";
 export { default as Integrations } from "./Integrations";
 export { default as Login } from "./Login";
 export { default as MyProviders } from "./MyProviders";

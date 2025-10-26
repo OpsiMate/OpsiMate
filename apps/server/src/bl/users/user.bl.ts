@@ -1,9 +1,13 @@
 import { UserRepository } from '../../dal/userRepository.js';
 import bcrypt from 'bcrypt';
-import { Role, User } from '@OpsiMate/shared';
+import { Role, User, AuditActionType, AuditResourceType } from '@OpsiMate/shared';
+import { AuditBL } from '../audit/audit.bl.js';
 
 export class UserBL {
-    constructor(private userRepo: UserRepository) {}
+    constructor(
+        private userRepo: UserRepository,
+        private auditBL?: AuditBL
+    ) {}
 
     async register(email: string, fullName: string, password: string): Promise<User> {
         const userCount = await this.userRepo.countUsers();
@@ -86,6 +90,21 @@ export class UserBL {
         if (!updatedUser) {
             throw new Error('User not found');
         }
+
+        // Log audit action
+        if (this.auditBL) {
+            const details = newPassword ? 'Updated profile and password' : 'Updated profile';
+            await this.auditBL.logAction({
+                actionType: AuditActionType.UPDATE,
+                resourceType: AuditResourceType.USER,
+                resourceId: String(id),
+                userId: id,
+                userName: updatedUser.fullName,
+                resourceName: updatedUser.email,
+                details,
+            });
+        }
+
         return updatedUser;
     }
 }

@@ -16,6 +16,7 @@ import {
   Profile,
   Alerts,
   TVMode,
+  ApiKeys,
 } from "./pages";
 import { Dashboard } from "@/components/Dashboard";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -42,6 +43,7 @@ const App: React.FC = () => {
                 <Route path="/providers" element={<Providers />} />
                 <Route path="/my-providers" element={isViewer() ? <Navigate to="/" replace /> : <MyProviders />} />
                 <Route path="/integrations" element={<Integrations />} />
+                <Route path="/api-keys" element={<ApiKeys />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/login" element={<Login />} />
