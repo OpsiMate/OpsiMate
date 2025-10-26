@@ -149,6 +149,7 @@ export interface AuditLog {
     userName: string;
     role?: Role;
     details?: string;
+    createdBy?: string;
 }
 
 export type SecretMetadata = {

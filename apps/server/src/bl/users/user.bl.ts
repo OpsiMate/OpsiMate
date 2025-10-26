@@ -65,7 +65,8 @@ export class UserBL {
             userId: user.id,
             userName: user.fullName,
             resourceName: user.email,
-            role: role as Role,
+            role: role,
+            createdBy: createdBy,
             details: "User created via admin panel",
         });
         return user;

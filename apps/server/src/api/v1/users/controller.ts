@@ -42,24 +42,24 @@ export class UsersController {
 		}
 	};
 
-	createUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
-			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-		}
-		try {
-			const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
-			const result = await this.userBL.createUser(email, fullName, password, role, req.user.email);
-			return res.status(201).json({ success: true, data: result });
-		} catch (error) {
-			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
-			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-				return res.status(400).json({ success: false, error: 'Email already registered' });
-			} else {
-				return res.status(500).json({ success: false, error: 'Internal server error' });
-			}
-		}
-	};
+    createUserHandler = async (req: AuthenticatedRequest, res: Response) => {
+        if (!req.user || req.user.role !== Role.Admin) {
+            return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
+        }
+        try {
+            const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
+            const result = await this.userBL.createUser(email, fullName, password, role, req.user.email);
+            return res.status(201).json({ success: true, data: result });
+        } catch (error) {
+            if (isZodError(error)) {
+                return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+            } else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
+                return res.status(400).json({ success: false, error: 'Email already registered' });
+            } else {
+                return res.status(500).json({ success: false, error: 'Internal server error' });
+            }
+        }
+    };
 
 	updateUserRoleHandler = async (req: AuthenticatedRequest, res: Response) => {
 		if (!req.user || req.user.role !== Role.Admin) {
