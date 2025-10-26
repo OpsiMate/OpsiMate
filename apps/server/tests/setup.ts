@@ -70,14 +70,24 @@ export async function setupExpressApp(db: Database.Database): Promise<SuperTest<
 
 export async function setupUserWithToken(app: SuperTest<Test>): Promise<string> {
 	// Register and login a user to get a JWT token
-	await app.post('/api/v1/users/register').send({
+	const registerRes = await app.post('/api/v1/users/register').send({
 		email: 'provideruser@example.com',
 		fullName: 'Provider User',
 		password: 'testpassword',
 	});
+
+	if (registerRes.status !== 201) {
+		throw new Error(`Registration failed: ${registerRes.status} ${JSON.stringify(registerRes.body)}`);
+	}
+
 	const loginRes = await app.post('/api/v1/users/login').send({
 		email: 'provideruser@example.com',
 		password: 'testpassword',
 	});
+
+	if (loginRes.status !== 200 || !loginRes.body.token) {
+		throw new Error(`Login failed: ${loginRes.status} ${JSON.stringify(loginRes.body)}`);
+	}
+
 	return loginRes.body.token as string;
 }
