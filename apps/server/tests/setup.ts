@@ -44,7 +44,7 @@ export function setupDB(): Database.Database {
             email         TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             full_name     TEXT NOT NULL,
-            role          TEXT NOT NULL CHECK (role IN ('admin', 'editor', 'viewer')),
+            role          TEXT NOT NULL,
             created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS audit_logs
