@@ -9,8 +9,8 @@ import { baseESLintConfig } from "../../eslint.config.base.mjs";
 
 export default tseslint.config(
 	{ ignores: ['dist'] },
+	...baseESLintConfig,
 	{
-		extends: [...baseESLintConfig],
 		files: ['**/*.{ts,tsx}'],
 		languageOptions: {
 			ecmaVersion: 2020,

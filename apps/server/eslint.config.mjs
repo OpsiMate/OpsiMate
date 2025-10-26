@@ -3,7 +3,7 @@
 import { baseESLintConfig } from '../../eslint.config.base.mjs';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config({ extends: [...baseESLintConfig] }, ...tseslint.configs.recommendedTypeChecked, {
+export default tseslint.config(...baseESLintConfig, ...tseslint.configs.recommendedTypeChecked, {
 	languageOptions: {
 		parserOptions: {
 			project: './tsconfig.json',
