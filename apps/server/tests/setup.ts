@@ -2,6 +2,18 @@ import { vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { createApp } from '../src/app.ts';
 import request, { SuperTest, Test } from 'supertest';
+import { ProviderRepository } from '../src/dal/providerRepository.ts';
+import { ServiceRepository } from '../src/dal/serviceRepository.ts';
+import { ViewRepository } from '../src/dal/viewRepository.ts';
+import { TagRepository } from '../src/dal/tagRepository.ts';
+import { IntegrationRepository } from '../src/dal/integrationRepository.ts';
+import { AlertRepository } from '../src/dal/alertRepository.ts';
+import { UserRepository } from '../src/dal/userRepository.ts';
+import { AuditLogRepository } from '../src/dal/auditLogRepository.ts';
+import { SecretsMetadataRepository } from '../src/dal/secretsMetadataRepository.ts';
+import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepository.ts';
+import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository.ts';
+import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository.ts';
 
 // Mock the Kubernetes client to avoid ES module issues
 vi.mock('@kubernetes/client-node', () => ({
@@ -18,59 +30,36 @@ vi.mock('@kubernetes/client-node', () => ({
 // Increase timeout for integration tests
 vi.setConfig({ testTimeout: 30000 });
 
-export function setupDB(): Database.Database {
+export async function setupDB(): Promise<Database.Database> {
 	const db = new Database(':memory:');
-	db.exec(`
-        CREATE TABLE IF NOT EXISTS providers
-        (
-            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-            provider_name        TEXT NOT NULL,
-            provider_ip          TEXT     DEFAULT NULL,
-            username             TEXT     DEFAULT NULL,
-            private_key_filename TEXT,
-            password             TEXT,
-            ssh_port             INTEGER  DEFAULT 22,
-            created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
-            provider_type        TEXT NOT NULL
-                CHECK (
-                    (private_key_filename IS NOT NULL AND TRIM(private_key_filename) <> '')
-                        OR
-                    (password IS NOT NULL AND TRIM(password) <> '')
-                    )
-        );
-        CREATE TABLE IF NOT EXISTS users
-        (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            email         TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            full_name     TEXT NOT NULL,
-            role          TEXT NOT NULL,
-            created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS audit_logs
-        (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            action_type   TEXT    NOT NULL,
-            resource_type TEXT    NOT NULL,
-            resource_id   TEXT    NOT NULL,
-            user_id       INTEGER NOT NULL,
-            user_name     TEXT,
-            resource_name TEXT,
-            timestamp     DATETIME DEFAULT CURRENT_TIMESTAMP,
-            details       TEXT
-        );
-        CREATE TABLE IF NOT EXISTS services
-        (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            provider_id  INTEGER NOT NULL,
-            service_name TEXT    NOT NULL,
-            service_type TEXT    NOT NULL,
-            status       TEXT,
-            last_checked DATETIME,
-            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (provider_id) REFERENCES providers (id)
-        );
-    `);
+	const providerRepo = new ProviderRepository(db);
+	const serviceRepo = new ServiceRepository(db);
+	const viewRepo = new ViewRepository(db);
+	const tagRepo = new TagRepository(db);
+	const integrationRepo = new IntegrationRepository(db);
+	const alertRepo = new AlertRepository(db);
+	const userRepo = new UserRepository(db);
+	const auditLogRepo = new AuditLogRepository(db);
+	const secretsMetadataRepo = new SecretsMetadataRepository(db);
+	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
+	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
+	const passwordResetsRepo = new PasswordResetsRepository(db);
+
+	// Init tables
+	await Promise.all([
+		providerRepo.initProvidersTable(),
+		serviceRepo.initServicesTable(),
+		viewRepo.initViewsTable(),
+		tagRepo.initTagsTables(),
+		integrationRepo.initIntegrationsTable(),
+		alertRepo.initAlertsTable(),
+		userRepo.initUsersTable(),
+		auditLogRepo.initAuditLogsTable(),
+		secretsMetadataRepo.initSecretsMetadataTable(),
+		serviceCustomFieldRepo.initServiceCustomFieldTable(),
+		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
+		passwordResetsRepo.initPasswordResetsTable(),
+	]);
 	return db;
 }
 

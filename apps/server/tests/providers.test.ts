@@ -19,7 +19,7 @@ const seedProviders = () => {
 };
 
 beforeAll(async () => {
-	db = setupDB();
+	db = await setupDB();
 	app = await setupExpressApp(db);
 	jwtToken = await setupUserWithToken(app);
 });
