@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/client/images/logo.png" width="86" alt="OpsiMate logo" />
+  <img src="apps/client/public/images/logo.png" width="86" alt="OpsiMate logo" />
 </p>
 
 <h1 align="center">OpsiMate</h1>
@@ -25,10 +25,11 @@
   <a href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA">
     <img alt="Join Slack" src="https://img.shields.io/badge/Slack-Join%20Chat-4A154B?logo=slack&logoColor=white" />
   </a>
+
 </p>
 
 <p align="center">
-  <a href="https://opsimate.vercel.app/getting-started/deploy">Get Started</a> ·
+  <a href="https://opsimate.vercel.app/docs/getting-started/deploy">Get Started</a> ·
   <a href="https://opsimate.vercel.app/">Docs</a> ·
   <a href="https://www.opsimate.com/">Website</a> ·
   <a href="https://github.com/OpsiMate/OpsiMate/issues/new?labels=bug&template=bug_report.md">Report Bug</a>

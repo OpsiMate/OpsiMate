@@ -1,4 +1,4 @@
-import {IntegrationType, Role} from "@OpsiMate/shared";
+import { IntegrationType, Role } from '@OpsiMate/shared';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
 
 export type IntegrationRow = {
@@ -48,7 +48,7 @@ export type ServiceRowWithProviderRow = {
     ssh_port: number;
     provider_created_at: string; // DATETIME
     provider_type: string;
-}
+};
 
 export interface ViewRow {
     id: string;
@@ -73,6 +73,7 @@ export type AlertRow = {
     runbook_url?: string;
     created_at: string;
     is_dismissed: boolean;
+    service_id: number | null;
 };
 
 export type UserRow = {
@@ -121,3 +122,10 @@ export type ApiKeyRow = {
     is_active: boolean;
 };
 
+export type ResetPasswordRow = {
+    id: number;
+    user_id: number;
+    token_hash: string;
+    expires_at: string;
+    created_at: string;
+};

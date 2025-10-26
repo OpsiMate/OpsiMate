@@ -1,17 +1,16 @@
-// Global test setup
-import { Logger } from '@OpsiMate/shared';
+import { vi } from 'vitest';
 
 // Mock the Kubernetes client to avoid ES module issues
-jest.mock('@kubernetes/client-node', () => ({
-    KubeConfig: jest.fn().mockImplementation(() => ({
-        loadFromDefault: jest.fn(),
-        loadFromFile: jest.fn(),
-        makeApiClient: jest.fn(),
-    })),
-    CoreV1Api: jest.fn(),
-    AppsV1Api: jest.fn(),
-    NetworkingV1Api: jest.fn(),
+vi.mock('@kubernetes/client-node', () => ({
+	KubeConfig: vi.fn().mockImplementation(() => ({
+		loadFromDefault: vi.fn(),
+		loadFromFile: vi.fn(),
+		makeApiClient: vi.fn(),
+	})),
+	CoreV1Api: vi.fn(),
+	AppsV1Api: vi.fn(),
+	NetworkingV1Api: vi.fn(),
 }));
 
 // Increase timeout for integration tests
-jest.setTimeout(30000);
+vi.setConfig({ testTimeout: 30000 });

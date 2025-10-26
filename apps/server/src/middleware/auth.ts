@@ -1,8 +1,8 @@
 // JWT authentication middleware for Express
-import {NextFunction, Request, Response} from 'express';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import {Role, User} from "@OpsiMate/shared";
-import { ApiKeyBL } from '../bl/apiKeys/apiKey.bl.js';
+import { Role, User } from '@OpsiMate/shared';
+import { ApiKeyBL } from '../bl/apiKeys/apiKey.bl';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 
@@ -37,9 +37,9 @@ export function createApiKeyAuthMiddleware(apiKeyBL: ApiKeyBL) {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ success: false, error: 'Missing or invalid Authorization header' });
         }
-        
+
         const token = authHeader.split(' ')[1];
-        
+
         // First try JWT authentication
         try {
             const payload = jwt.verify(token, JWT_SECRET) as User;
@@ -78,4 +78,4 @@ export function createApiKeyAuthMiddleware(apiKeyBL: ApiKeyBL) {
             }
         }
     };
-} 
+}
