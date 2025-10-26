@@ -1,8 +1,8 @@
-import request, {SuperTest, Test} from 'supertest';
-import {Provider, ProviderType} from '@OpsiMate/shared';
+import { SuperTest, Test } from 'supertest';
+import { Provider } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import {createApp} from '../src/app';
-import {expect} from "vitest";
+import { expect } from 'vitest';
+import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 let app: SuperTest<Test>;
 let db: Database.Database;
@@ -12,79 +12,16 @@ const seedProviders = () => {
 	db.exec('DELETE FROM providers');
 	db.prepare(
 		`
-    INSERT INTO providers (id, provider_name, provider_ip, username, private_key_filename, ssh_port, created_at, provider_type)
-    VALUES (1, 'Test Provider', '127.0.0.1', 'user', 'key.pem', 22, CURRENT_TIMESTAMP, 'VM')
-  `
+			INSERT INTO providers (id, provider_name, provider_ip, username, private_key_filename, ssh_port, created_at,
+								   provider_type)
+			VALUES (1, 'Test Provider', '127.0.0.1', 'user', 'key.pem', 22, CURRENT_TIMESTAMP, 'VM')`
 	).run();
 };
 
 beforeAll(async () => {
-	db = new Database(':memory:');
-
-	// Create the providers table
-	db.exec(`
-    CREATE TABLE IF NOT EXISTS providers
-    (
-      id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-      provider_name        TEXT NOT NULL,
-      provider_ip          TEXT     DEFAULT NULL,
-      username             TEXT     DEFAULT NULL,
-      private_key_filename TEXT,
-      password             TEXT,
-      ssh_port             INTEGER  DEFAULT 22,
-      created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
-      provider_type        TEXT NOT NULL
-      CHECK (
-        (private_key_filename IS NOT NULL AND TRIM(private_key_filename) <> '')
-        OR
-        (password IS NOT NULL AND TRIM(password) <> '')
-      )
-    );
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      action_type TEXT NOT NULL,
-      resource_type TEXT NOT NULL,
-      resource_id TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      user_name TEXT,
-      resource_name TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-      details TEXT
-    );
-    CREATE TABLE IF NOT EXISTS services (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      provider_id INTEGER NOT NULL,
-      service_name TEXT NOT NULL,
-      service_type TEXT NOT NULL,
-      status TEXT,
-      last_checked DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (provider_id) REFERENCES providers(id)
-    );
-  `);
-
-	const expressApp = await createApp(db);
-	app = request(expressApp) as unknown as SuperTest<Test>;
-
-	// Register and login a user to get a JWT token
-	await app.post('/api/v1/users/register').send({
-		email: 'provideruser@example.com',
-		fullName: 'Provider User',
-		password: 'testpassword',
-	});
-	const loginRes = await app.post('/api/v1/users/login').send({
-		email: 'provideruser@example.com',
-		password: 'testpassword',
-	});
-	jwtToken = loginRes.body.token;
+	db = setupDB();
+	app = await setupExpressApp(db);
+	jwtToken = await setupUserWithToken(app);
 });
 
 beforeEach(() => {
@@ -175,9 +112,7 @@ describe('Providers API', () => {
 	});
 
 	test('should delete a provider', async () => {
-		const deleteRes = await app
-			.delete('/api/v1/providers/1')
-			.set('Authorization', `Bearer ${jwtToken}`);
+		const deleteRes = await app.delete('/api/v1/providers/1').set('Authorization', `Bearer ${jwtToken}`);
 
 		expect(deleteRes.status).toBe(200);
 		expect(deleteRes.body.success).toBe(true);
@@ -248,36 +183,9 @@ describe('Providers API', () => {
 		expect(bulkProvider2).toBeDefined();
 	});
 
-	// todo: add providers secret in seed and uncomment
-	// test('should refresh a provider', async () => {
-	// 	const refreshRes = await app
-	// 		.post('/api/v1/providers/1/refresh')
-	// 		.set('Authorization', `Bearer ${jwtToken}`);
-	//
-	// 	expect(refreshRes.status).toBe(200);
-	// 	expect(refreshRes.body.success).toBe(true);
-	// });
-
-	test('should test connection to a provider', async () => {
-		const testData: Provider = {
-			id: 1,
-			createdAt: '2018-02-09T00:00:00.000Z',
-			name: 'Test Provider',
-			providerIP: '127.0.0.1',
-			username: 'testuser',
-			password: 'testpassword',
-			SSHPort: 22,
-			providerType: ProviderType.VM,
-		};
-
-		// Mock the connection test since we can't actually connect to a real provider in tests
-		const _ = await app
-			.post('/api/v1/providers/test-connection')
-			.set('Authorization', `Bearer ${jwtToken}`)
-			.send(testData);
-
-		// todo: fix bad code and adjust it accordingly
-		expect(true).toBeTruthy();
-
-	});
+	// todo: add tests to the following routes:
+	// router.post('/:providerId/refresh', controller.refreshProvider.bind(controller));
+	// router.post('/test-connection', controller.testConnection.bind(controller));
+	// router.post('/:providerId/services/bulk', controller.bulkAddServices.bind(controller));
+	// router.get('/:providerId/discover-services', controller.discoverServices.bind(controller));
 });

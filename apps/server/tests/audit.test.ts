@@ -3,7 +3,6 @@ import { AuditActionType, AuditResourceType, AuditLog } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { createApp } from '../src/app';
 
-
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
