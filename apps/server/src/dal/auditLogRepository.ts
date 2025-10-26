@@ -32,8 +32,8 @@ export class AuditLogRepository {
     async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
         return runAsync(() => {
             const stmt = this.db.prepare(`
-                INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details, role)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
             const result = stmt.run(
                 log.actionType as string,
@@ -42,7 +42,8 @@ export class AuditLogRepository {
                 log.userId,
                 log.userName,
                 log.resourceName,
-                log.details || null
+                log.details || null,
+                log.role || null
             );
             return { lastID: result.lastInsertRowid as number };
         });
