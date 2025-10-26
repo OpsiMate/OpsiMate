@@ -51,7 +51,7 @@ export class UserBL {
         return user;
     }
 
-    async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
+    async createUser(email: string, fullName: string, password: string, role: Role, createdBy?: string): Promise<User> {
         const hash = await bcrypt.hash(password, 10);
         const result = await this.userRepo.createUser(email, hash, fullName, role);
         const user = await this.userRepo.getUserById(result.lastID);

@@ -48,7 +48,7 @@ export class UsersController {
 		}
 		try {
 			const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
-			const result = await this.userBL.createUser(email, fullName, password, role);
+			const result = await this.userBL.createUser(email, fullName, password, role, req.user.email);
 			return res.status(201).json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
