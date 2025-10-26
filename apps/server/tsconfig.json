@@ -22,6 +22,10 @@
 		"isolatedModules": true,
 		"types": ["vitest/globals"]
 	},
-	"include": ["src/**/*", "tests/**/*"],
+	"include": [
+		"src/**/*",
+		"tests/**/*",
+		"../../node_modules/.pnpm/vitest@3.2.4_@types+node@22.17.2_@vitest+ui@3.2.4_jsdom@27.0.0/node_modules/vitest/globals.d.ts"
+	],
 	"exclude": ["node_modules", "dist"]
 }
