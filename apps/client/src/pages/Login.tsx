@@ -22,8 +22,7 @@ const Login: React.FC = () => {
 		if (localStorage.getItem('jwt') && window.location.pathname === '/login') {
 			window.location.href = '/';
 		}
-		
-		// Fetch email enabled status from server
+
 		const fetchEmailStatus = async () => {
 			try {
 				const res = await fetch(EMAIL_STATUS_URL);
@@ -39,10 +38,8 @@ const Login: React.FC = () => {
 				setEmailEnabled(false);
 			}
 		};
-		fetchEmailStatus().catch((err) => {
-			logger.error('Failed to fetch email status', err);
-			setEmailEnabled(false);
-		});
+
+		fetchEmailStatus();
 	}, []);
 
 	const handleSubmit = async (e: React.FormEvent) => {
