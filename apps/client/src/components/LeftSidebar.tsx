@@ -12,12 +12,7 @@ import { Link, useLocation } from "react-router-dom";
 import { AppIcon } from "./icons/AppIcon";
 import { ProfileButton } from "./ProfileButton";
 import { isAdmin, isEditor, isViewer } from "../lib/auth";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@radix-ui/react-tooltip";
+import * as Tooltip from "@radix-ui/react-tooltip";
 
 interface LeftSidebarProps {
   collapsed: boolean;
@@ -25,6 +20,7 @@ interface LeftSidebarProps {
 
 export function LeftSidebar({ collapsed }: LeftSidebarProps) {
   const location = useLocation();
+
   return (
     <div
       className={cn(
@@ -32,6 +28,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
         collapsed && "items-center"
       )}
     >
+      {/* Logo section */}
       <Link
         to="/"
         className={cn(
@@ -54,15 +51,17 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
         </div>
       </Link>
 
+      {/* Navigation section */}
       <div
         className={cn(
           "px-4 space-y-2 w-full flex-grow flex flex-col",
           collapsed && "px-2 items-center"
         )}
       >
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
+        <Tooltip.Provider delayDuration={100}>
+          {/* Dashboard */}
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
               <Button
                 variant={location.pathname === "/" ? "default" : "ghost"}
                 className={cn(
@@ -81,19 +80,22 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                   </span>
                 </Link>
               </Button>
-            </TooltipTrigger>
-            <TooltipContent
+            </Tooltip.Trigger>
+            <Tooltip.Content
               side="top"
               align="center"
-              className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+              sideOffset={6}
+              className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
             >
               Dashboard
-            </TooltipContent>
-          </Tooltip>
+              <Tooltip.Arrow className="fill-gray-800" />
+            </Tooltip.Content>
+          </Tooltip.Root>
 
-          <Tooltip>
-            <TooltipTrigger>
-              {isEditor() && (
+          {/* Add Providers */}
+          {isEditor() && (
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
                 <Button
                   variant={
                     location.pathname === "/providers" ? "default" : "ghost"
@@ -115,19 +117,23 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                     </span>
                   </Link>
                 </Button>
-              )}
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              align="center"
-              className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-            >
-              Add Providers
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger>
-              {!isViewer() && (
+              </Tooltip.Trigger>
+              <Tooltip.Content
+                side="top"
+                align="center"
+                sideOffset={6}
+                className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
+              >
+                Add Providers
+                <Tooltip.Arrow className="fill-gray-800" />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          )}
+
+          {/* My Providers */}
+          {!isViewer() && (
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
                 <Button
                   variant={
                     location.pathname === "/my-providers" ? "default" : "ghost"
@@ -149,19 +155,23 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                     </span>
                   </Link>
                 </Button>
-              )}
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              align="center"
-              className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-            >
-              My Providers
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger>
-              {isEditor() && (
+              </Tooltip.Trigger>
+              <Tooltip.Content
+                side="top"
+                align="center"
+                sideOffset={6}
+                className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
+              >
+                My Providers
+                <Tooltip.Arrow className="fill-gray-800" />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          )}
+
+          {/* Integrations */}
+          {isEditor() && (
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
                 <Button
                   variant={
                     location.pathname === "/integrations" ? "default" : "ghost"
@@ -183,18 +193,22 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                     </span>
                   </Link>
                 </Button>
-              )}
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              align="center"
-              className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
-            >
-              Integrations
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger>
+              </Tooltip.Trigger>
+              <Tooltip.Content
+                side="top"
+                align="center"
+                sideOffset={6}
+                className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
+              >
+                Integrations
+                <Tooltip.Arrow className="fill-gray-800" />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          )}
+
+          {/* Alerts */}
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
               <Button
                 variant={location.pathname === "/alerts" ? "default" : "ghost"}
                 className={cn(
@@ -213,18 +227,21 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                   </span>
                 </Link>
               </Button>
-            </TooltipTrigger>
-            <TooltipContent
+            </Tooltip.Trigger>
+            <Tooltip.Content
               side="top"
               align="center"
-              className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+              sideOffset={6}
+              className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
             >
               Alerts
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+              <Tooltip.Arrow className="fill-gray-800" />
+            </Tooltip.Content>
+          </Tooltip.Root>
+        </Tooltip.Provider>
       </div>
 
+      {/* Bottom section */}
       <div
         className={cn(
           "p-4 mt-auto flex flex-col gap-3",
@@ -233,36 +250,57 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
       >
         <div className={cn("flex flex-col gap-2 items-center")}>
           {isAdmin() && (
-            <Button
-              variant={location.pathname === "/settings" ? "default" : "ghost"}
-              className={cn(
-                "gap-3 h-10 items-center",
-                collapsed
-                  ? "w-10 justify-center p-0"
-                  : "w-full justify-start px-1",
-                location.pathname === "/settings" && "text-primary-foreground"
-              )}
-              asChild
-            >
-              <Link to="/settings">
-                <Settings className="h-5 w-5 flex-shrink-0 items-center" />
-                <span className={cn("font-medium", collapsed && "sr-only")}>
+            <Tooltip.Provider>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <Button
+                    variant={
+                      location.pathname === "/settings" ? "default" : "ghost"
+                    }
+                    className={cn(
+                      "gap-3 h-10 items-center",
+                      collapsed
+                        ? "w-10 justify-center p-0"
+                        : "w-full justify-start px-1",
+                      location.pathname === "/settings" &&
+                        "text-primary-foreground"
+                    )}
+                    asChild
+                  >
+                    <Link to="/settings">
+                      <Settings className="h-5 w-5 flex-shrink-0 items-center" />
+                      <span className={cn("font-medium", collapsed && "sr-only")}>
+                        Settings
+                      </span>
+                    </Link>
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content
+                  side="top"
+                  align="center"
+                  sideOffset={6}
+                  className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
+                >
                   Settings
-                </span>
-              </Link>
-            </Button>
+                  <Tooltip.Arrow className="fill-gray-800" />
+                </Tooltip.Content>
+              </Tooltip.Root>
+            </Tooltip.Provider>
           )}
+
           <ProfileButton collapsed={collapsed} />
 
-          <TooltipProvider>
+          {/* Social buttons */}
+          <Tooltip.Provider delayDuration={100}>
             <div
               className={cn(
                 "flex gap-2",
                 collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
               )}
             >
-              <Tooltip>
-                <TooltipTrigger asChild>
+              {/* Slack */}
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
@@ -282,18 +320,21 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                       className="h-5 w-5 object-contain invert dark:invert-0"
                     />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent
+                </Tooltip.Trigger>
+                <Tooltip.Content
                   side="top"
                   align="center"
-                  className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+                  sideOffset={6}
+                  className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
                 >
                   Join our Slack community
-                </TooltipContent>
-              </Tooltip>
+                  <Tooltip.Arrow className="fill-gray-800" />
+                </Tooltip.Content>
+              </Tooltip.Root>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
+              {/* GitHub */}
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
@@ -301,10 +342,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                       collapsed ? "flex-col" : "flex-row"
                     )}
                     onClick={() =>
-                      window.open(
-                        "https://github.com/opsimate/opsimate",
-                        "_blank"
-                      )
+                      window.open("https://github.com/opsimate/opsimate", "_blank")
                     }
                   >
                     <img
@@ -313,15 +351,17 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                       className="h-5 w-5 object-contain invert dark:invert-0"
                     />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent
+                </Tooltip.Trigger>
+                <Tooltip.Content
                   side="top"
                   align="center"
-                  className="z-10 rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+                  sideOffset={6}
+                  className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
                 >
                   Star us on GitHub ⭐
-                </TooltipContent>
-              </Tooltip>
+                  <Tooltip.Arrow className="fill-gray-800" />
+                </Tooltip.Content>
+              </Tooltip.Root>
 
               <p
                 className={cn(
@@ -332,7 +372,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                 © 2024 OpsiMate
               </p>
             </div>
-          </TooltipProvider>
+          </Tooltip.Provider>
         </div>
       </div>
     </div>
