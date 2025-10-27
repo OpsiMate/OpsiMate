@@ -38,7 +38,7 @@ resource "aws_subnet" "public" {
   enable_resource_name_dns_a_record_on_launch    = var.public_subnet_enable_resource_name_dns_a_record_on_launch
   map_public_ip_on_launch                        = var.map_public_ip_on_launch
   private_dns_hostname_type_on_launch            = var.public_subnet_private_dns_hostname_type_on_launch
-  vpc_id                                         = var.cidr
+  vpc_id                                         = aws_vpc.this[0].id
 
   tags = merge(
     {
