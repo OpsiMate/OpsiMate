@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
 import { ProfileButton } from './ProfileButton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LeftSidebarProps {
 	collapsed: boolean;
