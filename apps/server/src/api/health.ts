@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import PromiseRouter from 'express-promise-router';
 import { isEmailEnabled } from '../config/config';
-import { Logger } from '@OpsiMate/shared';
-
-const logger = new Logger('api/health');
 
 const router = PromiseRouter();
 
