@@ -55,7 +55,7 @@ resource "aws_subnet" "public" {
 
 resource "aws_route_table" "public" {
   count = local.create_public_subnets ? local.num_public_route_tables : 0
-  vpc_id = var.cidr
+  vpc_id = aws_vpc.this[0].id
 
   tags = merge(
     {
@@ -121,7 +121,7 @@ resource "aws_subnet" "private" {
 
 resource "aws_route_table" "private" {
   count = local.create_private_subnets && local.max_subnet_length > 0 ? local.nat_gateway_count : 0
-  vpc_id = var.cidr
+  vpc_id = aws_vpc.this[0].id
 
   tags = merge(
     {
