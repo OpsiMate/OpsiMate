@@ -10,4 +10,4 @@ export * from './audit';
 export * from './custom-fields';
 
 // Export query keys
-export { queryKeys } from './queryKeys'; 
+export { queryKeys } from './queryKeys';

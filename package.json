@@ -7,10 +7,16 @@
     "start": "pnpm --filter @OpsiMate/server start",
     "dev": "turbo run dev",
     "debug": "turbo run debug",
+    "clean": "turbo run clean",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:coverage": "turbo run test:coverage",
     "lint": "turbo run lint",
     "lint-fix": "turbo run lint-fix",
-    "clean": "turbo run clean",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "turbo run format",
+    "format-fix": "turbo run format-fix",
+    "check": "turbo run check",
+    "fix": "turbo run fix"
   },
   "devDependencies": {
     "@turbo/gen": "^1.12.4",
