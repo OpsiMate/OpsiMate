@@ -18,7 +18,7 @@ resource "aws_vpc" "this" {
 
 resource "aws_internet_gateway" "this" {
   count = local.create_public_subnets && var.create_igw ? 1 : 0
-  vpc_id = var.cidr
+  vpc_id = aws_vpc.this[0].id
 
   tags = merge(
     { "Name" = var.name },
