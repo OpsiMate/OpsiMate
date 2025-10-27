@@ -2,7 +2,7 @@ import { SuperTest, Test } from 'supertest';
 import { Logger, Alert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
-import {setupDB, setupExpressApp, setupUserWithToken} from "./setup";
+import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
 
@@ -164,7 +164,7 @@ describe('Alerts API', () => {
 
 		test('should handle dismissing an already dismissed alert', async () => {
 			const alertId = testAlerts[2].id; // 'alert-3' (already dismissed)
-			expect( testAlerts[2].isDismissed).toBe(true);
+			expect(testAlerts[2].isDismissed).toBe(true);
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/dismiss`)
@@ -187,9 +187,8 @@ describe('Alerts API', () => {
 		test('should return 401 for request without authentication', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1'
 
-			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/dismiss`);
-				// No Authorization header set
+			const response = await app.patch(`/api/v1/alerts/${alertId}/dismiss`);
+			// No Authorization header set
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
@@ -236,9 +235,8 @@ describe('Alerts API', () => {
 		test('should return 401 for request without authentication', async () => {
 			const alertId = testAlerts[2].id; // 'alert-3'
 
-			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/undismiss`);
-				// No Authorization header set
+			const response = await app.patch(`/api/v1/alerts/${alertId}/undismiss`);
+			// No Authorization header set
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
