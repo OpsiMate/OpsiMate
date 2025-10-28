@@ -1,4 +1,11 @@
-export { useServiceFilters } from './useServiceFilters';
-export { FilterPanel } from './FilterPanel';
-export type { Filters } from './FilterPanel';
 export { Dashboard } from './Dashboard';
+export type { ColumnVisibility, ServiceWithAlerts } from './Dashboard.types';
+export { DashboardHeader } from './DashboardHeader';
+export { FilterPanel, FilterSidebar } from './FilterPanel';
+export { useColumnManagement } from './hooks/useColumnManagement';
+export { useFilteredServices } from './hooks/useFilteredServices';
+export { useServiceActions } from './hooks/useServiceActions';
+export { useServiceFilters } from './hooks/useServiceFilters';
+export { useServicesWithAlerts } from './hooks/useServicesWithAlerts';
+export { useViewManagement } from './hooks/useViewManagement';
+export { ServiceActionBar } from './ServiceActionBar';

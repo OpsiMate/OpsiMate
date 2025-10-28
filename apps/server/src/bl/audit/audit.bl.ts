@@ -2,11 +2,11 @@ import { AuditLogRepository } from '../../dal/auditLogRepository';
 import { AuditLog } from '@OpsiMate/shared';
 
 export class AuditBL {
-    constructor(private auditLogRepository: AuditLogRepository) {}
+	constructor(private auditLogRepository: AuditLogRepository) {}
 
-    async logAction(params: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
-        await this.auditLogRepository.insertAuditLog(params);
-    }
+	async logAction(params: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
+		await this.auditLogRepository.insertAuditLog(params);
+	}
 
     async getAuditLogsPaginated(
     page: number,

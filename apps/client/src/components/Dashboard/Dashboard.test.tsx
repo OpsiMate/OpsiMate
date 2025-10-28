@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@/test/test-utils';
-import { Dashboard } from '../Dashboard';
 import * as queries from '@/hooks/queries';
+import { render, screen, waitFor } from '@/test/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Dashboard } from '../Dashboard';
 
 vi.mock('@/hooks/queries', () => ({
 	useServices: vi.fn(),
@@ -38,7 +38,9 @@ describe('Dashboard', () => {
 			activeViewId: undefined,
 			setActiveView: vi.fn(),
 			error: null,
-		} as ReturnType<typeof queries.useActiveView>);
+			isLoading: false,
+			isSettingActiveView: false,
+		} as unknown as ReturnType<typeof queries.useActiveView>);
 
 		vi.mocked(queries.useCustomFields).mockReturnValue({
 			data: [],
@@ -46,23 +48,83 @@ describe('Dashboard', () => {
 
 		vi.mocked(queries.useStartService).mockReturnValue({
 			mutateAsync: vi.fn(),
-		} as ReturnType<typeof queries.useStartService>);
+			mutate: vi.fn(),
+			data: undefined,
+			error: null,
+			variables: undefined,
+			isError: false,
+			isIdle: true,
+			isPending: false,
+			isPaused: false,
+			isSuccess: false,
+			failureCount: 0,
+			failureReason: null,
+			status: 'idle',
+		} as unknown as ReturnType<typeof queries.useStartService>);
 
 		vi.mocked(queries.useStopService).mockReturnValue({
 			mutateAsync: vi.fn(),
-		} as ReturnType<typeof queries.useStopService>);
+			mutate: vi.fn(),
+			data: undefined,
+			error: null,
+			variables: undefined,
+			isError: false,
+			isIdle: true,
+			isPending: false,
+			isPaused: false,
+			isSuccess: false,
+			failureCount: 0,
+			failureReason: null,
+			status: 'idle',
+		} as unknown as ReturnType<typeof queries.useStopService>);
 
 		vi.mocked(queries.useDismissAlert).mockReturnValue({
 			mutateAsync: vi.fn(),
-		} as ReturnType<typeof queries.useDismissAlert>);
+			mutate: vi.fn(),
+			data: undefined,
+			error: null,
+			variables: undefined,
+			isError: false,
+			isIdle: true,
+			isPending: false,
+			isPaused: false,
+			isSuccess: false,
+			failureCount: 0,
+			failureReason: null,
+			status: 'idle',
+		} as unknown as ReturnType<typeof queries.useDismissAlert>);
 
 		vi.mocked(queries.useSaveView).mockReturnValue({
 			mutateAsync: vi.fn(),
-		} as ReturnType<typeof queries.useSaveView>);
+			mutate: vi.fn(),
+			data: undefined,
+			error: null,
+			variables: undefined,
+			isError: false,
+			isIdle: true,
+			isPending: false,
+			isPaused: false,
+			isSuccess: false,
+			failureCount: 0,
+			failureReason: null,
+			status: 'idle',
+		} as unknown as ReturnType<typeof queries.useSaveView>);
 
 		vi.mocked(queries.useDeleteView).mockReturnValue({
 			mutateAsync: vi.fn(),
-		} as ReturnType<typeof queries.useDeleteView>);
+			mutate: vi.fn(),
+			data: undefined,
+			error: null,
+			variables: undefined,
+			isError: false,
+			isIdle: true,
+			isPending: false,
+			isPaused: false,
+			isSuccess: false,
+			failureCount: 0,
+			failureReason: null,
+			status: 'idle',
+		} as unknown as ReturnType<typeof queries.useDeleteView>);
 	});
 
 	it('renders dashboard layout', async () => {

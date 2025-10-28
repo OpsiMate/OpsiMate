@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { AuditBL } from '../../../bl/audit/audit.bl';
-import {Logger} from "@OpsiMate/shared";
+import { Logger } from '@OpsiMate/shared';
 
 
 const logger = new Logger('api/v1/audit/controller');
 
 export class AuditController {
-    constructor(private auditBL: AuditBL) {}
+	constructor(private auditBL: AuditBL) {}
 
     getAuditLogsPaginated = async (req: Request, res: Response) => {
         const pageRaw = parseInt(req.query.page as string);

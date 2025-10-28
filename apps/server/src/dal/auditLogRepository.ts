@@ -4,15 +4,17 @@ import { AuditLog } from '@OpsiMate/shared';
 import { AuditLogRow } from './models';
 
 export class AuditLogRepository {
-    private db: Database.Database;
+	private db: Database.Database;
 
-    constructor(db: Database.Database) {
-        this.db = db;
-    }
+	constructor(db: Database.Database) {
+		this.db = db;
+	}
 
-    async initAuditLogsTable(): Promise<void> {
-        return runAsync(() => {
-            this.db.prepare(`
+	async initAuditLogsTable(): Promise<void> {
+		return runAsync(() => {
+			this.db
+				.prepare(
+					`
                 CREATE TABLE IF NOT EXISTS audit_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     action_type TEXT NOT NULL,
@@ -24,9 +26,11 @@ export class AuditLogRepository {
                     timestamp DATETIME DEFAULT (datetime('now', 'utc')),
                     details TEXT
                 )
-            `).run();
-        });
-    }
+            `
+				)
+				.run();
+		});
+	}
 
     async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
         return runAsync(() => {
@@ -34,18 +38,18 @@ export class AuditLogRepository {
                 INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, timestamp, details)
                 VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'utc'), ?)
             `);
-            const result = stmt.run(
-                log.actionType as string,
-                log.resourceType as string,
-                log.resourceId,
-                log.userId,
-                log.userName,
-                log.resourceName,
-                log.details || null
-            );
-            return { lastID: result.lastInsertRowid as number };
-        });
-    }
+			const result = stmt.run(
+				log.actionType as string,
+				log.resourceType as string,
+				log.resourceId,
+				log.userId,
+				log.userName,
+				log.resourceName,
+				log.details || null
+			);
+			return { lastID: result.lastInsertRowid as number };
+		});
+	}
 
     private buildWhereClause( filters: {
       userName?: string;

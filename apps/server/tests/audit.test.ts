@@ -1,27 +1,27 @@
 import request, { SuperTest, Test } from 'supertest';
-import { Logger, AuditActionType, AuditResourceType, AuditLog } from '@OpsiMate/shared';
+import { AuditActionType, AuditResourceType, AuditLog } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { createApp } from '../src/app';
-
-const logger = new Logger('test-audit');
 
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
 
 const seedProviders = () => {
-  db.exec('DELETE FROM providers');
-  db.prepare(`
+	db.exec('DELETE FROM providers');
+	db.prepare(
+		`
     INSERT INTO providers (id, provider_name, provider_ip, username, private_key_filename, ssh_port, created_at, provider_type)
     VALUES (1, 'Test Provider', '127.0.0.1', 'user', 'key.pem', 22, CURRENT_TIMESTAMP, 'VM')
-  `).run();
+  `
+	).run();
 };
 
 beforeAll(async () => {
-  db = new Database(':memory:');
+	db = new Database(':memory:');
 
-  // Create the providers and audit_logs tables
-  db.exec(`
+	// Create the providers and audit_logs tables
+	db.exec(`
     CREATE TABLE IF NOT EXISTS providers
     (
       id                   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,45 +60,48 @@ beforeAll(async () => {
     );
   `);
 
-  const expressApp = await createApp(db);
-  app = request(expressApp) as unknown as SuperTest<Test>;
+	const expressApp = await createApp(db);
+	app = request(expressApp) as unknown as SuperTest<Test>;
 
-  // Register and login a user to get a JWT token
-  await app.post('/api/v1/users/register').send({
-    email: 'audituser@example.com',
-    fullName: 'Audit User',
-    password: 'testpassword'
-  });
-  const loginRes = await app.post('/api/v1/users/login').send({
-    email: 'audituser@example.com',
-    password: 'testpassword'
-  });
-  jwtToken = loginRes.body.token;
+	// Register and login a user to get a JWT token
+	await app.post('/api/v1/users/register').send({
+		email: 'audituser@example.com',
+		fullName: 'Audit User',
+		password: 'testpassword',
+	});
+	const loginRes = await app.post('/api/v1/users/login').send({
+		email: 'audituser@example.com',
+		password: 'testpassword',
+	});
+	jwtToken = loginRes.body.token;
 });
 
 beforeEach(() => {
-  seedProviders();
-  db.exec('DELETE FROM audit_logs');
+	seedProviders();
+	db.exec('DELETE FROM audit_logs');
 });
 
 afterAll(() => {
-  db.close();
+	db.close();
 });
 
 describe('Audit Logs API', () => {
-  test('should log provider creation and retrieve audit logs', async () => {
-    // Create a provider
-    const providerData = {
-      name: 'Audit Provider',
-      providerIP: '192.168.1.1',
-      username: 'audituser',
-      password: 'auditpassword',
-      SSHPort: 22,
-      providerType: 'VM',
-    };
-    const createRes = await app.post('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`).send(providerData);
-    expect(createRes.status).toBe(201);
-    expect(createRes.body.success).toBe(true);
+	test('should log provider creation and retrieve audit logs', async () => {
+		// Create a provider
+		const providerData = {
+			name: 'Audit Provider',
+			providerIP: '192.168.1.1',
+			username: 'audituser',
+			password: 'auditpassword',
+			SSHPort: 22,
+			providerType: 'VM',
+		};
+		const createRes = await app
+			.post('/api/v1/providers')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send(providerData);
+		expect(createRes.status).toBe(201);
+		expect(createRes.body.success).toBe(true);
 
     // Fetch audit logs
     const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);

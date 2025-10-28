@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui/button';
-import { Settings, Layers, LayoutDashboard, Database, Puzzle, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Bell, Database, Layers, LayoutDashboard, Puzzle, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
 import { ProfileButton } from './ProfileButton';
-import { isAdmin, isEditor, isOperation, isViewer } from '../lib/auth';
 
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@radix-ui/react-tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
 interface LeftSidebarProps {
 	collapsed: boolean;
@@ -34,7 +34,12 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				</div>
 			</Link>
 
-			<div className={cn('px-4 space-y-2 w-full flex-grow flex flex-col', collapsed && 'px-2 items-center')}>
+			<div
+				className={cn(
+					'px-4 space-y-2 w-full flex-grow flex flex-col pt-4',
+					collapsed && 'px-2 items-center space-y-1'
+				)}
+			>
 				<Button
 					variant={location.pathname === '/' ? 'default' : 'ghost'}
 					className={cn(
@@ -139,7 +144,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 
 					<TooltipProvider>
 						<div className="flex flex-col items-center gap-2">
-							<div className="flex gap-2">
+							<div className={cn('flex gap-2', collapsed && 'gap-0.5')}>
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<div

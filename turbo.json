@@ -24,13 +24,34 @@
         "^lint-fix"
       ]
     },
+    "format": {
+      "dependsOn": [
+        "^format"
+      ]
+    },
+    "format-fix": {
+      "dependsOn": [
+        "^format-fix"
+      ]
+    },
+    "check": {
+      "dependsOn": [
+        "^check"
+      ]
+    },
+    "fix": {
+      "dependsOn": [
+        "^fix"
+      ]
+    },
     "dev": {
       "cache": false,
       "persistent": true,
       "dependsOn": [
         "^build"
       ],
-      "outputs": []
+      "outputs": [],
+      "env": ["NODE_ENV"]
     },
     "debug": {
       "cache": false,

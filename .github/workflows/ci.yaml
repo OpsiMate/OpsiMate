@@ -47,10 +47,16 @@ jobs:
         run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 
       - name: Lint apps/client
-        run: pnpm --filter @OpsiMate/client lint --max-warnings=178
+        run: pnpm --filter @OpsiMate/client lint --max-warnings=175
 
-      - name: Check formatting
-        run: pnpm --filter @OpsiMate/client format-check
+      - name: Format apps/server
+        run: pnpm --filter @OpsiMate/server format
+
+      - name: Format packages/shared
+        run: pnpm --filter @OpsiMate/shared format
+
+      - name: Format apps/client
+        run: pnpm --filter @OpsiMate/client format
 
       - name: Test apps/server
         run: pnpm --filter @OpsiMate/server test

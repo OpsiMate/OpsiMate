@@ -582,25 +582,11 @@ export const auditApi = {
 			pageSize: pageSize.toString(),
 		});
 
-		if (filters.userName?.trim()) {
-			params.append('userName', filters.userName.trim());
-		}
-		if (filters.actionType?.trim()) {
-			params.append('actionType', filters.actionType.trim());
-		}
-		if (filters.resourceType?.trim()) {
-			params.append('resourceType', filters.resourceType.trim());
-		}
-		if (filters.resourceName?.trim()) {
-			params.append('resourceName', filters.resourceName.trim());
-		}
-		if (filters.startTime?.trim()) {
-			params.append('startTime', filters.startTime.trim());
-		}
-
-		if (filters.endTime?.trim()) {
-			params.append('endTime', filters.endTime.trim());
-		}
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value?.trim()) {
+            params.append(key, value.trim());
+        }
+    });
 		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?${params.toString()}`);
 	},
 };
