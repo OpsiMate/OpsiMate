@@ -1,6 +1,6 @@
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
-import { setupDB, setupExpressApp } from "./setup.ts";
+import { setupDB, setupExpressApp } from './setup.ts';
 
 describe('Authentication API', () => {
 	let app: SuperTest<Test>;
