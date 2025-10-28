@@ -271,7 +271,14 @@ export default function Integrations() {
       try {
         const response = await integrationApi.getIntegrations();
         if (response.success && response.data?.integrations) {
-          setSavedIntegrations(response.data.integrations);
+  setSavedIntegrations(
+    response.data.integrations.map((integration: any) => ({
+      id: integration.id,
+      type: integration.type,
+      name: integration.name,
+      url: integration.url || integration.externalUrl || '', // adapt if backend uses a different field
+  }))
+);
 
           // Update configured instances based on saved integrations
           const instances: Record<string, number> = {};
@@ -488,15 +495,15 @@ export default function Integrations() {
                       // Handle different credential formats based on integration type
                       if (integration.id === 'datadog') {
                         setFormData({
-                          url: existingIntegration.externalUrl || '',
-                          apiKey: existingIntegration.credentials?.apiKey || '',
-                          appKey: existingIntegration.credentials?.appKey || ''
+                          url: existingIntegration.url || '',
+                          apiKey: '',
+                          appKey: ''
                         });
                       } else {
                         // Default for other integrations like Grafana and Kibana
                         setFormData({
-                          url: existingIntegration.externalUrl || '',
-                          apiKey: existingIntegration.credentials?.apiKey || ''
+                          url: existingIntegration.url || '',
+                          apiKey: '',
                         });
                       }
                     } else {
@@ -648,7 +655,7 @@ export default function Integrations() {
 
                       if (existingIntegration) {
                         // Update existing integration
-                        response = await integrationApi.updateIntegration(existingIntegration.id, integrationData);
+                        response = await integrationApi.updateIntegration(Number(existingIntegration.id), integrationData);
 
                         if (response.success) {
                           toast({
@@ -690,7 +697,14 @@ export default function Integrations() {
                         // Fetch updated integrations
                         const updatedIntegrations = await integrationApi.getIntegrations();
                         if (updatedIntegrations.success && updatedIntegrations.data?.integrations) {
-                          setSavedIntegrations(updatedIntegrations.data.integrations);
+                          setSavedIntegrations(
+                            updatedIntegrations.data.integrations.map((integration: any) => ({
+                            id: integration.id,
+                            type: integration.type,
+                            name: integration.name,
+                            url: integration.url || integration.externalUrl || '', // use externalUrl or another property if url is missing
+  }))
+);
                         }
 
                         // Close the sheet
@@ -881,7 +895,7 @@ export default function Integrations() {
 
                 setIsSubmitting(true);
                 try {
-                  const response = await integrationApi.deleteIntegration(integrationToDelete.id);
+                      const response = await integrationApi.deleteIntegration(Number(integrationToDelete.id));
 
                   if (response.success) {
                     toast({
@@ -899,7 +913,7 @@ export default function Integrations() {
                     // Fetch updated integrations
                     const updatedIntegrations = await integrationApi.getIntegrations();
                     if (updatedIntegrations.success && updatedIntegrations.data?.integrations) {
-                      setSavedIntegrations(updatedIntegrations.data.integrations);
+                      const response = await integrationApi.deleteIntegration(Number(integrationToDelete.id));
                     }
 
                     // Close the sheet

@@ -1,7 +1,7 @@
 import { initializeDb } from './dal/db.js';
 import { createApp } from './app.js';
 import { getServerConfig } from './config/config.js';
-import { Logger } from '@OpsiMate/shared';
+import { Logger } from '@opsimate/shared';
 import { initializePrivateKeysDir } from './dal/sshClient.js';
 
 const logger = new Logger('server');

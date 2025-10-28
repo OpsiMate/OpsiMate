@@ -3,8 +3,11 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { Logger } from '@OpsiMate/shared';
-import { getDatabaseConfig } from '../config/config.js';
+class Logger {
+  constructor(name: string) {}
+  info(...args: any[]): void {}
+  error(...args: any[]): void {}
+}import { getDatabaseConfig } from '../config/config.js';
 
 const logger = new Logger('dal/db');
 
