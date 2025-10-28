@@ -1,10 +1,9 @@
 ---
 name: Documentation
 about: Improvements or additions to documentation
-title: ''
+title: ""
 labels: documentation
-assignees: ''
-
+assignees: ""
 ---
 
 **Describe the documentation issue**

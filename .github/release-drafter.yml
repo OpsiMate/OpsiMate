@@ -1,5 +1,5 @@
-name-template: 'v$NEXT_PATCH_VERSION 🚀'
-tag-template: 'v$NEXT_PATCH_VERSION'
+name-template: "v$NEXT_PATCH_VERSION 🚀"
+tag-template: "v$NEXT_PATCH_VERSION"
 template: |
   ## What's Changed.
 
@@ -7,21 +7,21 @@ template: |
 
   Thanks to our contributors: $CONTRIBUTORS
 categories:
-  - title: 'New Features 🚀'
+  - title: "New Features 🚀"
     labels:
       - enhancement
       - feature
       - UI
       - Server
 
-  - title: 'Bug Fixes 🐛'
+  - title: "Bug Fixes 🐛"
     labels:
       - bug
       - fix
       - DevOps
       - Test
 
-  - title: 'Documentation 📚'
+  - title: "Documentation 📚"
     labels:
       - documentation
       - docs

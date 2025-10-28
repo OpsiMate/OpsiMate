@@ -5,7 +5,7 @@ services:
     image: opsimate/backend:latest
     container_name: opsimate-backend
     ports:
-      - "3001:3001"        
+      - "3001:3001"
     volumes:
       - ./data/database:/app/data/database
       - ./data/private-keys:/app/data/private-keys
@@ -19,9 +19,9 @@ services:
     image: opsimate/frontend:latest
     container_name: opsimate-frontend
     ports:
-      - "8080:8080"        
+      - "8080:8080"
     environment:
       - NODE_ENV=production
-      - API_URL=http://backend:3001   
+      - API_URL=http://backend:3001
       - HOST=0.0.0.0
     restart: unless-stopped

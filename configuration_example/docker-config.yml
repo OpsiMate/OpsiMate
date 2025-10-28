@@ -3,22 +3,22 @@
 
 # Server configuration
 server:
-  port: 3001  # Backend API server port
-  host: "0.0.0.0"  # Bind to all interfaces in container
+  port: 3001 # Backend API server port
+  host: "0.0.0.0" # Bind to all interfaces in container
 
 # Client configuration (not used in production container)
 client:
-  port: 8080  # Frontend development server port (for reference)
-  api_url: "http://localhost:3001/api/v1"  # Backend API URL
+  port: 8080 # Frontend development server port (for reference)
+  api_url: "http://localhost:3001/api/v1" # Backend API URL
 
 # Database configuration
 database:
-  path: "/app/data/database/opsimate.db"  # SQLite database file path (mounted volume)
+  path: "/app/data/database/opsimate.db" # SQLite database file path (mounted volume)
 
 # Security configuration
 security:
-  private_keys_path: "/app/data/private-keys"  # SSH private keys directory (mounted volume)
+  private_keys_path: "/app/data/private-keys" # SSH private keys directory (mounted volume)
 
-# VM configuration 
+# VM configuration
 vm:
   try_with_sudo: true # Run docker commands with sudo

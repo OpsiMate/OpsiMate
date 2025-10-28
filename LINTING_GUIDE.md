@@ -5,12 +5,14 @@ This project uses **ESLint** and **Prettier** to enforce code quality and consis
 ## 🎯 Code Quality Rules
 
 ### Your Specific Requirements ✅
+
 - **Semicolons**: Enforced on every line (`semi: "always"`)
 - **File Length**: Maximum 300 lines per file (`max-lines: 300`)
 - **Empty Lines**: Maximum 1 empty line between functions (`no-multiple-empty-lines: 1`)
 - **React Components**: Only functional components allowed (`react/prefer-function-component`)
 
 ### Additional Quality Rules
+
 - **Function Length**: Maximum 50 lines per function
 - **Parameters**: Maximum 4 parameters per function
 - **Complexity**: Maximum complexity of 10
@@ -39,11 +41,13 @@ npm run format-fix
 ## 📋 Pre-commit Checklist
 
 Before committing, run:
+
 ```bash
 npm run format-fix
 ```
 
 This will:
+
 1. Format your code with Prettier
 2. Fix ESLint issues automatically
 3. Ensure consistent code style
@@ -51,13 +55,16 @@ This will:
 ## 🔧 Editor Integration
 
 ### VS Code
+
 Install these extensions:
+
 - **ESLint** (`ms-vscode.vscode-eslint`)
 - **Prettier** (`esbenp.prettier-vscode`)
 
 The project includes `.vscode/settings.json` for automatic formatting on save.
 
 ### Other Editors
+
 - **WebStorm/IntelliJ**: Enable ESLint and Prettier plugins
 - **Sublime Text**: Install SublimeLinter-eslint and JsPrettier
 - **Vim/Neovim**: Use ALE or coc.nvim with ESLint and Prettier
@@ -116,53 +123,55 @@ const badFunction = (a, b, c, d, e, f) => {
 ## 🚨 Common Issues and Fixes
 
 ### Semicolon Issues
+
 ```typescript
 // ❌ Missing semicolon
-const name = 'John'
+const name = "John";
 
 // ✅ Correct
-const name = 'John';
+const name = "John";
 ```
 
 ### File Too Long
+
 If a file exceeds 300 lines:
+
 1. Extract components into separate files
 2. Move utility functions to separate modules
 3. Split large components into smaller ones
 
 ### Too Many Empty Lines
+
 ```typescript
 // ❌ Too many empty lines
 function func1() {
-  return 'hello';
+  return "hello";
 }
 
-
-
 function func2() {
-  return 'world';
+  return "world";
 }
 
 // ✅ Correct
 function func1() {
-  return 'hello';
+  return "hello";
 }
 
 function func2() {
-  return 'world';
+  return "world";
 }
 ```
 
 ## 🔍 Rule Explanations
 
-| Rule | Purpose | Example |
-|------|---------|---------|
-| `semi: "always"` | Enforces semicolons | `const x = 1;` |
-| `max-lines: 300` | Limits file size | Split large files |
-| `no-multiple-empty-lines: 1` | Controls spacing | Max 1 empty line |
+| Rule                              | Purpose                        | Example             |
+| --------------------------------- | ------------------------------ | ------------------- |
+| `semi: "always"`                  | Enforces semicolons            | `const x = 1;`      |
+| `max-lines: 300`                  | Limits file size               | Split large files   |
+| `no-multiple-empty-lines: 1`      | Controls spacing               | Max 1 empty line    |
 | `react/prefer-function-component` | Enforces functional components | Use arrow functions |
-| `max-lines-per-function: 50` | Limits function size | Extract logic |
-| `complexity: 10` | Limits code complexity | Simplify logic |
+| `max-lines-per-function: 50`      | Limits function size           | Extract logic       |
+| `complexity: 10`                  | Limits code complexity         | Simplify logic      |
 
 ## 🎨 Prettier Configuration
 
@@ -176,11 +185,13 @@ function func2() {
 ## 🚀 Getting Started
 
 1. Install dependencies:
+
    ```bash
    pnpm install
    ```
 
 2. Run linting:
+
    ```bash
    pnpm run lint
    ```
@@ -196,4 +207,3 @@ function func2() {
 - [Prettier Options](https://prettier.io/docs/en/options.html)
 - [React ESLint Plugin](https://github.com/jsx-eslint/eslint-plugin-react)
 - [TypeScript ESLint](https://typescript-eslint.io/)
-

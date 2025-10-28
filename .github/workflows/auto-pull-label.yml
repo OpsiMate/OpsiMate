@@ -3,7 +3,7 @@ name: Auto Label PRs
 on:
   issues:
     types: [opened, edited]
-  pull_request_target:    # use pull_request_target for PRs (runs with base repo permissions)
+  pull_request_target: # use pull_request_target for PRs (runs with base repo permissions)
     types: [opened, edited, synchronize]
 
 permissions:
@@ -18,5 +18,5 @@ jobs:
       - uses: actions/labeler@v4
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          configuration-path: '.github/labeler.yml'
+          configuration-path: ".github/labeler.yml"
           sync-labels: true

@@ -34,26 +34,26 @@ export class AuditLogRepository {
 		});
 	}
 
-    async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
-        return runAsync(() => {
-            const stmt = this.db.prepare(`
+	async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
+		return runAsync(() => {
+			const stmt = this.db.prepare(`
                 INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details, role, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            const result = stmt.run(
-                log.actionType as string,
-                log.resourceType as string,
-                log.resourceId,
-                log.userId,
-                log.userName,
-                log.resourceName,
-                log.details || null,
-                log.role || null,
-                log.createdBy || null
-            );
-            return { lastID: result.lastInsertRowid as number };
-        });
-    }
+			const result = stmt.run(
+				log.actionType as string,
+				log.resourceType as string,
+				log.resourceId,
+				log.userId,
+				log.userName,
+				log.resourceName,
+				log.details || null,
+				log.role || null,
+				log.createdBy || null
+			);
+			return { lastID: result.lastInsertRowid as number };
+		});
+	}
 
 	async getAuditLogs(offset: number, limit: number): Promise<AuditLog[]> {
 		return runAsync(() => {

@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-          token: ${{ secrets.ADMIN_PAT }}  
+          token: ${{ secrets.ADMIN_PAT }}
 
       - name: Get released version
         id: get_version
@@ -47,4 +47,4 @@ jobs:
           branch: main
           commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
         env:
-          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}  # Important: replace default token with PAT
+          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }} # Important: replace default token with PAT
