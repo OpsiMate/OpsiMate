@@ -31,8 +31,10 @@ jobs:
 
     - name: Determine Version Type
       id: version_type
+      env:
+        INPUT_VERSION_TYPE: ${{ github.event.inputs.version_type }}
       run: |
-        TYPE="${{ github.event.inputs.version_type }}"
+        TYPE="$INPUT_VERSION_TYPE"
         if [ -z "$TYPE" ]; then
           TYPE="patch"
         fi

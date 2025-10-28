@@ -1,190 +1,190 @@
-import request, { SuperTest, Test } from 'supertest';
+import { SuperTest, Test } from 'supertest';
+import { Provider } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app';
-import {
-  Logger,
-  AuditActionType,
-  AuditResourceType,
-  AuditLog,
-  Provider,
-  Role,
-  Service
-} from '@OpsiMate/shared';
-
-const logger = new Logger('test-provider-service');
+import { expect } from 'vitest';
+import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
 
-// Seed the database
-const seedProvidersAndServices = () => {
-  db.exec('DELETE FROM services');
-  db.exec('DELETE FROM providers');
-  db.exec('DELETE FROM audit_logs');
-
-  db.prepare(`
-    INSERT INTO providers (id, provider_name, provider_ip, username, public_key, ssh_port, created_at)
-    VALUES (1, 'Original Provider', '127.0.0.1', 'root', 'key.pem', 22, CURRENT_TIMESTAMP)
-  `).run();
-
-  db.prepare(`
-    INSERT INTO services (provider_id, service_name, service_ip, service_status)
-    VALUES (1, 'Test Service', '127.0.0.1', 'running')
-  `).run();
+const seedProviders = () => {
+	db.exec('DELETE FROM providers');
+	db.prepare(
+		`
+			INSERT INTO providers (id, provider_name, provider_ip, username, private_key_filename, ssh_port, created_at,
+								   provider_type)
+			VALUES (1, 'Test Provider', '127.0.0.1', 'user', 'key.pem', 22, CURRENT_TIMESTAMP, 'VM')`
+	).run();
 };
 
 beforeAll(async () => {
-  db = new Database(':memory:');
-
-  // Create tables
-  db.exec(`
-    CREATE TABLE providers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      provider_name TEXT NOT NULL,
-      provider_ip TEXT NOT NULL,
-      username TEXT NOT NULL,
-      public_key TEXT NOT NULL,
-      ssh_port INTEGER DEFAULT 22,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE services (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      provider_id INTEGER NOT NULL,
-      service_name TEXT NOT NULL,
-      service_ip TEXT,
-      service_status TEXT DEFAULT 'unknown',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      action_type TEXT NOT NULL,
-      resource_type TEXT NOT NULL,
-      resource_id TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      user_name TEXT,
-      resource_name TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-      details TEXT
-    );
-  `);
-
-  const expressApp = await createApp(db);
-  app = request(expressApp) as unknown as SuperTest<Test>;
-
-  // Register and login a test user
-  await app.post('/api/v1/users/register').send({
-    email: 'testuser@example.com',
-    fullName: 'Test User',
-    password: 'password123'
-  });
-
-  const loginRes = await app.post('/api/v1/users/login').send({
-    email: 'testuser@example.com',
-    password: 'password123'
-  });
-  jwtToken = loginRes.body.token;
+	db = await setupDB();
+	app = await setupExpressApp(db);
+	jwtToken = await setupUserWithToken(app);
 });
 
 beforeEach(() => {
-  seedProvidersAndServices();
+	seedProviders();
 });
 
 afterAll(() => {
-  db.close();
+	db.close();
 });
 
-describe('PUT /api/v1/providers/:providerId', () => {
+describe('Providers API', () => {
+	test('should get all providers', async () => {
+		const res = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(200);
+		const providersRes = res.body.data.providers as Provider[];
+		expect(Array.isArray(providersRes)).toBe(true);
+		expect(providersRes.length).toEqual(1);
 
-  test('✅ Updates provider successfully and updates DB', async () => {
-    const updateData = {
-      name: 'Updated Provider',
-      providerIP: '192.168.1.1',
-      username: 'admin',
-      publicKey: 'updated.pem',
-      sshPort: 2222
-    };
+		const provider: Provider = providersRes[0];
+		expect(provider.id).toBeDefined();
+		expect(provider.name).toBe('Test Provider');
+		expect(provider.providerIP).toBe('127.0.0.1');
+		expect(provider.username).toBe('user');
+		expect(provider.privateKeyFilename).toBe('key.pem');
+		expect(provider.SSHPort).toBe(22);
+		expect(provider.providerType).toBe('VM');
+	});
 
-    const res = await app
-      .put('/api/v1/providers/1')
-      .set('Authorization', `Bearer ${jwtToken}`)
-      .send(updateData);
+	test('should create a new provider', async () => {
+		const providerData = {
+			name: 'New Provider',
+			providerIP: '192.168.1.1',
+			username: 'newuser',
+			password: 'newpassword',
+			SSHPort: 2222,
+			providerType: 'VM',
+		};
 
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.provider_name).toBe('Updated Provider');
+		const createRes = await app
+			.post('/api/v1/providers')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send(providerData);
 
-    // Confirm DB updated
-    const dbProvider = db.prepare('SELECT * FROM providers WHERE id = 1').get() as any;
-    expect(dbProvider.provider_name).toBe('Updated Provider');
-    expect(dbProvider.username).toBe('admin');
-  });
+		expect(createRes.status).toBe(201);
+		expect(createRes.body.success).toBe(true);
+		expect(createRes.body.data.id).toBeDefined();
 
-  test('✅ Returns 400 for invalid data (successfully handled)', async () => {
-    const res = await app
-      .put('/api/v1/providers/1')
-      .set('Authorization', `Bearer ${jwtToken}`)
-      .send({ providerIP: '10.0.0.5' }); // missing required fields
+		// Verify the provider was created
+		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
 
-    expect(res.status).toBe(400);
-    expect(res.body.success).toBe(false);
-  });
+		const newProvider = getRes.body.data.providers.find((p: Provider) => p.name === 'New Provider') as Provider;
+		expect(newProvider).toBeDefined();
+		expect(newProvider.providerIP).toBe('192.168.1.1');
+		expect(newProvider.username).toBe('newuser');
+		expect(newProvider.SSHPort).toBe(2222);
+		expect(newProvider.providerType).toBe('VM');
+	});
 
-  test('✅ Returns 404 if provider does not exist (successfully handled)', async () => {
-    const res = await app
-      .put('/api/v1/providers/999')
-      .set('Authorization', `Bearer ${jwtToken}`)
-      .send({
-        name: 'Ghost Provider',
-        providerIP: '10.0.0.99',
-        username: 'ghost',
-        publicKey: 'ghost.pem'
-      });
+	test('should update an existing provider', async () => {
+		const updateData = {
+			name: 'Updated Provider',
+			providerIP: '10.0.0.1',
+			username: 'updateduser',
+			password: 'updatedpassword',
+			SSHPort: 2222,
+			providerType: 'VM',
+		};
 
-    expect(res.status).toBe(404);
-    expect(res.body.success).toBe(false);
-  });
+		const updateRes = await app
+			.put('/api/v1/providers/1')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send(updateData);
 
-  test('✅ Returns 401 if unauthorized (successfully blocked)', async () => {
-    const res = await app.put('/api/v1/providers/1').send({
-      name: 'Unauthorized Update',
-      providerIP: '10.0.0.50',
-      username: 'noAuth',
-      publicKey: 'none.pem'
-    });
+		expect(updateRes.status).toBe(200);
+		expect(updateRes.body.success).toBe(true);
 
-    expect(res.status).toBe(401);
-  });
+		// Verify the provider was updated
+		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
 
-  test('✅ Creates audit log entry on update', async () => {
-    await app
-      .put('/api/v1/providers/1')
-      .set('Authorization', `Bearer ${jwtToken}`)
-      .send({
-        name: 'Audited Update',
-        providerIP: '10.1.1.1',
-        username: 'audit',
-        publicKey: 'audit.pem'
-      });
+		const newProvider = getRes.body.data.providers.find((p: Provider) => p.name === 'Updated Provider') as Provider;
+		expect(newProvider).toBeDefined();
+		expect(newProvider.providerIP).toBe('10.0.0.1');
+		expect(newProvider.username).toBe('updateduser');
+		expect(newProvider.SSHPort).toBe(2222);
+		expect(newProvider.providerType).toBe('VM');
+	});
 
-    const logs = db.prepare('SELECT * FROM audit_logs').all();
-    expect(logs.length).toBeGreaterThan(0);
+	test('should delete a provider', async () => {
+		const deleteRes = await app.delete('/api/v1/providers/1').set('Authorization', `Bearer ${jwtToken}`);
 
-    const log: AuditLog = logs[0] as AuditLog;
-    expect(log.actionType).toBe(AuditActionType.UPDATE);
-    expect(log.resourceType).toBe(AuditResourceType.PROVIDER);
-    expect(log.resourceId).toBe('1');
-  });
+		expect(deleteRes.status).toBe(200);
+		expect(deleteRes.body.success).toBe(true);
 
+		// Verify the provider was deleted
+		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
+
+		const newProvider = getRes.body.data.providers.find((p: Provider) => p.name === 'Test Provider') as Provider;
+		expect(newProvider).toBeUndefined();
+	});
+
+	test('should require authentication', async () => {
+		const getRes = await app.get('/api/v1/providers');
+		expect(getRes.status).toBe(401);
+
+		const createRes = await app.post('/api/v1/providers').send({
+			name: 'Unauthorized Provider',
+			providerIP: '192.168.1.1',
+			username: 'user',
+			password: 'password',
+			SSHPort: 22,
+			providerType: 'VM',
+		});
+		expect(createRes.status).toBe(401);
+	});
+
+	test('should handle bulk creation of providers', async () => {
+		const providersData = [
+			{
+				name: 'Bulk Provider 1',
+				providerIP: '10.0.0.1',
+				username: 'bulkuser1',
+				password: 'bulkpassword1',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+			{
+				name: 'Bulk Provider 2',
+				providerIP: '10.0.0.2',
+				username: 'bulkuser2',
+				password: 'bulkpassword2',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: providersData });
+
+		expect(bulkRes.status).toBe(201);
+		expect(bulkRes.body.success).toBe(true);
+
+		expect(Array.isArray(bulkRes.body.data.providerIds)).toBe(true);
+		expect(bulkRes.body.data.providerIds.length).toBe(2);
+
+		// Verify the providers were created
+		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
+
+		const bulkProvider1 = getRes.body.data.providers.find((p: Provider) => p.name === 'Bulk Provider 1');
+		const bulkProvider2 = getRes.body.data.providers.find((p: Provider) => p.name === 'Bulk Provider 2');
+
+		expect(bulkProvider1).toBeDefined();
+		expect(bulkProvider2).toBeDefined();
+	});
+
+	// todo: add tests to the following routes:
+	// router.post('/:providerId/refresh', controller.refreshProvider.bind(controller));
+	// router.post('/test-connection', controller.testConnection.bind(controller));
+	// router.post('/:providerId/services/bulk', controller.bulkAddServices.bind(controller));
+	// router.get('/:providerId/discover-services', controller.discoverServices.bind(controller));
 });
