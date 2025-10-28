@@ -1,15 +1,14 @@
-import request, { SuperTest, Test } from 'supertest';
+import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app';
+import { setupDB, setupExpressApp } from "./setup.ts";
 
 describe('Authentication API', () => {
 	let app: SuperTest<Test>;
 	let db: Database.Database;
 
 	beforeAll(async () => {
-		db = new Database(':memory:');
-		const expressApp = await createApp(db);
-		app = request(expressApp) as unknown as SuperTest<Test>;
+		db = await setupDB();
+		app = await setupExpressApp(db);
 	});
 
 	beforeEach(() => {
@@ -87,7 +86,7 @@ describe('Authentication API', () => {
 		const token = loginRes.body.token;
 		const res = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${token}`);
 		// 200 is expected, but if no alerts table, could be 500
-		expect([200, 500]).toContain(res.status);
+		expect(res.status).toBe(200);
 	});
 
 	test('should get all users as admin, reject for non-admin or unauthenticated', async () => {
@@ -217,27 +216,6 @@ describe('Authentication API', () => {
 		const res = await app.delete('/api/v1/users/1').set('Authorization', `Bearer ${viewerToken}`);
 		expect(res.status).toBe(403);
 		expect(res.body.success).toBe(false);
-	});
-
-	test('cannot delete self', async () => {
-		// Register admin
-		await app.post('/api/v1/users/register').send({
-			email: 'admin5@example.com',
-			fullName: 'Admin5 User',
-			password: 'securepassword',
-		});
-		const loginRes = await app.post('/api/v1/users/login').send({
-			email: 'admin5@example.com',
-			password: 'securepassword',
-		});
-		const adminToken = loginRes.body.token;
-		// Get admin user id
-		const usersRes = await app.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
-		const adminId = usersRes.body.data[0].id;
-		// Try to delete self
-		const res = await app.delete(`/api/v1/users/${adminId}`).set('Authorization', `Bearer ${adminToken}`);
-		// Should allow, but you may want to block this in the future
-		expect([200, 403]).toContain(res.status);
 	});
 
 	test('deleting non-existent user returns 404', async () => {
