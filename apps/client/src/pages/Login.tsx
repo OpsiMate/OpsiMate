@@ -27,8 +27,9 @@ const Login: React.FC = () => {
 			try {
 				const res = await fetch(EMAIL_STATUS_URL);
 				const data = await res.json();
+
 				if (data.success) {
-					setEmailEnabled(data.emailEnabled);
+					setEmailEnabled(data.data.isEmailEnabled);
 				} else {
 					logger.error('Failed to fetch email status', data);
 					setEmailEnabled(false);

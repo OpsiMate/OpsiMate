@@ -16,7 +16,6 @@ import {
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { User } from '@OpsiMate/shared';
-import { isEmailEnabled } from '../../../config/config';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 const logger = new Logger('api/v1/users/controller');
@@ -284,25 +283,12 @@ export class UsersController {
 
 	forgotPasswordHandler = async (req: Request, res: Response) => {
 		try {
-			if (!isEmailEnabled()) {
-				return res.status(400).json({
-					success: false,
-					error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.',
-				});
-			}
 			const { email } = ForgotPasswordSchema.parse(req.body);
 			await this.userBL.forgotPassword(email);
 			return res.status(200).json({ success: true, message: 'Password reset email sent' });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
-			}
-
-			if (error instanceof Error && error.message.includes('Email functionality is disabled')) {
-				return res.status(503).json({
-					success: false,
-					error: 'Email functionality is disabled. Please contact your administrator to configure SMTP settings.',
-				});
 			}
 
 			logger.error('Error processing forgot password request:', error);
@@ -349,20 +335,6 @@ export class UsersController {
 			} else {
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
-		}
-	};
-
-	emailStatusHandler = (req: Request, res: Response) => {
-		try {
-			const emailEnabled = isEmailEnabled();
-			return res.status(200).json({
-				success: true,
-				emailEnabled,
-				message: emailEnabled ? 'Email functionality is enabled' : 'Email functionality is disabled',
-			});
-		} catch (error) {
-			logger.error('Error checking email status:', error);
-			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 }

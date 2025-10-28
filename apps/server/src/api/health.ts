@@ -12,8 +12,9 @@ function emailStatusHandler(req: Request, res: Response) {
 	const emailEnabled = isEmailEnabled();
 	return res.status(200).json({
 		success: true,
-		emailEnabled,
-		message: emailEnabled ? 'Email functionality is enabled' : 'Email functionality is disabled',
+		data: {
+			isEmailEnabled: emailEnabled,
+		},
 	});
 }
 
