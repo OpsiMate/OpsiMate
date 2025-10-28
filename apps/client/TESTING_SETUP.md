@@ -8,7 +8,7 @@ Successfully installed and configured React Testing Library with Vitest for the 
 
 ```bash
 @testing-library/react
-@testing-library/jest-dom  
+@testing-library/jest-dom
 @testing-library/user-event
 vitest
 @vitest/ui
@@ -18,20 +18,26 @@ jsdom
 ## Configuration Files
 
 ### 1. `vitest.config.ts`
+
 Vitest configuration with:
+
 - React plugin (SWC)
 - jsdom environment
 - Path aliases (`@/` and `@OpsiMate/shared`)
 - Setup file registration
 
 ### 2. `src/test/setup.ts`
+
 Global test setup including:
+
 - `@testing-library/jest-dom` matchers
 - Automatic cleanup after each test
 - `window.matchMedia` mock for theme provider
 
 ### 3. `src/test/test-utils.tsx`
+
 Custom render function with providers:
+
 - QueryClientProvider (React Query)
 - ThemeProvider
 - BrowserRouter (React Router)
@@ -42,30 +48,36 @@ Added to `package.json`:
 
 ```json
 {
-  "test": "vitest",           // Watch mode
-  "test:ui": "vitest --ui",   // UI mode
-  "test:run": "vitest run",   // Single run
-  "test:coverage": "vitest run --coverage"
+	"test": "vitest", // Watch mode
+	"test:ui": "vitest --ui", // UI mode
+	"test:run": "vitest run", // Single run
+	"test:coverage": "vitest run --coverage"
 }
 ```
 
 ## Example Tests Created
 
 ### 1. Dashboard Component Test
+
 `src/components/Dashboard/Dashboard.test.tsx`
+
 - Tests rendering with mocked hooks
 - Tests loading states
 - Tests service display
 
 ### 2. FilterPanel Component Test
+
 `src/components/Dashboard/FilterPanel/FilterPanel.test.tsx`
+
 - Tests expanded/collapsed modes
 - Tests filter selection
 - Tests reset functionality
 - Tests active filter count
 
 ### 3. useServiceFilters Hook Test
+
 `src/components/Dashboard/useServiceFilters.test.tsx`
+
 - Tests initialization
 - Tests URL parameter handling
 - Tests filter changes
@@ -107,15 +119,15 @@ describe('MyComponent', () => {
 ### Hook Test Template
 
 ```typescript
-import { renderHook } from '@testing-library/react'
-import { useMyHook } from '../useMyHook'
+import { renderHook } from '@testing-library/react';
+import { useMyHook } from '../useMyHook';
 
 describe('useMyHook', () => {
-  it('returns expected value', () => {
-    const { result } = renderHook(() => useMyHook())
-    expect(result.current.value).toBe('expected')
-  })
-})
+	it('returns expected value', () => {
+		const { result } = renderHook(() => useMyHook());
+		expect(result.current.value).toBe('expected');
+	});
+});
 ```
 
 ## File Structure
@@ -148,14 +160,17 @@ src/
 ## Troubleshooting
 
 ### Import Errors
+
 - Check path aliases in `vitest.config.ts`
 - Ensure you're using `@/` prefix for absolute imports
 
 ### Mock Not Working
+
 - Place `vi.mock()` calls before imports
 - Check mock implementation matches actual interface
 
 ### Test Timeout
+
 - Increase timeout: `it('test', async () => {...}, 10000)`
 - Use `waitFor` for async operations
 
@@ -173,4 +188,3 @@ Full testing guide available at: `src/test/README.md`
 ✅ Documentation created
 
 Ready to write tests for all components and pages!
-

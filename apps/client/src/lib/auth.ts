@@ -1,41 +1,47 @@
+import { Logger } from '@OpsiMate/shared';
 import { jwtDecode } from 'jwt-decode';
 
+const logger = new Logger('auth');
+
 export interface JWTPayload {
-  id: number;
-  email: string;
-  role: 'admin' | 'editor' | 'viewer';
-  iat: number;
-  exp: number;
+	id: number;
+	email: string;
+	role: 'admin' | 'editor' | 'viewer' | 'operation';
+	iat: number;
+	exp: number;
 }
 
 export function getCurrentUser(): JWTPayload | null {
-  const token = localStorage.getItem('jwt');
-  if (!token) return null;
-  
-  try {
-    return jwtDecode<JWTPayload>(token);
-  } catch (error) {
-    console.error('Failed to decode JWT token:', error);
-    return null;
-  }
+	const token = localStorage.getItem('jwt');
+	if (!token) return null;
+
+	try {
+		return jwtDecode<JWTPayload>(token);
+	} catch (error) {
+		logger.error('Failed to decode JWT token:', error);
+		return null;
+	}
 }
 
 export function isAdmin(): boolean {
-  const user = getCurrentUser();
-  return user?.role === 'admin';
+	const user = getCurrentUser();
+	return user?.role === 'admin';
 }
 
 export function isEditor(): boolean {
-  const user = getCurrentUser();
-  return user?.role !== 'viewer';
+	const user = getCurrentUser();
+	return user?.role === 'admin' || user?.role === 'editor';
 }
 
-export function  isViewer(): boolean{
-  const user = getCurrentUser();
-  return user?.role ==='viewer';
+export function isViewer(): boolean {
+	const user = getCurrentUser();
+	return user?.role === 'viewer';
 }
-
-export function getUserRole(): 'admin' | 'editor' | 'viewer' | null {
-  const user = getCurrentUser();
-  return user?.role || null;
-} 
+export function isOperation(): boolean {
+	const user = getCurrentUser();
+	return user?.role === 'operation';
+}
+export function getUserRole(): 'admin' | 'editor' | 'viewer' | 'operation' | null {
+	const user = getCurrentUser();
+	return user?.role || null;
+}

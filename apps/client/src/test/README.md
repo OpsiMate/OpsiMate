@@ -5,6 +5,7 @@ This directory contains the testing setup and utilities for the OpsiMate client 
 ## Setup
 
 The project uses:
+
 - **Vitest** - Fast unit test framework
 - **React Testing Library** - Testing utilities for React components
 - **@testing-library/jest-dom** - Custom matchers for better assertions
@@ -65,15 +66,15 @@ describe('MyComponent', () => {
 ### Hook Tests
 
 ```typescript
-import { renderHook } from '@testing-library/react'
-import { useMyHook } from '../useMyHook'
+import { renderHook } from '@testing-library/react';
+import { useMyHook } from '../useMyHook';
 
 describe('useMyHook', () => {
-  it('returns expected value', () => {
-    const { result } = renderHook(() => useMyHook())
-    expect(result.current.value).toBe('expected')
-  })
-})
+	it('returns expected value', () => {
+		const { result } = renderHook(() => useMyHook());
+		expect(result.current.value).toBe('expected');
+	});
+});
 ```
 
 ### Using Test Utils
@@ -87,36 +88,38 @@ The `test-utils.tsx` file provides a custom render function that wraps component
 Use it instead of RTL's default render:
 
 ```typescript
-import { render, screen } from '@/test/test-utils'
+import { render, screen } from '@/test/test-utils';
 ```
 
 ## Best Practices
 
 1. **Test user behavior, not implementation details**
-   - Query by accessible roles/labels
-   - Avoid testing internal state
+    - Query by accessible roles/labels
+    - Avoid testing internal state
 
 2. **Use meaningful test descriptions**
-   ```typescript
-   it('displays error message when form submission fails', () => {
-     // test code
-   })
-   ```
+
+    ```typescript
+    it('displays error message when form submission fails', () => {
+    	// test code
+    });
+    ```
 
 3. **Mock external dependencies**
-   ```typescript
-   vi.mock('@/hooks/queries', () => ({
-     useServices: vi.fn().mockReturnValue({ data: [] })
-   }))
-   ```
+
+    ```typescript
+    vi.mock('@/hooks/queries', () => ({
+    	useServices: vi.fn().mockReturnValue({ data: [] }),
+    }));
+    ```
 
 4. **Clean up after tests**
-   - The setup file automatically cleans up after each test
-   - Use `beforeEach` and `afterEach` for test-specific setup
+    - The setup file automatically cleans up after each test
+    - Use `beforeEach` and `afterEach` for test-specific setup
 
 5. **Test accessibility**
-   - Use accessible queries: `getByRole`, `getByLabelText`
-   - Ensure interactive elements are keyboard accessible
+    - Use accessible queries: `getByRole`, `getByLabelText`
+    - Ensure interactive elements are keyboard accessible
 
 ## Common Patterns
 
@@ -141,7 +144,7 @@ import { fireEvent } from '@testing-library/react'
 it('handles click', () => {
   const onClick = vi.fn()
   render(<Button onClick={onClick} />)
-  
+
   fireEvent.click(screen.getByRole('button'))
   expect(onClick).toHaveBeenCalled()
 })
@@ -155,12 +158,12 @@ import userEvent from '@testing-library/user-event'
 it('submits form', async () => {
   const user = userEvent.setup()
   const onSubmit = vi.fn()
-  
+
   render(<Form onSubmit={onSubmit} />)
-  
+
   await user.type(screen.getByLabelText('Name'), 'John')
   await user.click(screen.getByRole('button', { name: 'Submit' }))
-  
+
   expect(onSubmit).toHaveBeenCalledWith({ name: 'John' })
 })
 ```
@@ -168,6 +171,7 @@ it('submits form', async () => {
 ## Example Tests
 
 See the following files for examples:
+
 - `components/Dashboard/Dashboard.test.tsx` - Component with hooks
 - `components/Dashboard/FilterPanel/FilterPanel.test.tsx` - Interactive component
 - `components/Dashboard/useServiceFilters.test.tsx` - Custom hook
@@ -177,12 +181,14 @@ See the following files for examples:
 ### Import Path Issues
 
 If you see import errors, make sure:
+
 1. The `vitest.config.ts` has correct path aliases
 2. You're using `@/` prefix for absolute imports
 
 ### Mock Not Working
 
 Ensure mocks are defined before imports:
+
 ```typescript
 vi.mock('./module', () => ({...}))
 import { Component } from './component'
@@ -191,10 +197,11 @@ import { Component } from './component'
 ### Test Timeout
 
 Increase timeout for slow tests:
+
 ```typescript
 it('slow test', async () => {
-  // test code
-}, 10000) // 10 seconds
+	// test code
+}, 10000); // 10 seconds
 ```
 
 ## Resources
@@ -203,4 +210,3 @@ it('slow test', async () => {
 - [React Testing Library](https://testing-library.com/react)
 - [Testing Library Queries](https://testing-library.com/docs/queries/about)
 - [Common Mistakes](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-
