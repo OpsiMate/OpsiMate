@@ -55,8 +55,8 @@ describe('Integrations API', () => {
 			externalUrl: 'https://kibana.example.com',
 			credentials: {
 				apiKey: 'new-api-key',
-				appKey: 'new-app-key'
-			}
+				appKey: 'new-app-key',
+			},
 		};
 
 		const createRes = await app
@@ -87,8 +87,8 @@ describe('Integrations API', () => {
 			externalUrl: 'https://datadog.example.com',
 			credentials: {
 				apiKey: 'updated-api-key',
-				appKey: 'updated-app-key'
-			}
+				appKey: 'updated-app-key',
+			},
 		};
 
 		const updateRes = await app
@@ -104,7 +104,9 @@ describe('Integrations API', () => {
 		const getRes = await app.get('/api/v1/integrations').set('Authorization', `Bearer ${jwtToken}`);
 		expect(getRes.status).toBe(200);
 
-		const updatedIntegration = getRes.body.data.integrations.find((i: Integration) => i.name === 'Updated Integration');
+		const updatedIntegration = getRes.body.data.integrations.find(
+			(i: Integration) => i.name === 'Updated Integration'
+		);
 		expect(updatedIntegration).toBeDefined();
 		expect(updatedIntegration.type).toBe(IntegrationType.Datadog);
 		expect(updatedIntegration.externalUrl).toBe('https://datadog.example.com');
@@ -123,7 +125,9 @@ describe('Integrations API', () => {
 		const getRes = await app.get('/api/v1/integrations').set('Authorization', `Bearer ${jwtToken}`);
 		expect(getRes.status).toBe(200);
 
-		const deletedIntegration = getRes.body.data.integrations.find((i: Integration) => i.name === 'Test Integration');
+		const deletedIntegration = getRes.body.data.integrations.find(
+			(i: Integration) => i.name === 'Test Integration'
+		);
 		expect(deletedIntegration).toBeUndefined();
 	});
 
@@ -136,8 +140,8 @@ describe('Integrations API', () => {
 			type: IntegrationType.Grafana,
 			externalUrl: 'https://grafana.example.com',
 			credentials: {
-				apiKey: 'unauthorized-api-key'
-			}
+				apiKey: 'unauthorized-api-key',
+			},
 		});
 		expect(createRes.status).toBe(401);
 	});
@@ -177,7 +181,7 @@ describe('Integrations API', () => {
 			// Missing required fields
 			name: '',
 			type: 'InvalidType',
-			externalUrl: 'not-a-url'
+			externalUrl: 'not-a-url',
 		};
 
 		const createRes = await app
