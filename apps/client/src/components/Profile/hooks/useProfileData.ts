@@ -10,6 +10,7 @@ interface UseProfileDataReturn {
 	profile: User | null;
 	loading: boolean;
 	handleApiResponse: ReturnType<typeof useFormErrors>['handleApiResponse'];
+	setProfile: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 export const useProfileData = (): UseProfileDataReturn => {
@@ -63,5 +64,6 @@ export const useProfileData = (): UseProfileDataReturn => {
 		profile,
 		loading,
 		handleApiResponse,
+		setProfile,
 	};
 };

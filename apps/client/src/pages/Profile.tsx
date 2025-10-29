@@ -8,7 +8,7 @@ import {
 import { useProfileData, useProfileEdit } from '@/components/Profile/hooks';
 
 const Profile: React.FC = () => {
-	const { profile, loading } = useProfileData();
+	const { profile, loading, setProfile } = useProfileData();
 
 	const {
 		isEditing,
@@ -20,7 +20,7 @@ const Profile: React.FC = () => {
 		handleEdit,
 		handleCancel,
 		handleSave,
-	} = useProfileEdit({ profile });
+	} = useProfileEdit({ profile, setProfile });
 
 	const handleLogout = useCallback(() => {
 		localStorage.removeItem('jwt');

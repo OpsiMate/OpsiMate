@@ -8,6 +8,7 @@ const logger = new Logger('useProfileEdit');
 
 interface UseProfileEditProps {
 	profile: User | null;
+	setProfile: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 interface UseProfileEditReturn {
@@ -33,7 +34,7 @@ const validatePassword = (password: string): string | null => {
 	return null;
 };
 
-export const useProfileEdit = ({ profile }: UseProfileEditProps): UseProfileEditReturn => {
+export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): UseProfileEditReturn => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [formData, setFormData] = useState<ProfileFormData>({
@@ -108,6 +109,9 @@ export const useProfileEdit = ({ profile }: UseProfileEditProps): UseProfileEdit
 					localStorage.setItem('jwt', response.data.token as string);
 				}
 
+				// update local profile state to reflect changes in UI
+				setProfile((prev) => (prev ? { ...prev, fullName: updateData.fullName } : prev));
+
 				setIsEditing(false);
 				setFormData((prev) => ({
 					...prev,
@@ -128,7 +132,7 @@ export const useProfileEdit = ({ profile }: UseProfileEditProps): UseProfileEdit
 		} finally {
 			setSaving(false);
 		}
-	}, [formData, clearErrors, handleApiResponse]);
+	}, [formData, clearErrors, handleApiResponse, setProfile]);
 
 	return {
 		isEditing,
