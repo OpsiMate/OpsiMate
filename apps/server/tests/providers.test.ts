@@ -168,9 +168,8 @@ describe('Providers API', () => {
 		expect(bulkRes.status).toBe(201);
 		expect(bulkRes.body.success).toBe(true);
 
-		// todo: fix this issue and uncomment
-		// expect(Array.isArray(bulkRes.body.data.providerIds)).toBe(true);
-		// expect(bulkRes.body.data.providerIds.length).toBe(2);
+		expect(Array.isArray(bulkRes.body.data.providerIds)).toBe(true);
+		expect(bulkRes.body.data.providerIds.length).toBe(2);
 
 		// Verify the providers were created
 		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
