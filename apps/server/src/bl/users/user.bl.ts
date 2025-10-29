@@ -27,7 +27,7 @@ export class UserBL {
 		if (!user) throw new Error('User creation failed');
 
 		// Send welcome email
-		this.mailClient.sendMail({
+		void this.mailClient.sendMail({
 			to: user.email,
 			mailType: MailType.WELCOME,
 			userName: user.fullName,
@@ -123,7 +123,7 @@ export class UserBL {
 				expiresAt: resetPasswordConfig.expiresAt,
 			});
 
-			this.mailClient.sendMail({
+			void this.mailClient.sendMail({
 				to: user.email,
 				subject: 'Password Reset Request',
 				mailType: MailType.PASSWORD_RESET,
