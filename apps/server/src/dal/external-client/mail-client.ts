@@ -154,22 +154,26 @@ export class MailClient {
 	 * @returns Promise<void>
 	 */
 	async sendMail(options: SendMailOptions): Promise<void> {
-		if (!this.transporter || !this.verified) {
-			logger.error('MailClient: SMTP transporter is not configured');
-			throw new Error('SMTP transporter is not configured');
-		}
+		try {
+			if (!this.transporter || !this.verified) {
+				logger.error('MailClient: SMTP transporter is not configured');
+				throw new Error('SMTP transporter is not configured');
+			}
 
-		let html: string | undefined;
-		if (options.mailType) {
-			html = this.getMailTemplate(options);
-		}
+			let html: string | undefined;
+			if (options.mailType) {
+				html = this.getMailTemplate(options);
+			}
 
-		await this.transporter.sendMail({
-			from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.com>',
-			to: options.to,
-			subject: this.getMailSubject(options),
-			html,
-			text: options.text,
-		});
+			await this.transporter.sendMail({
+				from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.com>',
+				to: options.to,
+				subject: this.getMailSubject(options),
+				html,
+				text: options.text,
+			});
+		} catch (error) {
+			logger.error('Failed to send email', error);
+		}
 	}
 }
