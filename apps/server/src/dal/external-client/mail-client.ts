@@ -159,12 +159,12 @@ export class MailClient {
 				logger.error('MailClient: SMTP transporter is not configured');
 				throw new Error('SMTP transporter is not configured');
 			}
-	
+
 			let html: string | undefined;
 			if (options.mailType) {
 				html = this.getMailTemplate(options);
 			}
-	
+
 			await this.transporter.sendMail({
 				from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.com>',
 				to: options.to,
