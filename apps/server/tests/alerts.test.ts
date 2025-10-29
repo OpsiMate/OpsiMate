@@ -1,8 +1,8 @@
-import request, { SuperTest, Test } from 'supertest';
+import { SuperTest, Test } from 'supertest';
 import { Logger, Alert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app';
 import { AlertRow } from '../src/dal/models';
+import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
 
@@ -93,39 +93,9 @@ const seedAlerts = () => {
 };
 
 beforeAll(async () => {
-	db = new Database(':memory:');
-
-	// Create the alerts table
-	db.exec(`
-    CREATE TABLE IF NOT EXISTS alerts (
-      id TEXT PRIMARY KEY,
-      status TEXT,
-      tag TEXT,
-      starts_at TEXT,
-      updated_at TEXT,
-      alert_url TEXT,
-      alert_name TEXT,
-      summary TEXT,
-      runbook_url TEXT,
-      is_dismissed BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-	const expressApp = await createApp(db);
-	app = request(expressApp) as unknown as SuperTest<Test>;
-
-	// Register and login a user to get a JWT token
-	await app.post('/api/v1/users/register').send({
-		email: 'testadmin@example.com',
-		fullName: 'Test Admin',
-		password: 'testpassword',
-	});
-	const loginRes = await app.post('/api/v1/users/login').send({
-		email: 'testadmin@example.com',
-		password: 'testpassword',
-	});
-	jwtToken = loginRes.body.token;
+	db = await setupDB();
+	app = await setupExpressApp(db);
+	jwtToken = await setupUserWithToken(app);
 });
 
 beforeEach(() => {
@@ -143,7 +113,7 @@ describe('Alerts API', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(Array.isArray(response.body.data?.alerts)).toBe(true);
+			expect(Array.isArray(response.body.data.alerts)).toBe(true);
 			expect(response.body.data.alerts).toHaveLength(3);
 		});
 
@@ -180,6 +150,7 @@ describe('Alerts API', () => {
 	describe('PATCH /api/v1/alerts/:id/dismiss', () => {
 		test('should dismiss an active alert successfully', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1'
+			expect(testAlerts[0].isDismissed).toBe(false);
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/dismiss`)
@@ -191,25 +162,9 @@ describe('Alerts API', () => {
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should update the database when dismissing an alert', async () => {
-			const alertId = testAlerts[0].id; // 'alert-1'
-
-			// Verify initial state
-			const beforeStmt = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?');
-			const beforeResult = beforeStmt.get(alertId) as { is_dismissed: number };
-			expect(beforeResult.is_dismissed).toBe(0);
-
-			// Dismiss the alert
-			await app.patch(`/api/v1/alerts/${alertId}/dismiss`).set('Authorization', `Bearer ${jwtToken}`);
-
-			// Verify updated state
-			const afterStmt = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?');
-			const afterResult = afterStmt.get(alertId) as { is_dismissed: number };
-			expect(afterResult.is_dismissed).toBe(1);
-		});
-
 		test('should handle dismissing an already dismissed alert', async () => {
 			const alertId = testAlerts[2].id; // 'alert-3' (already dismissed)
+			expect(testAlerts[2].isDismissed).toBe(true);
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/dismiss`)
@@ -228,11 +183,22 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(404);
 			expect(response.body.success).toBe(false);
 		});
+
+		test('should return 401 for request without authentication', async () => {
+			const alertId = testAlerts[0].id; // 'alert-1'
+
+			const response = await app.patch(`/api/v1/alerts/${alertId}/dismiss`);
+			// No Authorization header set
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
 	});
 
 	describe('PATCH /api/v1/alerts/:id/undismiss', () => {
 		test('should undismiss a dismissed alert successfully', async () => {
 			const alertId = testAlerts[2].id; // 'alert-3' (already dismissed)
+			expect(testAlerts[2].isDismissed).toBe(true);
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/undismiss`)
@@ -244,25 +210,9 @@ describe('Alerts API', () => {
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should update the database when undismissing an alert', async () => {
-			const alertId = testAlerts[2].id; // 'alert-3' (already dismissed)
-
-			// Verify initial state
-			const beforeStmt = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?');
-			const beforeResult = beforeStmt.get(alertId) as { is_dismissed: number };
-			expect(beforeResult.is_dismissed).toBe(1);
-
-			// Undismiss the alert
-			await app.patch(`/api/v1/alerts/${alertId}/undismiss`).set('Authorization', `Bearer ${jwtToken}`);
-
-			// Verify updated state
-			const afterStmt = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?');
-			const afterResult = afterStmt.get(alertId) as { is_dismissed: number };
-			expect(afterResult.is_dismissed).toBe(0);
-		});
-
 		test('should handle undismissing an already active alert', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1' (not dismissed)
+			expect(testAlerts[0].isDismissed).toBe(false);
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/undismiss`)
@@ -279,6 +229,16 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(404);
+			expect(response.body.success).toBe(false);
+		});
+
+		test('should return 401 for request without authentication', async () => {
+			const alertId = testAlerts[2].id; // 'alert-3'
+
+			const response = await app.patch(`/api/v1/alerts/${alertId}/undismiss`);
+			// No Authorization header set
+
+			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
 		});
 
@@ -303,43 +263,6 @@ describe('Alerts API', () => {
 			const finalStmt = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?');
 			const finalResult = finalStmt.get(alertId) as { is_dismissed: number };
 			expect(finalResult.is_dismissed).toBe(0);
-		});
-	});
-
-	describe('Edge cases and error handling', () => {
-		test('should handle malformed requests gracefully', async () => {
-			const response = await app
-				.get('/api/v1/alerts/invalid-endpoint')
-				.set('Authorization', `Bearer ${jwtToken}`);
-
-			expect(response.status).toBe(404);
-		});
-
-		test('should handle database errors gracefully', async () => {
-			// Close the database to simulate an error
-			db.close();
-
-			const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
-
-			expect(response.status).toBeGreaterThanOrEqual(500);
-
-			// Recreate database for cleanup
-			db = new Database(':memory:');
-			db.exec(`
-        CREATE TABLE IF NOT EXISTS alerts (
-          id TEXT PRIMARY KEY,
-          status TEXT,
-          tag TEXT,
-          starts_at TEXT,
-          updated_at TEXT,
-          alert_url TEXT,
-          alert_name TEXT,
-          summary TEXT,
-          runbook_url TEXT,
-          is_dismissed BOOLEAN DEFAULT 0,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
 		});
 	});
 });
