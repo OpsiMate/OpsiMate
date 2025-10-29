@@ -27,15 +27,11 @@ export class UserBL {
 		if (!user) throw new Error('User creation failed');
 
 		// Send welcome email
-		try {
-			await this.mailClient.sendMail({
-				to: user.email,
-				mailType: MailType.WELCOME,
-				userName: user.fullName,
-			});
-		} catch (error) {
-			logger.error('Failed to send welcome email', error);
-		}
+		this.mailClient.sendMail({
+			to: user.email,
+			mailType: MailType.WELCOME,
+			userName: user.fullName,
+		});
 
 		return user;
 	}
@@ -127,7 +123,7 @@ export class UserBL {
 				expiresAt: resetPasswordConfig.expiresAt,
 			});
 
-			await this.mailClient.sendMail({
+			this.mailClient.sendMail({
 				to: user.email,
 				subject: 'Password Reset Request',
 				mailType: MailType.PASSWORD_RESET,
