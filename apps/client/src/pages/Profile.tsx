@@ -1,9 +1,9 @@
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCallback } from 'react';
-import { DashboardLayout } from '../../components/DashboardLayout';
-import { AccountSection, EditProfileForm, ProfileHeader, ProfileInformation, ThemePreferences } from './components';
-import { useProfileData, useProfileEdit } from './hooks';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { AccountSection, EditProfileForm, ProfileHeader, ProfileInformation, ThemePreferences } from '@/components/Profile/components';
+import { useProfileData, useProfileEdit } from '@/components/Profile/hooks';
 
 const Profile: React.FC = () => {
 	const { profile, loading, handleApiResponse } = useProfileData();
@@ -93,3 +93,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+

@@ -1,20 +1,19 @@
 import { useFormErrors } from '@/hooks/useFormErrors';
 import { apiRequest } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
-import { Logger, User as UserType } from '@OpsiMate/shared';
+import { Logger, User } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
-import { UserProfile } from '../Profile.types';
 
 const logger = new Logger('useProfileData');
 
 interface UseProfileDataReturn {
-	profile: UserProfile | null;
+	profile: User | null;
 	loading: boolean;
 	handleApiResponse: ReturnType<typeof useFormErrors>['handleApiResponse'];
 }
 
 export const useProfileData = (): UseProfileDataReturn => {
-	const [profile, setProfile] = useState<UserProfile | null>(null);
+	const [profile, setProfile] = useState<User | null>(null);
 	const [loading, setLoading] = useState(false);
 	const { handleApiResponse } = useFormErrors();
 
@@ -25,7 +24,7 @@ export const useProfileData = (): UseProfileDataReturn => {
 				const currentUser = getCurrentUser();
 				if (currentUser) {
 					// Fetch the full user profile from the server
-					const response = await apiRequest<UserType>('/users/profile', 'GET');
+					const response = await apiRequest<User>('/users/profile', 'GET');
 					if (response.success && response.data) {
 						setProfile({
 							id: response.data.id,

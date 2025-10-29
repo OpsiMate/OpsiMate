@@ -1,13 +1,13 @@
 import { useFormErrors } from '@/hooks/useFormErrors';
 import { apiRequest } from '@/lib/api';
-import { Logger } from '@OpsiMate/shared';
+import { Logger, User } from '@OpsiMate/shared';
 import { useCallback, useEffect, useState } from 'react';
-import { ProfileFormData, UserProfile } from '../Profile.types';
+import { ProfileFormData } from '../Profile.types';
 
 const logger = new Logger('useProfileEdit');
 
 interface UseProfileEditProps {
-	profile: UserProfile | null;
+	profile: User | null;
 }
 
 interface UseProfileEditReturn {

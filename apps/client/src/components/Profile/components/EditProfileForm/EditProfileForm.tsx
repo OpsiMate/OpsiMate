@@ -62,9 +62,8 @@ export const EditProfileForm = ({
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
 					<div>
-						<label htmlFor="newPassword" className="text-sm font-semibold text-muted-foreground">New Password</label>
+						<label className="text-sm font-semibold text-muted-foreground">New Password</label>
 						<Input
-							id="newPassword"
 							type="password"
 							value={formData.newPassword}
 							onChange={(e) => onFormDataChange({ ...formData, newPassword: e.target.value })}
@@ -75,9 +74,8 @@ export const EditProfileForm = ({
 					</div>
 
 					<div>
-						<label htmlFor="confirmPassword" className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
+						<label className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
 						<Input
-							id="confirmPassword"
 							type="password"
 							value={formData.confirmPassword}
 							onChange={(e) => onFormDataChange({ ...formData, confirmPassword: e.target.value })}
@@ -86,7 +84,7 @@ export const EditProfileForm = ({
 							placeholder="Confirm password"
 						/>
 					</div>
-					</div>
+				</div>
 				</div>
 			</div>
 
