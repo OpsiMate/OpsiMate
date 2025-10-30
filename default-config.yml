@@ -16,15 +16,21 @@ security:
 
 # mailer configuration
 mailer:
-  enabled: true
+  enabled: false
   default_encoding: "UTF-8"
   host: "smtp.gmail.com"
   port: 587                
-  secure: false             
+  secure: false
+  mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
   from: "<no-reply@yourdomain.com>"
   replyTo: "ops@yourdomain.com"
+  templates:
+    welcomeTemplate: {
+        subject: 'Welcome to OpsiMate!',
+        content: 'Welcome aboard! We’re happy to have you as part of the OpsiMate community.'
+    }
   auth:
-    user: "<Gmail username>"
-    pass: "<Gmail password>"        
+    user: "my-mail@gmail.com"
+    pass: "mypass"
   tls:
     rejectUnauthorized: true

@@ -21,9 +21,11 @@ jobs:
 
       - name: Get released version
         id: get_version
+        env:
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-          VERSION="${{ github.event.release.tag_name }}"
+          echo "RELEASE_TAG=$RELEASE_TAG_NAME" >> $GITHUB_ENV
+          VERSION="$RELEASE_TAG_NAME"
           VERSION="${VERSION#v}"   # Remove leading 'v' if present
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 

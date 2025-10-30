@@ -1,29 +1,35 @@
 {
-  "name": "@OpsiMate/shared",
-  "version": "1.0.0",
-  "private": true,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "clean": "rm -rf dist",
-    "lint": "eslint src --ext .ts",
-    "lint-fix": "eslint src --ext .ts --fix"
-  },
-  "dependencies": {
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@types/node": "^22.5.5",
-    "eslint": "^9.9.0",
-    "typescript": "^5.5.3"
-  }
+	"name": "@OpsiMate/shared",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"clean": "rm -rf dist",
+		"lint": "eslint src --ext .ts",
+		"lint-fix": "eslint src --ext .ts --fix",
+		"format": "prettier --check .",
+		"format-fix": "prettier --write .",
+		"check": "npm run format && npm run lint",
+		"fix": "npm run format-fix && npm run lint-fix"
+	},
+	"dependencies": {
+		"zod": "^3.23.8"
+	},
+	"devDependencies": {
+		"@types/node": "^22.5.5",
+		"eslint": "^9.9.0",
+		"typescript": "^5.5.3",
+		"vite": "^7.1.11",
+		"vite-plugin-dts": "^4.3.0"
+	}
 }
