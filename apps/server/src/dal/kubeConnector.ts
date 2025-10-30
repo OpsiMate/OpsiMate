@@ -123,7 +123,7 @@ const getK8RPods = async (_provider: Provider, service: Service): Promise<Discov
 
 const getK8SServices = async (_provider: Provider): Promise<DiscoveredService[]> => {
 	const k8sApi = createClient(_provider);
-	const servicesList = await k8sApi.listReplicationControllerForAllNamespaces({});
+	const servicesList = await k8sApi.listServiceForAllNamespaces({});
 	const services: k8s.V1Service[] = servicesList.items ?? [];
 
 	const allResponses = services
