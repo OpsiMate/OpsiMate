@@ -1,5 +1,5 @@
 import * as k8s from '@kubernetes/client-node';
-import { DiscoveredPod, DiscoveredService, Logger, Provider, Service } from '@OpsiMate/shared';
+import { DiscoveredPod, DiscoveredService, Provider, Service } from '@OpsiMate/shared';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -16,8 +16,6 @@ function getPrivateKeysDir(): string {
 		? securityConfig.private_keys_path
 		: path.resolve(__dirname, securityConfig.private_keys_path);
 }
-
-const logger = new Logger('kubeConnector.ts');
 
 function getKeyPath(filename: string) {
 	const privateKeysDir = getPrivateKeysDir();
@@ -123,21 +121,9 @@ const getK8RPods = async (_provider: Provider, service: Service): Promise<Discov
 	return pods.map((p: k8s.V1Pod) => ({ name: p.metadata?.name || 'No-Name' }));
 };
 
-const deleteK8RPod = async (_provider: Provider, podName: string, namespace: string): Promise<void> => {
-	const k8sApi = createClient(_provider);
-
-	try {
-		await k8sApi.deleteNamespacedPod({ name: podName, namespace });
-		logger.info(`Pod: ${podName} in namespace: ${namespace} deleted successfully`);
-	} catch (err) {
-		logger.error(`Failed to delete pod: ${podName} in namespace: ${namespace}`, err);
-		throw err;
-	}
-};
-
 const getK8SServices = async (_provider: Provider): Promise<DiscoveredService[]> => {
 	const k8sApi = createClient(_provider);
-	const servicesList = await k8sApi.listServiceForAllNamespaces({});
+	const servicesList = await k8sApi.listReplicationControllerForAllNamespaces({});
 	const services: k8s.V1Service[] = servicesList.items ?? [];
 
 	const allResponses = services
@@ -176,4 +162,4 @@ const getK8SServices = async (_provider: Provider): Promise<DiscoveredService[]>
 	return Promise.all(allResponses);
 };
 
-export { getK8SServices, getK8RLogs, deleteK8RPod, getK8RPods, restartK8RServicePods };
+export { getK8SServices, getK8RLogs, getK8RPods, restartK8RServicePods };
