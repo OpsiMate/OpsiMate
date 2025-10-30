@@ -35,35 +35,35 @@ export class ProviderController {
 		}
 	}
 
-	async refreshProvider(req: Request, res: Response) {
-		try {
-			const providerId = parseInt(req.params.providerId);
-			if (isNaN(providerId)) {
-				return res.status(400).json({ success: false, error: 'Invalid provider ID' });
-			}
+    async refreshProvider(req: AuthenticatedRequest, res: Response) {
+        try {
+            const providerId = parseInt(req.params.providerId);
+            if (isNaN(providerId)) {
+                return res.status(400).json({success: false, error: 'Invalid provider ID'});
+            }
 
-			const result = await this.providerBL.refreshProvider(providerId);
-
-			delete result.provider.password;
-
-			return res.json({
-				success: true,
-				data: {
-					provider: result.provider,
-					services: result.services,
-				},
-				message: 'Provider refreshed successfully',
-			});
-		} catch (error) {
-			if (error instanceof ProviderNotFound) {
-				return res.status(404).json({ success: false, error: `Provider ${error.provider} not found` });
-			} else {
-				logger.error('Error refreshing provider:', error);
-				const message = error instanceof Error ? error.message : 'Unknown error';
-				return res.status(500).json({ success: false, error: 'Failed to refresh provider', details: message });
-			}
-		}
-	}
+            const result = await this.providerBL.refreshProvider(providerId, req.user as User);
+            
+            delete result.provider.password;
+            
+            return res.json({
+                success: true, 
+                data: {
+                    provider: result.provider,
+                    services: result.services
+                },
+                message: 'Provider refreshed successfully'
+            });
+        } catch (error) {
+            if (error instanceof ProviderNotFound) {
+                return res.status(404).json({success: false, error: `Provider ${error.provider} not found`});
+            } else {
+                logger.error('Error refreshing provider:', error);
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                return res.status(500).json({success: false, error: 'Failed to refresh provider', details: message});
+            }
+        }
+    }
 
 	async createProvider(req: AuthenticatedRequest, res: Response) {
 		try {
