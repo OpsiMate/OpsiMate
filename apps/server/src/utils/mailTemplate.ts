@@ -17,7 +17,7 @@ function buildEmailSkeleton(content: string, subtitle?: string): string {
         ${content}
         <hr style="margin: 32px 0; border: none; border-top: 1px solid #e2e8f0;">
         <p style="color: #a0aec0; font-size: 12px; text-align: center;">
-          &copy; Copyright © ${new Date().getFullYear()} OpsiMate. All rights reserved.
+          Copyright &copy; ${new Date().getFullYear()} OpsiMate. All rights reserved.
         </p>
       </div>
     </div>
