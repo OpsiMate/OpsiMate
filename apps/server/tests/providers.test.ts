@@ -326,4 +326,8 @@ describe('Provider Refresh API', () => {
       expect(res.body.error).toContain('Failed to refresh provider');
     });
   });
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> 10306ef1dfe98bf8ae4a07e9a010f7a9691e8a02
