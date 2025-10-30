@@ -378,7 +378,7 @@ export const ServiceTable = ({
 							<h3 className="text-sm font-semibold text-foreground">Services</h3>
 							<p className="text-xs text-muted-foreground">Loading...</p>
 						</div>
-						<Button variant="outline" size="icon" onClick={onSettingsClick} className="h-7 w-7 rounded-md">
+						<Button variant="outline" size="icon" onClick={onSettingsClick} className="h-7 w-7 rounded-md" aria-label='Table setting'>
 							<Settings className="h-3 w-3" />
 							<span className="sr-only">Table Settings</span>
 						</Button>
@@ -439,7 +439,7 @@ export const ServiceTable = ({
 							)}
 						</p>
 					</div>
-					<Button variant="outline" size="icon" onClick={onSettingsClick} className="h-7 w-7 rounded-md">
+					<Button variant="outline" size="icon" onClick={onSettingsClick} className="h-7 w-7 rounded-md" aria-label='Table setting'>
 						<Settings className="h-3 w-3" />
 						<span className="sr-only">Table Settings</span>
 					</Button>
@@ -467,6 +467,7 @@ export const ServiceTable = ({
 							size="sm"
 							onClick={clearSearch}
 							className="absolute right-1 top-1/2 transform -translate-y-1/2 h-5 w-5 p-0"
+							aria-label='Close'
 						>
 							<X className="h-3 w-3" />
 						</Button>

@@ -42,6 +42,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 					size="icon"
 					onClick={() => setMobileSidebarOpen(true)}
 					className="h-9 w-9 rounded-md"
+					aria-label='Toggle sidebar'
 				>
 					<Menu className="h-5 w-5" />
 					<span className="sr-only">Toggle Menu</span>
@@ -86,6 +87,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 						variant="ghost"
 						size="icon"
 						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8"
+						aria-label='Sidebar collapse'
 					>
 						{isSidebarCollapsed ? (
 							<ChevronRight className="h-4 w-4" />
