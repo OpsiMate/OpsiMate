@@ -126,6 +126,7 @@ export enum AuditActionType {
     CREATE = 'CREATE',
     UPDATE = 'UPDATE',
     DELETE = 'DELETE',
+    REFRESH = 'REFRESH',
 }
 
 export enum AuditResourceType {

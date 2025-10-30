@@ -33,14 +33,14 @@ export class ProviderController {
         }
     }
 
-    async refreshProvider(req: Request, res: Response) {
+    async refreshProvider(req: AuthenticatedRequest, res: Response) {
         try {
             const providerId = parseInt(req.params.providerId);
             if (isNaN(providerId)) {
                 return res.status(400).json({success: false, error: 'Invalid provider ID'});
             }
 
-            const result = await this.providerBL.refreshProvider(providerId);
+            const result = await this.providerBL.refreshProvider(providerId, req.user as User);
             
             delete result.provider.password;
             

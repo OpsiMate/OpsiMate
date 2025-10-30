@@ -4,7 +4,12 @@ export default {
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest',
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        module: 'commonjs',
+        isolatedModules: true
+      }
+    }],
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [
@@ -17,12 +22,6 @@ export default {
   ],
   moduleNameMapper: {
     '^@OpsiMate/shared$': '<rootDir>/../../packages/shared/dist/index.js',
-  },
-  // Handle ES modules in node_modules
-  extensionsToTreatAsEsm: ['.ts'],
-  globals: {
-    'ts-jest': {
-      useESM: true
-    }
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   }
 };

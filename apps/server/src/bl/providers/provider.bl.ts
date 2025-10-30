@@ -161,7 +161,7 @@ export class ProviderBL {
         return await this.providerRepo.getProviderById(providerId);
     }
 
-    async refreshProvider(providerId: number): Promise<{ provider: Provider; services: Service[] }> {
+    async refreshProvider(providerId: number, user: User): Promise<{ provider: Provider; services: Service[] }> {
         logger.info(`Starting to refresh provider: ${providerId}`);
         
         const provider = await this.getProviderById(providerId);
@@ -172,6 +172,16 @@ export class ProviderBL {
         try {
             await this.refreshProviderServices(provider);
             const updatedServices = await this.serviceRepo.getServicesByProviderId(providerId);
+            
+            // Log audit action for provider refresh
+            await this.auditBL.logAction({
+                actionType: AuditActionType.REFRESH,
+                resourceType: AuditResourceType.PROVIDER,
+                resourceId: String(providerId),
+                userId: user.id,
+                userName: user.fullName,
+                resourceName: provider.name
+            });
             
             return {
                 provider,
