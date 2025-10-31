@@ -161,30 +161,40 @@ export class ProviderBL {
 		}
 	}
 
+    async refreshProvider(providerId: number, user: User): Promise<{ provider: Provider; services: Service[] }> {
+        logger.info(`Starting to refresh provider: ${providerId}`);
+        
+        const provider = await this.getProviderById(providerId);
+        if (!provider) {
+            throw new ProviderNotFound(providerId);
+        }
+
+        try {
+            await this.refreshProviderServices(provider);
+            const updatedServices = await this.serviceRepo.getServicesByProviderId(providerId);
+            
+            // Log audit action for provider refresh
+            await this.auditBL.logAction({
+                actionType: AuditActionType.REFRESH,
+                resourceType: AuditResourceType.PROVIDER,
+                resourceId: String(providerId),
+                userId: user.id,
+                userName: user.fullName,
+                resourceName: provider.name
+            });
+            
+            return {
+                provider,
+                services: updatedServices
+            };
+        } catch (error) {
+            logger.error(`Error refreshing provider ${providerId}:`, error);
+            throw new Error(`Failed to refresh provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
 	async getProviderById(providerId: number): Promise<Provider> {
 		return await this.providerRepo.getProviderById(providerId);
-	}
-
-	async refreshProvider(providerId: number): Promise<{ provider: Provider; services: Service[] }> {
-		logger.info(`Starting to refresh provider: ${providerId}`);
-
-		const provider = await this.getProviderById(providerId);
-		if (!provider) {
-			throw new ProviderNotFound(providerId);
-		}
-
-		try {
-			await this.refreshProviderServices(provider);
-			const updatedServices = await this.serviceRepo.getServicesByProviderId(providerId);
-
-			return {
-				provider,
-				services: updatedServices,
-			};
-		} catch (error) {
-			logger.error(`Error refreshing provider ${providerId}:`, error);
-			throw new Error(`Failed to refresh provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
-		}
 	}
 
 	async refreshProviderServices(provider: Provider): Promise<void> {

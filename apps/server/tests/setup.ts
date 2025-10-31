@@ -27,6 +27,63 @@ vi.mock('@kubernetes/client-node', () => ({
 	NetworkingV1Api: vi.fn(),
 }));
 
+// Mock modules that use import.meta.url to avoid Jest transformation issues
+jest.mock('../src/api/v1/secrets/router', () => {
+    return {
+        __esModule: true,
+        default: jest.fn(() => {
+            const express = require('express');
+            return express.Router();
+        })
+    };
+});
+
+jest.mock('../src/api/v1/custom-fields/router', () => {
+    return {
+        __esModule: true,
+        default: jest.fn(() => {
+            const express = require('express');
+            return express.Router();
+        })
+    };
+});
+
+jest.mock('../src/dal/sshClient', () => {
+    return {
+        __esModule: true,
+        checkSystemServiceStatus: jest.fn().mockResolvedValue('running'),
+        getDockerContainers: jest.fn().mockResolvedValue([]),
+        getK8SPods: jest.fn().mockResolvedValue([]),
+        executeCommand: jest.fn().mockResolvedValue(''),
+        connectAndListContainers: jest.fn().mockResolvedValue([]),
+    };
+});
+
+jest.mock('../src/dal/kubeConnector', () => {
+    return {
+        __esModule: true,
+        listPods: jest.fn().mockResolvedValue([]),
+        getKubeConfig: jest.fn(),
+    };
+});
+
+jest.mock('../src/dal/db', () => {
+    return {
+        __esModule: true,
+        initializeDb: jest.fn(),
+        runAsync: (fn: () => any) => {
+            return new Promise((resolve, reject) => {
+                try {
+                    const result = fn();
+                    resolve(result);
+                } catch (err) {
+                    reject(err instanceof Error ? err : new Error(String(err)));
+                }
+            });
+        }
+    };
+});
+
 // Increase timeout for integration tests
 vi.setConfig({ testTimeout: 30000 });
 
