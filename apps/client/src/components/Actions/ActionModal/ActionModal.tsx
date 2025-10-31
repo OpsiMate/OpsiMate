@@ -28,27 +28,27 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 	const { toast } = useToast();
 	const createMutation = useCreateCustomAction();
 	const updateMutation = useUpdateCustomAction();
+	type HeaderPair = { key: string; value: string };
+
+	const headersToPairs = (headers: Record<string, string> | null | undefined): HeaderPair[] => {
+		if (!headers) return [];
+		return Object.entries(headers).map(([key, value]) => ({ key, value }));
+	};
+
 	const [step, setStep] = useState(1);
 	const [formData, setFormData] = useState<ActionFormData>(actionToFormData(action));
 	const [errors, setErrors] = useState<FormErrors>({});
-	const [headersText, setHeadersText] = useState('');
+	const [headersPairs, setHeadersPairs] = useState<HeaderPair[]>([]);
 
 	useEffect(() => {
 		if (open) {
-			setFormData(actionToFormData(action));
+			const newFormData = actionToFormData(action);
+			setFormData(newFormData);
 			setStep(1);
 			setErrors({});
-			setHeadersText(action && (action as any).type === 'http' && (action as any).headers ? JSON.stringify((action as any).headers, null, 2) : '');
+			setHeadersPairs(headersToPairs(newFormData.headers));
 		}
 	}, [open, action]);
-
-	useEffect(() => {
-		if (formData.headers) {
-			setHeadersText(JSON.stringify(formData.headers, null, 2));
-		} else {
-			setHeadersText('');
-		}
-	}, [formData.headers]);
 
 	const validateStep1 = (): boolean => {
 		const newErrors: FormErrors = {};
@@ -80,24 +80,8 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 		setFormData({ ...formData, ...data });
 	};
 
-	const handleHeadersTextChange = (value: string) => {
-		setHeadersText(value);
-		if (!value.trim()) {
-			setFormData({ ...formData, headers: null });
-			setErrors({ ...errors, headers: undefined });
-			return;
-		}
-		try {
-			const parsed = JSON.parse(value);
-			if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-				setFormData({ ...formData, headers: parsed });
-				setErrors({ ...errors, headers: undefined });
-			} else {
-				setErrors({ ...errors, headers: 'Headers must be a valid JSON object' });
-			}
-		} catch {
-			setErrors({ ...errors, headers: 'Invalid JSON format' });
-		}
+	const handleHeadersPairsChange = (pairs: HeaderPair[]) => {
+		setHeadersPairs(pairs);
 	};
 
 	const handleErrorChange = (newErrors: Partial<FormErrors>) => {
@@ -171,10 +155,10 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 					{step === 2 && formData.type === 'http' && (
 						<HttpActionForm
 							formData={formData}
-							headersText={headersText}
+							headersPairs={headersPairs}
 							errors={errors}
 							onChange={handleFormDataChange}
-							onHeadersTextChange={handleHeadersTextChange}
+							onHeadersPairsChange={handleHeadersPairsChange}
 							onErrorChange={handleErrorChange}
 						/>
 					)}

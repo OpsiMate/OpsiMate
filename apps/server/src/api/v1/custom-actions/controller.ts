@@ -31,9 +31,9 @@ export class CustomActionsController {
     }
 
     create = async (req: Request, res: Response) => {
-        // if (!this.isValidBashAction(req.body)) {
-        //     return res.status(400).json({success: false, error: 'Invalid custom action payload'});
-        // }
+        if (!this.isValidBashAction(req.body)) {
+            return res.status(400).json({success: false, error: 'Invalid custom action payload'});
+        }
         const id = await this.bl.create(req.body);
         return res.status(201).json({success: true, data: {id}});
     };

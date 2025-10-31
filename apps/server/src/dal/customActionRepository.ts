@@ -43,9 +43,9 @@ export class CustomActionRepository {
 
 	async create(data: CustomAction): Promise<{ lastID: number }> {
 		return runAsync(() => {
-			// if (data.type !== 'bash') {
-			// 	throw new Error('Unsupported action type');
-			// }
+			if (data.type !== 'bash') {
+				throw new Error('Unsupported action type');
+			}
 			const { script } = this.toStorageFields(data);
 			const stmt = this.db.prepare(
 				'INSERT INTO custom_actions (name, description, type, target, script, http_config) VALUES (?, ?, ?, ?, ?, ?)'

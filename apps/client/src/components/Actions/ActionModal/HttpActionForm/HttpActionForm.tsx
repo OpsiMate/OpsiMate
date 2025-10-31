@@ -1,30 +1,85 @@
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Plus, Trash2 } from 'lucide-react';
 import { ActionFormData } from '../ActionModal.types';
+
+interface HeaderPair {
+	key: string;
+	value: string;
+}
 
 interface HttpActionFormProps {
 	formData: ActionFormData;
-	headersText: string;
+	headersPairs: HeaderPair[];
 	errors: {
 		url?: string;
 		method?: string;
 		headers?: string;
 	};
 	onChange: (data: Partial<ActionFormData>) => void;
-	onHeadersTextChange: (value: string) => void;
+	onHeadersPairsChange: (pairs: HeaderPair[]) => void;
 	onErrorChange: (errors: { url?: string; method?: string; headers?: string }) => void;
 }
 
 export const HttpActionForm = ({
 	formData,
-	headersText,
+	headersPairs,
 	errors,
 	onChange,
-	onHeadersTextChange,
+	onHeadersPairsChange,
 	onErrorChange,
 }: HttpActionFormProps) => {
+	const handleHeaderKeyChange = (index: number, key: string) => {
+		const updated = [...headersPairs];
+		updated[index] = { ...updated[index], key };
+		onHeadersPairsChange(updated);
+		updateHeadersFromPairs(updated);
+	};
+
+	const handleHeaderValueChange = (index: number, value: string) => {
+		const updated = [...headersPairs];
+		updated[index] = { ...updated[index], value };
+		onHeadersPairsChange(updated);
+		updateHeadersFromPairs(updated);
+	};
+
+	const handleAddHeader = () => {
+		const updated = [...headersPairs, { key: '', value: '' }];
+		onHeadersPairsChange(updated);
+	};
+
+	const handleRemoveHeader = (index: number) => {
+		const updated = headersPairs.filter((_, i) => i !== index);
+		onHeadersPairsChange(updated);
+		updateHeadersFromPairs(updated);
+	};
+
+	const updateHeadersFromPairs = (pairs: HeaderPair[]) => {
+		const headers: Record<string, string> = {};
+		let hasError = false;
+
+		for (const pair of pairs) {
+			if (pair.key.trim() && pair.value.trim()) {
+				headers[pair.key.trim()] = pair.value.trim();
+			} else if (pair.key.trim() || pair.value.trim()) {
+				hasError = true;
+			}
+		}
+
+		if (hasError) {
+			onErrorChange({ headers: 'Both key and value must be provided for each header' });
+		} else {
+			onErrorChange({ headers: undefined });
+		}
+
+		onChange({
+			headers: Object.keys(headers).length > 0 ? headers : null,
+		});
+	};
+
 	return (
 		<div className="space-y-4">
 			<div className="space-y-2">
@@ -66,15 +121,40 @@ export const HttpActionForm = ({
 				{errors.method && <p className="text-sm text-destructive">{errors.method}</p>}
 			</div>
 			<div className="space-y-2">
-				<Label htmlFor="headers">Headers (JSON)</Label>
-				<Textarea
-					id="headers"
-					value={headersText}
-					onChange={(e) => onHeadersTextChange(e.target.value)}
-					placeholder='{"Content-Type": "application/json"}'
-					rows={4}
-					className={`font-mono text-sm ${errors.headers ? 'border-destructive' : ''}`}
-				/>
+				<div className="flex items-center justify-between">
+					<Label htmlFor="headers">Headers</Label>
+					<Button type="button" variant="outline" size="sm" onClick={handleAddHeader} className="gap-2">
+						<Plus className="h-4 w-4" />
+						Add Header
+					</Button>
+				</div>
+				<div className="space-y-2">
+					{headersPairs.map((pair, index) => (
+						<div key={index} className="flex gap-2 items-start">
+							<Input
+								placeholder="Key"
+								value={pair.key}
+								onChange={(e) => handleHeaderKeyChange(index, e.target.value)}
+								className="flex-1"
+							/>
+							<Input
+								placeholder="Value"
+								value={pair.value}
+								onChange={(e) => handleHeaderValueChange(index, e.target.value)}
+								className="flex-1"
+							/>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								onClick={() => handleRemoveHeader(index)}
+								className="h-10 w-10 text-destructive hover:text-destructive"
+							>
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						</div>
+					))}
+				</div>
 				{errors.headers && <p className="text-sm text-destructive">{errors.headers}</p>}
 			</div>
 			{(formData.method === 'POST' || formData.method === 'PUT' || formData.method === 'PATCH') && (
