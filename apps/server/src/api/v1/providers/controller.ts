@@ -185,29 +185,6 @@ export class ProviderController {
 		}
 	}
 
-	async bulkAddServices(req: Request, res: Response) {
-		try {
-			const providerId = parseInt(req.params.providerId);
-			if (isNaN(providerId)) {
-				return res.status(400).json({ success: false, error: 'Invalid provider ID' });
-			}
-
-			const validatedData = AddBulkServiceSchema.parse(req.body);
-			const newServices = await this.providerBL.addServicesToProvider(providerId, validatedData);
-
-			return res.status(201).json({ success: true, data: newServices });
-		} catch (error) {
-			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
-			} else if (error instanceof ProviderNotFound) {
-				return res.status(404).json({ success: false, error: `Provider ${error.provider} not found` });
-			} else {
-				logger.error('Error storing services:', error);
-				return res.status(500).json({ success: false, error: 'Internal server error' });
-			}
-		}
-	}
-
 	async discoverServices(req: Request, res: Response) {
 		try {
 			const providerId = parseInt(req.params.providerId);
