@@ -51,7 +51,9 @@
         "^build"
       ],
       "outputs": [],
-      "env": ["NODE_ENV"]
+      "env": [
+        "NODE_ENV"
+      ]
     },
     "debug": {
       "cache": false,

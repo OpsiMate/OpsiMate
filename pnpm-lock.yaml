@@ -281,10 +281,13 @@ importers:
         version: 5.4.19(@types/node@22.17.2)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
 
   apps/server:
     dependencies:
+      '@OpsiMate/custom-actions':
+        specifier: workspace:*
+        version: link:../../packages/custom-actions
       '@OpsiMate/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -297,6 +300,9 @@ importers:
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
+      axios:
+        specifier: ^1.7.9
+        version: 1.11.0
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -370,9 +376,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4)
-      axios:
-        specifier: ^1.7.9
-        version: 1.11.0
       eslint:
         specifier: ^9.9.0
         version: 9.33.0(jiti@1.21.7)
@@ -390,7 +393,25 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/custom-actions:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.5.5
+        version: 22.17.2
+      eslint:
+        specifier: ^9.9.0
+        version: 9.33.0(jiti@1.21.7)
+      typescript:
+        specifier: ^5.5.3
+        version: 5.9.2
+      vite:
+        specifier: ^7.1.11
+        version: 7.1.12(@types/node@22.17.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+      vite-plugin-dts:
+        specifier: ^4.3.0
+        version: 4.5.4(@types/node@22.17.2)(rollup@4.47.1)(typescript@5.9.2)(vite@7.1.12(@types/node@22.17.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1))
 
   packages/shared:
     dependencies:
@@ -8375,7 +8396,7 @@ snapshots:
       std-env: 3.9.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -8424,7 +8445,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -12086,15 +12107,16 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  vite-node@3.2.4(@types/node@22.17.2):
+  vite-node@3.2.4(@types/node@22.17.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       cac: 6.7.14
       debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 5.4.19(@types/node@22.17.2)
+      vite: 7.1.12(@types/node@22.17.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
       - '@types/node'
+      - jiti
       - less
       - lightningcss
       - sass
@@ -12103,6 +12125,8 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+      - tsx
+      - yaml
 
   vite-plugin-dts@4.5.4(@types/node@22.17.2)(rollup@4.47.1)(typescript@5.9.2)(vite@7.1.12(@types/node@22.17.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)):
     dependencies:
@@ -12159,7 +12183,7 @@ snapshots:
       tsx: 4.20.6
       yaml: 2.8.1
 
-  vitest@3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6)):
+  vitest@3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -12182,13 +12206,14 @@ snapshots:
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
       vite: 5.4.19(@types/node@22.17.2)
-      vite-node: 3.2.4(@types/node@22.17.2)
+      vite-node: 3.2.4(@types/node@22.17.2)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.17.2
       '@vitest/ui': 3.2.4(vitest@3.2.4)
       jsdom: 27.0.0(postcss@8.5.6)
     transitivePeerDependencies:
+      - jiti
       - less
       - lightningcss
       - msw
@@ -12198,6 +12223,8 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+      - tsx
+      - yaml
 
   vscode-uri@3.1.0: {}
 
