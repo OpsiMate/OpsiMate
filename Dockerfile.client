@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/client/package.json apps/client/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/custom-actions/package.json packages/custom-actions/package.json
 
 # Install deps (client + shared)
 RUN pnpm install --frozen-lockfile && \
@@ -16,9 +17,11 @@ RUN pnpm install --frozen-lockfile && \
 # Copy sources
 COPY apps/client apps/client
 COPY packages/shared packages/shared
+COPY packages/custom-actions packages/custom-actions
 
 # Build shared package first, then client
 RUN pnpm --filter @OpsiMate/shared build && \
+    pnpm --filter @OpsiMate/custom-actions build && \
     pnpm --filter @OpsiMate/client build
 
 # Production runtime
@@ -34,13 +37,16 @@ COPY --from=client-builder /app/pnpm-lock.yaml pnpm-lock.yaml
 COPY --from=client-builder /app/pnpm-workspace.yaml pnpm-workspace.yaml
 COPY --from=client-builder /app/packages/shared/package.json packages/shared/package.json
 COPY --from=client-builder /app/packages/shared/dist packages/shared/dist
+COPY --from=client-builder /app/packages/custom-actions/package.json packages/custom-actions/package.json
+COPY --from=client-builder /app/packages/custom-actions/dist packages/custom-actions/dist
 
 # Install only production deps
 COPY --from=client-builder /app/node_modules ./node_modules
 
 # Ensure workspace link for shared
 RUN mkdir -p node_modules/@OpsiMate && \
-    ln -sf /app/packages/shared node_modules/@OpsiMate/shared
+    ln -sf /app/packages/shared node_modules/@OpsiMate/shared && \
+    ln -sf /app/packages/custom-actions node_modules/@OpsiMate/custom-actions
 
 EXPOSE 8080
 ENV NODE_ENV=production
