@@ -257,11 +257,9 @@ export type UserSchemaType = z.infer<typeof UserSchema>;
 export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
 export type UpdateUserRoleRequest = z.infer<typeof UpdateUserRoleSchema>;
 export type UpdateProfileRequest = z.infer<typeof UpdateProfileSchema>;
-
 export type CreateProviderRequest = z.infer<typeof CreateProviderSchema>;
 export type CreateProviderBulkRequest = z.infer<typeof CreateProviderBulkSchema>;
 export type AddBulkServiceRequest = z.infer<typeof AddBulkServiceSchema>;
 export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
-
 export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
 export type UpdateSecretRequest = z.infer<typeof UpdateSecretsMetadataSchema>;

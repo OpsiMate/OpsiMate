@@ -3,6 +3,7 @@ import { Integration, IntegrationType, Logger } from '@OpsiMate/shared';
 import { integrationConnectorFactory } from './integration-connector/integration-connector-factory';
 
 const logger = new Logger('bl/integrations/integration.bl');
+const auditBL = new AuditBL(new AuditLogRepository(db));
 
 export class IntegrationBL {
 	constructor(private integrationRepo: IntegrationRepository) {}
