@@ -1,0 +1,19 @@
+
+backend:
+  image:
+    repository: opsimate/backend:latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 3001
+
+
+frontend:
+  image:
+    repository: opsimate/frontend:latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+    port: 8080
