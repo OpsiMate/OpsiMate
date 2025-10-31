@@ -38,9 +38,10 @@
 ---
 
 ### TL;DR
-- 🔎 **Auto-discovery** of Docker/systemd services  
-- 📊 **Live health & metrics** with Grafana/Prometheus/Kibana links  
-- 🎛️ **Safe actions**: start/stop/restart from the dashboard  
+
+- 🔎 **Auto-discovery** of Docker/systemd services
+- 📊 **Live health & metrics** with Grafana/Prometheus/Kibana links
+- 🎛️ **Safe actions**: start/stop/restart from the dashboard
 - 🏷️ **Smart tags** for quick filtering
 
 ### Main Dashboard
@@ -93,24 +94,26 @@
 </tr>
 </table>
 
-
 ### Docker Deployment
 
 Run OpsiMate locally quickly with Docker and a single command — no cloning or building required.
 
 ### Run OpsiMate with one command
+
 #### Open your terminal and run:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
-**Access the application:**
-   - **Backend:** http://localhost:3001
-   - **Client:** http://localhost:8080
 
+**Access the application:**
+
+- **Backend:** http://localhost:3001
+- **Client:** http://localhost:8080
 
 ## Manual Docker Run (Alternatively)
-#### OpsiMate now uses separate Docker images for frontend and backend:
 
+#### OpsiMate now uses separate Docker images for frontend and backend:
 
 ```bash
 #Backend:
@@ -146,17 +149,17 @@ docker run -d \
 ```
 
 **Access the application:**
-   - **Backend:** http://localhost:3001
-   - **Client:** http://localhost:8080
 
+- **Backend:** http://localhost:3001
+- **Client:** http://localhost:8080
 
 ### Volume Mounts (optional)
 
-| Volume | Purpose |
-|--------|---------|
-| `/app/data/database` | SQLite database persistence |
+| Volume                   | Purpose                             |
+| ------------------------ | ----------------------------------- |
+| `/app/data/database`     | SQLite database persistence         |
 | `/app/data/private-keys` | SSH private keys for authentication |
-| `/app/config/config.yml` | Custom configuration |
+| `/app/config/config.yml` | Custom configuration                |
 
 ### for example:
 
@@ -175,8 +178,6 @@ docker run -d \
 ## Configuration
 
 OpsiMate uses YAML configuration file
-
-
 
 ### Example Configuration
 
@@ -216,7 +217,6 @@ We welcome contributions to OpsiMate! Here's how you can help:
 - **🔄 GitOps Integration** - Infrastructure as Code workflows
 - **🤖 AI-Powered Insights** - Intelligent anomaly detection and recommendations
 
-
 ## Support
 
 - **[Documentation](https://opsimate.vercel.app/)** - Comprehensive guides and API reference
@@ -229,7 +229,7 @@ We welcome contributions to OpsiMate! Here's how you can help:
 <div align="center">
   <p>Built with ❤️ by the OpsiMate team</p>
   <p>© 2025 OpsiMate. All rights reserved.</p>
-</div> 
+</div>
 
 ## 💖 Our Amazing Contributors
 

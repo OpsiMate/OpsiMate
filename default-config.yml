@@ -4,31 +4,32 @@
 # Server configuration
 server:
   port: 3001
-  host: "0.0.0.0"  # Bind to all interfaces in container
+  host: "0.0.0.0" # Bind to all interfaces in container
 
 # Database configuration
 database:
-  path: "/app/data/database/opsimate.db"  # Container path
+  path: "/app/data/database/opsimate.db" # Container path
 
 # Security configuration
 security:
-  private_keys_path: "/app/data/private-keys"  # Container path for SSH keys
+  private_keys_path: "/app/data/private-keys" # Container path for SSH keys
 
 # mailer configuration
 mailer:
   enabled: false
   default_encoding: "UTF-8"
   host: "smtp.gmail.com"
-  port: 587                
+  port: 587
   secure: false
   mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
   from: "<no-reply@yourdomain.com>"
   replyTo: "ops@yourdomain.com"
   templates:
-    welcomeTemplate: {
-        subject: 'Welcome to OpsiMate!',
-        content: 'Welcome aboard! We’re happy to have you as part of the OpsiMate community.'
-    }
+    welcomeTemplate:
+      {
+        subject: "Welcome to OpsiMate!",
+        content: "Welcome aboard! We’re happy to have you as part of the OpsiMate community.",
+      }
   auth:
     user: "my-mail@gmail.com"
     pass: "mypass"

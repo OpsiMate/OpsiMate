@@ -78,6 +78,7 @@ The server exposes a RESTful API with the following main endpoints:
 ### Database Schema
 
 #### Providers Table
+
 ```sql
 CREATE TABLE providers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +92,7 @@ CREATE TABLE providers (
 ```
 
 #### Services Table
+
 ```sql
 CREATE TABLE services (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,4 +203,4 @@ The application is designed to be run locally or deployed as a web service:
 
 ---
 
-*This documentation is designed to provide a high-level overview of the OpsiMate Dashboard project structure and functionality. It should be updated after major changes to the codebase.*
+_This documentation is designed to provide a high-level overview of the OpsiMate Dashboard project structure and functionality. It should be updated after major changes to the codebase._
