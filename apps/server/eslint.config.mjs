@@ -1,23 +1,16 @@
-// eslint.config.js
-import js from '@eslint/js';
+// eslint.config.mjs
+
+import { baseESLintConfig } from '../../eslint.config.base.mjs';
 import tseslint from 'typescript-eslint';
 
-export default [
-	js.configs.recommended,
-	...tseslint.configs.recommended,
-	...tseslint.configs.recommendedTypeChecked,
-	{
-		files: ['**/*.ts'],
-		languageOptions: {
-			parserOptions: {
-				project: './tsconfig.json',
-			},
-		},
-		rules: {
-			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-			'@typescript-eslint/no-explicit-any': 'warn',
-			'@typescript-eslint/no-floating-promises': 'error',
-			'no-console': 'warn',
+export default tseslint.config(...baseESLintConfig, ...tseslint.configs.recommendedTypeChecked, {
+	languageOptions: {
+		parserOptions: {
+			project: './tsconfig.json',
 		},
 	},
-];
+	rules: {
+		'@typescript-eslint/no-explicit-any': 'warn',
+		'@typescript-eslint/no-floating-promises': 'error',
+	},
+});
