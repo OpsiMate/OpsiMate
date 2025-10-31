@@ -17,7 +17,6 @@ export default function createProviderRouter(controller: ProviderController) {
 
 	// Additional APIs
 	router.post('/test-connection', controller.testConnection.bind(controller));
-	router.post('/:providerId/services/bulk', controller.bulkAddServices.bind(controller));
 	router.get('/:providerId/discover-services', controller.discoverServices.bind(controller));
 
 	return router;

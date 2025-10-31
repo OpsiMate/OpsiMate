@@ -185,6 +185,5 @@ describe('Providers API', () => {
 	// todo: add tests to the following routes:
 	// router.post('/:providerId/refresh', controller.refreshProvider.bind(controller));
 	// router.post('/test-connection', controller.testConnection.bind(controller));
-	// router.post('/:providerId/services/bulk', controller.bulkAddServices.bind(controller));
 	// router.get('/:providerId/discover-services', controller.discoverServices.bind(controller));
 });
