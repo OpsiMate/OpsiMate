@@ -55,7 +55,11 @@ export class AuditController {
 
 		try {
 			const result = await this.auditBL.getAuditLogsPaginated(page, pageSize, filters);
-			return res.json({ success: true, data: result });
+			return res.json({
+			    success: true, 
+				data:result,
+			    ...result	
+		     });
 		} catch (error) {
 			logger.error('Error fetching audit logs:', error);
 			return res.status(500).json({ success: false, error: 'Failed to fetch audit logs' });
