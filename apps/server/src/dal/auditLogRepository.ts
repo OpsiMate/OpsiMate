@@ -62,13 +62,18 @@ export class AuditLogRepository {
 		const where: string[] = [];
 		const params: unknown[] = [];
 
-		if (filters.userName || filters.resourceName) {
-			const userQuery = filters.userName?.toLowerCase();
-			const resourceQuery = filters.resourceName?.toLowerCase();
-			where.push('(LOWER(user_name) LIKE ? OR LOWER(resource_name) LIKE ?)');
-			params.push(`%${userQuery || ''}%`, `%${resourceQuery || ''}%`);
+		const searchQueries: string[] = [];
+		if (filters.userName) {
+			searchQueries.push('LOWER(user_name) LIKE ?');
+			params.push(`%${filters.userName.toLowerCase()}%`);
 		}
-
+		if (filters.resourceName) {
+			searchQueries.push('LOWER(resource_name) LIKE ?');
+			params.push(`%${filters.resourceName.toLowerCase()}%`);
+		}
+		if (searchQueries.length > 0) {
+			where.push(`(${searchQueries.join(' OR ')})`);
+		}
 		if (filters.actionType) {
 			where.push('action_type = ?');
 			params.push(filters.actionType);
