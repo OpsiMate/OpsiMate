@@ -13,7 +13,15 @@ export const useCustomActions = () => {
 			if (!response.success) {
 				throw new Error(response.error || 'Failed to fetch custom actions');
 			}
-			return (response.data?.actions || []) as CustomActionWithId[];
+			const actions = (response.data?.actions || []) as CustomActionWithId[];
+			const actionsWithId = actions.filter((action) => {
+				if (!action.id) {
+					console.warn('Action missing id:', action);
+					return false;
+				}
+				return true;
+			});
+			return actionsWithId;
 		},
 	});
 };

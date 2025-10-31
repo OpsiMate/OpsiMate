@@ -1,4 +1,4 @@
-import { CustomAction } from '@OpsiMate/custom-actions';
+import { ActionTarget, CustomAction } from '@OpsiMate/custom-actions';
 import { ActionFormData } from './ActionModal.types';
 
 export const actionToFormData = (action?: CustomAction): ActionFormData => {
@@ -21,7 +21,7 @@ export const actionToFormData = (action?: CustomAction): ActionFormData => {
 			name: action.name,
 			description: action.description,
 			type: 'bash',
-			target: action.target ?? 'service',
+			target: action.target,
 			script: action.script,
 		};
 	}
@@ -30,9 +30,9 @@ export const actionToFormData = (action?: CustomAction): ActionFormData => {
 		name: action.name,
 		description: action.description,
 		type: 'http',
-		target: action.target ?? 'service',
+		target: action.target,
 		url: action.url,
-		method: action.method,
+		method: action.method || 'GET',
 		headers: action.headers ?? null,
 		body: action.body ?? null,
 	};
@@ -42,7 +42,7 @@ export const formDataToAction = (formData: ActionFormData): CustomAction => {
 	const base = {
 		name: formData.name,
 		description: formData.description,
-		target: formData.target,
+		target: formData.target as ActionTarget,
 	};
 
 	if (formData.type === 'bash') {

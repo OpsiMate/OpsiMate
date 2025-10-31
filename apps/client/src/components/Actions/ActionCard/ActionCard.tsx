@@ -1,8 +1,8 @@
-import { CustomAction } from '@OpsiMate/custom-actions';
-import { ACTION_TARGET_COLORS, ACTION_TYPE_ICONS } from '../actions.constants';
-import { cn } from '@/lib/utils';
-import { Zap, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { CustomAction } from '@OpsiMate/custom-actions';
+import { Trash2 } from 'lucide-react';
+import { ACTION_TARGET_COLORS, ACTION_TYPE_ICONS } from '../actions.constants';
 
 interface ActionCardProps {
 	action: CustomAction;
@@ -12,7 +12,7 @@ interface ActionCardProps {
 
 export const ActionCard = ({ action, onClick, onDelete }: ActionCardProps) => {
 	const targetColor = ACTION_TARGET_COLORS[action.target ?? null];
-	const typeIcon = ACTION_TYPE_ICONS[action.type];
+	const TypeIcon = ACTION_TYPE_ICONS[action.type];
 
 	return (
 		<div className="relative group">
@@ -26,12 +26,9 @@ export const ActionCard = ({ action, onClick, onDelete }: ActionCardProps) => {
 				)}
 			>
 				<div className="flex flex-col items-center gap-2">
-					<div className="relative">
-						<Zap className="h-6 w-6 text-primary" />
-						<span className="absolute -top-0.5 -right-0.5 text-xs">{typeIcon}</span>
-					</div>
+					<TypeIcon className="h-8 w-8 text-primary" />
 					<div className="text-center">
-						<h3 className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors line-clamp-1">
+						<h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
 							{action.name}
 						</h3>
 					</div>

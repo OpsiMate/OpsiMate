@@ -1,4 +1,4 @@
-import { CustomAction } from '@OpsiMate/custom-actions';
+import { ActionTarget, ActionType, CustomAction } from '@OpsiMate/custom-actions';
 
 export interface ActionModalProps {
 	open: boolean;
@@ -9,8 +9,8 @@ export interface ActionModalProps {
 export interface ActionFormData {
 	name: string;
 	description: string;
-	type: 'bash' | 'http';
-	target: 'service' | 'provider';
+	type: ActionType;
+	target: Exclude<ActionTarget, null>;
 	script?: string | null;
 	url?: string;
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';

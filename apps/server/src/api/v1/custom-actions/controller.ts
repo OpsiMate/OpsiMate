@@ -1,11 +1,11 @@
-import {Request, Response} from 'express';
-import {Logger} from '@OpsiMate/shared';
-import {CustomActionBL} from '../../../bl/custom-actions/customAction.bl';
-import {ProviderRepository} from '../../../dal/providerRepository';
-import {ServiceRepository} from '../../../dal/serviceRepository';
-import {CustomActionRepository} from '../../../dal/customActionRepository';
-import {providerConnectorFactory} from '../../../bl/providers/provider-connector/providerConnectorFactory';
-import {CustomAction} from '@OpsiMate/custom-actions';
+import { CustomAction } from '@OpsiMate/custom-actions';
+import { Logger } from '@OpsiMate/shared';
+import { Request, Response } from 'express';
+import { CustomActionBL } from '../../../bl/custom-actions/customAction.bl';
+import { providerConnectorFactory } from '../../../bl/providers/provider-connector/providerConnectorFactory';
+import { CustomActionRepository } from '../../../dal/customActionRepository';
+import { ProviderRepository } from '../../../dal/providerRepository';
+import { ServiceRepository } from '../../../dal/serviceRepository';
 
 const logger: Logger = new Logger('api/custom-actions');
 
@@ -31,9 +31,9 @@ export class CustomActionsController {
     }
 
     create = async (req: Request, res: Response) => {
-        if (!this.isValidBashAction(req.body)) {
-            return res.status(400).json({success: false, error: 'Invalid custom action payload'});
-        }
+        // if (!this.isValidBashAction(req.body)) {
+        //     return res.status(400).json({success: false, error: 'Invalid custom action payload'});
+        // }
         const id = await this.bl.create(req.body);
         return res.status(201).json({success: true, data: {id}});
     };
@@ -97,5 +97,3 @@ export class CustomActionsController {
 
 
 }
-
-

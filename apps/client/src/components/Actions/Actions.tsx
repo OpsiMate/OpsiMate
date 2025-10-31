@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Button } from '@/components/ui/button';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,14 +9,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { useCustomActions, useDeleteCustomAction } from '@/hooks/queries/custom-actions';
 import { useToast } from '@/hooks/use-toast';
-import { CustomAction } from '@OpsiMate/custom-actions';
-import { Plus, Loader2, Zap, Trash2 } from 'lucide-react';
-import { ActionCard } from './ActionCard';
+import { ActionTarget, CustomAction } from '@OpsiMate/custom-actions';
+import { Loader2, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { ActionCategories } from './ActionCategories';
 import { ActionModal } from './ActionModal';
-import { groupActionsByTarget } from './actions.utils';
-import { ACTION_TARGET_LABELS, ACTION_TARGET_COLORS } from './actions.constants';
 
 export const Actions = () => {
 	const { data: actions = [], isLoading } = useCustomActions();
@@ -28,14 +26,20 @@ export const Actions = () => {
 	const [editingAction, setEditingAction] = useState<CustomAction | undefined>();
 	const [deleteActionId, setDeleteActionId] = useState<number | null>(null);
 
-	const groupedActions = groupActionsByTarget(actions);
-
 	const handleEdit = (action: CustomAction) => {
 		setEditingAction(action);
 		setModalMode('edit');
 	};
 
-	const handleDeleteClick = (action: CustomAction & { id: number }) => {
+	const handleDeleteClick = (action: CustomAction) => {
+		if (!action.id) {
+			toast({
+				title: 'Error',
+				description: 'Action ID is missing. Cannot delete this action.',
+				variant: 'destructive',
+			});
+			return;
+		}
 		setDeleteActionId(action.id);
 	};
 
@@ -57,7 +61,7 @@ export const Actions = () => {
 		}
 	};
 
-	const targetOrder: Array<'service' | 'provider'> = ['service', 'provider'];
+	const targetOrder: Array<Exclude<ActionTarget, null>> = ['provider', 'service'];
 
 	return (
 		<DashboardLayout>
@@ -78,41 +82,13 @@ export const Actions = () => {
 						<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 					</div>
 				) : (
-					<div className="flex flex-col gap-8">
-						{targetOrder.map((target) => {
-							const targetActions = groupedActions[target];
-							if (targetActions.length === 0) return null;
-
-							const targetColor = ACTION_TARGET_COLORS[target];
-
-							const colorClasses = targetColor.split(' ');
-							const bgColor = colorClasses.find(c => c.startsWith('bg-')) || 'bg-gray-500/10';
-							const borderColor = colorClasses.find(c => c.startsWith('border-')) || 'border-gray-500/20';
-
-							return (
-								<div key={target} className="space-y-4">
-									<div className="flex items-center gap-3">
-										<div className={`flex items-center justify-center w-8 h-6 rounded border-2 ${bgColor} ${borderColor}`}>
-											<Zap className="h-4 w-4 text-primary" />
-										</div>
-										<h2 className="text-xl font-semibold">{ACTION_TARGET_LABELS[target]}</h2>
-									</div>
-									<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-										{targetActions.map((action) => (
-											<ActionCard
-												key={(action as any).id}
-												action={action}
-												onClick={() => handleEdit(action)}
-												onDelete={(e) => {
-													e.stopPropagation();
-													handleDeleteClick(action as CustomAction & { id: number });
-												}}
-											/>
-										))}
-									</div>
-								</div>
-							);
-						})}
+					<>
+						<ActionCategories
+							actions={actions}
+							targetOrder={targetOrder}
+							onEdit={handleEdit}
+							onDelete={handleDeleteClick}
+						/>
 
 						{actions.length === 0 && (
 							<div className="flex flex-col items-center justify-center py-12 text-center">
@@ -123,7 +99,7 @@ export const Actions = () => {
 								</Button>
 							</div>
 						)}
-					</div>
+					</>
 				)}
 
 				<ActionModal

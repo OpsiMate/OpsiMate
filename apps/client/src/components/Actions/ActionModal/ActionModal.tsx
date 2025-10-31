@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import {
 	Dialog,
 	DialogContent,
@@ -7,17 +7,14 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
 import { useCreateCustomAction, useUpdateCustomAction } from '@/hooks/queries/custom-actions';
-import { ActionModalProps, ActionFormData } from './ActionModal.types';
+import { useToast } from '@/hooks/use-toast';
+import { useEffect, useState } from 'react';
+import { ActionBasicForm } from './ActionBasicForm';
+import { ActionFormData, ActionModalProps } from './ActionModal.types';
+import { BashActionForm } from './BashActionForm';
+import { HttpActionForm } from './HttpActionForm';
 import { actionToFormData, formDataToAction } from './useActionModal.utils';
-import { Code, Globe } from 'lucide-react';
 
 interface FormErrors {
 	name?: string;
@@ -79,7 +76,11 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const handleHeadersChange = (value: string) => {
+	const handleFormDataChange = (data: Partial<ActionFormData>) => {
+		setFormData({ ...formData, ...data });
+	};
+
+	const handleHeadersTextChange = (value: string) => {
 		setHeadersText(value);
 		if (!value.trim()) {
 			setFormData({ ...formData, headers: null });
@@ -97,6 +98,10 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 		} catch {
 			setErrors({ ...errors, headers: 'Invalid JSON format' });
 		}
+	};
+
+	const handleErrorChange = (newErrors: Partial<FormErrors>) => {
+		setErrors({ ...errors, ...newErrors });
 	};
 
 	const handleNext = () => {
@@ -151,164 +156,27 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 
 				<div className="py-4">
 					{step === 1 && (
-						<div className="space-y-4">
-								<div className="space-y-2">
-									<Label htmlFor="name">Name</Label>
-									<Input
-										id="name"
-										value={formData.name}
-										onChange={(e) => {
-											setFormData({ ...formData, name: e.target.value });
-											if (errors.name) setErrors({ ...errors, name: undefined });
-										}}
-										placeholder="Action name"
-										className={errors.name ? 'border-destructive' : ''}
-									/>
-									{errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="description">Description</Label>
-									<Textarea
-										id="description"
-										value={formData.description}
-										onChange={(e) => {
-											setFormData({ ...formData, description: e.target.value });
-											if (errors.description) setErrors({ ...errors, description: undefined });
-										}}
-										placeholder="Action description"
-										rows={3}
-										className={errors.description ? 'border-destructive' : ''}
-									/>
-									{errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="target">Target</Label>
-									<Select
-										value={formData.target ?? 'service'}
-										onValueChange={(value) =>
-											setFormData({
-												...formData,
-												target: value as 'service' | 'provider',
-											})
-										}
-									>
-										<SelectTrigger id="target">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="service">Service</SelectItem>
-											<SelectItem value="provider">Provider</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="type">Type</Label>
-									<Tabs
-										value={formData.type}
-										onValueChange={(value) =>
-											setFormData({ ...formData, type: value as 'bash' | 'http' })
-										}
-									>
-										<TabsList className="grid w-full grid-cols-2">
-											<TabsTrigger value="bash" className="gap-2">
-												<Code className="h-4 w-4" />
-												Bash
-											</TabsTrigger>
-											<TabsTrigger value="http" className="gap-2">
-												<Globe className="h-4 w-4" />
-												HTTP
-											</TabsTrigger>
-										</TabsList>
-									</Tabs>
-								</div>
-							</div>
+						<ActionBasicForm
+							formData={formData}
+							errors={errors}
+							onChange={handleFormDataChange}
+							onErrorChange={handleErrorChange}
+						/>
 					)}
 
 					{step === 2 && formData.type === 'bash' && (
-						<div className="space-y-4">
-								<div className="space-y-2">
-									<Label htmlFor="script">Script</Label>
-									<Textarea
-										id="script"
-										value={formData.script ?? ''}
-										onChange={(e) =>
-											setFormData({ ...formData, script: e.target.value || null })
-										}
-										placeholder="#!/bin/bash&#10;echo 'Hello World'"
-										rows={10}
-										className="font-mono text-sm"
-									/>
-								</div>
-							</div>
+						<BashActionForm formData={formData} onChange={handleFormDataChange} />
 					)}
 
 					{step === 2 && formData.type === 'http' && (
-						<div className="space-y-4">
-								<div className="space-y-2">
-									<Label htmlFor="url">URL</Label>
-									<Input
-										id="url"
-										value={formData.url ?? ''}
-										onChange={(e) => {
-											setFormData({ ...formData, url: e.target.value });
-											if (errors.url) setErrors({ ...errors, url: undefined });
-										}}
-										placeholder="https://api.example.com/endpoint"
-										className={errors.url ? 'border-destructive' : ''}
-									/>
-									{errors.url && <p className="text-sm text-destructive">{errors.url}</p>}
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="method">Method</Label>
-									<Select
-										value={formData.method ?? 'GET'}
-										onValueChange={(value) => {
-											setFormData({
-												...formData,
-												method: value as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
-											});
-											if (errors.method) setErrors({ ...errors, method: undefined });
-										}}
-									>
-										<SelectTrigger id="method" className={errors.method ? 'border-destructive' : ''}>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="GET">GET</SelectItem>
-											<SelectItem value="POST">POST</SelectItem>
-											<SelectItem value="PUT">PUT</SelectItem>
-											<SelectItem value="DELETE">DELETE</SelectItem>
-											<SelectItem value="PATCH">PATCH</SelectItem>
-										</SelectContent>
-									</Select>
-									{errors.method && <p className="text-sm text-destructive">{errors.method}</p>}
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="headers">Headers (JSON)</Label>
-									<Textarea
-										id="headers"
-										value={headersText}
-										onChange={(e) => handleHeadersChange(e.target.value)}
-										placeholder='{"Content-Type": "application/json"}'
-										rows={4}
-										className={`font-mono text-sm ${errors.headers ? 'border-destructive' : ''}`}
-									/>
-									{errors.headers && <p className="text-sm text-destructive">{errors.headers}</p>}
-								</div>
-								{(formData.method === 'POST' || formData.method === 'PUT' || formData.method === 'PATCH') && (
-									<div className="space-y-2">
-										<Label htmlFor="body">Body</Label>
-										<Textarea
-											id="body"
-											value={formData.body ?? ''}
-											onChange={(e) => setFormData({ ...formData, body: e.target.value || null })}
-											placeholder="Request body"
-											rows={6}
-											className="font-mono text-sm"
-										/>
-									</div>
-								)}
-							</div>
+						<HttpActionForm
+							formData={formData}
+							headersText={headersText}
+							errors={errors}
+							onChange={handleFormDataChange}
+							onHeadersTextChange={handleHeadersTextChange}
+							onErrorChange={handleErrorChange}
+						/>
 					)}
 				</div>
 
