@@ -62,6 +62,8 @@ export class AuditLogRepository {
 		const where: string[] = [];
 		const params: unknown[] = [];
 
+		// Search uses OR so you can find logs by user OR by resource name
+		// This helps with quick searches during troubleshooting
 		const searchQueries: string[] = [];
 		if (filters.userName) {
 			searchQueries.push('LOWER(user_name) LIKE ?');
