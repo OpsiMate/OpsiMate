@@ -6,12 +6,12 @@ echo "Setting up OpsiMate local environment..."
 mkdir -p data/database data/private-keys
 chmod -R 0777 data
 
-# Copy config.yml from default-config.yml if missing or empty
-if [ ! -s config.yml ]; then
-  echo "config.yml not found or empty, copying from default-config.yml..."
-  cp default-config.yml config.yml
+# Download config.yml if not present
+if [ ! -f config.yml ]; then
+  echo "Downloading config.yml..."
+  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/default-config.yml -o config.yml
 else
-  echo "config.yml found."
+  echo "config.yml already exists."
 fi
 
 # Download docker-compose.yml if not present
@@ -34,3 +34,4 @@ echo ""
 echo "OpsiMate is running!"
 echo "Frontend: http://localhost:8080"
 echo "Backend API: http://localhost:3001"
+echo ""
