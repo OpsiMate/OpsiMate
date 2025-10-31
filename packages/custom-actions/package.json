@@ -19,8 +19,8 @@
 		"lint-fix": "eslint src --ext .ts --fix",
 		"format": "prettier --check .",
 		"format-fix": "prettier --write .",
-		"check": "npm run format && npm run lint",
-		"fix": "npm run format-fix && npm run lint-fix"
+		"check": "pnpm run format && pnpm run lint",
+		"fix": "pnpm run format-fix && pnpm run lint-fix"
 	},
 	"devDependencies": {
 		"@types/node": "^22.5.5",
