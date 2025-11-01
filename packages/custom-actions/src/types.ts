@@ -3,6 +3,7 @@ export type ActionType = 'bash' | 'http';
 export type ActionTarget = 'service' | 'provider' | null;
 
 export interface BaseAction {
+    id: number;
     name: string;
     description: string;
     type: ActionType;
