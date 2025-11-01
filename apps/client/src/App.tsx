@@ -4,6 +4,7 @@ import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -28,11 +29,12 @@ const queryClient = new QueryClient();
 
 const App: React.FC = () => {
 	return (
-		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-			<QueryClientProvider client={queryClient}>
-				<TooltipProvider>
-					<Toaster />
-					<Sonner />
+		<ChakraProvider>
+			<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+				<QueryClientProvider client={queryClient}>
+					<TooltipProvider>
+						<Toaster />
+						<Sonner />
 
 					<BrowserRouter>
 						<AuthGuard>
@@ -62,9 +64,10 @@ const App: React.FC = () => {
 					</BrowserRouter>
 
 					<ScrollToTopButton />
-				</TooltipProvider>
-			</QueryClientProvider>
-		</ThemeProvider>
+					</TooltipProvider>
+				</QueryClientProvider>
+			</ThemeProvider>
+		</ChakraProvider>
 	);
 };
 

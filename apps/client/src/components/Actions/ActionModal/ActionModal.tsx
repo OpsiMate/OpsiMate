@@ -1,14 +1,15 @@
 import { Button } from '@/components/ui/button';
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
 import { useCreateCustomAction, useUpdateCustomAction } from '@/hooks/queries/custom-actions';
 import { useToast } from '@/hooks/use-toast';
+import {
+	Modal,
+	ModalBody,
+	ModalCloseButton,
+	ModalContent,
+	ModalFooter,
+	ModalHeader,
+	ModalOverlay,
+} from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { ActionBasicForm } from './ActionBasicForm';
 import { ActionFormData, ActionModalProps } from './ActionModal.types';
@@ -126,45 +127,58 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 
 	const isPending = createMutation.isPending || updateMutation.isPending;
 
+	const dialogDescription =
+		step === 1
+			? 'Configure basic action details'
+			: step === 2 && formData.type === 'bash'
+				? 'Configure bash script'
+				: step === 2 && formData.type === 'http'
+					? 'Configure HTTP request'
+					: '';
+
+	const renderFormContent = () => {
+		if (step === 1) {
+			return (
+				<ActionBasicForm
+					formData={formData}
+					errors={errors}
+					onChange={handleFormDataChange}
+					onErrorChange={handleErrorChange}
+				/>
+			);
+		}
+		if (formData.type === 'bash') {
+			return <BashActionForm formData={formData} onChange={handleFormDataChange} />;
+		}
+		return (
+			<HttpActionForm
+				formData={formData}
+				headersPairs={headersPairs}
+				errors={errors}
+				onChange={handleFormDataChange}
+				onHeadersPairsChange={handleHeadersPairsChange}
+				onErrorChange={handleErrorChange}
+			/>
+		);
+	};
+
 	return (
-		<Dialog open={open} onOpenChange={onClose}>
-			<DialogContent className="sm:max-w-[600px]">
-				<DialogHeader>
-					<DialogTitle>{action ? 'Edit Action' : 'Create New Action'}</DialogTitle>
-					<DialogDescription>
-						{step === 1 && 'Configure basic action details'}
-						{step === 2 && formData.type === 'bash' && 'Configure bash script'}
-						{step === 2 && formData.type === 'http' && 'Configure HTTP request'}
-					</DialogDescription>
-				</DialogHeader>
+		<Modal isOpen={open} onClose={onClose} isCentered>
+			<ModalOverlay />
+			<ModalContent maxW="600px">
+				<ModalCloseButton />
+				<ModalHeader>
+					<h2 className="text-lg font-semibold leading-none tracking-tight">
+						{action ? 'Edit Action' : 'Create New Action'}
+					</h2>
+					<p className="text-sm text-muted-foreground mt-1.5">{dialogDescription}</p>
+				</ModalHeader>
 
-				<div className="py-4">
-					{step === 1 && (
-						<ActionBasicForm
-							formData={formData}
-							errors={errors}
-							onChange={handleFormDataChange}
-							onErrorChange={handleErrorChange}
-						/>
-					)}
+				<ModalBody>
+					{renderFormContent()}
+				</ModalBody>
 
-					{step === 2 && formData.type === 'bash' && (
-						<BashActionForm formData={formData} onChange={handleFormDataChange} />
-					)}
-
-					{step === 2 && formData.type === 'http' && (
-						<HttpActionForm
-							formData={formData}
-							headersPairs={headersPairs}
-							errors={errors}
-							onChange={handleFormDataChange}
-							onHeadersPairsChange={handleHeadersPairsChange}
-							onErrorChange={handleErrorChange}
-						/>
-					)}
-				</div>
-
-				<DialogFooter>
+				<ModalFooter>
 					<div className="flex justify-between w-full">
 						{step > 1 && (
 							<Button variant="outline" onClick={() => setStep(step - 1)}>
@@ -181,14 +195,12 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 									{isPending ? 'Saving...' : action ? 'Update' : 'Create'}
 								</Button>
 							) : (
-								<Button onClick={handleNext}>
-									Next
-								</Button>
+								<Button onClick={handleNext}>Next</Button>
 							)}
 						</div>
 					</div>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</ModalFooter>
+			</ModalContent>
+		</Modal>
 	);
 };
