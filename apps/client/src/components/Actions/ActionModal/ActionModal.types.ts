@@ -1,10 +1,4 @@
-import { ActionTarget, ActionType, CustomAction } from '@OpsiMate/custom-actions';
-
-export interface ActionModalProps {
-	open: boolean;
-	onClose: () => void;
-	action?: CustomAction;
-}
+import { ActionTarget, ActionType } from '@OpsiMate/custom-actions';
 
 export interface ActionFormData {
 	name: string;
@@ -16,4 +10,12 @@ export interface ActionFormData {
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 	headers?: Record<string, string> | null;
 	body?: string | null;
+}
+
+export interface FormErrors {
+	name?: string;
+	description?: string;
+	url?: string;
+	method?: string;
+	headers?: string;
 }

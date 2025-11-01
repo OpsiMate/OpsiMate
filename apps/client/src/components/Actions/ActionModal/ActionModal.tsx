@@ -10,19 +10,18 @@ import {
 	ModalHeader,
 	ModalOverlay,
 } from '@chakra-ui/react';
+import { CustomAction } from '@OpsiMate/custom-actions';
 import { useEffect, useState } from 'react';
 import { ActionBasicForm } from './ActionBasicForm';
-import { ActionFormData, ActionModalProps } from './ActionModal.types';
+import { ActionFormData, FormErrors } from './ActionModal.types';
 import { BashActionForm } from './BashActionForm';
 import { HttpActionForm } from './HttpActionForm';
 import { actionToFormData, formDataToAction } from './useActionModal.utils';
 
-interface FormErrors {
-	name?: string;
-	description?: string;
-	url?: string;
-	method?: string;
-	headers?: string;
+interface ActionModalProps {
+	open: boolean;
+	onClose: () => void;
+	action?: CustomAction;
 }
 
 export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
