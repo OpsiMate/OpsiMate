@@ -167,18 +167,18 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 			<ModalOverlay />
 			<ModalContent maxW="600px">
 				<ModalCloseButton />
-				<ModalHeader>
+				<ModalHeader pb={4}>
 					<h2 className="text-lg font-semibold leading-none tracking-tight">
 						{action ? 'Edit Action' : 'Create New Action'}
 					</h2>
 					<p className="text-sm text-muted-foreground mt-1.5">{dialogDescription}</p>
 				</ModalHeader>
 
-				<ModalBody>
+				<ModalBody pt={0}>
 					{renderFormContent()}
 				</ModalBody>
 
-				<ModalFooter>
+				<ModalFooter pt={4}>
 					<div className="flex justify-between w-full">
 						{step > 1 && (
 							<Button variant="outline" onClick={() => setStep(step - 1)}>
