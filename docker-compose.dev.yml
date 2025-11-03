@@ -32,6 +32,7 @@ services:
       - NODE_ENV=development
       - PORT=3001
       - HOST=0.0.0.0
+      - CONFIG_FILE=/app/config/config.yml
     volumes:
       - ./apps/server:/app/apps/server
       - ./packages/shared:/app/packages/shared

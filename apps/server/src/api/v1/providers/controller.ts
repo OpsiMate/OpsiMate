@@ -100,9 +100,9 @@ export class ProviderController {
 				req.user as User
 			);
 		});
-		await Promise.all(providesPromises);
-
-		return res.status(201).json({ success: true });
+		const providers = await Promise.all(providesPromises);
+		const providerIds = providers.map((provider) => provider.id);
+		return res.status(201).json({ success: true, data: { providerIds } });
 	}
 
 	async testConnection(req: Request, res: Response) {

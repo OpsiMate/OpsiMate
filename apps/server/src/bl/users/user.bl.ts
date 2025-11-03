@@ -25,6 +25,14 @@ export class UserBL {
 		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
+
+		// Send welcome email
+		void this.mailClient.sendMail({
+			to: user.email,
+			mailType: MailType.WELCOME,
+			userName: user.fullName,
+		});
+
 		return user;
 	}
 
@@ -115,7 +123,7 @@ export class UserBL {
 				expiresAt: resetPasswordConfig.expiresAt,
 			});
 
-			await this.mailClient.sendMail({
+			void this.mailClient.sendMail({
 				to: user.email,
 				subject: 'Password Reset Request',
 				mailType: MailType.PASSWORD_RESET,

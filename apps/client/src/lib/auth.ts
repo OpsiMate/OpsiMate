@@ -1,4 +1,4 @@
-import { Logger } from '@OpsiMate/shared';
+import { Logger, Role } from '@OpsiMate/shared';
 import { jwtDecode } from 'jwt-decode';
 
 const logger = new Logger('auth');
@@ -6,7 +6,7 @@ const logger = new Logger('auth');
 export interface JWTPayload {
 	id: number;
 	email: string;
-	role: 'admin' | 'editor' | 'viewer' | 'operation';
+	role: Role;
 	iat: number;
 	exp: number;
 }
@@ -25,23 +25,23 @@ export function getCurrentUser(): JWTPayload | null {
 
 export function isAdmin(): boolean {
 	const user = getCurrentUser();
-	return user?.role === 'admin';
+	return user?.role === Role.Admin;
 }
 
 export function isEditor(): boolean {
 	const user = getCurrentUser();
-	return user?.role === 'admin' || user?.role === 'editor';
+	return user?.role === Role.Admin || user?.role === Role.Editor;
 }
 
 export function isViewer(): boolean {
 	const user = getCurrentUser();
-	return user?.role === 'viewer';
+	return user?.role === Role.Viewer;
 }
 export function isOperation(): boolean {
 	const user = getCurrentUser();
-	return user?.role === 'operation';
+	return user?.role === Role.Operation;
 }
-export function getUserRole(): 'admin' | 'editor' | 'viewer' | 'operation' | null {
+export function getUserRole(): Role | null {
 	const user = getCurrentUser();
 	return user?.role || null;
 }
