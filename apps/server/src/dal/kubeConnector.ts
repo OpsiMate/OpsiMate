@@ -24,7 +24,7 @@ export const getK8SDeployments = async (_provider: Provider): Promise<Discovered
 			const pods = await getDeploymentPods(coreV1Api, deployment);
 			const serviceIP = await getDeploymentServiceIP(coreV1Api, deployment);
 
-			if (!deployment.metadata || deployment.metadata.name || !deployment.metadata.namespace) {
+			if (!deployment.metadata || !deployment.metadata.name || !deployment.metadata.namespace) {
 				return null;
 			}
 
@@ -214,6 +214,7 @@ const getDeploymentServiceIP = async (coreV1Api: k8s.CoreV1Api, deployment: k8s.
 			if (service.spec?.clusterIP) {
 				return service.spec.clusterIP;
 			}
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			// Service with the same name doesn't exist, continue to search by labels
 		}

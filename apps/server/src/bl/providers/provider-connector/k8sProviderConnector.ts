@@ -5,7 +5,7 @@ import {
 	getK8SDeploymentPods,
 	getK8SDeployments,
 	restartK8SDeploymentPods,
-} from '../../../dal/kubeConnectorV2';
+} from '../../../dal/kubeConnector';
 import { DiscoveredPod } from '@OpsiMate/shared';
 
 export class K8SProviderConnector implements ProviderConnector {
