@@ -1,7 +1,7 @@
 import { ProviderConnector } from './providerConnector';
 import { DiscoveredService, Provider, Service } from '@OpsiMate/shared';
-import { getK8RLogs, getK8SServices, getK8RPods, restartK8RServicePods } from '../../../dal/kubeConnector';
-import { getK8SDeployments } from '../../../dal/kubeConnectorV2';
+import { getK8RLogs, getK8RPods } from '../../../dal/kubeConnector';
+import { getK8SDeployments, restartK8RDeploymentPods } from '../../../dal/kubeConnectorV2';
 import { DiscoveredPod } from '@OpsiMate/shared';
 
 export class K8SProviderConnector implements ProviderConnector {
@@ -9,16 +9,16 @@ export class K8SProviderConnector implements ProviderConnector {
 		return [await getK8RLogs(provider, service.name, service.containerDetails?.namespace || 'default')];
 	}
 
-	startService(provider: Provider, serviceName: string): Promise<void> {
-		return restartK8RServicePods(provider, serviceName);
+	startService(provider: Provider, service: Service): Promise<void> {
+		return restartK8RDeploymentPods(provider, service);
 	}
 
 	getServicePods(provider: Provider, service: Service): Promise<DiscoveredPod[]> {
 		return getK8RPods(provider, service);
 	}
 
-	stopService(provider: Provider, serviceName: string): Promise<void> {
-		return restartK8RServicePods(provider, serviceName);
+	stopService(provider: Provider, service: Service): Promise<void> {
+		return restartK8RDeploymentPods(provider, service);
 	}
 
 	async discoverServices(provider: Provider): Promise<DiscoveredService[]> {

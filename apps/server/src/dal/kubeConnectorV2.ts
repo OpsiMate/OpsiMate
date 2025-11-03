@@ -1,47 +1,75 @@
 import * as k8s from '@kubernetes/client-node';
-import { DiscoveredPod, DiscoveredService, Provider, Service } from '@OpsiMate/shared';
+import { DiscoveredPod, DiscoveredService, Logger, Provider, Service } from '@OpsiMate/shared';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { getSecurityConfig } from '../config/config';
 import { decryptPassword } from '../utils/encryption';
-import {V1Pod} from "@kubernetes/client-node";
-import {getK8RPods} from "./kubeConnector.ts";
+import { V1Pod } from '@kubernetes/client-node';
+import { getK8RPods } from './kubeConnector.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
+const logger = new Logger('kubeConnector');
 
 export const getK8SDeployments = async (_provider: Provider): Promise<DiscoveredService[]> => {
 	const k8sApi: k8s.AppsV1Api = createClient(_provider);
 	const coreV1Api: k8s.CoreV1Api = createCoreClient(_provider);
 	const deploymentsList = await k8sApi.listDeploymentForAllNamespaces({});
 	const deployments = deploymentsList.items ?? [];
-	const nonSystemDeployments = deployments.filter(deployment => deployment.metadata?.namespace !== 'kube-system');
+	const nonSystemDeployments = deployments.filter((deployment) => deployment.metadata?.namespace !== 'kube-system');
 
-	const results = await Promise.all(nonSystemDeployments.map(async (deployment) => {
-		const pods = await getDeploymentPods(coreV1Api, deployment);
+	const results = await Promise.all(
+		nonSystemDeployments.map(async (deployment) => {
+			const pods = await getDeploymentPods(coreV1Api, deployment);
 
-		return {
-			name: deployment.metadata?.name || 'unknown',
-			serviceStatus: getDeploymentStatus(pods),
-			serviceIP: 'unknown', // todo: we might want to fetch the deployment service and get its IP?
-			namespace: deployment.metadata?.namespace || 'default',
-			serviceType: 'Deployment',
-		};
-	}));
+			return {
+				name: deployment.metadata?.name || 'unknown',
+				serviceStatus: getDeploymentStatus(pods),
+				serviceIP: 'unknown', // todo: we might want to fetch the deployment service and get its IP?
+				namespace: deployment.metadata?.namespace || 'default',
+				serviceType: 'Deployment',
+			};
+		})
+	);
 
 	return results;
 };
 
-export const restartK8RDeploymentPods = async (provider: Provider, serviceName: string) => {
+export const restartK8RDeploymentPods = async (provider: Provider, service: Service) => {
 	const k8sApi: k8s.AppsV1Api = createClient(provider);
 	const coreV1Api: k8s.CoreV1Api = createCoreClient(provider);
+	const namespace = service.containerDetails?.namespace || 'default';
 
-}
+	try {
+		// Get the deployment
+		const deployment = await k8sApi.readNamespacedDeployment({ name: service.name, namespace });
 
+		if (!deployment || !deployment.metadata) {
+			throw new Error(`Deployment "${service.name}" in namespace "${namespace}" not found.`);
+		}
 
+		// Get pods for this deployment
+		const pods = await getDeploymentPods(coreV1Api, deployment);
+
+		if (pods.length === 0) {
+			throw new Error(`No pods found for deployment "${service.name}" in namespace "${namespace}".`);
+		}
+
+		// Delete each pod to trigger a restart
+		for (const pod of pods) {
+			const podName = pod.metadata?.name;
+			if (!podName) continue;
+
+			await coreV1Api.deleteNamespacedPod({ name: podName, namespace });
+			logger.info(`Pod "${podName}" in namespace "${namespace}" deleted successfully.`);
+		}
+	} catch (error) {
+		logger.error(`Error restarting pods for deployment "${service.name}":`, error);
+		throw error;
+	}
+};
 
 function getPrivateKeysDir(): string {
 	const securityConfig = getSecurityConfig();
@@ -100,12 +128,11 @@ const getDeploymentPods = async (coreV1Api: k8s.CoreV1Api, deployment: k8s.V1Dep
 
 // todo: change to enum
 const getDeploymentStatus = (pods: V1Pod[]): string => {
-	const runningPods = pods.filter(pod => pod.status?.phase === 'Running');
+	const runningPods = pods.filter((pod) => pod.status?.phase === 'Running');
 
 	if (runningPods.length == 0) {
 		return 'stopped';
 	}
 
 	return runningPods.length == pods.length ? 'running' : 'partial';
-}
-
+};
