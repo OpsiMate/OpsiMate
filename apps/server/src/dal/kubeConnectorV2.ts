@@ -22,18 +22,23 @@ export const getK8SDeployments = async (_provider: Provider): Promise<Discovered
 	const results = await Promise.all(
 		nonSystemDeployments.map(async (deployment) => {
 			const pods = await getDeploymentPods(coreV1Api, deployment);
+			const serviceIP = await getDeploymentServiceIP(coreV1Api, deployment);
+
+			if (!deployment.metadata || deployment.metadata.name || !deployment.metadata.namespace) {
+				return null;
+			}
 
 			return {
-				name: deployment.metadata?.name || 'unknown',
+				name: deployment.metadata.name,
 				serviceStatus: getDeploymentStatus(pods),
-				serviceIP: 'unknown', // todo: we might want to fetch the deployment service and get its IP?
-				namespace: deployment.metadata?.namespace || 'default',
+				serviceIP,
+				namespace: deployment.metadata.namespace,
 				serviceType: 'Deployment',
 			};
 		})
 	);
 
-	return results;
+	return results.filter((result) => result != null) as DiscoveredService[];
 };
 
 export const restartK8SDeploymentPods = async (provider: Provider, service: Service) => {
@@ -190,6 +195,46 @@ const getDeploymentPods = async (coreV1Api: k8s.CoreV1Api, deployment: k8s.V1Dep
 
 	const podsList = await coreV1Api.listNamespacedPod({ namespace, labelSelector });
 	return podsList.items ?? [];
+};
+
+const getDeploymentServiceIP = async (coreV1Api: k8s.CoreV1Api, deployment: k8s.V1Deployment): Promise<string> => {
+	const selector = deployment.spec?.selector?.matchLabels;
+	const namespace = deployment.metadata?.namespace || 'default';
+	const deploymentName = deployment.metadata?.name || 'unknown';
+
+	if (!selector || Object.keys(selector).length === 0) {
+		return 'unknown';
+	}
+
+	try {
+		// First try to find a service with the same name as the deployment
+		// This is a common pattern in Kubernetes
+		try {
+			const service = await coreV1Api.readNamespacedService({ name: deploymentName, namespace });
+			if (service.spec?.clusterIP) {
+				return service.spec.clusterIP;
+			}
+		} catch (error) {
+			// Service with the same name doesn't exist, continue to search by labels
+		}
+
+		// If no service with the same name exists, try to find services that match the deployment's selector
+		const labelSelector = Object.entries(selector)
+			.map(([key, val]) => `${key}=${val}`)
+			.join(',');
+
+		const servicesList = await coreV1Api.listNamespacedService({ namespace, labelSelector });
+		const services = servicesList.items ?? [];
+
+		if (services.length > 0 && services[0].spec?.clusterIP) {
+			return services[0].spec.clusterIP;
+		}
+
+		return 'unknown';
+	} catch (error) {
+		logger.error(`Error getting service IP for deployment "${deploymentName}":`, error);
+		return 'unknown';
+	}
 };
 
 // todo: change to enum
