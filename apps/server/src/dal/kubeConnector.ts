@@ -214,7 +214,7 @@ const getDeploymentServiceIP = async (coreV1Api: k8s.CoreV1Api, deployment: k8s.
 			if (service.spec?.clusterIP) {
 				return service.spec.clusterIP;
 			}
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			// Service with the same name doesn't exist, continue to search by labels
 		}
