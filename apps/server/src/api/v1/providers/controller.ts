@@ -1,12 +1,5 @@
 import { Request, Response } from 'express';
-import {
-	AddBulkServiceSchema,
-	CreateProviderBulkSchema,
-	CreateProviderSchema,
-	Logger,
-	Provider,
-	User,
-} from '@OpsiMate/shared';
+import { CreateProviderBulkSchema, CreateProviderSchema, Logger, Provider, User } from '@OpsiMate/shared';
 import { providerConnectorFactory } from '../../../bl/providers/provider-connector/providerConnectorFactory';
 import { ProviderNotFound } from '../../../bl/providers/ProviderNotFound';
 import { ProviderBL } from '../../../bl/providers/provider.bl';

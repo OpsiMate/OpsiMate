@@ -87,14 +87,14 @@ export const getK8SDeploymentPods = async (provider: Provider, service: Service)
 		const pods = await getDeploymentPods(coreV1Api, deployment);
 
 		// Map pods to DiscoveredPod format
-		return pods.map((pod) => ({ 
-			name: pod.metadata?.name || 'unknown'
+		return pods.map((pod) => ({
+			name: pod.metadata?.name || 'unknown',
 		}));
 	} catch (error) {
 		logger.error(`Error getting pods for deployment "${service.name}":`, error);
 		return [];
 	}
-}
+};
 
 export const getK8SDeploymentLogs = async (provider: Provider, service: Service): Promise<string[]> => {
 	const k8sApi: k8s.AppsV1Api = createClient(provider);
@@ -135,7 +135,7 @@ export const getK8SDeploymentLogs = async (provider: Provider, service: Service)
 		logger.error(`Error getting logs for deployment "${service.name}":`, error);
 		throw error;
 	}
-}
+};
 
 function getPrivateKeysDir(): string {
 	const securityConfig = getSecurityConfig();

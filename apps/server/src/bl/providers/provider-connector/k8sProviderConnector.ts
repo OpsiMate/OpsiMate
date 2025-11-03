@@ -1,6 +1,11 @@
 import { ProviderConnector } from './providerConnector';
 import { DiscoveredService, Provider, Service } from '@OpsiMate/shared';
-import {getK8SDeploymentLogs, getK8SDeploymentPods, getK8SDeployments, restartK8SDeploymentPods} from '../../../dal/kubeConnectorV2';
+import {
+	getK8SDeploymentLogs,
+	getK8SDeploymentPods,
+	getK8SDeployments,
+	restartK8SDeploymentPods,
+} from '../../../dal/kubeConnectorV2';
 import { DiscoveredPod } from '@OpsiMate/shared';
 
 export class K8SProviderConnector implements ProviderConnector {
