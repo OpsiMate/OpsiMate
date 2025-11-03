@@ -41,6 +41,7 @@ interface Container {
 	serviceStatus: string;
 	serviceIP: string;
 	image: string;
+	namespace: string;
 }
 
 interface AddServiceDialogProps {
@@ -141,6 +142,7 @@ export const AddServiceDialog = ({
 						selected: isAlreadyAdded, // Pre-select already added services
 						created: new Date().toISOString(),
 						alreadyAdded: isAlreadyAdded, // Mark if already added
+						namespace: service.namespace,
 						existingServiceId: isAlreadyAdded
 							? existingServices.find((es) => es.name === service.name)?.id
 							: undefined, // Store existing service ID for removal
@@ -332,6 +334,7 @@ export const AddServiceDialog = ({
 							id: container.id,
 							image: container.image,
 							created: container.created,
+							namespace: container.namespace,
 						},
 					});
 
