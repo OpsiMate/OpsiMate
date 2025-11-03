@@ -7,7 +7,6 @@ import { dirname } from 'node:path';
 import { getSecurityConfig } from '../config/config';
 import { decryptPassword } from '../utils/encryption';
 import { V1Pod } from '@kubernetes/client-node';
-import { getK8RPods } from './kubeConnector.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,7 +36,7 @@ export const getK8SDeployments = async (_provider: Provider): Promise<Discovered
 	return results;
 };
 
-export const restartK8RDeploymentPods = async (provider: Provider, service: Service) => {
+export const restartK8SDeploymentPods = async (provider: Provider, service: Service) => {
 	const k8sApi: k8s.AppsV1Api = createClient(provider);
 	const coreV1Api: k8s.CoreV1Api = createCoreClient(provider);
 	const namespace = service.containerDetails?.namespace || 'default';
@@ -70,6 +69,73 @@ export const restartK8RDeploymentPods = async (provider: Provider, service: Serv
 		throw error;
 	}
 };
+
+export const getK8SDeploymentPods = async (provider: Provider, service: Service): Promise<DiscoveredPod[]> => {
+	const k8sApi: k8s.AppsV1Api = createClient(provider);
+	const coreV1Api: k8s.CoreV1Api = createCoreClient(provider);
+	const namespace = service.containerDetails?.namespace || 'default';
+
+	try {
+		// Get the deployment
+		const deployment = await k8sApi.readNamespacedDeployment({ name: service.name, namespace });
+
+		if (!deployment || !deployment.metadata) {
+			throw new Error(`Deployment "${service.name}" in namespace "${namespace}" not found.`);
+		}
+
+		// Get pods for this deployment
+		const pods = await getDeploymentPods(coreV1Api, deployment);
+
+		// Map pods to DiscoveredPod format
+		return pods.map((pod) => ({ 
+			name: pod.metadata?.name || 'unknown'
+		}));
+	} catch (error) {
+		logger.error(`Error getting pods for deployment "${service.name}":`, error);
+		return [];
+	}
+}
+
+export const getK8SDeploymentLogs = async (provider: Provider, service: Service): Promise<string[]> => {
+	const k8sApi: k8s.AppsV1Api = createClient(provider);
+	const coreV1Api: k8s.CoreV1Api = createCoreClient(provider);
+	const namespace = service.containerDetails?.namespace || 'default';
+
+	try {
+		// Get the deployment
+		const deployment = await k8sApi.readNamespacedDeployment({ name: service.name, namespace });
+
+		if (!deployment || !deployment.metadata) {
+			throw new Error(`Deployment "${service.name}" in namespace "${namespace}" not found.`);
+		}
+
+		// Get pods for this deployment
+		const pods = await getDeploymentPods(coreV1Api, deployment);
+
+		if (pods.length === 0) {
+			return [`No pods found for deployment "${service.name}" in namespace "${namespace}".`];
+		}
+
+		// Collect logs from each pod
+		const logs: string[] = [];
+		for (const pod of pods) {
+			const podName = pod.metadata?.name;
+			if (!podName) continue;
+
+			try {
+				const logText = await coreV1Api.readNamespacedPodLog({ name: podName, namespace });
+				logs.push(`--- Logs from pod ${podName} ---\n${logText || 'No logs available'}`);
+			} catch (error) {
+				logger.error(`Error getting logs from pod ${podName}`, error);
+			}
+		}
+
+		return logs;
+	} catch (error) {
+		logger.error(`Error getting logs for deployment "${service.name}":`, error);
+		throw error;
+	}
+}
 
 function getPrivateKeysDir(): string {
 	const securityConfig = getSecurityConfig();
