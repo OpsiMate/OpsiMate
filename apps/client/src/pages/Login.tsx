@@ -5,7 +5,7 @@ import { ErrorAlert } from '../components/ErrorAlert';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
-import { apiRequest } from '../lib/api';
+import { apiRequest, EMAIL_STATUS_URL } from '../lib/api';
 
 const logger = new Logger('Login');
 
@@ -13,6 +13,7 @@ const Login: React.FC = () => {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
+	const [emailEnabled, setEmailEnabled] = useState(false);
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors({
 		showFieldErrors: false,
 	});
@@ -21,6 +22,25 @@ const Login: React.FC = () => {
 		if (localStorage.getItem('jwt') && window.location.pathname === '/login') {
 			window.location.href = '/';
 		}
+
+		const fetchEmailStatus = async () => {
+			try {
+				const res = await fetch(EMAIL_STATUS_URL);
+				const data = await res.json();
+
+				if (data.success) {
+					setEmailEnabled(data.data.isEmailEnabled);
+				} else {
+					logger.error('Failed to fetch email status', data);
+					setEmailEnabled(false);
+				}
+			} catch (err) {
+				logger.error('Failed to fetch email status', err);
+				setEmailEnabled(false);
+			}
+		};
+
+		fetchEmailStatus();
 	}, []);
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +61,6 @@ const Login: React.FC = () => {
 					localStorage.setItem('jwt', token);
 					window.location.href = '/';
 				} else {
-					// This shouldn't happen in normal flow, but handle it gracefully
 					logger.error('Login successful but no token received');
 					handleApiResponse({
 						success: false,
@@ -91,9 +110,11 @@ const Login: React.FC = () => {
 					{loading ? 'Logging in...' : 'Login'}
 				</Button>
 				<div className="mt-4 text-center">
-					<Link to="/forgot-password" className="text-primary hover:underline text-sm">
-						Forgot password?
-					</Link>
+					{emailEnabled && (
+						<Link to="/forgot-password" className="text-primary hover:underline text-sm">
+							Forgot password?
+						</Link>
+					)}
 				</div>
 			</form>
 		</div>
