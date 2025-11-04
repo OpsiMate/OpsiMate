@@ -14,6 +14,7 @@ import { ProfileButton } from "./ProfileButton";
 import { isAdmin, isEditor, isViewer } from "../lib/auth";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
+
 interface LeftSidebarProps {
   collapsed: boolean;
 }
@@ -240,15 +241,13 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
 
           <ProfileButton collapsed={collapsed} />
 
-          {/* Social buttons */}
-          <div
+           <div
             className={cn(
               "flex gap-2",
               collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
             )}
           >
-            {/* Slack */}
-            <SidebarTooltip
+             <SidebarTooltip
               collapsed={collapsed}
               label="Join our Slack community"
               side="top"
