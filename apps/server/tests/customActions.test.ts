@@ -78,6 +78,7 @@ describe('Custom Actions API', () => {
 				name: 'S1',
 				providerId,
 				serviceType: 'DOCKER',
+				serviceStatus: 'running',
 			});
 		expect(serviceCreate.status).toBe(201);
 		const serviceId = serviceCreate.body.data.id as number;
