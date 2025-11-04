@@ -15,7 +15,7 @@ import { CustomAction } from '@OpsiMate/custom-actions';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
-
+export const EMAIL_STATUS_URL = `${protocol}//${hostname}:3001/email-status`;
 export const API_BASE_URL = `${protocol}//${hostname}:3001/api/v1`;
 export type ApiResponse<T = unknown> = {
 	success: boolean;

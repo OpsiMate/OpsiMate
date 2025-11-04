@@ -1,17 +1,8 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-
-type CustomActionRow = {
-	id: number;
-	name: string;
-	description: string;
-	type: 'bash' | 'http';
-	target: 'service' | 'provider' | null;
-	script: string | null;
-	http_config: string | null;
-	created_at: string;
-};
+import { CustomAction } from '@OpsiMate/custom-actions';
+import { CustomActionRow } from './models';
 
 export class CustomActionRepository {
 	private db: Database.Database;

@@ -9,33 +9,31 @@ import { ServiceRepository } from '../../../dal/serviceRepository';
 
 const logger: Logger = new Logger('api/custom-actions');
 
-export class CustomActionsController {
-    constructor(
-        private bl: CustomActionBL,
-        private providerRepo: ProviderRepository,
-        private serviceRepo: ServiceRepository,
-        private actionRepo: CustomActionRepository
-    ) {
-    }
+// Validation schema for BashAction
+const BashActionSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    description: z.string().min(1, 'Description is required'),
+    type: z.literal('bash'),
+    target: z.enum(['service', 'provider']).nullable(),
+    script: z.string().nullable(),
+});
 
-    private isValidBashAction(body: unknown): body is CustomAction {
-        if (!body || typeof body !== 'object') return false;
-        const b = body as Record<string, unknown>;
-        return (
-            typeof b.name === 'string' &&
-            typeof b.description === 'string' &&
-            b.type === 'bash' &&
-            ('target' in b ? b.target === 'service' || b.target === 'provider' || b.target === null : true) &&
-            ('script' in b ? (b.script === null || typeof b.script === 'string') : true)
-        );
-    }
+export class CustomActionsController {
+    constructor(private bl: CustomActionBL) {}
 
     create = async (req: Request, res: Response) => {
-        if (!this.isValidBashAction(req.body)) {
-            return res.status(400).json({success: false, error: 'Invalid custom action payload'});
+        try {
+            const validatedData = BashActionSchema.parse(req.body);
+            const id = await this.bl.create(validatedData);
+            return res.status(201).json({success: true, data: {id}});
+        } catch (error) {
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            } else {
+                logger.error('Error creating custom action:', error);
+                return res.status(500).json({success: false, error: 'Internal server error'});
+            }
         }
-        const id = await this.bl.create(req.body);
-        return res.status(201).json({success: true, data: {id}});
     };
 
     list = async (_: Request, res: Response) => {
@@ -51,12 +49,19 @@ export class CustomActionsController {
     };
 
     update = async (req: Request, res: Response) => {
-        const id = Number(req.params.actionId);
-        if (!this.isValidBashAction(req.body)) {
-            return res.status(400).json({success: false, error: 'Invalid custom action payload'});
+        try {
+            const id = Number(req.params.actionId);
+            const validatedData = BashActionSchema.parse(req.body);
+            await this.bl.update(id, validatedData);
+            return res.status(200).json({success: true});
+        } catch (error) {
+            if (isZodError(error)) {
+                return res.status(400).json({success: false, error: 'Validation error', details: error.errors});
+            } else {
+                logger.error('Error updating custom action:', error);
+                return res.status(500).json({success: false, error: 'Internal server error'});
+            }
         }
-        await this.bl.update(id, req.body);
-        return res.status(200).json({success: true});
     };
 
     delete = async (req: Request, res: Response) => {
@@ -66,33 +71,43 @@ export class CustomActionsController {
     };
 
     runForProvider = async (req: Request, res: Response) => {
-        const providerId = Number(req.params.providerId);
-        const actionId = Number(req.params.actionId);
-        const provider = await this.providerRepo.getProviderById(providerId);
-        if (!provider) return res.status(404).json({success: false, error: 'Provider not found'});
-        const action = await this.actionRepo.getById(actionId);
-        if (!action) return res.status(404).json({success: false, error: 'Action not found'});
-
-        const connector = providerConnectorFactory(provider.providerType);
-        await connector.runCustomAction(provider, action);
-        logger.info(`Ran custom action id=${actionId} on provider id=${providerId}`);
-        return res.status(200).json({success: true});
+        try {
+            const providerId = Number(req.params.providerId);
+            const actionId = Number(req.params.actionId);
+            await this.bl.runForProvider(providerId, actionId);
+            return res.status(200).json({success: true});
+        } catch (error) {
+            if (error instanceof Error) {
+                if (error.message === 'Action not found') {
+                    return res.status(404).json({success: false, error: 'Action not found'});
+                }
+                if (error.name === 'ProviderNotFound' || error.message.includes('Provider not found')) {
+                    return res.status(404).json({success: false, error: 'Provider not found'});
+                }
+            }
+            logger.error('Error running custom action for provider:', error);
+            return res.status(500).json({success: false, error: 'Internal server error'});
+        }
     };
 
     runForService = async (req: Request, res: Response) => {
-        const serviceId = Number(req.params.serviceId);
-        const actionId = Number(req.params.actionId);
-        const service = await this.serviceRepo.getServiceById(serviceId);
-        if (!service) return res.status(404).json({success: false, error: 'Service not found'});
-        const provider = await this.providerRepo.getProviderById(service.providerId);
-        if (!provider) return res.status(404).json({success: false, error: 'Provider not found'});
-        const action = await this.actionRepo.getById(actionId);
-        if (!action) return res.status(404).json({success: false, error: 'Action not found'});
-
-        const connector = providerConnectorFactory(provider.providerType);
-        await connector.runCustomAction(provider, action, service);
-        logger.info(`Ran custom action id=${actionId} on service id=${serviceId}`);
-        return res.status(200).json({success: true});
+        try {
+            const serviceId = Number(req.params.serviceId);
+            const actionId = Number(req.params.actionId);
+            await this.bl.runForService(serviceId, actionId);
+            return res.status(200).json({success: true});
+        } catch (error) {
+            if (error instanceof Error) {
+                if (error.message === 'Service not found' || error.message === 'Action not found') {
+                    return res.status(404).json({success: false, error: error.message});
+                }
+                if (error.name === 'ProviderNotFound' || error.message.includes('Provider not found')) {
+                    return res.status(404).json({success: false, error: 'Provider not found'});
+                }
+            }
+            logger.error('Error running custom action for service:', error);
+            return res.status(500).json({success: false, error: 'Internal server error'});
+        }
     };
 
 

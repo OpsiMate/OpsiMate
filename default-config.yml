@@ -15,10 +15,15 @@ security:
   private_keys_path: "/app/data/private-keys"  # Container path for SSH keys
 
 # mailer configuration
+# Email functionality is disabled by default for security
+# To enable email features:
+# 1. Set enabled: true
+# 2. Configure valid SMTP credentials below
+# 3. Update mailLinkBaseUrl to your actual domain
 mailer:
   enabled: false
   default_encoding: "UTF-8"
-  host: "smtp.gmail.com"
+  host: "smtp.gmail.com"  # Replace with your SMTP server
   port: 587                
   secure: false
   mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
@@ -30,7 +35,7 @@ mailer:
         content: 'Welcome aboard! We’re happy to have you as part of the OpsiMate community.'
     }
   auth:
-    user: "my-mail@gmail.com"
-    pass: "mypass"
+    user: "your-email@domain.com"  # Replace with your SMTP username
+    pass: "your-smtp-password"     # Replace with your SMTP password
   tls:
     rejectUnauthorized: true

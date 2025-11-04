@@ -14,7 +14,6 @@ export default defineConfig({
 			fileName: 'index',
 		},
 		rollupOptions: {
-			// keep bundle pure ESM and avoid bundling deps (none for now)
 			external: [],
 			output: {
 				format: 'es',

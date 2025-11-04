@@ -104,7 +104,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
 	const servicesBL = new ServicesBL(serviceRepo, auditBL);
-	const customActionBL = new CustomActionBL(customActionRepo);
+	const customActionBL = new CustomActionBL(customActionRepo, providerBL, servicesBL);
 
 	// Controllers
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -124,12 +124,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	const auditController = new AuditController(auditBL);
 	const secretController = new SecretsController(secretMetadataBL);
 	const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
-	const customActionsController = new CustomActionsController(
-		customActionBL,
-		providerRepo,
-		serviceRepo,
-		customActionRepo
-	);
+	const customActionsController = new CustomActionsController(customActionBL);
 
 	app.use('/', healthRouter);
 	app.use(
