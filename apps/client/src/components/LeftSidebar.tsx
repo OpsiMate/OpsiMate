@@ -18,6 +18,38 @@ interface LeftSidebarProps {
   collapsed: boolean;
 }
 
+function SidebarTooltip({
+  collapsed,
+  label,
+  children,
+  side = "right",
+  align = "center",
+  sideOffset = 10,
+}: {
+  collapsed: boolean;
+  label: string;
+  children: React.ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  sideOffset?: number;
+}) {
+  if (!collapsed) return <>{children}</>;
+
+  return (
+    <Tooltip.Root delayDuration={1} disableHoverableContent>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Content
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        className="z-50 rounded-md bg-[#051234] text-white px-2 py-1 text-sm m-2"
+      >
+        {label}
+      </Tooltip.Content>
+    </Tooltip.Root>
+  );
+}
+
 export function LeftSidebar({ collapsed }: LeftSidebarProps) {
   const location = useLocation();
 
@@ -28,7 +60,6 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
         collapsed && "items-center"
       )}
     >
-      {/* Logo section */}
       <Link
         to="/"
         className={cn(
@@ -51,197 +82,130 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
         </div>
       </Link>
 
-      {/* Navigation section */}
       <div
         className={cn(
           "px-4 space-y-2 w-full flex-grow flex flex-col",
           collapsed && "px-2 items-center"
         )}
       >
-        <Tooltip.Provider delayDuration={100}>
-          {/* Dashboard */}
-          <Tooltip.Root>
-            <Tooltip.Trigger asChild>
-              <Button
-                variant={location.pathname === "/" ? "default" : "ghost"}
-                className={cn(
-                  "gap-3 h-10",
-                  collapsed
-                    ? "w-10 justify-center p-0"
-                    : "w-full justify-start px-3",
-                  location.pathname === "/" && "text-primary-foreground"
-                )}
-                asChild
-              >
-                <Link to="/">
-                  <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-                  <span className={cn("font-medium", collapsed && "sr-only")}>
-                    Dashboard
-                  </span>
-                </Link>
-              </Button>
-            </Tooltip.Trigger>
-            <Tooltip.Content
-              side="top"
-              align="center"
-              sideOffset={6}
-              className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
+        <SidebarTooltip collapsed={collapsed} label="Dashboard">
+          <Button
+            variant={location.pathname === "/" ? "default" : "ghost"}
+            className={cn(
+              "gap-3 h-10",
+              collapsed
+                ? "w-10 justify-center p-0"
+                : "w-full justify-start px-3",
+              location.pathname === "/" && "text-primary-foreground"
+            )}
+            asChild
+          >
+            <Link to="/">
+              <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+              <span className={cn("font-medium", collapsed && "sr-only")}>
+                Dashboard
+              </span>
+            </Link>
+          </Button>
+        </SidebarTooltip>
+
+        {isEditor() && (
+          <SidebarTooltip collapsed={collapsed} label="Add Providers">
+            <Button
+              variant={location.pathname === "/providers" ? "default" : "ghost"}
+              className={cn(
+                "gap-3 h-10",
+                collapsed
+                  ? "w-10 justify-center p-0"
+                  : "w-full justify-start px-3",
+                location.pathname === "/providers" && "text-primary-foreground"
+              )}
+              asChild
             >
-              Dashboard
-              <Tooltip.Arrow className="fill-gray-800" />
-            </Tooltip.Content>
-          </Tooltip.Root>
+              <Link to="/providers">
+                <Layers className="h-5 w-5 flex-shrink-0" />
+                <span className={cn("font-medium", collapsed && "sr-only")}>
+                  Add Provider
+                </span>
+              </Link>
+            </Button>
+          </SidebarTooltip>
+        )}
 
-          {/* Add Providers */}
-          {isEditor() && (
-            <Tooltip.Root>
-              <Tooltip.Trigger asChild>
-                <Button
-                  variant={
-                    location.pathname === "/providers" ? "default" : "ghost"
-                  }
-                  className={cn(
-                    "gap-3 h-10",
-                    collapsed
-                      ? "w-10 justify-center p-0"
-                      : "w-full justify-start px-3",
-                    location.pathname === "/providers" &&
-                      "text-primary-foreground"
-                  )}
-                  asChild
-                >
-                  <Link to="/providers">
-                    <Layers className="h-5 w-5 flex-shrink-0" />
-                    <span className={cn("font-medium", collapsed && "sr-only")}>
-                      Add Provider
-                    </span>
-                  </Link>
-                </Button>
-              </Tooltip.Trigger>
-              <Tooltip.Content
-                side="top"
-                align="center"
-                sideOffset={6}
-                className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
-              >
-                Add Providers
-                <Tooltip.Arrow className="fill-gray-800" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-          )}
-
-          {/* My Providers */}
-          {!isViewer() && (
-            <Tooltip.Root>
-              <Tooltip.Trigger asChild>
-                <Button
-                  variant={
-                    location.pathname === "/my-providers" ? "default" : "ghost"
-                  }
-                  className={cn(
-                    "gap-3 h-10",
-                    collapsed
-                      ? "w-10 justify-center p-0"
-                      : "w-full justify-start px-3",
-                    location.pathname === "/my-providers" &&
-                      "text-primary-foreground"
-                  )}
-                  asChild
-                >
-                  <Link to="/my-providers">
-                    <Database className="h-5 w-5 flex-shrink-0" />
-                    <span className={cn("font-medium", collapsed && "sr-only")}>
-                      My Providers
-                    </span>
-                  </Link>
-                </Button>
-              </Tooltip.Trigger>
-              <Tooltip.Content
-                side="top"
-                align="center"
-                sideOffset={6}
-                className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
-              >
-                My Providers
-                <Tooltip.Arrow className="fill-gray-800" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-          )}
-
-          {/* Integrations */}
-          {isEditor() && (
-            <Tooltip.Root>
-              <Tooltip.Trigger asChild>
-                <Button
-                  variant={
-                    location.pathname === "/integrations" ? "default" : "ghost"
-                  }
-                  className={cn(
-                    "gap-3 h-10",
-                    collapsed
-                      ? "w-10 justify-center p-0"
-                      : "w-full justify-start px-3",
-                    location.pathname === "/integrations" &&
-                      "text-primary-foreground"
-                  )}
-                  asChild
-                >
-                  <Link to="/integrations">
-                    <Puzzle className="h-5 w-5 flex-shrink-0" />
-                    <span className={cn("font-medium", collapsed && "sr-only")}>
-                      Integrations
-                    </span>
-                  </Link>
-                </Button>
-              </Tooltip.Trigger>
-              <Tooltip.Content
-                side="top"
-                align="center"
-                sideOffset={6}
-                className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
-              >
-                Integrations
-                <Tooltip.Arrow className="fill-gray-800" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-          )}
-
-          {/* Alerts */}
-          <Tooltip.Root>
-            <Tooltip.Trigger asChild>
-              <Button
-                variant={location.pathname === "/alerts" ? "default" : "ghost"}
-                className={cn(
-                  "gap-3 h-10",
-                  collapsed
-                    ? "w-10 justify-center p-0"
-                    : "w-full justify-start px-3",
-                  location.pathname === "/alerts" && "text-primary-foreground"
-                )}
-                asChild
-              >
-                <Link to="/alerts">
-                  <Bell className="h-5 w-5 flex-shrink-0" />
-                  <span className={cn("font-medium", collapsed && "sr-only")}>
-                    Alerts
-                  </span>
-                </Link>
-              </Button>
-            </Tooltip.Trigger>
-            <Tooltip.Content
-              side="top"
-              align="center"
-              sideOffset={6}
-              className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
+        {!isViewer() && (
+          <SidebarTooltip collapsed={collapsed} label="My Providers">
+            <Button
+              variant={
+                location.pathname === "/my-providers" ? "default" : "ghost"
+              }
+              className={cn(
+                "gap-3 h-10",
+                collapsed
+                  ? "w-10 justify-center p-0"
+                  : "w-full justify-start px-3",
+                location.pathname === "/my-providers" &&
+                  "text-primary-foreground"
+              )}
+              asChild
             >
-              Alerts
-              <Tooltip.Arrow className="fill-gray-800" />
-            </Tooltip.Content>
-          </Tooltip.Root>
-        </Tooltip.Provider>
+              <Link to="/my-providers">
+                <Database className="h-5 w-5 flex-shrink-0" />
+                <span className={cn("font-medium", collapsed && "sr-only")}>
+                  My Providers
+                </span>
+              </Link>
+            </Button>
+          </SidebarTooltip>
+        )}
+
+        {isEditor() && (
+          <SidebarTooltip collapsed={collapsed} label="Integrations">
+            <Button
+              variant={
+                location.pathname === "/integrations" ? "default" : "ghost"
+              }
+              className={cn(
+                "gap-3 h-10",
+                collapsed
+                  ? "w-10 justify-center p-0"
+                  : "w-full justify-start px-3",
+                location.pathname === "/integrations" &&
+                  "text-primary-foreground"
+              )}
+              asChild
+            >
+              <Link to="/integrations">
+                <Puzzle className="h-5 w-5 flex-shrink-0" />
+                <span className={cn("font-medium", collapsed && "sr-only")}>
+                  Integrations
+                </span>
+              </Link>
+            </Button>
+          </SidebarTooltip>
+        )}
+
+        <SidebarTooltip collapsed={collapsed} label="Alerts">
+          <Button
+            variant={location.pathname === "/alerts" ? "default" : "ghost"}
+            className={cn(
+              "gap-3 h-10",
+              collapsed
+                ? "w-10 justify-center p-0"
+                : "w-full justify-start px-3",
+              location.pathname === "/alerts" && "text-primary-foreground"
+            )}
+            asChild
+          >
+            <Link to="/alerts">
+              <Bell className="h-5 w-5 flex-shrink-0" />
+              <span className={cn("font-medium", collapsed && "sr-only")}>
+                Alerts
+              </span>
+            </Link>
+          </Button>
+        </SidebarTooltip>
       </div>
 
-      {/* Bottom section */}
       <div
         className={cn(
           "p-4 mt-auto flex flex-col gap-3",
@@ -250,129 +214,106 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
       >
         <div className={cn("flex flex-col gap-2 items-center")}>
           {isAdmin() && (
-            <Tooltip.Provider>
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <Button
-                    variant={
-                      location.pathname === "/settings" ? "default" : "ghost"
-                    }
-                    className={cn(
-                      "gap-3 h-10 items-center",
-                      collapsed
-                        ? "w-10 justify-center p-0"
-                        : "w-full justify-start px-1",
-                      location.pathname === "/settings" &&
-                        "text-primary-foreground"
-                    )}
-                    asChild
-                  >
-                    <Link to="/settings">
-                      <Settings className="h-5 w-5 flex-shrink-0 items-center" />
-                      <span className={cn("font-medium", collapsed && "sr-only")}>
-                        Settings
-                      </span>
-                    </Link>
-                  </Button>
-                </Tooltip.Trigger>
-                <Tooltip.Content
-                  side="top"
-                  align="center"
-                  sideOffset={6}
-                  className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
-                >
-                  Settings
-                  <Tooltip.Arrow className="fill-gray-800" />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
+            <SidebarTooltip collapsed={collapsed} label="Settings">
+              <Button
+                variant={
+                  location.pathname === "/settings" ? "default" : "ghost"
+                }
+                className={cn(
+                  "gap-3 h-10 items-center",
+                  collapsed
+                    ? "w-10 justify-center p-0"
+                    : "w-full justify-start px-1",
+                  location.pathname === "/settings" && "text-primary-foreground"
+                )}
+                asChild
+              >
+                <Link to="/settings">
+                  <Settings className="h-5 w-5 flex-shrink-0 items-center" />
+                  <span className={cn("font-medium", collapsed && "sr-only")}>
+                    Settings
+                  </span>
+                </Link>
+              </Button>
+            </SidebarTooltip>
           )}
 
           <ProfileButton collapsed={collapsed} />
 
           {/* Social buttons */}
-          <Tooltip.Provider delayDuration={100}>
-            <div
-              className={cn(
-                "flex gap-2",
-                collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
-              )}
+          <div
+            className={cn(
+              "flex gap-2",
+              collapsed ? "flex-col items-center" : "flex-col sm:flex-row"
+            )}
+          >
+            {/* Slack */}
+            <SidebarTooltip
+              collapsed={collapsed}
+              label="Join our Slack community"
+              side="top"
             >
-              {/* Slack */}
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
-                      collapsed ? "flex-col" : "flex-row"
-                    )}
-                    onClick={() =>
-                      window.open(
-                        "https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA",
-                        "_blank"
-                      )
-                    }
-                  >
-                    <img
-                      src="images/slack.png"
-                      alt="Slack"
-                      className="h-5 w-5 object-contain invert dark:invert-0"
-                    />
-                  </Button>
-                </Tooltip.Trigger>
-                <Tooltip.Content
-                  side="top"
-                  align="center"
-                  sideOffset={6}
-                  className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
-                >
-                  Join our Slack community
-                  <Tooltip.Arrow className="fill-gray-800" />
-                </Tooltip.Content>
-              </Tooltip.Root>
-
-              {/* GitHub */}
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
-                      collapsed ? "flex-col" : "flex-row"
-                    )}
-                    onClick={() =>
-                      window.open("https://github.com/opsimate/opsimate", "_blank")
-                    }
-                  >
-                    <img
-                      src="images/git.png"
-                      alt="GitHub"
-                      className="h-5 w-5 object-contain invert dark:invert-0"
-                    />
-                  </Button>
-                </Tooltip.Trigger>
-                <Tooltip.Content
-                  side="top"
-                  align="center"
-                  sideOffset={6}
-                  className="z-50 rounded-md bg-gray-800 text-white px-2 py-1 text-sm shadow-lg"
-                >
-                  Star us on GitHub ⭐
-                  <Tooltip.Arrow className="fill-gray-800" />
-                </Tooltip.Content>
-              </Tooltip.Root>
-
-              <p
+              <Button
+                variant="ghost"
                 className={cn(
-                  "text-xs text-muted-foreground",
-                  collapsed && "sr-only"
+                  "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
+                  "border-0 shadow-none rounded-lg",
+                  collapsed ? "flex-col" : "flex-row"
+                )}
+                asChild
+              >
+                <a
+                  href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Join our Slack community"
+                >
+                  <img
+                    src="images/slack.png"
+                    alt="Slack"
+                    className="h-5 w-5 object-contain invert dark:invert-0"
+                  />
+                </a>
+              </Button>
+            </SidebarTooltip>
+
+            {/* GitHub */}
+            <SidebarTooltip
+              collapsed={collapsed}
+              label="Star us on GitHub ⭐"
+              side="top"
+            >
+              <Button
+                variant="ghost"
+                className={cn(
+                  "h-8 w-8 p-1 flex items-center justify-center transition-all duration-200",
+                  "border-0 shadow-none rounded-lg",
+                  collapsed ? "flex-col" : "flex-row"
                 )}
               >
-                © 2024 OpsiMate
-              </p>
-            </div>
-          </Tooltip.Provider>
+                <a
+                  href="https://github.com/opsimate/opsimate"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Github link"
+                ></a>
+                <img
+                  src="images/git.png"
+                  alt="GitHub"
+                  className="h-5 w-5 object-contain invert dark:invert-0"
+                />
+              </Button>
+            </SidebarTooltip>
+
+            <p
+              className={cn(
+                "text-xs text-muted-foreground",
+                collapsed && "sr-only"
+              )}
+            >
+              © 2024 OpsiMate
+            </p>
+          </div>
         </div>
       </div>
     </div>
