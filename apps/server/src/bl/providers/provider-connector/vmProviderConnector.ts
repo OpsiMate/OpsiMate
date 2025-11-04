@@ -54,7 +54,7 @@ export class VMProviderConnector implements ProviderConnector {
 		if (!action.script) throw new Error('Missing script for bash action');
 
 		// Resolve placeholders in the script
-		const resolvedScript = this.resolvePlaceholders(action.script, parameters);
+		const _resolvedScript = this.resolvePlaceholders(action.script, parameters);
 
 		this.logger.info(`Executing bash action '${action.name}' on provider ${provider.name}`);
 		await sshClient.testConnection(provider);

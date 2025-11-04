@@ -38,9 +38,9 @@ export class CustomActionsController {
 
 	create = async (req: Request, res: Response) => {
 		try {
-			const validatedData = CustomActionSchema.parse(req.body);
-			// Remove id if present (it's auto-generated) and create a proper CustomAction
-			const { id: _, ...dataWithoutId } = validatedData;
+		const validatedData = CustomActionSchema.parse(req.body);
+		// Remove id if present (it's auto-generated) and create a proper CustomAction
+		const { id: _, ...dataWithoutId } = validatedData;
 			const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
 			const id = await this.bl.create(actionData);
 			return res.status(201).json({ success: true, data: { id } });
@@ -69,9 +69,9 @@ export class CustomActionsController {
 	update = async (req: Request, res: Response) => {
 		try {
 			const id = Number(req.params.actionId);
-			const validatedData = CustomActionSchema.parse(req.body);
-			// Remove id if present (use parameter id instead) and create a proper CustomAction
-			const { id: _, ...dataWithoutId } = validatedData;
+		const validatedData = CustomActionSchema.parse(req.body);
+		// Remove id if present (use parameter id instead) and create a proper CustomAction
+		const { id: _, ...dataWithoutId } = validatedData;
 			const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
 			await this.bl.update(id, actionData);
 			return res.status(200).json({ success: true });

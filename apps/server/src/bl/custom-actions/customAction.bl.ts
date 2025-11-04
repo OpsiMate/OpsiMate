@@ -19,7 +19,7 @@ export class CustomActionBL {
 
 	async create(data: CustomAction): Promise<number> {
 		// Remove id if present since it's auto-generated
-		const { id, ...dataWithoutId } = data;
+		const { id: _, ...dataWithoutId } = data;
 		const res = await this.repo.create(dataWithoutId);
 		logger.info(`Created custom action id=${res.lastID}`);
 		return res.lastID;
