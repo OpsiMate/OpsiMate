@@ -1,5 +1,5 @@
 import { useToast } from '@/hooks/use-toast';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
 import { User } from '../types';
@@ -22,7 +22,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors();
 	const { toast } = useToast();
 
-	const handleReset = async () => {
+	const handleReset = useCallback(async () => {
 		if (!user) return;
 
 		if (newPassword !== confirmPassword) {
@@ -76,14 +76,14 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 		} finally {
 			setResetting(false);
 		}
-	};
+	}, [user, newPassword, confirmPassword, clearErrors, handleApiResponse, toast, onClose]);
 
-	const handleClose = () => {
+	const handleClose = useCallback(() => {
 		clearErrors();
 		setNewPassword('');
 		setConfirmPassword('');
 		onClose();
-	};
+	}, [clearErrors, onClose]);
 
 	React.useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {

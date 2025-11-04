@@ -14,6 +14,7 @@ import { SecretsMetadataRepository } from '../src/dal/secretsMetadataRepository.
 import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepository.ts';
 import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository.ts';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository.ts';
+import { CustomActionRepository } from '../src/dal/customActionRepository.ts';
 
 // Mock the Kubernetes client to avoid ES module issues
 vi.mock('@kubernetes/client-node', () => ({
@@ -44,6 +45,7 @@ export async function setupDB(): Promise<Database.Database> {
 	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
+	const customActionRepo = new CustomActionRepository(db);
 
 	// Init tables
 	await Promise.all([
@@ -59,6 +61,7 @@ export async function setupDB(): Promise<Database.Database> {
 		serviceCustomFieldRepo.initServiceCustomFieldTable(),
 		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
 		passwordResetsRepo.initPasswordResetsTable(),
+		customActionRepo.initCustomActionsTable(),
 	]);
 	return db;
 }

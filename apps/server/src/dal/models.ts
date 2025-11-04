@@ -118,3 +118,14 @@ export type ResetPasswordRow = {
 	expires_at: string;
 	created_at: string;
 };
+
+export type CustomActionRow = {
+	id: number;
+	name: string;
+	description: string;
+	type: 'bash' | 'http';
+	target: 'service' | 'provider' | null;
+	script: string | null;
+	http_config: string | null;
+	created_at: string;
+};

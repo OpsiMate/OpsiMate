@@ -2,6 +2,7 @@ import { ProviderConnector } from './providerConnector';
 import { DiscoveredService, Provider, Service } from '@OpsiMate/shared';
 import { getK8RLogs, getK8SServices, getK8RPods, restartK8RServicePods } from '../../../dal/kubeConnector';
 import { DiscoveredPod } from '@OpsiMate/shared';
+import { BashAction } from '@OpsiMate/custom-actions';
 
 export class K8SProviderConnector implements ProviderConnector {
 	async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
@@ -26,5 +27,14 @@ export class K8SProviderConnector implements ProviderConnector {
 
 	testConnection(_: Provider): Promise<{ success: boolean; error?: string }> {
 		return Promise.resolve({ success: false, error: 'Kubernetes connection testing is not yet implemented' });
+	}
+
+	runCustomAction(
+		_provider: Provider,
+		_action: BashAction,
+		_parameters: Record<string, string>,
+		_service?: Service
+	): Promise<void> {
+		return Promise.reject(new Error('Custom actions are not implemented for K8S'));
 	}
 }

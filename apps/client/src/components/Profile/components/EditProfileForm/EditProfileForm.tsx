@@ -44,47 +44,49 @@ export const EditProfileForm = ({
 			</div>
 
 			<div className="space-y-4">
-			<div className="max-w-md">
-				<label htmlFor="fullName" className="text-sm font-semibold text-muted-foreground">Full Name</label>
-				<Input
-					id="fullName"
-					type="text"
-					value={formData.fullName}
-					onChange={(e) => onFormDataChange({ ...formData, fullName: e.target.value })}
-					className="mt-1"
-					disabled={saving}
-				/>
-				{errors.fullName && <ErrorAlert message={errors.fullName} className="mt-2" />}
-			</div>
-
-			<div className="space-y-3">
-				<h4 className="text-sm font-semibold text-muted-foreground">Change Password (Optional)</h4>
-
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
-					<div>
-						<label className="text-sm font-semibold text-muted-foreground">New Password</label>
-						<Input
-							type="password"
-							value={formData.newPassword}
-							onChange={(e) => onFormDataChange({ ...formData, newPassword: e.target.value })}
-							className="mt-1"
-							disabled={saving}
-							placeholder="Enter new password"
-						/>
-					</div>
-
-					<div>
-						<label className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
-						<Input
-							type="password"
-							value={formData.confirmPassword}
-							onChange={(e) => onFormDataChange({ ...formData, confirmPassword: e.target.value })}
-							className="mt-1"
-							disabled={saving}
-							placeholder="Confirm password"
-						/>
-					</div>
+				<div className="max-w-md">
+					<label htmlFor="fullName" className="text-sm font-semibold text-muted-foreground">
+						Full Name
+					</label>
+					<Input
+						id="fullName"
+						type="text"
+						value={formData.fullName}
+						onChange={(e) => onFormDataChange({ ...formData, fullName: e.target.value })}
+						className="mt-1"
+						disabled={saving}
+					/>
+					{errors.fullName && <ErrorAlert message={errors.fullName} className="mt-2" />}
 				</div>
+
+				<div className="space-y-3">
+					<h4 className="text-sm font-semibold text-muted-foreground">Change Password (Optional)</h4>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
+						<div>
+							<label className="text-sm font-semibold text-muted-foreground">New Password</label>
+							<Input
+								type="password"
+								value={formData.newPassword}
+								onChange={(e) => onFormDataChange({ ...formData, newPassword: e.target.value })}
+								className="mt-1"
+								disabled={saving}
+								placeholder="Enter new password"
+							/>
+						</div>
+
+						<div>
+							<label className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
+							<Input
+								type="password"
+								value={formData.confirmPassword}
+								onChange={(e) => onFormDataChange({ ...formData, confirmPassword: e.target.value })}
+								className="mt-1"
+								disabled={saving}
+								placeholder="Confirm password"
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 

@@ -42,7 +42,7 @@ import {
 	Terminal,
 	Trash,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { providerApi } from '../lib/api';
@@ -170,7 +170,7 @@ export const MyProviders = () => {
 	const [selectedServiceForDrawer, setSelectedServiceForDrawer] = useState<Service | null>(null);
 	const [isServiceDrawerOpen, setIsServiceDrawerOpen] = useState(false);
 
-	const fetchProviders = async () => {
+	const fetchProviders = useCallback(async () => {
 		setIsLoading(true);
 		try {
 			const response = await providerApi.getProviders();
@@ -215,13 +215,9 @@ export const MyProviders = () => {
 		} finally {
 			setIsLoading(false);
 		}
-	};
-
-	useEffect(() => {
-		fetchProviders();
 	}, [toast]);
 
-	const loadAllProviderServices = async () => {
+	const loadAllProviderServices = useCallback(async () => {
 		if (providerInstances.length === 0) return;
 
 		try {
@@ -249,12 +245,12 @@ export const MyProviders = () => {
 					{} as Record<string, ServiceConfig[]>
 				);
 
-				const updatedProviders = providerInstances.map((provider) => ({
-					...provider,
-					services: servicesByProvider[provider.id] || [],
-				}));
-
-				setProviderInstances(updatedProviders);
+				setProviderInstances((prevProviders) =>
+					prevProviders.map((provider) => ({
+						...provider,
+						services: servicesByProvider[provider.id] || [],
+					}))
+				);
 			}
 		} catch (error) {
 			logger.error('Error loading all provider services:', error);
@@ -264,7 +260,11 @@ export const MyProviders = () => {
 				variant: 'destructive',
 			});
 		}
-	};
+	}, [providerInstances.length, toast]);
+
+	useEffect(() => {
+		fetchProviders();
+	}, [fetchProviders, toast]);
 
 	useEffect(() => {
 		if (!isLoading && providerInstances.length > 0) {
@@ -276,7 +276,7 @@ export const MyProviders = () => {
 				loadAllProviderServices();
 			}
 		}
-	}, [isLoading, providerInstances.length]);
+	}, [isLoading, providerInstances, loadAllProviderServices]);
 
 	const filteredProviders = providerInstances.filter((provider) => {
 		const name = provider?.name || '';
