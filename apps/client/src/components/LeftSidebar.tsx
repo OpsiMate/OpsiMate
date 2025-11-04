@@ -296,12 +296,13 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Github link"
-                ></a>
+                >
                 <img
                   src="images/git.png"
                   alt="GitHub"
                   className="h-5 w-5 object-contain invert dark:invert-0"
                 />
+                </a>
               </Button>
             </SidebarTooltip>
 
