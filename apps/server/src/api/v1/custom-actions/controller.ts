@@ -1,11 +1,8 @@
-import { CustomAction } from '@OpsiMate/custom-actions';
 import { Logger } from '@OpsiMate/shared';
 import { Request, Response } from 'express';
 import { CustomActionBL } from '../../../bl/custom-actions/customAction.bl';
-import { providerConnectorFactory } from '../../../bl/providers/provider-connector/providerConnectorFactory';
-import { CustomActionRepository } from '../../../dal/customActionRepository';
-import { ProviderRepository } from '../../../dal/providerRepository';
-import { ServiceRepository } from '../../../dal/serviceRepository';
+import {z} from "zod";
+import {isZodError} from "../../../utils/isZodError.ts";
 
 const logger: Logger = new Logger('api/custom-actions');
 
@@ -16,6 +13,7 @@ const BashActionSchema = z.object({
     type: z.literal('bash'),
     target: z.enum(['service', 'provider']).nullable(),
     script: z.string().nullable(),
+    id: z.number(),
 });
 
 export class CustomActionsController {

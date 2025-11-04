@@ -1,7 +1,6 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { CustomAction } from '@OpsiMate/custom-actions';
 import { CustomActionRow } from './models';
 
 export class CustomActionRepository {
