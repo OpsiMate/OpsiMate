@@ -18,6 +18,13 @@ import { BashActionForm } from './BashActionForm';
 import { HttpActionForm } from './HttpActionForm';
 import { actionToFormData, formDataToAction } from './useActionModal.utils';
 
+type HeaderPair = { key: string; value: string };
+
+const headersToPairs = (headers: Record<string, string> | null | undefined): HeaderPair[] => {
+	if (!headers) return [];
+	return Object.entries(headers).map(([key, value]) => ({ key, value }));
+};
+
 interface ActionModalProps {
 	open: boolean;
 	onClose: () => void;
@@ -28,12 +35,6 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 	const { toast } = useToast();
 	const createMutation = useCreateCustomAction();
 	const updateMutation = useUpdateCustomAction();
-	type HeaderPair = { key: string; value: string };
-
-	const headersToPairs = (headers: Record<string, string> | null | undefined): HeaderPair[] => {
-		if (!headers) return [];
-		return Object.entries(headers).map(([key, value]) => ({ key, value }));
-	};
 
 	const [step, setStep] = useState(1);
 	const [formData, setFormData] = useState<ActionFormData>(actionToFormData(action));

@@ -7,7 +7,7 @@ import { providerApi } from '@/lib/api';
 import { getProviderTypeName, getStatusBadgeColor } from '@/pages/MyProviders';
 import { Provider } from '@OpsiMate/shared';
 import { ExternalLink, RefreshCw, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ServiceConfig } from './AddServiceDialog';
 import { ServicesList } from './ServicesList';
 
@@ -37,7 +37,7 @@ export const ServiceDetailsSheetWithLogs = ({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchLogs = async (serviceId: string) => {
+	const fetchLogs = useCallback(async (serviceId: string) => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -64,13 +64,13 @@ export const ServiceDetailsSheetWithLogs = ({
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [toast]);
 
 	useEffect(() => {
 		if (selectedServiceForLogs) {
 			fetchLogs(selectedServiceForLogs.id);
 		}
-	}, [selectedServiceForLogs?.id]);
+	}, [selectedServiceForLogs, fetchLogs]);
 
 	if (!provider) return null;
 
