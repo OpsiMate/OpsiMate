@@ -1,63 +1,70 @@
-import {DiscoveredPod, DiscoveredService, Provider, Service, ServiceType, Logger} from '@OpsiMate/shared';
+import { DiscoveredPod, DiscoveredService, Provider, Service, ServiceType, Logger } from '@OpsiMate/shared';
 import * as sshClient from '../../../dal/sshClient';
-import {ProviderConnector} from './providerConnector';
-import {CustomAction} from '@OpsiMate/custom-actions';
+import { ProviderConnector } from './providerConnector';
+import { BashAction } from '@OpsiMate/custom-actions';
 
 export class VMProviderConnector implements ProviderConnector {
-    private logger: Logger = new Logger('vm-connector');
+	private logger: Logger = new Logger('vm-connector');
 
-    async discoverServices(provider: Provider): Promise<DiscoveredService[]> {
-        return sshClient.connectAndListContainers(provider);
-    }
+	async discoverServices(provider: Provider): Promise<DiscoveredService[]> {
+		return sshClient.connectAndListContainers(provider);
+	}
 
-    async startService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void> {
-        if (serviceType === ServiceType.SYSTEMD) {
-            return sshClient.startSystemService(provider, serviceName);
-        } else {
-            // Default to Docker service
-            return sshClient.startService(provider, serviceName);
-        }
-    }
+	async startService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void> {
+		if (serviceType === ServiceType.SYSTEMD) {
+			return sshClient.startSystemService(provider, serviceName);
+		} else {
+			// Default to Docker service
+			return sshClient.startService(provider, serviceName);
+		}
+	}
 
-    async stopService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void> {
-        if (serviceType === ServiceType.SYSTEMD) {
-            return sshClient.stopSystemService(provider, serviceName);
-        } else {
-            // Default to Docker service
-            return sshClient.stopService(provider, serviceName);
-        }
-    }
+	async stopService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void> {
+		if (serviceType === ServiceType.SYSTEMD) {
+			return sshClient.stopSystemService(provider, serviceName);
+		} else {
+			// Default to Docker service
+			return sshClient.stopService(provider, serviceName);
+		}
+	}
 
-    async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
-        if (service.serviceType === ServiceType.SYSTEMD) {
-            return sshClient.getSystemServiceLogs(provider, service.name);
-        } else {
-            // Default to Docker service
-            return sshClient.getServiceLogs(provider, service.name);
-        }
-    }
+	async getServiceLogs(provider: Provider, service: Service): Promise<string[]> {
+		if (service.serviceType === ServiceType.SYSTEMD) {
+			return sshClient.getSystemServiceLogs(provider, service.name);
+		} else {
+			// Default to Docker service
+			return sshClient.getServiceLogs(provider, service.name);
+		}
+	}
 
-    async testConnection(provider: Provider): Promise<{ success: boolean; error?: string }> {
-        return sshClient.testConnection(provider);
-    }
+	async testConnection(provider: Provider): Promise<{ success: boolean; error?: string }> {
+		return sshClient.testConnection(provider);
+	}
 
-    getServicePods(_: Provider, _2: Service): Promise<DiscoveredPod[]> {
-        throw new Error('Method not implemented.');
-    }
+	getServicePods(_: Provider, _2: Service): Promise<DiscoveredPod[]> {
+		throw new Error('Method not implemented.');
+	}
 
-    async runCustomAction(provider: Provider, action: CustomAction, _service?: Service): Promise<void> {
-        if (action.type === 'bash') {
-            const bash = action;
-            if (!bash.script) throw new Error('Missing script for bash action');
-            this.logger.info(`Executing bash action '${bash.name}' on provider ${provider.name}`);
-            await sshClient.testConnection(provider);
-            return;
-        }
+	async runCustomAction(
+		provider: Provider,
+		action: BashAction,
+		parameters: Record<string, string>,
+		_service?: Service
+	): Promise<void> {
+		if (!action.script) throw new Error('Missing script for bash action');
 
-        if (action.type === 'http') {
-            throw new Error('HTTP actions are not supported');
-        }
+		// Resolve placeholders in the script
+		const resolvedScript = this.resolvePlaceholders(action.script, parameters);
 
-        throw new Error('Unsupported action type');
-    }
+		this.logger.info(`Executing bash action '${action.name}' on provider ${provider.name}`);
+		await sshClient.testConnection(provider);
+		// TODO: Execute the resolvedScript via SSH
+	}
+
+	private resolvePlaceholders(str: string, parameters: Record<string, string>): string {
+		// Replace {{field_name}} style placeholders
+		return str.replace(/\{\{(\w+)\}\}/g, (match, fieldName: string) => {
+			return parameters[fieldName] !== undefined ? parameters[fieldName] : match;
+		});
+	}
 }

@@ -11,9 +11,10 @@ interface ActionCategoryProps {
 }
 
 export const ActionCategory = ({ target, actions, onEdit, onDelete }: ActionCategoryProps) => {
-	const iconContainerClass = target === 'service'
-		? 'bg-blue-50 border border-blue-300 text-blue-500'
-		: 'bg-purple-50 border border-purple-300 text-purple-500';
+	const iconContainerClass =
+		target === 'service'
+			? 'bg-blue-50 border border-blue-300 text-blue-500'
+			: 'bg-purple-50 border border-purple-300 text-purple-500';
 
 	return (
 		<div className="space-y-4">

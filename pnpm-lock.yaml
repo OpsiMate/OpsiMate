@@ -20,6 +20,9 @@ importers:
 
   apps/client:
     dependencies:
+      '@OpsiMate/custom-actions':
+        specifier: workspace:*
+        version: link:../../packages/custom-actions
       '@OpsiMate/shared':
         specifier: workspace:*
         version: link:../../packages/shared

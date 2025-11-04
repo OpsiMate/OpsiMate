@@ -102,7 +102,7 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 		try {
 			const actionData = formDataToAction(formData);
 			if (action) {
-				await updateMutation.mutateAsync({ actionId: (action as any).id, action: actionData });
+				await updateMutation.mutateAsync({ actionId: action.id, action: actionData });
 				toast({
 					title: 'Success',
 					description: 'Action updated successfully',
@@ -173,9 +173,7 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 					<p className="text-sm text-muted-foreground mt-1.5">{dialogDescription}</p>
 				</ModalHeader>
 
-				<ModalBody pt={0}>
-					{renderFormContent()}
-				</ModalBody>
+				<ModalBody pt={0}>{renderFormContent()}</ModalBody>
 
 				<ModalFooter pt={4}>
 					<div className="flex justify-between w-full">

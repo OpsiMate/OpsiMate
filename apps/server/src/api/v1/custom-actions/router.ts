@@ -18,5 +18,3 @@ export default function createCustomActionsRouter(controller: CustomActionsContr
 
 	return router;
 }
-
-

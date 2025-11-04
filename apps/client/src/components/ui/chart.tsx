@@ -261,10 +261,7 @@ const ChartLegendContent = React.forwardRef<
 				const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
 				return (
-					<div
-						key={item.value}
-						className="flex items-center gap-2"
-					>
+					<div key={item.value} className="flex items-center gap-2">
 						{itemConfig?.icon && !hideIcon ? (
 							<div className="flex items-center justify-center h-6 w-6 rounded-md bg-blue-50 border border-blue-300 text-blue-500">
 								<itemConfig.icon className="h-[14px] w-[14px]" />
@@ -277,9 +274,7 @@ const ChartLegendContent = React.forwardRef<
 								}}
 							/>
 						)}
-						<span className="text-sm font-medium text-gray-800">
-							{itemConfig?.label}
-						</span>
+						<span className="text-sm font-medium text-gray-800">{itemConfig?.label}</span>
 					</div>
 				);
 			})}

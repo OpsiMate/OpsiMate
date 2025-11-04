@@ -9,7 +9,7 @@ export const ACTION_TARGET_COLORS: Record<ActionTarget, string> = {
 
 export const ACTION_TARGET_LABELS: Record<ActionTarget, string> = {
 	service: 'Service Actions',
-	provider: 'Provider Actions'
+	provider: 'Provider Actions',
 };
 
 export const ACTION_TYPE_ICONS: Record<ActionType, LucideIcon> = {
