@@ -1,27 +1,27 @@
 // src/App.tsx
-import React from 'react';
-import { Toaster } from '@/components/ui/toaster';
+import { Actions, Dashboard, Profile } from '@/components';
+import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { Toaster as Sonner } from '@/components/ui/sonner';
+import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthGuard } from './components/AuthGuard';
+import { ThemeProvider } from './components/ThemeProvider';
+import { isEditor } from './lib/auth';
 import {
-	Providers,
-	MyProviders,
-	Integrations,
-	NotFound,
-	Register,
-	Login,
-	Settings,
 	Alerts,
+	Integrations,
+	Login,
+	MyProviders,
+	NotFound,
+	Providers,
+	Register,
+	Settings,
 	TVMode,
 } from './pages';
-import { Dashboard } from '@/components/Dashboard';
-import { Profile } from '@/components/Profile';
-import { ThemeProvider } from './components/ThemeProvider';
-import { AuthGuard } from './components/AuthGuard';
-import ScrollToTopButton from '@/components/ScrollToTopButton';
-import { isEditor } from './lib/auth';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';
 
@@ -29,11 +29,12 @@ const queryClient = new QueryClient();
 
 const App: React.FC = () => {
 	return (
-		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-			<QueryClientProvider client={queryClient}>
-				<TooltipProvider>
-					<Toaster />
-					<Sonner />
+		<ChakraProvider>
+			<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+				<QueryClientProvider client={queryClient}>
+					<TooltipProvider>
+						<Toaster />
+						<Sonner />
 
 					<BrowserRouter>
 						<AuthGuard>
@@ -51,6 +52,10 @@ const App: React.FC = () => {
 								<Route path="/login" element={<Login />} />
 								<Route path="/register" element={<Register />} />
 								<Route path="/alerts" element={<Alerts />} />
+								<Route
+									path="/actions"
+									element={!isEditor() ? <Navigate to="/" replace /> : <Actions />}
+								/>
 								<Route path="/forgot-password" element={<ForgotPassword />} />
 								<Route path="/reset-password" element={<ResetPasswordByEmail />} />
 								<Route path="*" element={<NotFound />} />
@@ -59,9 +64,10 @@ const App: React.FC = () => {
 					</BrowserRouter>
 
 					<ScrollToTopButton />
-				</TooltipProvider>
-			</QueryClientProvider>
-		</ThemeProvider>
+					</TooltipProvider>
+				</QueryClientProvider>
+			</ThemeProvider>
+		</ChakraProvider>
 	);
 };
 

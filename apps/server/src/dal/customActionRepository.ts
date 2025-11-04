@@ -1,3 +1,4 @@
+import { CustomAction } from '@OpsiMate/custom-actions';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { CustomAction } from '@OpsiMate/custom-actions';
@@ -38,7 +39,7 @@ export class CustomActionRepository {
 			}
 			const { script } = this.toStorageFields(data);
 			const stmt = this.db.prepare(
-				'INSERT INTO custom_actions (name, description, type, target, script, http_config) VALUES (?, ?, ?, ?, ?, ?)' 
+				'INSERT INTO custom_actions (name, description, type, target, script, http_config) VALUES (?, ?, ?, ?, ?, ?)'
 			);
 			const res = stmt.run(data.name, data.description, data.type, data.target, script, null);
 			return { lastID: res.lastInsertRowid as number };
@@ -81,6 +82,7 @@ export class CustomActionRepository {
 	private fromRow(row: CustomActionRow): CustomAction {
 		if (row.type === 'bash') {
 			return {
+				id: row.id,
 				name: row.name,
 				description: row.description,
 				type: 'bash',
@@ -90,6 +92,7 @@ export class CustomActionRepository {
 		}
 		const cfg = row.http_config ? (JSON.parse(row.http_config) as { url: string; method: 'GET'|'POST'|'PUT'|'DELETE'|'PATCH'; headers?: Record<string,string>; body?: string }) : { url: '', method: 'GET' as const };
 		return {
+			id: row.id,
 			name: row.name,
 			description: row.description,
 			type: 'http',
@@ -116,5 +119,3 @@ export class CustomActionRepository {
 		});
 	}
 }
-
-
