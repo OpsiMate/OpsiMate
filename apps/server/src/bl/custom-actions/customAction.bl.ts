@@ -15,7 +15,9 @@ export class CustomActionBL {
 	) {}
 
 	async create(data: CustomAction): Promise<number> {
-		const res = await this.repo.create(data);
+		// Remove id if present since it's auto-generated
+		const { id, ...dataWithoutId } = data;
+		const res = await this.repo.create(dataWithoutId);
 		logger.info(`Created custom action id=${res.lastID}`);
 		return res.lastID;
 	}
@@ -29,7 +31,9 @@ export class CustomActionBL {
 	}
 
 	async update(id: number, data: CustomAction): Promise<void> {
-		await this.repo.update(id, data);
+		// Remove id if present since we use the parameter id
+		const { id: _, ...dataWithoutId } = data;
+		await this.repo.update(id, dataWithoutId);
 		logger.info(`Updated custom action id=${id}`);
 	}
 

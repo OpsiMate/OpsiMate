@@ -1,19 +1,20 @@
 import { Logger } from '@OpsiMate/shared';
 import { Request, Response } from 'express';
 import { CustomActionBL } from '../../../bl/custom-actions/customAction.bl';
+import { CustomAction } from '@OpsiMate/custom-actions';
 import {z} from "zod";
 import {isZodError} from "../../../utils/isZodError.ts";
 
 const logger: Logger = new Logger('api/custom-actions');
 
-// Validation schema for BashAction
+// Validation schema for BashAction (id is optional, will be ignored on create)
 const BashActionSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     description: z.string().min(1, 'Description is required'),
     type: z.literal('bash'),
     target: z.enum(['service', 'provider']).nullable(),
     script: z.string().nullable(),
-    id: z.number(),
+    id: z.number().optional(),
 });
 
 export class CustomActionsController {
@@ -22,7 +23,10 @@ export class CustomActionsController {
     create = async (req: Request, res: Response) => {
         try {
             const validatedData = BashActionSchema.parse(req.body);
-            const id = await this.bl.create(validatedData);
+            // Remove id if present (it's auto-generated) and create a proper CustomAction
+            const { id: _, ...dataWithoutId } = validatedData;
+            const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
+            const id = await this.bl.create(actionData);
             return res.status(201).json({success: true, data: {id}});
         } catch (error) {
             if (isZodError(error)) {
@@ -50,7 +54,10 @@ export class CustomActionsController {
         try {
             const id = Number(req.params.actionId);
             const validatedData = BashActionSchema.parse(req.body);
-            await this.bl.update(id, validatedData);
+            // Remove id if present (use parameter id instead) and create a proper CustomAction
+            const { id: _, ...dataWithoutId } = validatedData;
+            const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
+            await this.bl.update(id, actionData);
             return res.status(200).json({success: true});
         } catch (error) {
             if (isZodError(error)) {
