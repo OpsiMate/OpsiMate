@@ -12,45 +12,46 @@ import { Link, useLocation } from "react-router-dom";
 import { AppIcon } from "./icons/AppIcon";
 import { ProfileButton } from "./ProfileButton";
 import { isAdmin, isEditor, isViewer } from "../lib/auth";
-import * as Tooltip from "@radix-ui/react-tooltip";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 
 interface LeftSidebarProps {
   collapsed: boolean;
 }
 
-function SidebarTooltip({
-  collapsed,
-  label,
-  children,
-  side = "right",
-  align = "center",
-  sideOffset = 10,
-}: {
+interface SidebarTooltipProps {
   collapsed: boolean;
   label: string;
   children: React.ReactNode;
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
   sideOffset?: number;
-}) {
-  if (!collapsed) return <>{children}</>;
+}
+export function SidebarTooltip({
+  collapsed,
+  label,
+  children,
+  side = "right",
+  align = "center",
+  sideOffset = 10,
+}: SidebarTooltipProps) {
+   if (!collapsed) return <>{children}</>;
 
   return (
-    <Tooltip.Root delayDuration={1} disableHoverableContent>
-      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
-      <Tooltip.Content
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        className="z-50 rounded-md bg-[#051234] text-white px-2 py-1 text-sm m-2"
-      >
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side} align={align} sideOffset={sideOffset}>
         {label}
-      </Tooltip.Content>
-    </Tooltip.Root>
+      </TooltipContent>
+    </Tooltip>
   );
 }
-
+ 
 export function LeftSidebar({ collapsed }: LeftSidebarProps) {
   const location = useLocation();
 
@@ -250,7 +251,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
              <SidebarTooltip
               collapsed={collapsed}
               label="Join our Slack community"
-              side="top"
+              side="left"
             >
               <Button
                 variant="ghost"
@@ -280,7 +281,7 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
             <SidebarTooltip
               collapsed={collapsed}
               label="Star us on GitHub ⭐"
-              side="top"
+              side="left"
             >
               <Button
                 variant="ghost"
