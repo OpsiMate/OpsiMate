@@ -17,12 +17,31 @@ const BashActionSchema = z.object({
     id: z.number().optional(),
 });
 
+// Validation schema for HttpAction (id is optional, will be ignored on create)
+const HttpActionSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    description: z.string().min(1, 'Description is required'),
+    type: z.literal('http'),
+    target: z.enum(['service', 'provider']).nullable(),
+    url: z.string().url('Invalid URL format'),
+    method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']),
+    headers: z.record(z.string()).nullable().optional(),
+    body: z.string().nullable().optional(),
+    id: z.number().optional(),
+});
+
+// Union schema for both action types
+const CustomActionSchema = z.discriminatedUnion('type', [
+    BashActionSchema,
+    HttpActionSchema,
+]);
+
 export class CustomActionsController {
     constructor(private bl: CustomActionBL) {}
 
     create = async (req: Request, res: Response) => {
         try {
-            const validatedData = BashActionSchema.parse(req.body);
+            const validatedData = CustomActionSchema.parse(req.body);
             // Remove id if present (it's auto-generated) and create a proper CustomAction
             const { id: _, ...dataWithoutId } = validatedData;
             const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
@@ -53,7 +72,7 @@ export class CustomActionsController {
     update = async (req: Request, res: Response) => {
         try {
             const id = Number(req.params.actionId);
-            const validatedData = BashActionSchema.parse(req.body);
+            const validatedData = CustomActionSchema.parse(req.body);
             // Remove id if present (use parameter id instead) and create a proper CustomAction
             const { id: _, ...dataWithoutId } = validatedData;
             const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored

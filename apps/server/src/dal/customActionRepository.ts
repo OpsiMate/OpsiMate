@@ -34,14 +34,11 @@ export class CustomActionRepository {
     async create(data: Omit<CustomAction, 'id'>): Promise<{ lastID: number }> {
         // Accept data without id since id is auto-generated
         return runAsync(() => {
-            if (data.type !== 'bash') {
-                throw new Error('Unsupported action type');
-            }
-            const {script} = this.toStorageFields(data);
+            const {script, httpConfig} = this.toStorageFields(data);
             const stmt = this.db.prepare(
                 'INSERT INTO custom_actions (name, description, type, target, script, http_config) VALUES (?, ?, ?, ?, ?, ?)'
             );
-            const res = stmt.run(data.name, data.description, data.type, data.target, script, null);
+            const res = stmt.run(data.name, data.description, data.type, data.target, script, httpConfig);
             return {lastID: res.lastInsertRowid as number};
         });
     }
@@ -87,10 +84,7 @@ export class CustomActionRepository {
     async update(id: number, data: Omit<CustomAction, 'id'>): Promise<void> {
         // Accept data without id since id comes from the parameter
         return runAsync(() => {
-            if (data.type !== 'bash') {
-                throw new Error('Unsupported action type');
-            }
-            const {script} = this.toStorageFields(data);
+            const {script, httpConfig} = this.toStorageFields(data);
             const stmt = this.db.prepare(
                 `UPDATE custom_actions
                  SET name = ?,
@@ -101,7 +95,7 @@ export class CustomActionRepository {
                      http_config = ?
                  WHERE id = ?`
             );
-            stmt.run(data.name, data.description, data.type, data.target, script, null, id);
+            stmt.run(data.name, data.description, data.type, data.target, script, httpConfig, id);
         });
     }
 

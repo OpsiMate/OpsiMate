@@ -18,25 +18,96 @@ afterAll(() => {
 });
 
 describe('Custom Actions API', () => {
-	it('should create a custom action', async () => {
-		const createRes = await app
-			.post('/api/v1/custom-actions')
-			.set('Authorization', `Bearer ${jwtToken}`)
-			.send({
-				name: 'Test Action',
-				description: 'Test description',
-				type: 'bash',
-				target: 'provider',
-				script: 'echo hello',
-			});
+	describe('Create', () => {
+		it('should create a bash action', async () => {
+			const createRes = await app
+				.post('/api/v1/custom-actions')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'Bash Action',
+					description: 'Test bash action',
+					type: 'bash',
+					target: 'provider',
+					script: 'echo hello',
+				});
 
-		expect(createRes.status).toBe(201);
-		expect(createRes.body.success).toBe(true);
-		expect(createRes.body.data.id).toBeDefined();
-		expect(typeof createRes.body.data.id).toBe('number');
+			expect(createRes.status).toBe(201);
+			expect(createRes.body.success).toBe(true);
+			expect(createRes.body.data.id).toBeDefined();
+			expect(typeof createRes.body.data.id).toBe('number');
+
+			// Verify the created action
+			const getRes = await app
+				.get(`/api/v1/custom-actions/${createRes.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+
+			expect(getRes.body.data.type).toBe('bash');
+			expect(getRes.body.data.script).toBe('echo hello');
+		});
+
+		it('should create an http action', async () => {
+			const createRes = await app
+				.post('/api/v1/custom-actions')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'Do Cool Http Request',
+					description: 'Cool Request',
+					target: 'service',
+					type: 'http',
+					url: 'https://www.google.com',
+					method: 'POST',
+					headers: { apple: 'key' },
+					body: '{\n"fdfd":"fdfd"\n}',
+				});
+
+			expect(createRes.status).toBe(201);
+			expect(createRes.body.success).toBe(true);
+			expect(createRes.body.data.id).toBeDefined();
+			expect(typeof createRes.body.data.id).toBe('number');
+
+			// Verify the created action
+			const getRes = await app
+				.get(`/api/v1/custom-actions/${createRes.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+
+			expect(getRes.body.data.type).toBe('http');
+			expect(getRes.body.data.url).toBe('https://www.google.com');
+			expect(getRes.body.data.method).toBe('POST');
+			expect(getRes.body.data.headers).toEqual({ apple: 'key' });
+			expect(getRes.body.data.body).toBe('{\n"fdfd":"fdfd"\n}');
+		});
+
+		it('should create an http action with minimal fields', async () => {
+			const createRes = await app
+				.post('/api/v1/custom-actions')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'Simple HTTP Action',
+					description: 'Simple request',
+					target: 'provider',
+					type: 'http',
+					url: 'https://api.example.com/endpoint',
+					method: 'GET',
+				});
+
+			expect(createRes.status).toBe(201);
+			expect(createRes.body.success).toBe(true);
+
+			// Verify the created action
+			const getRes = await app
+				.get(`/api/v1/custom-actions/${createRes.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+
+			expect(getRes.body.data.type).toBe('http');
+			expect(getRes.body.data.url).toBe('https://api.example.com/endpoint');
+			expect(getRes.body.data.method).toBe('GET');
+			expect(getRes.body.data.headers).toBeNull();
+			expect(getRes.body.data.body).toBeNull();
+		});
 	});
 
-	it('should get a custom action by id', async () => {
+	describe('Get', () => {
+		it('should get a bash action by id', async () => {
 		// First create an action
 		const createRes = await app
 			.post('/api/v1/custom-actions')
@@ -64,9 +135,9 @@ describe('Custom Actions API', () => {
 		expect(getRes.body.data.type).toBe('bash');
 		expect(getRes.body.data.target).toBe('service');
 		expect(getRes.body.data.script).toBe('echo test');
-	});
+		});
 
-	it('should return 404 when getting a non-existent custom action', async () => {
+		it('should return 404 when getting a non-existent custom action', async () => {
 		const getRes = await app
 			.get('/api/v1/custom-actions/99999')
 			.set('Authorization', `Bearer ${jwtToken}`);
@@ -74,9 +145,11 @@ describe('Custom Actions API', () => {
 		expect(getRes.status).toBe(404);
 		expect(getRes.body.success).toBe(false);
 		expect(getRes.body.error).toBe('Not found');
+		});
 	});
 
-	it('should list all custom actions', async () => {
+	describe('List', () => {
+		it('should list all custom actions', async () => {
 		// Create a couple of actions first
 		await app
 			.post('/api/v1/custom-actions')
@@ -115,12 +188,21 @@ describe('Custom Actions API', () => {
 			expect(action.id).toBeDefined();
 			expect(action.name).toBeDefined();
 			expect(action.description).toBeDefined();
-			expect(action.type).toBe('bash');
+			expect(['bash', 'http']).toContain(action.type);
 			expect(['provider', 'service', null]).toContain(action.target);
+			
+			if (action.type === 'bash') {
+				expect(action.script).toBeDefined();
+			} else if (action.type === 'http') {
+				expect(action.url).toBeDefined();
+				expect(action.method).toBeDefined();
+			}
+		});
 		});
 	});
 
-	it('should update a custom action', async () => {
+	describe('Update', () => {
+		it('should update a bash action', async () => {
 		// First create an action
 		const createRes = await app
 			.post('/api/v1/custom-actions')
@@ -158,9 +240,9 @@ describe('Custom Actions API', () => {
 		expect(getRes.body.data.description).toBe('Updated description');
 		expect(getRes.body.data.target).toBe('service');
 		expect(getRes.body.data.script).toBe('echo updated');
-	});
+		});
 
-	it('should return 400 when updating with invalid data', async () => {
+		it('should return 400 when updating with invalid data', async () => {
 		// First create an action
 		const createRes = await app
 			.post('/api/v1/custom-actions')
@@ -187,9 +269,11 @@ describe('Custom Actions API', () => {
 		expect(updateRes.status).toBe(400);
 		expect(updateRes.body.success).toBe(false);
 		expect(updateRes.body.error).toBe('Validation error');
+		});
 	});
 
-	it('should delete a custom action', async () => {
+	describe('Delete', () => {
+		it('should delete a custom action', async () => {
 		// First create an action
 		const createRes = await app
 			.post('/api/v1/custom-actions')
@@ -217,9 +301,11 @@ describe('Custom Actions API', () => {
 			.set('Authorization', `Bearer ${jwtToken}`);
 
 		expect(getRes.status).toBe(404);
+		});
 	});
 
-	it('should run an action against provider and service endpoints (baseline)', async () => {
+	describe('Run Actions', () => {
+		it('should run an action against provider and service endpoints', async () => {
 		// Create provider to attach run
 		const providerCreate = await app
 			.post('/api/v1/providers')
@@ -271,6 +357,7 @@ describe('Custom Actions API', () => {
 			.post(`/api/v1/custom-actions/run/service/${serviceId}/${actionId}`)
 			.set('Authorization', `Bearer ${jwtToken}`);
 		expect(runService.status).toBe(200);
+		});
 	});
 });
 
