@@ -54,6 +54,7 @@ export interface Provider {
 	SSHPort?: number;
 	createdAt: string;
 	providerType: ProviderType;
+	status?: 'online' | 'offline' | 'warning' | 'unknown';
 }
 
 export interface ContainerDetails {

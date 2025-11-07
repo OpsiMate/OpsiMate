@@ -24,7 +24,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { queryKeys } from '@/hooks/queries';
 import { useToast } from '@/hooks/use-toast';
-import { Logger, Provider as SharedProvider, ClientProviderType } from '@OpsiMate/shared';
+import { Logger, Provider as SharedProvider, ClientProviderType, ProviderType } from '@OpsiMate/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import {
 	Cloud,
@@ -65,7 +65,7 @@ const mockProviderInstances = [
 		username: 'admin',
 		privateKeyFilename: 'id_rsa',
 		SSHPort: 22,
-		providerType: 'VM',
+		providerType: ProviderType.VM,
 		createdAt: '2025-06-01T08:00:00Z',
 		services: [],
 	},
@@ -76,7 +76,7 @@ const mockProviderInstances = [
 		username: 'dbadmin',
 		privateKeyFilename: 'id_rsa_db',
 		SSHPort: 22,
-		providerType: 'VM',
+		providerType: ProviderType.VM,
 		createdAt: '2025-06-02T14:30:00Z',
 		services: [],
 	},
@@ -87,7 +87,7 @@ const mockProviderInstances = [
 		username: 'devuser',
 		privateKeyFilename: 'id_rsa_k8s',
 		SSHPort: 22,
-		providerType: 'K8S',
+		providerType: ProviderType.K8S,
 		createdAt: '2025-06-05T09:20:00Z',
 		services: [],
 	},
@@ -95,9 +95,9 @@ const mockProviderInstances = [
 
 const getProviderIcon = (type: Provider['providerType']) => {
 	switch (type) {
-		case 'VM':
+		case ProviderType.VM:
 			return <Cloud className="h-5 w-5" />;
-		case 'K8S':
+		case ProviderType.K8S:
 			return <Container className="h-5 w-5" />;
 		default:
 			return <Server className="h-5 w-5" />;
@@ -106,9 +106,9 @@ const getProviderIcon = (type: Provider['providerType']) => {
 
 export const getProviderTypeName = (type: Provider['providerType']): string => {
 	switch (type) {
-		case 'VM':
+		case ProviderType.VM:
 			return 'VM';
-		case 'K8S':
+		case ProviderType.K8S:
 			return 'Kubernetes';
 		default:
 			return type;
@@ -117,16 +117,16 @@ export const getProviderTypeName = (type: Provider['providerType']): string => {
 
 const getProviderCategory = (type: Provider['providerType']): string => {
 	switch (type) {
-		case 'VM':
+		case ProviderType.VM:
 			return 'server';
-		case 'K8S':
+		case ProviderType.K8S:
 			return 'kubernetes';
 		default:
 			return 'cloud';
 	}
 };
 
-export const getStatusBadgeColor = (status: Provider['status']) => {
+export const getStatusBadgeColor = (status?: Provider['status']) => {
 	switch (status) {
 		case 'online':
 			return 'bg-green-500/20 text-green-700 hover:bg-green-500/30';
@@ -180,18 +180,17 @@ export const Providers = () => {
 
 			if (response.success && response.data && response.data.providers) {
 				const apiProviders: Provider[] = response.data.providers.map((provider) => {
-					const mappedProvider = {
+					const mappedProvider: Provider = {
 						id: Number(provider.id),
 						name: provider.name || '',
 						providerIP: provider.providerIP || '',
 						username: provider.username || '',
 						privateKeyFilename: provider.privateKeyFilename || '',
 						SSHPort: provider.SSHPort || 22,
-						providerType: provider.providerType || 'VM',
+						providerType: (provider.providerType as ProviderType) || ProviderType.VM,
 						createdAt: provider.createdAt
 							? new Date(provider.createdAt).toISOString()
 							: new Date().toISOString(),
-						services: [],
 					};
 
 					return mappedProvider;
@@ -283,7 +282,7 @@ export const Providers = () => {
 
 	const filteredProviders = providerInstances.filter((provider) => {
 		const name = provider?.name || '';
-		const type = provider?.providerType || 'VM';
+		const type = provider?.providerType || ProviderType.VM;
 		const matchesSearch =
 			name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			type.toLowerCase().includes(searchQuery.toLowerCase());
@@ -330,9 +329,9 @@ export const Providers = () => {
 					privateKeyFilename: refreshedProvider.privateKeyFilename,
 					SSHPort: refreshedProvider.SSHPort || 22,
 					providerType: refreshedProvider.providerType as Provider['providerType'],
-					status: services.some((s) => s.serviceStatus === 'running') ? 'running' : 'stopped',
+					createdAt: refreshedProvider.createdAt || new Date().toISOString(),
+					status: services.some((s) => s.serviceStatus === 'running') ? 'online' : 'offline',
 					services: serviceConfigs,
-					details: {},
 				};
 
 				const updatedProviders = providerInstances.map((provider) =>
@@ -826,8 +825,8 @@ export const Providers = () => {
 															</DropdownMenuItem>
 														)}
 														{canManageProviders() &&
-															(provider.providerType === 'VM' ||
-																provider.providerType === 'K8S') && (
+															(provider.providerType === ProviderType.VM ||
+																provider.providerType === ProviderType.K8S) && (
 																<DropdownMenuItem
 																	onClick={() => {
 																		setSelectedServerForService(provider);
@@ -880,7 +879,7 @@ export const Providers = () => {
 																				</p>
 																				<p className="text-xs text-muted-foreground truncate">
 																					{service.type === 'DOCKER'
-																						? `${provider.providerType === 'K8S' ? 'Pod' : 'Container'}: ${service.containerDetails?.image || service.name}`
+																						? `${provider.providerType === ProviderType.K8S ? 'Pod' : 'Container'}: ${service.containerDetails?.image || service.name}`
 																						: service.serviceIP
 																							? `IP: ${service.serviceIP}`
 																							: 'Manual service'}
@@ -926,77 +925,35 @@ export const Providers = () => {
 																											)
 																									);
 																								const mappedService: Service =
-																									{
-																										id: service.id,
-																										name: service.name,
-																										serviceStatus:
-																											((
-																												service as {
-																													status?: string;
-																													serviceStatus?: string;
-																												}
-																											).status ||
-																											(
-																												service as {
-																													status?: string;
-																													serviceStatus?: string;
-																												}
-																											)
-																												.serviceStatus ||
-																											'unknown') as 'running' | 'stopped' | 'error' | 'unknown',
-																										serviceType:
-																											(
-																												service as {
-																													type?: string;
-																													serviceType?: string;
-																												}
-																											).type ||
-																											(
-																												service as {
-																													type?: string;
-																													serviceType?: string;
-																												}
-																											)
-																												.serviceType ||
-																											'MANUAL',
-																										createdAt:
-																											(
-																												service as {
-																													createdAt?: string;
-																												}
-																											)
-																												.createdAt ||
-																											new Date().toISOString(),
-																										provider:
-																											parentProvider || {
-																												id: -1,
-																												name: 'Unknown',
-																												providerIP:
-																													'',
-																												username:
-																													'',
-																												privateKeyFilename:
-																													'',
-																												SSHPort: 22,
-																												createdAt:
-																													'',
-																												providerType:
-																													'VM',
-																											},
-																										serviceIP:
-																											service.serviceIP ||
-																											'',
-																										containerDetails:
-																											service.containerDetails ||
-																											{},
-																										tags:
-																											(
-																												service as {
-																													tags?: string[];
-																												}
-																											).tags ||
-																											[],
-																									};
+																								{
+																									id: service.id,
+																									name: service.name,
+																									serviceStatus: service.status,
+																									serviceType: service.type as 'MANUAL' | 'DOCKER' | 'SYSTEMD',
+																									createdAt: new Date().toISOString(),
+																									provider: parentProvider ? {
+																										id: parentProvider.id,
+																										name: parentProvider.name,
+																										providerIP: parentProvider.providerIP || '',
+																										username: parentProvider.username || '',
+																										privateKeyFilename: parentProvider.privateKeyFilename || '',
+																										SSHPort: parentProvider.SSHPort || 22,
+																										createdAt: 0,
+																										providerType: parentProvider.providerType,
+																									} : {
+																										id: -1,
+																										name: 'Unknown',
+																										providerIP: '',
+																										username: '',
+																										privateKeyFilename: '',
+																										SSHPort: 22,
+																										createdAt: 0,
+																										providerType: 'VM',
+																									},
+																									serviceIP: service.serviceIP || '',
+																									containerDetails: service.containerDetails || {},
+																									tags: [],
+																								};
 																								setSelectedServiceForDrawer(
 																									mappedService
 																								);
@@ -1098,23 +1055,23 @@ export const Providers = () => {
 																		provider.
 																	</p>
 																	{canManageProviders() &&
-																		(provider.providerType === 'VM' ||
-																			provider.providerType === 'K8S') && (
-																			<Button
-																				variant="outline"
-																				size="sm"
-																				onClick={(e) => {
-																					e.stopPropagation();
-																					setSelectedServerForService(
-																						provider
-																					);
-																					setIsAddServiceDialogOpen(true);
-																				}}
-																			>
-																				<ListPlus className="mr-2 h-4 w-4" />
-																				Add New Service
-																			</Button>
-																		)}
+																	(provider.providerType === ProviderType.VM ||
+																		provider.providerType === ProviderType.K8S) && (
+																		<Button
+																			variant="outline"
+																			size="sm"
+																			onClick={(e) => {
+																				e.stopPropagation();
+																				setSelectedServerForService(
+																					provider
+																				);
+																				setIsAddServiceDialogOpen(true);
+																			}}
+																		>
+																			<ListPlus className="mr-2 h-4 w-4" />
+																			Add New Service
+																		</Button>
+																	)}
 																</div>
 															</div>
 														)}
