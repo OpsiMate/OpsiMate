@@ -9,10 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
 import { getSecretsFromServer } from '@/lib/sslKeys';
-import { ProviderType } from '@/pages/Providers';
 import { AddSecretButton } from '@/pages/Settings';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Logger, SecretMetadata } from '@OpsiMate/shared';
+import { Logger, SecretMetadata, ClientProviderType } from '@OpsiMate/shared';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Control, Controller, SubmitHandler, useForm } from 'react-hook-form';
@@ -680,7 +679,7 @@ const AWSForm = ({ onSubmit, onClose }: ProviderFormProps<AWSFormData>) => {
 interface ProviderSidebarProps {
 	provider: {
 		id: string;
-		type: ProviderType;
+		type: ClientProviderType;
 		name: string;
 		description: string;
 		icon: React.ReactNode;

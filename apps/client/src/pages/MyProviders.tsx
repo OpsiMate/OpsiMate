@@ -24,7 +24,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { queryKeys } from '@/hooks/queries';
 import { useToast } from '@/hooks/use-toast';
-import { Logger, Provider as SharedProvider } from '@OpsiMate/shared';
+import { Logger, Provider as SharedProvider, ClientProviderType } from '@OpsiMate/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import {
 	Cloud,
@@ -50,9 +50,6 @@ import { canDelete, canManageProviders } from '../lib/permissions';
 import { ProviderSidebar } from '../components/ProviderSidebar';
 
 const logger = new Logger('MyProviders');
-
-// Define ProviderType locally since we removed the old Providers page
-type ProviderType = 'server' | 'kubernetes' | 'aws-ec2' | 'aws-eks' | 'gcp-compute' | 'gcp-gke' | 'azure-vm' | 'azure-aks';
 
 interface Provider extends SharedProvider {
 	services?: ServiceConfig[];
@@ -174,7 +171,7 @@ export const Providers = () => {
 	const [selectedServiceForDrawer, setSelectedServiceForDrawer] = useState<Service | null>(null);
 	const [isServiceDrawerOpen, setIsServiceDrawerOpen] = useState(false);
 	const [isAddProviderOpen, setIsAddProviderOpen] = useState(false);
-	const [selectedProviderType, setSelectedProviderType] = useState<ProviderType | null>(null);
+	const [selectedProviderType, setSelectedProviderType] = useState<ClientProviderType | null>(null);
 
 	const fetchProviders = async () => {
 		setIsLoading(true);
@@ -1220,7 +1217,7 @@ export const Providers = () => {
 				<ProviderSidebar
 					provider={{
 						id: selectedProviderType,
-						type: selectedProviderType as ProviderType,
+						type: selectedProviderType,
 						name: selectedProviderType === 'server' ? 'VM / Server' : 'Kubernetes',
 						description:
 							selectedProviderType === 'server'

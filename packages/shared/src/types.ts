@@ -3,6 +3,9 @@ export enum ProviderType {
 	K8S = 'K8S',
 }
 
+// Client-side provider types for UI configuration
+export type ClientProviderType = 'server' | 'kubernetes' | 'aws-ec2' | 'aws-eks' | 'gcp-compute' | 'gcp-gke' | 'azure-vm' | 'azure-aks';
+
 export enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
