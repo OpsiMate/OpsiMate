@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import {
 	Providers,
-	MyProviders,
 	Integrations,
 	NotFound,
 	Register,
@@ -40,10 +39,9 @@ const App: React.FC = () => {
 							<Routes>
 								<Route path="/" element={<Dashboard />} />
 								<Route path="/tv-mode" element={<TVMode />} />
-								<Route path="/providers" element={<Providers />} />
 								<Route
-									path="/my-providers"
-									element={!isEditor() ? <Navigate to="/" replace /> : <MyProviders />}
+									path="/providers"
+									element={!isEditor() ? <Navigate to="/" replace /> : <Providers />}
 								/>
 								<Route path="/integrations" element={<Integrations />} />
 								<Route path="/settings" element={<Settings />} />

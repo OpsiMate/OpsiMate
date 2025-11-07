@@ -715,8 +715,8 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 							description: `Successfully added ${serverData.name} server provider`,
 						});
 						onClose();
-						// Redirect to My Providers page
-						navigate('/my-providers');
+						// Redirect to Providers page
+						navigate('/providers');
 					} else {
 						throw new Error(response.error || 'Failed to create provider');
 					}
@@ -766,8 +766,8 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 							description: `Successfully added ${serverData.name} server provider`,
 						});
 						onClose();
-						// Redirect to My Providers page
-						navigate('/my-providers');
+						// Redirect to Providers page
+						navigate('/providers');
 					} else {
 						throw new Error(response.error || 'Failed to create provider');
 					}
@@ -831,7 +831,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 					description: `Imported ${providersPayload.length} providers`,
 				});
 				onClose();
-				navigate('/my-providers');
+				navigate('/providers');
 			} else {
 				throw new Error((resp as { error?: string }).error || 'Failed to import providers');
 			}

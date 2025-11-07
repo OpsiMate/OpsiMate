@@ -41,14 +41,18 @@ import {
 	Square,
 	Terminal,
 	Trash,
+	Globe,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { providerApi } from '../lib/api';
 import { canDelete, canManageProviders } from '../lib/permissions';
+import { ProviderSidebar } from '../components/ProviderSidebar';
 
 const logger = new Logger('MyProviders');
+
+// Define ProviderType locally since we removed the old Providers page
+type ProviderType = 'server' | 'kubernetes' | 'aws-ec2' | 'aws-eks' | 'gcp-compute' | 'gcp-gke' | 'azure-vm' | 'azure-aks';
 
 interface Provider extends SharedProvider {
 	services?: ServiceConfig[];
@@ -153,7 +157,7 @@ const getServiceStatusBadgeColor = (status: ServiceConfig['status']) => {
 	}
 };
 
-export const MyProviders = () => {
+export const Providers = () => {
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const [searchQuery, setSearchQuery] = useState('');
@@ -169,6 +173,8 @@ export const MyProviders = () => {
 	const [loadingServices, setLoadingServices] = useState<Set<number>>(new Set());
 	const [selectedServiceForDrawer, setSelectedServiceForDrawer] = useState<Service | null>(null);
 	const [isServiceDrawerOpen, setIsServiceDrawerOpen] = useState(false);
+	const [isAddProviderOpen, setIsAddProviderOpen] = useState(false);
+	const [selectedProviderType, setSelectedProviderType] = useState<ProviderType | null>(null);
 
 	const fetchProviders = async () => {
 		setIsLoading(true);
@@ -703,13 +709,37 @@ export const MyProviders = () => {
 			<div className="flex flex-col h-full">
 				<header className="bg-background border-b border-border p-4">
 					<div className="flex items-center justify-between">
-						<h1 className="text-2xl font-bold">My Providers</h1>
-						<Link to="/providers">
-							<Button>
-								<Plus className="mr-2 h-4 w-4" />
-								Add Provider
-							</Button>
-						</Link>
+						<h1 className="text-2xl font-bold">Providers</h1>
+						{canManageProviders() && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button>
+										<Plus className="mr-2 h-4 w-4" />
+										Add Provider
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem
+										onClick={() => {
+											setSelectedProviderType('server');
+											setIsAddProviderOpen(true);
+										}}
+									>
+										<Server className="mr-2 h-4 w-4" />
+										VM / Server
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onClick={() => {
+											setSelectedProviderType('kubernetes');
+											setIsAddProviderOpen(true);
+										}}
+									>
+										<Globe className="mr-2 h-4 w-4" />
+										Kubernetes
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
 					</div>
 					<div className="mt-4">
 						<div className="relative">
@@ -903,7 +933,7 @@ export const MyProviders = () => {
 																										id: service.id,
 																										name: service.name,
 																										serviceStatus:
-																											(
+																											((
 																												service as {
 																													status?: string;
 																													serviceStatus?: string;
@@ -916,7 +946,7 @@ export const MyProviders = () => {
 																												}
 																											)
 																												.serviceStatus ||
-																											'unknown',
+																											'unknown') as 'running' | 'stopped' | 'error' | 'unknown',
 																										serviceType:
 																											(
 																												service as {
@@ -1112,12 +1142,36 @@ export const MyProviders = () => {
 									? 'No providers match your search query.'
 									: "You haven't added any providers yet."}
 							</p>
-							<Link to="/providers">
-								<Button>
-									<Plus className="mr-2 h-4 w-4" />
-									Add Provider
-								</Button>
-							</Link>
+							{canManageProviders() && (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button>
+											<Plus className="mr-2 h-4 w-4" />
+											Add Provider
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="center">
+										<DropdownMenuItem
+											onClick={() => {
+												setSelectedProviderType('server');
+												setIsAddProviderOpen(true);
+											}}
+										>
+											<Server className="mr-2 h-4 w-4" />
+											VM / Server
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												setSelectedProviderType('kubernetes');
+												setIsAddProviderOpen(true);
+											}}
+										>
+											<Globe className="mr-2 h-4 w-4" />
+											Kubernetes
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							)}
 						</div>
 					)}
 				</div>
@@ -1162,6 +1216,27 @@ export const MyProviders = () => {
 				onSave={handleUpdateProvider}
 			/>
 
+			{isAddProviderOpen && selectedProviderType && (
+				<ProviderSidebar
+					provider={{
+						id: selectedProviderType,
+						type: selectedProviderType as ProviderType,
+						name: selectedProviderType === 'server' ? 'VM / Server' : 'Kubernetes',
+						description:
+							selectedProviderType === 'server'
+								? 'Connect to a virtual machine or physical server'
+								: 'Connect to a Kubernetes cluster',
+						icon: selectedProviderType === 'server' ? <Server className="h-5 w-5" /> : <Globe className="h-5 w-5" />,
+					}}
+					onClose={() => {
+						setIsAddProviderOpen(false);
+						setSelectedProviderType(null);
+						// Refresh providers after adding
+						fetchProviders();
+					}}
+				/>
+			)}
+
 			<Sheet open={isServiceDrawerOpen} onOpenChange={setIsServiceDrawerOpen}>
 				<SheetContent side="right" className="w-[400px] p-0" closable={false}>
 					{selectedServiceForDrawer && (
@@ -1177,4 +1252,4 @@ export const MyProviders = () => {
 	);
 };
 
-export default MyProviders;
+export default Providers;

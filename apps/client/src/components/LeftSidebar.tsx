@@ -66,25 +66,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						asChild
 					>
 						<Link to="/providers">
-							<Layers className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>Add Provider</span>
-						</Link>
-					</Button>
-				)}
-
-				{isEditor() && (
-					<Button
-						variant={location.pathname === '/my-providers' ? 'default' : 'ghost'}
-						className={cn(
-							'gap-3 h-10',
-							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-							location.pathname === '/my-providers' && 'text-primary-foreground'
-						)}
-						asChild
-					>
-						<Link to="/my-providers">
 							<Database className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>My Providers</span>
+							<span className={cn('font-medium', collapsed && 'sr-only')}>Providers</span>
 						</Link>
 					</Button>
 				)}
