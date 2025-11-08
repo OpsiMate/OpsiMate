@@ -8,9 +8,10 @@ interface ActionCategoryProps {
 	actions: CustomAction[];
 	onEdit: (action: CustomAction) => void;
 	onDelete: (action: CustomAction) => void;
+	onPlay?: (action: CustomAction) => void;
 }
 
-export const ActionCategory = ({ target, actions, onEdit, onDelete }: ActionCategoryProps) => {
+export const ActionCategory = ({ target, actions, onEdit, onDelete, onPlay }: ActionCategoryProps) => {
 	const iconContainerClass =
 		target === 'service'
 			? 'bg-blue-50 border border-blue-300 text-blue-500'
@@ -34,6 +35,14 @@ export const ActionCategory = ({ target, actions, onEdit, onDelete }: ActionCate
 							e.stopPropagation();
 							onDelete(action);
 						}}
+						onPlay={
+							onPlay
+								? (e) => {
+										e.stopPropagation();
+										onPlay(action);
+									}
+								: undefined
+						}
 					/>
 				))}
 			</div>

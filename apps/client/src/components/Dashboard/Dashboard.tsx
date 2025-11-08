@@ -13,6 +13,7 @@ import { DashboardHeader } from './DashboardHeader';
 import { FilterSidebar } from './FilterPanel';
 import {
 	useColumnManagement,
+	useCustomActionExecution,
 	useFilteredServices,
 	useServiceActions,
 	useServiceFilters,
@@ -54,6 +55,7 @@ export const Dashboard = () => {
 	const filteredServices = useFilteredServices(servicesWithAlerts, filters);
 
 	const { handleStart, handleStop, handleRestart } = useServiceActions();
+	const { handleRunAction, isRunning: isRunningAction } = useCustomActionExecution();
 
 	const { handleSaveView, handleDeleteView, handleApplyView } = useViewManagement({
 		activeViewId,
@@ -174,6 +176,12 @@ export const Dashboard = () => {
 								onStart={() => handleStart(selectedServices)}
 								onStop={() => handleStop(selectedServices)}
 								onRestart={() => handleRestart(selectedServices)}
+								onRunAction={
+									selectedService
+										? (action) => handleRunAction(action, selectedService)
+										: undefined
+								}
+								isRunningAction={isRunningAction}
 							/>
 						</div>
 						{selectedServices.length === 1 && selectedService && (
