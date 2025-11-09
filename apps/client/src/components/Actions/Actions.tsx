@@ -10,21 +10,31 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useCustomActions, useDeleteCustomAction } from '@/hooks/queries/custom-actions';
+import {
+	useCustomActions,
+	useDeleteCustomAction,
+	useRunCustomActionForProvider,
+	useRunCustomActionForService,
+} from '@/hooks/queries/custom-actions';
 import { useToast } from '@/hooks/use-toast';
 import { ActionTarget, CustomAction } from '@OpsiMate/custom-actions';
 import { Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { ActionCategories } from './ActionCategories';
 import { ActionModal } from './ActionModal';
+import { RunActionModal } from './RunActionModal';
 
 export const Actions = () => {
 	const { data: actions = [], isLoading } = useCustomActions();
 	const deleteMutation = useDeleteCustomAction();
+	const runServiceActionMutation = useRunCustomActionForService();
+	const runProviderActionMutation = useRunCustomActionForProvider();
 	const { toast } = useToast();
 	const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
 	const [editingAction, setEditingAction] = useState<CustomAction | undefined>();
 	const [deleteActionId, setDeleteActionId] = useState<number | null>(null);
+	const [runAction, setRunAction] = useState<CustomAction | null>(null);
+	const [isRunningAction, setIsRunningAction] = useState(false);
 
 	const handleEdit = (action: CustomAction) => {
 		setEditingAction(action);
@@ -61,6 +71,46 @@ export const Actions = () => {
 		}
 	};
 
+	const handlePlay = (action: CustomAction) => {
+		setRunAction(action);
+	};
+
+	const handleRunAction = async (targetId: number, targetType: 'service' | 'provider') => {
+		if (!runAction) return;
+
+		setIsRunningAction(true);
+		try {
+			if (targetType === 'service') {
+				await runServiceActionMutation.mutateAsync({
+					serviceId: targetId,
+					actionId: runAction.id,
+				});
+				toast({
+					title: 'Success',
+					description: `Action "${runAction.name}" executed successfully`,
+				});
+			} else {
+				await runProviderActionMutation.mutateAsync({
+					providerId: targetId,
+					actionId: runAction.id,
+				});
+				toast({
+					title: 'Success',
+					description: `Action "${runAction.name}" executed successfully`,
+				});
+			}
+			setRunAction(null);
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description: error instanceof Error ? error.message : 'Failed to execute action',
+				variant: 'destructive',
+			});
+		} finally {
+			setIsRunningAction(false);
+		}
+	};
+
 	const targetOrder: Array<Exclude<ActionTarget, null>> = ['provider', 'service'];
 
 	return (
@@ -88,6 +138,7 @@ export const Actions = () => {
 							targetOrder={targetOrder}
 							onEdit={handleEdit}
 							onDelete={handleDeleteClick}
+							onPlay={handlePlay}
 						/>
 
 						{actions.length === 0 && (
@@ -109,6 +160,14 @@ export const Actions = () => {
 						setEditingAction(undefined);
 					}}
 					action={modalMode === 'edit' ? editingAction : undefined}
+				/>
+
+				<RunActionModal
+					open={runAction !== null}
+					onClose={() => setRunAction(null)}
+					action={runAction}
+					onRun={handleRunAction}
+					isRunning={isRunningAction}
 				/>
 
 				<AlertDialog open={deleteActionId !== null} onOpenChange={(open) => !open && setDeleteActionId(null)}>

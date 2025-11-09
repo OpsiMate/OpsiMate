@@ -7,9 +7,10 @@ interface ActionCategoriesProps {
 	targetOrder: Array<Exclude<ActionTarget, null>>;
 	onEdit: (action: CustomAction) => void;
 	onDelete: (action: CustomAction) => void;
+	onPlay?: (action: CustomAction) => void;
 }
 
-export const ActionCategories = ({ actions, targetOrder, onEdit, onDelete }: ActionCategoriesProps) => {
+export const ActionCategories = ({ actions, targetOrder, onEdit, onDelete, onPlay }: ActionCategoriesProps) => {
 	const groupedActions = groupActionsByTarget(actions);
 
 	return (
@@ -23,6 +24,7 @@ export const ActionCategories = ({ actions, targetOrder, onEdit, onDelete }: Act
 						actions={groupedActions[target]}
 						onEdit={onEdit}
 						onDelete={onDelete}
+						onPlay={onPlay}
 					/>
 				))}
 		</div>
