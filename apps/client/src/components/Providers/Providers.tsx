@@ -16,15 +16,15 @@ export const Providers = () => {
 	const { loadingServices, setLoadingServices, loadAllProviderServices, refreshProviderServices } =
 		useProviderServices(providerInstances, setProviderInstances, isLoading);
 
-	const { handleRefreshProvider, handleDeleteProvider, handleUpdateProvider } = useProviderActions(
+	const { handleRefreshProvider, handleDeleteProvider, handleUpdateProvider } = useProviderActions({
 		providerInstances,
 		setProviderInstances,
 		loadingServices,
 		setLoadingServices,
 		fetchProviders,
 		loadAllProviderServices,
-		refreshProviderServices
-	);
+		refreshProviderServices,
+	});
 
 	const { handleServiceAction, handleAddService, handleDeleteService } = useServiceActions(
 		providerInstances,

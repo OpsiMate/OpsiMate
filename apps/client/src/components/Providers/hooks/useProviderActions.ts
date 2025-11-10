@@ -8,15 +8,21 @@ import { Provider } from '../Providers.types';
 
 const logger = new Logger('useProviderActions');
 
-export const useProviderActions = (
-	providerInstances: Provider[],
-	setProviderInstances: React.Dispatch<React.SetStateAction<Provider[]>>,
-	loadingServices: Set<number>,
-	setLoadingServices: React.Dispatch<React.SetStateAction<Set<number>>>,
-	fetchProviders: () => Promise<void>,
-	loadAllProviderServices: () => Promise<void>,
-	refreshProviderServices: (provider: Provider) => Promise<void>
-) => {
+interface UseProviderActionsProps {
+	providerInstances: Provider[];
+	setProviderInstances: React.Dispatch<React.SetStateAction<Provider[]>>;
+	loadingServices: Set<number>;
+	setLoadingServices: React.Dispatch<React.SetStateAction<Set<number>>>;
+	refreshProviderServices: (provider: Provider) => Promise<void>;
+}
+
+export const useProviderActions = ({
+	providerInstances,
+	setProviderInstances,
+	loadingServices,
+	setLoadingServices,
+	refreshProviderServices,
+}: UseProviderActionsProps) => {
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 

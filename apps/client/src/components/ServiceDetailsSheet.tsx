@@ -1,10 +1,10 @@
+import { getProviderTypeName, getStatusBadgeColor } from '@/components/Providers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { ExternalLink, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Provider as SharedProvider } from '@OpsiMate/shared';
-import { getProviderTypeName, getStatusBadgeColor } from '@/components/Providers';
+import { ExternalLink } from 'lucide-react';
 import { ServiceConfig } from './AddServiceDialog';
 import { ServicesList } from './ServicesList';
 

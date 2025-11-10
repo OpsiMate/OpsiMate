@@ -1,6 +1,6 @@
 import { RightSidebarWithLogs } from '@/components/RightSidebarWithLogs';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
 import type { Service } from '@/components/ServiceTable';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 interface ServiceDetailsDrawerProps {
 	open: boolean;

@@ -24,13 +24,14 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { queryKeys } from '@/hooks/queries';
 import { useToast } from '@/hooks/use-toast';
-import { Logger, Provider as SharedProvider, ClientProviderType, ProviderType } from '@OpsiMate/shared';
+import { ClientProviderType, Logger, ProviderType, Provider as SharedProvider } from '@OpsiMate/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import {
 	Cloud,
 	Container,
 	Database,
 	Edit,
+	Globe,
 	ListPlus,
 	MoreVertical,
 	Play,
@@ -41,13 +42,12 @@ import {
 	Square,
 	Terminal,
 	Trash,
-	Globe,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ProviderSidebar } from '../components/ProviderSidebar';
 import { providerApi } from '../lib/api';
 import { canDelete, canManageProviders } from '../lib/permissions';
-import { ProviderSidebar } from '../components/ProviderSidebar';
 
 const logger = new Logger('MyProviders');
 

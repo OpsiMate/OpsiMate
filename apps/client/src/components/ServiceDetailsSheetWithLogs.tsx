@@ -1,10 +1,10 @@
+import { getProviderTypeName, getStatusBadgeColor } from '@/components/Providers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
-import { getProviderTypeName, getStatusBadgeColor } from '@/components/Providers';
 import { Provider as SharedProvider } from '@OpsiMate/shared';
 import { ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
