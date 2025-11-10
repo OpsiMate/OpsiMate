@@ -4,15 +4,22 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
-import { getProviderTypeName, getStatusBadgeColor } from '@/pages/MyProviders';
-import { Provider } from '@OpsiMate/shared';
+import { getProviderTypeName, getStatusBadgeColor } from '@/components/Providers';
+import { Provider as SharedProvider } from '@OpsiMate/shared';
 import { ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ServiceConfig } from './AddServiceDialog';
 import { ServicesList } from './ServicesList';
 
+interface ProviderWithStatus extends SharedProvider {
+	status?: 'online' | 'offline' | 'warning' | 'unknown';
+	type?: string;
+	details?: Record<string, unknown>;
+	services?: ServiceConfig[];
+}
+
 interface ServiceDetailsSheetProps {
-	provider: Provider | null;
+	provider: ProviderWithStatus | null;
 	onClose: () => void;
 	onDeleteService?: (serviceId: string) => void;
 	onStatusChange?: (serviceId: string, newStatus: 'running' | 'stopped' | 'error') => void;

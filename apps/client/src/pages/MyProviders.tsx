@@ -53,6 +53,7 @@ const logger = new Logger('MyProviders');
 
 interface Provider extends SharedProvider {
 	services?: ServiceConfig[];
+	status?: 'online' | 'offline' | 'warning' | 'unknown';
 }
 
 import { EditProviderDialog } from '@/components/EditProviderDialog';
