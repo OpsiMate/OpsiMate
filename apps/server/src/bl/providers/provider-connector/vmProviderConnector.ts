@@ -51,14 +51,29 @@ export class VMProviderConnector implements ProviderConnector {
 		parameters: Record<string, string>,
 		_service?: Service
 	): Promise<void> {
-		if (!action.script) throw new Error('Missing script for bash action');
+		if (!action.script) {
+			throw new Error('Missing script for bash action');
+		}
 
 		// Resolve placeholders in the script
-		const _resolvedScript = this.resolvePlaceholders(action.script, parameters);
+		const resolvedScript = this.resolvePlaceholders(action.script, parameters);
 
 		this.logger.info(`Executing bash action '${action.name}' on provider ${provider.name}`);
-		await sshClient.testConnection(provider);
-		// TODO: Execute the resolvedScript via SSH
+
+		try {
+			const result = await sshClient.executeBashScript(provider, resolvedScript);
+			this.logger.info(
+				`Bash action '${action.name}' completed successfully. Output: ${result.stdout || '(no output)'}`
+			);
+
+			if (result.stderr) {
+				this.logger.warn(`Bash action '${action.name}' stderr: ${result.stderr}`);
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			this.logger.error(`Failed to execute bash action '${action.name}': ${errorMessage}`);
+			throw new Error(`Failed to execute bash action '${action.name}': ${errorMessage}`);
+		}
 	}
 
 	private resolvePlaceholders(str: string, parameters: Record<string, string>): string {
