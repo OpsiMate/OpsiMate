@@ -9,7 +9,7 @@ const logger = new Logger('pull-grafana-alerts-job');
 export class PullGrafanaAlertsJob {
 	constructor(
 		private alertBL: AlertBL,
-		private integrationBL: IntegrationBL,
+		private integrationBL: IntegrationBL
 	) {}
 
 	startPullGrafanaAlertsJob = () => {
@@ -43,7 +43,7 @@ export class PullGrafanaAlertsJob {
 			const client = new GrafanaClient(grafana.externalUrl, token);
 			const alerts = await client.getAlerts();
 
-			for(const alert of alerts) {
+			for (const alert of alerts) {
 				try {
 					const tagName = alert.labels?.tag || '';
 					await this.alertBL.insertOrUpdateAlert({
@@ -53,7 +53,8 @@ export class PullGrafanaAlertsJob {
 						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
 						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '', // if available
 						alert_url: alert.generatorURL || '', // or the correct field for the alert URL
-						alert_name: alert.labels?.rulename || alert.labels?.alertname || alert.annotations?.summary || '',
+						alert_name:
+							alert.labels?.rulename || alert.labels?.alertname || alert.annotations?.summary || '',
 						summary: alert.annotations?.summary || '',
 						runbook_url: alert.annotations?.runbook_url || '',
 					});

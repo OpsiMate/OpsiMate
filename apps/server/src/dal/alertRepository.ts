@@ -14,7 +14,7 @@ export class AlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status=excluded.status,
                     tag=excluded.tag,
@@ -34,7 +34,7 @@ export class AlertRepository {
 				alert.alert_url,
 				alert.alert_name,
 				alert.summary || null,
-				alert.runbook_url || null,
+				alert.runbook_url || null
 			);
 			return { changes: result.changes };
 		});
@@ -57,7 +57,9 @@ export class AlertRepository {
                     summary TEXT,
                     runbook_url TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )`).run();
+                )`
+				)
+				.run();
 		});
 	}
 

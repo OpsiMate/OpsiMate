@@ -46,5 +46,4 @@ export class AlertBL {
 			throw error;
 		}
 	}
-
 }
