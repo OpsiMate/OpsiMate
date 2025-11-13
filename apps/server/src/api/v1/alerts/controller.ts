@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import {Alert, Logger} from '@OpsiMate/shared';
+import { Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import {AlertRow} from "../../../dal/models.ts";
-import {GcpAlertWebhook} from "./models.ts";
+import { GcpAlertWebhook } from './models.ts';
 
 const logger: Logger = new Logger('server');
 
@@ -72,7 +71,7 @@ export class AlertController {
 				alert_name: incident.policy_name || 'unknown',
 				summary: incident.summary || 'unknown',
 				runbook_url: incident.documentation?.content || 'unknown',
-			})
+			});
 			return res.status(201).json({ success: true, data: null });
 		} catch (error) {
 			logger.error('Error undismissing alert:', error);
