@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import { GcpAlertWebhook } from './models.ts';
+import { GcpAlertWebhook } from './models';
 
 const logger: Logger = new Logger('server');
 
@@ -74,7 +74,7 @@ export class AlertController {
 			});
 			return res.status(201).json({ success: true, data: null });
 		} catch (error) {
-			logger.error('Error undismissing alert:', error);
+			logger.error('Error creating gcp alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
