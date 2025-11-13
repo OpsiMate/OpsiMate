@@ -1,6 +1,6 @@
 import { AlertRepository } from '../../dal/alertRepository';
 import { AlertRow } from '../../dal/models';
-import { Alert, Logger } from '@OpsiMate/shared';
+import {Alert, AlertType, Logger} from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
 
@@ -45,5 +45,9 @@ export class AlertBL {
 			logger.error('Error undismissing alert', error);
 			throw error;
 		}
+	}
+
+	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
+		await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
 	}
 }

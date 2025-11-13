@@ -41,13 +41,16 @@ export class PullGrafanaAlertsJob {
 			}
 
 			const client = new GrafanaClient(grafana.externalUrl, token);
-			const alerts = await client.getAlerts();
+			const grafanaAlerts = await client.getAlerts();
+			const activeAlertIds = new Set(grafanaAlerts.map(a => a.fingerprint));
+			await this.alertBL.deleteAlertsNotInIds(activeAlertIds, 'Grafana');
 
-			for (const alert of alerts) {
+			for (const alert of grafanaAlerts) {
 				try {
 					const tagName = alert.labels?.tag || '';
 					await this.alertBL.insertOrUpdateAlert({
 						id: alert.fingerprint,
+						type: 'Grafana',
 						status: alert.status?.state || '',
 						tag: tagName, // or another label key if appropriate
 						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',

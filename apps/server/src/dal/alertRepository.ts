@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AlertRow } from './models';
-import { Alert as SharedAlert } from '@OpsiMate/shared';
+import {Alert as SharedAlert, AlertType} from '@OpsiMate/shared';
 
 export class AlertRepository {
 	private db: Database.Database;
@@ -13,11 +13,12 @@ export class AlertRepository {
 	async insertOrUpdateAlert(alert: Omit<AlertRow, 'created_at' | 'is_dismissed'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO alerts (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO alerts (id, status, tag, type, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status=excluded.status,
                     tag=excluded.tag,
+                    type=excluded.type,
                     starts_at=excluded.starts_at,
                     updated_at=excluded.updated_at,
                     alert_url=excluded.alert_url,
@@ -29,6 +30,7 @@ export class AlertRepository {
 				alert.id,
 				alert.status,
 				alert.tag,
+				alert.type,
 				alert.starts_at,
 				alert.updated_at,
 				alert.alert_url,
@@ -49,6 +51,7 @@ export class AlertRepository {
                     id TEXT PRIMARY KEY,
                     status TEXT,
                     tag TEXT,
+					type TEXT,
                     starts_at TEXT,
                     updated_at TEXT,
                     alert_url TEXT,
@@ -68,6 +71,7 @@ export class AlertRepository {
 			id: row.id,
 			status: row.status,
 			tag: row.tag,
+			type: row.type,
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,
 			alertUrl: row.alert_url,
@@ -106,4 +110,30 @@ export class AlertRepository {
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
+
+	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
+		return runAsync(() => {
+			if (activeAlertIds.size === 0) {
+				// No active alerts → delete all alerts of this type
+				const stmt = this.db.prepare(`
+				DELETE FROM alerts
+				WHERE type = ?
+			`);
+				stmt.run(alertType);
+				return;
+			}
+
+			// Build dynamic placeholders for SQLite
+			const placeholders = Array.from(activeAlertIds).map(() => '?').join(',');
+
+			const stmt = this.db.prepare(`
+			DELETE FROM alerts
+			WHERE type = ?
+			AND id NOT IN (${placeholders})
+		`);
+
+			stmt.run(alertType, ...activeAlertIds);
+		});
+	}
+
 }

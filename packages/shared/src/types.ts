@@ -114,8 +114,12 @@ export interface DiscoveredPod {
 	name: string;
 }
 
+
+export type AlertType = 'Grafana' | 'GCP'
+
 export interface Alert {
 	id: string;
+	type: AlertType;
 	status: string;
 	tag: string;
 	startsAt: string;
