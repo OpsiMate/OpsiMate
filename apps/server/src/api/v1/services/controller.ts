@@ -198,7 +198,6 @@ export class ServiceController {
 					);
 				}
 			}
-			await this.alertBL?.clearAlertsByService(serviceId);
 			await this.tagRepo?.deleteAllServiceTags(serviceId);
 
 			await this.servicesBL.deleteService(serviceId, req.user);
