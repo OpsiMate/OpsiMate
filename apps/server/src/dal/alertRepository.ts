@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AlertRow } from './models';
-import {Alert as SharedAlert, AlertType} from '@OpsiMate/shared';
+import { Alert as SharedAlert, AlertType } from '@OpsiMate/shared';
 
 export class AlertRepository {
 	private db: Database.Database;
@@ -124,7 +124,9 @@ export class AlertRepository {
 			}
 
 			// Build dynamic placeholders for SQLite
-			const placeholders = Array.from(activeAlertIds).map(() => '?').join(',');
+			const placeholders = Array.from(activeAlertIds)
+				.map(() => '?')
+				.join(',');
 
 			const stmt = this.db.prepare(`
 			DELETE FROM alerts
@@ -135,5 +137,4 @@ export class AlertRepository {
 			stmt.run(alertType, ...activeAlertIds);
 		});
 	}
-
 }

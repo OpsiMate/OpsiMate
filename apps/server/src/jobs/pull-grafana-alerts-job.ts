@@ -42,7 +42,7 @@ export class PullGrafanaAlertsJob {
 
 			const client = new GrafanaClient(grafana.externalUrl, token);
 			const grafanaAlerts = await client.getAlerts();
-			const activeAlertIds = new Set(grafanaAlerts.map(a => a.fingerprint));
+			const activeAlertIds = new Set(grafanaAlerts.map((a) => a.fingerprint));
 			await this.alertBL.deleteAlertsNotInIds(activeAlertIds, 'Grafana');
 
 			for (const alert of grafanaAlerts) {

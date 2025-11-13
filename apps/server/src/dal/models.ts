@@ -1,4 +1,4 @@
-import {AlertType, IntegrationType, Role} from '@OpsiMate/shared';
+import { AlertType, IntegrationType, Role } from '@OpsiMate/shared';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
 
 export type IntegrationRow = {
@@ -63,7 +63,7 @@ export interface ViewRow {
 
 export type AlertRow = {
 	id: string;
-	type: AlertType
+	type: AlertType;
 	status: string;
 	tag: string;
 	starts_at: string;
