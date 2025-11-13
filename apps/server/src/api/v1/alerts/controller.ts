@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
-import { Logger } from '@OpsiMate/shared';
+import {Alert, Logger} from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
+import {AlertRow} from "../../../dal/models.ts";
+import {GcpAlertWebhook} from "./models.ts";
 
 const logger: Logger = new Logger('server');
 
@@ -45,6 +47,33 @@ export class AlertController {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
 			return res.json({ success: true, data: { alert } });
+		} catch (error) {
+			logger.error('Error undismissing alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createCustomGCPAlert(req: Request, res: Response) {
+		try {
+			const payload = req.body as GcpAlertWebhook;
+			const incident = payload.incident;
+			if (!incident) {
+				return res.status(400).json({ error: 'Missing incident in payload' });
+			}
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: incident.incident_id,
+				type: 'GCP',
+				status: incident.state,
+				tag: incident.resource_name || 'unknown',
+				starts_at: incident.started_at || new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+				alert_url: incident.url || 'unknown',
+				alert_name: incident.policy_name || 'unknown',
+				summary: incident.summary || 'unknown',
+				runbook_url: incident.documentation?.content || 'unknown',
+			})
+			return res.status(201).json({ success: true, data: null });
 		} catch (error) {
 			logger.error('Error undismissing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
