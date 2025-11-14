@@ -1,6 +1,7 @@
 import { Integration, IntegrationUrls, Logger } from '@OpsiMate/shared';
 import { IntegrationConnector } from './integration-connector';
 import { DatadogClient, DatadogDashboardSummary } from '../../../dal/external-client/datadog-client';
+import { AlertBL } from '../../alerts/alert.bl';
 
 export class DatadogIntegrationConnector implements IntegrationConnector {
 	private logger = new Logger('bl/integrations/datadog-integration-connector');
@@ -40,5 +41,8 @@ export class DatadogIntegrationConnector implements IntegrationConnector {
 			this.logger.error('Error in DatadogIntegrationConnector.getUrls:', error);
 			return [];
 		}
+	}
+
+	async deleteData(_: Integration, _2: AlertBL): Promise<void> {
 	}
 }

@@ -1,11 +1,15 @@
 import { IntegrationRepository } from '../../dal/integrationRepository';
 import { Integration, IntegrationType, Logger } from '@OpsiMate/shared';
 import { integrationConnectorFactory } from './integration-connector/integration-connector-factory';
+import { AlertBL } from '../alerts/alert.bl.ts';
 
 const logger = new Logger('bl/integrations/integration.bl');
 
 export class IntegrationBL {
-	constructor(private integrationRepo: IntegrationRepository) {}
+	constructor(
+		private integrationRepo: IntegrationRepository,
+		private alertsBl: AlertBL
+	) {}
 
 	async getAllIntegrations(): Promise<Integration[]> {
 		try {
@@ -58,21 +62,23 @@ export class IntegrationBL {
 
 	async deleteIntegration(integrationId: number): Promise<void> {
 		logger.info(`Starting to delete integration: ${integrationId}`);
-		await this.validateIntegrationExists(integrationId);
+		const integration = await this.validateIntegrationExists(integrationId);
 
 		try {
 			await this.integrationRepo.deleteIntegration(integrationId);
+			await integrationConnectorFactory(integration.type).deleteData(integration, this.alertsBl);
 		} catch (error) {
 			logger.error(`Error deleting integration [${integrationId}]`, error);
 			throw error;
 		}
 	}
 
-	private async validateIntegrationExists(integrationId: number): Promise<void> {
+	private async validateIntegrationExists(integrationId: number): Promise<Integration> {
 		const integration = await this.integrationRepo.getIntegrationById(integrationId);
 		if (!integration) {
 			throw new Error(`Integration with ID ${integrationId} does not exist.`);
 		}
+		return integration;
 	}
 
 	async getIntegrationUrls(integrationId: number, tags: string[]) {
