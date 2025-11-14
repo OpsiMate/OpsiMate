@@ -190,6 +190,16 @@ export const AddServiceDialog = ({
 			return;
 		}
 
+		// Client-side validation: systemd service names must not contain spaces
+		if (/\s/.test(serviceName)) {
+			toast({
+				title: 'Invalid systemd service name',
+				description: 'Systemd service names cannot contain spaces. Use hyphens or underscores instead (e.g., my-service).',
+				variant: 'destructive',
+			});
+			return;
+		}
+
 		setLoading(true);
 		try {
 			const serverStatus = await providerApi.getProviderInstances(parseInt(serverId));
@@ -688,11 +698,16 @@ export const AddServiceDialog = ({
 									value={serviceName}
 									onChange={(e) => setServiceName(e.target.value)}
 								/>
+								{/* Helper / validation text */}
+								<div className="mt-1">
+									{/\s/.test(serviceName) ? (
+										<p className="text-sm text-destructive">Systemd service names cannot contain spaces. Use hyphens or underscores instead (e.g., my-service).</p>
+									) : (
+										<p className="text-sm text-muted-foreground">Enter the exact name of the systemd service as it appears in the system. Use hyphens or underscores instead of spaces (e.g., my-service).</p>
+									)}
+								</div>
 							</div>
-							<div className="text-sm text-muted-foreground mt-2">
-								<p>Enter the exact name of the systemd service as it appears in the system.</p>
-								<p className="mt-1">Example: nginx.service, docker.service, etc.</p>
-							</div>
+
 							<div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-4">
 								<div className="flex items-start">
 									<AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
