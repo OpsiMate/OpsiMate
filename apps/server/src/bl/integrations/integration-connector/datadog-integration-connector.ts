@@ -43,6 +43,5 @@ export class DatadogIntegrationConnector implements IntegrationConnector {
 		}
 	}
 
-	async deleteData(_: Integration, _2: AlertBL): Promise<void> {
-	}
+	async deleteData(_: Integration, _2: AlertBL): Promise<void> {}
 }

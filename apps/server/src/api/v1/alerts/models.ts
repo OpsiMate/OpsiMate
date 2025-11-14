@@ -1,4 +1,4 @@
-// Example TypeScript types for GCP Monitoring webhook payload
+import { z } from 'zod';
 
 export interface GcpAlertWebhook {
 	version?: string | number;
@@ -19,3 +19,25 @@ export interface GcpIncident {
 		content?: string;
 	};
 }
+
+const isoDateString = z.string().refine(
+	(s) => {
+		return !Number.isNaN(Date.parse(s));
+	},
+	{
+		message: 'Invalid date string (expected ISO date/time)',
+	}
+);
+
+export const HttpAlertWebhookSchema = z.object({
+	id: z.string(),
+	status: z.string(),
+	tag: z.string(),
+	startsAt: isoDateString,
+	updatedAt: isoDateString,
+	alertUrl: z.string().url(),
+	alertName: z.string(),
+	summary: z.string().optional(),
+	runbookUrl: z.string().url().optional(),
+	createdAt: isoDateString,
+});

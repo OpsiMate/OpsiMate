@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import { GcpAlertWebhook } from './models';
+import { GcpAlertWebhook, HttpAlertWebhookSchema } from './models';
+import { isZodError } from '../../../utils/isZodError.ts';
 
 const logger: Logger = new Logger('server');
 
@@ -76,6 +77,33 @@ export class AlertController {
 		} catch (error) {
 			logger.error('Error creating gcp alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createCustomAlert(req: Request, res: Response) {
+		try {
+			const alert = HttpAlertWebhookSchema.parse(req.body);
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: alert.id,
+				type: 'Custom',
+				status: alert.status,
+				tag: alert.tag,
+				starts_at: alert.startsAt,
+				updated_at: alert.updatedAt,
+				alert_url: alert.alertUrl,
+				alert_name: alert.alertName,
+				summary: alert.summary,
+				runbook_url: alert.runbookUrl,
+			});
+			return res.status(201).json({ success: true, data: null });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			} else {
+				logger.error('Error creating integration:', error);
+				return res.status(500).json({ success: false, error: 'Internal server error' });
+			}
 		}
 	}
 }

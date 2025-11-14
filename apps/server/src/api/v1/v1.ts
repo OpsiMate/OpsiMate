@@ -44,6 +44,7 @@ export default function createV1Router(
 	router.post('/users/validate-reset-password-token', usersController.validateResetPasswordTokenHandler);
 	router.post('/users/reset-password', usersController.resetPasswordHandler);
 	router.post('/alerts/custom/gcp', alertController.createCustomGCPAlert.bind(alertController));
+	router.post('/alerts/custom', alertController.createCustomAlert.bind(alertController));
 
 	// JWT-protected endpoints
 	router.use(authenticateJWT);
