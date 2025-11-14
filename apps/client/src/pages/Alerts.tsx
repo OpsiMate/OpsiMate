@@ -1,38 +1,133 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Badge } from '@/components/ui/badge';
+import { AlertsTable } from '@/components/AlertsTable';
+import { AlertsFilterPanel } from '@/components/AlertsFilterPanel';
+import { AlertDetails } from '@/components/AlertDetails';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
-import { getAlertServiceId } from '@/utils/alert.utils.ts';
+import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { ExternalLink, RotateCcw, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { RefreshCw, Tv } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Alerts = () => {
-	const { data: alerts = [], isLoading } = useAlerts();
+	const navigate = useNavigate();
+	const { data: alerts = [], isLoading, refetch } = useAlerts();
+	const { data: services = [] } = useServices();
 	const dismissAlertMutation = useDismissAlert();
 	const undismissAlertMutation = useUndismissAlert();
 	const { toast } = useToast();
-	const [search, setSearch] = useState('');
 
-	const { data: services = [] } = useServices();
+	// State
+	const [filters, setFilters] = useState<Record<string, string[]>>({});
+	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
+	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
+	const [visibleColumns, setVisibleColumns] = useState([
+		'type',
+		'alertName',
+		'status',
+		'tag',
+		'summary',
+		'startsAt',
+		'actions',
+	]);
+	const [columnOrder, setColumnOrder] = useState([
+		'type',
+		'alertName',
+		'status',
+		'tag',
+		'summary',
+		'startsAt',
+		'actions',
+	]);
+	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+	const [isRefreshing, setIsRefreshing] = useState(false);
 
-	const serviceNameById = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s.name])), [services]);
+	// Auto-refresh every 30 seconds
+	useEffect(() => {
+		const interval = setInterval(() => {
+			// Only auto-refresh if no dialogs are open
+			const hasOpenDialog = document.querySelector('[role="dialog"]') || 
+				document.querySelector('[data-state="open"]');
+			
+			if (!hasOpenDialog) {
+				refetch();
+				setLastRefresh(new Date());
+			}
+		}, 30000);
+
+		return () => clearInterval(interval);
+	}, [refetch]);
+
+	// Manual refresh
+	const handleManualRefresh = async () => {
+		setIsRefreshing(true);
+		try {
+			await refetch();
+			setLastRefresh(new Date());
+			toast({
+				title: 'Alerts refreshed',
+				description: 'The alerts list has been updated.',
+			});
+		} catch (error) {
+			toast({
+				title: 'Error refreshing alerts',
+				description: 'Failed to refresh alerts',
+				variant: 'destructive',
+			});
+		} finally {
+			setIsRefreshing(false);
+		}
+	};
+
+	// Get alert type
+	const getAlertType = (alert: Alert): string => {
+		// Extract type from alert ID or tag
+		if (alert.id.toLowerCase().includes('grafana')) return 'Grafana';
+		if (alert.tag?.toLowerCase().includes('prometheus')) return 'Prometheus';
+		if (alert.tag?.toLowerCase().includes('datadog')) return 'Datadog';
+		return 'Custom';
+	};
+
+	// Filter alerts based on filters
 	const filteredAlerts = useMemo(() => {
-		if (!search.trim()) return alerts;
-		const lower = search.toLowerCase();
-		return alerts.filter(
-			(a: Alert) =>
-				a.alertName.toLowerCase().includes(lower) ||
-				a.status.toLowerCase().includes(lower) ||
-				(a.summary && a.summary.toLowerCase().includes(lower)) ||
-				a.tag.toLowerCase().includes(lower)
-		);
-	}, [alerts, search]);
+		if (Object.keys(filters).length === 0) return alerts;
 
+		return alerts.filter((alert) => {
+			// Check each filter
+			for (const [field, values] of Object.entries(filters)) {
+				if (values.length === 0) continue;
+
+				let fieldValue: string;
+				switch (field) {
+					case 'status':
+						fieldValue = alert.isDismissed ? 'Dismissed' : 'Firing';
+						break;
+					case 'type':
+						fieldValue = getAlertType(alert);
+						break;
+					case 'tag':
+						fieldValue = alert.tag;
+						break;
+					case 'alertName':
+						fieldValue = alert.alertName;
+						break;
+					default:
+						continue;
+				}
+
+				if (!values.includes(fieldValue)) {
+					return false;
+				}
+			}
+			return true;
+		});
+	}, [alerts, filters]);
+
+	// Handle dismiss alert
 	const handleDismissAlert = async (alertId: string) => {
 		try {
 			await dismissAlertMutation.mutateAsync(alertId);
@@ -48,12 +143,8 @@ const Alerts = () => {
 			});
 		}
 	};
-	const renderServiceName = (a: Alert) => {
-		const sid = getAlertServiceId(a);
-		if (!sid) return <span className="text-muted-foreground">-</span>;
-		return serviceNameById[sid] ?? `#${sid}`;
-	};
 
+	// Handle undismiss alert
 	const handleUndismissAlert = async (alertId: string) => {
 		try {
 			await undismissAlertMutation.mutateAsync(alertId);
@@ -69,130 +160,131 @@ const Alerts = () => {
 			});
 		}
 	};
-	const getStatusBadge = (alert: Alert) => {
-		if (alert.isDismissed) {
-			return <Badge variant="secondary">dismissed</Badge>;
-		}
 
-		return <Badge variant="destructive">firing</Badge>;
+	// Launch TV Mode
+	const handleLaunchTVMode = () => {
+		const params = new URLSearchParams({
+			filters: JSON.stringify(filters),
+			visibleColumns: JSON.stringify(visibleColumns),
+			columnOrder: JSON.stringify(columnOrder),
+		});
+		navigate(`/alerts/tv-mode?${params.toString()}`);
 	};
 
 	return (
 		<DashboardLayout>
-			<div className="flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
-					<p className="text-muted-foreground mt-1">All system alerts</p>
-				</div>
-				<div className="bg-card rounded-lg border shadow-sm p-6 flex flex-col gap-4">
-					<div className="flex items-center gap-4">
-						<Input
-							placeholder="Search alerts..."
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-							className="max-w-xs"
-						/>
+			<div className="flex h-full">
+				{/* Filter Panel */}
+				<AlertsFilterPanel
+					alerts={alerts}
+					services={services}
+					filters={filters}
+					onFilterChange={setFilters}
+					collapsed={filterPanelCollapsed}
+					onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
+				/>
+
+				{/* Main Content */}
+				<div className="flex-1 flex">
+					<div className="flex-1 flex flex-col p-4">
+						{/* Header */}
+						<div className="mb-4">
+						<div className="flex items-center justify-between">
+							<div>
+								<h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
+								<p className="text-sm text-muted-foreground mt-1">
+									Monitor and manage system alerts
+								</p>
+							</div>
+							<div className="flex items-center gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={handleManualRefresh}
+									disabled={isRefreshing}
+									className="gap-2"
+								>
+									<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+									Refresh
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={handleLaunchTVMode}
+									className="gap-2"
+								>
+									<Tv className="h-4 w-4" />
+									TV Mode
+								</Button>
+							</div>
+						</div>
+						{lastRefresh && (
+							<p className="text-xs text-muted-foreground mt-2">
+								Last refreshed: {lastRefresh.toLocaleTimeString()}
+							</p>
+						)}
 					</div>
-					<div className="overflow-x-auto">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Tag</TableHead>
-									<TableHead>Summary</TableHead>
-									<TableHead>Started</TableHead>
-									<TableHead>Service</TableHead>
-									<TableHead>Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{isLoading ? (
-									<TableRow>
-										<TableCell colSpan={6} className="text-center py-8">
-											Loading...
-										</TableCell>
-									</TableRow>
-								) : filteredAlerts.length === 0 ? (
-									<TableRow>
-										<TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-											No alerts found.
-										</TableCell>
-									</TableRow>
-								) : (
-									filteredAlerts.map((alert) => (
-										<TableRow key={alert.id}>
-											<TableCell className="font-medium">{alert.alertName}</TableCell>
-											<TableCell>{getStatusBadge(alert)}</TableCell>
-											<TableCell>
-												<Badge variant="outline">{alert.tag}</Badge>
-											</TableCell>
-											<TableCell className="max-w-xs truncate">{alert.summary || '-'}</TableCell>
-											<TableCell>{new Date(alert.startsAt).toLocaleString()}</TableCell>
-											<TableCell>{renderServiceName(alert)}</TableCell>
-											<TableCell>
-												<div className="flex items-center gap-1">
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
-														title="Open Runbook"
-														onClick={() =>
-															window.open(
-																alert.runbookUrl,
-																'_blank',
-																'noopener,noreferrer'
-															)
-														}
-														disabled={!alert.runbookUrl}
-													>
-														<span className="sr-only">Open Runbook</span>
-														📖
-													</Button>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
-														title="View in Grafana"
-														onClick={() =>
-															window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')
-														}
-														disabled={!alert.alertUrl}
-													>
-														<ExternalLink className="h-4 w-4" />
-													</Button>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent"
-														title={alert.isDismissed ? 'Undismiss Alert' : 'Dismiss Alert'}
-														onClick={() =>
-															alert.isDismissed
-																? handleUndismissAlert(alert.id)
-																: handleDismissAlert(alert.id)
-														}
-														disabled={
-															dismissAlertMutation.isPending ||
-															undismissAlertMutation.isPending
-														}
-													>
-														{dismissAlertMutation.isPending ||
-														undismissAlertMutation.isPending ? (
-															<div className="h-3 w-3 rounded-full border-2 border-t-transparent animate-spin" />
-														) : alert.isDismissed ? (
-															<RotateCcw className="h-4 w-4" />
-														) : (
-															<X className="h-4 w-4" />
-														)}
-													</Button>
-												</div>
-											</TableCell>
-										</TableRow>
-									))
-								)}
-							</TableBody>
-						</Table>
+
+						{/* Alerts Table */}
+						<div className="flex-1 overflow-auto">
+							<AlertsTable
+								alerts={filteredAlerts}
+								services={services}
+								onDismissAlert={handleDismissAlert}
+								onUndismissAlert={handleUndismissAlert}
+								onSelectAlerts={setSelectedAlerts}
+								selectedAlerts={selectedAlerts}
+								isLoading={isLoading}
+								visibleColumns={visibleColumns}
+								columnOrder={columnOrder}
+								onAlertClick={setSelectedAlert}
+							/>
+						</div>
+
+						{/* Selected alerts action bar (if needed) */}
+						{selectedAlerts.length > 0 && (
+							<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between">
+								<span className="text-sm font-medium">
+									{selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+								</span>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setSelectedAlerts([])}
+									>
+										Clear selection
+									</Button>
+									{selectedAlerts.every((a) => !a.isDismissed) && (
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={async () => {
+												for (const alert of selectedAlerts) {
+													await handleDismissAlert(alert.id);
+												}
+												setSelectedAlerts([]);
+											}}
+										>
+											Dismiss all
+										</Button>
+									)}
+								</div>
+							</div>
+						)}
 					</div>
+
+					{/* Alert Details Sidebar */}
+					{selectedAlert && (
+						<div className="w-96 border-l">
+							<AlertDetails
+								alert={selectedAlert}
+								onClose={() => setSelectedAlert(null)}
+								onDismiss={handleDismissAlert}
+								onUndismiss={handleUndismissAlert}
+							/>
+						</div>
+					)}
 				</div>
 			</div>
 		</DashboardLayout>

@@ -13,6 +13,7 @@ import {
 	Login,
 	Settings,
 	Alerts,
+	AlertsTVMode,
 	TVMode,
 } from './pages';
 import { Dashboard } from '@/components/Dashboard';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
 								<Route path="/login" element={<Login />} />
 								<Route path="/register" element={<Register />} />
 								<Route path="/alerts" element={<Alerts />} />
+								<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />
 								<Route path="/forgot-password" element={<ForgotPassword />} />
 								<Route path="/reset-password" element={<ResetPasswordByEmail />} />
 								<Route path="*" element={<NotFound />} />

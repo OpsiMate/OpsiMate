@@ -41,6 +41,21 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				)}
 			>
 				<Button
+					variant={location.pathname === '/alerts' ? 'default' : 'ghost'}
+					className={cn(
+						'gap-3 h-10',
+						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
+						location.pathname === '/alerts' && 'text-primary-foreground'
+					)}
+					asChild
+				>
+					<Link to="/alerts">
+						<Bell className="h-5 w-5 flex-shrink-0" />
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
+					</Link>
+				</Button>
+
+				<Button
 					variant={location.pathname === '/' ? 'default' : 'ghost'}
 					className={cn(
 						'gap-3 h-10',
@@ -88,21 +103,6 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						</Link>
 					</Button>
 				)}
-
-				<Button
-					variant={location.pathname === '/alerts' ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/alerts' && 'text-primary-foreground'
-					)}
-					asChild
-				>
-					<Link to="/alerts">
-						<Bell className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
-					</Link>
-				</Button>
 			</div>
 
 			<div className={cn('p-4 mt-auto flex flex-col gap-3', collapsed && 'items-center')}>
