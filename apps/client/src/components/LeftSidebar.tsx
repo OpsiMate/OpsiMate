@@ -111,29 +111,27 @@ export function LeftSidebar({ collapsed }: LeftSidebarProps) {
           </Button>
         </SidebarTooltip>
 
-        {isEditor() && (
+ 
+				{isEditor() && (
           <SidebarTooltip collapsed={collapsed} label="Add Providers">
-            <Button
-              variant={location.pathname === "/providers" ? "default" : "ghost"}
-              className={cn(
-                "gap-3 h-10",
-                collapsed
-                  ? "w-10 justify-center p-0"
-                  : "w-full justify-start px-3",
-                location.pathname === "/providers" && "text-primary-foreground"
-              )}
-              asChild
-            >
-              <Link to="/providers">
-                <Layers className="h-5 w-5 flex-shrink-0" />
-                <span className={cn("font-medium", collapsed && "sr-only")}>
-                  Add Provider
-                </span>
-              </Link>
-            </Button>
+					<Button
+						variant={location.pathname === '/providers' ? 'default' : 'ghost'}
+						className={cn(
+							'gap-3 h-10',
+							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
+							location.pathname === '/providers' && 'text-primary-foreground'
+						)}
+						asChild
+					>
+						<Link to="/providers">
+							<Database className="h-5 w-5 flex-shrink-0" />
+							<span className={cn('font-medium', collapsed && 'sr-only')}>Providers</span>
+						</Link>
+					</Button>
+              
           </SidebarTooltip>
-        )}
-
+				)}
+ 
         {!isViewer() && (
           <SidebarTooltip collapsed={collapsed} label="My Providers">
             <Button

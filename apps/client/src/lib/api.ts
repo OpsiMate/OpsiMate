@@ -320,6 +320,7 @@ export const providerApi = {
 			id?: string;
 			image?: string;
 			created?: string;
+			namespace?: string;
 		};
 	}) => {
 		return apiRequest<ServiceWithProvider>('/services', 'POST', {

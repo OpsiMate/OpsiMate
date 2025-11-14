@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import { IntegrationType, Logger } from '@OpsiMate/shared';
-import { TagRepository } from '../dal/tagRepository';
 import { GrafanaClient } from '../dal/external-client/grafana-client';
 import { AlertBL } from '../bl/alerts/alert.bl';
 import { IntegrationBL } from '../bl/integrations/integration.bl';
@@ -10,8 +9,7 @@ const logger = new Logger('pull-grafana-alerts-job');
 export class PullGrafanaAlertsJob {
 	constructor(
 		private alertBL: AlertBL,
-		private integrationBL: IntegrationBL,
-		private tagRepo: TagRepository
+		private integrationBL: IntegrationBL
 	) {}
 
 	startPullGrafanaAlertsJob = () => {
@@ -42,53 +40,30 @@ export class PullGrafanaAlertsJob {
 				return;
 			}
 
-			const tagNames = (await this.tagRepo.getAllTags()).map((t) => t.name);
 			const client = new GrafanaClient(grafana.externalUrl, token);
+			const grafanaAlerts = await client.getAlerts();
+			const activeAlertIds = new Set(grafanaAlerts.map((a) => a.fingerprint));
+			await this.alertBL.deleteAlertsNotInIds(activeAlertIds, 'Grafana');
 
-			const alerts = await client.getAlerts(tagNames);
-
-			const keepIds: string[] = [];
-
-			for (const a of alerts) {
-				const tagName = a.labels?.tag || '';
-				if (!tagName) continue;
-
-				let serviceIds: number[] = [];
+			for (const alert of grafanaAlerts) {
 				try {
-					serviceIds = await this.tagRepo.findServiceIdsByTagName(tagName);
+					const tagName = alert.labels?.tag || '';
+					await this.alertBL.insertOrUpdateAlert({
+						id: alert.fingerprint,
+						type: 'Grafana',
+						status: alert.status?.state || '',
+						tag: tagName, // or another label key if appropriate
+						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
+						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '', // if available
+						alert_url: alert.generatorURL || '', // or the correct field for the alert URL
+						alert_name:
+							alert.labels?.rulename || alert.labels?.alertname || alert.annotations?.summary || '',
+						summary: alert.annotations?.summary || '',
+						runbook_url: alert.annotations?.runbook_url || '',
+					});
 				} catch (e) {
-					logger.error(`Tag→services failed for tag="${tagName}"`, e);
-					continue;
+					logger.error(`Upsert failed for id=${alert.fingerprint}`, e);
 				}
-				if (serviceIds.length === 0) continue;
-
-				for (const sid of serviceIds) {
-					const id = `${a.fingerprint}:${sid}`;
-					try {
-						await this.alertBL.insertOrUpdateAlert({
-							id,
-							status: a.status?.state || '',
-							tag: tagName, // or another label key if appropriate
-							starts_at: a.startsAt ? new Date(a.startsAt).toISOString() : '',
-							updated_at: a.updatedAt ? new Date(a.updatedAt).toISOString() : '', // if available
-							alert_url: a.generatorURL || '', // or the correct field for the alert URL
-							alert_name: a.labels?.rulename || a.labels?.alertname || a.annotations?.summary || '',
-							summary: a.annotations?.summary || '',
-							runbook_url: a.annotations?.runbook_url || '',
-							service_id: sid,
-						});
-						keepIds.push(id);
-					} catch (e) {
-						logger.error(`Upsert failed for id=${id}`, e);
-					}
-				}
-			}
-
-			try {
-				const resolved = await this.alertBL.deleteAlertsNotInIds(keepIds);
-				logger.info(`resolved ${resolved.changes} alerts`);
-			} catch (e) {
-				logger.error('Cleanup failed', e);
 			}
 		} catch (e) {
 			logger.error('[Job] pullGrafanaAlerts failed', e);
