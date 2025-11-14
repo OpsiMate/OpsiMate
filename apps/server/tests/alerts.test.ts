@@ -265,4 +265,118 @@ describe('Alerts API', () => {
 			expect(finalResult.is_dismissed).toBe(0);
 		});
 	});
+
+	describe('POST /api/v1/alerts/custom', () => {
+		test('should create a new alert successfully with valid payload', async () => {
+			const payload = {
+				id: 'new-alert-1',
+				status: 'active',
+				tag: 'testing',
+				startsAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				alertUrl: 'https://example.com/new',
+				alertName: 'Custom Alert Test',
+				summary: 'Something happened',
+				runbookUrl: 'https://runbook.com/test',
+				createdAt: new Date().toISOString(),
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.alertId).toBe(payload.id);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(payload.alertName);
+		});
+
+		test('should return 400 for invalid payload (missing required fields)', async () => {
+			const payload = {
+				// Missing id, startsAt, etc.
+				status: 'active',
+				tag: 'invalid',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBeDefined();
+		});
+
+		test('should return 400 for invalid URL fields', async () => {
+			const payload = {
+				id: 'bad-url-alert',
+				status: 'active',
+				tag: 'bad',
+				startsAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				alertUrl: 'not-a-url',
+				alertName: 'Bad URL Test',
+				createdAt: new Date().toISOString(),
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBeDefined();
+		});
+
+		// todo: uncomment when adding permissions validation
+		// test('should return 401 when no auth token is provided', async () => {
+		// 	const payload = {
+		// 		id: 'unauthorized-alert',
+		// 		status: 'active',
+		// 		tag: 'security',
+		// 		startsAt: new Date().toISOString(),
+		// 		updatedAt: new Date().toISOString(),
+		// 		alertUrl: 'https://example.com/a',
+		// 		alertName: 'Unauthorized Alert',
+		// 		createdAt: new Date().toISOString(),
+		// 	};
+		//
+		// 	const response = await app.post('/api/v1/alerts/custom').send(payload);
+		//
+		// 	expect(response.status).toBe(401);
+		// 	expect(response.body.success).toBe(false);
+		// });
+
+		test('should handle DB insertion duplicate id - update status', async () => {
+			const existingId = testAlerts[0].id;
+
+			const payload = {
+				id: existingId, // duplicate primary key
+				status: 'resolved',
+				tag: 'duplicate-test',
+				startsAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				alertUrl: 'https://example.com/dup',
+				alertName: 'Duplicate Test',
+				createdAt: new Date().toISOString(),
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			// Expect internal server error due to unique constraint
+			expect(response.status).toBe(200);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(payload.alertName);
+			expect(row.status).toBe(payload.status);
+		});
+	});
 });

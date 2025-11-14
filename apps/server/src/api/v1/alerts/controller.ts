@@ -73,7 +73,7 @@ export class AlertController {
 				summary: incident.summary || 'unknown',
 				runbook_url: incident.documentation?.content || 'unknown',
 			});
-			return res.status(201).json({ success: true, data: null });
+			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
 			logger.error('Error creating gcp alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -96,7 +96,7 @@ export class AlertController {
 				summary: alert.summary,
 				runbook_url: alert.runbookUrl,
 			});
-			return res.status(201).json({ success: true, data: null });
+			return res.status(200).json({ success: true, data: { alertId: alert.id } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
