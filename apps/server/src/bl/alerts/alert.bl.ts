@@ -50,4 +50,8 @@ export class AlertBL {
 	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
 		await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
 	}
+
+	async deleteAlert(alertId: string): Promise<void> {
+		await this.alertRepo.deleteAlert(alertId);
+	}
 }

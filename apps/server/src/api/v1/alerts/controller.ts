@@ -61,18 +61,22 @@ export class AlertController {
 				return res.status(400).json({ error: 'Missing incident in payload' });
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
-				id: incident.incident_id,
-				type: 'GCP',
-				status: incident.state,
-				tag: incident.resource_name || 'unknown',
-				starts_at: incident.started_at || new Date().toISOString(),
-				updated_at: new Date().toISOString(),
-				alert_url: incident.url || 'unknown',
-				alert_name: incident.policy_name || 'unknown',
-				summary: incident.summary || 'unknown',
-				runbook_url: incident.documentation?.content || 'unknown',
-			});
+			if (incident.state.toLowerCase() === 'closed') {
+				await this.alertBL.deleteAlert(incident.incident_id);
+			} else {
+				await this.alertBL.insertOrUpdateAlert({
+					id: incident.incident_id,
+					type: 'GCP',
+					status: incident.state,
+					tag: incident.resource_name || 'unknown',
+					starts_at: incident.started_at || new Date().toISOString(),
+					updated_at: new Date().toISOString(),
+					alert_url: incident.url || 'unknown',
+					alert_name: incident.policy_name || 'unknown',
+					summary: incident.summary || 'unknown',
+					runbook_url: incident.documentation?.content || 'unknown',
+				});
+			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
 			logger.error('Error creating gcp alert:', error);
@@ -104,6 +108,20 @@ export class AlertController {
 				logger.error('Error creating integration:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
+		}
+	}
+
+	async deleteAlert(req: Request, res: Response) {
+		try {
+			const alertId = req.params.alertId;
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			await this.alertBL.deleteAlert(alertId);
+			return res.json({ success: true, message: 'Alert deleted successfully' });
+		} catch (error) {
+			logger.error('Error deleting alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
 }
