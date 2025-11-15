@@ -8,7 +8,7 @@
 		"debug": "vite",
 		"build": "vite build",
 		"build:dev": "vite build --mode development",
-		"format-fix": "prettier --write . && eslint . --fix",
+		"format-fix": "prettier --write .",
 		"preview": "vite preview",
 		"clean": "rm -rf dist",
 		"test": "vitest",
@@ -17,8 +17,7 @@
 		"test:coverage": "vitest run --coverage",
 		"lint": "eslint .",
 		"lint-fix": "eslint . --fix",
-		"format": "prettier --write .",
-		"format-check": "prettier --check .",
+		"format": "prettier --check .",
 		"check": "npm run format && npm run lint",
 		"fix": "npm run format-fix && npm run lint-fix"
 	},
