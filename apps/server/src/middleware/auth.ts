@@ -28,7 +28,6 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 	return authenticateUserJWT(req, res, next);
 }
 
-
 function authenticateApiToken(req: Request, res: Response, next: NextFunction) {
 	const apiToken = req.headers['x-api-token'];
 
