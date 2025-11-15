@@ -1,6 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
 	Table,
@@ -10,19 +16,12 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import {
 	ArrowDown,
 	ArrowUp,
 	ArrowUpDown,
-	Bell,
 	ExternalLink,
 	MoreVertical,
 	RotateCcw,
@@ -30,9 +29,8 @@ import {
 	Settings,
 	X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
-import { GCPIcon } from '@/components/icons/GCPIcon';
+import { MouseEvent, useMemo, useState } from 'react';
+import { getIntegrationLabel, IntegrationAvatar, resolveAlertIntegration } from './IntegrationAvatar';
 
 export type AlertSortField = 'alertName' | 'status' | 'tag' | 'startsAt' | 'summary' | 'type';
 
@@ -79,7 +77,7 @@ export const AlertsTable = ({
 	onAlertClick,
 }: AlertsTableProps) => {
 	const [searchTerm, setSearchTerm] = useState('');
-	const [sortField, setSortField] = useState<AlertSortField | null>('startsAt');
+	const [sortField, setSortField] = useState<AlertSortField>('startsAt');
 	const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
 	// Create service name lookup map
@@ -91,52 +89,20 @@ export const AlertsTable = ({
 		return map;
 	}, [services]);
 
-	const getAlertType = (alert: Alert): string => {
-		if (alert.type) return alert.type;
-		if (alert.id.toLowerCase().includes('grafana')) return 'Grafana';
-		if (alert.id.toLowerCase().includes('gcp')) return 'GCP';
-		if (alert.tag?.toLowerCase().includes('prometheus')) return 'Prometheus';
-		if (alert.tag?.toLowerCase().includes('datadog')) return 'Datadog';
-		return 'Custom';
-	};
-
-	const getAlertTypeIcon = (type: string) => {
-		switch (type.toLowerCase()) {
-			case 'grafana':
-				return (
-					<div className="w-5 h-5 flex items-center justify-center" title="Grafana">
-						<GrafanaIcon className="w-5 h-5" />
-					</div>
-				);
-			case 'gcp':
-				return (
-					<div className="w-5 h-5 flex items-center justify-center" title="GCP">
-						<GCPIcon className="w-5 h-5" />
-					</div>
-				);
-			default:
-				return (
-					<div className="w-5 h-5 flex items-center justify-center" title="Custom Alert">
-						<div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center border border-border">
-							<Bell className="w-3 h-3 text-foreground" />
-						</div>
-					</div>
-				);
-		}
-	};
-
 	// Filter alerts based on search term
 	const filteredAlerts = useMemo(() => {
 		if (!searchTerm.trim()) return alerts;
 		const lower = searchTerm.toLowerCase();
 		return alerts.filter((alert) => {
-			const alertType = getAlertType(alert).toLowerCase();
+			const integration = resolveAlertIntegration(alert);
+			const integrationLabel = getIntegrationLabel(integration).toLowerCase();
+			const tag = alert.tag?.toLowerCase() || '';
 			return (
 				alert.alertName.toLowerCase().includes(lower) ||
 				alert.status.toLowerCase().includes(lower) ||
-				alert.tag.toLowerCase().includes(lower) ||
+				tag.includes(lower) ||
 				(alert.summary && alert.summary.toLowerCase().includes(lower)) ||
-				alertType.includes(lower)
+				integrationLabel.includes(lower)
 			);
 		});
 	}, [alerts, searchTerm]);
@@ -171,8 +137,8 @@ export const AlertsTable = ({
 					bValue = new Date(b.startsAt).getTime();
 					break;
 				case 'type':
-					aValue = getAlertType(a).toLowerCase();
-					bValue = getAlertType(b).toLowerCase();
+					aValue = getIntegrationLabel(resolveAlertIntegration(a)).toLowerCase();
+					bValue = getIntegrationLabel(resolveAlertIntegration(b)).toLowerCase();
 					break;
 				default:
 					return 0;
@@ -190,7 +156,7 @@ export const AlertsTable = ({
 			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
 		} else {
 			setSortField(field);
-			setSortDirection('asc');
+			setSortDirection(field === 'startsAt' ? 'desc' : 'asc');
 		}
 	};
 
@@ -359,9 +325,7 @@ export const AlertsTable = ({
 												case 'type':
 													return (
 														<TableCell key={column} className="py-1 px-2">
-															<div className="flex items-center justify-center">
-																{getAlertTypeIcon(getAlertType(alert))}
-															</div>
+															<TypeAvatarStack alert={alert} />
 														</TableCell>
 													);
 												case 'alertName':
@@ -408,83 +372,11 @@ export const AlertsTable = ({
 												case 'actions':
 													return (
 														<TableCell key={column} className="py-1 px-2">
-															<div className="flex items-center gap-1">
-																{(alert.runbookUrl || alert.alertUrl) && (
-																	<DropdownMenu>
-																		<DropdownMenuTrigger asChild>
-																			<Button
-																				variant="ghost"
-																				size="icon"
-																				className="h-6 w-6"
-																				onClick={(e) => e.stopPropagation()}
-																			>
-																				<MoreVertical className="h-3 w-3" />
-																			</Button>
-																		</DropdownMenuTrigger>
-																		<DropdownMenuContent align="end">
-																			{alert.runbookUrl && (
-																				<DropdownMenuItem
-																					onClick={() =>
-																						window.open(
-																							alert.runbookUrl,
-																							'_blank',
-																							'noopener,noreferrer'
-																						)
-																					}
-																				>
-																					<span className="mr-2">📖</span>
-																					Open Runbook
-																				</DropdownMenuItem>
-																			)}
-																			{alert.alertUrl && (
-																				<DropdownMenuItem
-																					onClick={() =>
-																						window.open(
-																							alert.alertUrl,
-																							'_blank',
-																							'noopener,noreferrer'
-																						)
-																					}
-																				>
-																					<ExternalLink className="mr-2 h-3 w-3" />
-																					View in Source
-																				</DropdownMenuItem>
-																			)}
-																		</DropdownMenuContent>
-																	</DropdownMenu>
-																)}
-																{alert.isDismissed ? (
-																	onUndismissAlert && (
-																		<Button
-																			variant="ghost"
-																			size="icon"
-																			className="h-6 w-6"
-																			onClick={(e) => {
-																				e.stopPropagation();
-																				onUndismissAlert(alert.id);
-																			}}
-																			title="Undismiss Alert"
-																		>
-																			<RotateCcw className="h-3 w-3" />
-																		</Button>
-																	)
-																) : (
-																	onDismissAlert && (
-																		<Button
-																			variant="ghost"
-																			size="icon"
-																			className="h-6 w-6"
-																			onClick={(e) => {
-																				e.stopPropagation();
-																				onDismissAlert(alert.id);
-																			}}
-																			title="Dismiss Alert"
-																		>
-																			<X className="h-3 w-3" />
-																		</Button>
-																	)
-																)}
-															</div>
+															<RowActions
+																alert={alert}
+																onDismissAlert={onDismissAlert}
+																onUndismissAlert={onUndismissAlert}
+															/>
 														</TableCell>
 													);
 												default:
@@ -498,6 +390,124 @@ export const AlertsTable = ({
 					</TableBody>
 				</Table>
 			</div>
+		</div>
+	);
+};
+
+const TypeAvatarStack = ({ alert }: { alert: Alert }) => {
+	const integration = resolveAlertIntegration(alert);
+	const integrationLabel = getIntegrationLabel(integration);
+
+	return (
+		<div className="flex items-center gap-2">
+			<div className="flex -space-x-1.5" aria-label={`${integrationLabel} alert type`}>
+				<IntegrationAvatar
+					integration={integration}
+					size="sm"
+					className="ring-2 ring-background shadow-sm"
+				/>
+				<StatusAvatar isDismissed={alert.isDismissed} />
+			</div>
+			<span className="text-xs font-medium text-muted-foreground">{integrationLabel}</span>
+		</div>
+	);
+};
+
+const StatusAvatar = ({ isDismissed }: { isDismissed: boolean }) => (
+	<span
+		className={cn(
+			'h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-semibold uppercase tracking-tight ring-2 ring-background shadow-sm',
+			isDismissed ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-rose-100 border-rose-200 text-rose-700'
+		)}
+		title={isDismissed ? 'Dismissed alert' : 'Firing alert'}
+	>
+		{isDismissed ? 'D' : 'F'}
+	</span>
+);
+
+interface RowActionsProps {
+	alert: Alert;
+	onDismissAlert?: (alertId: string) => void;
+	onUndismissAlert?: (alertId: string) => void;
+}
+
+const RowActions = ({ alert, onDismissAlert, onUndismissAlert }: RowActionsProps) => {
+	const { alertUrl, runbookUrl, isDismissed } = alert;
+	const hasLinks = Boolean(alertUrl || runbookUrl);
+	const canToggle = (!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert));
+
+	const handleToggle = (event: MouseEvent<HTMLButtonElement>) => {
+		event.stopPropagation();
+		if (isDismissed) {
+			onUndismissAlert?.(alert.id);
+		} else {
+			onDismissAlert?.(alert.id);
+		}
+	};
+
+	const handleOpenLink = (url: string) => {
+		window.open(url, '_blank', 'noopener,noreferrer');
+	};
+
+	return (
+		<div className="flex items-center justify-end gap-1.5">
+			{hasLinks && (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-6 w-6"
+							onClick={(event) => event.stopPropagation()}
+							title="More actions"
+						>
+							<MoreVertical className="h-3 w-3" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						{runbookUrl && (
+							<DropdownMenuItem onClick={(event) => {
+								event.stopPropagation();
+								handleOpenLink(runbookUrl);
+							}}>
+								<span className="mr-2">📖</span>
+								Runbook
+							</DropdownMenuItem>
+						)}
+						{alertUrl && (
+							<DropdownMenuItem
+								onClick={(event) => {
+									event.stopPropagation();
+									handleOpenLink(alertUrl);
+								}}
+							>
+								<ExternalLink className="mr-2 h-3 w-3" />
+								Source
+							</DropdownMenuItem>
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
+			{canToggle && (
+				<Button
+					variant="outline"
+					size="sm"
+					className="h-7 px-2 text-xs gap-1"
+					onClick={handleToggle}
+				>
+					{isDismissed ? (
+						<>
+							<RotateCcw className="h-3 w-3" />
+							Undismiss
+						</>
+					) : (
+						<>
+							<X className="h-3 w-3" />
+							Dismiss
+						</>
+					)}
+				</Button>
+			)}
 		</div>
 	);
 };

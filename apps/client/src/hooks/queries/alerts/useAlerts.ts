@@ -12,7 +12,7 @@ export const useAlerts = () => {
 			}
 			return response.data?.alerts || [];
 		},
-		staleTime: 30 * 1000, // 30 seconds
-		refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+		staleTime: 5 * 1000,
+		refetchInterval: 5 * 1000,
 	});
 };

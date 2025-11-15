@@ -6,21 +6,23 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import {
-	Providers,
-	Integrations,
-	NotFound,
-	Register,
-	Login,
-	Settings,
 	Alerts,
 	AlertsTVMode,
+	Integrations,
+	Login,
+	NotFound,
+	Providers,
+	Register,
+	Settings,
 	TVMode,
 } from './pages';
-import { Dashboard } from '@/components/Dashboard';
-import { Profile } from '@/components/Profile';
-import { ThemeProvider } from './components/ThemeProvider';
-import { AuthGuard } from './components/AuthGuard';
-import ScrollToTopButton from '@/components/ScrollToTopButton';
+import {
+	AuthGuard,
+	Dashboard,
+	Profile,
+	ScrollToTopButton,
+	ThemeProvider,
+} from '@/components';
 import { isEditor } from './lib/auth';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';
