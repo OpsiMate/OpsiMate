@@ -1,5 +1,4 @@
 import { AlertDetails } from '@/components/AlertDetails';
-import { AlertsTable } from './AlertsTable';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { RefreshCw, Tv } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
+import { AlertsTable } from './AlertsTable';
 
 const Alerts = () => {
 	const navigate = useNavigate();
