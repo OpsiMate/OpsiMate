@@ -21,16 +21,14 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 
 	// Prefer API token if provided
 	if (hasApiToken) {
-		return authenticateApiToken(req, res, next);
+		return authenticateApiToken(apiToken, res, next);
 	}
 
 	// Otherwise, use JWT
 	return authenticateUserJWT(req, res, next);
 }
 
-function authenticateApiToken(req: Request, res: Response, next: NextFunction) {
-	const apiToken = req.headers['x-api-token'] || req.query.api_token;
-
+function authenticateApiToken(apiToken: string, res: Response, next: NextFunction) {
 	if (apiToken !== process.env.API_TOKEN) {
 		return res.status(401).json({ success: false, error: 'Invalid API token' });
 	}
