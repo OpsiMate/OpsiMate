@@ -352,8 +352,8 @@ export const AlertsTable = ({
 													);
 												case 'startsAt': {
 													const date = new Date(alert.startsAt);
-													const dateString = isNaN(date.getTime()) 
-														? 'Invalid Date' 
+													const dateString = isNaN(date.getTime())
+														? 'Invalid Date'
 														: date.toLocaleString();
 													return (
 														<TableCell key={column} className="py-1 px-2">

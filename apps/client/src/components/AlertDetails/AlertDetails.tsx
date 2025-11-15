@@ -102,9 +102,7 @@ export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className
 								<div className="text-sm">
 									{(() => {
 										const date = new Date(alert.startsAt);
-										return isNaN(date.getTime()) 
-											? 'Invalid Date' 
-											: format(date, 'PPpp');
+										return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'PPpp');
 									})()}
 								</div>
 							</div>
@@ -118,9 +116,7 @@ export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className
 									<div className="text-sm">
 										{(() => {
 											const date = new Date(alert.updatedAt);
-											return isNaN(date.getTime()) 
-												? 'Invalid Date' 
-												: format(date, 'PPpp');
+											return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'PPpp');
 										})()}
 									</div>
 								</div>

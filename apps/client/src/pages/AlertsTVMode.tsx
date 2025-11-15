@@ -332,7 +332,8 @@ const AlertsTVMode = () => {
 				{showDetails && (
 					<div className="px-3 pb-2">
 						<p className="text-[10px] text-muted-foreground">
-							Started: {(() => {
+							Started:{' '}
+							{(() => {
 								const date = new Date(alert.startsAt);
 								return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString();
 							})()}
