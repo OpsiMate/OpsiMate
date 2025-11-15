@@ -137,4 +137,11 @@ export class AlertRepository {
 			stmt.run(alertType, ...activeAlertIds);
 		});
 	}
+
+	async deleteAlert(alertId: string) {
+		return runAsync(() => {
+			const stmt = this.db.prepare(`DELETE FROM alerts WHERE id = ?`);
+			stmt.run(alertId);
+		});
+	}
 }
