@@ -9,7 +9,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-	const apiToken = req.headers['x-api-token'];
+	const apiToken = req.headers['x-api-token'] || req.query.api_token;
 	const authHeader = req.headers.authorization;
 
 	// If neither token type is provided, reject immediately
