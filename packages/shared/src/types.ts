@@ -114,7 +114,7 @@ export interface DiscoveredPod {
 	name: string;
 }
 
-export type AlertType = 'Grafana' | 'GCP';
+export type AlertType = 'Grafana' | 'GCP' | 'Custom';
 
 export interface Alert {
 	id: string;

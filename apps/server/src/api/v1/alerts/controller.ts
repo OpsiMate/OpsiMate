@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
+import { GcpAlertWebhook, HttpAlertWebhookSchema } from './models';
+import { isZodError } from '../../../utils/isZodError.ts';
 
 const logger: Logger = new Logger('server');
 
@@ -48,6 +50,60 @@ export class AlertController {
 		} catch (error) {
 			logger.error('Error undismissing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createCustomGCPAlert(req: Request, res: Response) {
+		try {
+			const payload = req.body as GcpAlertWebhook;
+			const incident = payload.incident;
+			if (!incident) {
+				return res.status(400).json({ error: 'Missing incident in payload' });
+			}
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: incident.incident_id,
+				type: 'GCP',
+				status: incident.state,
+				tag: incident.resource_name || 'unknown',
+				starts_at: incident.started_at || new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+				alert_url: incident.url || 'unknown',
+				alert_name: incident.policy_name || 'unknown',
+				summary: incident.summary || 'unknown',
+				runbook_url: incident.documentation?.content || 'unknown',
+			});
+			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
+		} catch (error) {
+			logger.error('Error creating gcp alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createCustomAlert(req: Request, res: Response) {
+		try {
+			const alert = HttpAlertWebhookSchema.parse(req.body);
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: alert.id,
+				type: 'Custom',
+				status: alert.status,
+				tag: alert.tag,
+				starts_at: alert.startsAt,
+				updated_at: alert.updatedAt,
+				alert_url: alert.alertUrl,
+				alert_name: alert.alertName,
+				summary: alert.summary,
+				runbook_url: alert.runbookUrl,
+			});
+			return res.status(200).json({ success: true, data: { alertId: alert.id } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			} else {
+				logger.error('Error creating integration:', error);
+				return res.status(500).json({ success: false, error: 'Internal server error' });
+			}
 		}
 	}
 }
