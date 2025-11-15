@@ -125,10 +125,14 @@ export const AlertsTable = ({
 					aValue = (a.summary || '').toLowerCase();
 					bValue = (b.summary || '').toLowerCase();
 					break;
-				case 'startsAt':
-					aValue = new Date(a.startsAt).getTime();
-					bValue = new Date(b.startsAt).getTime();
+				case 'startsAt': {
+					const aDate = new Date(a.startsAt);
+					const bDate = new Date(b.startsAt);
+					// Handle invalid dates by treating them as very old dates for sorting
+					aValue = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+					bValue = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
 					break;
+				}
 				case 'type':
 					aValue = getIntegrationLabel(resolveAlertIntegration(a)).toLowerCase();
 					bValue = getIntegrationLabel(resolveAlertIntegration(b)).toLowerCase();
@@ -346,14 +350,19 @@ export const AlertsTable = ({
 															</span>
 														</TableCell>
 													);
-												case 'startsAt':
+												case 'startsAt': {
+													const date = new Date(alert.startsAt);
+													const dateString = isNaN(date.getTime()) 
+														? 'Invalid Date' 
+														: date.toLocaleString();
 													return (
 														<TableCell key={column} className="py-1 px-2">
 															<span className="text-sm text-muted-foreground">
-																{new Date(alert.startsAt).toLocaleString()}
+																{dateString}
 															</span>
 														</TableCell>
 													);
+												}
 												case 'actions':
 													return (
 														<TableCell key={column} className="py-1 px-2">
