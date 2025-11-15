@@ -19,6 +19,7 @@ const seedAlerts = () => {
 	const sampleAlerts: Omit<AlertRow, 'created_at'>[] = [
 		{
 			id: 'alert-1',
+			type: 'Grafana',
 			status: 'active',
 			tag: 'system',
 			starts_at: new Date().toISOString(),
@@ -31,6 +32,7 @@ const seedAlerts = () => {
 		},
 		{
 			id: 'alert-2',
+			type: 'Grafana',
 			status: 'warning',
 			tag: 'security',
 			starts_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
@@ -44,6 +46,7 @@ const seedAlerts = () => {
 		{
 			id: 'alert-3',
 			status: 'critical',
+			type: 'Grafana',
 			tag: 'database',
 			starts_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
 			updated_at: new Date().toISOString(),
@@ -333,23 +336,23 @@ describe('Alerts API', () => {
 		});
 
 		// todo: uncomment when adding permissions validation
-		// test('should return 401 when no auth token is provided', async () => {
-		// 	const payload = {
-		// 		id: 'unauthorized-alert',
-		// 		status: 'active',
-		// 		tag: 'security',
-		// 		startsAt: new Date().toISOString(),
-		// 		updatedAt: new Date().toISOString(),
-		// 		alertUrl: 'https://example.com/a',
-		// 		alertName: 'Unauthorized Alert',
-		// 		createdAt: new Date().toISOString(),
-		// 	};
-		//
-		// 	const response = await app.post('/api/v1/alerts/custom').send(payload);
-		//
-		// 	expect(response.status).toBe(401);
-		// 	expect(response.body.success).toBe(false);
-		// });
+		test('should return 401 when no auth token is provided', async () => {
+			const payload = {
+				id: 'unauthorized-alert',
+				status: 'active',
+				tag: 'security',
+				startsAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				alertUrl: 'https://example.com/a',
+				alertName: 'Unauthorized Alert',
+				createdAt: new Date().toISOString(),
+			};
+
+			const response = await app.post('/api/v1/alerts/custom').send(payload);
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
 
 		test('should handle DB insertion duplicate id - update status', async () => {
 			const existingId = testAlerts[0].id;
