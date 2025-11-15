@@ -19,9 +19,7 @@ export const FilterSidebar = ({ children, collapsed, onToggle, className }: Filt
 				className
 			)}
 		>
-			<div className={cn('h-full flex flex-col', !collapsed && 'pr-4')}>
-				{children}
-			</div>
+			<div className={cn('h-full flex flex-col', !collapsed && 'pr-4')}>{children}</div>
 			<Button
 				onClick={onToggle}
 				variant="ghost"

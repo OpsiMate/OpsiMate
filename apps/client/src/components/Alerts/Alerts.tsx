@@ -25,29 +25,15 @@ const Alerts = () => {
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
-	const [visibleColumns, setVisibleColumns] = useState([
-		'type',
-		'alertName',
-		'status',
-		'tag',
-		'startsAt',
-		'actions',
-	]);
-	const [columnOrder, setColumnOrder] = useState([
-		'type',
-		'alertName',
-		'status',
-		'tag',
-		'startsAt',
-		'actions',
-	]);
+	const [visibleColumns, setVisibleColumns] = useState(['type', 'alertName', 'status', 'tag', 'startsAt', 'actions']);
+	const [columnOrder, setColumnOrder] = useState(['type', 'alertName', 'status', 'tag', 'startsAt', 'actions']);
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
 	useEffect(() => {
 		const interval = setInterval(() => {
-			const hasOpenDialog = document.querySelector('[role="dialog"]') ||
-				document.querySelector('[data-state="open"]');
+			const hasOpenDialog =
+				document.querySelector('[role="dialog"]') || document.querySelector('[data-state="open"]');
 
 			if (!hasOpenDialog) {
 				refetch();
@@ -164,7 +150,10 @@ const Alerts = () => {
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
-				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}>
+				<FilterSidebar
+					collapsed={filterPanelCollapsed}
+					onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
+				>
 					<AlertsFilterPanel
 						alerts={alerts}
 						filters={filters}
@@ -176,41 +165,36 @@ const Alerts = () => {
 				<div className="flex-1 flex">
 					<div className="flex-1 flex flex-col p-4">
 						<div className="mb-4">
-						<div className="flex items-center justify-between">
-							<div>
-								<h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
-								<p className="text-sm text-muted-foreground mt-1">
-									Monitor and manage system alerts
+							<div className="flex items-center justify-between">
+								<div>
+									<h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
+									<p className="text-sm text-muted-foreground mt-1">
+										Monitor and manage system alerts
+									</p>
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={handleManualRefresh}
+										disabled={isRefreshing}
+										className="gap-2"
+									>
+										<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+										Refresh
+									</Button>
+									<Button variant="outline" size="sm" onClick={handleLaunchTVMode} className="gap-2">
+										<Tv className="h-4 w-4" />
+										TV Mode
+									</Button>
+								</div>
+							</div>
+							{lastRefresh && (
+								<p className="text-xs text-muted-foreground mt-2">
+									Last refreshed: {lastRefresh.toLocaleTimeString()}
 								</p>
-							</div>
-							<div className="flex items-center gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={handleManualRefresh}
-									disabled={isRefreshing}
-									className="gap-2"
-								>
-									<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-									Refresh
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={handleLaunchTVMode}
-									className="gap-2"
-								>
-									<Tv className="h-4 w-4" />
-									TV Mode
-								</Button>
-							</div>
+							)}
 						</div>
-						{lastRefresh && (
-							<p className="text-xs text-muted-foreground mt-2">
-								Last refreshed: {lastRefresh.toLocaleTimeString()}
-							</p>
-						)}
-					</div>
 
 						<div className="flex-1 overflow-auto">
 							<AlertsTable
@@ -233,11 +217,7 @@ const Alerts = () => {
 									{selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''} selected
 								</span>
 								<div className="flex items-center gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => setSelectedAlerts([])}
-									>
+									<Button variant="outline" size="sm" onClick={() => setSelectedAlerts([])}>
 										Clear selection
 									</Button>
 									{selectedAlerts.every((a) => !a.isDismissed) && (

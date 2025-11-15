@@ -926,35 +926,61 @@ export const Providers = () => {
 																											)
 																									);
 																								const mappedService: Service =
-																								{
-																									id: service.id,
-																									name: service.name,
-																									serviceStatus: service.status,
-																									serviceType: service.type as 'MANUAL' | 'DOCKER' | 'SYSTEMD',
-																									createdAt: new Date().toISOString(),
-																									provider: parentProvider ? {
-																										id: parentProvider.id,
-																										name: parentProvider.name,
-																										providerIP: parentProvider.providerIP || '',
-																										username: parentProvider.username || '',
-																										privateKeyFilename: parentProvider.privateKeyFilename || '',
-																										SSHPort: parentProvider.SSHPort || 22,
-																										createdAt: 0,
-																										providerType: parentProvider.providerType,
-																									} : {
-																										id: -1,
-																										name: 'Unknown',
-																										providerIP: '',
-																										username: '',
-																										privateKeyFilename: '',
-																										SSHPort: 22,
-																										createdAt: 0,
-																										providerType: 'VM',
-																									},
-																									serviceIP: service.serviceIP || '',
-																									containerDetails: service.containerDetails || {},
-																									tags: [],
-																								};
+																									{
+																										id: service.id,
+																										name: service.name,
+																										serviceStatus:
+																											service.status,
+																										serviceType:
+																											service.type as
+																												| 'MANUAL'
+																												| 'DOCKER'
+																												| 'SYSTEMD',
+																										createdAt:
+																											new Date().toISOString(),
+																										provider:
+																											parentProvider
+																												? {
+																														id: parentProvider.id,
+																														name: parentProvider.name,
+																														providerIP:
+																															parentProvider.providerIP ||
+																															'',
+																														username:
+																															parentProvider.username ||
+																															'',
+																														privateKeyFilename:
+																															parentProvider.privateKeyFilename ||
+																															'',
+																														SSHPort:
+																															parentProvider.SSHPort ||
+																															22,
+																														createdAt: 0,
+																														providerType:
+																															parentProvider.providerType,
+																													}
+																												: {
+																														id: -1,
+																														name: 'Unknown',
+																														providerIP:
+																															'',
+																														username:
+																															'',
+																														privateKeyFilename:
+																															'',
+																														SSHPort: 22,
+																														createdAt: 0,
+																														providerType:
+																															'VM',
+																													},
+																										serviceIP:
+																											service.serviceIP ||
+																											'',
+																										containerDetails:
+																											service.containerDetails ||
+																											{},
+																										tags: [],
+																									};
 																								setSelectedServiceForDrawer(
 																									mappedService
 																								);
@@ -1056,23 +1082,24 @@ export const Providers = () => {
 																		provider.
 																	</p>
 																	{canManageProviders() &&
-																	(provider.providerType === ProviderType.VM ||
-																		provider.providerType === ProviderType.K8S) && (
-																		<Button
-																			variant="outline"
-																			size="sm"
-																			onClick={(e) => {
-																				e.stopPropagation();
-																				setSelectedServerForService(
-																					provider
-																				);
-																				setIsAddServiceDialogOpen(true);
-																			}}
-																		>
-																			<ListPlus className="mr-2 h-4 w-4" />
-																			Add New Service
-																		</Button>
-																	)}
+																		(provider.providerType === ProviderType.VM ||
+																			provider.providerType ===
+																				ProviderType.K8S) && (
+																			<Button
+																				variant="outline"
+																				size="sm"
+																				onClick={(e) => {
+																					e.stopPropagation();
+																					setSelectedServerForService(
+																						provider
+																					);
+																					setIsAddServiceDialogOpen(true);
+																				}}
+																			>
+																				<ListPlus className="mr-2 h-4 w-4" />
+																				Add New Service
+																			</Button>
+																		)}
 																</div>
 															</div>
 														)}
@@ -1181,7 +1208,12 @@ export const Providers = () => {
 							selectedProviderType === 'server'
 								? 'Connect to a virtual machine or physical server'
 								: 'Connect to a Kubernetes cluster',
-						icon: selectedProviderType === 'server' ? <Server className="h-5 w-5" /> : <Globe className="h-5 w-5" />,
+						icon:
+							selectedProviderType === 'server' ? (
+								<Server className="h-5 w-5" />
+							) : (
+								<Globe className="h-5 w-5" />
+							),
 					}}
 					onClose={() => {
 						setIsAddProviderOpen(false);

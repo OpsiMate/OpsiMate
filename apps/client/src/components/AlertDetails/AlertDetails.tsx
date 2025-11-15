@@ -7,14 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { format } from 'date-fns';
-import {
-    Bell,
-    Calendar,
-    Clock,
-    ExternalLink,
-    RotateCcw,
-    X,
-} from 'lucide-react';
+import { Bell, Calendar, Clock, ExternalLink, RotateCcw, X } from 'lucide-react';
 
 interface AlertDetailsProps {
 	alert: Alert | null;
@@ -24,13 +17,7 @@ interface AlertDetailsProps {
 	className?: string;
 }
 
-export const AlertDetails = ({
-	alert,
-	onClose,
-	onDismiss,
-	onUndismiss,
-	className,
-}: AlertDetailsProps) => {
+export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className }: AlertDetailsProps) => {
 	if (!alert) return null;
 
 	const getAlertType = (alert: Alert): string => {
@@ -63,12 +50,7 @@ export const AlertDetails = ({
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
 			<div className="flex items-center justify-between p-4 border-b">
 				<h2 className="text-lg font-semibold">Alert Details</h2>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={onClose}
-					className="h-8 w-8"
-				>
+				<Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
 					<X className="h-4 w-4" />
 				</Button>
 			</div>
@@ -77,9 +59,7 @@ export const AlertDetails = ({
 				<div className="p-4 space-y-4">
 					<div className="flex flex-col gap-3">
 						<div className="flex items-center gap-3">
-							<div className="flex-shrink-0">
-								{getAlertTypeIcon(alertType)}
-							</div>
+							<div className="flex-shrink-0">{getAlertTypeIcon(alertType)}</div>
 							<div className="flex-1 min-w-0">
 								<div className="flex items-center gap-2 flex-wrap">
 									<h3 className="text-lg font-semibold break-words flex-1 min-w-0">
@@ -107,9 +87,7 @@ export const AlertDetails = ({
 						<>
 							<Separator />
 							<div>
-								<p className="text-sm text-muted-foreground leading-relaxed">
-									{alert.summary}
-								</p>
+								<p className="text-sm text-muted-foreground leading-relaxed">{alert.summary}</p>
 							</div>
 						</>
 					)}
@@ -121,9 +99,7 @@ export const AlertDetails = ({
 							<Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 							<div className="flex-1 min-w-0">
 								<div className="text-xs font-medium text-muted-foreground mb-1">Started At</div>
-								<div className="text-sm">
-									{format(new Date(alert.startsAt), 'PPpp')}
-								</div>
+								<div className="text-sm">{format(new Date(alert.startsAt), 'PPpp')}</div>
 							</div>
 						</div>
 
@@ -132,9 +108,7 @@ export const AlertDetails = ({
 								<Clock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 								<div className="flex-1 min-w-0">
 									<div className="text-xs font-medium text-muted-foreground mb-1">Last Updated</div>
-									<div className="text-sm">
-										{format(new Date(alert.updatedAt), 'PPpp')}
-									</div>
+									<div className="text-sm">{format(new Date(alert.updatedAt), 'PPpp')}</div>
 								</div>
 							</div>
 						)}
@@ -196,9 +170,7 @@ export const AlertDetails = ({
 
 					<div className="pt-2">
 						<div className="text-xs font-medium text-muted-foreground mb-1">Alert ID</div>
-						<code className="text-xs bg-muted px-2 py-1 rounded break-all block">
-							{alert.id}
-						</code>
+						<code className="text-xs bg-muted px-2 py-1 rounded break-all block">{alert.id}</code>
 					</div>
 				</div>
 			</ScrollArea>

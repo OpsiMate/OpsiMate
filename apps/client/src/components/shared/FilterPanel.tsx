@@ -1,9 +1,4 @@
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -63,10 +58,7 @@ export const FilterPanel = ({
 		onFilterChange({});
 	};
 
-	const activeFilterCount = Object.values(filters).reduce(
-		(count, values) => count + values.length,
-		0
-	);
+	const activeFilterCount = Object.values(filters).reduce((count, values) => count + values.length, 0);
 
 	const defaultOpenValues = config.defaultOpen || config.fields.map((f) => f);
 
@@ -133,18 +125,21 @@ export const FilterPanel = ({
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
-							<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50">
-								<div className="flex items-center justify-between w-full pr-2">
-									<span className="text-xs font-medium">
-										{config.fieldLabels[field] || field}
-									</span>
-									{activeValues.length > 0 && (
-										<Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-muted/50 border-muted-foreground/20">
-											{activeValues.length}
-										</Badge>
-									)}
-								</div>
-							</AccordionTrigger>
+									<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50">
+										<div className="flex items-center justify-between w-full pr-2">
+											<span className="text-xs font-medium">
+												{config.fieldLabels[field] || field}
+											</span>
+											{activeValues.length > 0 && (
+												<Badge
+													variant="outline"
+													className="text-[10px] px-1.5 py-0 h-4 bg-muted/50 border-muted-foreground/20"
+												>
+													{activeValues.length}
+												</Badge>
+											)}
+										</div>
+									</AccordionTrigger>
 									<AccordionContent className="pb-2">
 										<div className="space-y-1 px-2">
 											{fieldFacets.map(({ value, count, displayValue }) => {

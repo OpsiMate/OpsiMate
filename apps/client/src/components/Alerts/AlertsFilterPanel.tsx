@@ -1,9 +1,4 @@
-import {
-    ActiveFilters,
-    FilterFacets,
-    FilterPanel,
-    FilterPanelConfig,
-} from '@/components/shared';
+import { ActiveFilters, FilterFacets, FilterPanel, FilterPanelConfig } from '@/components/shared';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 
@@ -60,10 +55,7 @@ export const AlertsFilterPanel = ({
 			}
 
 			if (alert.alertName) {
-				facetData.alertName.set(
-					alert.alertName,
-					(facetData.alertName.get(alert.alertName) || 0) + 1
-				);
+				facetData.alertName.set(alert.alertName, (facetData.alertName.get(alert.alertName) || 0) + 1);
 			}
 		});
 

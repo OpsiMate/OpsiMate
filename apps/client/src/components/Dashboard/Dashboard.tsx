@@ -136,7 +136,10 @@ export const Dashboard = () => {
 			<DashboardLayout>
 				<div className="flex flex-col h-full">
 					<div className="flex flex-row h-full">
-						<FilterSidebar collapsed={filterPanelCollapsed} onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}>
+						<FilterSidebar
+							collapsed={filterPanelCollapsed}
+							onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
+						>
 							<ServiceFilterPanel
 								services={services as unknown as Service[]}
 								filters={filters}

@@ -1,9 +1,4 @@
-import {
-    ActiveFilters,
-    FilterFacets,
-    FilterPanelConfig,
-    FilterPanel as SharedFilterPanel,
-} from '@/components/shared';
+import { ActiveFilters, FilterFacets, FilterPanelConfig, FilterPanel as SharedFilterPanel } from '@/components/shared';
 import { useMemo } from 'react';
 import { Service } from '../../ServiceTable';
 

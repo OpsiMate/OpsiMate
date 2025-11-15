@@ -5,24 +5,8 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import {
-	Alerts,
-	AlertsTVMode,
-	Integrations,
-	Login,
-	NotFound,
-	Providers,
-	Register,
-	Settings,
-	TVMode,
-} from './pages';
-import {
-	AuthGuard,
-	Dashboard,
-	Profile,
-	ScrollToTopButton,
-	ThemeProvider,
-} from '@/components';
+import { Alerts, AlertsTVMode, Integrations, Login, NotFound, Providers, Register, Settings, TVMode } from './pages';
+import { AuthGuard, Dashboard, Profile, ScrollToTopButton, ThemeProvider } from '@/components';
 import { isEditor } from './lib/auth';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';

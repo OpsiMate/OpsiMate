@@ -8,14 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import {
@@ -111,11 +104,11 @@ export const AlertsTable = ({
 	const sortedAlerts = useMemo(() => {
 		if (!sortField) return filteredAlerts;
 
-	return [...filteredAlerts].sort((a, b) => {
-		let aValue: string | number;
-		let bValue: string | number;
+		return [...filteredAlerts].sort((a, b) => {
+			let aValue: string | number;
+			let bValue: string | number;
 
-		switch (sortField) {
+			switch (sortField) {
 				case 'alertName':
 					aValue = a.alertName.toLowerCase();
 					bValue = b.alertName.toLowerCase();
@@ -204,11 +197,7 @@ export const AlertsTable = ({
 		if (sortField !== field) {
 			return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />;
 		}
-		return sortDirection === 'asc' ? (
-			<ArrowUp className="h-3 w-3" />
-		) : (
-			<ArrowDown className="h-3 w-3" />
-		);
+		return sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 	};
 
 	// Filter visible columns
@@ -249,8 +238,7 @@ export const AlertsTable = ({
 								<TableHead className="w-10 h-8 py-1 px-2">
 									<Checkbox
 										checked={
-											sortedAlerts.length > 0 &&
-											selectedAlerts.length === sortedAlerts.length
+											sortedAlerts.length > 0 && selectedAlerts.length === sortedAlerts.length
 										}
 										onCheckedChange={handleSelectAll}
 										className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
@@ -345,10 +333,7 @@ export const AlertsTable = ({
 												case 'tag':
 													return (
 														<TableCell key={column} className="py-1 px-2">
-															<Badge
-																variant="outline"
-																className="text-xs px-1.5 py-0.5"
-															>
+															<Badge variant="outline" className="text-xs px-1.5 py-0.5">
 																{alert.tag}
 															</Badge>
 														</TableCell>
@@ -401,15 +386,11 @@ const TypeAvatarStack = ({ alert }: { alert: Alert }) => {
 	return (
 		<div className="flex items-center gap-2">
 			<div className="flex -space-x-1.5" aria-label={`${integrationLabel} alert type`}>
-			<IntegrationAvatar
-				integration={integration}
-				size="sm"
-				className="ring-2 ring-background shadow-sm"
-			/>
+				<IntegrationAvatar integration={integration} size="sm" className="ring-2 ring-background shadow-sm" />
+			</div>
+			<span className="text-xs font-medium text-muted-foreground">{integrationLabel}</span>
 		</div>
-		<span className="text-xs font-medium text-muted-foreground">{integrationLabel}</span>
-	</div>
-);
+	);
 };
 
 interface RowActionsProps {
@@ -453,10 +434,12 @@ const RowActions = ({ alert, onDismissAlert, onUndismissAlert }: RowActionsProps
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						{runbookUrl && (
-							<DropdownMenuItem onClick={(event) => {
-								event.stopPropagation();
-								handleOpenLink(runbookUrl);
-							}}>
+							<DropdownMenuItem
+								onClick={(event) => {
+									event.stopPropagation();
+									handleOpenLink(runbookUrl);
+								}}
+							>
 								<span className="mr-2">📖</span>
 								Runbook
 							</DropdownMenuItem>
@@ -476,15 +459,15 @@ const RowActions = ({ alert, onDismissAlert, onUndismissAlert }: RowActionsProps
 				</DropdownMenu>
 			)}
 			{canToggle && (
-			<Button
-				variant="outline"
-				size="icon"
-				className="h-7 w-7"
-				onClick={handleToggle}
-				title={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
-			>
-				{isDismissed ? <RotateCcw className="h-3 w-3" /> : <X className="h-3 w-3" />}
-			</Button>
+				<Button
+					variant="outline"
+					size="icon"
+					className="h-7 w-7"
+					onClick={handleToggle}
+					title={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
+				>
+					{isDismissed ? <RotateCcw className="h-3 w-3" /> : <X className="h-3 w-3" />}
+				</Button>
 			)}
 		</div>
 	);

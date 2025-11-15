@@ -47,7 +47,14 @@ const mockServices: Service[] = [
 describe('FilterPanel', () => {
 	it('renders filter panel in expanded mode', () => {
 		const onFilterChange = vi.fn();
-		render(<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		expect(screen.getByText('Filters')).toBeInTheDocument();
 		expect(screen.getByText('Status')).toBeInTheDocument();
@@ -55,7 +62,9 @@ describe('FilterPanel', () => {
 
 	it('renders filter panel in collapsed mode', () => {
 		const onFilterChange = vi.fn();
-		render(<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={true} />);
+		render(
+			<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={true} />
+		);
 
 		// In collapsed mode, we should see the slider icon container
 		const containers = screen.getAllByRole('generic');
@@ -64,7 +73,14 @@ describe('FilterPanel', () => {
 
 	it('displays filter facets based on services', () => {
 		const onFilterChange = vi.fn();
-		render(<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		expect(screen.getByText('Status')).toBeInTheDocument();
 		expect(screen.getByText('Service Type')).toBeInTheDocument();
@@ -73,7 +89,14 @@ describe('FilterPanel', () => {
 
 	it('calls onFilterChange when a filter is selected', async () => {
 		const onFilterChange = vi.fn();
-		render(<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		// Status section is open by default, so we can click the Running checkbox
 		const runningCheckbox = screen.getByRole('checkbox', { name: /running/i });
@@ -117,7 +140,14 @@ describe('FilterPanel', () => {
 
 	it('shows filter counts for each option', () => {
 		const onFilterChange = vi.fn();
-		render(<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		// Service Type section is open by default, so we should see counts
 		const badges = screen.getAllByText(/1/);

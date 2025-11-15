@@ -74,18 +74,20 @@ const [filters, setFilters] = useState<ActiveFilters>({});
 ### Examples
 
 #### Service Dashboard Filter
+
 See: `components/Dashboard/FilterPanel/FilterPanel.tsx`
 
 #### Alerts Dashboard Filter
+
 See: `components/AlertsFilterPanel/AlertsFilterPanel.tsx`
 
 ### Types
 
 ```typescript
 export type FilterFacet = {
-  value: string;
-  count: number;
-  displayValue?: string; // Optional formatted display value
+	value: string;
+	count: number;
+	displayValue?: string; // Optional formatted display value
 };
 
 export type FilterFacets = Record<string, FilterFacet[]>;
@@ -93,8 +95,8 @@ export type FilterFacets = Record<string, FilterFacet[]>;
 export type ActiveFilters = Record<string, string[]>;
 
 export interface FilterPanelConfig {
-  fields: readonly string[];
-  fieldLabels: Record<string, string>;
-  defaultOpen?: string[]; // Optional: fields to open by default
+	fields: readonly string[];
+	fieldLabels: Record<string, string>;
+	defaultOpen?: string[]; // Optional: fields to open by default
 }
 ```

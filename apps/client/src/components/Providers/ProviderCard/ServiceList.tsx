@@ -120,7 +120,9 @@ export const ServiceList = ({ services, provider, onServiceAction, onDeleteServi
 										</DropdownMenuItem>
 										{canManageProviders() && service.status !== 'running' && (
 											<DropdownMenuItem
-												onClick={() => onServiceAction(String(provider.id), service.id, 'start')}
+												onClick={() =>
+													onServiceAction(String(provider.id), service.id, 'start')
+												}
 											>
 												<Play className="mr-2 h-3 w-3" /> Start
 											</DropdownMenuItem>
@@ -134,7 +136,9 @@ export const ServiceList = ({ services, provider, onServiceAction, onDeleteServi
 										)}
 										{canManageProviders() && (
 											<DropdownMenuItem
-												onClick={() => onServiceAction(String(provider.id), service.id, 'restart')}
+												onClick={() =>
+													onServiceAction(String(provider.id), service.id, 'restart')
+												}
 											>
 												<RefreshCw className="mr-2 h-3 w-3" /> Restart
 											</DropdownMenuItem>

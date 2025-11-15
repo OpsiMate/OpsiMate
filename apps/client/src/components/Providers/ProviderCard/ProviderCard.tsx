@@ -3,11 +3,11 @@ import { EditProviderDialog } from '@/components/EditProviderDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuPortal,
-    DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuPortal,
+	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { canDelete, canManageProviders } from '@/lib/permissions';
 import { ProviderType } from '@OpsiMate/shared';
@@ -52,13 +52,22 @@ export const ProviderCard = ({
 							{getProviderIcon(provider.providerType)}
 						</div>
 						<div className="flex-1 min-w-0">
-							<CardTitle className="text-lg font-semibold leading-snug truncate">{provider.name}</CardTitle>
-							<p className="text-sm text-muted-foreground">{getProviderTypeName(provider.providerType)}</p>
+							<CardTitle className="text-lg font-semibold leading-snug truncate">
+								{provider.name}
+							</CardTitle>
+							<p className="text-sm text-muted-foreground">
+								{getProviderTypeName(provider.providerType)}
+							</p>
 						</div>
 					</div>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={(e) => e.stopPropagation()}
+							>
 								<MoreVertical className="h-4 w-4" />
 							</Button>
 						</DropdownMenuTrigger>
@@ -108,7 +117,10 @@ export const ProviderCard = ({
 										onDeleteService={onDeleteService}
 									/>
 								) : (
-									<EmptyServiceState provider={provider} onAddService={() => setIsAddServiceDialogOpen(true)} />
+									<EmptyServiceState
+										provider={provider}
+										onAddService={() => setIsAddServiceDialogOpen(true)}
+									/>
 								)}
 							</div>
 						</div>

@@ -103,11 +103,11 @@ const AlertsTVMode = () => {
 					case 'tag':
 						fieldValue = alert.tag;
 						break;
-				case 'serviceName': {
-					const serviceName = getServiceName(alert);
-					fieldValue = serviceName;
-					break;
-				}
+					case 'serviceName': {
+						const serviceName = getServiceName(alert);
+						fieldValue = serviceName;
+						break;
+					}
 					default:
 						continue;
 				}
@@ -286,10 +286,7 @@ const AlertsTVMode = () => {
 								<Button
 									variant="ghost"
 									size="icon"
-									className={cn(
-										'h-5 w-5 p-0',
-										cardSize === 'extra-small' && 'h-4 w-4'
-									)}
+									className={cn('h-5 w-5 p-0', cardSize === 'extra-small' && 'h-4 w-4')}
 									onClick={(e) => e.stopPropagation()}
 								>
 									<MoreVertical className="h-3 w-3" />
@@ -298,9 +295,7 @@ const AlertsTVMode = () => {
 							<DropdownMenuContent align="end">
 								{alert.runbookUrl && (
 									<DropdownMenuItem
-										onClick={() =>
-											window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')
-										}
+										onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
 									>
 										<span className="mr-2">📖</span>
 										Open Runbook
@@ -308,27 +303,23 @@ const AlertsTVMode = () => {
 								)}
 								{alert.alertUrl && (
 									<DropdownMenuItem
-										onClick={() =>
-											window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')
-										}
+										onClick={() => window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')}
 									>
 										<ExternalLink className="mr-2 h-3 w-3" />
 										View in Grafana
 									</DropdownMenuItem>
 								)}
-								{alert.isDismissed
-									? (
-										<DropdownMenuItem onClick={() => handleUndismissAlert(alert.id)}>
-											<RotateCcw className="mr-2 h-3 w-3" />
-											Undismiss Alert
-										</DropdownMenuItem>
-									)
-									: (
-										<DropdownMenuItem onClick={() => handleDismissAlert(alert.id)}>
-											<X className="mr-2 h-3 w-3" />
-											Dismiss Alert
-										</DropdownMenuItem>
-									)}
+								{alert.isDismissed ? (
+									<DropdownMenuItem onClick={() => handleUndismissAlert(alert.id)}>
+										<RotateCcw className="mr-2 h-3 w-3" />
+										Undismiss Alert
+									</DropdownMenuItem>
+								) : (
+									<DropdownMenuItem onClick={() => handleDismissAlert(alert.id)}>
+										<X className="mr-2 h-3 w-3" />
+										Dismiss Alert
+									</DropdownMenuItem>
+								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
@@ -354,12 +345,7 @@ const AlertsTVMode = () => {
 			{/* Header */}
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center gap-4">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => navigate('/alerts')}
-						className="gap-2"
-					>
+					<Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-2">
 						<ArrowLeft className="h-4 w-4" />
 						Back to Alerts
 					</Button>
@@ -383,9 +369,7 @@ const AlertsTVMode = () => {
 						Refresh
 					</Button>
 					{lastRefresh && (
-						<span className="text-xs text-muted-foreground">
-							Last: {lastRefresh.toLocaleTimeString()}
-						</span>
+						<span className="text-xs text-muted-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
 					)}
 				</div>
 			</div>
@@ -407,9 +391,7 @@ const AlertsTVMode = () => {
 					</div>
 				</div>
 			) : (
-				<div className={cn('grid', getGridClasses(cardSize))}>
-					{filteredAlerts.map(renderAlertCard)}
-				</div>
+				<div className={cn('grid', getGridClasses(cardSize))}>{filteredAlerts.map(renderAlertCard)}</div>
 			)}
 
 			{/* Footer with keyboard shortcuts */}
