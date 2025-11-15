@@ -1,15 +1,15 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
 	Accordion,
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Filter, RotateCcw } from 'lucide-react';
+import { Filter, RotateCcw } from 'lucide-react';
 
 export type FilterFacet = {
 	value: string;
@@ -72,73 +72,58 @@ export const FilterPanel = ({
 
 	if (collapsed) {
 		return (
-			<div className={cn('w-12 border-r border-border relative flex-shrink-0', className)}>
-				<div className="flex flex-col items-center py-4 gap-4">
-					<div className="relative">
-						<Filter className="h-5 w-5 text-muted-foreground" />
-						{activeFilterCount > 0 && (
-							<Badge
-								variant="destructive"
-								className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
-							>
-								{activeFilterCount}
-							</Badge>
-						)}
-					</div>
+			<div className={cn('flex flex-col items-center py-4 gap-4', className)}>
+				<div className="relative">
+					<Filter className="h-5 w-5 text-muted-foreground" />
 					{activeFilterCount > 0 && (
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-6 w-6"
-							onClick={handleResetFilters}
-							title="Reset filters"
+						<Badge
+							variant="secondary"
+							className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
 						>
-							<RotateCcw className="h-3 w-3" />
-						</Button>
+							{activeFilterCount}
+						</Badge>
 					)}
 				</div>
-				{onToggle && (
+				{activeFilterCount > 0 && (
 					<Button
-						onClick={onToggle}
 						variant="ghost"
 						size="icon"
-						className="absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 z-10"
-						title="Expand filters"
+						className="h-6 w-6"
+						onClick={handleResetFilters}
+						title="Reset filters"
 					>
-						<ChevronRight className="h-4 w-4" />
+						<RotateCcw className="h-3 w-3" />
 					</Button>
 				)}
 			</div>
 		);
 	}
 
-	const width = variant === 'compact' ? 'w-48' : 'w-64';
-
 	return (
-		<div className={cn(width, 'border-r border-border relative flex-shrink-0', className)}>
-			<div className="h-full flex flex-col">
-				<div className="flex items-center justify-between p-2 border-b border-border">
-					<div className="flex items-center gap-2">
-						<h3 className="text-sm font-semibold">Filters</h3>
-						{activeFilterCount > 0 && (
-							<Badge variant="secondary" className="text-xs px-1 py-0">
-								{activeFilterCount}
-							</Badge>
-						)}
-					</div>
+		<div className={cn('h-full flex flex-col', className)}>
+			<div className="flex items-center justify-between p-3 border-b border-border">
+				<div className="flex items-center gap-2">
+					<h3 className="text-sm font-semibold">Filters</h3>
 					{activeFilterCount > 0 && (
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-6 w-6"
-							onClick={handleResetFilters}
-							title="Reset all filters"
-						>
-							<RotateCcw className="h-3 w-3" />
-						</Button>
+						<Badge variant="outline" className="text-xs px-1.5 py-0 bg-muted/50 border-muted-foreground/20">
+							{activeFilterCount}
+						</Badge>
 					)}
 				</div>
-				<ScrollArea className="flex-1">
+				{activeFilterCount > 0 && (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-6 w-6"
+						onClick={handleResetFilters}
+						title="Reset all filters"
+					>
+						<RotateCcw className="h-3 w-3" />
+					</Button>
+				)}
+			</div>
+			<ScrollArea className="flex-1">
+				<div className="px-2 py-2">
 					<Accordion type="multiple" defaultValue={defaultOpenValues} className="w-full">
 						{config.fields.map((field) => {
 							const fieldFacets = facets[field] || [];
@@ -148,18 +133,18 @@ export const FilterPanel = ({
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
-									<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50">
-										<div className="flex items-center justify-between w-full pr-2">
-											<span className="text-xs font-medium">
-												{config.fieldLabels[field] || field}
-											</span>
-											{activeValues.length > 0 && (
-												<Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-													{activeValues.length}
-												</Badge>
-											)}
-										</div>
-									</AccordionTrigger>
+							<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50">
+								<div className="flex items-center justify-between w-full pr-2">
+									<span className="text-xs font-medium">
+										{config.fieldLabels[field] || field}
+									</span>
+									{activeValues.length > 0 && (
+										<Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-muted/50 border-muted-foreground/20">
+											{activeValues.length}
+										</Badge>
+									)}
+								</div>
+							</AccordionTrigger>
 									<AccordionContent className="pb-2">
 										<div className="space-y-1 px-2">
 											{fieldFacets.map(({ value, count, displayValue }) => {
@@ -197,19 +182,8 @@ export const FilterPanel = ({
 							);
 						})}
 					</Accordion>
-				</ScrollArea>
-			</div>
-			{onToggle && (
-				<Button
-					onClick={onToggle}
-					variant="ghost"
-					size="icon"
-					className="absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 z-10"
-					title="Collapse filters"
-				>
-					<ChevronLeft className="h-4 w-4" />
-				</Button>
-			)}
+				</div>
+			</ScrollArea>
 		</div>
 	);
 };

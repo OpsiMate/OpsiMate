@@ -1,6 +1,7 @@
 import { AddServiceModal } from '@/components/AddServiceModal';
 import { RightSidebarWithLogs as RightSidebar } from '@/components/RightSidebarWithLogs';
 import { Service, ServiceTable } from '@/components/ServiceTable';
+import { FilterSidebar } from '@/components/shared';
 import { TableSettingsModal } from '@/components/TableSettingsModal';
 import { useActiveView, useAlerts, useCustomFields, useDismissAlert, useServices, useViews } from '@/hooks/queries';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '../DashboardLayout';
 import { ServiceWithAlerts } from './Dashboard.types';
 import { DashboardHeader } from './DashboardHeader';
-import { FilterSidebar } from './FilterPanel';
+import { ServiceFilterPanel } from './FilterPanel';
 import {
 	useColumnManagement,
 	useFilteredServices,
@@ -135,13 +136,14 @@ export const Dashboard = () => {
 			<DashboardLayout>
 				<div className="flex flex-col h-full">
 					<div className="flex flex-row h-full">
-						<FilterSidebar
-							services={services as unknown as Service[]}
-							filters={filters}
-							onFilterChange={handleFiltersChange}
-							collapsed={filterPanelCollapsed}
-							onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-						/>
+						<FilterSidebar collapsed={filterPanelCollapsed} onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}>
+							<ServiceFilterPanel
+								services={services as unknown as Service[]}
+								filters={filters}
+								onFilterChange={handleFiltersChange}
+								collapsed={filterPanelCollapsed}
+							/>
+						</FilterSidebar>
 						<div className="flex-1 flex flex-col">
 							<div className="flex-1 p-2 flex flex-col overflow-auto">
 								<DashboardHeader

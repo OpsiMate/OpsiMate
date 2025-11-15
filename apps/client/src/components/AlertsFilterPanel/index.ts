@@ -1,1 +1,0 @@
-export { AlertsFilterPanel } from './AlertsFilterPanel';

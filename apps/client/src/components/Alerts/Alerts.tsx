@@ -1,7 +1,7 @@
-import { DashboardLayout } from '@/components/DashboardLayout';
-import { AlertsTable } from '@/components/AlertsTable';
-import { AlertsFilterPanel } from '@/components/AlertsFilterPanel';
 import { AlertDetails } from '@/components/AlertDetails';
+import { AlertsTable } from '@/components/AlertsTable';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { RefreshCw, Tv } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertsFilterPanel } from '.';
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -29,7 +30,6 @@ const Alerts = () => {
 		'alertName',
 		'status',
 		'tag',
-		'summary',
 		'startsAt',
 		'actions',
 	]);
@@ -38,7 +38,6 @@ const Alerts = () => {
 		'alertName',
 		'status',
 		'tag',
-		'summary',
 		'startsAt',
 		'actions',
 	]);
@@ -165,14 +164,14 @@ const Alerts = () => {
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
-				<AlertsFilterPanel
-					alerts={alerts}
-					services={services}
-					filters={filters}
-					onFilterChange={setFilters}
-					collapsed={filterPanelCollapsed}
-					onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-				/>
+				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}>
+					<AlertsFilterPanel
+						alerts={alerts}
+						filters={filters}
+						onFilterChange={setFilters}
+						collapsed={filterPanelCollapsed}
+					/>
+				</FilterSidebar>
 
 				<div className="flex-1 flex">
 					<div className="flex-1 flex flex-col p-4">

@@ -1,6 +1,5 @@
 export { AlertDetails } from './AlertDetails';
-export { Alerts } from './Alerts';
-export { AlertsFilterPanel } from './AlertsFilterPanel';
+export { Alerts, AlertsFilterPanel } from './Alerts';
 export { AlertsTable } from './AlertsTable';
 export { AuthGuard } from './AuthGuard';
 export { Dashboard } from './Dashboard';

@@ -47,7 +47,7 @@ const AlertsTVMode = () => {
 		try {
 			return JSON.parse(searchParams.get('visibleColumns') || '[]');
 		} catch {
-			return ['alertName', 'status', 'tag', 'summary', 'startsAt', 'serviceName'];
+			return ['alertName', 'status', 'tag', 'startsAt', 'serviceName'];
 		}
 	}, [searchParams]);
 

@@ -1,15 +1,15 @@
-import { Service } from '../../ServiceTable';
-import { useMemo } from 'react';
 import {
-	FilterPanel as SharedFilterPanel,
-	FilterFacets,
-	ActiveFilters,
-	FilterPanelConfig,
+    ActiveFilters,
+    FilterFacets,
+    FilterPanelConfig,
+    FilterPanel as SharedFilterPanel,
 } from '@/components/shared';
+import { useMemo } from 'react';
+import { Service } from '../../ServiceTable';
 
 export type Filters = ActiveFilters;
 
-interface FilterPanelProps {
+interface ServiceFilterPanelProps {
 	services: Service[];
 	filters: Filters;
 	onFilterChange: (filters: Filters) => void;
@@ -47,7 +47,7 @@ const formatFilterValue = (value: string): string => {
 	return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
 
-export const FilterPanel = ({ services, filters, onFilterChange, collapsed }: FilterPanelProps) => {
+export const ServiceFilterPanel = ({ services, filters, onFilterChange, collapsed }: ServiceFilterPanelProps) => {
 	const facets: FilterFacets = useMemo(() => {
 		const facetData: Record<string, Map<string, number>> = {};
 
@@ -57,33 +57,33 @@ export const FilterPanel = ({ services, filters, onFilterChange, collapsed }: Fi
 
 		services.forEach((service) => {
 			if (service.serviceStatus) {
-				const value = String(service.serviceStatus.toLowerCase());
+				const value = String(service.serviceStatus).toLowerCase();
 				facetData.serviceStatus.set(value, (facetData.serviceStatus.get(value) || 0) + 1);
 			}
 
 			if (service.serviceType) {
-				const value = String(service.serviceType);
+				const value = String(service.serviceType).toLowerCase();
 				facetData.serviceType.set(value, (facetData.serviceType.get(value) || 0) + 1);
 			}
 
 			if (service.provider?.providerType) {
-				const value = String(service.provider.providerType);
+				const value = String(service.provider.providerType).toLowerCase();
 				facetData.providerType.set(value, (facetData.providerType.get(value) || 0) + 1);
 			}
 
 			if (service.provider?.name) {
-				const value = String(service.provider.name);
+				const value = String(service.provider.name).toLowerCase();
 				facetData.providerName.set(value, (facetData.providerName.get(value) || 0) + 1);
 			}
 
 			if (service.containerDetails?.namespace) {
-				const value = String(service.containerDetails.namespace);
+				const value = String(service.containerDetails.namespace).toLowerCase();
 				facetData.containerNamespace.set(value, (facetData.containerNamespace.get(value) || 0) + 1);
 			}
 
 			if (service.tags && service.tags.length > 0) {
 				service.tags.forEach((tag) => {
-					const value = String(tag.name);
+					const value = String(tag.name).toLowerCase();
 					facetData.tags.set(value, (facetData.tags.get(value) || 0) + 1);
 				});
 			}

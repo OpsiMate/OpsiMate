@@ -1,20 +1,20 @@
+import { GCPIcon } from '@/components/icons/GCPIcon';
+import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import {
-	Bell,
-	Calendar,
-	Clock,
-	ExternalLink,
-	RotateCcw,
-	X,
-} from 'lucide-react';
 import { format } from 'date-fns';
-import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
-import { GCPIcon } from '@/components/icons/GCPIcon';
+import {
+    Bell,
+    Calendar,
+    Clock,
+    ExternalLink,
+    RotateCcw,
+    X,
+} from 'lucide-react';
 
 interface AlertDetailsProps {
 	alert: Alert | null;
@@ -75,28 +75,32 @@ export const AlertDetails = ({
 
 			<ScrollArea className="flex-1">
 				<div className="p-4 space-y-4">
-					<div className="flex items-start gap-3">
-						<div className="flex-shrink-0 mt-1">
-							{getAlertTypeIcon(alertType)}
-						</div>
-						<div className="flex-1 min-w-0">
-							<div className="flex items-start gap-2 flex-wrap">
-								<h3 className="text-lg font-semibold break-words flex-1 min-w-0">
-									{alert.alertName}
-								</h3>
-								<Badge
-									variant={alert.isDismissed ? 'secondary' : 'destructive'}
-									className="flex-shrink-0"
-								>
-									{alert.isDismissed ? 'Dismissed' : 'Firing'}
-								</Badge>
+					<div className="flex flex-col gap-3">
+						<div className="flex items-center gap-3">
+							<div className="flex-shrink-0">
+								{getAlertTypeIcon(alertType)}
 							</div>
-							<div className="flex items-center gap-1 mt-2 flex-wrap">
+							<div className="flex-1 min-w-0">
+								<div className="flex items-center gap-2 flex-wrap">
+									<h3 className="text-lg font-semibold break-words flex-1 min-w-0">
+										{alert.alertName}
+									</h3>
+									<Badge
+										variant={alert.isDismissed ? 'secondary' : 'destructive'}
+										className="flex-shrink-0"
+									>
+										{alert.isDismissed ? 'Dismissed' : 'Firing'}
+									</Badge>
+								</div>
+							</div>
+						</div>
+						{alert.tag && (
+							<div className="flex items-center gap-1 flex-wrap">
 								<Badge variant="outline" className="text-xs">
 									{alert.tag}
 								</Badge>
 							</div>
-						</div>
+						)}
 					</div>
 
 					{alert.summary && (
