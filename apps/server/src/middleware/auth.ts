@@ -29,7 +29,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 }
 
 function authenticateApiToken(req: Request, res: Response, next: NextFunction) {
-	const apiToken = req.headers['x-api-token'];
+	const apiToken = req.headers['x-api-token'] || req.query.api_token;
 
 	if (apiToken !== process.env.API_TOKEN) {
 		return res.status(401).json({ success: false, error: 'Invalid API token' });
