@@ -111,11 +111,11 @@ export const AlertsTable = ({
 	const sortedAlerts = useMemo(() => {
 		if (!sortField) return filteredAlerts;
 
-		return [...filteredAlerts].sort((a, b) => {
-			let aValue: any;
-			let bValue: any;
+	return [...filteredAlerts].sort((a, b) => {
+		let aValue: string | number;
+		let bValue: string | number;
 
-			switch (sortField) {
+		switch (sortField) {
 				case 'alertName':
 					aValue = a.alertName.toLowerCase();
 					bValue = b.alertName.toLowerCase();

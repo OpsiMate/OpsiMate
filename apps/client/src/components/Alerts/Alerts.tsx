@@ -1,5 +1,5 @@
 import { AlertDetails } from '@/components/AlertDetails';
-import { AlertsTable } from '@/components/AlertsTable';
+import { AlertsTable } from './AlertsTable';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';

@@ -103,10 +103,11 @@ const AlertsTVMode = () => {
 					case 'tag':
 						fieldValue = alert.tag;
 						break;
-					case 'serviceName':
-						const serviceName = getServiceName(alert);
-						fieldValue = serviceName;
-						break;
+				case 'serviceName': {
+					const serviceName = getServiceName(alert);
+					fieldValue = serviceName;
+					break;
+				}
 					default:
 						continue;
 				}
