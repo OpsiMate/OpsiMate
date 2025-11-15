@@ -10,10 +10,10 @@ export interface AuthenticatedRequest extends Request {
 
 export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 	const apiToken = req.headers['x-api-token'] || req.query.api_token;
-	const authHeader = req.headers.authorization;
+	const bearerToken = req.headers.authorization || '';
 
 	// If neither token type is provided, reject immediately
-	const hasBearer = authHeader && authHeader.startsWith('Bearer ');
+	const hasBearer = bearerToken && bearerToken.startsWith('Bearer ');
 	const hasApiToken = typeof apiToken === 'string' && apiToken.length > 0;
 	if (!hasBearer && !hasApiToken) {
 		return res.status(401).json({ success: false, error: 'Missing Authorization header or API token' });
@@ -25,7 +25,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 	}
 
 	// Otherwise, use JWT
-	return authenticateUserJWT(req, res, next);
+	return authenticateUserJWT(bearerToken, req, res, next);
 }
 
 function authenticateApiToken(apiToken: string, res: Response, next: NextFunction) {
@@ -36,9 +36,8 @@ function authenticateApiToken(apiToken: string, res: Response, next: NextFunctio
 	return next();
 }
 
-function authenticateUserJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-	const authHeader = req.headers.authorization!;
-	const token = authHeader.split(' ')[1];
+function authenticateUserJWT(bearerToken: string, req: AuthenticatedRequest, res: Response, next: NextFunction) {
+	const token = bearerToken.split(' ')[1];
 
 	try {
 		const payload = jwt.verify(token, JWT_SECRET) as User;
