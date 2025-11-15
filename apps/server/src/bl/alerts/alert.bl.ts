@@ -52,6 +52,12 @@ export class AlertBL {
 	}
 
 	async deleteAlert(alertId: string): Promise<void> {
-		await this.alertRepo.deleteAlert(alertId);
+		try {
+			logger.info(`Deleting alert with id: ${alertId}`);
+			await this.alertRepo.deleteAlert(alertId);
+		} catch (error) {
+			logger.error('Error deleting alert', error);
+			throw error;
+		}
 	}
 }
