@@ -15,8 +15,8 @@ export default function createAlertRouter(controller: AlertController) {
 	router.patch('/:id/undismiss', controller.undismissAlert.bind(controller));
 
 	// custom alerts
-	router.post('/alerts/custom/gcp', controller.createCustomGCPAlert.bind(controller));
-	router.post('/alerts/custom', controller.createCustomAlert.bind(controller));
+	router.post('/custom/gcp', controller.createCustomGCPAlert.bind(controller));
+	router.post('/custom', controller.createCustomAlert.bind(controller));
 
 	return router;
 }
