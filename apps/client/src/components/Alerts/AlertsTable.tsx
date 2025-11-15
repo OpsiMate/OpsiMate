@@ -401,29 +401,16 @@ const TypeAvatarStack = ({ alert }: { alert: Alert }) => {
 	return (
 		<div className="flex items-center gap-2">
 			<div className="flex -space-x-1.5" aria-label={`${integrationLabel} alert type`}>
-				<IntegrationAvatar
-					integration={integration}
-					size="sm"
-					className="ring-2 ring-background shadow-sm"
-				/>
-				<StatusAvatar isDismissed={alert.isDismissed} />
-			</div>
-			<span className="text-xs font-medium text-muted-foreground">{integrationLabel}</span>
+			<IntegrationAvatar
+				integration={integration}
+				size="sm"
+				className="ring-2 ring-background shadow-sm"
+			/>
 		</div>
-	);
-};
-
-const StatusAvatar = ({ isDismissed }: { isDismissed: boolean }) => (
-	<span
-		className={cn(
-			'h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-semibold uppercase tracking-tight ring-2 ring-background shadow-sm',
-			isDismissed ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-rose-100 border-rose-200 text-rose-700'
-		)}
-		title={isDismissed ? 'Dismissed alert' : 'Firing alert'}
-	>
-		{isDismissed ? 'D' : 'F'}
-	</span>
+		<span className="text-xs font-medium text-muted-foreground">{integrationLabel}</span>
+	</div>
 );
+};
 
 interface RowActionsProps {
 	alert: Alert;
@@ -489,24 +476,15 @@ const RowActions = ({ alert, onDismissAlert, onUndismissAlert }: RowActionsProps
 				</DropdownMenu>
 			)}
 			{canToggle && (
-				<Button
-					variant="outline"
-					size="sm"
-					className="h-7 px-2 text-xs gap-1"
-					onClick={handleToggle}
-				>
-					{isDismissed ? (
-						<>
-							<RotateCcw className="h-3 w-3" />
-							Undismiss
-						</>
-					) : (
-						<>
-							<X className="h-3 w-3" />
-							Dismiss
-						</>
-					)}
-				</Button>
+			<Button
+				variant="outline"
+				size="icon"
+				className="h-7 w-7"
+				onClick={handleToggle}
+				title={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
+			>
+				{isDismissed ? <RotateCcw className="h-3 w-3" /> : <X className="h-3 w-3" />}
+			</Button>
 			)}
 		</div>
 	);
