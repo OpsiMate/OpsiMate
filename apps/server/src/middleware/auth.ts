@@ -29,7 +29,8 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 }
 
 function authenticateApiToken(apiToken: string, res: Response, next: NextFunction) {
-	if (apiToken !== process.env.API_TOKEN) {
+	// Double check the apiToken is not empty
+	if (apiToken !== process.env.API_TOKEN && apiToken.length > 0) {
 		return res.status(401).json({ success: false, error: 'Invalid API token' });
 	}
 
