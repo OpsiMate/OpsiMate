@@ -89,8 +89,8 @@ export const AlertsTable = ({
 				<Table>
 					<TableHeader>
 						<TableRow className="h-8">
-						{onSelectAlerts && (
-							<TableHead className="w-10 h-8 py-1 px-2">
+							{onSelectAlerts && (
+								<TableHead className="w-10 h-8 py-1 px-2">
 								<div className="flex items-center justify-center">
 									<Checkbox
 										checked={sortedAlerts.length > 0 && selectedAlerts.length === sortedAlerts.length}
@@ -98,8 +98,8 @@ export const AlertsTable = ({
 										className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
 									/>
 								</div>
-							</TableHead>
-						)}
+								</TableHead>
+							)}
 							{orderedColumns.map((column) => {
 								if (column === 'actions') {
 									return (

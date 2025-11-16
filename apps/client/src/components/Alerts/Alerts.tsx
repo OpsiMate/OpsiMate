@@ -1,162 +1,37 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ColumnSettingsModal, FilterSidebar } from '@/components/shared';
-import { Button } from '@/components/ui/button';
-import { useAlerts, useDeleteAlert, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import { useAlerts } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { RefreshCw, Tv } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetails } from './AlertDetails';
+import { AlertsHeader } from './AlertsHeader';
+import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
+import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useColumnManagement } from './hooks';
 
 const Alerts = () => {
 	const navigate = useNavigate();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: services = [] } = useServices();
-	const dismissAlertMutation = useDismissAlert();
-	const undismissAlertMutation = useUndismissAlert();
-	const deleteAlertMutation = useDeleteAlert();
-	const { toast } = useToast();
 
 	const [filters, setFilters] = useState<Record<string, string[]>>({});
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
-	const [visibleColumns, setVisibleColumns] = useState(['type', 'alertName', 'status', 'tag', 'summary', 'startsAt', 'actions']);
-	const [columnOrder, setColumnOrder] = useState(['type', 'alertName', 'status', 'tag', 'summary', 'startsAt', 'actions']);
-	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [showColumnSettings, setShowColumnSettings] = useState(false);
 
-	useEffect(() => {
-		const interval = setInterval(() => {
-			const hasOpenDialog =
-				document.querySelector('[role="dialog"]') || document.querySelector('[data-state="open"]');
+	const { lastRefresh, isRefreshing, handleManualRefresh } = useAlertsRefresh(refetch);
+	const filteredAlerts = useAlertsFiltering(alerts, filters);
+	const { visibleColumns, columnOrder, handleColumnToggle } = useColumnManagement();
+	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 
-			if (!hasOpenDialog) {
-				refetch();
-				setLastRefresh(new Date());
-			}
-		}, 5000);
-
-		return () => clearInterval(interval);
-	}, [refetch]);
-
-	const handleManualRefresh = async () => {
-		setIsRefreshing(true);
-		try {
-			await refetch();
-			setLastRefresh(new Date());
-			toast({
-				title: 'Alerts refreshed',
-				description: 'The alerts list has been updated.',
-			});
-		} catch (error) {
-			toast({
-				title: 'Error refreshing alerts',
-				description: 'Failed to refresh alerts',
-				variant: 'destructive',
-			});
-		} finally {
-			setIsRefreshing(false);
-		}
-	};
-
-	const getAlertType = (alert: Alert): string => {
-		if (alert.type) return alert.type;
-		if (alert.id.toLowerCase().includes('grafana')) return 'Grafana';
-		if (alert.id.toLowerCase().includes('gcp')) return 'GCP';
-		if (alert.tag?.toLowerCase().includes('prometheus')) return 'Prometheus';
-		if (alert.tag?.toLowerCase().includes('datadog')) return 'Datadog';
-		return 'Custom';
-	};
-
-	const filteredAlerts = useMemo(() => {
-		if (Object.keys(filters).length === 0) return alerts;
-
-		return alerts.filter((alert) => {
-			for (const [field, values] of Object.entries(filters)) {
-				if (values.length === 0) continue;
-
-				let fieldValue: string;
-				switch (field) {
-					case 'status':
-						fieldValue = alert.isDismissed ? 'Dismissed' : 'Firing';
-						break;
-					case 'type':
-						fieldValue = getAlertType(alert);
-						break;
-					case 'tag':
-						fieldValue = alert.tag;
-						break;
-					case 'alertName':
-						fieldValue = alert.alertName;
-						break;
-					default:
-						continue;
-				}
-
-				if (!values.includes(fieldValue)) {
-					return false;
-				}
-			}
-			return true;
-		});
-	}, [alerts, filters]);
-
-	const handleDismissAlert = async (alertId: string) => {
-		try {
-			await dismissAlertMutation.mutateAsync(alertId);
-		} catch (error) {
-			toast({
-				title: 'Error dismissing alert',
-				description: 'Failed to dismiss alert',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const handleUndismissAlert = async (alertId: string) => {
-		try {
-			await undismissAlertMutation.mutateAsync(alertId);
-		} catch (error) {
-			toast({
-				title: 'Error undismissing alert',
-				description: 'Failed to undismiss alert',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const handleDeleteAlert = async (alertId: string) => {
-		try {
-			await deleteAlertMutation.mutateAsync(alertId);
-			toast({
-				title: 'Alert deleted',
-				description: 'The alert has been permanently removed.',
-			});
-		} catch (error) {
-			toast({
-				title: 'Error deleting alert',
-				description: 'Failed to delete alert',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const handleColumnToggle = (column: string) => {
-		setVisibleColumns((prev) => {
-			if (prev.includes(column)) {
-				return prev.filter((col) => col !== column);
-			} else {
-				return [...prev, column];
-			}
-		});
+	const handleDismissAllSelected = async () => {
+		await handleDismissAll(selectedAlerts, () => setSelectedAlerts([]));
 	};
 
 	const handleLaunchTVMode = () => {
@@ -183,41 +58,22 @@ const Alerts = () => {
 					/>
 				</FilterSidebar>
 
-				<div className="flex-1 flex">
-					<div className="flex-1 flex flex-col p-4">
-						<div className="mb-4">
-							<div className="flex items-center justify-between">
-								<div>
-									<h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
-									<p className="text-sm text-muted-foreground mt-1">
-										Monitor and manage system alerts
-									</p>
-								</div>
-								<div className="flex items-center gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={handleManualRefresh}
-										disabled={isRefreshing}
-										className="gap-2"
-									>
-										<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-										Refresh
-									</Button>
-									<Button variant="outline" size="sm" onClick={handleLaunchTVMode} className="gap-2">
-										<Tv className="h-4 w-4" />
-										TV Mode
-									</Button>
-								</div>
-							</div>
-							{lastRefresh && (
-								<p className="text-xs text-muted-foreground mt-2">
-									Last refreshed: {lastRefresh.toLocaleTimeString()}
-								</p>
-							)}
-						</div>
+			<div className="flex-1 flex">
+				<div className="flex-1 flex flex-col p-4">
+					<AlertsHeader
+						alertsCount={alerts.length}
+						isRefreshing={isRefreshing}
+						lastRefresh={lastRefresh}
+						onRefresh={handleManualRefresh}
+						onLaunchTVMode={handleLaunchTVMode}
+					/>
 
-						<div className="flex-1 overflow-auto">
+					<div
+						className={cn(
+							'flex-1 overflow-auto',
+							alerts.length === 0 && !isLoading && 'flex items-center justify-center'
+						)}
+					>
 							<AlertsTable
 								alerts={filteredAlerts}
 								services={services}
@@ -232,35 +88,14 @@ const Alerts = () => {
 								onAlertClick={setSelectedAlert}
 								onTableSettingsClick={() => setShowColumnSettings(true)}
 							/>
-						</div>
-
-						{selectedAlerts.length > 0 && (
-							<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between">
-								<span className="text-sm font-medium">
-									{selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''} selected
-								</span>
-								<div className="flex items-center gap-2">
-									<Button variant="outline" size="sm" onClick={() => setSelectedAlerts([])}>
-										Clear selection
-									</Button>
-									{selectedAlerts.every((a) => !a.isDismissed) && (
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={async () => {
-												for (const alert of selectedAlerts) {
-													await handleDismissAlert(alert.id);
-												}
-												setSelectedAlerts([]);
-											}}
-										>
-											Dismiss all
-										</Button>
-									)}
-								</div>
-							</div>
-						)}
 					</div>
+
+				<AlertsSelectionBar
+					selectedAlerts={selectedAlerts}
+					onClearSelection={() => setSelectedAlerts([])}
+					onDismissAll={handleDismissAllSelected}
+				/>
+				</div>
 
 					{selectedAlert && (
 						<div className="w-96 border-l">
