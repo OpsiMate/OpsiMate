@@ -383,7 +383,7 @@ describe('Alerts API', () => {
 		});
 	});
 
-	describe('POST /api/v1/alerts/gcp', () => {
+	describe('POST /api/v1/alerts/custom/gcp', () => {
 		test('should create a new GCP alert successfully with valid payload', async () => {
 			const payload = {
 				incident: {
@@ -490,7 +490,7 @@ describe('Alerts API', () => {
 				},
 			};
 
-			const response = await app.post('/api/v1/alerts/gcp').send(payload);
+			const response = await app.post('/api/v1/alerts/custom/gcp').send(payload);
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
