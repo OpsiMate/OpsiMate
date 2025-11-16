@@ -122,6 +122,7 @@ const Alerts = () => {
 				columnLabels={COLUMN_LABELS}
 				title="Alert Table Settings"
 				description="Select which columns to display in the alerts table."
+				excludeColumns={['actions']}
 			/>
 		</DashboardLayout>
 	);

@@ -336,9 +336,7 @@ const Integrations = () => {
 			// Support multiple categories separated by commas
 			const categoryValues = categoryParam.split(',').map((c) => c.trim().toLowerCase());
 			// Find canonical tags by case-insensitive lookup
-			const canonicalTags = ALL_TAGS.filter((tag) =>
-				categoryValues.includes(tag.toLowerCase())
-			);
+			const canonicalTags = ALL_TAGS.filter((tag) => categoryValues.includes(tag.toLowerCase()));
 			if (canonicalTags.length > 0) {
 				setSelectedTags(canonicalTags);
 			}

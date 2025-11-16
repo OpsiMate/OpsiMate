@@ -49,17 +49,17 @@ export const useAlertActions = () => {
 	};
 
 	const handleDismissAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
-	const dismissPromises = selectedAlerts.map((alert) => handleDismissAlert(alert.id));
-	const results = await Promise.allSettled(dismissPromises);
+		const dismissPromises = selectedAlerts.map((alert) => handleDismissAlert(alert.id));
+		const results = await Promise.allSettled(dismissPromises);
 
-	results.forEach((result, index) => {
-		if (result.status === 'rejected') {
-			const alert = selectedAlerts[index];
-			logger.warn(`Failed to dismiss alert ${alert.id}:`, result.reason);
-		}
-	});
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				const alert = selectedAlerts[index];
+				logger.warn(`Failed to dismiss alert ${alert.id}:`, result.reason);
+			}
+		});
 
-	onComplete();
+		onComplete();
 	};
 
 	return {

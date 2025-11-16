@@ -31,10 +31,7 @@ export const SortableHeader = ({ column, label, sortField, sortDirection, onSort
 	};
 
 	return (
-		<TableHead
-			className="h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50"
-			onClick={handleClick}
-		>
+		<TableHead className="h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50" onClick={handleClick}>
 			<div className="flex items-center gap-1">
 				{label}
 				{getSortIcon()}

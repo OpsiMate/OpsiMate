@@ -10,6 +10,7 @@ export interface ColumnSettingsModalProps {
 	columnLabels: Record<string, string>;
 	title?: string;
 	description?: string;
+	excludeColumns?: string[];
 }
 
 export const ColumnSettingsModal = ({
@@ -20,7 +21,10 @@ export const ColumnSettingsModal = ({
 	columnLabels,
 	title = 'Table Settings',
 	description = 'Select which columns to display in the table.',
+	excludeColumns = [],
 }: ColumnSettingsModalProps) => {
+	const availableColumns = Object.entries(columnLabels).filter(([key]) => !excludeColumns.includes(key));
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
@@ -32,7 +36,7 @@ export const ColumnSettingsModal = ({
 					<p className="text-sm text-muted-foreground">{description}</p>
 
 					<div className="space-y-3">
-						{Object.entries(columnLabels).map(([key, label]) => (
+						{availableColumns.map(([key, label]) => (
 							<div key={key} className="flex items-center space-x-2">
 								<Checkbox
 									id={key}
