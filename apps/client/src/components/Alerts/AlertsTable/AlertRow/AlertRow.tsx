@@ -1,11 +1,14 @@
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { formatDate } from '../AlertsTable.utils';
-import { RowActions } from '../RowActions';
-import { TypeAvatarStack } from '../TypeAvatarStack';
+import { AlertActionsColumn } from './Columns/AlertActionsColumn';
+import { AlertNameColumn } from './Columns/AlertNameColumn';
+import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
+import { AlertStatusColumn } from './Columns/AlertStatusColumn';
+import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
+import { AlertTagColumn } from './Columns/AlertTagColumn';
+import { AlertTypeColumn } from './Columns/AlertTypeColumn';
 
 export interface AlertRowProps {
 	alert: Alert;
@@ -17,21 +20,6 @@ export interface AlertRowProps {
 	onUndismissAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 }
-
-const getStatusBadge = (alert: Alert) => {
-	if (alert.isDismissed) {
-		return (
-			<Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-				dismissed
-			</Badge>
-		);
-	}
-	return (
-		<Badge variant="destructive" className="text-xs px-1.5 py-0.5">
-			firing
-		</Badge>
-	);
-};
 
 export const AlertRow = ({
 	alert,
@@ -69,56 +57,25 @@ export const AlertRow = ({
 			{orderedColumns.map((column) => {
 				switch (column) {
 					case 'type':
-						return (
-							<TableCell key={column} className="py-1 px-2">
-								<TypeAvatarStack alert={alert} />
-							</TableCell>
-						);
+						return <AlertTypeColumn key={column} alert={alert} />;
 					case 'alertName':
-						return (
-							<TableCell key={column} className="py-1 px-2">
-								<span className="text-sm font-medium truncate block max-w-xs" title={alert.alertName}>
-									{alert.alertName}
-								</span>
-							</TableCell>
-						);
+						return <AlertNameColumn key={column} alert={alert} />;
 					case 'status':
-						return (
-							<TableCell key={column} className="py-1 px-2">
-								{getStatusBadge(alert)}
-							</TableCell>
-						);
+						return <AlertStatusColumn key={column} alert={alert} />;
 					case 'tag':
-						return (
-							<TableCell key={column} className="py-1 px-2">
-								<Badge variant="outline" className="text-xs px-1.5 py-0.5">
-									{alert.tag}
-								</Badge>
-							</TableCell>
-						);
+						return <AlertTagColumn key={column} alert={alert} />;
 					case 'summary':
-						return (
-							<TableCell key={column} className="py-1 px-2">
-								<span className="text-sm text-muted-foreground truncate max-w-xs block">
-									{alert.summary || '-'}
-								</span>
-							</TableCell>
-						);
+						return <AlertSummaryColumn key={column} alert={alert} />;
 					case 'startsAt':
-						return (
-							<TableCell key={column} className="py-1 px-2">
-								<span className="text-sm text-muted-foreground">{formatDate(alert.startsAt)}</span>
-							</TableCell>
-						);
+						return <AlertStartsAtColumn key={column} alert={alert} />;
 					case 'actions':
 						return (
-							<TableCell key={column} className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-								<RowActions
-									alert={alert}
-									onDismissAlert={onDismissAlert}
-									onUndismissAlert={onUndismissAlert}
-								/>
-							</TableCell>
+							<AlertActionsColumn
+								key={column}
+								alert={alert}
+								onDismissAlert={onDismissAlert}
+								onUndismissAlert={onUndismissAlert}
+							/>
 						);
 					default:
 						return null;
