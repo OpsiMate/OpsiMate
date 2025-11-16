@@ -123,16 +123,20 @@ export const AlertsTable = ({
 										</TableHead>
 									);
 								}
-								return (
-									<SortableHeader
-										key={column}
-										column={column}
-										label={COLUMN_LABELS[column]}
-										sortField={sortField}
-										sortDirection={sortDirection}
-										onSort={handleSort}
-									/>
-								);
+								// Only render SortableHeader for valid sortable columns
+								if (['alertName', 'status', 'tag', 'startsAt', 'summary', 'type'].includes(column)) {
+									return (
+										<SortableHeader
+											key={column}
+											column={column as AlertSortField}
+											label={COLUMN_LABELS[column]}
+											sortField={sortField}
+											sortDirection={sortDirection}
+											onSort={handleSort}
+										/>
+									);
+								}
+								return null;
 							})}
 						</TableRow>
 					</TableHeader>

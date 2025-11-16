@@ -35,8 +35,8 @@ export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirec
 				bValue = b.isDismissed ? 'dismissed' : 'firing';
 				break;
 			case 'tag':
-				aValue = a.tag.toLowerCase();
-				bValue = b.tag.toLowerCase();
+				aValue = (a.tag ?? '').toLowerCase();
+				bValue = (b.tag ?? '').toLowerCase();
 				break;
 			case 'summary':
 				aValue = (a.summary || '').toLowerCase();

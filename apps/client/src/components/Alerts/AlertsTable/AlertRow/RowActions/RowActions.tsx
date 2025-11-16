@@ -91,13 +91,17 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 				</DropdownMenu>
 			)}
 			{canToggle && (
-				<div
+				<Button
+					type="button"
+					variant="ghost"
 					onClick={handleToggle}
-					className="cursor-pointer text-muted-foreground hover:text-white hover:bg-primary rounded-sm p-1.5 transition-colors"
+					className="text-muted-foreground hover:text-white hover:bg-primary rounded-sm p-1.5 transition-colors"
 					title={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
+					aria-label={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
+					aria-pressed={isDismissed}
 				>
 					{isDismissed ? <RotateCcw className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-				</div>
+				</Button>
 			)}
 		</div>
 	);

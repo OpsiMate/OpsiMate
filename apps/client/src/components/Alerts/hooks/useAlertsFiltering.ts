@@ -22,10 +22,10 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 						fieldValue = getAlertType(alert);
 						break;
 					case 'tag':
-						fieldValue = alert.tag;
+						fieldValue = alert.tag ?? '';
 						break;
 					case 'alertName':
-						fieldValue = alert.alertName;
+						fieldValue = alert.alertName ?? '';
 						break;
 					default:
 						continue;

@@ -1,24 +1,9 @@
 import { useState } from 'react';
+import { DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from '../AlertsTable/AlertsTable.constants';
 
 export const useColumnManagement = () => {
-	const [visibleColumns, setVisibleColumns] = useState([
-		'type',
-		'alertName',
-		'status',
-		'tag',
-		'summary',
-		'startsAt',
-		'actions',
-	]);
-	const [columnOrder, setColumnOrder] = useState([
-		'type',
-		'alertName',
-		'status',
-		'tag',
-		'summary',
-		'startsAt',
-		'actions',
-	]);
+	const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
+	const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
 
 	const handleColumnToggle = (column: string) => {
 		setVisibleColumns((prev) => {

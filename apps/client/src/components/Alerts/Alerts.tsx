@@ -25,7 +25,11 @@ const Alerts = () => {
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showColumnSettings, setShowColumnSettings] = useState(false);
 
-	const { lastRefresh, isRefreshing, handleManualRefresh } = useAlertsRefresh(refetch);
+	const shouldPauseRefresh = showColumnSettings || selectedAlert !== null;
+
+	const { lastRefresh, isRefreshing, handleManualRefresh } = useAlertsRefresh(refetch, {
+		shouldPause: shouldPauseRefresh,
+	});
 	const filteredAlerts = useAlertsFiltering(alerts, filters);
 	const { visibleColumns, columnOrder, handleColumnToggle } = useColumnManagement();
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();

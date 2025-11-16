@@ -2,25 +2,30 @@ import { useToast } from '@/hooks/use-toast';
 import { QueryObserverResult, RefetchOptions } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-export const useAlertsRefresh = (refetch: (options?: RefetchOptions) => Promise<QueryObserverResult>) => {
+export interface UseAlertsRefreshOptions {
+	shouldPause?: boolean;
+}
+
+export const useAlertsRefresh = (
+	refetch: (options?: RefetchOptions) => Promise<QueryObserverResult>,
+	options?: UseAlertsRefreshOptions
+) => {
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const { toast } = useToast();
+	const shouldPause = options?.shouldPause ?? false;
 
-	// Auto-refresh every 5 seconds when no dialog is open
+	// Auto-refresh every 5 seconds when not paused
 	useEffect(() => {
-		const interval = setInterval(() => {
-			const hasOpenDialog =
-				document.querySelector('[role="dialog"]') || document.querySelector('[data-state="open"]');
+		if (shouldPause) return;
 
-			if (!hasOpenDialog) {
-				refetch();
-				setLastRefresh(new Date());
-			}
+		const interval = setInterval(() => {
+			refetch();
+			setLastRefresh(new Date());
 		}, 5000);
 
 		return () => clearInterval(interval);
-	}, [refetch]);
+	}, [refetch, shouldPause]);
 
 	const handleManualRefresh = async () => {
 		setIsRefreshing(true);
