@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { FilterSidebar } from '@/components/shared';
+import { ColumnSettingsModal, FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { useAlerts, useDeleteAlert, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetails } from './AlertDetails';
 import { AlertsTable } from './AlertsTable';
+import { COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -26,10 +27,11 @@ const Alerts = () => {
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
-	const [visibleColumns, setVisibleColumns] = useState(['type', 'alertName', 'status', 'tag', 'startsAt', 'actions']);
-	const [columnOrder, setColumnOrder] = useState(['type', 'alertName', 'status', 'tag', 'startsAt', 'actions']);
+	const [visibleColumns, setVisibleColumns] = useState(['type', 'alertName', 'status', 'tag', 'summary', 'startsAt', 'actions']);
+	const [columnOrder, setColumnOrder] = useState(['type', 'alertName', 'status', 'tag', 'summary', 'startsAt', 'actions']);
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
+	const [showColumnSettings, setShowColumnSettings] = useState(false);
 
 	useEffect(() => {
 		const interval = setInterval(() => {
@@ -147,6 +149,16 @@ const Alerts = () => {
 		}
 	};
 
+	const handleColumnToggle = (column: string) => {
+		setVisibleColumns((prev) => {
+			if (prev.includes(column)) {
+				return prev.filter((col) => col !== column);
+			} else {
+				return [...prev, column];
+			}
+		});
+	};
+
 	const handleLaunchTVMode = () => {
 		const params = new URLSearchParams({
 			filters: JSON.stringify(filters),
@@ -218,6 +230,7 @@ const Alerts = () => {
 								visibleColumns={visibleColumns}
 								columnOrder={columnOrder}
 								onAlertClick={setSelectedAlert}
+								onTableSettingsClick={() => setShowColumnSettings(true)}
 							/>
 						</div>
 
@@ -261,6 +274,16 @@ const Alerts = () => {
 					)}
 				</div>
 			</div>
+
+			<ColumnSettingsModal
+				open={showColumnSettings}
+				onOpenChange={setShowColumnSettings}
+				visibleColumns={visibleColumns}
+				onColumnToggle={handleColumnToggle}
+				columnLabels={COLUMN_LABELS}
+				title="Alert Table Settings"
+				description="Select which columns to display in the alerts table."
+			/>
 		</DashboardLayout>
 	);
 };

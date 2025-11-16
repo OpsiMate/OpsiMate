@@ -1,6 +1,8 @@
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { Settings } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AlertRow } from './AlertRow';
 import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
@@ -71,30 +73,41 @@ export const AlertsTable = ({
 
 	return (
 		<div className={cn('flex flex-col gap-2', className)}>
-			<SearchBar
-				searchTerm={searchTerm}
-				onSearchChange={setSearchTerm}
-				onTableSettingsClick={onTableSettingsClick}
-			/>
+			<SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
 			<div className="border rounded-lg overflow-hidden">
 				<Table>
 					<TableHeader>
 						<TableRow className="h-8">
-							{onSelectAlerts && (
-								<TableHead className="w-10 h-8 py-1 px-2">
+						{onSelectAlerts && (
+							<TableHead className="w-10 h-8 py-1 px-2">
+								<div className="flex items-center justify-center">
 									<Checkbox
 										checked={sortedAlerts.length > 0 && selectedAlerts.length === sortedAlerts.length}
 										onCheckedChange={handleSelectAll}
 										className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
 									/>
-								</TableHead>
-							)}
+								</div>
+							</TableHead>
+						)}
 							{orderedColumns.map((column) => {
 								if (column === 'actions') {
 									return (
 										<TableHead key={column} className="w-24 h-8 py-1 px-2 text-xs">
-											{COLUMN_LABELS[column]}
+											<div className="flex items-center justify-between">
+												<span>{COLUMN_LABELS[column]}</span>
+												{onTableSettingsClick && (
+													<Button
+														variant="outline"
+														size="icon"
+														className="h-6 w-6 ml-auto rounded-full"
+														onClick={onTableSettingsClick}
+														title="Table settings"
+													>
+														<Settings className="h-3.5 w-3.5" />
+													</Button>
+												)}
+											</div>
 										</TableHead>
 									);
 								}
