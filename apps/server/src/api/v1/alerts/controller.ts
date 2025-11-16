@@ -4,7 +4,7 @@ import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { GcpAlertWebhook, HttpAlertWebhookSchema } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 
-const logger: Logger = new Logger('server');
+const logger: Logger = new Logger('alerts.controller');
 
 export class AlertController {
 	constructor(private alertBL: AlertBL) {}
@@ -60,6 +60,8 @@ export class AlertController {
 			if (!incident) {
 				return res.status(400).json({ error: 'Missing incident in payload' });
 			}
+
+			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
 			if (incident.state.toLowerCase() === 'closed') {
 				await this.alertBL.deleteAlert(incident.incident_id);
