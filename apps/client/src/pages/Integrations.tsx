@@ -22,7 +22,7 @@ import { ValidationFeedback, validationRules } from '@/components/ValidationFeed
 import { integrationApi } from '@/lib/api';
 import { canDelete, canManageIntegrations } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { Logger } from '@OpsiMate/shared';
+import { Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
 import {
 	Activity,
 	AlertCircle,
@@ -323,16 +323,9 @@ const Integrations = () => {
 	const [configuredInstances, setConfiguredInstances] = useState<Record<string, number>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [formData, setFormData] = useState<Record<string, string>>({});
-	const [savedIntegrations, setSavedIntegrations] = useState<
-		Array<{ id: string; type: string; name: string; url: string }>
-	>([]);
+	const [savedIntegrations, setSavedIntegrations] = useState<SharedIntegration[]>([]);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [integrationToDelete, setIntegrationToDelete] = useState<{
-		id: string;
-		type: string;
-		name: string;
-		url: string;
-	} | null>(null);
+	const [integrationToDelete, setIntegrationToDelete] = useState<SharedIntegration | null>(null);
 	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
 	const { toast } = useToast();
 
