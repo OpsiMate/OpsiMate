@@ -382,4 +382,118 @@ describe('Alerts API', () => {
 			expect(row.status).toBe(payload.status);
 		});
 	});
+
+	describe('POST /api/v1/alerts/custom/gcp', () => {
+		test('should create a new GCP alert successfully with valid payload', async () => {
+			const payload = {
+				incident: {
+					incident_id: 'gcp-alert-1',
+					state: 'open',
+					resource_name: 'compute-instance',
+					started_at: new Date().toISOString(),
+					url: 'https://console.cloud.google.com/alerting/incidents/1',
+					policy_name: 'High CPU Usage',
+					summary: 'CPU > 90%',
+					documentation: { content: 'https://runbook.com/cpu' },
+				},
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/gcp')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.alertId).toBe(payload.incident.incident_id);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.incident.incident_id);
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(payload.incident.policy_name);
+			expect(row.status).toBe(payload.incident.state);
+			expect(row.tag).toBe(payload.incident.resource_name);
+		});
+
+		test('should update an existing GCP alert when incident already exists', async () => {
+			const existingId = testAlerts[0].id;
+
+			const payload = {
+				incident: {
+					incident_id: existingId,
+					state: 'incident_updated',
+					resource_name: 'updated-resource',
+					started_at: new Date().toISOString(),
+					url: 'https://console.cloud.google.com/alerting/incidents/updated',
+					policy_name: 'Updated Policy',
+					summary: 'Updated summary',
+					documentation: { content: 'https://runbook.com/updated' },
+				},
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/gcp')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(payload.incident.policy_name);
+			expect(row.status).toBe(payload.incident.state);
+			expect(row.tag).toBe(payload.incident.resource_name);
+		});
+
+		test('should delete an alert when GCP incident state is closed', async () => {
+			const existingId = testAlerts[0].id;
+
+			const payload = {
+				incident: {
+					incident_id: existingId,
+					state: 'closed',
+					resource_name: 'system',
+					started_at: new Date().toISOString(),
+					url: '',
+					policy_name: '',
+					summary: '',
+				},
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/gcp')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
+			expect(row).toBeUndefined();
+		});
+
+		test('should return 400 for missing incident field', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/gcp')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ notIncident: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBe('Missing incident in payload');
+		});
+
+		test('should return 401 when no auth token is provided', async () => {
+			const payload = {
+				incident: {
+					incident_id: 'unauthorized-gcp-alert',
+					state: 'open',
+				},
+			};
+
+			const response = await app.post('/api/v1/alerts/custom/gcp').send(payload);
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
+	});
 });
