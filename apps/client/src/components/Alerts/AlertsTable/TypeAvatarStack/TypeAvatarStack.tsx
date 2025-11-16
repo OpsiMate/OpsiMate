@@ -1,4 +1,4 @@
-import { getIntegrationLabel, IntegrationAvatar, resolveAlertIntegration } from '@/components/Alerts/IntegrationAvatar';
+import { getIntegrationLabel, IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 import { Alert } from '@OpsiMate/shared';
 
 export interface TypeAvatarStackProps {
@@ -18,4 +18,3 @@ export const TypeAvatarStack = ({ alert }: TypeAvatarStackProps) => {
 		</div>
 	);
 };
-

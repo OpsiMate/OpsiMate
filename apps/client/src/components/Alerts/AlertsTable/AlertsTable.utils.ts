@@ -1,5 +1,5 @@
 import { Alert } from '@OpsiMate/shared';
-import { getIntegrationLabel, resolveAlertIntegration } from '../Alerts/IntegrationAvatar';
+import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
 import { AlertSortField, SortDirection } from './AlertsTable.types';
 
 export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
