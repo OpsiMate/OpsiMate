@@ -43,6 +43,7 @@ import {
 	X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const logger = new Logger('Integrations');
 // Define IntegrationType locally until shared package export is fixed
@@ -303,6 +304,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNo
 };
 
 const Integrations = () => {
+	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -321,6 +323,19 @@ const Integrations = () => {
 		url: string;
 	} | null>(null);
 	const { toast } = useToast();
+
+	// Handle URL-based category filtering
+	useEffect(() => {
+		const category = searchParams.get('category');
+		if (category) {
+			// Capitalize the first letter to match tag format
+			const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+			// Check if the category is valid
+			if (ALL_TAGS.includes(formattedCategory)) {
+				setSelectedTags([formattedCategory]);
+			}
+		}
+	}, [searchParams]);
 
 	// Fetch saved integrations on component mount
 	useEffect(() => {
@@ -366,7 +381,16 @@ const Integrations = () => {
 	}, [searchQuery, selectedTags]);
 
 	const handleTagToggle = (tag: string) => {
-		setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+		setSelectedTags((prev) => {
+			const newTags = prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag];
+			// Update URL to reflect the selected tags
+			if (newTags.length > 0) {
+				setSearchParams({ category: newTags[0].toLowerCase() });
+			} else {
+				setSearchParams({});
+			}
+			return newTags;
+		});
 	};
 
 	const handleIntegrationButtonClick = () => {
@@ -413,7 +437,9 @@ const Integrations = () => {
 											variant={selectedTags.includes(tag) ? 'default' : 'outline'}
 											className={cn(
 												'cursor-pointer transition-all hover:shadow-sm',
-												selectedTags.includes(tag) ? 'hover:bg-primary/90' : 'hover:bg-accent'
+												selectedTags.includes(tag)
+													? 'hover:bg-primary/90'
+													: 'hover:bg-primary hover:text-primary-foreground hover:border-primary'
 											)}
 											onClick={() => handleTagToggle(tag)}
 										>

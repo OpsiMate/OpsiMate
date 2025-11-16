@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Settings } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AlertRow } from './AlertRow';
+import { AlertsEmptyState } from './AlertsEmptyState';
 import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { createServiceNameLookup, filterAlerts, sortAlerts } from './AlertsTable.utils';
@@ -70,6 +71,15 @@ export const AlertsTable = ({
 	};
 
 	const orderedColumns = columnOrder.filter((col) => visibleColumns.includes(col));
+
+	// Show empty state if no alerts at all (not just filtered out)
+	if (!isLoading && alerts.length === 0) {
+		return (
+			<div className={cn('flex flex-col gap-2', className)}>
+				<AlertsEmptyState />
+			</div>
+		);
+	}
 
 	return (
 		<div className={cn('flex flex-col gap-2', className)}>
