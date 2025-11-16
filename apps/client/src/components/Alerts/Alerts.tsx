@@ -58,22 +58,22 @@ const Alerts = () => {
 					/>
 				</FilterSidebar>
 
-			<div className="flex-1 flex">
-				<div className="flex-1 flex flex-col p-4">
-					<AlertsHeader
-						alertsCount={alerts.length}
-						isRefreshing={isRefreshing}
-						lastRefresh={lastRefresh}
-						onRefresh={handleManualRefresh}
-						onLaunchTVMode={handleLaunchTVMode}
-					/>
+				<div className="flex-1 flex">
+					<div className="flex-1 flex flex-col p-4">
+						<AlertsHeader
+							alertsCount={alerts.length}
+							isRefreshing={isRefreshing}
+							lastRefresh={lastRefresh}
+							onRefresh={handleManualRefresh}
+							onLaunchTVMode={handleLaunchTVMode}
+						/>
 
-					<div
-						className={cn(
-							'flex-1 overflow-auto',
-							alerts.length === 0 && !isLoading && 'flex items-center justify-center'
-						)}
-					>
+						<div
+							className={cn(
+								'flex-1 overflow-auto',
+								alerts.length === 0 && !isLoading && 'flex items-center justify-center'
+							)}
+						>
 							<AlertsTable
 								alerts={filteredAlerts}
 								services={services}
@@ -88,14 +88,14 @@ const Alerts = () => {
 								onAlertClick={setSelectedAlert}
 								onTableSettingsClick={() => setShowColumnSettings(true)}
 							/>
-					</div>
+						</div>
 
-				<AlertsSelectionBar
-					selectedAlerts={selectedAlerts}
-					onClearSelection={() => setSelectedAlerts([])}
-					onDismissAll={handleDismissAllSelected}
-				/>
-				</div>
+						<AlertsSelectionBar
+							selectedAlerts={selectedAlerts}
+							onClearSelection={() => setSelectedAlerts([])}
+							onDismissAll={handleDismissAllSelected}
+						/>
+					</div>
 
 					{selectedAlert && (
 						<div className="w-96 border-l">

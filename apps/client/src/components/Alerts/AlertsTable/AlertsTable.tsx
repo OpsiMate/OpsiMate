@@ -59,7 +59,7 @@ export const AlertsTable = ({
 		}
 	};
 
-	const handleSelectAlert = (alert: typeof alerts[0]) => {
+	const handleSelectAlert = (alert: (typeof alerts)[0]) => {
 		if (onSelectAlerts) {
 			const isSelected = selectedAlerts.some((a) => a.id === alert.id);
 			if (isSelected) {
@@ -91,13 +91,15 @@ export const AlertsTable = ({
 						<TableRow className="h-8">
 							{onSelectAlerts && (
 								<TableHead className="w-10 h-8 py-1 px-2">
-								<div className="flex items-center justify-center">
-									<Checkbox
-										checked={sortedAlerts.length > 0 && selectedAlerts.length === sortedAlerts.length}
-										onCheckedChange={handleSelectAll}
-										className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-									/>
-								</div>
+									<div className="flex items-center justify-center">
+										<Checkbox
+											checked={
+												sortedAlerts.length > 0 && selectedAlerts.length === sortedAlerts.length
+											}
+											onCheckedChange={handleSelectAll}
+											className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+										/>
+									</div>
 								</TableHead>
 							)}
 							{orderedColumns.map((column) => {

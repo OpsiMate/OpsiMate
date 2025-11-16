@@ -79,7 +79,10 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 						)}
 						{(runbookUrl || alertUrl) && onDeleteAlert && <DropdownMenuSeparator />}
 						{onDeleteAlert && (
-							<DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+							<DropdownMenuItem
+								onClick={handleDelete}
+								className="text-destructive focus:text-destructive"
+							>
 								<Trash2 className="mr-2 h-3 w-3" />
 								Delete
 							</DropdownMenuItem>

@@ -9,10 +9,20 @@ export interface AlertActionsColumnProps {
 	onDeleteAlert?: (alertId: string) => void;
 }
 
-export const AlertActionsColumn = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAlert }: AlertActionsColumnProps) => {
+export const AlertActionsColumn = ({
+	alert,
+	onDismissAlert,
+	onUndismissAlert,
+	onDeleteAlert,
+}: AlertActionsColumnProps) => {
 	return (
 		<TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-			<RowActions alert={alert} onDismissAlert={onDismissAlert} onUndismissAlert={onUndismissAlert} onDeleteAlert={onDeleteAlert} />
+			<RowActions
+				alert={alert}
+				onDismissAlert={onDismissAlert}
+				onUndismissAlert={onUndismissAlert}
+				onDeleteAlert={onDeleteAlert}
+			/>
 		</TableCell>
 	);
 };

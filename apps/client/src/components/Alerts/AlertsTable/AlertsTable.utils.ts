@@ -20,11 +20,7 @@ export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	});
 };
 
-export const sortAlerts = (
-	alerts: Alert[],
-	sortField: AlertSortField,
-	sortDirection: SortDirection
-): Alert[] => {
+export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirection: SortDirection): Alert[] => {
 	return [...alerts].sort((a, b) => {
 		let aValue: string | number;
 		let bValue: string | number;

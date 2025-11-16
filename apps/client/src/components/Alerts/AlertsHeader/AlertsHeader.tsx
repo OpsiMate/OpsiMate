@@ -25,13 +25,7 @@ export const AlertsHeader = ({
 					<p className="text-sm text-muted-foreground mt-1">Monitor and manage system alerts</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onRefresh}
-						disabled={isRefreshing}
-						className="gap-2"
-					>
+					<Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing} className="gap-2">
 						<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
 						Refresh
 					</Button>
@@ -42,9 +36,7 @@ export const AlertsHeader = ({
 				</div>
 			</div>
 			{alertsCount > 0 && lastRefresh && (
-				<p className="text-xs text-muted-foreground mt-2">
-					Last refreshed: {lastRefresh.toLocaleTimeString()}
-				</p>
+				<p className="text-xs text-muted-foreground mt-2">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
 			)}
 		</div>
 	);

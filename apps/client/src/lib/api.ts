@@ -1,15 +1,15 @@
 import { SavedView } from '@/types/SavedView';
 import {
-    AuditLog,
-    DiscoveredService,
-    Integration,
-    IntegrationType,
-    Logger,
-    Provider,
-    Service,
-    ServiceWithProvider,
-    Alert as SharedAlert,
-    Tag,
+	AuditLog,
+	DiscoveredService,
+	Integration,
+	IntegrationType,
+	Logger,
+	Provider,
+	Service,
+	ServiceWithProvider,
+	Alert as SharedAlert,
+	Tag,
 } from '@OpsiMate/shared';
 
 const logger = new Logger('api');

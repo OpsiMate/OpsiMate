@@ -74,11 +74,11 @@ export const AlertRow = ({
 						return (
 							<AlertActionsColumn
 								key={column}
-									alert={alert}
-									onDismissAlert={onDismissAlert}
-									onUndismissAlert={onUndismissAlert}
+								alert={alert}
+								onDismissAlert={onDismissAlert}
+								onUndismissAlert={onUndismissAlert}
 								onDeleteAlert={onDeleteAlert}
-								/>
+							/>
 						);
 					default:
 						return null;

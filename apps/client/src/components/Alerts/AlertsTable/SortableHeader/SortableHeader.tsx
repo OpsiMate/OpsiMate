@@ -30,4 +30,3 @@ export const SortableHeader = ({ column, label, sortField, sortDirection, onSort
 		</TableHead>
 	);
 };
-

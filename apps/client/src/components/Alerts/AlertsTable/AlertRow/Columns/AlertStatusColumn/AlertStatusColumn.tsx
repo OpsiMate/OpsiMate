@@ -22,9 +22,5 @@ const getStatusBadge = (alert: Alert) => {
 };
 
 export const AlertStatusColumn = ({ alert }: AlertStatusColumnProps) => {
-	return (
-		<TableCell className="py-1 px-2">
-			{getStatusBadge(alert)}
-		</TableCell>
-	);
+	return <TableCell className="py-1 px-2">{getStatusBadge(alert)}</TableCell>;
 };
