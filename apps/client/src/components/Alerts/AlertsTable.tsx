@@ -294,6 +294,14 @@ export const AlertsTable = ({
 						) : (
 							sortedAlerts.map((alert) => {
 								const isSelected = selectedAlerts.some((a) => a.id === alert.id);
+
+								const handleRowClick = () => {
+									if (onSelectAlerts) {
+										handleSelectAlert(alert);
+									}
+									onAlertClick?.(alert);
+								};
+
 								return (
 									<TableRow
 										key={alert.id}
@@ -301,15 +309,17 @@ export const AlertsTable = ({
 											'h-8 cursor-pointer hover:bg-muted/50',
 											isSelected && 'bg-muted/50'
 										)}
-										onClick={() => onAlertClick?.(alert)}
+										onClick={handleRowClick}
 									>
 										{onSelectAlerts && (
-											<TableCell className="py-1 px-2">
-												<Checkbox
-													checked={isSelected}
-													onCheckedChange={() => handleSelectAlert(alert)}
-													className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-												/>
+											<TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center justify-center">
+													<Checkbox
+														checked={isSelected}
+														onCheckedChange={() => handleSelectAlert(alert)}
+														className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+													/>
+												</div>
 											</TableCell>
 										)}
 										{orderedColumns.map((column) => {
@@ -365,7 +375,7 @@ export const AlertsTable = ({
 												}
 												case 'actions':
 													return (
-														<TableCell key={column} className="py-1 px-2">
+														<TableCell key={column} className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
 															<RowActions
 																alert={alert}
 																onDismissAlert={onDismissAlert}
