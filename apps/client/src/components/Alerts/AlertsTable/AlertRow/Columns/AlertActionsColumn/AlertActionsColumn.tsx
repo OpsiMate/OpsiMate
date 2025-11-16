@@ -6,12 +6,13 @@ export interface AlertActionsColumnProps {
 	alert: Alert;
 	onDismissAlert?: (alertId: string) => void;
 	onUndismissAlert?: (alertId: string) => void;
+	onDeleteAlert?: (alertId: string) => void;
 }
 
-export const AlertActionsColumn = ({ alert, onDismissAlert, onUndismissAlert }: AlertActionsColumnProps) => {
+export const AlertActionsColumn = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAlert }: AlertActionsColumnProps) => {
 	return (
 		<TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-			<RowActions alert={alert} onDismissAlert={onDismissAlert} onUndismissAlert={onUndismissAlert} />
+			<RowActions alert={alert} onDismissAlert={onDismissAlert} onUndismissAlert={onUndismissAlert} onDeleteAlert={onDeleteAlert} />
 		</TableCell>
 	);
 };

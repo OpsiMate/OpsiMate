@@ -1,15 +1,15 @@
 import { SavedView } from '@/types/SavedView';
 import {
-	AuditLog,
-	DiscoveredService,
-	Integration,
-	IntegrationType,
-	Logger,
-	Provider,
-	Service,
-	ServiceWithProvider,
-	Alert as SharedAlert,
-	Tag,
+    AuditLog,
+    DiscoveredService,
+    Integration,
+    IntegrationType,
+    Logger,
+    Provider,
+    Service,
+    ServiceWithProvider,
+    Alert as SharedAlert,
+    Tag,
 } from '@OpsiMate/shared';
 
 const logger = new Logger('api');
@@ -532,6 +532,11 @@ export const alertsApi = {
 	// Undismiss an alert
 	async undismissAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/undismiss`, 'PATCH');
+	},
+
+	// Delete an alert
+	async deleteAlert(alertId: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE');
 	},
 
 	// Get alerts by tag

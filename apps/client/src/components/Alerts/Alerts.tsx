@@ -1,7 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
-import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import { useAlerts, useDeleteAlert, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ const Alerts = () => {
 	const { data: services = [] } = useServices();
 	const dismissAlertMutation = useDismissAlert();
 	const undismissAlertMutation = useUndismissAlert();
+	const deleteAlertMutation = useDeleteAlert();
 	const { toast } = useToast();
 
 	const [filters, setFilters] = useState<Record<string, string[]>>({});
@@ -109,10 +110,6 @@ const Alerts = () => {
 	const handleDismissAlert = async (alertId: string) => {
 		try {
 			await dismissAlertMutation.mutateAsync(alertId);
-			toast({
-				title: 'Alert dismissed',
-				description: 'The alert has been marked as dismissed.',
-			});
 		} catch (error) {
 			toast({
 				title: 'Error dismissing alert',
@@ -125,14 +122,26 @@ const Alerts = () => {
 	const handleUndismissAlert = async (alertId: string) => {
 		try {
 			await undismissAlertMutation.mutateAsync(alertId);
-			toast({
-				title: 'Alert undismissed',
-				description: 'The alert has been reactivated.',
-			});
 		} catch (error) {
 			toast({
 				title: 'Error undismissing alert',
 				description: 'Failed to undismiss alert',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleDeleteAlert = async (alertId: string) => {
+		try {
+			await deleteAlertMutation.mutateAsync(alertId);
+			toast({
+				title: 'Alert deleted',
+				description: 'The alert has been permanently removed.',
+			});
+		} catch (error) {
+			toast({
+				title: 'Error deleting alert',
+				description: 'Failed to delete alert',
 				variant: 'destructive',
 			});
 		}
@@ -202,6 +211,7 @@ const Alerts = () => {
 								services={services}
 								onDismissAlert={handleDismissAlert}
 								onUndismissAlert={handleUndismissAlert}
+								onDeleteAlert={handleDeleteAlert}
 								onSelectAlerts={setSelectedAlerts}
 								selectedAlerts={selectedAlerts}
 								isLoading={isLoading}

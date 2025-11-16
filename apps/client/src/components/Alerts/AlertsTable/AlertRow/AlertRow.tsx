@@ -18,6 +18,7 @@ export interface AlertRowProps {
 	onAlertClick?: (alert: Alert) => void;
 	onDismissAlert?: (alertId: string) => void;
 	onUndismissAlert?: (alertId: string) => void;
+	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 }
 
@@ -29,6 +30,7 @@ export const AlertRow = ({
 	onAlertClick,
 	onDismissAlert,
 	onUndismissAlert,
+	onDeleteAlert,
 	onSelectAlerts,
 }: AlertRowProps) => {
 	const handleRowClick = () => {
@@ -75,6 +77,7 @@ export const AlertRow = ({
 								alert={alert}
 								onDismissAlert={onDismissAlert}
 								onUndismissAlert={onUndismissAlert}
+								onDeleteAlert={onDeleteAlert}
 							/>
 						);
 					default:

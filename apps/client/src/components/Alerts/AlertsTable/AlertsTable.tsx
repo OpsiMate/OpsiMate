@@ -14,6 +14,7 @@ export const AlertsTable = ({
 	services,
 	onDismissAlert,
 	onUndismissAlert,
+	onDeleteAlert,
 	onSelectAlerts,
 	selectedAlerts = [],
 	isLoading = false,
@@ -142,6 +143,7 @@ export const AlertsTable = ({
 										onAlertClick={onAlertClick}
 										onDismissAlert={onDismissAlert}
 										onUndismissAlert={onUndismissAlert}
+										onDeleteAlert={onDeleteAlert}
 										onSelectAlerts={onSelectAlerts}
 									/>
 								);

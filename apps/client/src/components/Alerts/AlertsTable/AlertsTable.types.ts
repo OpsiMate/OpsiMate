@@ -9,6 +9,7 @@ export interface AlertsTableProps {
 	services: Array<{ id: string | number; name: string }>;
 	onDismissAlert?: (alertId: string) => void;
 	onUndismissAlert?: (alertId: string) => void;
+	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	selectedAlerts?: Alert[];
 	isLoading?: boolean;

@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { alertsApi } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
 export const useAlerts = () => {
