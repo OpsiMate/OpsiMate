@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -129,6 +130,16 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 			{ name: 'appKey', label: 'Application Key', type: 'password', required: true },
 		],
+	},
+	{
+		id: 'gcp',
+		supported: true,
+		name: 'Google Cloud Platform',
+		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
+		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
+		tags: ['Monitoring', 'Alerts', 'Cloud'],
+		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
+		configFields: [],
 	},
 	{
 		id: 'prometheus',
@@ -322,6 +333,7 @@ const Integrations = () => {
 		name: string;
 		url: string;
 	} | null>(null);
+	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
 	const { toast } = useToast();
 
 	// Handle URL-based category filtering
@@ -558,6 +570,12 @@ const Integrations = () => {
 													: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95'
 											)}
 											onClick={() => {
+												// Special handling for GCP - show webhook setup modal
+												if (integration.id === 'gcp') {
+													setShowGCPSetupModal(true);
+													return;
+												}
+
 												// Find existing integration of this type if it exists
 												const existingIntegration = savedIntegrations.find(
 													(integration2) =>
@@ -1095,6 +1113,8 @@ const Integrations = () => {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
 		</>
 	);
 };
