@@ -1,6 +1,6 @@
 import { TableCell } from '@/components/ui/table';
 import { Alert } from '@OpsiMate/shared';
-import { RowActions } from '../../../RowActions';
+import { RowActions } from '../../RowActions';
 
 export interface AlertActionsColumnProps {
 	alert: Alert;

@@ -1,5 +1,5 @@
-import { getIntegrationLabel, IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 import { Alert } from '@OpsiMate/shared';
+import { getIntegrationLabel, IntegrationAvatar, resolveAlertIntegration } from '../../../IntegrationAvatar';
 
 export interface TypeAvatarStackProps {
 	alert: Alert;

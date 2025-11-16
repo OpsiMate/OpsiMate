@@ -1,6 +1,6 @@
 import { TableCell } from '@/components/ui/table';
 import { Alert } from '@OpsiMate/shared';
-import { TypeAvatarStack } from '../../../TypeAvatarStack';
+import { TypeAvatarStack } from '../../TypeAvatarStack';
 
 export interface AlertTypeColumnProps {
 	alert: Alert;
