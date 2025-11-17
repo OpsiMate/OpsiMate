@@ -46,6 +46,9 @@ jobs:
       - name: Lint packages/shared
         run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
 
+      - name: Lint packages/custom-actions
+        run: pnpm --filter @OpsiMate/custom-actions lint --max-warnings=0
+
       - name: Lint apps/client
         run: pnpm --filter @OpsiMate/client lint
 
@@ -54,6 +57,9 @@ jobs:
 
       - name: Format packages/shared
         run: pnpm --filter @OpsiMate/shared format
+
+      - name: Format packages/custom-actions
+        run: pnpm --filter @OpsiMate/custom-actions format
 
       - name: Format apps/client
         run: pnpm --filter @OpsiMate/client format

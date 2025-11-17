@@ -14,6 +14,7 @@ import { SecretsMetadataRepository } from '../src/dal/secretsMetadataRepository.
 import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepository.ts';
 import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository.ts';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository.ts';
+import { CustomActionRepository } from '../src/dal/customActionRepository.ts';
 
 // Mock the Kubernetes client to avoid ES module issues
 vi.mock('@kubernetes/client-node', () => ({
@@ -26,6 +27,29 @@ vi.mock('@kubernetes/client-node', () => ({
 	AppsV1Api: vi.fn(),
 	NetworkingV1Api: vi.fn(),
 }));
+
+// Mock the SSH client to avoid actual SSH connections in tests
+vi.mock('../src/dal/sshClient', async () => {
+	const actual = await vi.importActual('../src/dal/sshClient');
+	return {
+		...actual,
+		executeBashScript: vi.fn().mockResolvedValue({
+			code: 0,
+			stdout: 'mocked output',
+			stderr: '',
+			signal: null,
+		}),
+		testConnection: vi.fn().mockResolvedValue({ success: true }),
+		connectAndListContainers: vi.fn().mockResolvedValue([]),
+		startService: vi.fn().mockResolvedValue(undefined),
+		stopService: vi.fn().mockResolvedValue(undefined),
+		getServiceLogs: vi.fn().mockResolvedValue(['mocked log']),
+		startSystemService: vi.fn().mockResolvedValue(undefined),
+		stopSystemService: vi.fn().mockResolvedValue(undefined),
+		getSystemServiceLogs: vi.fn().mockResolvedValue(['mocked system log']),
+		checkSystemServiceStatus: vi.fn().mockResolvedValue('running'),
+	};
+});
 
 // Increase timeout for integration tests
 vi.setConfig({ testTimeout: 30000 });
@@ -44,6 +68,7 @@ export async function setupDB(): Promise<Database.Database> {
 	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
+	const customActionRepo = new CustomActionRepository(db);
 
 	// Init tables
 	await Promise.all([
@@ -59,6 +84,7 @@ export async function setupDB(): Promise<Database.Database> {
 		serviceCustomFieldRepo.initServiceCustomFieldTable(),
 		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
 		passwordResetsRepo.initPasswordResetsTable(),
+		customActionRepo.initCustomActionsTable(),
 	]);
 	return db;
 }

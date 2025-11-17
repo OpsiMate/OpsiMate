@@ -12,6 +12,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json ./apps/server/
 COPY apps/client/package.json ./apps/client/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/custom-actions/package.json ./packages/custom-actions/
 
 # Install dependencies with cleanup in same layer
 RUN pnpm install --frozen-lockfile && \
@@ -41,6 +42,7 @@ WORKDIR /app
 
 # Copy only built assets and runtime files
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/custom-actions/dist ./packages/custom-actions/dist
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/client/dist ./apps/client/dist
 
@@ -50,6 +52,7 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/apps/server/package.json ./apps/server/
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/packages/custom-actions/package.json ./packages/custom-actions/
 
 # Install production dependencies using the actual package.json files
 RUN npm install -g pnpm && \
@@ -60,7 +63,8 @@ RUN npm install -g pnpm && \
 
 # Create workspace linking for shared package
 RUN mkdir -p node_modules/@OpsiMate && \
-    ln -sf /app/packages/shared node_modules/@OpsiMate/shared
+    ln -sf /app/packages/shared node_modules/@OpsiMate/shared && \
+    ln -sf /app/packages/custom-actions node_modules/@OpsiMate/custom-actions
 
 # Copy config files
 COPY --chown=opsimate:nodejs default-config.yml /app/config/default-config.yml

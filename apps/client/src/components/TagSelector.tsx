@@ -6,7 +6,7 @@ import { providerApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { Plus, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CreateTagDialog } from './CreateTagDialog';
 import { DeleteTagDialog } from './DeleteTagDialog';
 import { TagBadge } from './ui/tag-badge';
@@ -27,11 +27,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 	const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
 
-	useEffect(() => {
-		fetchTags();
-	}, []);
-
-	const fetchTags = async () => {
+	const fetchTags = useCallback(async () => {
 		setLoading(true);
 		try {
 			const response = await providerApi.getAllTags();
@@ -47,7 +43,11 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [toast]);
+
+	useEffect(() => {
+		fetchTags();
+	}, [fetchTags]);
 
 	const addTag = async (tag: Tag) => {
 		try {

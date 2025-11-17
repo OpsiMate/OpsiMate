@@ -1,5 +1,6 @@
-import { ActionButtons } from '@/components/ActionButtons';
+import { CustomAction } from '@OpsiMate/custom-actions';
 import { Service } from '../../ServiceTable';
+import { ActionButtons } from '../ActionButtons';
 
 interface ServiceActionBarProps {
 	selectedService: Service | null;
@@ -7,6 +8,8 @@ interface ServiceActionBarProps {
 	onStart: () => Promise<void>;
 	onStop: () => Promise<void>;
 	onRestart: () => Promise<void>;
+	onRunAction?: (action: CustomAction) => Promise<void>;
+	isRunningAction?: boolean;
 }
 
 export const ServiceActionBar = ({
@@ -15,6 +18,8 @@ export const ServiceActionBar = ({
 	onStart,
 	onStop,
 	onRestart,
+	onRunAction,
+	isRunningAction = false,
 }: ServiceActionBarProps) => {
 	return (
 		<div className="flex-shrink-0 p-2 border-t border-border">
@@ -24,6 +29,8 @@ export const ServiceActionBar = ({
 				onStart={onStart}
 				onStop={onStop}
 				onRestart={onRestart}
+				onRunAction={onRunAction}
+				isRunningAction={isRunningAction}
 			/>
 		</div>
 	);

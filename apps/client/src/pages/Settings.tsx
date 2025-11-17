@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
 import { Check, Edit, FileText, KeyRound, Plus, Settings as SettingsIcon, Trash2, Users, X } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -64,11 +64,7 @@ const Settings: React.FC = () => {
 	const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
 	const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
-	useEffect(() => {
-		fetchUsers();
-	}, []);
-
-	const fetchUsers = async () => {
+	const fetchUsers = useCallback(async () => {
 		try {
 			const response = await apiRequest<User[]>('/users', 'GET');
 			if (response.success && response.data) {
@@ -84,7 +80,11 @@ const Settings: React.FC = () => {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [handleApiResponse]);
+
+	useEffect(() => {
+		fetchUsers();
+	}, [fetchUsers]);
 
 	const handleRoleUpdate = async (email: string, newRole: Role) => {
 		setUpdatingUser(email);

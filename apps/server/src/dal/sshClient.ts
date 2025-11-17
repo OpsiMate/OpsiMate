@@ -374,6 +374,27 @@ export async function checkSystemServiceStatus(
 	}
 }
 
+/**
+ * Executes a bash script via SSH
+ */
+export async function executeBashScript(provider: Provider, script: string): Promise<SSHExecCommandResponse> {
+	const ssh = new NodeSSH();
+	try {
+		const sshConfig = getSshConfig(provider);
+		await ssh.connect(sshConfig);
+
+		const result = await execCommandWithAutoSudo(ssh, script);
+		if (result.code !== 0) {
+			logger.error(`Failed to execute bash script: ${result.stderr}`);
+			throw new Error(`Script execution failed with code ${result.code}: ${result.stderr}`);
+		}
+
+		return result;
+	} finally {
+		ssh.dispose();
+	}
+}
+
 // todo: add timeouts in this section when necessary
 function timeoutPromise<T>(promise: Promise<T>, ms: number, errorMsg = 'Operation timed out'): Promise<T> {
 	return Promise.race([

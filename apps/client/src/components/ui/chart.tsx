@@ -261,14 +261,11 @@ const ChartLegendContent = React.forwardRef<
 				const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
 				return (
-					<div
-						key={item.value}
-						className={cn(
-							'flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground'
-						)}
-					>
+					<div key={item.value} className="flex items-center gap-2">
 						{itemConfig?.icon && !hideIcon ? (
-							<itemConfig.icon />
+							<div className="flex items-center justify-center h-6 w-6 rounded-md bg-blue-50 border border-blue-300 text-blue-500">
+								<itemConfig.icon className="h-[14px] w-[14px]" />
+							</div>
 						) : (
 							<div
 								className="h-2 w-2 shrink-0 rounded-[2px]"
@@ -277,7 +274,7 @@ const ChartLegendContent = React.forwardRef<
 								}}
 							/>
 						)}
-						{itemConfig?.label}
+						<span className="text-sm font-medium text-gray-800">{itemConfig?.label}</span>
 					</div>
 				);
 			})}
@@ -312,4 +309,4 @@ function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key:
 	return configLabelKey in config ? config[configLabelKey] : config[key as keyof typeof config];
 }
 
-export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle };
+export { ChartContainer, ChartLegend, ChartLegendContent, ChartStyle, ChartTooltip, ChartTooltipContent };
