@@ -119,6 +119,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.56.2
         version: 5.85.5(react@18.3.1)
+      '@tanstack/react-virtual':
+        specifier: ^3.10.8
+        version: 3.13.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -281,7 +284,7 @@ importers:
         version: 5.4.19(@types/node@22.17.2)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0)
 
   apps/server:
     dependencies:
@@ -390,7 +393,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+        version: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0)
 
   packages/shared:
     dependencies:
@@ -2172,6 +2175,15 @@ packages:
     resolution: {integrity: sha512-/X4EFNcnPiSs8wM2v+b6DqS5mmGeuJQvxBglmDxl6ZQb5V26ouD2SJYAcC3VjbNwqhY2zjxVD15rDA5nGbMn3A==}
     peerDependencies:
       react: ^18 || ^19
+
+  '@tanstack/react-virtual@3.13.12':
+    resolution: {integrity: sha512-Gd13QdxPSukP8ZrkbgS2RwoZseTTbQPLnQEn7HY/rqtM+8Zt95f7xKC7N0EsKs7aoz0WzZ+fditZux+F8EzYxA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/virtual-core@3.13.12':
+    resolution: {integrity: sha512-1YBOJfRHV4sXUmWsFSf5rQor4Ss82G8dQWLRbnk3GA4jeP8hQt1hxXh0tmflpC0dz3VgEv/1+qwPyLeWkQuPFA==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -7917,6 +7929,14 @@ snapshots:
       '@tanstack/query-core': 5.85.5
       react: 18.3.1
 
+  '@tanstack/react-virtual@3.13.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.12
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@tanstack/virtual-core@3.13.12': {}
+
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.27.1
@@ -8375,7 +8395,7 @@ snapshots:
       std-env: 3.9.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -8424,7 +8444,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6))
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -12159,7 +12179,7 @@ snapshots:
       tsx: 4.20.6
       yaml: 2.8.1
 
-  vitest@3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0(postcss@8.5.6)):
+  vitest@3.2.4(@types/node@22.17.2)(@vitest/ui@3.2.4)(jsdom@27.0.0):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4

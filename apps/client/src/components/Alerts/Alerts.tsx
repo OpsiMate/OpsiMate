@@ -62,8 +62,9 @@ const Alerts = () => {
 					/>
 				</FilterSidebar>
 
-				<div className="flex-1 flex">
-					<div className="flex-1 flex flex-col p-4">
+			<div className="flex-1 flex min-h-0">
+				<div className="flex-1 flex flex-col p-4 min-h-0">
+					<div className="mb-4 flex-shrink-0">
 						<AlertsHeader
 							alertsCount={alerts.length}
 							isRefreshing={isRefreshing}
@@ -71,35 +72,38 @@ const Alerts = () => {
 							onRefresh={handleManualRefresh}
 							onLaunchTVMode={handleLaunchTVMode}
 						/>
+					</div>
 
-						<div
-							className={cn(
-								'flex-1 overflow-auto',
-								alerts.length === 0 && !isLoading && 'flex items-center justify-center'
-							)}
-						>
-							<AlertsTable
-								alerts={filteredAlerts}
-								services={services}
-								onDismissAlert={handleDismissAlert}
-								onUndismissAlert={handleUndismissAlert}
-								onDeleteAlert={handleDeleteAlert}
-								onSelectAlerts={setSelectedAlerts}
-								selectedAlerts={selectedAlerts}
-								isLoading={isLoading}
-								visibleColumns={visibleColumns}
-								columnOrder={columnOrder}
-								onAlertClick={setSelectedAlert}
-								onTableSettingsClick={() => setShowColumnSettings(true)}
-							/>
-						</div>
+					<div
+						className={cn(
+							'flex-1 min-h-0',
+							alerts.length === 0 && !isLoading && 'flex items-center justify-center'
+						)}
+					>
+						<AlertsTable
+							alerts={filteredAlerts}
+							services={services}
+							onDismissAlert={handleDismissAlert}
+							onUndismissAlert={handleUndismissAlert}
+							onDeleteAlert={handleDeleteAlert}
+							onSelectAlerts={setSelectedAlerts}
+							selectedAlerts={selectedAlerts}
+							isLoading={isLoading}
+							visibleColumns={visibleColumns}
+							columnOrder={columnOrder}
+							onAlertClick={setSelectedAlert}
+							onTableSettingsClick={() => setShowColumnSettings(true)}
+						/>
+					</div>
 
+					<div className="flex-shrink-0">
 						<AlertsSelectionBar
 							selectedAlerts={selectedAlerts}
 							onClearSelection={() => setSelectedAlerts([])}
 							onDismissAll={handleDismissAllSelected}
 						/>
 					</div>
+				</div>
 
 					{selectedAlert && (
 						<div className="w-96 border-l">

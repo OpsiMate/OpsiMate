@@ -52,7 +52,7 @@ export const AlertRow = ({
 							checked={isSelected}
 							onCheckedChange={() => onSelectAlert(alert)}
 							className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-						/>
+						/>image.png
 					</div>
 				</TableCell>
 			)}

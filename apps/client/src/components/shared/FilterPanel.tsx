@@ -2,9 +2,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Filter, RotateCcw } from 'lucide-react';
+import { useFilterPanel } from './hooks/useFilterPanel';
 
 export type FilterFacet = {
 	value: string;
@@ -42,6 +44,9 @@ export const FilterPanel = ({
 	className,
 	variant = 'default',
 }: FilterPanelProps) => {
+	const { searchTerms, getFilteredAndLimitedFacets, handleSearchChange, handleLoadMore, shouldShowSearch } =
+		useFilterPanel();
+
 	const handleFilterToggle = (field: string, value: string) => {
 		const currentValues = filters[field] || [];
 		const newValues = currentValues.includes(value)
@@ -140,37 +145,71 @@ export const FilterPanel = ({
 											)}
 										</div>
 									</AccordionTrigger>
-									<AccordionContent className="pb-2">
-										<div className="space-y-1 px-2">
-											{fieldFacets.map(({ value, count, displayValue }) => {
-												const isChecked = activeValues.includes(value);
-												const label = displayValue || value;
+									<AccordionContent className="pb-2 overflow-hidden">
+										{shouldShowSearch(fieldFacets) && (
+											<div className="px-2 pb-2">
+												<Input
+													placeholder="Search..."
+													value={searchTerms[field] || ''}
+													onChange={(e) => handleSearchChange(field, e.target.value)}
+													className="h-7 text-xs"
+												/>
+											</div>
+										)}
+										<div className="space-y-1 px-2 w-full">
+											{(() => {
+												const { filteredAndLimitedFacets, hasMore, remaining, searchTerm } =
+													getFilteredAndLimitedFacets(field, fieldFacets);
+
 												return (
-													<label
-														key={value}
-														className={cn(
-															'flex items-center gap-2 py-1 px-1 rounded cursor-pointer transition-colors',
-															'hover:bg-muted/50',
-															isChecked && 'bg-muted'
+													<>
+														{filteredAndLimitedFacets.map(({ value, count, displayValue }) => {
+															const isChecked = activeValues.includes(value);
+															const label = displayValue || value;
+															return (
+																<label
+																	key={value}
+																	className={cn(
+																		'flex items-center gap-2 py-1 px-1 rounded cursor-pointer transition-colors w-full overflow-hidden',
+																		'hover:bg-muted/50',
+																		isChecked && 'bg-muted'
+																	)}
+																>
+																	<Checkbox
+																		checked={isChecked}
+																		onCheckedChange={() =>
+																			handleFilterToggle(field, value)
+																		}
+																		className="h-3 w-3 border-2 flex-shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors"
+																	/>
+																	<span
+																		className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px]"
+																		title={label}
+																	>
+																		{label}
+																	</span>
+																	<Badge
+																		variant="outline"
+																		className="text-[10px] px-1 py-0 h-4 min-w-[20px] flex-shrink-0 flex items-center justify-center"
+																	>
+																		{count}
+																	</Badge>
+																</label>
+															);
+														})}
+														{hasMore && !searchTerm && (
+															<Button
+																variant="ghost"
+																size="sm"
+																onClick={() => handleLoadMore(field)}
+																className="w-full text-xs mt-1 h-7"
+															>
+																Load {Math.min(5, remaining)} more...
+															</Button>
 														)}
-													>
-														<Checkbox
-															checked={isChecked}
-															onCheckedChange={() => handleFilterToggle(field, value)}
-															className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors"
-														/>
-														<span className="text-xs flex-1 truncate" title={label}>
-															{label}
-														</span>
-														<Badge
-															variant="outline"
-															className="text-[10px] px-1 py-0 h-4 min-w-[20px] flex items-center justify-center"
-														>
-															{count}
-														</Badge>
-													</label>
+													</>
 												);
-											})}
+											})()}
 										</div>
 									</AccordionContent>
 								</AccordionItem>
