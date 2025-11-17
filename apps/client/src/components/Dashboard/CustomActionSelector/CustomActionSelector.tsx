@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useCustomActions } from '@/hooks/queries/custom-actions';
 import { CustomAction } from '@OpsiMate/custom-actions';
@@ -29,11 +29,7 @@ export const CustomActionSelector = ({ onSelectAction, disabled, isRunning }: Cu
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button variant="outline" size="sm" disabled={disabled || isRunning} className="gap-2 h-9">
-					{isRunning ? (
-						<Loader2 className="h-4 w-4 animate-spin" />
-					) : (
-						<Zap className="h-4 w-4" />
-					)}
+					{isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
 					{isRunning ? 'Running...' : 'Actions'}
 				</Button>
 			</DropdownMenuTrigger>
@@ -47,9 +43,7 @@ export const CustomActionSelector = ({ onSelectAction, disabled, isRunning }: Cu
 					<DropdownMenuItem disabled>No actions available</DropdownMenuItem>
 				) : (
 					<>
-						<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-							Service Actions
-						</div>
+						<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Service Actions</div>
 						<DropdownMenuSeparator />
 						{serviceActions.map((action) => (
 							<DropdownMenuItem

@@ -182,9 +182,7 @@ export const Dashboard = () => {
 								onStop={() => handleStop(selectedServices)}
 								onRestart={() => handleRestart(selectedServices)}
 								onRunAction={
-									selectedService
-										? (action) => handleRunAction(action, selectedService)
-										: undefined
+									selectedService ? (action) => handleRunAction(action, selectedService) : undefined
 								}
 								isRunningAction={isRunningAction}
 							/>

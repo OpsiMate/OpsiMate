@@ -44,34 +44,37 @@ export const ServiceDetailsSheetWithLogs = ({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchLogs = useCallback(async (serviceId: string) => {
-		setLoading(true);
-		setError(null);
-		try {
-			const response = await providerApi.getServiceLogs(parseInt(serviceId));
+	const fetchLogs = useCallback(
+		async (serviceId: string) => {
+			setLoading(true);
+			setError(null);
+			try {
+				const response = await providerApi.getServiceLogs(parseInt(serviceId));
 
-			if (response.success && response.data) {
-				setLogs(response.data);
-			} else {
-				setError(response.error || 'Failed to fetch logs');
+				if (response.success && response.data) {
+					setLogs(response.data);
+				} else {
+					setError(response.error || 'Failed to fetch logs');
+					toast({
+						title: 'Error fetching logs',
+						description: response.error || 'Failed to fetch logs',
+						variant: 'destructive',
+					});
+				}
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+				setError(errorMessage);
 				toast({
 					title: 'Error fetching logs',
-					description: response.error || 'Failed to fetch logs',
+					description: errorMessage,
 					variant: 'destructive',
 				});
+			} finally {
+				setLoading(false);
 			}
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-			setError(errorMessage);
-			toast({
-				title: 'Error fetching logs',
-				description: errorMessage,
-				variant: 'destructive',
-			});
-		} finally {
-			setLoading(false);
-		}
-	}, [toast]);
+		},
+		[toast]
+	);
 
 	useEffect(() => {
 		if (selectedServiceForLogs) {

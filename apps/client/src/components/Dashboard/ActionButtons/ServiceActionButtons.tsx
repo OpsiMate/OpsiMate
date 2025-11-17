@@ -8,12 +8,7 @@ interface ServiceActionButtonsProps {
 	onRestart: () => void;
 }
 
-export const ServiceActionButtons = ({
-	isDisabled,
-	onStart,
-	onStop,
-	onRestart,
-}: ServiceActionButtonsProps) => {
+export const ServiceActionButtons = ({ isDisabled, onStart, onStop, onRestart }: ServiceActionButtonsProps) => {
 	return (
 		<div className="flex flex-wrap gap-2">
 			<Button variant="outline" size="sm" disabled={isDisabled} onClick={onStart} className="gap-2 h-9">

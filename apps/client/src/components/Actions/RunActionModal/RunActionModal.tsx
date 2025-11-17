@@ -8,13 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import { useServices, useProviders } from '@/hooks/queries';
 import { Loader2 } from 'lucide-react';
@@ -59,16 +53,12 @@ export const RunActionModal = ({ open, onClose, action, onRun, isRunning }: RunA
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>Run Action: {action.name}</DialogTitle>
-					<DialogDescription>
-						{action.description || 'Select a target to run this action'}
-					</DialogDescription>
+					<DialogDescription>{action.description || 'Select a target to run this action'}</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 py-4">
 					<div className="space-y-2">
-						<Label htmlFor="target">
-							Select {action.target === 'service' ? 'Service' : 'Provider'}
-						</Label>
+						<Label htmlFor="target">Select {action.target === 'service' ? 'Service' : 'Provider'}</Label>
 						{isLoading ? (
 							<div className="flex items-center justify-center py-4">
 								<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
