@@ -71,7 +71,7 @@ export class AlertController {
 					type: 'GCP',
 					status: incident.state,
 					tag: incident.resource_name || 'unknown',
-					starts_at: incident.started_at || new Date().toISOString(),
+					starts_at: this.normalizeGCPDate(incident.started_at),
 					updated_at: new Date().toISOString(),
 					alert_url: incident.url || 'unknown',
 					alert_name: incident.policy_name || 'unknown',
@@ -125,5 +125,29 @@ export class AlertController {
 			logger.error('Error deleting alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
+	}
+
+	private normalizeGCPDate(value: number | string): string {
+		// If null/undefined → fallback
+		if (!value) return new Date().toISOString();
+
+		// If it's a number (unix seconds)
+		if (typeof value === 'number') {
+			return new Date(value * 1000).toISOString();
+		}
+
+		// If it's a numeric string (e.g. "1763324240" or "1763324240.0")
+		if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
+			return new Date(Number(value) * 1000).toISOString();
+		}
+
+		// If it's an ISO-like string, try parsing
+		const iso = new Date(value);
+		if (!isNaN(iso.getTime())) {
+			return iso.toISOString();
+		}
+
+		// Fallback
+		return new Date().toISOString();
 	}
 }

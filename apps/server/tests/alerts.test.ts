@@ -495,5 +495,95 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
 		});
+
+		test('should create a GCP alert successfully with complex payload', async () => {
+			const payload = {
+				incident: {
+					condition: {
+						conditionThreshold: {
+							aggregations: [
+								{
+									alignmentPeriod: '300s',
+									perSeriesAligner: 'ALIGN_RATE',
+								},
+							],
+							comparison: 'COMPARISON_GT',
+							duration: '0s',
+							filter: 'resource.type = "gce_instance" AND metric.type = "compute.googleapis.com/instance/cpu/usage_time"',
+							trigger: { count: 1 },
+						},
+						displayName: 'idans123123',
+						name: 'projects/opsimate/alertPolicies/4182657834417840826/conditions/4182657834417841543',
+					},
+					condition_name: 'idans123123',
+					documentation: {
+						content: 'its a very cool test',
+						mime_type: 'text/markdown',
+						subject: '[ALERT - No severity] idans123123 on opsimate opsimate-server',
+					},
+					ended_at: null,
+					incident_id: '0.nzm8u2jxkaq5',
+					metadata: {
+						system_labels: {},
+						user_labels: {},
+					},
+					metric: {
+						displayName: 'CPU usage',
+						labels: { instance_name: 'opsimate-server' },
+						type: 'compute.googleapis.com/instance/cpu/usage_time',
+					},
+					observed_value: '0.250',
+					policy_name: 'mytestforgcp',
+					resource: {
+						labels: {
+							instance_id: '5882678762632851126',
+							project_id: 'opsimate',
+							zone: 'us-central1-c',
+						},
+						type: 'gce_instance',
+					},
+					resource_display_name: 'opsimate-server',
+					resource_id: '',
+					resource_name: 'opsimate opsimate-server',
+					resource_type_display_name: 'VM Instance',
+					scoping_project_id: 'opsimate',
+					scoping_project_number: 39358210889,
+					severity: 'No severity',
+					started_at: 1763324240,
+					state: 'open',
+					summary:
+						'CPU usage for opsimate opsimate-server with metric labels {instance_name=opsimate-server} is above the threshold of 0.000 with a value of 0.250.',
+					threshold_value: '0',
+					url: 'https://console.cloud.google.com/monitoring/alerting/alerts/0.nzm8u2jxkaq5?channelType=webhook&project=opsimate',
+				},
+				version: '1.2',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/gcp')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.alertId).toBe('0.nzm8u2jxkaq5');
+
+			// Validate DB
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('0.nzm8u2jxkaq5');
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe('mytestforgcp');
+			expect(row.summary).toContain('CPU usage for opsimate');
+			expect(row.tag).toBe('opsimate opsimate-server');
+			expect(row.status).toBe('open');
+
+			// ISO 8601 regex: 2025-11-17T18:03:39.352Z
+			const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+			expect(typeof row.starts_at).toBe('string');
+			expect(row.starts_at).toMatch(isoRegex);
+
+			expect(typeof row.updated_at).toBe('string');
+			expect(row.updated_at).toMatch(isoRegex);
+		});
 	});
 });

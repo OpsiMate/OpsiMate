@@ -12,7 +12,7 @@ export interface GcpIncident {
 	policy_name?: string;
 	condition_name?: string;
 	state: 'open' | 'acknowledged' | 'closed';
-	started_at: string;
+	started_at: string | number;
 	url?: string;
 	summary?: string;
 	documentation?: {
