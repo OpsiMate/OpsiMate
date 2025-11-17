@@ -28,6 +28,29 @@ vi.mock('@kubernetes/client-node', () => ({
 	NetworkingV1Api: vi.fn(),
 }));
 
+// Mock the SSH client to avoid actual SSH connections in tests
+vi.mock('../src/dal/sshClient', async () => {
+	const actual = await vi.importActual('../src/dal/sshClient');
+	return {
+		...actual,
+		executeBashScript: vi.fn().mockResolvedValue({
+			code: 0,
+			stdout: 'mocked output',
+			stderr: '',
+			signal: null,
+		}),
+		testConnection: vi.fn().mockResolvedValue({ success: true }),
+		connectAndListContainers: vi.fn().mockResolvedValue([]),
+		startService: vi.fn().mockResolvedValue(undefined),
+		stopService: vi.fn().mockResolvedValue(undefined),
+		getServiceLogs: vi.fn().mockResolvedValue(['mocked log']),
+		startSystemService: vi.fn().mockResolvedValue(undefined),
+		stopSystemService: vi.fn().mockResolvedValue(undefined),
+		getSystemServiceLogs: vi.fn().mockResolvedValue(['mocked system log']),
+		checkSystemServiceStatus: vi.fn().mockResolvedValue('running'),
+	};
+});
+
 // Increase timeout for integration tests
 vi.setConfig({ testTimeout: 30000 });
 
