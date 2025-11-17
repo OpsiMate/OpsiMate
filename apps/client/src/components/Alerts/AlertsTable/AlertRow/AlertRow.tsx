@@ -46,13 +46,13 @@ export const AlertRow = ({
 			onClick={handleRowClick}
 		>
 			{onSelectAlerts && (
-				<TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+				<TableCell className="w-10 py-1 px-2" onClick={(e) => e.stopPropagation()}>
 					<div className="flex items-center justify-center">
 						<Checkbox
 							checked={isSelected}
 							onCheckedChange={() => onSelectAlert(alert)}
 							className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-						/>image.png
+						/>
 					</div>
 				</TableCell>
 			)}
