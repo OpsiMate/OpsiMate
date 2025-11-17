@@ -8,7 +8,6 @@ export { Providers } from './Providers';
 export { default as ScrollToTopButton } from './ScrollToTopButton';
 export { ThemeProvider } from './ThemeProvider';
 
-export { ActionButtons } from './ActionButtons';
 export { AddServiceDialog } from './AddServiceDialog';
 export { AddServiceModal } from './AddServiceModal';
 export { AddUserModal } from './AddUserModal';

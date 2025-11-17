@@ -1,5 +1,5 @@
 // src/App.tsx
-import { Actions, Dashboard, Profile } from '@/components';
+import {Actions, Alerts, AuthGuard, Dashboard, Profile, Providers, ThemeProvider} from '@/components';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
@@ -7,12 +7,10 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Alerts, AlertsTVMode, Integrations, Login, NotFound, Providers, Register, Settings, TVMode } from './pages';
-import { AuthGuard, Dashboard, Profile, ScrollToTopButton, ThemeProvider } from '@/components';
-import { isEditor } from './lib/auth';
-import { Alerts, Integrations, Login, MyProviders, NotFound, Providers, Register, Settings, TVMode } from './pages';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';
+import {AlertsTVMode, Integrations, Login, NotFound, Register, Settings, TVMode} from '@/pages';
+import {isEditor} from '@/lib/auth.ts';
 
 const queryClient = new QueryClient();
 
