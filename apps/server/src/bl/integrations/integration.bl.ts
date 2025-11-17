@@ -4,6 +4,7 @@ import { integrationConnectorFactory } from './integration-connector/integration
 import { AlertBL } from '../alerts/alert.bl.ts';
 
 const logger = new Logger('bl/integrations/integration.bl');
+const auditBL = new AuditBL(new AuditLogRepository(db));
 
 export class IntegrationBL {
 	constructor(

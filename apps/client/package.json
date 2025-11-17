@@ -1,5 +1,5 @@
 {
-	"name": "@OpsiMate/client",
+	"name": "@opsimate/client",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
@@ -22,7 +22,7 @@
 		"fix": "npm run format-fix && npm run lint-fix"
 	},
 	"dependencies": {
-		"@OpsiMate/shared": "workspace:*",
+		"@opsimate/shared": "workspace:*",
 		"@dnd-kit/core": "^6.3.1",
 		"@dnd-kit/sortable": "^10.0.0",
 		"@dnd-kit/utilities": "^3.2.2",
