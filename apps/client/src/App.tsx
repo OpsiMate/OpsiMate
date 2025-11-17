@@ -6,10 +6,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthGuard } from './components/AuthGuard';
-import { ThemeProvider } from './components/ThemeProvider';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Alerts, AlertsTVMode, Integrations, Login, NotFound, Providers, Register, Settings, TVMode } from './pages';
+import { AuthGuard, Dashboard, Profile, ScrollToTopButton, ThemeProvider } from '@/components';
 import { isEditor } from './lib/auth';
 import { Alerts, Integrations, Login, MyProviders, NotFound, Providers, Register, Settings, TVMode } from './pages';
 import ForgotPassword from './pages/ForgotPassword';
@@ -31,17 +30,16 @@ const App: React.FC = () => {
 								<Routes>
 									<Route path="/" element={<Dashboard />} />
 									<Route path="/tv-mode" element={<TVMode />} />
-									<Route path="/providers" element={<Providers />} />
 									<Route
-										path="/my-providers"
-										element={!isEditor() ? <Navigate to="/" replace /> : <MyProviders />}
+										path="/providers"
+										element={!isEditor() ? <Navigate to="/" replace /> : <Providers />}
 									/>
 									<Route path="/integrations" element={<Integrations />} />
 									<Route path="/settings" element={<Settings />} />
 									<Route path="/profile" element={<Profile />} />
 									<Route path="/login" element={<Login />} />
 									<Route path="/register" element={<Register />} />
-									<Route path="/alerts" element={<Alerts />} />
+									<Route path="/alerts" element={<Alerts />} /><Route path="/alerts/tv-mode" element={<AlertsTVMode />} />
 									<Route
 										path="/actions"
 										element={!isEditor() ? <Navigate to="/" replace /> : <Actions />}

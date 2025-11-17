@@ -10,21 +10,21 @@ export class VMProviderConnector implements ProviderConnector {
 		return sshClient.connectAndListContainers(provider);
 	}
 
-	async startService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void> {
-		if (serviceType === ServiceType.SYSTEMD) {
-			return sshClient.startSystemService(provider, serviceName);
+	async startService(provider: Provider, service: Service): Promise<void> {
+		if (service.serviceType === ServiceType.SYSTEMD) {
+			return sshClient.startSystemService(provider, service.name);
 		} else {
 			// Default to Docker service
-			return sshClient.startService(provider, serviceName);
+			return sshClient.startService(provider, service.name);
 		}
 	}
 
-	async stopService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void> {
-		if (serviceType === ServiceType.SYSTEMD) {
-			return sshClient.stopSystemService(provider, serviceName);
+	async stopService(provider: Provider, service: Service): Promise<void> {
+		if (service.serviceType === ServiceType.SYSTEMD) {
+			return sshClient.stopSystemService(provider, service.name);
 		} else {
 			// Default to Docker service
-			return sshClient.stopService(provider, serviceName);
+			return sshClient.stopService(provider, service.name);
 		}
 	}
 

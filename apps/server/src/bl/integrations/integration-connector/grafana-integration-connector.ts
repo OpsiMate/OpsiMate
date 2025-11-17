@@ -1,6 +1,7 @@
 import { Integration, IntegrationUrls } from '@OpsiMate/shared';
 import { IntegrationConnector } from './integration-connector';
 import { GrafanaClient, GrafanaDashboardSummary } from '../../../dal/external-client/grafana-client';
+import { AlertBL } from '../../alerts/alert.bl';
 
 export class GrafanaIntegrationConnector implements IntegrationConnector {
 	async getUrls(integration: Integration, tags: string[]): Promise<IntegrationUrls[]> {
@@ -12,5 +13,9 @@ export class GrafanaIntegrationConnector implements IntegrationConnector {
 			name: dash.title,
 			url: `${integration.externalUrl.replace(/\/$/, '')}${dash.url}`,
 		}));
+	}
+
+	async deleteData(_: Integration, alertBL: AlertBL): Promise<void> {
+		await alertBL.deleteAlertsNotInIds(new Set(), 'Grafana');
 	}
 }

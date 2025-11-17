@@ -98,8 +98,8 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	// BL
 	const auditBL = new AuditBL(auditLogRepo);
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const integrationBL = new IntegrationBL(integrationRepo);
 	const alertBL = new AlertBL(alertRepo);
+	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
@@ -146,7 +146,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 
 	if (config?.enableJobs) {
 		new RefreshJob(providerBL).startRefreshJob();
-		new PullGrafanaAlertsJob(alertBL, integrationBL, tagRepo).startPullGrafanaAlertsJob();
+		new PullGrafanaAlertsJob(alertBL, integrationBL).startPullGrafanaAlertsJob();
 	}
 
 	return app;

@@ -1,6 +1,6 @@
 import { AlertRepository } from '../../dal/alertRepository';
 import { AlertRow } from '../../dal/models';
-import { Alert, Logger } from '@OpsiMate/shared';
+import { Alert, AlertType, Logger } from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
 
@@ -13,16 +13,6 @@ export class AlertBL {
 			return await this.alertRepo.insertOrUpdateAlert(alert);
 		} catch (error) {
 			logger.error('Error inserting alert', error);
-			throw error;
-		}
-	}
-
-	async deleteAlertsNotInIds(ids: string[]): Promise<{ changes: number }> {
-		try {
-			logger.info(`deleting all alerts except of: ${JSON.stringify(ids)}`);
-			return await this.alertRepo.deleteAlertsNotInIds(ids);
-		} catch (error) {
-			logger.error('Error deleting alerts', error);
 			throw error;
 		}
 	}
@@ -57,37 +47,16 @@ export class AlertBL {
 		}
 	}
 
-	async clearAlertsByTag(tag: string): Promise<{ changes: number }> {
-		try {
-			logger.info(`Clearing alerts by tag: "${tag}"`);
-			const res = await this.alertRepo.deleteAlertsByTag(tag);
-			logger.info(`Cleared ${res.changes} alert(s) by tag: "${tag}"`);
-			return res;
-		} catch (error) {
-			logger.error(`Error clearing alerts by tag: "${tag}"`, error);
-			throw error;
-		}
+	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
+		await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
 	}
 
-	async clearAlertsByService(serviceId: number): Promise<{ changes: number }> {
+	async deleteAlert(alertId: string): Promise<void> {
 		try {
-			logger.info(`Clearing alerts by serviceId: ${serviceId}`);
-			const res = await this.alertRepo.deleteAlertsByService(serviceId);
-			logger.info(`Cleared ${res.changes} alert(s) for serviceId: ${serviceId}`);
-			return res;
+			logger.info(`Deleting alert with id: ${alertId}`);
+			await this.alertRepo.deleteAlert(alertId);
 		} catch (error) {
-			logger.error(`Error clearing alerts by serviceId: ${serviceId}`, error);
-			throw error;
-		}
-	}
-	async clearAlertsByServiceAndTag(serviceId: number, tag: string): Promise<{ changes: number }> {
-		try {
-			logger.info(`Clearing alerts by serviceId=${serviceId} & tag="${tag}"`);
-			const res = await this.alertRepo.deleteAlertsByServiceAndTag(serviceId, tag);
-			logger.info(`Cleared ${res.changes} alert(s) for serviceId=${serviceId} & tag="${tag}"`);
-			return res;
-		} catch (error) {
-			logger.error(`Error clearing alerts by serviceId=${serviceId} & tag="${tag}"`, error);
+			logger.error('Error deleting alert', error);
 			throw error;
 		}
 	}

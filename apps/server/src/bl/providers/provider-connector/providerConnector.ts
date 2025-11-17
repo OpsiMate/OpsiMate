@@ -1,17 +1,12 @@
-import { Provider, DiscoveredService, Service, ServiceType, ContainerDetails, DiscoveredPod } from '@OpsiMate/shared';
+import { Provider, DiscoveredService, Service, DiscoveredPod } from '@OpsiMate/shared';
 import { BashAction } from '@OpsiMate/custom-actions';
 
 export interface ProviderConnector {
 	discoverServices(provider: Provider): Promise<DiscoveredService[]>;
 
-	startService(provider: Provider, serviceName: string, serviceType?: ServiceType): Promise<void>;
+	startService(provider: Provider, service: Service): Promise<void>;
 
-	stopService(
-		provider: Provider,
-		serviceName: string,
-		serviceType?: ServiceType,
-		containerDetails?: ContainerDetails
-	): Promise<void>;
+	stopService(provider: Provider, service: Service): Promise<void>;
 
 	getServiceLogs(provider: Provider, service: Service): Promise<string[]>;
 

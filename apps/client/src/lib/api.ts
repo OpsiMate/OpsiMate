@@ -321,6 +321,7 @@ export const providerApi = {
 			id?: string;
 			image?: string;
 			created?: string;
+			namespace?: string;
 		};
 	}) => {
 		return apiRequest<ServiceWithProvider>('/services', 'POST', {
@@ -532,6 +533,11 @@ export const alertsApi = {
 	// Undismiss an alert
 	async undismissAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/undismiss`, 'PATCH');
+	},
+
+	// Delete an alert
+	async deleteAlert(alertId: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE');
 	},
 
 	// Get alerts by tag

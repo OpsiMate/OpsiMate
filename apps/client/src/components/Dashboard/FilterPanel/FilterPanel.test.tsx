@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/test-utils';
-import { FilterPanel } from '../FilterPanel';
+import { ServiceFilterPanel } from '../FilterPanel';
 import type { Service } from '@/components/ServiceTable';
 
 const mockServices: Service[] = [
@@ -47,15 +47,24 @@ const mockServices: Service[] = [
 describe('FilterPanel', () => {
 	it('renders filter panel in expanded mode', () => {
 		const onFilterChange = vi.fn();
-		render(<FilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
-		expect(screen.getByText(/no filters/i)).toBeInTheDocument();
-		expect(screen.getByText(/reset/i)).toBeInTheDocument();
+		expect(screen.getByText('Filters')).toBeInTheDocument();
+		expect(screen.getByText('Status')).toBeInTheDocument();
 	});
 
 	it('renders filter panel in collapsed mode', () => {
 		const onFilterChange = vi.fn();
-		render(<FilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={true} />);
+		render(
+			<ServiceFilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={true} />
+		);
 
 		// In collapsed mode, we should see the slider icon container
 		const containers = screen.getAllByRole('generic');
@@ -64,7 +73,14 @@ describe('FilterPanel', () => {
 
 	it('displays filter facets based on services', () => {
 		const onFilterChange = vi.fn();
-		render(<FilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		expect(screen.getByText('Status')).toBeInTheDocument();
 		expect(screen.getByText('Service Type')).toBeInTheDocument();
@@ -73,7 +89,14 @@ describe('FilterPanel', () => {
 
 	it('calls onFilterChange when a filter is selected', async () => {
 		const onFilterChange = vi.fn();
-		render(<FilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		// Status section is open by default, so we can click the Running checkbox
 		const runningCheckbox = screen.getByRole('checkbox', { name: /running/i });
@@ -87,7 +110,7 @@ describe('FilterPanel', () => {
 	it('calls onFilterChange with empty object when reset is clicked', () => {
 		const onFilterChange = vi.fn();
 		render(
-			<FilterPanel
+			<ServiceFilterPanel
 				services={mockServices}
 				filters={{ serviceStatus: ['running'] }}
 				onFilterChange={onFilterChange}
@@ -95,7 +118,7 @@ describe('FilterPanel', () => {
 			/>
 		);
 
-		const resetButton = screen.getByText(/reset/i);
+		const resetButton = screen.getByRole('button', { name: /reset/i });
 		fireEvent.click(resetButton);
 
 		expect(onFilterChange).toHaveBeenCalledWith({});
@@ -104,7 +127,7 @@ describe('FilterPanel', () => {
 	it('displays active filter count', () => {
 		const onFilterChange = vi.fn();
 		render(
-			<FilterPanel
+			<ServiceFilterPanel
 				services={mockServices}
 				filters={{ serviceStatus: ['running'], tags: ['production'] }}
 				onFilterChange={onFilterChange}
@@ -112,12 +135,19 @@ describe('FilterPanel', () => {
 			/>
 		);
 
-		expect(screen.getByText(/2 active filters/i)).toBeInTheDocument();
+		expect(screen.getByText('2')).toBeInTheDocument();
 	});
 
 	it('shows filter counts for each option', () => {
 		const onFilterChange = vi.fn();
-		render(<FilterPanel services={mockServices} filters={{}} onFilterChange={onFilterChange} collapsed={false} />);
+		render(
+			<ServiceFilterPanel
+				services={mockServices}
+				filters={{}}
+				onFilterChange={onFilterChange}
+				collapsed={false}
+			/>
+		);
 
 		// Service Type section is open by default, so we should see counts
 		const badges = screen.getAllByText(/1/);

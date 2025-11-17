@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,7 +22,7 @@ import { ValidationFeedback, validationRules } from '@/components/ValidationFeed
 import { integrationApi } from '@/lib/api';
 import { canDelete, canManageIntegrations } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { Logger } from '@OpsiMate/shared';
+import { Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
 import {
 	Activity,
 	AlertCircle,
@@ -43,6 +44,7 @@ import {
 	X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const logger = new Logger('Integrations');
 // Define IntegrationType locally until shared package export is fixed
@@ -128,6 +130,16 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 			{ name: 'appKey', label: 'Application Key', type: 'password', required: true },
 		],
+	},
+	{
+		id: 'gcp',
+		supported: true,
+		name: 'Google Cloud Platform',
+		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
+		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
+		tags: ['Monitoring', 'Alerts', 'Cloud'],
+		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
+		configFields: [],
 	},
 	{
 		id: 'prometheus',
@@ -303,6 +315,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNo
 };
 
 const Integrations = () => {
+	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -310,17 +323,25 @@ const Integrations = () => {
 	const [configuredInstances, setConfiguredInstances] = useState<Record<string, number>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [formData, setFormData] = useState<Record<string, string>>({});
-	const [savedIntegrations, setSavedIntegrations] = useState<
-		Array<{ id: string; type: string; name: string; url: string }>
-	>([]);
+	const [savedIntegrations, setSavedIntegrations] = useState<SharedIntegration[]>([]);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [integrationToDelete, setIntegrationToDelete] = useState<{
-		id: string;
-		type: string;
-		name: string;
-		url: string;
-	} | null>(null);
+	const [integrationToDelete, setIntegrationToDelete] = useState<SharedIntegration | null>(null);
+	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
 	const { toast } = useToast();
+
+	// Handle URL-based category filtering
+	useEffect(() => {
+		const categoryParam = searchParams.get('category');
+		if (categoryParam) {
+			// Support multiple categories separated by commas
+			const categoryValues = categoryParam.split(',').map((c) => c.trim().toLowerCase());
+			// Find canonical tags by case-insensitive lookup
+			const canonicalTags = ALL_TAGS.filter((tag) => categoryValues.includes(tag.toLowerCase()));
+			if (canonicalTags.length > 0) {
+				setSelectedTags(canonicalTags);
+			}
+		}
+	}, [searchParams]);
 
 	// Fetch saved integrations on component mount
 	useEffect(() => {
@@ -366,7 +387,17 @@ const Integrations = () => {
 	}, [searchQuery, selectedTags]);
 
 	const handleTagToggle = (tag: string) => {
-		setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+		setSelectedTags((prev) => {
+			const newTags = prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag];
+			// Update URL to reflect all selected tags
+			if (newTags.length > 0) {
+				const categoryValue = newTags.map((t) => t.toLowerCase()).join(',');
+				setSearchParams({ category: categoryValue });
+			} else {
+				setSearchParams({});
+			}
+			return newTags;
+		});
 	};
 
 	const handleIntegrationButtonClick = () => {
@@ -413,7 +444,9 @@ const Integrations = () => {
 											variant={selectedTags.includes(tag) ? 'default' : 'outline'}
 											className={cn(
 												'cursor-pointer transition-all hover:shadow-sm',
-												selectedTags.includes(tag) ? 'hover:bg-primary/90' : 'hover:bg-accent'
+												selectedTags.includes(tag)
+													? 'hover:bg-primary/90'
+													: 'hover:bg-primary hover:text-primary-foreground hover:border-primary'
 											)}
 											onClick={() => handleTagToggle(tag)}
 										>
@@ -532,6 +565,12 @@ const Integrations = () => {
 													: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95'
 											)}
 											onClick={() => {
+												// Special handling for GCP - show webhook setup modal
+												if (integration.id === 'gcp') {
+													setShowGCPSetupModal(true);
+													return;
+												}
+
 												// Find existing integration of this type if it exists
 												const existingIntegration = savedIntegrations.find(
 													(integration2) =>
@@ -1069,6 +1108,8 @@ const Integrations = () => {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
 		</>
 	);
 };

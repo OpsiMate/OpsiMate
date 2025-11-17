@@ -1,3 +1,2 @@
-export { FilterPanel } from './FilterPanel';
-export type { Filters } from './FilterPanel';
-export { FilterSidebar } from './FilterSidebar';
+export { ServiceFilterPanel } from './ServiceFilterPanel';
+export type { Filters } from './ServiceFilterPanel';

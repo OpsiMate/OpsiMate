@@ -5,14 +5,17 @@ import { AlertController } from './controller';
 export default function createAlertRouter(controller: AlertController) {
 	const router = PromiseRouter();
 
-	// GET all alerts
+	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
+	router.delete('/:alertId', controller.deleteAlert.bind(controller));
 
-	// Dismiss an alert
+	// Dismiss Unsimiss an alert
 	router.patch('/:id/dismiss', controller.dismissAlert.bind(controller));
-
-	// Undismiss an alert
 	router.patch('/:id/undismiss', controller.undismissAlert.bind(controller));
+
+	// Create custom alerts
+	router.post('/custom/gcp', controller.createCustomGCPAlert.bind(controller));
+	router.post('/custom', controller.createCustomAlert.bind(controller));
 
 	return router;
 }

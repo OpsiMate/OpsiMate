@@ -93,7 +93,6 @@ export class TagController {
 			}
 
 			await this.tagRepo.deleteTag(tagId);
-			await this.alertBL.clearAlertsByTag(existingTag.name);
 
 			return res.json({ success: true, message: 'Tag deleted successfully' });
 		} catch (error) {
@@ -153,12 +152,6 @@ export class TagController {
 			}
 
 			await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
-			await this.alertBL.clearAlertsByServiceAndTag(parsed.serviceId, tag.name);
-
-			const usage = await this.tagRepo.countServicesUsingTag(parsed.tagId);
-			if (usage === 0) {
-				await this.alertBL.clearAlertsByTag(tag.name);
-			}
 
 			return res.json({ success: true, message: 'Tag removed from service successfully' });
 		} catch (error) {

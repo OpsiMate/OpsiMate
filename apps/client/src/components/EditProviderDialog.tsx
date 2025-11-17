@@ -21,18 +21,7 @@ interface EditProviderDialogProps {
 	provider: Provider | null;
 	open: boolean;
 	onClose: () => void;
-	onSave: (
-		providerId: string,
-		updatedData: {
-			name: string;
-			providerIP: string;
-			username: string;
-			secretId?: number;
-			password: string;
-			SSHPort: number;
-			providerType: string;
-		}
-	) => Promise<void>;
+	onSave: (provider: Provider) => Promise<void>;
 }
 
 export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProviderDialogProps) => {
@@ -159,18 +148,18 @@ export const EditProviderDialog = ({ provider, open, onClose, onSave }: EditProv
 
 		setIsLoading(true);
 		try {
-			const submitData = {
+			const updatedProvider: Provider = {
+				...provider,
 				name: formData.name,
 				providerIP: formData.providerIP,
 				username: formData.username,
 				SSHPort: formData.SSHPort,
-				providerType: formData.providerType,
-				// Include password or secretId based on selected auth method
+				providerType: formData.providerType as Provider['providerType'],
 				...(authMethod === 'password' && formData.password && { password: formData.password }),
 				...(authMethod === 'key' && formData.secretId && { secretId: formData.secretId }),
 			};
 
-			await onSave(provider.id.toString(), submitData);
+			await onSave(updatedProvider);
 			onClose();
 		} catch (error) {
 			logger.error('Error updating provider:', error);
