@@ -81,19 +81,19 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 				</div>
 
 				<div className="flex-1 min-w-0 relative bg-muted/20 w-full">
-					{/* Desktop Sidebar Toggle Button */}
-					<Button
-						onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
-						variant="ghost"
-						size="icon"
-						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:block"
-					>
-						{isSidebarCollapsed ? (
-							<ChevronRight className="h-4 w-4" />
-						) : (
-							<ChevronLeft className="h-4 w-4" />
-						)}
-					</Button>
+				{/* Desktop Sidebar Toggle Button */}
+				<Button
+					onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
+					variant="ghost"
+					size="icon"
+					className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center !p-0"
+				>
+					{isSidebarCollapsed ? (
+						<ChevronRight className="h-4 w-4" />
+					) : (
+						<ChevronLeft className="h-4 w-4" />
+					)}
+				</Button>
 					<main className="h-full overflow-auto w-full">{children}</main>
 				</div>
 			</div>
