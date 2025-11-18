@@ -116,7 +116,8 @@ export const AlertsTable = ({
 										<div className="flex items-center justify-center">
 											<Checkbox
 												checked={
-													sortedAlerts.length > 0 && selectedAlerts.length === sortedAlerts.length
+													sortedAlerts.length > 0 &&
+													selectedAlerts.length === sortedAlerts.length
 												}
 												onCheckedChange={handleSelectAll}
 												className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
@@ -145,7 +146,9 @@ export const AlertsTable = ({
 											</TableHead>
 										);
 									}
-									if (['alertName', 'status', 'tag', 'startsAt', 'summary', 'type'].includes(column)) {
+									if (
+										['alertName', 'status', 'tag', 'startsAt', 'summary', 'type'].includes(column)
+									) {
 										return (
 											<SortableHeader
 												key={column}
