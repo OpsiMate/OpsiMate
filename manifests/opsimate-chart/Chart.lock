@@ -1,0 +1,9 @@
+dependencies:
+- name: opsimate-chart-backend
+  repository: file://charts/backend
+  version: 0.1.0
+- name: opsimate-chart-frontend
+  repository: file://charts/frontend
+  version: 0.1.0
+digest: sha256:3dbfb95ba40edc6d3830fd3b6564e15ee1161bd86f0a3eb7500bb3bfdda7cd7b
+generated: "2025-10-13T23:42:59.126785161+05:30"
