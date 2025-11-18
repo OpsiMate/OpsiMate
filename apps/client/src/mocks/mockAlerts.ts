@@ -54,7 +54,6 @@ let refreshCount = 0;
 
 export const generateMockAlerts = (count: number = 5000): Alert[] => {
 	refreshCount++;
-	console.log(`🔄 Mock data refetch #${refreshCount} - Returning stable cached data`);
 
 	if (cachedMockAlerts && cachedMockAlerts.length === count) {
 		return cachedMockAlerts;
