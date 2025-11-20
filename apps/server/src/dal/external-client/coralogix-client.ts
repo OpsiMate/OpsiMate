@@ -33,7 +33,7 @@ export class CoralogixClient {
       logger.info("Fetching all Coralogix dashboards");
 
       const baseUrl = this.url.replace(/\/$/, '');
-      const endpoint = `${baseUrl}/mgmt/openapi/latest/v1/dashboards/dashboards/catalog`;
+      const endpoint = `${baseUrl}/mgmt/openapi/latest/dashboards/dashboards/v1/catalog`;
 
       const response = await fetch(endpoint, {
         headers: {

@@ -169,7 +169,7 @@ const INTEGRATIONS: Integration[] = [
 		tags: ['Logging', 'Analytics', 'Monitoring'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
 		configFields: [
-			{ name: 'url', label: 'Coralogix URL', type: 'text', placeholder: 'https://api.coralogix.com/', required: true },
+			{ name: 'url', label: 'Coralogix URL', type: 'text', placeholder: 'https://api.us2.coralogix.com/', required: true },
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 			{ name: 'applicationName', label: 'Application Name', type: 'text', placeholder: 'Optional', required: false },
 			{ name: 'subsystemName', label: 'Subsystem Name', type: 'text', placeholder: 'Optional', required: false },
