@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { format } from 'date-fns';
 import { Bell, Calendar, Clock, ExternalLink, RotateCcw, X } from 'lucide-react';
 
@@ -66,10 +66,18 @@ export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className
 										{alert.alertName}
 									</h3>
 									<Badge
-										variant={alert.isDismissed ? 'secondary' : 'destructive'}
+										variant={
+											alert.isDismissed
+												? 'secondary'
+												: alert.status === AlertStatus.FIRING || alert.status === AlertStatus.ALERTING
+													? 'destructive'
+													: alert.status === AlertStatus.RESOLVED || alert.status === AlertStatus.OK
+														? 'secondary'
+														: 'outline'
+										}
 										className="flex-shrink-0"
 									>
-										{alert.isDismissed ? 'Dismissed' : 'Firing'}
+										{alert.isDismissed ? 'Dismissed' : alert.status}
 									</Badge>
 								</div>
 							</div>

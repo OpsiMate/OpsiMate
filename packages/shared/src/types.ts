@@ -116,10 +116,18 @@ export interface DiscoveredPod {
 
 export type AlertType = 'Grafana' | 'GCP' | 'Custom';
 
+export enum AlertStatus {
+	FIRING = 'firing',
+	RESOLVED = 'resolved',
+	PENDING = 'pending',
+	ALERTING = 'alerting',
+	OK = 'ok',
+}
+
 export interface Alert {
 	id: string;
 	type: AlertType;
-	status: string;
+	status: AlertStatus | string; // Allow string for backward compatibility
 	tag: string;
 	startsAt: string;
 	updatedAt: string;

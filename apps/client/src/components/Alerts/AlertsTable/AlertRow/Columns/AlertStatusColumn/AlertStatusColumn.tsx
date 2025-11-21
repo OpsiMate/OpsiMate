@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AlertStatus } from '@OpsiMate/shared';
 
 export interface AlertStatusColumnProps {
 	alert: Alert;
@@ -14,9 +14,23 @@ const getStatusBadge = (alert: Alert) => {
 			</Badge>
 		);
 	}
+
+	// Use AlertStatus enum to determine badge variant
+	const status = alert.status;
+	
+	// Determine badge variant based on status
+	let variant: 'default' | 'destructive' | 'outline' | 'secondary' = 'default';
+	if (status === AlertStatus.FIRING || status === AlertStatus.ALERTING) {
+		variant = 'destructive';
+	} else if (status === AlertStatus.RESOLVED || status === AlertStatus.OK) {
+		variant = 'secondary';
+	} else if (status === AlertStatus.PENDING) {
+		variant = 'outline';
+	}
+
 	return (
-		<Badge variant="destructive" className="text-xs px-1.5 py-0.5">
-			firing
+		<Badge variant={variant} className="text-xs px-1.5 py-0.5">
+			{alert.status}
 		</Badge>
 	);
 };
