@@ -16,4 +16,3 @@ export const useArchivedAlerts = () => {
 		refetchInterval: 30 * 1000, // Refetch every 30 seconds
 	});
 };
-

@@ -102,25 +102,35 @@ const Alerts = () => {
 								onLaunchTVMode={handleLaunchTVMode}
 							/>
 
-						<div className="mt-3">
-							<ToggleGroup
-								type="single"
-								value={activeTab}
-								onValueChange={(value) => {
-									if (value) setActiveTab(value as 'active' | 'archived');
-								}}
-								className="justify-start"
-							>
-								<ToggleGroupItem value="active" aria-label="Active alerts" size="sm" className="gap-1.5">
-									<Bell className="h-4 w-4" />
-									<span>Active</span>
-								</ToggleGroupItem>
-								<ToggleGroupItem value="archived" aria-label="Archived alerts" size="sm" className="gap-1.5">
-									<Archive className="h-4 w-4" />
-									<span>Archived</span>
-								</ToggleGroupItem>
-							</ToggleGroup>
-						</div>
+							<div className="mt-3">
+								<ToggleGroup
+									type="single"
+									value={activeTab}
+									onValueChange={(value) => {
+										if (value) setActiveTab(value as 'active' | 'archived');
+									}}
+									className="justify-start"
+								>
+									<ToggleGroupItem
+										value="active"
+										aria-label="Active alerts"
+										size="sm"
+										className="gap-1.5"
+									>
+										<Bell className="h-4 w-4" />
+										<span>Active</span>
+									</ToggleGroupItem>
+									<ToggleGroupItem
+										value="archived"
+										aria-label="Archived alerts"
+										size="sm"
+										className="gap-1.5"
+									>
+										<Archive className="h-4 w-4" />
+										<span>Archived</span>
+									</ToggleGroupItem>
+								</ToggleGroup>
+							</div>
 						</div>
 
 						{activeTab === 'active' ? (
@@ -159,7 +169,9 @@ const Alerts = () => {
 							<div
 								className={cn(
 									'flex-1 min-h-0',
-									archivedAlerts.length === 0 && !isLoadingArchived && 'flex items-center justify-center'
+									archivedAlerts.length === 0 &&
+										!isLoadingArchived &&
+										'flex items-center justify-center'
 								)}
 							>
 								<AlertsTable

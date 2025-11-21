@@ -56,7 +56,7 @@ export class AlertBL {
 			logger.info(`Archiving alerts not in ids for type: ${alertType}`);
 			// Get alerts that need to be archived
 			const alertsToArchive = await this.alertRepo.getAlertsNotInIds(activeAlertIds, alertType);
-			
+
 			// Archive each alert
 			for (const alert of alertsToArchive) {
 				await this.archivedAlertRepo.insertArchivedAlert({
@@ -67,7 +67,7 @@ export class AlertBL {
 
 			// Delete alerts from active table
 			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
-			
+
 			logger.info(`Archived ${alertsToArchive.length} alerts`);
 		} catch (error) {
 			logger.error('Error archiving alerts', error);

@@ -48,7 +48,7 @@ export class PullGrafanaAlertsJob {
 			for (const alert of grafanaAlerts) {
 				try {
 					const tagName = alert.labels?.tag || '';
-					
+
 					await this.alertBL.insertOrUpdateAlert({
 						id: alert.fingerprint,
 						type: 'Grafana',
