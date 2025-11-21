@@ -1,0 +1,127 @@
+import { Button } from '@/components/ui/button';
+import { Command, CommandGroup, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowDown, ArrowUp, Layers, X } from 'lucide-react';
+import { COLUMN_LABELS } from './AlertsTable.constants';
+
+interface GroupByControlsProps {
+	groupByColumns: string[];
+	onGroupByChange: (columns: string[]) => void;
+	availableColumns: string[];
+}
+
+export const GroupByControls = ({
+	groupByColumns,
+	onGroupByChange,
+	availableColumns,
+}: GroupByControlsProps) => {
+	// Filter out 'actions' or others that shouldn't be grouped
+	const groupableColumns = availableColumns.filter((col) => col !== 'actions');
+
+	const handleAddColumn = (col: string) => {
+		onGroupByChange([...groupByColumns, col]);
+	};
+
+	const handleRemoveColumn = (col: string) => {
+		onGroupByChange(groupByColumns.filter((c) => c !== col));
+	};
+
+	const handleMoveUp = (index: number) => {
+		if (index === 0) return;
+		const newCols = [...groupByColumns];
+		[newCols[index - 1], newCols[index]] = [newCols[index], newCols[index - 1]];
+		onGroupByChange(newCols);
+	};
+
+	const handleMoveDown = (index: number) => {
+		if (index === groupByColumns.length - 1) return;
+		const newCols = [...groupByColumns];
+		[newCols[index + 1], newCols[index]] = [newCols[index], newCols[index + 1]];
+		onGroupByChange(newCols);
+	};
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button variant="outline" size="sm" className="h-8 border-dashed">
+					<Layers className="mr-2 h-4 w-4" />
+					Group by
+					{groupByColumns.length > 0 && (
+						<>
+							<span className="mx-2 h-4 w-[1px] bg-primary/20" />
+							<span className="text-xs text-muted-foreground">
+								{groupByColumns.length} selected
+							</span>
+						</>
+					)}
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-[240px] p-0" align="start">
+				<Command>
+					<CommandList>
+						{groupByColumns.length > 0 && (
+							<CommandGroup heading="Grouped By">
+								{groupByColumns.map((col, index) => (
+									<CommandItem key={col} className="flex items-center justify-between" onSelect={() => {}}>
+										<span className="truncate mr-2">{COLUMN_LABELS[col] || col}</span>
+										<div className="flex items-center gap-1">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-5 w-5"
+												disabled={index === 0}
+												onClick={(e) => {
+													e.stopPropagation();
+													handleMoveUp(index);
+												}}
+											>
+												<ArrowUp className="h-3 w-3" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-5 w-5"
+												disabled={index === groupByColumns.length - 1}
+												onClick={(e) => {
+													e.stopPropagation();
+													handleMoveDown(index);
+												}}
+											>
+												<ArrowDown className="h-3 w-3" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-5 w-5 text-destructive hover:text-destructive"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleRemoveColumn(col);
+												}}
+											>
+												<X className="h-3 w-3" />
+											</Button>
+										</div>
+									</CommandItem>
+								))}
+							</CommandGroup>
+						)}
+						{groupByColumns.length > 0 && <CommandSeparator />}
+						<CommandGroup heading="Available Columns">
+							{groupableColumns
+								.filter((col) => !groupByColumns.includes(col))
+								.map((col) => (
+									<CommandItem
+										key={col}
+										onSelect={() => handleAddColumn(col)}
+										className="cursor-pointer"
+									>
+										{COLUMN_LABELS[col] || col}
+									</CommandItem>
+								))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+};
