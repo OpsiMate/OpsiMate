@@ -1,10 +1,10 @@
 import { GroupNode } from '@/components/Alerts/AlertsTable/AlertsTable.types';
 import { Alert } from '@OpsiMate/shared';
 import {
-    LIGHTNESS_RANGE,
-    RECENCY_BUCKETS,
-    STATUS_HUES,
-    STATUS_SATURATION
+	LIGHTNESS_RANGE,
+	RECENCY_BUCKETS,
+	STATUS_HUES,
+	STATUS_SATURATION
 } from './AlertsHeatmap.constants';
 import { TreemapNode } from './AlertsHeatmap.types';
 

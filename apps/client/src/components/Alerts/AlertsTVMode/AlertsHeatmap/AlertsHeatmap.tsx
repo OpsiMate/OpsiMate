@@ -86,7 +86,7 @@ export const AlertsHeatmap = ({
 
 	return (
 		<div className="w-full h-full flex flex-col">
-			<div ref={containerRef} className="flex-1 relative" style={{ minHeight: 400 }}>
+			<div ref={containerRef} className="flex-1 overflow-hidden" style={{ minHeight: 400 }}>
 				<D3Treemap
 					data={data}
 					width={dimensions.width}
