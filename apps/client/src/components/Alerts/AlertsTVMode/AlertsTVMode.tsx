@@ -1,6 +1,5 @@
-import { AlertsHeatmap } from './AlertsHeatmap';
-import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls';
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
+import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
@@ -9,27 +8,28 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import {
-	ArrowLeft,
-	Bell,
-	CheckCircle,
-	LayoutGrid,
-	Map,
-	RefreshCw,
+    ArrowLeft,
+    Bell,
+    CheckCircle,
+    LayoutGrid,
+    Map,
+    RefreshCw,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCard } from './AlertCard';
+import { AlertsHeatmap } from './AlertsHeatmap';
 import {
-	AUTO_REFRESH_INTERVAL_MS,
-	GROUPABLE_COLUMNS,
-	GRID_CLASSES,
+    AUTO_REFRESH_INTERVAL_MS,
+    GRID_CLASSES,
+    GROUPABLE_COLUMNS,
 } from './AlertsTVMode.constants';
 import { ViewMode } from './AlertsTVMode.types';
 import {
-	createServiceNameLookup,
-	filterAlertsByFilters,
-	getAlertServiceId,
-	getCardSize,
+    createServiceNameLookup,
+    filterAlertsByFilters,
+    getAlertServiceId,
+    getCardSize,
 } from './AlertsTVMode.utils';
 
 const AlertsTVMode = () => {
@@ -52,7 +52,7 @@ const AlertsTVMode = () => {
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
-	const [viewMode, setViewMode] = useState<ViewMode>('grid');
+	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
 	const [groupByColumns, setGroupByColumns] = useState<string[]>(['tag']);
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);

@@ -22,12 +22,16 @@ interface HeatmapContentProps {
 export const HeatmapContent = (props: HeatmapContentProps) => {
 	const { x, y, width, height, name, alert, payload, onAlertClick } = props;
 
-	if (!width || !height || width <= 0 || height <= 0) return null;
+	if (!width || !height || width <= 0 || height <= 0 || !name) return null;
 
 	const isLeaf = !payload?.children || payload.children.length === 0;
-	const fontSize = Math.min(width / 10, height / 4, 14);
+	const fontSize = Math.min(width / 12, height / 5, 16);
 	const color = getSeverityColor(name, alert);
-	const isSmall = width < 50 || height < 30;
+	const isSmall = width < 60 || height < 40;
+
+	const nameParts = name.split(' (');
+	const displayName = nameParts[0];
+	const count = nameParts[1]?.replace(')', '') || payload?.value?.toString() || '';
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -46,24 +50,23 @@ export const HeatmapContent = (props: HeatmapContentProps) => {
 				style={{
 					fill: color,
 					stroke: TREEMAP_STROKE,
-					strokeWidth: 1,
-					strokeOpacity: 1,
+					strokeWidth: 2,
+					strokeOpacity: 0.8,
 				}}
 			/>
-			{width > 20 && height > 20 && (
+			{width > 30 && height > 25 && (
 				<foreignObject x={x} y={y} width={width} height={height} style={{ pointerEvents: 'none' }}>
-					<div className="flex flex-col items-center justify-center h-full w-full p-1 text-center overflow-hidden">
+					<div className="flex flex-col items-center justify-center h-full w-full p-2 text-center overflow-hidden">
 						<span
-							className="font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
-							style={{ fontSize: `${Math.max(10, fontSize)}px` }}
+							className="font-bold text-white drop-shadow-lg whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+							style={{ fontSize: `${Math.max(11, fontSize)}px` }}
 						>
-							{name}
+							{displayName}
 						</span>
-						{!isSmall && isLeaf && (
-							<span className="text-xs text-white/80 mt-1">{alert?.tag}</span>
-						)}
-						{!isLeaf && payload?.value && (
-							<span className="text-xs text-white/80 mt-1">({payload.value})</span>
+						{count && !isSmall && (
+							<span className="text-xs font-semibold text-white/90 mt-0.5 drop-shadow">
+								{count} alert{count !== '1' ? 's' : ''}
+							</span>
 						)}
 					</div>
 				</foreignObject>

@@ -1,2 +1,1 @@
-export * from './AlertCardIcon';
-
+export { AlertCardIcon } from './AlertCardIcon';
