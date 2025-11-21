@@ -3,15 +3,7 @@ import {
 	Dialog,
 	DialogContent,
 } from '@/components/ui/dialog';
-import { Alert } from '@OpsiMate/shared';
-
-interface AlertDetailsModalProps {
-	alert: Alert | null;
-	open: boolean;
-	onClose: () => void;
-	onDismiss?: (alertId: string) => void;
-	onUndismiss?: (alertId: string) => void;
-}
+import { AlertDetailsModalProps } from './AlertDetailsModal.types';
 
 export const AlertDetailsModal = ({
 	alert,

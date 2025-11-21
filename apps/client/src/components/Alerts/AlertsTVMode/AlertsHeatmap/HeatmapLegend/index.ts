@@ -1,0 +1,1 @@
+export { HeatmapLegend } from './HeatmapLegend';

@@ -1,26 +1,10 @@
 import { Alert } from '@OpsiMate/shared';
-import { hierarchy, HierarchyNode, treemap, treemapSquarify } from 'd3-hierarchy';
+import { hierarchy, treemap, treemapSquarify } from 'd3-hierarchy';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { resolveAlertIntegration } from '../../IntegrationAvatar.utils';
-import { TreemapNode } from './AlertsHeatmap.types';
-import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
-
-interface D3TreemapProps {
-	data: TreemapNode[];
-	onAlertClick?: (alert: Alert) => void;
-}
-
-interface BreadcrumbItem {
-	name: string;
-	data: TreemapNode;
-}
-
-interface LayoutNode extends HierarchyNode<TreemapNode> {
-	x0: number;
-	y0: number;
-	x1: number;
-	y1: number;
-}
+import { TreemapNode } from '../AlertsHeatmap.types';
+import { getAlertColor, getGroupColor } from '../AlertsHeatmap.utils';
+import { BreadcrumbItem, D3TreemapProps, LayoutNode } from './D3Treemap.types';
+import { getIntegrationIcon } from './D3Treemap.utils';
 
 export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' | 'height'>) => {
 	const svgRef = useRef<SVGSVGElement>(null);
@@ -39,7 +23,6 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 		const updateDimensions = () => {
 			if (containerRef.current) {
 				const rect = containerRef.current.getBoundingClientRect();
-				console.log('Container dimensions:', rect.width, rect.height);
 				if (rect.width > 0 && rect.height > 0) {
 					setDimensions({ width: rect.width, height: rect.height });
 				}
@@ -70,18 +53,6 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 		const currentValue = currentData.reduce((sum, node) => sum + node.value, 0);
 		return ((currentValue / totalValue) * 100).toFixed(1);
 	}, [currentData, totalValue]);
-
-	const getIntegrationIcon = (alert: Alert): string => {
-		const integration = resolveAlertIntegration(alert);
-		switch (integration) {
-			case 'grafana':
-				return '🟠'; // Grafana orange
-			case 'gcp':
-				return '🔵'; // GCP blue
-			default:
-				return '🔔'; // Custom bell
-		}
-	};
 
 	useEffect(() => {
 		setCurrentData(data);
@@ -128,11 +99,8 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 			.paddingInner(2)
 			.paddingOuter(2)
 			.paddingTop((node) => {
-				// Root gets no top padding (we have external header)
 				if (node.depth === 0) return 0;
-				// Groups (depth 1) get header space for their label
-				if (node.depth === 1) return 28;
-				// Leaves/other don't need extra top padding
+				if (!node.data.alert && node.data.children && node.data.children.length > 0) return 28;
 				return 0;
 			})
 			.round(true)
@@ -246,12 +214,13 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 				const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
 
-				// If it's a group (not leaf), position text in the top header area
 				if (!isLeaf && node.data.children && node.data.children.length > 0) {
 					foreignObject.setAttribute('x', String(node.x0));
 					foreignObject.setAttribute('y', String(node.y0));
 					foreignObject.setAttribute('width', String(nodeWidth));
-					foreignObject.setAttribute('height', '28'); // Matches paddingTop
+					foreignObject.setAttribute('height', '28');
+					foreignObject.style.pointerEvents = 'none';
+					foreignObject.style.zIndex = '10';
 
 					const div = document.createElement('div');
 					div.className = 'flex items-center justify-between px-2 h-full w-full overflow-hidden';
@@ -280,7 +249,6 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 					foreignObject.appendChild(div);
 				} else {
-					// Leaf nodes (Alerts)
 					foreignObject.setAttribute('x', String(node.x0));
 					foreignObject.setAttribute('y', String(node.y0));
 					foreignObject.setAttribute('width', String(nodeWidth));
@@ -383,7 +351,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 		return () => {
 			svg.removeEventListener('wheel', handleWheel);
 		};
-	}, [currentData, dimensions, onAlertClick, breadcrumbs, handleZoomToGroup]);
+	}, [currentData, dimensions, onAlertClick, breadcrumbs, handleZoomToGroup, handleBreadcrumbClick]);
 
 	const currentGroupName = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1]?.name.split(' (')[0] : '';
 	const currentGroupColor = currentGroupName ? getGroupColor(currentGroupName) : '';
@@ -419,7 +387,6 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 				/>
 			</div>
 
-			{/* Tooltip */}
 			{tooltip && (
 				<div
 					className="fixed z-50 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg text-xs max-w-xs pointer-events-none"
@@ -437,7 +404,6 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 				</div>
 			)}
 
-			{/* Overflow Alerts Modal */}
 			{overflowAlerts && overflowAlerts.length > 0 && (
 				<div
 					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
