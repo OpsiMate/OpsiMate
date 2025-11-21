@@ -1,3 +1,6 @@
+import { AlertsHeatmap } from '@/components/Alerts/AlertsHeatmap';
+import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls';
+import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -19,6 +22,8 @@ import {
 	BellOff,
 	CheckCircle,
 	ExternalLink,
+	LayoutGrid,
+	Map,
 	MoreVertical,
 	RefreshCw,
 	RotateCcw,
@@ -28,6 +33,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type CardSize = 'large' | 'medium' | 'small' | 'extra-small';
+
+const GROUPABLE_COLUMNS = ['tag', 'serviceName', 'status', 'type', 'alertName'];
 
 const AlertsTVMode = () => {
 	const navigate = useNavigate();
@@ -43,14 +50,6 @@ const AlertsTVMode = () => {
 		}
 	}, [searchParams]);
 
-	const visibleColumns = useMemo(() => {
-		try {
-			return JSON.parse(searchParams.get('visibleColumns') || '[]');
-		} catch {
-			return ['alertName', 'status', 'tag', 'startsAt', 'serviceName'];
-		}
-	}, [searchParams]);
-
 	// Fetch data
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: services = [] } = useServices();
@@ -60,6 +59,8 @@ const AlertsTVMode = () => {
 	// State
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
+	const [viewMode, setViewMode] = useState<'grid' | 'heatmap'>('grid');
+	const [groupByColumns, setGroupByColumns] = useState<string[]>(['tag']);
 
 	// Create service name lookup map
 	const serviceNameById = useMemo(() => {
@@ -81,11 +82,24 @@ const AlertsTVMode = () => {
 	};
 
 	// Get service name for alert
-	const getServiceName = (alert: Alert): string => {
-		const serviceId = getAlertServiceId(alert);
-		if (!serviceId) return '-';
-		return serviceNameById[serviceId] || `#${serviceId}`;
-	};
+	const getServiceName = useCallback(
+		(alert: Alert): string => {
+			const serviceId = getAlertServiceId(alert);
+			if (!serviceId) return '-';
+			return serviceNameById[serviceId] || `#${serviceId}`;
+		},
+		[serviceNameById]
+	);
+
+	const getAlertValueWithService = useCallback(
+		(alert: Alert, field: string) => {
+			if (field === 'serviceName') {
+				return getServiceName(alert);
+			}
+			return getAlertValue(alert, field);
+		},
+		[getServiceName]
+	);
 
 	// Filter alerts based on filters
 	const filteredAlerts = useMemo(() => {
@@ -118,7 +132,7 @@ const AlertsTVMode = () => {
 			}
 			return true;
 		});
-	}, [alerts, filters, serviceNameById]);
+	}, [alerts, filters, getServiceName]);
 
 	// Auto-refresh every 30 seconds
 	useEffect(() => {
@@ -345,9 +359,9 @@ const AlertsTVMode = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-background p-4">
+		<div className="min-h-screen bg-background p-4 flex flex-col">
 			{/* Header */}
-			<div className="mb-4 flex items-center justify-between">
+			<div className="mb-4 flex items-center justify-between flex-shrink-0">
 				<div className="flex items-center gap-4">
 					<Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-2">
 						<ArrowLeft className="h-4 w-4" />
@@ -362,6 +376,33 @@ const AlertsTVMode = () => {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
+					{viewMode === 'heatmap' && (
+						<GroupByControls
+							groupByColumns={groupByColumns}
+							onGroupByChange={setGroupByColumns}
+							availableColumns={GROUPABLE_COLUMNS}
+						/>
+					)}
+
+					<div className="flex items-center bg-muted rounded-lg p-1 mr-2">
+						<Button
+							variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+							size="sm"
+							onClick={() => setViewMode('grid')}
+							className="h-7 px-2 gap-1"
+						>
+							<LayoutGrid className="h-4 w-4" /> Grid
+						</Button>
+						<Button
+							variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
+							size="sm"
+							onClick={() => setViewMode('heatmap')}
+							className="h-7 px-2 gap-1"
+						>
+							<Map className="h-4 w-4" /> Map
+						</Button>
+					</div>
+
 					<Button
 						variant="outline"
 						size="sm"
@@ -373,26 +414,36 @@ const AlertsTVMode = () => {
 						Refresh
 					</Button>
 					{lastRefresh && (
-						<span className="text-xs text-muted-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
+						<span className="text-xs text-muted-foreground">
+							Last: {lastRefresh.toLocaleTimeString()}
+						</span>
 					)}
 				</div>
 			</div>
 
-			{/* Alert Grid */}
+			{/* Content */}
 			{isLoading ? (
-				<div className="flex items-center justify-center h-64">
+				<div className="flex items-center justify-center h-64 flex-1">
 					<div className="text-center">
 						<RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
 						<p className="text-muted-foreground">Loading alerts...</p>
 					</div>
 				</div>
 			) : filteredAlerts.length === 0 ? (
-				<div className="flex items-center justify-center h-64">
+				<div className="flex items-center justify-center h-64 flex-1">
 					<div className="text-center">
 						<CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
 						<h2 className="text-xl font-semibold mb-2">No Active Alerts</h2>
 						<p className="text-muted-foreground">All systems are operating normally</p>
 					</div>
+				</div>
+			) : viewMode === 'heatmap' ? (
+				<div className="flex-1 min-h-[600px] border rounded-lg overflow-hidden bg-card shadow-sm p-2">
+					<AlertsHeatmap
+						alerts={filteredAlerts}
+						groupBy={groupByColumns}
+						customValueGetter={getAlertValueWithService}
+					/>
 				</div>
 			) : (
 				<div className={cn('grid', getGridClasses(cardSize))}>{filteredAlerts.map(renderAlertCard)}</div>

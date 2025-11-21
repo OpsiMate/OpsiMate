@@ -1,0 +1,28 @@
+---
+description: Enforce code organization with split subcomponents, separate utils, constants, and types.
+globs: "**/*.{ts,tsx}"
+alwaysApply: true
+---
+
+# Cursor Code Style Rule
+
+Always design for split subcomponents and strong separation of concerns.
+
+1. Subcomponents & Hooks:
+   - If logic/UI grows, split into subcomponents or hooks.
+   - Each component/hook lives in its own file.
+   - File name matches export name exactly.
+   - Props interface stays in the same file above the definition.
+
+2. Utils:
+   - Stateless pure helper functions go to `${componentName}.utils.ts`.
+
+3. Constants:
+   - No hardcoded strings or magic numbers.
+   - Put them in `${componentName}.constants.ts` and export/import.
+
+4. Types:
+   - No anonymous inline object types.
+   - Use interfaces only.
+   - Extract shared/non-props interfaces to `${componentName}.types.ts`.
+   - Props interfaces remain in the component/hook file.
