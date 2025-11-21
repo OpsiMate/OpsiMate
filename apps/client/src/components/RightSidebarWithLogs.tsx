@@ -263,6 +263,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 				<IntegrationDashboardDropdown tags={serviceTags} integrationType="Grafana" className="w-full" />
 				<IntegrationDashboardDropdown tags={serviceTags} integrationType="Kibana" className="w-full" />
 				<IntegrationDashboardDropdown tags={serviceTags} integrationType="Datadog" className="w-full" />
+				<IntegrationDashboardDropdown tags={serviceTags} integrationType="Coralogix" className="w-full" />
 			</div>
 		);
 	}, [serviceTags]);
