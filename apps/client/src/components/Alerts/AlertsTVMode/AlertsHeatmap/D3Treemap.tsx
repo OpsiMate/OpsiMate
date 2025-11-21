@@ -1,6 +1,6 @@
 import { Alert } from '@OpsiMate/shared';
 import { hierarchy, HierarchyNode, treemap, treemapSquarify } from 'd3-hierarchy';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveAlertIntegration } from '../../IntegrationAvatar.utils';
 import { TreemapNode } from './AlertsHeatmap.types';
 import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
@@ -30,6 +30,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 	const [currentData, setCurrentData] = useState<TreemapNode[]>(data);
 	const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 	const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
+	const nodesMapRef = useRef<Map<Element, TreemapNode>>(new Map());
 
 	const getIntegrationIcon = (alert: Alert): string => {
 		const integration = resolveAlertIntegration(alert);
@@ -48,25 +49,23 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		setBreadcrumbs([]);
 	}, [data]);
 
-	const handleZoomToGroup = (groupData: TreemapNode) => {
+	const handleZoomToGroup = useCallback((groupData: TreemapNode) => {
 		if (groupData.children && groupData.children.length > 0) {
 			setBreadcrumbs(prev => [...prev, { name: groupData.name, data: groupData }]);
 			setCurrentData(groupData.children);
 		}
-	};
+	}, []);
 
-	const handleBreadcrumbClick = (index: number) => {
+	const handleBreadcrumbClick = useCallback((index: number) => {
 		if (index === -1) {
-			// Go back to root
 			setCurrentData(data);
 			setBreadcrumbs([]);
 		} else {
-			// Go back to specific level
 			const targetBreadcrumb = breadcrumbs[index];
 			setBreadcrumbs(breadcrumbs.slice(0, index + 1));
 			setCurrentData(targetBreadcrumb.data.children || []);
 		}
-	};
+	}, [data, breadcrumbs]);
 
 	useEffect(() => {
 		if (!svgRef.current || !currentData || currentData.length === 0 || width === 0 || height === 0) return;
@@ -111,6 +110,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		const totalValue = root.value || 1;
 
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+		nodesMapRef.current.clear();
 
 		nodes.forEach((node) => {
 			if (!node.parent) return;
@@ -121,6 +121,8 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			const nodeHeight = node.y1 - node.y0;
 			const percentage = ((node.value || 0) / totalValue * 100).toFixed(1);
 			const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+			nodesMapRef.current.set(rect, node.data);
 			rect.setAttribute('x', String(node.x0));
 			rect.setAttribute('y', String(node.y0));
 			rect.setAttribute('width', String(nodeWidth));
@@ -285,7 +287,32 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		});
 
 		svg.appendChild(g);
-	}, [currentData, width, height, onAlertClick]);
+
+		const handleWheel = (e: WheelEvent) => {
+			if (e.ctrlKey || e.metaKey) {
+				e.preventDefault();
+
+				if (e.deltaY < 0) {
+					const target = e.target as Element;
+					const nodeData = nodesMapRef.current.get(target);
+
+					if (nodeData && nodeData.children && nodeData.children.length > 0) {
+						handleZoomToGroup(nodeData);
+					}
+				} else if (e.deltaY > 0) {
+					if (breadcrumbs.length > 0) {
+						handleBreadcrumbClick(breadcrumbs.length - 2);
+					}
+				}
+			}
+		};
+
+		svg.addEventListener('wheel', handleWheel, { passive: false });
+
+		return () => {
+			svg.removeEventListener('wheel', handleWheel);
+		};
+	}, [currentData, width, height, onAlertClick, breadcrumbs, handleZoomToGroup]);
 
 	return (
 		<div className="w-full h-full flex flex-col">
@@ -319,8 +346,8 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			</div>
 
 			{/* SVG Container - Takes remaining space */}
-			<div className="flex-1 relative">
-				<svg ref={svgRef} width={width} height={height - 56} className="absolute inset-0" />
+			<div className="flex-1 w-full">
+				<svg ref={svgRef} width={width} height={height - 56} className="w-full h-full" />
 			</div>
 
 			{/* Tooltip */}

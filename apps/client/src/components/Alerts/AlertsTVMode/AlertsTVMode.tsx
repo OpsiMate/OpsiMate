@@ -145,7 +145,10 @@ const AlertsTVMode = () => {
 	useEffect(() => {
 		const handleKeyPress = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
-				navigate('/alerts');
+				const dialogOpen = document.querySelector('[role="dialog"]');
+				if (!dialogOpen) {
+					navigate('/alerts');
+				}
 			} else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
 				handleManualRefresh();
 			}
@@ -235,7 +238,7 @@ const AlertsTVMode = () => {
 					</div>
 				</div>
 			) : viewMode === 'heatmap' ? (
-				<div className="flex-1 min-h-[600px] border rounded-lg overflow-hidden bg-card shadow-sm p-2">
+				<div className="flex-1 border rounded-lg overflow-hidden bg-card shadow-sm">
 					<AlertsHeatmap
 						alerts={filteredAlerts}
 						groupBy={groupByColumns}

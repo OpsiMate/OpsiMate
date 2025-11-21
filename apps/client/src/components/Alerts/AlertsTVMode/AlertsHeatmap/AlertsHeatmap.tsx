@@ -2,8 +2,8 @@ import { groupAlerts } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
 import { Alert } from '@OpsiMate/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertDetailsModal } from './AlertDetailsModal';
-import { D3Treemap } from './D3Treemap';
 import { getNormalizedAlertValue, mapGroupToTreemap, normalizeGroupValue } from './AlertsHeatmap.utils';
+import { D3Treemap } from './D3Treemap';
 import { HeatmapLegend } from './HeatmapLegend';
 
 export interface AlertsHeatmapProps {
@@ -56,17 +56,19 @@ export const AlertsHeatmap = ({
 			}
 		};
 
-		updateSize();
+		const timer = setTimeout(updateSize, 100);
+
 		const resizeObserver = new ResizeObserver(updateSize);
 		if (containerRef.current) {
 			resizeObserver.observe(containerRef.current);
 		}
 		window.addEventListener('resize', updateSize);
 		return () => {
+			clearTimeout(timer);
 			resizeObserver.disconnect();
 			window.removeEventListener('resize', updateSize);
 		};
-	}, []);
+	}, [data]);
 
 	const handleAlertClick = (alert: Alert) => {
 		setSelectedAlert(alert);
@@ -86,17 +88,17 @@ export const AlertsHeatmap = ({
 
 	return (
 		<div className="w-full h-full flex flex-col">
-			<div ref={containerRef} className="flex-1 overflow-hidden" style={{ minHeight: 400 }}>
+			<div className="flex-shrink-0">
+				<HeatmapLegend />
+			</div>
+
+			<div ref={containerRef} className="flex-1 w-full" style={{ minHeight: 0 }}>
 				<D3Treemap
 					data={data}
 					width={dimensions.width}
 					height={dimensions.height}
 					onAlertClick={handleAlertClick}
 				/>
-			</div>
-
-			<div className="flex-shrink-0">
-				<HeatmapLegend />
 			</div>
 
 			<AlertDetailsModal
