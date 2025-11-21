@@ -8,21 +8,27 @@ alwaysApply: true
 
 Always design for split subcomponents and strong separation of concerns.
 
-1. Subcomponents & Hooks:
+1. Component Structure:
+   - Each component must have its own subdirectory with the same name as the component.
+   - The main component file is `${componentName}.tsx` inside the subdirectory.
+   - Include an `index.ts` file that exports the component for clean imports.
+   - Example: `AlertsHeatmap/AlertsHeatmap.tsx` and `AlertsHeatmap/index.ts`.
+
+2. Subcomponents & Hooks:
    - If logic/UI grows, split into subcomponents or hooks.
-   - Each component/hook lives in its own file.
+   - Each subcomponent/hook lives in its own file within the component directory.
    - File name matches export name exactly.
    - Props interface stays in the same file above the definition.
 
-2. Utils:
-   - Stateless pure helper functions go to `${componentName}.utils.ts`.
+3. Utils:
+   - Stateless pure helper functions go to `${componentName}.utils.ts` in the component directory.
 
-3. Constants:
+4. Constants:
    - No hardcoded strings or magic numbers.
-   - Put them in `${componentName}.constants.ts` and export/import.
+   - Put them in `${componentName}.constants.ts` in the component directory and export/import.
 
-4. Types:
+5. Types:
    - No anonymous inline object types.
    - Use interfaces only.
-   - Extract shared/non-props interfaces to `${componentName}.types.ts`.
+   - Extract shared/non-props interfaces to `${componentName}.types.ts` in the component directory.
    - Props interfaces remain in the component/hook file.
