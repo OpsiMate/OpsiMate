@@ -1,67 +1,143 @@
 import { GroupNode } from '@/components/Alerts/AlertsTable/AlertsTable.types';
 import { Alert } from '@OpsiMate/shared';
-import { FALLBACK_COLOR, SEVERITY_COLORS } from './AlertsHeatmap.constants';
+import {
+    LIGHTNESS_RANGE,
+    RECENCY_BUCKETS,
+    STATUS_HUES,
+    STATUS_SATURATION
+} from './AlertsHeatmap.constants';
 import { TreemapNode } from './AlertsHeatmap.types';
 
-const generateColorFromString = (str: string): string => {
-	let hash = 0;
-	for (let i = 0; i < str.length; i++) {
-		hash = str.charCodeAt(i) + ((hash << 5) - hash);
+export const normalizeGroupValue = (value: string | null | undefined): string => {
+	if (!value) return 'Unknown';
+	const normalized = value.trim().toLowerCase();
+	return normalized || 'Unknown';
+};
+
+export const getNormalizedAlertValue = (alert: Alert, field: string): string => {
+	switch (field) {
+		case 'tag':
+			return normalizeGroupValue(alert.tag);
+		case 'status':
+			return alert.isDismissed ? 'Dismissed' : 'Firing';
+		case 'alertName':
+			return alert.alertName || 'Unknown';
+		case 'type':
+			return normalizeGroupValue(alert.type);
+		case 'serviceName':
+			return normalizeGroupValue((alert as any).serviceName);
+		default:
+			const value = (alert as any)[field];
+			return normalizeGroupValue(value);
+	}
+};
+
+const getStatusKey = (alert: Alert): keyof typeof STATUS_HUES => {
+	if (alert.isDismissed) return 'DISMISSED';
+
+	const status = alert.status.toUpperCase();
+	if (status.includes('FIRING') || status.includes('ACTIVE')) return 'FIRING';
+	if (status.includes('PENDING')) return 'PENDING';
+	if (status.includes('ACKNOWLEDGED') || status.includes('ACK')) return 'ACKNOWLEDGED';
+	if (status.includes('RESOLVED')) return 'RESOLVED';
+	if (status.includes('SUPPRESSED')) return 'SUPPRESSED';
+
+	return 'UNKNOWN';
+};
+
+const getRecencyWeight = (alert: Alert): number => {
+	const timestamp = alert.startsAt || alert.updatedAt;
+	if (!timestamp) return 1.0;
+
+	const now = Date.now();
+	const alertTime = new Date(timestamp).getTime();
+	const minutesAgo = (now - alertTime) / (1000 * 60);
+
+	for (const bucket of RECENCY_BUCKETS) {
+		if (minutesAgo < bucket.maxMinutes) {
+			return bucket.weight;
+		}
 	}
 
-	const hue = Math.abs(hash % 360);
-	const saturation = 60 + (Math.abs(hash) % 20);
-	const lightness = 45 + (Math.abs(hash) % 15);
+	return 0.1;
+};
+
+export const getAlertColor = (alert: Alert): string => {
+	const statusKey = getStatusKey(alert);
+	const hue = STATUS_HUES[statusKey];
+	const saturation = STATUS_SATURATION[statusKey];
+	const recencyWeight = getRecencyWeight(alert);
+
+	if (statusKey === 'UNKNOWN') {
+		const lightness = 40 + (recencyWeight * 20);
+		return `hsl(0, 0%, ${lightness}%)`;
+	}
+
+	const lightness = LIGHTNESS_RANGE.MIN +
+		(recencyWeight * (LIGHTNESS_RANGE.MAX - LIGHTNESS_RANGE.MIN));
 
 	return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 };
 
-export const getSeverityColor = (name: string, alert?: Alert): string => {
-	if (alert?.isDismissed) return SEVERITY_COLORS.Dismissed;
-
-	if (!name) return FALLBACK_COLOR;
-
-	const cleanName = name.split(' (')[0].trim();
-
-	if (SEVERITY_COLORS[cleanName]) return SEVERITY_COLORS[cleanName];
-
-	if (cleanName === 'Grafana') return '#ff6b6b';
-	if (cleanName === 'GCP') return '#4ecdc4';
-	if (cleanName === 'Custom') return '#95e1d3';
-	if (cleanName === 'production') return '#ef4444';
-	if (cleanName === 'staging') return '#f97316';
-	if (cleanName === 'development') return '#eab308';
-	if (cleanName === 'critical') return '#dc2626';
-	if (cleanName === 'warning') return '#f59e0b';
-	if (cleanName === 'info') return '#3b82f6';
-
-	return generateColorFromString(cleanName);
+export const getGroupColor = (name: string): string => {
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = name.charCodeAt(i) + ((hash << 5) - hash);
+	}
+	const hue = Math.abs(hash % 360);
+	return `hsl(${hue}, 40%, 45%)`;
 };
 
-export const mapGroupToTreemap = (nodes: GroupNode[], maxDepth: number = 2): TreemapNode[] => {
+export const getAlertMetricValue = (alert: Alert): number => {
+	const occurrences = (alert as any).occurrencesLastHour;
+	if (occurrences && typeof occurrences === 'number' && occurrences > 0) {
+		return occurrences;
+	}
+
+	const durationSeconds = (alert as any).durationSeconds;
+	if (durationSeconds && typeof durationSeconds === 'number' && durationSeconds > 0) {
+		return durationSeconds;
+	}
+
+	return 1;
+};
+
+const mapGroupNodeToTreemap = (node: GroupNode): TreemapNode | null => {
+	if (node.type === 'leaf') {
+		const metricValue = getAlertMetricValue(node.alert);
+		return {
+			name: node.alert.alertName,
+			value: metricValue,
+			nodeType: 'leaf' as const,
+			alert: node.alert,
+			metricValue,
+		};
+	}
+
+	if (node.type === 'group') {
+		const children: TreemapNode[] = node.children
+			.map(mapGroupNodeToTreemap)
+			.filter((child): child is TreemapNode => child !== null);
+
+		if (children.length === 0) return null;
+
+		const totalValue = children.reduce((sum, child) => sum + child.value, 0);
+		const normalizedValue = normalizeGroupValue(node.value);
+		const displayValue = normalizedValue === 'unknown' ? 'Unknown' : normalizedValue.charAt(0).toUpperCase() + normalizedValue.slice(1);
+
+		return {
+			name: `${displayValue} (${node.count})`,
+			value: totalValue > 0 ? totalValue : 1,
+			children,
+			nodeType: 'group' as const,
+		};
+	}
+
+	return null;
+};
+
+export const mapGroupToTreemap = (nodes: GroupNode[]): TreemapNode[] => {
 	return nodes
-		.filter((node) => node.type === 'group')
-		.map((node) => {
-			if (node.type === 'group') {
-				const groupChildren = node.children.filter((child) => child.type === 'group');
-				const shouldIncludeChildren = groupChildren.length > 0 && node.level < maxDepth - 1;
-
-				const children = shouldIncludeChildren
-					? mapGroupToTreemap(groupChildren, maxDepth)
-					: undefined;
-
-				const totalValue = node.count || (children
-					? children.reduce((sum, child) => sum + (child.value || 0), 0)
-					: 0);
-
-				return {
-					name: `${node.value} (${totalValue})`,
-					value: totalValue,
-					children,
-					nodeType: 'group' as const,
-				};
-			}
-			return null;
-		})
+		.map(mapGroupNodeToTreemap)
 		.filter((node): node is TreemapNode => node !== null);
 };

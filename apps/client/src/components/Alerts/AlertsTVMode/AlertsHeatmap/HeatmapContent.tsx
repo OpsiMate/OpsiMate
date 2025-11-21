@@ -1,7 +1,7 @@
 import { Alert } from '@OpsiMate/shared';
-import React from 'react';
+import React, { useState } from 'react';
 import { TREEMAP_STROKE } from './AlertsHeatmap.constants';
-import { getSeverityColor } from './AlertsHeatmap.utils';
+import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
 
 interface HeatmapContentProps {
 	depth: number;
@@ -15,23 +15,24 @@ interface HeatmapContentProps {
 	alert?: Alert;
 	payload?: any;
 	onAlertClick?: (alert: Alert) => void;
-	// Recharts passes other props we might ignore
 	[key: string]: any;
 }
 
 export const HeatmapContent = (props: HeatmapContentProps) => {
 	const { x, y, width, height, name, alert, payload, onAlertClick } = props;
+	const [isHovered, setIsHovered] = useState(false);
 
 	if (!width || !height || width <= 0 || height <= 0 || !name) return null;
 
 	const isLeaf = !payload?.children || payload.children.length === 0;
 	const fontSize = Math.min(width / 12, height / 5, 16);
-	const color = getSeverityColor(name, alert);
+	const color = isLeaf && alert ? getAlertColor(alert) : getGroupColor(name);
 	const isSmall = width < 60 || height < 40;
 
 	const nameParts = name.split(' (');
 	const displayName = nameParts[0];
-	const count = nameParts[1]?.replace(')', '') || payload?.value?.toString() || '';
+	const count = nameParts[1]?.replace(')', '') || '';
+	const metricValue = payload?.metricValue;
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -40,8 +41,21 @@ export const HeatmapContent = (props: HeatmapContentProps) => {
 		}
 	};
 
+	const scale = isHovered ? 1.03 : 1;
+	const transformOrigin = `${x + width / 2}px ${y + height / 2}px`;
+
 	return (
-		<g onClick={handleClick} style={{ cursor: isLeaf && onAlertClick ? 'pointer' : 'default' }}>
+		<g
+			onClick={handleClick}
+			onMouseEnter={() => setIsHovered(true)}
+			onMouseLeave={() => setIsHovered(false)}
+			style={{
+				cursor: isLeaf && onAlertClick ? 'pointer' : 'default',
+				transition: 'transform 0.15s ease-out',
+				transform: `scale(${scale})`,
+				transformOrigin,
+			}}
+		>
 			<rect
 				x={x}
 				y={y}
@@ -49,9 +63,11 @@ export const HeatmapContent = (props: HeatmapContentProps) => {
 				height={height}
 				style={{
 					fill: color,
-					stroke: TREEMAP_STROKE,
-					strokeWidth: 2,
-					strokeOpacity: 0.8,
+					stroke: isHovered ? '#fff' : TREEMAP_STROKE,
+					strokeWidth: isHovered ? 3 : 2,
+					strokeOpacity: isHovered ? 1 : 0.8,
+					filter: isHovered ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' : 'none',
+					transition: 'all 0.15s ease-out',
 				}}
 			/>
 			{width > 30 && height > 25 && (
@@ -63,10 +79,19 @@ export const HeatmapContent = (props: HeatmapContentProps) => {
 						>
 							{displayName}
 						</span>
-						{count && !isSmall && (
-							<span className="text-xs font-semibold text-white/90 mt-0.5 drop-shadow">
-								{count} alert{count !== '1' ? 's' : ''}
-							</span>
+						{!isSmall && (
+							<>
+								{count && (
+									<span className="text-xs font-semibold text-white/90 mt-0.5 drop-shadow">
+										{count} alert{count !== '1' ? 's' : ''}
+									</span>
+								)}
+								{metricValue && metricValue > 1 && (
+									<span className="text-[10px] text-white/80 drop-shadow">
+										{metricValue}
+									</span>
+								)}
+							</>
 						)}
 					</div>
 				</foreignObject>

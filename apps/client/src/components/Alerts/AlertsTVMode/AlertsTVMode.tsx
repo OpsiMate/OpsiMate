@@ -52,7 +52,7 @@ const AlertsTVMode = () => {
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
-	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
+	const [viewMode, setViewMode] = useState<ViewMode>('grid');
 	const [groupByColumns, setGroupByColumns] = useState<string[]>(['tag']);
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
@@ -240,6 +240,8 @@ const AlertsTVMode = () => {
 						alerts={filteredAlerts}
 						groupBy={groupByColumns}
 						customValueGetter={getAlertValueWithService}
+						onDismiss={handleDismissAlert}
+						onUndismiss={handleUndismissAlert}
 					/>
 				</div>
 			) : (

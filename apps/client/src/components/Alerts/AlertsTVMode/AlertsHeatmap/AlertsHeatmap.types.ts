@@ -6,6 +6,7 @@ export interface TreemapNode {
 	children?: TreemapNode[];
 	nodeType: 'group' | 'leaf';
 	alert?: Alert;
+	metricValue?: number;
 	depth?: number;
 	x?: number;
 	y?: number;

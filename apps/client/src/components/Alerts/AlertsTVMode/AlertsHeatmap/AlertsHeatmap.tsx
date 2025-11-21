@@ -1,29 +1,44 @@
 import { groupAlerts } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
 import { Alert } from '@OpsiMate/shared';
-import { useMemo } from 'react';
-import { ResponsiveContainer, Tooltip, Treemap } from 'recharts';
-import { mapGroupToTreemap } from './AlertsHeatmap.utils';
-import { HeatmapContent } from './HeatmapContent';
-import { HeatmapTooltip } from './HeatmapTooltip';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertDetailsModal } from './AlertDetailsModal';
+import { D3Treemap } from './D3Treemap';
+import { getNormalizedAlertValue, mapGroupToTreemap, normalizeGroupValue } from './AlertsHeatmap.utils';
+import { HeatmapLegend } from './HeatmapLegend';
 
 export interface AlertsHeatmapProps {
 	alerts: Alert[];
 	groupBy: string[];
-	onAlertClick?: (alert: Alert) => void;
+	onDismiss?: (alertId: string) => void;
+	onUndismiss?: (alertId: string) => void;
 	customValueGetter?: (alert: Alert, field: string) => string;
 }
 
 export const AlertsHeatmap = ({
 	alerts,
 	groupBy,
-	onAlertClick,
+	onDismiss,
+	onUndismiss,
 	customValueGetter,
 }: AlertsHeatmapProps) => {
+	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+	const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+	const containerRef = useRef<HTMLDivElement>(null);
+
 	const data = useMemo(() => {
 		if (alerts.length === 0) return [];
 
 		const effectiveGroupBy = groupBy.length > 0 ? groupBy : ['tag'];
-		const groups = groupAlerts(alerts, effectiveGroupBy, customValueGetter);
+
+		const normalizedValueGetter = (alert: Alert, field: string): string => {
+			if (field === 'serviceName' && customValueGetter) {
+				const serviceValue = customValueGetter(alert, field);
+				return normalizeGroupValue(serviceValue);
+			}
+			return getNormalizedAlertValue(alert, field);
+		};
+
+		const groups = groupAlerts(alerts, effectiveGroupBy, normalizedValueGetter);
 		const treemapData = mapGroupToTreemap(groups);
 
 		if (treemapData.length === 0) return [];
@@ -31,7 +46,37 @@ export const AlertsHeatmap = ({
 		return treemapData;
 	}, [alerts, groupBy, customValueGetter]);
 
-	if (data.length === 0) {
+	useEffect(() => {
+		const updateSize = () => {
+			if (containerRef.current) {
+				const rect = containerRef.current.getBoundingClientRect();
+				if (rect.width > 0 && rect.height > 0) {
+					setDimensions({ width: rect.width, height: rect.height });
+				}
+			}
+		};
+
+		updateSize();
+		const resizeObserver = new ResizeObserver(updateSize);
+		if (containerRef.current) {
+			resizeObserver.observe(containerRef.current);
+		}
+		window.addEventListener('resize', updateSize);
+		return () => {
+			resizeObserver.disconnect();
+			window.removeEventListener('resize', updateSize);
+		};
+	}, []);
+
+	const handleAlertClick = (alert: Alert) => {
+		setSelectedAlert(alert);
+	};
+
+	const handleCloseModal = () => {
+		setSelectedAlert(null);
+	};
+
+	if (!data || data.length === 0) {
 		return (
 			<div className="w-full h-full flex items-center justify-center min-h-[400px]">
 				<p className="text-muted-foreground">No data to display</p>
@@ -40,19 +85,27 @@ export const AlertsHeatmap = ({
 	}
 
 	return (
-		<div className="w-full h-full" style={{ minHeight: 'calc(100vh - 200px)' }}>
-			<ResponsiveContainer width="100%" height="100%" minHeight={400}>
-				<Treemap
+		<div className="w-full h-full flex flex-col">
+			<div ref={containerRef} className="flex-1 relative" style={{ minHeight: 400 }}>
+				<D3Treemap
 					data={data}
-					dataKey="value"
-					stroke="#fff"
-					fill="#8884d8"
-					content={<HeatmapContent onAlertClick={onAlertClick} />}
-					isAnimationActive={false}
-				>
-					<Tooltip content={<HeatmapTooltip />} />
-				</Treemap>
-			</ResponsiveContainer>
+					width={dimensions.width}
+					height={dimensions.height}
+					onAlertClick={handleAlertClick}
+				/>
+			</div>
+
+			<div className="flex-shrink-0">
+				<HeatmapLegend />
+			</div>
+
+			<AlertDetailsModal
+				alert={selectedAlert}
+				open={!!selectedAlert}
+				onClose={handleCloseModal}
+				onDismiss={onDismiss}
+				onUndismiss={onUndismiss}
+			/>
 		</div>
 	);
 };
