@@ -26,11 +26,13 @@ interface LayoutNode extends HierarchyNode<TreemapNode> {
 
 export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps) => {
 	const svgRef = useRef<SVGSVGElement>(null);
+	const svgContainerRef = useRef<HTMLDivElement>(null);
 	const [hoveredNode, setHoveredNode] = useState<LayoutNode | null>(null);
 	const [currentData, setCurrentData] = useState<TreemapNode[]>(data);
 	const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 	const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
 	const nodesMapRef = useRef<Map<Element, TreemapNode>>(new Map());
+	const [svgDimensions, setSvgDimensions] = useState({ width: 800, height: 600 });
 
 	const getIntegrationIcon = (alert: Alert): string => {
 		const integration = resolveAlertIntegration(alert);
@@ -48,6 +50,27 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		setCurrentData(data);
 		setBreadcrumbs([]);
 	}, [data]);
+
+	useEffect(() => {
+		const updateSvgSize = () => {
+			if (svgContainerRef.current) {
+				const rect = svgContainerRef.current.getBoundingClientRect();
+				if (rect.width > 0 && rect.height > 0) {
+					setSvgDimensions({ width: rect.width, height: rect.height });
+				}
+			}
+		};
+
+		updateSvgSize();
+		const resizeObserver = new ResizeObserver(updateSvgSize);
+		if (svgContainerRef.current) {
+			resizeObserver.observe(svgContainerRef.current);
+		}
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	}, [width, height]);
 
 	const handleZoomToGroup = useCallback((groupData: TreemapNode) => {
 		if (groupData.children && groupData.children.length > 0) {
@@ -68,7 +91,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 	}, [data, breadcrumbs]);
 
 	useEffect(() => {
-		if (!svgRef.current || !currentData || currentData.length === 0 || width === 0 || height === 0) return;
+		if (!svgRef.current || !currentData || currentData.length === 0 || svgDimensions.width === 0 || svgDimensions.height === 0) return;
 
 		const svg = svgRef.current;
 		svg.innerHTML = '';
@@ -84,9 +107,8 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			.sum((d) => (d as TreemapNode).value || 0)
 			.sort((a, b) => (b.value || 0) - (a.value || 0));
 
-		const availableHeight = height - 56; // Account for header
 		const treemapLayout = treemap<TreemapNode>()
-			.size([width, availableHeight])
+			.size([svgDimensions.width, svgDimensions.height])
 			.paddingInner(2)
 			.paddingOuter(2)
 			.paddingTop((node) => {
@@ -312,42 +334,12 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		return () => {
 			svg.removeEventListener('wheel', handleWheel);
 		};
-	}, [currentData, width, height, onAlertClick, breadcrumbs, handleZoomToGroup]);
+	}, [currentData, svgDimensions, onAlertClick, breadcrumbs, handleZoomToGroup]);
 
 	return (
-		<div className="w-full h-full flex flex-col">
-			{/* Navigation Header - Fixed height */}
-			<div className="h-14 bg-background/95 backdrop-blur-sm border-b flex items-center px-4 flex-shrink-0">
-				{breadcrumbs.length > 0 ? (
-					<div className="flex items-center gap-2 text-sm">
-						<button
-							onClick={() => handleBreadcrumbClick(-1)}
-							className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-						>
-							All Alerts
-						</button>
-						{breadcrumbs.map((crumb, index) => (
-							<div key={index} className="flex items-center gap-2">
-								<span className="text-muted-foreground">→</span>
-								<button
-									onClick={() => handleBreadcrumbClick(index)}
-									className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-								>
-									{crumb.name.split(' (')[0]}
-								</button>
-							</div>
-						))}
-					</div>
-				) : (
-					<div className="text-sm font-medium text-muted-foreground">
-						Alert Heatmap - Click groups to zoom in
-					</div>
-				)}
-			</div>
-
-			{/* SVG Container - Takes remaining space */}
-			<div className="flex-1 w-full">
-				<svg ref={svgRef} width={width} height={height - 56} className="w-full h-full" />
+		<div className="w-full h-full">
+			<div ref={svgContainerRef} className="w-full h-full overflow-hidden">
+				<svg ref={svgRef} width={svgDimensions.width} height={svgDimensions.height} className="w-full h-full" />
 			</div>
 
 			{/* Tooltip */}
