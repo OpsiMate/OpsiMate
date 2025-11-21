@@ -49,18 +49,10 @@ export class PullGrafanaAlertsJob {
 				try {
 					const tagName = alert.labels?.tag || '';
 					
-					// Map Grafana status to AlertStatus enum
-					// Grafana uses "active" for firing alerts
-					const grafanaStatus = alert.status?.state?.toLowerCase() || '';
-					const status: AlertStatus =
-						grafanaStatus === 'resolved' || grafanaStatus === 'normal'
-							? AlertStatus.RESOLVED
-							: AlertStatus.FIRING;
-					
 					await this.alertBL.insertOrUpdateAlert({
 						id: alert.fingerprint,
 						type: 'Grafana',
-						status: status,
+						status: AlertStatus.FIRING,
 						tag: tagName, // or another label key if appropriate
 						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
 						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '', // if available
