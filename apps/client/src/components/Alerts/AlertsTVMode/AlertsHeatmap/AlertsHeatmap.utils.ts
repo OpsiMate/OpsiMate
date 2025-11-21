@@ -102,7 +102,18 @@ export const getAlertMetricValue = (alert: Alert): number => {
 	return 1;
 };
 
-const mapGroupNodeToTreemap = (node: GroupNode): TreemapNode | null => {
+const calculateMaxVisibleAlerts = (totalAlerts: number, groupCount: number): number => {
+	const totalNodes = totalAlerts + groupCount;
+
+	if (totalNodes <= 30) return totalAlerts;
+	if (totalNodes <= 60) return Math.floor(totalAlerts * 0.8);
+	if (totalNodes <= 100) return Math.floor(totalAlerts * 0.6);
+	if (totalNodes <= 200) return Math.floor(totalAlerts * 0.4);
+
+	return Math.floor(totalAlerts * 0.3);
+};
+
+const mapGroupNodeToTreemap = (node: GroupNode, siblingCount: number = 1): TreemapNode | null => {
 	if (node.type === 'leaf') {
 		return {
 			name: node.alert.alertName,
@@ -114,11 +125,35 @@ const mapGroupNodeToTreemap = (node: GroupNode): TreemapNode | null => {
 	}
 
 	if (node.type === 'group') {
-		const children: TreemapNode[] = node.children
-			.map(mapGroupNodeToTreemap)
+		let children: TreemapNode[] = node.children
+			.map(child => mapGroupNodeToTreemap(child, node.children.length))
 			.filter((child): child is TreemapNode => child !== null);
 
 		if (children.length === 0) return null;
+
+		const leafChildren = children.filter(c => c.nodeType === 'leaf');
+		const groupChildren = children.filter(c => c.nodeType === 'group');
+
+		const maxVisible = calculateMaxVisibleAlerts(leafChildren.length, groupChildren.length);
+
+		if (leafChildren.length > maxVisible && maxVisible > 0) {
+			const visibleLeafs = leafChildren.slice(0, maxVisible);
+			const overflowLeafs = leafChildren.slice(maxVisible);
+			const overflowCount = overflowLeafs.length;
+			const overflowAlerts = overflowLeafs
+				.map(leaf => leaf.alert)
+				.filter((alert): alert is Alert => alert !== undefined);
+
+			const overflowNode: TreemapNode = {
+				name: `+${overflowCount} more`,
+				value: 2,
+				nodeType: 'leaf' as const,
+				metricValue: 2,
+				overflowAlerts,
+			};
+
+			children = [...groupChildren, ...visibleLeafs, overflowNode];
+		}
 
 		const totalValue = children.reduce((sum, child) => sum + child.value, 0);
 		const normalizedValue = normalizeGroupValue(node.value);
@@ -137,6 +172,6 @@ const mapGroupNodeToTreemap = (node: GroupNode): TreemapNode | null => {
 
 export const mapGroupToTreemap = (nodes: GroupNode[]): TreemapNode[] => {
 	return nodes
-		.map(mapGroupNodeToTreemap)
+		.map(node => mapGroupNodeToTreemap(node, nodes.length))
 		.filter((node): node is TreemapNode => node !== null);
 };

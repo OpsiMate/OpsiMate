@@ -33,6 +33,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 	const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
 	const nodesMapRef = useRef<Map<Element, TreemapNode>>(new Map());
 	const [svgDimensions, setSvgDimensions] = useState({ width: 800, height: 600 });
+	const [overflowAlerts, setOverflowAlerts] = useState<Alert[] | null>(null);
 
 	const totalValue = useMemo(() => {
 		return data.reduce((sum, node) => sum + node.value, 0);
@@ -148,6 +149,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 
 			const isLeaf = !node.data.children || node.data.children.length === 0;
 			const alert = (node.data as TreemapNode).alert;
+			const isOverflowNode = isLeaf && !alert && (node.data as TreemapNode).overflowAlerts;
 			const nodeWidth = node.x1 - node.x0;
 			const nodeHeight = node.y1 - node.y0;
 			const percentage = ((node.value || 0) / totalValue * 100).toFixed(1);
@@ -158,17 +160,28 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			rect.setAttribute('y', String(node.y0));
 			rect.setAttribute('width', String(nodeWidth));
 			rect.setAttribute('height', String(nodeHeight));
-			rect.setAttribute('fill', isLeaf && alert ? getAlertColor(alert) : getGroupColor(node.data.name));
+
+			if (isOverflowNode) {
+				rect.setAttribute('fill', 'hsl(0, 0%, 45%)');
+			} else {
+				rect.setAttribute('fill', isLeaf && alert ? getAlertColor(alert) : getGroupColor(node.data.name));
+			}
+
 			rect.setAttribute('stroke', '#1f2937');
 			rect.setAttribute('stroke-width', '2');
 			rect.setAttribute('stroke-opacity', '0.8');
-			rect.style.cursor = isLeaf && alert && onAlertClick ? 'pointer' : 'default';
+			rect.style.cursor = (isLeaf && alert && onAlertClick) || isOverflowNode ? 'pointer' : 'default';
 			rect.style.transition = 'all 0.15s ease-out';
 
 			if (isLeaf && alert && onAlertClick) {
 				rect.addEventListener('click', (e) => {
 					e.stopPropagation();
 					onAlertClick(alert);
+				});
+			} else if (isOverflowNode) {
+				rect.addEventListener('click', (e) => {
+					e.stopPropagation();
+					setOverflowAlerts((node.data as TreemapNode).overflowAlerts || null);
 				});
 			} else if (!isLeaf && node.data.children) {
 				rect.addEventListener('click', (e) => {
@@ -185,10 +198,15 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 				rect.style.transform = 'scale(1.03)';
 				rect.style.transformOrigin = `${node.x0 + nodeWidth / 2}px ${node.y0 + nodeHeight / 2}px`;
 
-				// Show tooltip
-				const tooltipContent = isLeaf && alert
-					? `${alert.alertName}\nStatus: ${alert.isDismissed ? 'Dismissed' : alert.status}\nStarted: ${new Date(alert.startsAt).toLocaleString()}\nPercentage: ${percentage}%`
-					: `${node.data.name}\n${node.data.children?.length || 0} items\nPercentage: ${percentage}%\nClick to zoom in`;
+				let tooltipContent: string;
+				if (isOverflowNode) {
+					const overflowCount = (node.data as TreemapNode).overflowAlerts?.length || 0;
+					tooltipContent = `+${overflowCount} more alerts\nClick to view all`;
+				} else if (isLeaf && alert) {
+					tooltipContent = `${alert.alertName}\nStatus: ${alert.isDismissed ? 'Dismissed' : alert.status}\nStarted: ${new Date(alert.startsAt).toLocaleString()}\nPercentage: ${percentage}%`;
+				} else {
+					tooltipContent = `${node.data.name}\n${node.data.children?.length || 0} items\nPercentage: ${percentage}%\nClick to zoom in`;
+				}
 
 				setTooltip({
 					x: e.clientX + 10,
@@ -266,7 +284,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 					const container = document.createElement('div');
 					container.className = 'relative h-full w-full overflow-hidden';
 
-					if (nodeWidth >= 60 && nodeHeight >= 35) {
+					if (!isOverflowNode && nodeWidth >= 60 && nodeHeight >= 35) {
 						const percentSpan = document.createElement('div');
 						percentSpan.className = 'absolute top-1 right-1 font-bold text-white/95 text-[10px] tracking-wide drop-shadow-sm';
 						percentSpan.textContent = `${percentage}%`;
@@ -283,23 +301,39 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 					div.style.lineHeight = '1.2';
 					div.style.gap = '2px';
 
-					if (isLeaf && alert && nodeWidth >= 40 && nodeHeight >= 30) {
-						const iconSpan = document.createElement('span');
-						iconSpan.style.fontSize = `${Math.min(nodeWidth / 8, nodeHeight / 6, 14)}px`;
-						iconSpan.style.marginBottom = '2px';
-						iconSpan.textContent = getIntegrationIcon(alert);
-						div.appendChild(iconSpan);
-					}
+					if (isOverflowNode) {
+						const ellipsisSpan = document.createElement('span');
+						ellipsisSpan.className = 'font-bold text-white drop-shadow-lg';
+						ellipsisSpan.style.fontSize = `${Math.max(20, nodeHeight / 3)}px`;
+						ellipsisSpan.textContent = '⋯';
+						div.appendChild(ellipsisSpan);
 
-					const nameSpan = document.createElement('span');
-					nameSpan.className = 'font-bold text-white drop-shadow-lg';
-					nameSpan.style.fontSize = `${Math.max(9, fontSize)}px`;
-					nameSpan.style.maxWidth = '100%';
-					nameSpan.style.overflow = 'hidden';
-					nameSpan.style.textOverflow = 'ellipsis';
-					nameSpan.style.whiteSpace = 'nowrap';
-					nameSpan.textContent = displayName;
-					div.appendChild(nameSpan);
+						if (nodeHeight >= 35) {
+							const textSpan = document.createElement('span');
+							textSpan.className = 'text-xs font-semibold text-white/90 drop-shadow mt-1';
+							textSpan.style.fontSize = `${Math.max(9, nodeHeight / 6)}px`;
+							textSpan.textContent = `+${(node.data as TreemapNode).overflowAlerts?.length || 0}`;
+							div.appendChild(textSpan);
+						}
+					} else {
+						if (isLeaf && alert && nodeWidth >= 40 && nodeHeight >= 30) {
+							const iconSpan = document.createElement('span');
+							iconSpan.style.fontSize = `${Math.min(nodeWidth / 8, nodeHeight / 6, 14)}px`;
+							iconSpan.style.marginBottom = '2px';
+							iconSpan.textContent = getIntegrationIcon(alert);
+							div.appendChild(iconSpan);
+						}
+
+						const nameSpan = document.createElement('span');
+						nameSpan.className = 'font-bold text-white drop-shadow-lg';
+						nameSpan.style.fontSize = `${Math.max(9, fontSize)}px`;
+						nameSpan.style.maxWidth = '100%';
+						nameSpan.style.overflow = 'hidden';
+						nameSpan.style.textOverflow = 'ellipsis';
+						nameSpan.style.whiteSpace = 'nowrap';
+						nameSpan.textContent = displayName;
+						div.appendChild(nameSpan);
+					}
 
 					if (count && nodeWidth >= 45 && nodeHeight >= 35) {
 						const countSpan = document.createElement('span');
@@ -389,6 +423,61 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 							{line}
 						</div>
 					))}
+				</div>
+			)}
+
+			{/* Overflow Alerts Modal */}
+			{overflowAlerts && overflowAlerts.length > 0 && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+					onClick={() => setOverflowAlerts(null)}
+				>
+					<div
+						className="bg-background border rounded-lg shadow-xl max-w-2xl max-h-[80vh] w-full mx-4 overflow-hidden flex flex-col"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="flex items-center justify-between p-4 border-b">
+							<h3 className="text-lg font-semibold">Additional Alerts ({overflowAlerts.length})</h3>
+							<button
+								onClick={() => setOverflowAlerts(null)}
+								className="text-muted-foreground hover:text-foreground transition-colors"
+							>
+								✕
+							</button>
+						</div>
+						<div className="overflow-y-auto p-4 space-y-2">
+							{overflowAlerts.map((alert, index) => (
+								<div
+									key={`${alert.id}-${index}`}
+									className="p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+									onClick={() => {
+										setOverflowAlerts(null);
+										if (onAlertClick) {
+											onAlertClick(alert);
+										}
+									}}
+								>
+									<div className="flex items-start justify-between gap-2">
+										<div className="flex-1 min-w-0">
+											<div className="font-semibold truncate">{alert.alertName}</div>
+											<div className="text-xs text-muted-foreground mt-1">
+												Status: {alert.isDismissed ? 'Dismissed' : alert.status}
+											</div>
+											{alert.summary && (
+												<div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+													{alert.summary}
+												</div>
+											)}
+										</div>
+										<div
+											className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+											style={{ backgroundColor: getAlertColor(alert) }}
+										/>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
 				</div>
 			)}
 		</div>

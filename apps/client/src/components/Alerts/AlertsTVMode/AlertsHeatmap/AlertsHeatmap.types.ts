@@ -7,6 +7,7 @@ export interface TreemapNode {
 	nodeType: 'group' | 'leaf';
 	alert?: Alert;
 	metricValue?: number;
+	overflowAlerts?: Alert[];
 	depth?: number;
 	x?: number;
 	y?: number;
