@@ -1,5 +1,4 @@
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
-import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
@@ -177,14 +176,6 @@ const AlertsTVMode = () => {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					{viewMode === 'heatmap' && (
-						<GroupByControls
-							groupByColumns={groupByColumns}
-							onGroupByChange={setGroupByColumns}
-							availableColumns={GROUPABLE_COLUMNS}
-						/>
-					)}
-
 					<div className="flex items-center bg-muted rounded-lg p-1 mr-2">
 						<Button
 							variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
@@ -245,6 +236,9 @@ const AlertsTVMode = () => {
 						customValueGetter={getAlertValueWithService}
 						onDismiss={handleDismissAlert}
 						onUndismiss={handleUndismissAlert}
+						groupByColumns={groupByColumns}
+						onGroupByChange={setGroupByColumns}
+						availableColumns={GROUPABLE_COLUMNS}
 					/>
 				</div>
 			) : (

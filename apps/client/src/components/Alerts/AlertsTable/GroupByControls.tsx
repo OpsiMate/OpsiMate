@@ -50,7 +50,7 @@ export const GroupByControls = ({
 						<>
 							<span className="mx-2 h-4 w-[1px] bg-primary/20" />
 							<span className="text-xs text-muted-foreground">
-								{groupByColumns.length} selected
+								{groupByColumns.map(col => COLUMN_LABELS[col] || col).join(', ')}
 							</span>
 						</>
 					)}

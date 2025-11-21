@@ -1,4 +1,5 @@
 import { groupAlerts } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
+import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls';
 import { Alert } from '@OpsiMate/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertDetailsModal } from './AlertDetailsModal';
@@ -12,6 +13,9 @@ export interface AlertsHeatmapProps {
 	onDismiss?: (alertId: string) => void;
 	onUndismiss?: (alertId: string) => void;
 	customValueGetter?: (alert: Alert, field: string) => string;
+	groupByColumns: string[];
+	onGroupByChange: (columns: string[]) => void;
+	availableColumns: string[];
 }
 
 export const AlertsHeatmap = ({
@@ -20,6 +24,9 @@ export const AlertsHeatmap = ({
 	onDismiss,
 	onUndismiss,
 	customValueGetter,
+	groupByColumns,
+	onGroupByChange,
+	availableColumns,
 }: AlertsHeatmapProps) => {
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -88,8 +95,12 @@ export const AlertsHeatmap = ({
 
 	return (
 		<div className="w-full flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 113px)' }}>
-			<div className="flex-shrink-0">
-				<HeatmapLegend />
+			<div className="flex-shrink-0 border-b bg-background/95 backdrop-blur-sm">
+				<GroupByControls
+					groupByColumns={groupByColumns}
+					onGroupByChange={onGroupByChange}
+					availableColumns={availableColumns}
+				/>
 			</div>
 
 			<div ref={containerRef} className="flex-1 w-full overflow-hidden">
@@ -97,6 +108,10 @@ export const AlertsHeatmap = ({
 					data={data}
 					onAlertClick={handleAlertClick}
 				/>
+			</div>
+
+			<div className="flex-shrink-0 border-t bg-background/95 backdrop-blur-sm">
+				<HeatmapLegend />
 			</div>
 
 			<AlertDetailsModal
