@@ -104,8 +104,7 @@ const groupAlertsRecursive = (
 	alerts: Alert[],
 	groupBy: string[],
 	level: number,
-	parentKey: string,
-	valueGetter: (alert: Alert, field: string) => string
+	parentKey: string
 ): GroupNode[] => {
 	if (groupBy.length === 0) {
 		return alerts.map((alert) => ({ type: 'leaf', alert }));
@@ -114,7 +113,7 @@ const groupAlertsRecursive = (
 	const groups: Record<string, Alert[]> = {};
 
 	alerts.forEach((alert) => {
-		const value = valueGetter(alert, currentField);
+		const value = getAlertValue(alert, currentField);
 		if (!groups[value]) {
 			groups[value] = [];
 		}
@@ -126,7 +125,7 @@ const groupAlertsRecursive = (
 	return sortedKeys.map((value) => {
 		const groupKey = `${parentKey}:${value}`;
 		const groupAlertsList = groups[value];
-		const children = groupAlertsRecursive(groupAlertsList, restFields, level + 1, groupKey, valueGetter);
+		const children = groupAlertsRecursive(groupAlertsList, restFields, level + 1, groupKey);
 
 		return {
 			type: 'group',
@@ -140,13 +139,8 @@ const groupAlertsRecursive = (
 	});
 };
 
-export const groupAlerts = (
-	alerts: Alert[],
-	groupBy: string[],
-	customValueGetter?: (alert: Alert, field: string) => string
-): GroupNode[] => {
-	const getter = customValueGetter || getAlertValue;
-	return groupAlertsRecursive(alerts, groupBy, 0, 'root', getter);
+export const groupAlerts = (alerts: Alert[], groupBy: string[]): GroupNode[] => {
+	return groupAlertsRecursive(alerts, groupBy, 0, 'root');
 };
 
 export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): FlatGroupItem[] => {
