@@ -52,13 +52,10 @@ export class PullGrafanaAlertsJob {
 					// Map Grafana status to AlertStatus enum
 					// Grafana uses "active" for firing alerts
 					const grafanaStatus = alert.status?.state?.toLowerCase() || '';
-					let status: string = AlertStatus.FIRING; // Default to firing for active Grafana alerts
-					
-					if (grafanaStatus === 'resolved' || grafanaStatus === 'normal') {
-						status = AlertStatus.RESOLVED;
-					} else if (grafanaStatus === 'pending') {
-						status = AlertStatus.PENDING;
-					}
+					const status: AlertStatus =
+						grafanaStatus === 'resolved' || grafanaStatus === 'normal'
+							? AlertStatus.RESOLVED
+							: AlertStatus.FIRING;
 					
 					await this.alertBL.insertOrUpdateAlert({
 						id: alert.fingerprint,

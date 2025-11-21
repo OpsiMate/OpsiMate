@@ -69,11 +69,9 @@ export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className
 										variant={
 											alert.isDismissed
 												? 'secondary'
-												: alert.status === AlertStatus.FIRING || alert.status === AlertStatus.ALERTING
+												: alert.status === AlertStatus.FIRING
 													? 'destructive'
-													: alert.status === AlertStatus.RESOLVED || alert.status === AlertStatus.OK
-														? 'secondary'
-														: 'outline'
+													: 'secondary'
 										}
 										className="flex-shrink-0"
 									>
