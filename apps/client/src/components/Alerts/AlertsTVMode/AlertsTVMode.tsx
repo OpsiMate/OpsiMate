@@ -52,7 +52,7 @@ const AlertsTVMode = () => {
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
-	const [viewMode, setViewMode] = useState<ViewMode>('grid');
+	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
 	const [groupByColumns, setGroupByColumns] = useState<string[]>(['tag']);
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);

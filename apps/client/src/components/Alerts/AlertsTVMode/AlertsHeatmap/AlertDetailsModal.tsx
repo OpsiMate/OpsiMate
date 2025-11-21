@@ -2,8 +2,6 @@ import { AlertDetails } from '@/components/Alerts/AlertDetails';
 import {
 	Dialog,
 	DialogContent,
-	DialogHeader,
-	DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert } from '@OpsiMate/shared';
 
@@ -26,7 +24,7 @@ export const AlertDetailsModal = ({
 
 	return (
 		<Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-			<DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden">
+			<DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden" showClose={false}>
 				<AlertDetails
 					alert={alert}
 					onClose={onClose}

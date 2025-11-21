@@ -1,10 +1,10 @@
 import { GroupNode } from '@/components/Alerts/AlertsTable/AlertsTable.types';
 import { Alert } from '@OpsiMate/shared';
 import {
-	LIGHTNESS_RANGE,
-	RECENCY_BUCKETS,
-	STATUS_HUES,
-	STATUS_SATURATION
+    LIGHTNESS_RANGE,
+    RECENCY_BUCKETS,
+    STATUS_HUES,
+    STATUS_SATURATION
 } from './AlertsHeatmap.constants';
 import { TreemapNode } from './AlertsHeatmap.types';
 
@@ -104,13 +104,12 @@ export const getAlertMetricValue = (alert: Alert): number => {
 
 const mapGroupNodeToTreemap = (node: GroupNode): TreemapNode | null => {
 	if (node.type === 'leaf') {
-		const metricValue = getAlertMetricValue(node.alert);
 		return {
 			name: node.alert.alertName,
-			value: metricValue,
+			value: 1,
 			nodeType: 'leaf' as const,
 			alert: node.alert,
-			metricValue,
+			metricValue: 1,
 		};
 	}
 
@@ -127,7 +126,7 @@ const mapGroupNodeToTreemap = (node: GroupNode): TreemapNode | null => {
 
 		return {
 			name: `${displayValue} (${node.count})`,
-			value: totalValue > 0 ? totalValue : 1,
+			value: totalValue,
 			children,
 			nodeType: 'group' as const,
 		};

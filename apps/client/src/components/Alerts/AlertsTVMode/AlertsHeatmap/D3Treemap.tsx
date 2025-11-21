@@ -1,12 +1,9 @@
 import { Alert } from '@OpsiMate/shared';
 import { hierarchy, HierarchyNode, treemap, treemapSquarify } from 'd3-hierarchy';
 import { useEffect, useRef, useState } from 'react';
-import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
-import { TreemapNode } from './AlertsHeatmap.types';
 import { resolveAlertIntegration } from '../../IntegrationAvatar.utils';
-import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
-import { GCPIcon } from '@/components/icons/GCPIcon';
-import { Bell } from 'lucide-react';
+import { TreemapNode } from './AlertsHeatmap.types';
+import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
 
 interface D3TreemapProps {
 	data: TreemapNode[];
@@ -77,10 +74,11 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		const svg = svgRef.current;
 		svg.innerHTML = '';
 
-		const rootData = {
+		const rootData: TreemapNode = {
 			name: 'root',
 			value: currentData.reduce((sum, node) => sum + node.value, 0),
 			children: currentData,
+			nodeType: 'group',
 		};
 
 		const root = hierarchy(rootData)
@@ -110,6 +108,8 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			nodes.push(node as LayoutNode);
 		});
 
+		const totalValue = root.value || 1;
+
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
 		nodes.forEach((node) => {
@@ -119,6 +119,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			const alert = (node.data as TreemapNode).alert;
 			const nodeWidth = node.x1 - node.x0;
 			const nodeHeight = node.y1 - node.y0;
+			const percentage = ((node.value || 0) / totalValue * 100).toFixed(1);
 			const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
 			rect.setAttribute('x', String(node.x0));
 			rect.setAttribute('y', String(node.y0));
@@ -153,8 +154,8 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 
 				// Show tooltip
 				const tooltipContent = isLeaf && alert
-					? `${alert.alertName}\nStatus: ${alert.isDismissed ? 'Dismissed' : alert.status}\nStarted: ${new Date(alert.startsAt).toLocaleString()}`
-					: `${node.data.name}\n${node.data.children?.length || 0} items\nClick to zoom in`;
+					? `${alert.alertName}\nStatus: ${alert.isDismissed ? 'Dismissed' : alert.status}\nStarted: ${new Date(alert.startsAt).toLocaleString()}\nPercentage: ${percentage}%`
+					: `${node.data.name}\n${node.data.children?.length || 0} items\nPercentage: ${percentage}%\nClick to zoom in`;
 
 				setTooltip({
 					x: e.clientX + 10,
@@ -196,31 +197,51 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 					foreignObject.setAttribute('height', '28'); // Matches paddingTop
 
 					const div = document.createElement('div');
-					div.className = 'flex items-center px-2 h-full w-full overflow-hidden';
+					div.className = 'flex items-center justify-between px-2 h-full w-full overflow-hidden';
+
+					const leftGroup = document.createElement('div');
+					leftGroup.className = 'flex items-center gap-2 overflow-hidden';
 
 					const nameSpan = document.createElement('span');
 					nameSpan.className = 'font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate';
 					nameSpan.textContent = displayName;
-					div.appendChild(nameSpan);
+					leftGroup.appendChild(nameSpan);
 
 					if (count) {
 						const countSpan = document.createElement('span');
-						countSpan.className = 'ml-2 text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full';
+						countSpan.className = 'text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0';
 						countSpan.textContent = count;
-						div.appendChild(countSpan);
+						leftGroup.appendChild(countSpan);
 					}
+
+					div.appendChild(leftGroup);
+
+					const percentSpan = document.createElement('span');
+					percentSpan.className = 'font-bold text-white/95 text-xs tracking-wide drop-shadow-sm flex-shrink-0 ml-2';
+					percentSpan.textContent = `${percentage}%`;
+					div.appendChild(percentSpan);
 
 					foreignObject.appendChild(div);
 				} else {
-					// Leaf nodes (Alerts) - Centered content as before
+					// Leaf nodes (Alerts)
 					foreignObject.setAttribute('x', String(node.x0));
 					foreignObject.setAttribute('y', String(node.y0));
 					foreignObject.setAttribute('width', String(nodeWidth));
 					foreignObject.setAttribute('height', String(nodeHeight));
 					foreignObject.style.pointerEvents = 'none';
 
+					const container = document.createElement('div');
+					container.className = 'relative h-full w-full overflow-hidden';
+
+					if (nodeWidth >= 60 && nodeHeight >= 35) {
+						const percentSpan = document.createElement('div');
+						percentSpan.className = 'absolute top-1 right-1 font-bold text-white/95 text-[10px] tracking-wide drop-shadow-sm';
+						percentSpan.textContent = `${percentage}%`;
+						container.appendChild(percentSpan);
+					}
+
 					const div = document.createElement('div');
-					div.className = 'flex flex-col items-center justify-center h-full w-full p-1 text-center overflow-hidden';
+					div.className = 'flex flex-col items-center justify-center h-full w-full p-1 text-center';
 					div.style.display = 'flex';
 					div.style.alignItems = 'center';
 					div.style.justifyContent = 'center';
@@ -229,7 +250,6 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 					div.style.lineHeight = '1.2';
 					div.style.gap = '2px';
 
-					// Add integration icon for leaf nodes (alerts)
 					if (isLeaf && alert && nodeWidth >= 40 && nodeHeight >= 30) {
 						const iconSpan = document.createElement('span');
 						iconSpan.style.fontSize = `${Math.min(nodeWidth / 8, nodeHeight / 6, 14)}px`;
@@ -256,7 +276,8 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 						div.appendChild(countSpan);
 					}
 
-					foreignObject.appendChild(div);
+					container.appendChild(div);
+					foreignObject.appendChild(container);
 				}
 
 				g.appendChild(foreignObject);
