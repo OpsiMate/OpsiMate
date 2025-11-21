@@ -7,8 +7,6 @@ import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
 
 interface D3TreemapProps {
 	data: TreemapNode[];
-	width: number;
-	height: number;
 	onAlertClick?: (alert: Alert) => void;
 }
 
@@ -24,16 +22,45 @@ interface LayoutNode extends HierarchyNode<TreemapNode> {
 	y1: number;
 }
 
-export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps) => {
+export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' | 'height'>) => {
 	const svgRef = useRef<SVGSVGElement>(null);
-	const svgContainerRef = useRef<HTMLDivElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 	const [hoveredNode, setHoveredNode] = useState<LayoutNode | null>(null);
 	const [currentData, setCurrentData] = useState<TreemapNode[]>(data);
 	const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 	const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
 	const nodesMapRef = useRef<Map<Element, TreemapNode>>(new Map());
-	const [svgDimensions, setSvgDimensions] = useState({ width: 800, height: 600 });
 	const [overflowAlerts, setOverflowAlerts] = useState<Alert[] | null>(null);
+	const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+	useEffect(() => {
+		if (!containerRef.current) return;
+
+		const updateDimensions = () => {
+			if (containerRef.current) {
+				const rect = containerRef.current.getBoundingClientRect();
+				console.log('Container dimensions:', rect.width, rect.height);
+				if (rect.width > 0 && rect.height > 0) {
+					setDimensions({ width: rect.width, height: rect.height });
+				}
+			}
+		};
+
+		setTimeout(updateDimensions, 0);
+
+		const resizeObserver = new ResizeObserver(() => {
+			updateDimensions();
+		});
+
+		resizeObserver.observe(containerRef.current);
+
+		window.addEventListener('resize', updateDimensions);
+
+		return () => {
+			resizeObserver.disconnect();
+			window.removeEventListener('resize', updateDimensions);
+		};
+	}, []);
 
 	const totalValue = useMemo(() => {
 		return data.reduce((sum, node) => sum + node.value, 0);
@@ -61,27 +88,6 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		setBreadcrumbs([]);
 	}, [data]);
 
-	useEffect(() => {
-		const updateSvgSize = () => {
-			if (svgContainerRef.current) {
-				const rect = svgContainerRef.current.getBoundingClientRect();
-				if (rect.width > 0 && rect.height > 0) {
-					setSvgDimensions({ width: rect.width, height: rect.height });
-				}
-			}
-		};
-
-		updateSvgSize();
-		const resizeObserver = new ResizeObserver(updateSvgSize);
-		if (svgContainerRef.current) {
-			resizeObserver.observe(svgContainerRef.current);
-		}
-
-		return () => {
-			resizeObserver.disconnect();
-		};
-	}, [width, height]);
-
 	const handleZoomToGroup = useCallback((groupData: TreemapNode) => {
 		if (groupData.children && groupData.children.length > 0) {
 			setBreadcrumbs(prev => [...prev, { name: groupData.name, data: groupData }]);
@@ -101,7 +107,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 	}, [data, breadcrumbs]);
 
 	useEffect(() => {
-		if (!svgRef.current || !currentData || currentData.length === 0 || svgDimensions.width === 0 || svgDimensions.height === 0) return;
+		if (!svgRef.current || !currentData || currentData.length === 0 || dimensions.width === 0 || dimensions.height === 0) return;
 
 		const svg = svgRef.current;
 		svg.innerHTML = '';
@@ -118,7 +124,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 			.sort((a, b) => (b.value || 0) - (a.value || 0));
 
 		const treemapLayout = treemap<TreemapNode>()
-			.size([svgDimensions.width, svgDimensions.height])
+			.size([dimensions.width, dimensions.height])
 			.paddingInner(2)
 			.paddingOuter(2)
 			.paddingTop((node) => {
@@ -377,7 +383,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		return () => {
 			svg.removeEventListener('wheel', handleWheel);
 		};
-	}, [currentData, svgDimensions, onAlertClick, breadcrumbs, handleZoomToGroup]);
+	}, [currentData, dimensions, onAlertClick, breadcrumbs, handleZoomToGroup]);
 
 	const currentGroupName = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1]?.name.split(' (')[0] : '';
 	const currentGroupColor = currentGroupName ? getGroupColor(currentGroupName) : '';
@@ -404,8 +410,13 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 					</span>
 				</div>
 			)}
-			<div ref={svgContainerRef} className="flex-1 w-full overflow-hidden">
-				<svg ref={svgRef} width={svgDimensions.width} height={svgDimensions.height} className="w-full h-full" />
+			<div ref={containerRef} className="flex-1 w-full h-full overflow-hidden">
+				<svg
+					ref={svgRef}
+					width="100%"
+					height="100%"
+					style={{ display: 'block' }}
+				/>
 			</div>
 
 			{/* Tooltip */}
@@ -449,7 +460,7 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 							{overflowAlerts.map((alert, index) => (
 								<div
 									key={`${alert.id}-${index}`}
-									className="p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+									className="group p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
 									onClick={() => {
 										setOverflowAlerts(null);
 										if (onAlertClick) {
@@ -459,12 +470,12 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 								>
 									<div className="flex items-start justify-between gap-2">
 										<div className="flex-1 min-w-0">
-											<div className="font-semibold truncate">{alert.alertName}</div>
-											<div className="text-xs text-muted-foreground mt-1">
+											<div className="font-semibold truncate group-hover:text-white transition-colors">{alert.alertName}</div>
+											<div className="text-xs text-muted-foreground group-hover:text-white/90 mt-1 transition-colors">
 												Status: {alert.isDismissed ? 'Dismissed' : alert.status}
 											</div>
 											{alert.summary && (
-												<div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+												<div className="text-xs text-muted-foreground group-hover:text-white/80 mt-1 line-clamp-2 transition-colors">
 													{alert.summary}
 												</div>
 											)}
