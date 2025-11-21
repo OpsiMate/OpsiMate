@@ -24,3 +24,27 @@ export interface SortConfig {
 	field: AlertSortField;
 	direction: SortDirection;
 }
+
+export type GroupNode =
+	| {
+			type: 'group';
+			key: string;
+			field: string;
+			value: string;
+			count: number;
+			children: GroupNode[];
+			level: number;
+	  }
+	| { type: 'leaf'; alert: Alert };
+
+export type FlatGroupItem =
+	| {
+			type: 'group';
+			key: string;
+			field: string;
+			value: string;
+			count: number;
+			level: number;
+			isExpanded: boolean;
+	  }
+	| { type: 'leaf'; alert: Alert };

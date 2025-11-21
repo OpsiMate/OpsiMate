@@ -1,5 +1,5 @@
 export { Alerts } from '../components/Alerts';
-export { default as AlertsTVMode } from './AlertsTVMode';
+export { default as AlertsTVMode } from '../components/Alerts/AlertsTVMode';
 export { default as Integrations } from './Integrations';
 export { default as Login } from './Login';
 export { default as NotFound } from './NotFound';
