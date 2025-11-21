@@ -87,7 +87,7 @@ export const AlertsHeatmap = ({
 	}
 
 	return (
-		<div className="w-full h-full flex flex-col overflow-hidden">
+		<div className="w-full flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 113px)' }}>
 			<div className="flex-shrink-0">
 				<HeatmapLegend />
 			</div>

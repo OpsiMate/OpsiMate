@@ -1,6 +1,6 @@
 import { Alert } from '@OpsiMate/shared';
 import { hierarchy, HierarchyNode, treemap, treemapSquarify } from 'd3-hierarchy';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { resolveAlertIntegration } from '../../IntegrationAvatar.utils';
 import { TreemapNode } from './AlertsHeatmap.types';
 import { getAlertColor, getGroupColor } from './AlertsHeatmap.utils';
@@ -33,6 +33,15 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 	const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
 	const nodesMapRef = useRef<Map<Element, TreemapNode>>(new Map());
 	const [svgDimensions, setSvgDimensions] = useState({ width: 800, height: 600 });
+
+	const totalValue = useMemo(() => {
+		return data.reduce((sum, node) => sum + node.value, 0);
+	}, [data]);
+
+	const currentGroupPercentage = useMemo(() => {
+		const currentValue = currentData.reduce((sum, node) => sum + node.value, 0);
+		return ((currentValue / totalValue) * 100).toFixed(1);
+	}, [currentData, totalValue]);
 
 	const getIntegrationIcon = (alert: Alert): string => {
 		const integration = resolveAlertIntegration(alert);
@@ -336,9 +345,32 @@ export const D3Treemap = ({ data, width, height, onAlertClick }: D3TreemapProps)
 		};
 	}, [currentData, svgDimensions, onAlertClick, breadcrumbs, handleZoomToGroup]);
 
+	const currentGroupName = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1]?.name.split(' (')[0] : '';
+	const currentGroupColor = currentGroupName ? getGroupColor(currentGroupName) : '';
+
 	return (
-		<div className="w-full h-full">
-			<div ref={svgContainerRef} className="w-full h-full overflow-hidden">
+		<div className="w-full h-full flex flex-col">
+			{breadcrumbs.length > 0 && (
+				<div
+					className="h-7 border-b flex items-center justify-between px-3 flex-shrink-0 cursor-pointer hover:brightness-110 transition-all"
+					style={{ backgroundColor: currentGroupColor }}
+					onClick={() => handleBreadcrumbClick(breadcrumbs.length - 2)}
+					title="Click to go back"
+				>
+					<div className="flex items-center gap-2 overflow-hidden">
+						<span className="font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate">
+							{currentGroupName}
+						</span>
+						<span className="text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0">
+							{breadcrumbs[breadcrumbs.length - 1]?.name.split(' (')[1]?.replace(')', '')}
+						</span>
+					</div>
+					<span className="font-bold text-white/95 text-xs tracking-wide drop-shadow-sm flex-shrink-0 ml-2">
+						{currentGroupPercentage}%
+					</span>
+				</div>
+			)}
+			<div ref={svgContainerRef} className="flex-1 w-full overflow-hidden">
 				<svg ref={svgRef} width={svgDimensions.width} height={svgDimensions.height} className="w-full h-full" />
 			</div>
 
