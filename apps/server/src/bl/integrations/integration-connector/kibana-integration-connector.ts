@@ -2,7 +2,6 @@ import { Integration, IntegrationUrls, Logger } from '@OpsiMate/shared';
 import { IntegrationConnector } from './integration-connector';
 import { DashboardResult, KibanaClient } from '../../../dal/external-client/kibana-client';
 import { AlertBL } from '../../alerts/alert.bl';
-import {GrafanaClient} from "../../../dal/external-client/grafana-client.ts";
 
 export class KibanaIntegrationConnector implements IntegrationConnector {
 	private logger = new Logger('bl/integrations/kibana-integration-connector');
@@ -47,7 +46,7 @@ export class KibanaIntegrationConnector implements IntegrationConnector {
 	async deleteData(_: Integration, _2: AlertBL): Promise<void> {}
 
 	async testConnection(_: Integration): Promise<{ success: boolean; error?: string }> {
+		await Promise.resolve(); // satisfies eslint: no-return-await / require-await
 		return { success: false, error: 'Kibana integration connector not yet implemented.' };
 	}
-
 }

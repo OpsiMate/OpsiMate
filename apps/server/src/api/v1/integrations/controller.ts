@@ -8,10 +8,7 @@ import {
 } from '@OpsiMate/shared';
 import { IntegrationBL } from '../../../bl/integrations/integration.bl';
 import { isZodError } from '../../../utils/isZodError';
-import {providerConnectorFactory} from "../../../bl/providers/provider-connector/providerConnectorFactory.ts";
-import {
-	integrationConnectorFactory
-} from "../../../bl/integrations/integration-connector/integration-connector-factory.ts";
+import { integrationConnectorFactory } from '../../../bl/integrations/integration-connector/integration-connector-factory';
 
 const logger = new Logger('v1/integrations/controller');
 
@@ -42,21 +39,21 @@ export class IntegrationController {
 		const integration: Integration = {
 			...integrationToCreate,
 			createdAt: '',
-			id: 0
-		}
+			id: 0,
+		};
 
 		const testResult = await integrationConnector.testConnection(integration);
 
 		if (testResult.success) {
-			return res.status(200).json({success: true, data: {isValidConnection: true}});
+			return res.status(200).json({ success: true, data: { isValidConnection: true } });
 		} else {
 			return res.status(200).json({
 				success: false,
 				error: testResult.error || 'Connection test failed',
-				data: {isValidConnection: false},
+				data: { isValidConnection: false },
 			});
 		}
-	}
+	};
 
 	createIntegration = async (req: Request, res: Response) => {
 		try {
