@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
 import { Provider as SharedProvider } from '@OpsiMate/shared';
 import { ExternalLink, RefreshCw, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ServiceConfig } from './AddServiceDialog';
 import { ServicesList } from './ServicesList';
 
@@ -44,40 +44,43 @@ export const ServiceDetailsSheetWithLogs = ({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchLogs = async (serviceId: string) => {
-		setLoading(true);
-		setError(null);
-		try {
-			const response = await providerApi.getServiceLogs(parseInt(serviceId));
+	const fetchLogs = useCallback(
+		async (serviceId: string) => {
+			setLoading(true);
+			setError(null);
+			try {
+				const response = await providerApi.getServiceLogs(parseInt(serviceId));
 
-			if (response.success && response.data) {
-				setLogs(response.data);
-			} else {
-				setError(response.error || 'Failed to fetch logs');
+				if (response.success && response.data) {
+					setLogs(response.data);
+				} else {
+					setError(response.error || 'Failed to fetch logs');
+					toast({
+						title: 'Error fetching logs',
+						description: response.error || 'Failed to fetch logs',
+						variant: 'destructive',
+					});
+				}
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+				setError(errorMessage);
 				toast({
 					title: 'Error fetching logs',
-					description: response.error || 'Failed to fetch logs',
+					description: errorMessage,
 					variant: 'destructive',
 				});
+			} finally {
+				setLoading(false);
 			}
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-			setError(errorMessage);
-			toast({
-				title: 'Error fetching logs',
-				description: errorMessage,
-				variant: 'destructive',
-			});
-		} finally {
-			setLoading(false);
-		}
-	};
+		},
+		[toast]
+	);
 
 	useEffect(() => {
 		if (selectedServiceForLogs) {
 			fetchLogs(selectedServiceForLogs.id);
 		}
-	}, [selectedServiceForLogs?.id]);
+	}, [selectedServiceForLogs, fetchLogs]);
 
 	if (!provider) return null;
 

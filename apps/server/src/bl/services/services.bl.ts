@@ -68,4 +68,8 @@ export class ServicesBL {
 			throw error;
 		}
 	}
+
+	async getServiceById(serviceId: number): Promise<Service | null> {
+		return await this.serviceRepo.getServiceById(serviceId);
+	}
 }

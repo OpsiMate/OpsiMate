@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/custom-actions/package.json packages/custom-actions/package.json
 
 # Install deps (server + shared)
 RUN pnpm install --frozen-lockfile && pnpm store prune
@@ -14,9 +15,11 @@ RUN pnpm install --frozen-lockfile && pnpm store prune
 # Copy sources
 COPY apps/server apps/server
 COPY packages/shared packages/shared
+COPY packages/custom-actions packages/custom-actions
 
 # Build shared package first, then server
 RUN pnpm --filter @OpsiMate/shared build && \
+    pnpm --filter @OpsiMate/custom-actions build && \
     pnpm --filter @OpsiMate/server build
 
 # Production runtime
@@ -31,6 +34,8 @@ COPY --from=server-builder /app/pnpm-lock.yaml pnpm-lock.yaml
 COPY --from=server-builder /app/pnpm-workspace.yaml pnpm-workspace.yaml
 COPY --from=server-builder /app/packages/shared/package.json packages/shared/package.json
 COPY --from=server-builder /app/packages/shared/dist packages/shared/dist
+COPY --from=server-builder /app/packages/custom-actions/package.json packages/custom-actions/package.json
+COPY --from=server-builder /app/packages/custom-actions/dist packages/custom-actions/dist
 
 # Install only production deps
 RUN npm install -g pnpm && \
@@ -40,7 +45,8 @@ RUN npm install -g pnpm && \
 
 # Ensure workspace link for shared
 RUN mkdir -p node_modules/@OpsiMate && \
-    ln -sf /app/packages/shared node_modules/@OpsiMate/shared
+    ln -sf /app/packages/shared node_modules/@OpsiMate/shared && \
+    ln -sf /app/packages/custom-actions node_modules/@OpsiMate/custom-actions
 
 EXPOSE 3001
 ENV NODE_ENV=production

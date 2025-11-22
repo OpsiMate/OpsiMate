@@ -1,4 +1,5 @@
 import { Provider, DiscoveredService, Service, DiscoveredPod } from '@OpsiMate/shared';
+import { BashAction } from '@OpsiMate/custom-actions';
 
 export interface ProviderConnector {
 	discoverServices(provider: Provider): Promise<DiscoveredService[]>;
@@ -12,4 +13,11 @@ export interface ProviderConnector {
 	testConnection(provider: Provider): Promise<{ success: boolean; error?: string }>;
 
 	getServicePods(provider: Provider, service: Service): Promise<DiscoveredPod[]>;
+
+	runCustomAction(
+		provider: Provider,
+		action: BashAction,
+		parameters: Record<string, string>,
+		service?: Service
+	): Promise<void>;
 }

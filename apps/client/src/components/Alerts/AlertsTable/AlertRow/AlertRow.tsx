@@ -46,7 +46,7 @@ export const AlertRow = ({
 			onClick={handleRowClick}
 		>
 			{onSelectAlerts && (
-				<TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+				<TableCell className="w-10 py-1 px-2" onClick={(e) => e.stopPropagation()}>
 					<div className="flex items-center justify-center">
 						<Checkbox
 							checked={isSelected}
