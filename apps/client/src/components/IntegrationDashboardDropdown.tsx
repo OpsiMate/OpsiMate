@@ -11,6 +11,7 @@ import {
 import { KibanaIcon } from './icons/KibanaIcon';
 import { GrafanaIcon } from './icons/GrafanaIcon';
 import { DatadogIcon } from './icons/DatadogIcon';
+import { CoralogixIcon } from './icons/CoralogixIcon';
 import { ChevronDown, ExternalLink, Loader2 } from 'lucide-react';
 import { Tag } from '@OpsiMate/shared';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +24,7 @@ interface Dashboard {
 
 interface IntegrationDashboardDropdownProps {
 	tags: Tag[];
-	integrationType: 'Kibana' | 'Grafana' | 'Datadog';
+	integrationType: 'Kibana' | 'Grafana' | 'Datadog' | 'Coralogix';
 	className?: string;
 }
 
@@ -46,6 +47,8 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 				return KibanaIcon;
 			case 'Datadog':
 				return DatadogIcon;
+			case 'Coralogix':
+				return CoralogixIcon;
 			case 'Grafana':
 			default:
 				return GrafanaIcon;

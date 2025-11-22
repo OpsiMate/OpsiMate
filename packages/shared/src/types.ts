@@ -18,6 +18,7 @@ export enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
 	Datadog = 'Datadog',
+	Coralogix = 'Coralogix',
 }
 
 export enum ServiceType {
