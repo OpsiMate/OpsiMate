@@ -111,6 +111,32 @@ export class AlertRepository {
 		});
 	}
 
+	async getAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType): Promise<AlertRow[]> {
+		return runAsync(() => {
+			if (activeAlertIds.size === 0) {
+				// No active alerts → get all alerts of this type
+				const stmt = this.db.prepare(`
+				SELECT * FROM alerts
+				WHERE type = ?
+			`);
+				return stmt.all(alertType) as AlertRow[];
+			}
+
+			// Build dynamic placeholders for SQLite
+			const placeholders = Array.from(activeAlertIds)
+				.map(() => '?')
+				.join(',');
+
+			const stmt = this.db.prepare(`
+			SELECT * FROM alerts
+			WHERE type = ?
+			AND id NOT IN (${placeholders})
+		`);
+
+			return stmt.all(alertType, ...activeAlertIds) as AlertRow[];
+		});
+	}
+
 	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
 		return runAsync(() => {
 			if (activeAlertIds.size === 0) {

@@ -8,6 +8,7 @@ import { ViewRepository } from './dal/viewRepository';
 import { TagRepository } from './dal/tagRepository';
 import { IntegrationRepository } from './dal/integrationRepository';
 import { AlertRepository } from './dal/alertRepository';
+import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
 import { ProviderBL } from './bl/providers/provider.bl';
 import { ViewBL } from './bl/custom-views/custom-view.bl';
 import { IntegrationBL } from './bl/integrations/integration.bl';
@@ -66,6 +67,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	const tagRepo = new TagRepository(db);
 	const integrationRepo = new IntegrationRepository(db);
 	const alertRepo = new AlertRepository(db);
+	const archivedAlertRepo = new ArchivedAlertRepository(db);
 	const userRepo = new UserRepository(db);
 	const auditLogRepo = new AuditLogRepository(db);
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
@@ -86,6 +88,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 		tagRepo.initTagsTables(),
 		integrationRepo.initIntegrationsTable(),
 		alertRepo.initAlertsTable(),
+		archivedAlertRepo.initArchivedAlertsTable(),
 		userRepo.initUsersTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
@@ -98,7 +101,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	// BL
 	const auditBL = new AuditBL(auditLogRepo);
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo);
+	const alertBL = new AlertBL(alertRepo, archivedAlertRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);

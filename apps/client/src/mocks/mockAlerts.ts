@@ -1,7 +1,7 @@
-import { Alert, AlertType } from '@OpsiMate/shared';
+import { Alert, AlertType, AlertStatus } from '@OpsiMate/shared';
 
 const ALERT_TYPES: AlertType[] = ['Grafana', 'GCP', 'Custom'];
-const STATUSES = ['firing', 'resolved', 'pending'];
+const STATUSES: AlertStatus[] = [AlertStatus.FIRING, AlertStatus.RESOLVED];
 const TAGS = ['production', 'staging', 'development', 'critical', 'warning', 'info'];
 const ALERT_NAMES = [
 	'High CPU Usage',

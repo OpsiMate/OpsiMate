@@ -44,7 +44,7 @@ export const AlertsFilterPanel = ({
 		});
 
 		alerts.forEach((alert) => {
-			const status = alert.isDismissed ? 'Dismissed' : 'Firing';
+			const status = alert.isDismissed ? 'Dismissed' : alert.status;
 			facetData.status.set(status, (facetData.status.get(status) || 0) + 1);
 
 			const type = getAlertType(alert);

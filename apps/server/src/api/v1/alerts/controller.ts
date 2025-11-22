@@ -127,6 +127,30 @@ export class AlertController {
 		}
 	}
 
+	async getArchivedAlerts(req: Request, res: Response) {
+		try {
+			const alerts = await this.alertBL.getAllArchivedAlerts();
+			return res.json({ success: true, data: { alerts } });
+		} catch (error) {
+			logger.error('Error getting archived alerts:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async deleteArchivedAlert(req: Request, res: Response) {
+		try {
+			const alertId = req.params.alertId;
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			await this.alertBL.deleteArchivedAlert(alertId);
+			return res.json({ success: true, message: 'Archived alert deleted permanently' });
+		} catch (error) {
+			logger.error('Error deleting archived alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	private normalizeGCPDate(value: number | string): string {
 		// If null/undefined → fallback
 		if (!value) return new Date().toISOString();

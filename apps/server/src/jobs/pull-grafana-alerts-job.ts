@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import { IntegrationType, Logger } from '@OpsiMate/shared';
+import { IntegrationType, Logger, AlertStatus } from '@OpsiMate/shared';
 import { GrafanaClient } from '../dal/external-client/grafana-client';
 import { AlertBL } from '../bl/alerts/alert.bl';
 import { IntegrationBL } from '../bl/integrations/integration.bl';
@@ -48,10 +48,11 @@ export class PullGrafanaAlertsJob {
 			for (const alert of grafanaAlerts) {
 				try {
 					const tagName = alert.labels?.tag || '';
+
 					await this.alertBL.insertOrUpdateAlert({
 						id: alert.fingerprint,
 						type: 'Grafana',
-						status: alert.status?.state || '',
+						status: AlertStatus.FIRING,
 						tag: tagName, // or another label key if appropriate
 						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
 						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '', // if available

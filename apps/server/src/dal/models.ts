@@ -76,6 +76,22 @@ export type AlertRow = {
 	is_dismissed: boolean;
 };
 
+export type ArchivedAlertRow = {
+	id: string;
+	type: AlertType;
+	status: string;
+	tag: string;
+	starts_at: string;
+	updated_at: string;
+	alert_url: string;
+	alert_name: string;
+	summary?: string;
+	runbook_url?: string;
+	created_at: string;
+	is_dismissed: boolean;
+	archived_at: string;
+};
+
 export type UserRow = {
 	id: number;
 	email: string;
