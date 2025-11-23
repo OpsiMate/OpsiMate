@@ -16,6 +16,21 @@ services:
       - CONFIG_FILE=/app/config/config.yml
     restart: unless-stopped
 
+  worker:
+    image: opsimate/backend:latest
+    container_name: opsimate-worker
+    command: ["node", "dist/worker.js"]
+    volumes:
+      - ./data/database:/app/data/database
+      - ./data/private-keys:/app/data/private-keys
+      - ./config.yml:/app/config/config.yml
+    environment:
+      - NODE_ENV=production
+      - CONFIG_FILE=/app/config/config.yml
+    restart: unless-stopped
+    depends_on:
+      - backend
+
   frontend:
     image: opsimate/frontend:latest
     container_name: opsimate-frontend

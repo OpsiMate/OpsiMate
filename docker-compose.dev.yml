@@ -42,6 +42,27 @@ services:
     networks:
       - appnet
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+      target: server-builder
+    command: sh -c "pnpm --filter @OpsiMate/server dev:worker"
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - CONFIG_FILE=/app/config/config.yml
+    volumes:
+      - ./apps/server:/app/apps/server
+      - ./packages/shared:/app/packages/shared
+      - ./data:/app/data
+      - ./config:/app/config
+      - pnpm-store-worker:/root/.pnpm-store
+    networks:
+      - appnet
+    depends_on:
+      - server
+
 networks:
   appnet:
     driver: bridge
@@ -49,3 +70,4 @@ networks:
 volumes:
   pnpm-store-client:
   pnpm-store-server:
+  pnpm-store-worker:

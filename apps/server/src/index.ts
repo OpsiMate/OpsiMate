@@ -15,7 +15,7 @@ await (async () => {
 
 	const db = initializeDb();
 	initializePrivateKeysDir();
-	const app = await createApp(db, { enableJobs: true });
+	const app = await createApp(db, { enableJobs: false });
 
 	app.listen(PORT, HOST, () => {
 		logger.info(`Server running on ${HOST}:${PORT}`);

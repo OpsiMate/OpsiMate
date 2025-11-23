@@ -5,9 +5,11 @@
   "scripts": {
     "build": "turbo run build",
     "start": "pnpm --filter @OpsiMate/server start",
-    "dev": "turbo run dev",
+    "start:worker": "pnpm --filter @OpsiMate/server start:worker",
+    "dev": "turbo run dev dev:worker",
     "dev:clean": "pnpm run clean:cache && pnpm run dev",
     "debug": "turbo run debug",
+    "debug:worker": "pnpm --filter @OpsiMate/server debug:worker",
     "clean": "turbo run clean",
     "clean:cache": "rm -rf apps/client/node_modules/.vite apps/client/.vite apps/server/node_modules/.vite apps/server/.vite node_modules/.cache",
     "test": "turbo run test",
