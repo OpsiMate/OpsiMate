@@ -12,6 +12,7 @@ export default function createIntegrationRouter(controller: IntegrationControlle
 	router.delete('/:integrationId', controller.deleteIntegration);
 
 	router.get('/:integrationId/urls', controller.getIntegrationUrls);
+	router.post('/test-connection', controller.testIntegration);
 
 	return router;
 }
