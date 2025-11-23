@@ -34,8 +34,6 @@ services:
       - NODE_ENV=production
       - CONFIG_FILE=/app/config/config.yml
     restart: unless-stopped
-    depends_on:
-      - backend
 
   frontend:
     image: opsimate/frontend:latest
