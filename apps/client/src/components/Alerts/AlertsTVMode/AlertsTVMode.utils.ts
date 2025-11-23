@@ -1,5 +1,8 @@
 import { Alert } from '@OpsiMate/shared';
-import { CardSize, CARD_SIZE_THRESHOLDS } from './AlertsTVMode.constants';
+import { createServiceNameLookup as createServiceNameLookupShared } from '../utils';
+import { CARD_SIZE_THRESHOLDS, CardSize } from './AlertsTVMode.constants';
+
+export { createServiceNameLookupShared as createServiceNameLookup };
 
 export const getCardSize = (count: number): CardSize => {
 	if (count <= CARD_SIZE_THRESHOLDS.large) return 'large';
@@ -8,23 +11,33 @@ export const getCardSize = (count: number): CardSize => {
 	return 'extra-small';
 };
 
+/**
+ * Extracts the service ID from an alert.
+ *
+ * Prefers a dedicated `serviceId` property if present on the alert.
+ * Otherwise, attempts to parse the service ID from the alert's `id` field,
+ * which is expected to follow the format: `prefix:serviceId:suffix`.
+ *
+ * @param alert - The alert object
+ * @returns The numeric service ID, or undefined if not found or invalid
+ */
 export const getAlertServiceId = (alert: Alert): number | undefined => {
-	const parts = alert.id.split(':');
-	if (parts.length >= 2) {
-		const n = Number(parts[1]);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	return undefined;
-};
+	if (!alert?.id) return undefined;
 
-export const createServiceNameLookup = (
-	services: Array<{ id: string | number; name: string }>
-): Record<string | number, string> => {
-	const map: Record<string | number, string> = {};
-	services.forEach((s) => {
-		map[s.id] = s.name;
-	});
-	return map;
+	const alertWithServiceId = alert as Alert & { serviceId?: number };
+	if (alertWithServiceId.serviceId !== undefined) {
+		return Number.isFinite(alertWithServiceId.serviceId) ? alertWithServiceId.serviceId : undefined;
+	}
+
+	const idPattern = /^[^:]+:(\d+)(?::|$)/;
+	const match = alert.id.match(idPattern);
+
+	if (match && match[1]) {
+		const serviceId = Number(match[1]);
+		return Number.isFinite(serviceId) ? serviceId : undefined;
+	}
+
+	return undefined;
 };
 
 export const filterAlertsByFilters = (

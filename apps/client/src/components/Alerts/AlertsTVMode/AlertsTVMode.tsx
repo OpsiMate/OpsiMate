@@ -6,7 +6,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { ArrowLeft, Bell, CheckCircle, LayoutGrid, Map, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCircle, LayoutGrid, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCard } from './AlertCard';
@@ -175,7 +175,7 @@ const AlertsTVMode = () => {
 							onClick={() => setViewMode('heatmap')}
 							className="h-7 px-2 gap-1"
 						>
-							<Map className="h-4 w-4" /> Map
+							<MapIcon className="h-4 w-4" /> Map
 						</Button>
 					</div>
 

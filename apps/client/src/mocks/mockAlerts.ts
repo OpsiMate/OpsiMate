@@ -184,7 +184,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 
 	const type = selectWeighted(rng, ALERT_TYPES, distribution.alertTypes ?? DEFAULT_DISTRIBUTION.alertTypes);
 	const status = selectWeighted(rng, STATUSES, distribution.statuses ?? DEFAULT_DISTRIBUTION.statuses);
-	const tag = selectWeighted(rng, TAGS, distribution.tags ?? DEFAULT_DISTRIBUTION.tags);
+	const tag = selectWeighted(rng, TAGS, distribution.tags ?? DEFAULT_DISTRIBUTION.tags, 0);
 	const alertName = generateAlertName(rng, index);
 
 	const now = new Date();

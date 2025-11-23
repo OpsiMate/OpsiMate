@@ -1,6 +1,9 @@
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
+import { createServiceNameLookup } from '../utils';
 import { AlertSortField, FlatGroupItem, GroupNode, SortDirection } from './AlertsTable.types';
+
+export { createServiceNameLookup };
 
 export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	if (!searchTerm.trim()) return alerts;
@@ -61,16 +64,6 @@ export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirec
 		if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
 		return 0;
 	});
-};
-
-export const createServiceNameLookup = (
-	services: Array<{ id: string | number; name: string }>
-): Record<string | number, string> => {
-	const map: Record<string | number, string> = {};
-	services.forEach((s) => {
-		map[s.id] = s.name;
-	});
-	return map;
 };
 
 export const formatDate = (dateString: string): string => {
