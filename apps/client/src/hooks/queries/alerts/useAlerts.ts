@@ -13,7 +13,7 @@ const shouldUseMockAlerts = (): boolean => {
 			return false;
 		}
 	}
-	return import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_ALERTS !== 'false';
+	return false;
 };
 
 export const useAlerts = () => {
