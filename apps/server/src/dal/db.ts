@@ -27,6 +27,8 @@ export function initializeDb(): Database.Database {
 		}
 
 		const db = new Database(dbPath);
+		db.pragma('journal_mode = WAL');
+		db.pragma('busy_timeout = 5000');
 		logger.info(`SQLite database connected at ${dbPath}`);
 
 		return db;
