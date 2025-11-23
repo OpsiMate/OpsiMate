@@ -10,11 +10,7 @@ interface GroupByControlsProps {
 	availableColumns: string[];
 }
 
-export const GroupByControls = ({
-	groupByColumns,
-	onGroupByChange,
-	availableColumns,
-}: GroupByControlsProps) => {
+export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColumns }: GroupByControlsProps) => {
 	// Filter out 'actions' or others that shouldn't be grouped
 	const groupableColumns = availableColumns.filter((col) => col !== 'actions');
 
@@ -50,7 +46,7 @@ export const GroupByControls = ({
 						<>
 							<span className="mx-2 h-4 w-[1px] bg-primary/20" />
 							<span className="text-xs text-muted-foreground">
-								{groupByColumns.map(col => COLUMN_LABELS[col] || col).join(', ')}
+								{groupByColumns.map((col) => COLUMN_LABELS[col] || col).join(', ')}
 							</span>
 						</>
 					)}
@@ -62,7 +58,11 @@ export const GroupByControls = ({
 						{groupByColumns.length > 0 && (
 							<CommandGroup heading="Grouped By">
 								{groupByColumns.map((col, index) => (
-									<CommandItem key={col} className="flex items-center justify-between" onSelect={() => {}}>
+									<CommandItem
+										key={col}
+										className="flex items-center justify-between"
+										onSelect={() => {}}
+									>
 										<span className="truncate mr-2">{COLUMN_LABELS[col] || col}</span>
 										<div className="flex items-center gap-1">
 											<Button

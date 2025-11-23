@@ -62,24 +62,34 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 	const handleZoomToGroup = useCallback((groupData: TreemapNode) => {
 		if (groupData.children && groupData.children.length > 0) {
-			setBreadcrumbs(prev => [...prev, { name: groupData.name, data: groupData }]);
+			setBreadcrumbs((prev) => [...prev, { name: groupData.name, data: groupData }]);
 			setCurrentData(groupData.children);
 		}
 	}, []);
 
-	const handleBreadcrumbClick = useCallback((index: number) => {
-		if (index === -1) {
-			setCurrentData(data);
-			setBreadcrumbs([]);
-		} else {
-			const targetBreadcrumb = breadcrumbs[index];
-			setBreadcrumbs(breadcrumbs.slice(0, index + 1));
-			setCurrentData(targetBreadcrumb.data.children || []);
-		}
-	}, [data, breadcrumbs]);
+	const handleBreadcrumbClick = useCallback(
+		(index: number) => {
+			if (index === -1) {
+				setCurrentData(data);
+				setBreadcrumbs([]);
+			} else {
+				const targetBreadcrumb = breadcrumbs[index];
+				setBreadcrumbs(breadcrumbs.slice(0, index + 1));
+				setCurrentData(targetBreadcrumb.data.children || []);
+			}
+		},
+		[data, breadcrumbs]
+	);
 
 	useEffect(() => {
-		if (!svgRef.current || !currentData || currentData.length === 0 || dimensions.width === 0 || dimensions.height === 0) return;
+		if (
+			!svgRef.current ||
+			!currentData ||
+			currentData.length === 0 ||
+			dimensions.width === 0 ||
+			dimensions.height === 0
+		)
+			return;
 
 		const svg = svgRef.current;
 		svg.innerHTML = '';
@@ -127,7 +137,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 			const isOverflowNode = isLeaf && !alert && (node.data as TreemapNode).overflowAlerts;
 			const nodeWidth = node.x1 - node.x0;
 			const nodeHeight = node.y1 - node.y0;
-			const percentage = ((node.value || 0) / totalValue * 100).toFixed(1);
+			const percentage = (((node.value || 0) / totalValue) * 100).toFixed(1);
 			const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
 
 			nodesMapRef.current.set(rect, node.data);
@@ -186,7 +196,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 				setTooltip({
 					x: e.clientX + 10,
 					y: e.clientY - 10,
-					content: tooltipContent
+					content: tooltipContent,
 				});
 			});
 
@@ -201,7 +211,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 			rect.addEventListener('mousemove', (e) => {
 				if (tooltip) {
-					setTooltip(prev => prev ? { ...prev, x: e.clientX + 10, y: e.clientY - 10 } : null);
+					setTooltip((prev) => (prev ? { ...prev, x: e.clientX + 10, y: e.clientY - 10 } : null));
 				}
 			});
 
@@ -230,13 +240,15 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					leftGroup.className = 'flex items-center gap-2 overflow-hidden';
 
 					const nameSpan = document.createElement('span');
-					nameSpan.className = 'font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate';
+					nameSpan.className =
+						'font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate';
 					nameSpan.textContent = displayName;
 					leftGroup.appendChild(nameSpan);
 
 					if (count) {
 						const countSpan = document.createElement('span');
-						countSpan.className = 'text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0';
+						countSpan.className =
+							'text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0';
 						countSpan.textContent = count;
 						leftGroup.appendChild(countSpan);
 					}
@@ -244,7 +256,8 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					div.appendChild(leftGroup);
 
 					const percentSpan = document.createElement('span');
-					percentSpan.className = 'font-bold text-white/95 text-xs tracking-wide drop-shadow-sm flex-shrink-0 ml-2';
+					percentSpan.className =
+						'font-bold text-white/95 text-xs tracking-wide drop-shadow-sm flex-shrink-0 ml-2';
 					percentSpan.textContent = `${percentage}%`;
 					div.appendChild(percentSpan);
 
@@ -261,7 +274,8 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 					if (!isOverflowNode && nodeWidth >= 60 && nodeHeight >= 35) {
 						const percentSpan = document.createElement('div');
-						percentSpan.className = 'absolute top-1 right-1 font-bold text-white/95 text-[10px] tracking-wide drop-shadow-sm';
+						percentSpan.className =
+							'absolute top-1 right-1 font-bold text-white/95 text-[10px] tracking-wide drop-shadow-sm';
 						percentSpan.textContent = `${percentage}%`;
 						container.appendChild(percentSpan);
 					}
@@ -381,12 +395,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 				</div>
 			)}
 			<div ref={containerRef} className="flex-1 w-full h-full overflow-hidden">
-				<svg
-					ref={svgRef}
-					width="100%"
-					height="100%"
-					style={{ display: 'block' }}
-				/>
+				<svg ref={svgRef} width="100%" height="100%" style={{ display: 'block' }} />
 			</div>
 
 			{tooltip && (
@@ -395,7 +404,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					style={{
 						left: tooltip.x,
 						top: tooltip.y,
-						transform: 'translate(-50%, -100%)'
+						transform: 'translate(-50%, -100%)',
 					}}
 				>
 					{tooltip.content.split('\n').map((line, index) => (
@@ -438,7 +447,9 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 								>
 									<div className="flex items-start justify-between gap-2">
 										<div className="flex-1 min-w-0">
-											<div className="font-semibold truncate group-hover:text-white transition-colors">{alert.alertName}</div>
+											<div className="font-semibold truncate group-hover:text-white transition-colors">
+												{alert.alertName}
+											</div>
 											<div className="text-xs text-muted-foreground group-hover:text-white/90 mt-1 transition-colors">
 												Status: {alert.isDismissed ? 'Dismissed' : alert.status}
 											</div>

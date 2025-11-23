@@ -21,26 +21,15 @@ interface AlertCardProps {
 	onUndismissAlert: (alertId: string) => void;
 }
 
-export const AlertCard = ({
-	alert,
-	cardSize,
-	serviceName,
-	onDismissAlert,
-	onUndismissAlert,
-}: AlertCardProps) => {
+export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndismissAlert }: AlertCardProps) => {
 	const showDetails = cardSize === 'large' || cardSize === 'medium';
 	const showSummary = cardSize === 'large';
-	const statusColor = alert.isDismissed
-		? 'border-muted bg-muted/10'
-		: 'border-destructive bg-destructive/10';
+	const statusColor = alert.isDismissed ? 'border-muted bg-muted/10' : 'border-destructive bg-destructive/10';
 
 	return (
 		<Card
 			key={alert.id}
-			className={cn(
-				'transition-all hover:shadow-lg cursor-pointer relative overflow-hidden',
-				statusColor
-			)}
+			className={cn('transition-all hover:shadow-lg cursor-pointer relative overflow-hidden', statusColor)}
 		>
 			<CardHeader className={cn('pb-2', cardSize === 'extra-small' ? 'p-2' : 'p-3')}>
 				<div className="flex items-start justify-between gap-1">

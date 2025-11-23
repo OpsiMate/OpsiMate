@@ -19,28 +19,28 @@ const alerts = generateMockAlerts(5000);
 
 // Or use configuration object
 const alerts = generateMockAlerts({
-  count: 5000,
-  seed: 12345,
-  distribution: {
-    alertTypes: {
-      Grafana: 0.5,
-      GCP: 0.3,
-      Custom: 0.2,
-    },
-    statuses: {
-      firing: 0.6,
-      resolved: 0.25,
-      pending: 0.1,
-      suppressed: 0.04,
-      inhibited: 0.01,
-    },
-    tags: {
-      production: 0.35,
-      backend: 0.15,
-      critical: 0.12,
-      // ... more tags
-    },
-  },
+	count: 5000,
+	seed: 12345,
+	distribution: {
+		alertTypes: {
+			Grafana: 0.5,
+			GCP: 0.3,
+			Custom: 0.2,
+		},
+		statuses: {
+			firing: 0.6,
+			resolved: 0.25,
+			pending: 0.1,
+			suppressed: 0.04,
+			inhibited: 0.01,
+		},
+		tags: {
+			production: 0.35,
+			backend: 0.15,
+			critical: 0.12,
+			// ... more tags
+		},
+	},
 });
 ```
 
@@ -48,9 +48,9 @@ const alerts = generateMockAlerts({
 
 ```typescript
 import {
-  generateDiverseMockAlerts,
-  generateProductionHeavyMockAlerts,
-  generateBalancedMockAlerts,
+	generateDiverseMockAlerts,
+	generateProductionHeavyMockAlerts,
+	generateBalancedMockAlerts,
 } from '@/mocks/mockAlerts.utils';
 
 // Diverse distribution (default)
@@ -90,6 +90,7 @@ const balancedAlerts = generateBalancedMockAlerts(5000);
 ## Available Alert Names
 
 50+ realistic alert names including:
+
 - High CPU Usage
 - Memory Leak Detected
 - Database Connection Pool Exhausted
@@ -102,25 +103,25 @@ const balancedAlerts = generateBalancedMockAlerts(5000);
 
 ```typescript
 const customAlerts = generateMockAlerts({
-  count: 10000,
-  seed: 99999,
-  distribution: {
-    alertTypes: {
-      Grafana: 0.7,
-      GCP: 0.2,
-      Custom: 0.1,
-    },
-    statuses: {
-      firing: 0.8,
-      resolved: 0.15,
-      pending: 0.05,
-    },
-    tags: {
-      production: 0.6,
-      critical: 0.3,
-      backend: 0.1,
-    },
-  },
+	count: 10000,
+	seed: 99999,
+	distribution: {
+		alertTypes: {
+			Grafana: 0.7,
+			GCP: 0.2,
+			Custom: 0.1,
+		},
+		statuses: {
+			firing: 0.8,
+			resolved: 0.15,
+			pending: 0.05,
+		},
+		tags: {
+			production: 0.6,
+			critical: 0.3,
+			backend: 0.1,
+		},
+	},
 });
 ```
 
@@ -145,16 +146,15 @@ import { generateDiverseMockAlerts } from '@/mocks/mockAlerts.utils';
 const USE_MOCK_DATA = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_ALERTS === 'true';
 
 export const useAlerts = () => {
-  return useQuery({
-    queryKey: queryKeys.alerts,
-    queryFn: async () => {
-      if (USE_MOCK_DATA) {
-        return generateDiverseMockAlerts(5000);
-      }
-      const response = await alertsApi.getAllAlerts();
-      // ... rest of implementation
-    },
-  });
+	return useQuery({
+		queryKey: queryKeys.alerts,
+		queryFn: async () => {
+			if (USE_MOCK_DATA) {
+				return generateDiverseMockAlerts(5000);
+			}
+			const response = await alertsApi.getAllAlerts();
+			// ... rest of implementation
+		},
+	});
 };
 ```
-

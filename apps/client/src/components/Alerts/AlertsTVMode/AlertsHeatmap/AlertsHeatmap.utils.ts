@@ -1,11 +1,6 @@
 import { GroupNode } from '@/components/Alerts/AlertsTable/AlertsTable.types';
 import { Alert } from '@OpsiMate/shared';
-import {
-    LIGHTNESS_RANGE,
-    RECENCY_BUCKETS,
-    STATUS_HUES,
-    STATUS_SATURATION
-} from './AlertsHeatmap.constants';
+import { LIGHTNESS_RANGE, RECENCY_BUCKETS, STATUS_HUES, STATUS_SATURATION } from './AlertsHeatmap.constants';
 import { TreemapNode } from './AlertsHeatmap.types';
 
 export const normalizeGroupValue = (value: string | null | undefined): string => {
@@ -77,12 +72,11 @@ export const getAlertColor = (alert: Alert): string => {
 	const recencyWeight = getRecencyWeight(alert);
 
 	if (statusKey === 'UNKNOWN') {
-		const lightness = 40 + (recencyWeight * 20);
+		const lightness = 40 + recencyWeight * 20;
 		return `hsl(0, 0%, ${lightness}%)`;
 	}
 
-	const lightness = LIGHTNESS_RANGE.MIN +
-		(recencyWeight * (LIGHTNESS_RANGE.MAX - LIGHTNESS_RANGE.MIN));
+	const lightness = LIGHTNESS_RANGE.MIN + recencyWeight * (LIGHTNESS_RANGE.MAX - LIGHTNESS_RANGE.MIN);
 
 	return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 };
@@ -139,13 +133,13 @@ const mapGroupNodeToTreemap = (node: GroupNode, siblingCount: number = 1): Treem
 
 	if (node.type === 'group') {
 		let children: TreemapNode[] = node.children
-			.map(child => mapGroupNodeToTreemap(child, node.children.length))
+			.map((child) => mapGroupNodeToTreemap(child, node.children.length))
 			.filter((child): child is TreemapNode => child !== null);
 
 		if (children.length === 0) return null;
 
-		const leafChildren = children.filter(c => c.nodeType === 'leaf');
-		const groupChildren = children.filter(c => c.nodeType === 'group');
+		const leafChildren = children.filter((c) => c.nodeType === 'leaf');
+		const groupChildren = children.filter((c) => c.nodeType === 'group');
 
 		const maxVisible = calculateMaxVisibleAlerts(leafChildren.length, groupChildren.length);
 
@@ -154,7 +148,7 @@ const mapGroupNodeToTreemap = (node: GroupNode, siblingCount: number = 1): Treem
 			const overflowLeafs = leafChildren.slice(maxVisible);
 			const overflowCount = overflowLeafs.length;
 			const overflowAlerts = overflowLeafs
-				.map(leaf => leaf.alert)
+				.map((leaf) => leaf.alert)
 				.filter((alert): alert is Alert => alert !== undefined);
 
 			const overflowNode: TreemapNode = {
@@ -170,7 +164,10 @@ const mapGroupNodeToTreemap = (node: GroupNode, siblingCount: number = 1): Treem
 
 		const totalValue = children.reduce((sum, child) => sum + child.value, 0);
 		const normalizedValue = normalizeGroupValue(node.value);
-		const displayValue = normalizedValue === 'unknown' ? 'Unknown' : normalizedValue.charAt(0).toUpperCase() + normalizedValue.slice(1);
+		const displayValue =
+			normalizedValue === 'unknown'
+				? 'Unknown'
+				: normalizedValue.charAt(0).toUpperCase() + normalizedValue.slice(1);
 
 		return {
 			name: `${displayValue} (${node.count})`,
@@ -185,6 +182,6 @@ const mapGroupNodeToTreemap = (node: GroupNode, siblingCount: number = 1): Treem
 
 export const mapGroupToTreemap = (nodes: GroupNode[]): TreemapNode[] => {
 	return nodes
-		.map(node => mapGroupNodeToTreemap(node, nodes.length))
+		.map((node) => mapGroupNodeToTreemap(node, nodes.length))
 		.filter((node): node is TreemapNode => node !== null);
 };

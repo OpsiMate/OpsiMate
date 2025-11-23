@@ -250,7 +250,10 @@ export const AlertsTable = ({
 															{COLUMN_LABELS[item.field] || item.field}:
 														</span>
 														<span className="font-medium text-sm mr-2">{item.value}</span>
-														<Badge variant="secondary" className="h-5 px-1.5 text-xs rounded-sm">
+														<Badge
+															variant="secondary"
+															className="h-5 px-1.5 text-xs rounded-sm"
+														>
 															{item.count}
 														</Badge>
 													</div>

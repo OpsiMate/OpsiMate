@@ -179,11 +179,7 @@ const generateAlertName = (rng: SeededRandom, index: number): string => {
 	return rng.choice(variations);
 };
 
-const generateMockAlert = (
-	index: number,
-	rng: SeededRandom,
-	config: MockAlertsConfig
-): Alert => {
+const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsConfig): Alert => {
 	const distribution = config.distribution ?? DEFAULT_DISTRIBUTION;
 
 	const type = selectWeighted(rng, ALERT_TYPES, distribution.alertTypes ?? DEFAULT_DISTRIBUTION.alertTypes);
@@ -195,21 +191,25 @@ const generateMockAlert = (
 	const daysAgo = rng.nextInt(30);
 	const hoursAgo = rng.nextInt(24);
 	const minutesAgo = rng.nextInt(60);
-	const startsAt = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000 + hoursAgo * 60 * 60 * 1000 + minutesAgo * 60 * 1000));
+	const startsAt = new Date(
+		now.getTime() - (daysAgo * 24 * 60 * 60 * 1000 + hoursAgo * 60 * 60 * 1000 + minutesAgo * 60 * 1000)
+	);
 
-	const updatedAt = status === 'firing'
-		? new Date(startsAt.getTime() + rng.nextInt(60) * 60 * 1000)
-		: new Date(startsAt.getTime() + rng.nextInt(24) * 60 * 60 * 1000);
+	const updatedAt =
+		status === 'firing'
+			? new Date(startsAt.getTime() + rng.nextInt(60) * 60 * 1000)
+			: new Date(startsAt.getTime() + rng.nextInt(24) * 60 * 60 * 1000);
 
 	const hasSummary = rng.next() < 0.4;
 	const hasRunbook = rng.next() < 0.2;
 	const isDismissed = rng.next() < 0.15;
 
-	const baseUrl = type === 'Grafana'
-		? 'https://grafana.example.com'
-		: type === 'GCP'
-		? 'https://console.cloud.google.com'
-		: 'https://opsimate.example.com';
+	const baseUrl =
+		type === 'Grafana'
+			? 'https://grafana.example.com'
+			: type === 'GCP'
+				? 'https://console.cloud.google.com'
+				: 'https://opsimate.example.com';
 
 	return {
 		id: `mock-alert-${index}-${rng.nextInt(10000)}`,
@@ -222,12 +222,12 @@ const generateMockAlert = (
 		alertName,
 		summary: hasSummary
 			? `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice([
-				'This requires immediate attention.',
-				'Investigation in progress.',
-				'Root cause analysis needed.',
-				'Automated remediation attempted.',
-				'Manual intervention required.',
-			])}`
+					'This requires immediate attention.',
+					'Investigation in progress.',
+					'Root cause analysis needed.',
+					'Automated remediation attempted.',
+					'Manual intervention required.',
+				])}`
 			: undefined,
 		runbookUrl: hasRunbook ? `https://runbook.example.com/alert-${index}` : undefined,
 		createdAt: startsAt.toISOString(),
@@ -239,9 +239,7 @@ let cachedMockAlerts: Alert[] | null = null;
 let cachedConfig: MockAlertsConfig | null = null;
 
 export const generateMockAlerts = (config: MockAlertsConfig | number = {}): Alert[] => {
-	const normalizedConfig: MockAlertsConfig = typeof config === 'number'
-		? { count: config }
-		: config;
+	const normalizedConfig: MockAlertsConfig = typeof config === 'number' ? { count: config } : config;
 
 	const finalConfig: MockAlertsConfig = {
 		count: 5000,
@@ -258,9 +256,7 @@ export const generateMockAlerts = (config: MockAlertsConfig | number = {}): Aler
 	const rng = new SeededRandom(finalConfig.seed ?? Date.now());
 	const count = finalConfig.count ?? 5000;
 
-	cachedMockAlerts = Array.from({ length: count }, (_, index) =>
-		generateMockAlert(index, rng, finalConfig)
-	);
+	cachedMockAlerts = Array.from({ length: count }, (_, index) => generateMockAlert(index, rng, finalConfig));
 	cachedConfig = finalConfig;
 
 	return cachedMockAlerts;

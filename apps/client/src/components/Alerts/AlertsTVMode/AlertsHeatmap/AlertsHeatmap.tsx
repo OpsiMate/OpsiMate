@@ -104,10 +104,7 @@ export const AlertsHeatmap = ({
 			</div>
 
 			<div ref={containerRef} className="flex-1 w-full overflow-hidden">
-				<D3Treemap
-					data={data}
-					onAlertClick={handleAlertClick}
-				/>
+				<D3Treemap data={data} onAlertClick={handleAlertClick} />
 			</div>
 
 			<div className="flex-shrink-0 border-t bg-background/95 backdrop-blur-sm">

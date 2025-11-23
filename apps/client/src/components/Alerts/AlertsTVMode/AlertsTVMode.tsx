@@ -6,30 +6,14 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import {
-    ArrowLeft,
-    Bell,
-    CheckCircle,
-    LayoutGrid,
-    Map,
-    RefreshCw,
-} from 'lucide-react';
+import { ArrowLeft, Bell, CheckCircle, LayoutGrid, Map, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCard } from './AlertCard';
 import { AlertsHeatmap } from './AlertsHeatmap';
-import {
-    AUTO_REFRESH_INTERVAL_MS,
-    GRID_CLASSES,
-    GROUPABLE_COLUMNS,
-} from './AlertsTVMode.constants';
+import { AUTO_REFRESH_INTERVAL_MS, GRID_CLASSES, GROUPABLE_COLUMNS } from './AlertsTVMode.constants';
 import { ViewMode } from './AlertsTVMode.types';
-import {
-    createServiceNameLookup,
-    filterAlertsByFilters,
-    getAlertServiceId,
-    getCardSize,
-} from './AlertsTVMode.utils';
+import { createServiceNameLookup, filterAlertsByFilters, getAlertServiceId, getCardSize } from './AlertsTVMode.utils';
 
 const AlertsTVMode = () => {
 	const navigate = useNavigate();
@@ -146,7 +130,7 @@ const AlertsTVMode = () => {
 			if (e.key === 'Escape') {
 				const dialogOpen = document.querySelector('[role="dialog"]');
 				if (!dialogOpen) {
-				navigate('/alerts');
+					navigate('/alerts');
 				}
 			} else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
 				handleManualRefresh();
@@ -206,9 +190,7 @@ const AlertsTVMode = () => {
 						Refresh
 					</Button>
 					{lastRefresh && (
-						<span className="text-xs text-muted-foreground">
-							Last: {lastRefresh.toLocaleTimeString()}
-						</span>
+						<span className="text-xs text-muted-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
 					)}
 				</div>
 			</div>

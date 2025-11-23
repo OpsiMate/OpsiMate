@@ -25,9 +25,7 @@ export const HeatmapLegend = () => {
 						</div>
 						<span className="text-xs text-muted-foreground font-medium">Old</span>
 					</div>
-					<span className="text-xs text-muted-foreground">
-						(15m → 1h → 6h → 24h+)
-					</span>
+					<span className="text-xs text-muted-foreground">(15m → 1h → 6h → 24h+)</span>
 				</div>
 			</div>
 		</div>
