@@ -13,6 +13,7 @@ await (async () => {
 	initializePrivateKeysDir();
 
 	// Create app with jobs enabled (Express app won't be used, just initialization)
+    // TODO: Remove the express app and just use the BL
 	await createApp(db, { enableJobs: true });
 
 	logger.info('Worker process started successfully - background jobs are running');
