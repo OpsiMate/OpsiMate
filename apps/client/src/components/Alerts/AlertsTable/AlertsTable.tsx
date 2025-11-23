@@ -8,7 +8,7 @@ import { useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
-import { createServiceNameLookup, filterAlerts } from './AlertsTable.utils';
+import { filterAlerts } from './AlertsTable.utils';
 import { GroupByControls } from './GroupByControls';
 import { useAlertGrouping, useAlertSelection, useAlertSorting, useStickyHeaders } from './hooks';
 import { SearchBar } from './SearchBar';
@@ -18,7 +18,6 @@ import { VirtualizedAlertList } from './VirtualizedAlertList';
 
 export const AlertsTable = ({
 	alerts,
-	services,
 	onDismissAlert,
 	onUndismissAlert,
 	onDeleteAlert,
@@ -34,7 +33,6 @@ export const AlertsTable = ({
 	const [searchTerm, setSearchTerm] = useState('');
 	const parentRef = useRef<HTMLDivElement>(null);
 
-	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
 	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
