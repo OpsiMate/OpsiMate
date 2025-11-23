@@ -104,12 +104,12 @@ Run OpsiMate locally quickly with Docker and a single command — no cloning or 
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 **Access the application:**
-   - **Backend:** http://localhost:3001
-   - **Client:** http://localhost:8080
+- **Backend:** [http://localhost:3001](http://localhost:3001)
+- **Client:** [http://localhost:8080](http://localhost:8080)
 
 
 ## Manual Docker Run
-#### OpsiMate now uses separate Docker images for frontend, backend (API), and worker (background jobs):
+### OpsiMate now uses separate Docker images for frontend, backend (API), and worker (background jobs):
 
 ```bash
 # Backend (API Server):
@@ -147,8 +147,8 @@ docker run -d \
 ```
 
 **Access the application:**
-   - **Backend API:** http://localhost:3001
-   - **Client UI:** http://localhost:8080
+- **Backend API:** [http://localhost:3001](http://localhost:3001)
+- **Client UI:** [http://localhost:8080](http://localhost:8080)
 
 > **Note:** The worker container runs background jobs for auto-discovery and alert polling. Both backend and worker should share the same database volume for proper operation.
 
