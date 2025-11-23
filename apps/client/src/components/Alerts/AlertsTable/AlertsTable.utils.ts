@@ -1,6 +1,9 @@
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
-import { AlertSortField, SortDirection } from './AlertsTable.types';
+import { createServiceNameLookup } from '../utils';
+import { AlertSortField, FlatGroupItem, GroupNode, SortDirection } from './AlertsTable.types';
+
+export { createServiceNameLookup };
 
 export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	if (!searchTerm.trim()) return alerts;
@@ -63,17 +66,124 @@ export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirec
 	});
 };
 
-export const createServiceNameLookup = (
-	services: Array<{ id: string | number; name: string }>
-): Record<string | number, string> => {
-	const map: Record<string | number, string> = {};
-	services.forEach((s) => {
-		map[s.id] = s.name;
-	});
-	return map;
-};
-
 export const formatDate = (dateString: string): string => {
 	const date = new Date(dateString);
 	return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString();
+};
+
+export const getAlertValue = (alert: Alert, field: string): string => {
+	switch (field) {
+		case 'alertName':
+			return alert.alertName;
+		case 'status':
+			return alert.isDismissed ? 'Dismissed' : 'Firing';
+		case 'tag':
+			return alert.tag || 'Unknown';
+		case 'summary':
+			return alert.summary || 'Unknown';
+		case 'startsAt': {
+			const date = new Date(alert.startsAt);
+			if (isNaN(date.getTime())) return 'Unknown';
+			return date.toISOString().split('T')[0];
+		}
+		case 'type':
+			return getIntegrationLabel(resolveAlertIntegration(alert));
+		default:
+			return 'Unknown';
+	}
+};
+
+interface GroupAlertsRecursiveOptions {
+	alerts: Alert[];
+	groupBy: string[];
+	level: number;
+	parentKey: string;
+	valueGetter: (alert: Alert, field: string) => string;
+}
+
+const groupAlertsRecursive = (options: GroupAlertsRecursiveOptions): GroupNode[] => {
+	const { alerts, groupBy, level, parentKey, valueGetter } = options;
+
+	if (groupBy.length === 0) {
+		return alerts.map((alert) => ({ type: 'leaf', alert }));
+	}
+	const [currentField, ...restFields] = groupBy;
+	const groups: Record<string, Alert[]> = {};
+
+	alerts.forEach((alert) => {
+		const value = valueGetter(alert, currentField);
+		if (!groups[value]) {
+			groups[value] = [];
+		}
+		groups[value].push(alert);
+	});
+
+	const sortedKeys = Object.keys(groups).sort();
+
+	return sortedKeys.map((value) => {
+		const groupKey = `${parentKey}:${value}`;
+		const groupAlertsList = groups[value];
+		const children = groupAlertsRecursive({
+			alerts: groupAlertsList,
+			groupBy: restFields,
+			level: level + 1,
+			parentKey: groupKey,
+			valueGetter,
+		});
+
+		return {
+			type: 'group',
+			key: groupKey,
+			field: currentField,
+			value,
+			count: groupAlertsList.length,
+			children,
+			level,
+		};
+	});
+};
+
+export const groupAlerts = (
+	alerts: Alert[],
+	groupBy: string[],
+	customValueGetter?: (alert: Alert, field: string) => string
+): GroupNode[] => {
+	const getter = customValueGetter || getAlertValue;
+	return groupAlertsRecursive({
+		alerts,
+		groupBy,
+		level: 0,
+		parentKey: 'root',
+		valueGetter: getter,
+	});
+};
+
+export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): FlatGroupItem[] => {
+	const result: FlatGroupItem[] = [];
+
+	const traverse = (nodes: GroupNode[]) => {
+		for (const node of nodes) {
+			if (node.type === 'leaf') {
+				result.push({ type: 'leaf', alert: node.alert });
+			} else {
+				const isExpanded = expandedKeys.has(node.key);
+				result.push({
+					type: 'group',
+					key: node.key,
+					field: node.field,
+					value: node.value,
+					count: node.count,
+					level: node.level,
+					isExpanded,
+				});
+
+				if (isExpanded) {
+					traverse(node.children);
+				}
+			}
+		}
+	};
+
+	traverse(nodes);
+	return result;
 };

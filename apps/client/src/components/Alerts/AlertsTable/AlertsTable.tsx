@@ -1,21 +1,23 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Settings } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import { AlertRow } from './AlertRow';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
-import { createServiceNameLookup, filterAlerts, sortAlerts } from './AlertsTable.utils';
+import { filterAlerts } from './AlertsTable.utils';
+import { GroupByControls } from './GroupByControls';
+import { useAlertGrouping, useAlertSelection, useAlertSorting, useStickyHeaders } from './hooks';
 import { SearchBar } from './SearchBar';
 import { SortableHeader } from './SortableHeader';
+import { StickyGroupHeader } from './StickyGroupHeader';
+import { VirtualizedAlertList } from './VirtualizedAlertList';
 
 export const AlertsTable = ({
 	alerts,
-	services,
 	onDismissAlert,
 	onUndismissAlert,
 	onDeleteAlert,
@@ -29,22 +31,16 @@ export const AlertsTable = ({
 	onAlertClick,
 }: AlertsTableProps) => {
 	const [searchTerm, setSearchTerm] = useState('');
-	const [sortField, setSortField] = useState<AlertSortField>('startsAt');
-	const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-
 	const parentRef = useRef<HTMLDivElement>(null);
-
-	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
-	const sortedAlerts = useMemo(() => {
-		if (!sortField) return filteredAlerts;
-		return sortAlerts(filteredAlerts, sortField, sortDirection);
-	}, [filteredAlerts, sortField, sortDirection]);
+	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
+	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(sortedAlerts);
+	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
 
 	const virtualizer = useVirtualizer({
-		count: sortedAlerts.length,
+		count: flatRows.length,
 		getScrollElement: () => parentRef.current,
 		estimateSize: () => 32,
 		overscan: 5,
@@ -55,36 +51,7 @@ export const AlertsTable = ({
 	});
 
 	const virtualItems = virtualizer.getVirtualItems();
-
-	const handleSort = (field: AlertSortField) => {
-		if (sortField === field) {
-			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-		} else {
-			setSortField(field);
-			setSortDirection(field === 'startsAt' ? 'desc' : 'asc');
-		}
-	};
-
-	const handleSelectAll = () => {
-		if (onSelectAlerts) {
-			if (selectedAlerts.length === sortedAlerts.length) {
-				onSelectAlerts([]);
-			} else {
-				onSelectAlerts(sortedAlerts);
-			}
-		}
-	};
-
-	const handleSelectAlert = (alert: (typeof alerts)[0]) => {
-		if (onSelectAlerts) {
-			const isSelected = selectedAlerts.some((a) => a.id === alert.id);
-			if (isSelected) {
-				onSelectAlerts(selectedAlerts.filter((a) => a.id !== alert.id));
-			} else {
-				onSelectAlerts([...selectedAlerts, alert]);
-			}
-		}
-	};
+	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
 
 	const orderedColumns = useMemo(
 		() => columnOrder.filter((col) => visibleColumns.includes(col)),
@@ -102,8 +69,15 @@ export const AlertsTable = ({
 
 	return (
 		<div className={cn('flex flex-col h-full', className)}>
-			<div className="mb-2">
-				<SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+			<div className="mb-2 flex gap-2">
+				<div className="flex-1">
+					<SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+				</div>
+				<GroupByControls
+					groupByColumns={groupByColumns}
+					onGroupByChange={setGroupByColumns}
+					availableColumns={visibleColumns}
+				/>
 			</div>
 
 			<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
@@ -167,55 +141,42 @@ export const AlertsTable = ({
 					</Table>
 				</div>
 
-				<div ref={parentRef} className="overflow-auto flex-1 min-h-0 relative">
-					{isLoading ? (
-						<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-							Loading alerts...
-						</div>
-					) : sortedAlerts.length === 0 ? (
-						<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-							{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
-						</div>
-					) : (
-						<div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
-							<Table className="w-full">
-								<TableBody>
-									{virtualItems.map((virtualRow) => {
-										const alert = sortedAlerts[virtualRow.index];
-										const isSelected = selectedAlerts.some((a) => a.id === alert.id);
-										return (
-											<div
-												key={virtualRow.key}
-												data-index={virtualRow.index}
-												ref={virtualizer.measureElement}
-												style={{
-													position: 'absolute',
-													top: 0,
-													left: 0,
-													width: '100%',
-													transform: `translateY(${virtualRow.start}px)`,
-													display: 'table',
-													tableLayout: 'fixed',
-												}}
-											>
-												<AlertRow
-													alert={alert}
-													isSelected={isSelected}
-													orderedColumns={orderedColumns}
-													onSelectAlert={handleSelectAlert}
-													onAlertClick={onAlertClick}
-													onDismissAlert={onDismissAlert}
-													onUndismissAlert={onUndismissAlert}
-													onDeleteAlert={onDeleteAlert}
-													onSelectAlerts={onSelectAlerts}
-												/>
-											</div>
-										);
-									})}
-								</TableBody>
-							</Table>
-						</div>
-					)}
+				<div className="flex-1 min-h-0 relative">
+					<div className="absolute top-0 left-0 right-0 z-20">
+						{activeStickyHeaders.map((item) => (
+							<StickyGroupHeader
+								key={`sticky-${item.type === 'group' ? item.key : ''}`}
+								item={item}
+								onToggle={toggleGroup}
+							/>
+						))}
+					</div>
+
+					<div ref={parentRef} className="overflow-auto h-full w-full relative">
+						{isLoading ? (
+							<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+								Loading alerts...
+							</div>
+						) : flatRows.length === 0 ? (
+							<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+								{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
+							</div>
+						) : (
+							<VirtualizedAlertList
+								virtualizer={virtualizer}
+								flatRows={flatRows}
+								selectedAlerts={selectedAlerts}
+								orderedColumns={orderedColumns}
+								onToggleGroup={toggleGroup}
+								onSelectAlert={handleSelectAlert}
+								onAlertClick={onAlertClick}
+								onDismissAlert={onDismissAlert}
+								onUndismissAlert={onUndismissAlert}
+								onDeleteAlert={onDeleteAlert}
+								onSelectAlerts={onSelectAlerts}
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>
