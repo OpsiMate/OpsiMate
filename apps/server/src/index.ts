@@ -1,5 +1,5 @@
 import { initializeDb } from './dal/db';
-import { createApp } from './app';
+import { createApp, AppMode } from './app';
 import { getServerConfig } from './config/config';
 import { Logger } from '@OpsiMate/shared';
 import { initializePrivateKeysDir } from './dal/sshClient';
@@ -15,7 +15,11 @@ await (async () => {
 
 	const db = initializeDb();
 	initializePrivateKeysDir();
-	const app = await createApp(db, { enableJobs: false });
+	const app = await createApp(db, AppMode.SERVER);
+
+	if (!app) {
+		throw new Error('Failed to create Express application');
+	}
 
 	app.listen(PORT, HOST, () => {
 		logger.info(`Server running on ${HOST}:${PORT}`);

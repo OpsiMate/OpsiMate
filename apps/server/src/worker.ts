@@ -1,5 +1,5 @@
 import { initializeDb } from './dal/db';
-import { createApp } from './app';
+import { createApp, AppMode } from './app';
 import { Logger } from '@OpsiMate/shared';
 import { initializePrivateKeysDir } from './dal/sshClient';
 
@@ -12,9 +12,8 @@ await (async () => {
 	const db = initializeDb();
 	initializePrivateKeysDir();
 
-	// Create app with jobs enabled (Express app won't be used, just initialization)
-	// TODO: Remove the express app and just use the BL
-	await createApp(db, { enableJobs: true });
+	// Initialize worker mode (starts background jobs only)
+	await createApp(db, AppMode.WORKER);
 
 	logger.info('Worker process started successfully - background jobs are running');
 

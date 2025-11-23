@@ -41,7 +41,44 @@ import { CustomActionRepository } from './dal/customActionRepository';
 import { CustomActionBL } from './bl/custom-actions/customAction.bl';
 import { CustomActionsController } from './api/v1/custom-actions/controller';
 
-export async function createApp(db: Database.Database, config?: { enableJobs: boolean }): Promise<express.Application> {
+export enum AppMode {
+	SERVER = 'SERVER',
+	WORKER = 'WORKER',
+}
+
+export async function createApp(db: Database.Database, mode: AppMode): Promise<express.Application | void> {
+	// Repositories (needed by both SERVER and WORKER)
+	const providerRepo = new ProviderRepository(db);
+	const serviceRepo = new ServiceRepository(db);
+	const integrationRepo = new IntegrationRepository(db);
+	const alertRepo = new AlertRepository(db);
+	const auditLogRepo = new AuditLogRepository(db);
+	const secretsMetadataRepo = new SecretsMetadataRepository(db);
+
+	// Init tables (needed by both)
+	await Promise.all([
+		providerRepo.initProvidersTable(),
+		serviceRepo.initServicesTable(),
+		integrationRepo.initIntegrationsTable(),
+		alertRepo.initAlertsTable(),
+		auditLogRepo.initAuditLogsTable(),
+		secretsMetadataRepo.initSecretsMetadataTable(),
+	]);
+
+	// BL (needed by both)
+	const auditBL = new AuditBL(auditLogRepo);
+	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
+	const alertBL = new AlertBL(alertRepo);
+	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
+
+	if (mode === AppMode.WORKER) {
+		// WORKER mode: Only start background jobs
+		new RefreshJob(providerBL).startRefreshJob();
+		new PullGrafanaAlertsJob(alertBL, integrationBL).startPullGrafanaAlertsJob();
+		return; // No Express app needed
+	}
+
+	// SERVER mode: Create Express app and API routes
 	const app = express();
 
 	app.use(express.json());
@@ -59,16 +96,10 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 		})
 	);
 
-	// Repositories
-	const providerRepo = new ProviderRepository(db);
-	const serviceRepo = new ServiceRepository(db);
+	// Additional repositories (only needed for SERVER)
 	const viewRepo = new ViewRepository(db);
 	const tagRepo = new TagRepository(db);
-	const integrationRepo = new IntegrationRepository(db);
-	const alertRepo = new AlertRepository(db);
 	const userRepo = new UserRepository(db);
-	const auditLogRepo = new AuditLogRepository(db);
-	const secretsMetadataRepo = new SecretsMetadataRepository(db);
 	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
@@ -78,35 +109,25 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	const mailClient = new MailClient();
 	await mailClient.initialize();
 
-	// Init tables
+	// Init additional tables (only for SERVER)
 	await Promise.all([
-		providerRepo.initProvidersTable(),
-		serviceRepo.initServicesTable(),
 		viewRepo.initViewsTable(),
 		tagRepo.initTagsTables(),
-		integrationRepo.initIntegrationsTable(),
-		alertRepo.initAlertsTable(),
 		userRepo.initUsersTable(),
-		auditLogRepo.initAuditLogsTable(),
-		secretsMetadataRepo.initSecretsMetadataTable(),
 		serviceCustomFieldRepo.initServiceCustomFieldTable(),
 		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
 		passwordResetsRepo.initPasswordResetsTable(),
 		customActionRepo.initCustomActionsTable(),
 	]);
 
-	// BL
-	const auditBL = new AuditBL(auditLogRepo);
-	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo);
-	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
+	// Additional BL (only for SERVER)
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
 	const servicesBL = new ServicesBL(serviceRepo, auditBL);
 	const customActionBL = new CustomActionBL(customActionRepo, providerBL, servicesBL, serviceCustomFieldBL);
 
-	// Controllers
+	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
 	const serviceController = new ServiceController(
 		providerRepo,
@@ -126,6 +147,7 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 	const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
 	const customActionsController = new CustomActionsController(customActionBL);
 
+	// Routes (only for SERVER)
 	app.use('/', healthRouter);
 	app.use(
 		'/api/v1',
@@ -143,11 +165,6 @@ export async function createApp(db: Database.Database, config?: { enableJobs: bo
 			customActionsController
 		)
 	);
-
-	if (config?.enableJobs) {
-		new RefreshJob(providerBL).startRefreshJob();
-		new PullGrafanaAlertsJob(alertBL, integrationBL).startPullGrafanaAlertsJob();
-	}
 
 	return app;
 }
