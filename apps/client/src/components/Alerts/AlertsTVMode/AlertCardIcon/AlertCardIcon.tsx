@@ -12,4 +12,3 @@ export const AlertCardIcon = ({ alert }: AlertCardIconProps) => {
 	}
 	return <AlertCircle className="h-4 w-4 text-destructive" />;
 };
-

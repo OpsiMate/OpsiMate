@@ -16,19 +16,27 @@ export const normalizeGroupValue = (value: string | null | undefined): string =>
 
 export const getNormalizedAlertValue = (alert: Alert, field: string): string => {
 	switch (field) {
-		case 'tag':
+		case 'tag': {
 			return normalizeGroupValue(alert.tag);
-		case 'status':
+		}
+		case 'status': {
 			return alert.isDismissed ? 'Dismissed' : 'Firing';
-		case 'alertName':
+		}
+		case 'alertName': {
 			return alert.alertName || 'Unknown';
-		case 'type':
+		}
+		case 'type': {
 			return normalizeGroupValue(alert.type);
-		case 'serviceName':
-			return normalizeGroupValue((alert as any).serviceName);
-		default:
-			const value = (alert as any)[field];
-			return normalizeGroupValue(value);
+		}
+		case 'serviceName': {
+			const alertWithService = alert as Alert & { serviceName?: string };
+			return normalizeGroupValue(alertWithService.serviceName);
+		}
+		default: {
+			const alertWithField = alert as Alert & Record<string, unknown>;
+			const value = alertWithField[field];
+			return normalizeGroupValue(typeof value === 'string' ? value : String(value));
+		}
 	}
 };
 
@@ -89,12 +97,17 @@ export const getGroupColor = (name: string): string => {
 };
 
 export const getAlertMetricValue = (alert: Alert): number => {
-	const occurrences = (alert as any).occurrencesLastHour;
+	const alertWithMetrics = alert as Alert & {
+		occurrencesLastHour?: number;
+		durationSeconds?: number;
+	};
+
+	const occurrences = alertWithMetrics.occurrencesLastHour;
 	if (occurrences && typeof occurrences === 'number' && occurrences > 0) {
 		return occurrences;
 	}
 
-	const durationSeconds = (alert as any).durationSeconds;
+	const durationSeconds = alertWithMetrics.durationSeconds;
 	if (durationSeconds && typeof durationSeconds === 'number' && durationSeconds > 0) {
 		return durationSeconds;
 	}

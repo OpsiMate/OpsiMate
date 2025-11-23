@@ -97,4 +97,3 @@ export const generateBalancedMockAlerts = (count: number = 5000): ReturnType<typ
 
 	return generateMockAlerts(config);
 };
-

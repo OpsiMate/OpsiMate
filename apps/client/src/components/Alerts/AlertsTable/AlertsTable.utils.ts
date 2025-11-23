@@ -100,13 +100,17 @@ export const getAlertValue = (alert: Alert, field: string): string => {
 	}
 };
 
-const groupAlertsRecursive = (
-	alerts: Alert[],
-	groupBy: string[],
-	level: number,
-	parentKey: string,
-	valueGetter: (alert: Alert, field: string) => string
-): GroupNode[] => {
+interface GroupAlertsRecursiveOptions {
+	alerts: Alert[];
+	groupBy: string[];
+	level: number;
+	parentKey: string;
+	valueGetter: (alert: Alert, field: string) => string;
+}
+
+const groupAlertsRecursive = (options: GroupAlertsRecursiveOptions): GroupNode[] => {
+	const { alerts, groupBy, level, parentKey, valueGetter } = options;
+
 	if (groupBy.length === 0) {
 		return alerts.map((alert) => ({ type: 'leaf', alert }));
 	}
@@ -126,7 +130,13 @@ const groupAlertsRecursive = (
 	return sortedKeys.map((value) => {
 		const groupKey = `${parentKey}:${value}`;
 		const groupAlertsList = groups[value];
-		const children = groupAlertsRecursive(groupAlertsList, restFields, level + 1, groupKey, valueGetter);
+		const children = groupAlertsRecursive({
+			alerts: groupAlertsList,
+			groupBy: restFields,
+			level: level + 1,
+			parentKey: groupKey,
+			valueGetter,
+		});
 
 		return {
 			type: 'group',
@@ -146,7 +156,13 @@ export const groupAlerts = (
 	customValueGetter?: (alert: Alert, field: string) => string
 ): GroupNode[] => {
 	const getter = customValueGetter || getAlertValue;
-	return groupAlertsRecursive(alerts, groupBy, 0, 'root', getter);
+	return groupAlertsRecursive({
+		alerts,
+		groupBy,
+		level: 0,
+		parentKey: 'root',
+		valueGetter: getter,
+	});
 };
 
 export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): FlatGroupItem[] => {

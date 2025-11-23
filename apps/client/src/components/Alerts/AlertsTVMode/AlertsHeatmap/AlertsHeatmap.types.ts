@@ -14,5 +14,7 @@ export interface TreemapNode {
 	width?: number;
 	height?: number;
 	index?: number;
-	[key: string]: any;
+	data?: unknown;
+	parent?: TreemapNode;
+	[key: string]: unknown;
 }

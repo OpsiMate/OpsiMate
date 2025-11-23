@@ -146,7 +146,7 @@ const AlertsTVMode = () => {
 			if (e.key === 'Escape') {
 				const dialogOpen = document.querySelector('[role="dialog"]');
 				if (!dialogOpen) {
-					navigate('/alerts');
+				navigate('/alerts');
 				}
 			} else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
 				handleManualRefresh();
