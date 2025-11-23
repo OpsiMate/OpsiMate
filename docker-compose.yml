@@ -2,6 +2,9 @@ version: "3.8"
 
 services:
   backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
     image: opsimate/backend:latest
     container_name: opsimate-backend
     ports:
@@ -17,9 +20,12 @@ services:
     restart: unless-stopped
 
   worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
     image: opsimate/backend:latest
     container_name: opsimate-worker
-    command: ["node", "dist/worker.js"]
+    command: ["node", "apps/server/dist/worker.js"]
     volumes:
       - ./data/database:/app/data/database
       - ./data/private-keys:/app/data/private-keys
