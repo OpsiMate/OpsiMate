@@ -1,5 +1,6 @@
 import { Alert } from '@OpsiMate/shared';
 import { hierarchy, treemap, treemapSquarify } from 'd3-hierarchy';
+import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TreemapNode } from '../AlertsHeatmap.types';
 import { getAlertColor, getGroupColor } from '../AlertsHeatmap.utils';
@@ -366,6 +367,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					title="Click to go back"
 				>
 					<div className="flex items-center gap-2 overflow-hidden">
+						<ArrowLeft className="w-3.5 h-3.5 text-white/90 flex-shrink-0" />
 						<span className="font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate">
 							{currentGroupName}
 						</span>
