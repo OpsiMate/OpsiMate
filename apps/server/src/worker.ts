@@ -28,4 +28,3 @@ await (async () => {
 		process.exit(0);
 	});
 })();
-
