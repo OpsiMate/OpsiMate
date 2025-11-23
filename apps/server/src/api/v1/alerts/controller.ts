@@ -64,7 +64,7 @@ export class AlertController {
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
 			if (incident.state.toLowerCase() === 'closed') {
-				await this.alertBL.deleteAlert(incident.incident_id);
+				await this.alertBL.archiveAlert(incident.incident_id);
 			} else {
 				await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
@@ -119,7 +119,7 @@ export class AlertController {
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteAlert(alertId);
+			await this.alertBL.archiveAlert(alertId);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting alert:', error);

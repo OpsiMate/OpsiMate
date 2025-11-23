@@ -75,18 +75,32 @@ export class AlertBL {
 		}
 	}
 
-	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
-		await this.archiveAlertsNotInIds(activeAlertIds, alertType);
-	}
-
-	async deleteAlert(alertId: string): Promise<void> {
+	async archiveAlert(activeAlertId: string): Promise<void> {
 		try {
-			logger.info(`Deleting alert with id: ${alertId}`);
-			await this.alertRepo.deleteAlert(alertId);
+			logger.info(`Archiving alert with id: ${activeAlertId}`);
+
+			// Get the active alert
+			const alert = await this.alertRepo.getAlert(activeAlertId);
+			if (!alert) {
+				logger.warn(`Alert with id ${activeAlertId} not found, nothing to archive`);
+				return;
+			}
+
+			// Insert into archived table
+			await this.archivedAlertRepo.insertArchivedAlert(alert);
+
+			// Remove from active table
+			await this.alertRepo.deleteAlert(activeAlertId);
+
+			logger.info(`Archived alert ${activeAlertId}`);
 		} catch (error) {
-			logger.error('Error deleting alert', error);
+			logger.error(`Error archiving alert ${activeAlertId}`, error);
 			throw error;
 		}
+	}
+
+	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
+		await this.archiveAlertsNotInIds(activeAlertIds, alertType);
 	}
 
 	async getAllArchivedAlerts(): Promise<Alert[]> {
