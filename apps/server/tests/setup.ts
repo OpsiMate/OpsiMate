@@ -15,7 +15,7 @@ import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepos
 import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository.ts';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository.ts';
 import { CustomActionRepository } from '../src/dal/customActionRepository.ts';
-import {ArchivedAlertRepository} from "../src/dal/archivedAlertRepository.ts";
+import { ArchivedAlertRepository } from '../src/dal/archivedAlertRepository.ts';
 
 // Mock the Kubernetes client to avoid ES module issues
 vi.mock('@kubernetes/client-node', () => ({

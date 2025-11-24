@@ -1,8 +1,8 @@
-import {SuperTest, Test} from 'supertest';
-import {Alert, AlertStatus, Logger} from '@OpsiMate/shared';
+import { SuperTest, Test } from 'supertest';
+import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import {AlertRow} from '../src/dal/models';
-import {setupDB, setupExpressApp, setupUserWithToken} from './setup';
+import { AlertRow } from '../src/dal/models';
+import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
 
@@ -152,9 +152,7 @@ const seedAlerts = () => {
 		isDismissed: row.is_dismissed,
 	}));
 
-	logger.info(
-		`Seeded ${sampleAlerts.length} active alerts + ${sampleArchivedAlerts.length} archived alerts`
-	);
+	logger.info(`Seeded ${sampleAlerts.length} active alerts + ${sampleArchivedAlerts.length} archived alerts`);
 };
 
 beforeAll(async () => {
@@ -504,9 +502,7 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
 			expect(row).toBeUndefined();
 
-			const archivedRow = db
-				.prepare('SELECT * FROM alerts_archived WHERE id = ?')
-				.get(existingId);
+			const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(existingId);
 
 			expect(archivedRow).toBeDefined();
 			expect(archivedRow.id).toBe(existingId);
@@ -630,9 +626,7 @@ describe('Alerts API', () => {
 	describe('Archived Alerts API', () => {
 		describe('GET /api/v1/alerts/archived', () => {
 			test('should fetch all archived alerts successfully', async () => {
-				const response = await app
-					.get('/api/v1/alerts/archived')
-					.set('Authorization', `Bearer ${jwtToken}`);
+				const response = await app.get('/api/v1/alerts/archived').set('Authorization', `Bearer ${jwtToken}`);
 
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
@@ -647,9 +641,7 @@ describe('Alerts API', () => {
 			test('should return empty array when no archived alerts exist', async () => {
 				db.exec('DELETE FROM alerts_archived');
 
-				const response = await app
-					.get('/api/v1/alerts/archived')
-					.set('Authorization', `Bearer ${jwtToken}`);
+				const response = await app.get('/api/v1/alerts/archived').set('Authorization', `Bearer ${jwtToken}`);
 
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
@@ -673,13 +665,10 @@ describe('Alerts API', () => {
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
 
-				const row = db
-					.prepare('SELECT * FROM alerts_archived WHERE id = ?')
-					.get('archived-del-1');
+				const row = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get('archived-del-1');
 
 				expect(row).toBeUndefined();
 			});
-
 
 			test('should return 401 when no auth token is provided', async () => {
 				const response = await app.delete('/api/v1/alerts/archived/some-id');
@@ -689,5 +678,4 @@ describe('Alerts API', () => {
 			});
 		});
 	});
-
 });
