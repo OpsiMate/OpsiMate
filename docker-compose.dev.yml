@@ -60,8 +60,6 @@ services:
       - pnpm-store-worker:/root/.pnpm-store
     networks:
       - appnet
-    depends_on:
-      - server
 
 networks:
   appnet:
