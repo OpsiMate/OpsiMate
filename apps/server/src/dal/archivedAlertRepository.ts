@@ -1,7 +1,7 @@
+import { AlertStatus, Alert as SharedAlert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ArchivedAlertRow } from './models';
-import {Alert as SharedAlert, AlertStatus} from '@OpsiMate/shared';
 
 export class ArchivedAlertRepository {
 	private db: Database.Database;
@@ -38,7 +38,7 @@ export class ArchivedAlertRepository {
 	async insertArchivedAlert(alert: SharedAlert): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO alerts_archived 
+                INSERT INTO alerts_archived
                     (id, status, tag, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
@@ -76,9 +76,10 @@ export class ArchivedAlertRepository {
 	}
 
 	private toSharedAlert = (row: ArchivedAlertRow): SharedAlert => {
+		const status = row.status === 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED;
 		return {
 			id: row.id,
-			status: row.status as AlertStatus,
+			status,
 			tag: row.tag,
 			type: row.type,
 			startsAt: row.starts_at,

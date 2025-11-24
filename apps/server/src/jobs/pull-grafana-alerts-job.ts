@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import { IntegrationType, Logger, AlertStatus } from '@OpsiMate/shared';
-import { GrafanaClient } from '../dal/external-client/grafana-client';
+import { AlertStatus, IntegrationType, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../bl/alerts/alert.bl';
 import { IntegrationBL } from '../bl/integrations/integration.bl';
+import { GrafanaClient } from '../dal/external-client/grafana-client';
 
 const logger = new Logger('pull-grafana-alerts-job');
 
@@ -53,10 +53,10 @@ export class PullGrafanaAlertsJob {
 						id: alert.fingerprint,
 						type: 'Grafana',
 						status: AlertStatus.FIRING,
-						tag: tagName, // or another label key if appropriate
+						tag: tagName,
 						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
-						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '', // if available
-						alert_url: alert.generatorURL || '', // or the correct field for the alert URL
+						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '',
+						alert_url: alert.generatorURL || '',
 						alert_name:
 							alert.labels?.rulename || alert.labels?.alertname || alert.annotations?.summary || '',
 						summary: alert.annotations?.summary || '',
