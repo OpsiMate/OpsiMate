@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Logger } from '@OpsiMate/shared';
+import { AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { GcpAlertWebhook, HttpAlertWebhookSchema } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
@@ -69,14 +69,14 @@ export class AlertController {
 				await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
 					type: 'GCP',
-					status: incident.state,
+					status: AlertStatus.FIRING,
 					tag: incident.resource_name || 'unknown',
-					starts_at: this.normalizeGCPDate(incident.started_at),
-					updated_at: new Date().toISOString(),
-					alert_url: incident.url || 'unknown',
-					alert_name: incident.policy_name || 'unknown',
+					startsAt: this.normalizeGCPDate(incident.started_at),
+					updatedAt: new Date().toISOString(),
+					alertUrl: incident.url || 'unknown',
+					alertName: incident.policy_name || 'unknown',
 					summary: incident.summary || 'unknown',
-					runbook_url: incident.documentation?.content || 'unknown',
+					runbookUrl: incident.documentation?.content || 'unknown',
 				});
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
@@ -93,14 +93,14 @@ export class AlertController {
 			await this.alertBL.insertOrUpdateAlert({
 				id: alert.id,
 				type: 'Custom',
-				status: alert.status,
+				status: AlertStatus.FIRING,
 				tag: alert.tag,
-				starts_at: alert.startsAt,
-				updated_at: alert.updatedAt,
-				alert_url: alert.alertUrl,
-				alert_name: alert.alertName,
+				startsAt: alert.startsAt,
+				updatedAt: alert.updatedAt,
+				alertUrl: alert.alertUrl,
+				alertName: alert.alertName,
 				summary: alert.summary,
-				runbook_url: alert.runbookUrl,
+				runbookUrl: alert.runbookUrl,
 			});
 			return res.status(200).json({ success: true, data: { alertId: alert.id } });
 		} catch (error) {

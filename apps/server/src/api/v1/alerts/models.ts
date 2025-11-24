@@ -31,7 +31,6 @@ const isoDateString = z.string().refine(
 
 export const HttpAlertWebhookSchema = z.object({
 	id: z.string(),
-	status: z.string(),
 	tag: z.string(),
 	startsAt: isoDateString,
 	updatedAt: isoDateString,

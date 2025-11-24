@@ -10,7 +10,7 @@ export class AlertRepository {
 		this.db = db;
 	}
 
-	async insertOrUpdateAlert(alert: Omit<AlertRow, 'created_at' | 'is_dismissed'>): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts (id, status, tag, type, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
@@ -31,12 +31,12 @@ export class AlertRepository {
 				alert.status,
 				alert.tag,
 				alert.type,
-				alert.starts_at,
-				alert.updated_at,
-				alert.alert_url,
-				alert.alert_name,
+				alert.startsAt,
+				alert.updatedAt,
+				alert.alertUrl,
+				alert.alertName,
 				alert.summary || null,
-				alert.runbook_url || null
+				alert.runbookUrl || null
 			);
 			return { changes: result.changes };
 		});
@@ -112,7 +112,7 @@ export class AlertRepository {
 		});
 	}
 
-	async getAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType): Promise<AlertRow[]> {
+	async getAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType): Promise<SharedAlert[]> {
 		return runAsync(() => {
 			if (activeAlertIds.size === 0) {
 				// No active alerts → get all alerts of this type
@@ -120,7 +120,8 @@ export class AlertRepository {
 				SELECT * FROM alerts
 				WHERE type = ?
 			`);
-				return stmt.all(alertType) as AlertRow[];
+				const dbAlerts = stmt.all(alertType) as AlertRow[];
+				return dbAlerts.map(this.toSharedAlert);
 			}
 
 			// Build dynamic placeholders for SQLite
@@ -134,7 +135,8 @@ export class AlertRepository {
 			AND id NOT IN (${placeholders})
 		`);
 
-			return stmt.all(alertType, ...activeAlertIds) as AlertRow[];
+			const dbAlerts = stmt.all(alertType, ...activeAlertIds) as AlertRow[];
+			return dbAlerts.map(this.toSharedAlert);
 		});
 	}
 

@@ -11,7 +11,8 @@ export class AlertBL {
 		private archivedAlertRepo: ArchivedAlertRepository
 	) {}
 
-	async insertOrUpdateAlert(alert: Omit<AlertRow, 'created_at' | 'is_dismissed'>): Promise<{ changes: number }> {
+	// region active
+	async insertOrUpdateAlert(alert: Omit<Alert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		try {
 			logger.info(`Inserting alert: ${JSON.stringify(alert)}`);
 			return await this.alertRepo.insertOrUpdateAlert(alert);
@@ -50,27 +51,15 @@ export class AlertBL {
 			throw error;
 		}
 	}
+	// endregion
 
-	async archiveAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType): Promise<void> {
+	// region archived
+	async getAllArchivedAlerts(): Promise<Alert[]> {
 		try {
-			logger.info(`Archiving alerts not in ids for type: ${alertType}`);
-			// Get alerts that need to be archived
-			const alertsToArchive = await this.alertRepo.getAlertsNotInIds(activeAlertIds, alertType);
-
-			// Archive each alert
-			for (const alert of alertsToArchive) {
-				await this.archivedAlertRepo.insertArchivedAlert({
-					...alert,
-					archived_at: new Date().toISOString(),
-				});
-			}
-
-			// Delete alerts from active table
-			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
-
-			logger.info(`Archived ${alertsToArchive.length} alerts`);
+			logger.info('Fetching all archived alerts');
+			return await this.archivedAlertRepo.getAllArchivedAlerts();
 		} catch (error) {
-			logger.error('Error archiving alerts', error);
+			logger.error('Error fetching archived alerts', error);
 			throw error;
 		}
 	}
@@ -99,16 +88,23 @@ export class AlertBL {
 		}
 	}
 
-	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
-		await this.archiveAlertsNotInIds(activeAlertIds, alertType);
-	}
-
-	async getAllArchivedAlerts(): Promise<Alert[]> {
+	async archiveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
 		try {
-			logger.info('Fetching all archived alerts');
-			return await this.archivedAlertRepo.getAllArchivedAlerts();
+			logger.info(`Archiving alerts not in ids for type: ${alertType}`);
+			// Get alerts that need to be archived
+			const alertsToArchive = await this.alertRepo.getAlertsNotInIds(activeAlertIds, alertType);
+
+			// Archive each alert
+			for (const alert of alertsToArchive) {
+				await this.archivedAlertRepo.insertArchivedAlert(alert);
+			}
+
+			// Delete alerts from active table
+			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
+
+			logger.info(`Archived ${alertsToArchive.length} alerts`);
 		} catch (error) {
-			logger.error('Error fetching archived alerts', error);
+			logger.error('Error archiving alerts', error);
 			throw error;
 		}
 	}
@@ -122,4 +118,5 @@ export class AlertBL {
 			throw error;
 		}
 	}
+	// endregion
 }

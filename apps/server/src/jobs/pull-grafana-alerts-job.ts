@@ -43,7 +43,7 @@ export class PullGrafanaAlertsJob {
 			const client = new GrafanaClient(grafana.externalUrl, token);
 			const grafanaAlerts = await client.getAlerts();
 			const activeAlertIds = new Set(grafanaAlerts.map((a) => a.fingerprint));
-			await this.alertBL.deleteAlertsNotInIds(activeAlertIds, 'Grafana');
+			await this.alertBL.archiveNonActiveAlerts(activeAlertIds, 'Grafana');
 
 			for (const alert of grafanaAlerts) {
 				try {
@@ -54,13 +54,13 @@ export class PullGrafanaAlertsJob {
 						type: 'Grafana',
 						status: AlertStatus.FIRING,
 						tag: tagName,
-						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
-						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '',
-						alert_url: alert.generatorURL || '',
-						alert_name:
+						startsAt: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
+						updatedAt: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '',
+						alertUrl: alert.generatorURL || '',
+						alertName:
 							alert.labels?.rulename || alert.labels?.alertname || alert.annotations?.summary || '',
 						summary: alert.annotations?.summary || '',
-						runbook_url: alert.annotations?.runbook_url || '',
+						runbookUrl: alert.annotations?.runbook_url || '',
 					});
 				} catch (e) {
 					logger.error(`Upsert failed for id=${alert.fingerprint}`, e);
