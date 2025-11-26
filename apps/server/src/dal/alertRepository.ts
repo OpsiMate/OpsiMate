@@ -1,7 +1,7 @@
+import { AlertStatus, AlertType, Alert as SharedAlert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AlertRow } from './models';
-import { Alert as SharedAlert, AlertType } from '@OpsiMate/shared';
 
 export class AlertRepository {
 	private db: Database.Database;
@@ -10,7 +10,7 @@ export class AlertRepository {
 		this.db = db;
 	}
 
-	async insertOrUpdateAlert(alert: Omit<AlertRow, 'created_at' | 'is_dismissed'>): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts (id, status, tag, type, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
@@ -31,12 +31,12 @@ export class AlertRepository {
 				alert.status,
 				alert.tag,
 				alert.type,
-				alert.starts_at,
-				alert.updated_at,
-				alert.alert_url,
-				alert.alert_name,
+				alert.startsAt,
+				alert.updatedAt,
+				alert.alertUrl,
+				alert.alertName,
 				alert.summary || null,
-				alert.runbook_url || null
+				alert.runbookUrl || null
 			);
 			return { changes: result.changes };
 		});
@@ -67,9 +67,10 @@ export class AlertRepository {
 	}
 
 	private toSharedAlert = (row: AlertRow): SharedAlert => {
+		const status = row.status === 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED;
 		return {
 			id: row.id,
-			status: row.status,
+			status,
 			tag: row.tag,
 			type: row.type,
 			startsAt: row.starts_at,
@@ -111,6 +112,34 @@ export class AlertRepository {
 		});
 	}
 
+	async getAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType): Promise<SharedAlert[]> {
+		return runAsync(() => {
+			if (activeAlertIds.size === 0) {
+				// No active alerts → get all alerts of this type
+				const stmt = this.db.prepare(`
+				SELECT * FROM alerts
+				WHERE type = ?
+			`);
+				const dbAlerts = stmt.all(alertType) as AlertRow[];
+				return dbAlerts.map(this.toSharedAlert);
+			}
+
+			// Build dynamic placeholders for SQLite
+			const placeholders = Array.from(activeAlertIds)
+				.map(() => '?')
+				.join(',');
+
+			const stmt = this.db.prepare(`
+			SELECT * FROM alerts
+			WHERE type = ?
+			AND id NOT IN (${placeholders})
+		`);
+
+			const dbAlerts = stmt.all(alertType, ...activeAlertIds) as AlertRow[];
+			return dbAlerts.map(this.toSharedAlert);
+		});
+	}
+
 	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
 		return runAsync(() => {
 			if (activeAlertIds.size === 0) {
@@ -142,6 +171,14 @@ export class AlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`DELETE FROM alerts WHERE id = ?`);
 			stmt.run(alertId);
+		});
+	}
+
+	async getAlert(alertId: string) {
+		return runAsync(() => {
+			const selectStmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
+			const row = selectStmt.get(alertId) as AlertRow | undefined;
+			return row ? this.toSharedAlert(row) : null;
 		});
 	}
 }

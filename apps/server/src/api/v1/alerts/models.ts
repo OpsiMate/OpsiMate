@@ -13,7 +13,7 @@ export interface GcpIncident {
 	condition_name?: string;
 	state: 'open' | 'acknowledged' | 'closed';
 	started_at: string | number;
-	url?: string;
+	url: string;
 	summary?: string;
 	documentation?: {
 		content?: string;
@@ -31,7 +31,6 @@ const isoDateString = z.string().refine(
 
 export const HttpAlertWebhookSchema = z.object({
 	id: z.string(),
-	status: z.string(),
 	tag: z.string(),
 	startsAt: isoDateString,
 	updatedAt: isoDateString,

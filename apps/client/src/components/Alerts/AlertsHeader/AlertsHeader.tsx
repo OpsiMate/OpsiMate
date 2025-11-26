@@ -18,7 +18,7 @@ export const AlertsHeader = ({
 	onLaunchTVMode,
 }: AlertsHeaderProps) => {
 	return (
-		<div className="mb-4">
+		<div>
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
@@ -35,7 +35,7 @@ export const AlertsHeader = ({
 					</Button>
 				</div>
 			</div>
-			{alertsCount > 0 && lastRefresh && (
+			{lastRefresh && (
 				<p className="text-xs text-muted-foreground mt-2">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
 			)}
 		</div>

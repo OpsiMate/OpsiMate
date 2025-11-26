@@ -58,4 +58,19 @@ export class GrafanaClient {
 
 		return (await res.json()) as GrafanaAlert[];
 	}
+
+	async getHealth() {
+		const res = await fetch(`${this.url}/api/health`, {
+			headers: {
+				Authorization: `Bearer ${this.apiKey}`,
+				'Content-Type': 'application/json',
+			},
+		});
+
+		if (!res.ok) {
+			throw new Error(`Grafana health check failed: ${res.status}`);
+		}
+
+		return (await res.json()) as { commit: string; database: string; version: string };
+	}
 }

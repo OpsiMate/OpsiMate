@@ -8,6 +8,7 @@ import {
 } from '@OpsiMate/shared';
 import { IntegrationBL } from '../../../bl/integrations/integration.bl';
 import { isZodError } from '../../../utils/isZodError';
+import { integrationConnectorFactory } from '../../../bl/integrations/integration-connector/integration-connector-factory';
 
 const logger = new Logger('v1/integrations/controller');
 
@@ -27,6 +28,30 @@ export class IntegrationController {
 		} catch (error) {
 			logger.error('Error getting integrations:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	testIntegration = async (req: Request, res: Response) => {
+		const integrationToCreate = CreateIntegrationSchema.parse(req.body);
+
+		const integrationConnector = integrationConnectorFactory(integrationToCreate.type);
+
+		const integration: Integration = {
+			...integrationToCreate,
+			createdAt: '',
+			id: 0,
+		};
+
+		const testResult = await integrationConnector.testConnection(integration);
+
+		if (testResult.success) {
+			return res.status(200).json({ success: true, data: { isValidConnection: true } });
+		} else {
+			return res.status(200).json({
+				success: false,
+				error: testResult.error || 'Connection test failed',
+				data: { isValidConnection: false },
+			});
 		}
 	};
 

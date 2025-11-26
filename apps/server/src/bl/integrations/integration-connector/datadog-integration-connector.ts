@@ -44,4 +44,9 @@ export class DatadogIntegrationConnector implements IntegrationConnector {
 	}
 
 	async deleteData(_: Integration, _2: AlertBL): Promise<void> {}
+
+	async testConnection(_: Integration): Promise<{ success: boolean; error?: string }> {
+		await Promise.resolve(); // satisfies eslint: no-return-await / require-await
+		return { success: false, error: 'Datadog integration connector not yet implemented.' };
+	}
 }

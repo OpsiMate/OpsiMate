@@ -569,6 +569,16 @@ export const alertsApi = {
 		}
 		return response;
 	},
+
+	// Get all archived alerts
+	async getAllArchivedAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
+		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts/archived');
+	},
+
+	// Delete an archived alert permanently
+	async deleteArchivedAlert(alertId: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/archived/${alertId}`, 'DELETE');
+	},
 };
 
 export const auditApi = {

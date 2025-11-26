@@ -16,6 +16,32 @@ export class GrafanaIntegrationConnector implements IntegrationConnector {
 	}
 
 	async deleteData(_: Integration, alertBL: AlertBL): Promise<void> {
-		await alertBL.deleteAlertsNotInIds(new Set(), 'Grafana');
+		await alertBL.archiveNonActiveAlerts(new Set(), 'Grafana');
+	}
+
+	async testConnection(integration: Integration): Promise<{ success: boolean; error?: string }> {
+		try {
+			const grafanaClient = new GrafanaClient(
+				integration.externalUrl,
+				integration.credentials['apiKey'] as string
+			);
+
+			// Quick lightweight test (health endpoint)
+			const health = await grafanaClient.getHealth();
+
+			// Some Grafana versions return { commit, version, database }
+			if (!health || typeof health !== 'object') {
+				return { success: false, error: 'Unexpected response from Grafana health check.' };
+			}
+
+			return { success: true };
+		} catch (err) {
+			const errorMessage =
+				err instanceof Error ? err.message : 'An unknown error occurred while testing the connection.';
+			return {
+				success: false,
+				error: errorMessage,
+			};
+		}
 	}
 }

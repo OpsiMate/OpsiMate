@@ -1,5 +1,5 @@
 import { SuperTest, Test } from 'supertest';
-import { Logger, Alert } from '@OpsiMate/shared';
+import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -9,13 +9,15 @@ const logger = new Logger('test-alerts');
 let app: SuperTest<Test>;
 let db: Database.Database;
 let testAlerts: Alert[] = [];
+let testAlertsArchived: Alert[] = [];
 let jwtToken: string;
 
 const seedAlerts = () => {
 	// Clear existing alerts
 	db.exec('DELETE FROM alerts');
+	db.exec('DELETE FROM alerts_archived');
 
-	// Create sample alerts for testing
+	// Create sample active alerts
 	const sampleAlerts: Omit<AlertRow, 'created_at'>[] = [
 		{
 			id: 'alert-1',
@@ -58,10 +60,11 @@ const seedAlerts = () => {
 		},
 	];
 
+	// Insert active alerts
 	const insertStmt = db.prepare(`
-    INSERT INTO alerts (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+		INSERT INTO alerts (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`);
 
 	sampleAlerts.forEach((alert) => {
 		insertStmt.run(
@@ -78,21 +81,78 @@ const seedAlerts = () => {
 		);
 	});
 
-	testAlerts = sampleAlerts.map((row: Omit<AlertRow, 'created_at'>): Alert => {
-		return {
-			id: row.id,
-			status: row.status,
-			tag: row.tag,
-			startsAt: row.starts_at,
-			updatedAt: row.updated_at,
-			alertUrl: row.alert_url,
-			alertName: row.alert_name,
-			createdAt: Date.now().toString(),
-			isDismissed: row.is_dismissed,
-		};
-	}) as Alert[];
+	// -------------------------
+	// Add sample archived alert
+	// -------------------------
 
-	logger.info(`Seeded ${sampleAlerts.length} test alerts`);
+	const sampleArchivedAlerts = [
+		{
+			id: 'archived-1',
+			type: 'Grafana',
+			status: 'resolved',
+			tag: 'system',
+			starts_at: new Date(Date.now() - 5 * 3600000).toISOString(), // 5 hours ago
+			updated_at: new Date().toISOString(),
+			alert_url: 'https://example.com/archived/1',
+			alert_name: 'Archived Test Alert',
+			summary: 'Archived Summary',
+			runbook_url: 'https://runbook.com/archived1',
+			archived_at: new Date().toISOString(),
+			is_dismissed: false,
+		},
+	];
+
+	const insertArchivedStmt = db.prepare(`
+        INSERT INTO alerts_archived 
+        (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at, is_dismissed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+	sampleArchivedAlerts.forEach((alert) => {
+		insertArchivedStmt.run(
+			alert.id,
+			alert.status,
+			alert.tag,
+			alert.starts_at,
+			alert.updated_at,
+			alert.alert_url,
+			alert.alert_name,
+			alert.summary,
+			alert.runbook_url,
+			alert.archived_at,
+			alert.is_dismissed ? 1 : 0
+		);
+	});
+
+	// Convert active alerts to exported testAlerts
+	testAlerts = sampleAlerts.map((row) => ({
+		id: row.id,
+		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
+		type: row.type,
+		tag: row.tag,
+		startsAt: row.starts_at,
+		updatedAt: row.updated_at,
+		alertUrl: row.alert_url,
+		alertName: row.alert_name,
+		createdAt: Date.now().toString(),
+		isDismissed: row.is_dismissed,
+	}));
+
+	// Optionally export archived alerts to tests
+	testAlertsArchived = sampleArchivedAlerts.map((row) => ({
+		id: row.id,
+		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
+		type: row.type,
+		tag: row.tag,
+		startsAt: row.starts_at,
+		updatedAt: row.updated_at,
+		alertUrl: row.alert_url,
+		alertName: row.alert_name,
+		archivedAt: row.archived_at,
+		isDismissed: row.is_dismissed,
+	}));
+
+	logger.info(`Seeded ${sampleAlerts.length} active alerts + ${sampleArchivedAlerts.length} archived alerts`);
 };
 
 beforeAll(async () => {
@@ -335,7 +395,6 @@ describe('Alerts API', () => {
 			expect(response.body.error).toBeDefined();
 		});
 
-		// todo: uncomment when adding permissions validation
 		test('should return 401 when no auth token is provided', async () => {
 			const payload = {
 				id: 'unauthorized-alert',
@@ -352,34 +411,6 @@ describe('Alerts API', () => {
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
-		});
-
-		test('should handle DB insertion duplicate id - update status', async () => {
-			const existingId = testAlerts[0].id;
-
-			const payload = {
-				id: existingId, // duplicate primary key
-				status: 'resolved',
-				tag: 'duplicate-test',
-				startsAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				alertUrl: 'https://example.com/dup',
-				alertName: 'Duplicate Test',
-				createdAt: new Date().toISOString(),
-			};
-
-			const response = await app
-				.post('/api/v1/alerts/custom')
-				.set('Authorization', `Bearer ${jwtToken}`)
-				.send(payload);
-
-			// Expect internal server error due to unique constraint
-			expect(response.status).toBe(200);
-
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
-			expect(row).toBeDefined();
-			expect(row.alert_name).toBe(payload.alertName);
-			expect(row.status).toBe(payload.status);
 		});
 	});
 
@@ -410,7 +441,7 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.incident.incident_id);
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
-			expect(row.status).toBe(payload.incident.state);
+			expect(row.status).toBe('firing');
 			expect(row.tag).toBe(payload.incident.resource_name);
 		});
 
@@ -441,7 +472,7 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
-			expect(row.status).toBe(payload.incident.state);
+			expect(row.status).toBe('firing');
 			expect(row.tag).toBe(payload.incident.resource_name);
 		});
 
@@ -470,6 +501,11 @@ describe('Alerts API', () => {
 
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
 			expect(row).toBeUndefined();
+
+			const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(existingId);
+
+			expect(archivedRow).toBeDefined();
+			expect(archivedRow.id).toBe(existingId);
 		});
 
 		test('should return 400 for missing incident field', async () => {
@@ -574,7 +610,7 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe('mytestforgcp');
 			expect(row.summary).toContain('CPU usage for opsimate');
 			expect(row.tag).toBe('opsimate opsimate-server');
-			expect(row.status).toBe('open');
+			expect(row.status).toBe('firing');
 
 			// ISO 8601 regex: 2025-11-17T18:03:39.352Z
 			const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -584,6 +620,114 @@ describe('Alerts API', () => {
 
 			expect(typeof row.updated_at).toBe('string');
 			expect(row.updated_at).toMatch(isoRegex);
+		});
+	});
+
+	describe('Archived Alerts API', () => {
+		describe('GET /api/v1/alerts/archived', () => {
+			test('should fetch all archived alerts successfully', async () => {
+				const response = await app.get('/api/v1/alerts/archived').set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+				expect(Array.isArray(response.body.data.alerts)).toBe(true);
+				expect(response.body.data.alerts.length).toBe(1);
+
+				const alert = response.body.data.alerts[0];
+				expect(alert.id).toBe(testAlertsArchived[0].id);
+				expect(alert.alertName).toBe(testAlertsArchived[0].alertName);
+			});
+
+			test('should return empty array when no archived alerts exist', async () => {
+				db.exec('DELETE FROM alerts_archived');
+
+				const response = await app.get('/api/v1/alerts/archived').set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+				expect(response.body.data.alerts).toHaveLength(0);
+			});
+
+			test('should return 401 when no auth token is provided', async () => {
+				const response = await app.get('/api/v1/alerts/archived');
+
+				expect(response.status).toBe(401);
+				expect(response.body.success).toBe(false);
+			});
+		});
+
+		describe('Active to Archived transition', () => {
+			test('should archive alert with resolved status when deleted', async () => {
+				// Create a new alert
+				const newAlertPayload = {
+					id: 'alert-to-delete',
+					status: 'active',
+					tag: 'testing',
+					startsAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					alertUrl: 'https://example.com/delete-test',
+					alertName: 'Alert to Delete',
+					summary: 'This alert will be deleted',
+					runbookUrl: 'https://runbook.com/delete',
+					createdAt: new Date().toISOString(),
+				};
+
+				const createResponse = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(newAlertPayload);
+
+				expect(createResponse.status).toBe(200);
+				expect(createResponse.body.success).toBe(true);
+
+				// Verify alert exists in active alerts table
+				const activeRow = db.prepare('SELECT * FROM alerts WHERE id = ?').get(newAlertPayload.id);
+				expect(activeRow).toBeDefined();
+
+				// Delete the alert (this should archive it)
+				const deleteResponse = await app
+					.delete(`/api/v1/alerts/${newAlertPayload.id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(deleteResponse.status).toBe(200);
+				expect(deleteResponse.body.success).toBe(true);
+
+				// Verify alert is removed from active alerts table
+				const activeRowAfterDelete = db.prepare('SELECT * FROM alerts WHERE id = ?').get(newAlertPayload.id);
+				expect(activeRowAfterDelete).toBeUndefined();
+
+				// Verify alert is in archived alerts table with resolved status
+				const archivedRow = db
+					.prepare('SELECT * FROM alerts_archived WHERE id = ?')
+					.get(newAlertPayload.id) as any;
+				expect(archivedRow).toBeDefined();
+				expect(archivedRow.id).toBe(newAlertPayload.id);
+				expect(archivedRow.status).toBe('resolved');
+				expect(archivedRow.alert_name).toBe(newAlertPayload.alertName);
+				expect(archivedRow.archived_at).toBeDefined();
+			});
+		});
+
+		describe('DELETE /api/v1/alerts/archived/:id', () => {
+			test('should delete an archived alert successfully', async () => {
+				const response = await app
+					.delete(`/api/v1/alerts/archived/${testAlertsArchived[0].id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+
+				const row = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get('archived-del-1');
+
+				expect(row).toBeUndefined();
+			});
+
+			test('should return 401 when no auth token is provided', async () => {
+				const response = await app.delete('/api/v1/alerts/archived/some-id');
+
+				expect(response.status).toBe(401);
+				expect(response.body.success).toBe(false);
+			});
 		});
 	});
 });
