@@ -697,14 +697,16 @@ describe('Alerts API', () => {
 				expect(activeRowAfterDelete).toBeUndefined();
 
 				// Verify alert is in archived alerts table with resolved status
-				const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(newAlertPayload.id) as any;
+				const archivedRow = db
+					.prepare('SELECT * FROM alerts_archived WHERE id = ?')
+					.get(newAlertPayload.id) as any;
 				expect(archivedRow).toBeDefined();
 				expect(archivedRow.id).toBe(newAlertPayload.id);
 				expect(archivedRow.status).toBe('resolved');
 				expect(archivedRow.alert_name).toBe(newAlertPayload.alertName);
 				expect(archivedRow.archived_at).toBeDefined();
 			});
-		})
+		});
 
 		describe('DELETE /api/v1/alerts/archived/:id', () => {
 			test('should delete an archived alert successfully', async () => {
