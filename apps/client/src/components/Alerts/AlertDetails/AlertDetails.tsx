@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { Bell, Calendar, Clock, ExternalLink, RotateCcw, X } from 'lucide-react';
 
 interface AlertDetailsProps {
+	isActive: boolean;
 	alert: Alert | null;
 	onClose: () => void;
 	onDismiss?: (alertId: string) => void;
@@ -17,7 +18,7 @@ interface AlertDetailsProps {
 	className?: string;
 }
 
-export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className }: AlertDetailsProps) => {
+export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss, className }: AlertDetailsProps) => {
 	if (!alert) return null;
 
 	const getAlertType = (alert: Alert): string => {
@@ -160,29 +161,31 @@ export const AlertDetails = ({ alert, onClose, onDismiss, onUndismiss, className
 
 					<Separator />
 
-					<div className="space-y-2">
-						{alert.isDismissed ? (
-							<Button
-								variant="outline"
-								size="sm"
-								className="w-full justify-start gap-2"
-								onClick={() => onUndismiss?.(alert.id)}
-							>
-								<RotateCcw className="h-3 w-3" />
-								Undismiss Alert
-							</Button>
-						) : (
-							<Button
-								variant="outline"
-								size="sm"
-								className="w-full justify-start gap-2"
-								onClick={() => onDismiss?.(alert.id)}
-							>
-								<X className="h-3 w-3" />
-								Dismiss Alert
-							</Button>
-						)}
-					</div>
+					{isActive && (
+						<div className="space-y-2">
+							{alert.isDismissed ? (
+								<Button
+									variant="outline"
+									size="sm"
+									className="w-full justify-start gap-2"
+									onClick={() => onUndismiss?.(alert.id)}
+								>
+									<RotateCcw className="h-3 w-3" />
+									Undismiss Alert
+								</Button>
+							) : (
+								<Button
+									variant="outline"
+									size="sm"
+									className="w-full justify-start gap-2"
+									onClick={() => onDismiss?.(alert.id)}
+								>
+									<X className="h-3 w-3" />
+									Dismiss Alert
+								</Button>
+							)}
+						</div>
+					)}
 
 					<div className="pt-2">
 						<div className="text-xs font-medium text-muted-foreground mb-1">Alert ID</div>
