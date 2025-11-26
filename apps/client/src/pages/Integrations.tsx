@@ -479,9 +479,7 @@ const Integrations = () => {
 									key={integration.id}
 									className={cn(
 										'transition-all duration-200 overflow-hidden',
-										hoveredCard === integration.id && isEnabled
-											? 'border-primary shadow-md'
-											: '',
+										hoveredCard === integration.id && isEnabled ? 'border-primary shadow-md' : '',
 										isEnabled
 											? 'border-muted/60 hover:shadow-md'
 											: 'border-muted/20 bg-gray-100 dark:bg-gray-800/40'
@@ -502,9 +500,7 @@ const Integrations = () => {
 												<div
 													className={cn(
 														'h-10 w-10 rounded-md overflow-hidden border flex items-center justify-center',
-														isEnabled
-															? 'bg-background'
-															: 'bg-gray-200 dark:bg-gray-700'
+														isEnabled ? 'bg-background' : 'bg-gray-200 dark:bg-gray-700'
 													)}
 												>
 													<img

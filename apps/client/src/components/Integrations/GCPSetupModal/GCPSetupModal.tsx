@@ -75,7 +75,12 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 						</div>
 						<div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mt-2">
 							<p className="text-sm text-amber-900 dark:text-amber-100">
-								<strong>Important:</strong> Replace <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">{'{your_api_token}'}</code> with your actual API_TOKEN environment variable value from your OpsiMate server configuration.
+								<strong>Important:</strong> Replace{' '}
+								<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
+									{'{your_api_token}'}
+								</code>{' '}
+								with your actual API_TOKEN environment variable value from your OpsiMate server
+								configuration.
 							</p>
 						</div>
 					</div>
