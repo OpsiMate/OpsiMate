@@ -58,7 +58,7 @@ export class ArchivedAlertRepository {
 
 			const result = stmt.run(
 				alert.id,
-				alert.status,
+				AlertStatus.RESOLVED,
 				alert.tag,
 				alert.type,
 				alert.startsAt,
@@ -76,10 +76,9 @@ export class ArchivedAlertRepository {
 	}
 
 	private toSharedAlert = (row: ArchivedAlertRow): SharedAlert => {
-		const status = row.status === 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED;
 		return {
 			id: row.id,
-			status,
+			status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 			tag: row.tag,
 			type: row.type,
 			startsAt: row.starts_at,
