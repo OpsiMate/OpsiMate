@@ -13,7 +13,7 @@ export interface GcpIncident {
 	condition_name?: string;
 	state: 'open' | 'acknowledged' | 'closed';
 	started_at: string | number;
-	url?: string;
+	url: string;
 	summary?: string;
 	documentation?: {
 		content?: string;

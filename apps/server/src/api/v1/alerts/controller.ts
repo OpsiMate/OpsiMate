@@ -70,13 +70,13 @@ export class AlertController {
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
-					tag: incident.resource_name || 'unknown',
+					tag: incident.resource_name,
 					startsAt: this.normalizeGCPDate(incident.started_at),
 					updatedAt: new Date().toISOString(),
-					alertUrl: incident.url || 'unknown',
-					alertName: incident.policy_name || 'unknown',
-					summary: incident.summary || 'unknown',
-					runbookUrl: incident.documentation?.content || 'unknown',
+					alertUrl: incident.url,
+					alertName: incident.policy_name || 'UNKNOWN',
+					summary: incident.summary || 'No summary provided for this alert.',
+					runbookUrl: incident.documentation?.content,
 				});
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });

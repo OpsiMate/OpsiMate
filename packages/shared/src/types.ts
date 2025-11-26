@@ -125,7 +125,7 @@ export interface Alert {
 	id: string;
 	type: AlertType;
 	status: AlertStatus;
-	tag: string;
+	tag?: string;
 	startsAt: string;
 	updatedAt: string;
 	alertUrl: string;
