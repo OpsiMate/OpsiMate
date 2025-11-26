@@ -70,6 +70,7 @@ interface Integration {
 		options?: string[];
 		required: boolean;
 	}[];
+	enabled?: boolean; // For webhook-based integrations that are always enabled
 }
 
 const INTEGRATIONS: Integration[] = [
@@ -140,6 +141,7 @@ const INTEGRATIONS: Integration[] = [
 		tags: ['Monitoring', 'Alerts', 'Cloud'],
 		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
 		configFields: [],
+		enabled: true, // GCP integration is enabled by default
 	},
 	{
 		id: 'prometheus',
@@ -470,15 +472,17 @@ const Integrations = () => {
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{filteredIntegrations.map((integration) => {
 							const hasConfiguredInstances = configuredInstances[integration.id] > 0;
+							// Treat integration as enabled if it has the enabled property (like GCP) or has configured instances
+							const isEnabled = integration.enabled || hasConfiguredInstances;
 							return (
 								<Card
 									key={integration.id}
 									className={cn(
 										'transition-all duration-200 overflow-hidden',
-										hoveredCard === integration.id && hasConfiguredInstances
+										hoveredCard === integration.id && isEnabled
 											? 'border-primary shadow-md'
 											: '',
-										hasConfiguredInstances
+										isEnabled
 											? 'border-muted/60 hover:shadow-md'
 											: 'border-muted/20 bg-gray-100 dark:bg-gray-800/40'
 									)}
@@ -492,13 +496,13 @@ const Integrations = () => {
 									) : (
 										<div className="h-[16.8px]"></div>
 									)}
-									<CardHeader className={cn('pb-2', hasConfiguredInstances ? '' : 'opacity-75')}>
+									<CardHeader className={cn('pb-2', isEnabled ? '' : 'opacity-75')}>
 										<div className="flex items-center justify-between">
 											<div className="flex items-center gap-3">
 												<div
 													className={cn(
 														'h-10 w-10 rounded-md overflow-hidden border flex items-center justify-center',
-														hasConfiguredInstances
+														isEnabled
 															? 'bg-background'
 															: 'bg-gray-200 dark:bg-gray-700'
 													)}
@@ -508,7 +512,7 @@ const Integrations = () => {
 														alt={`${integration.name} logo`}
 														className={cn(
 															'h-8 w-8 object-contain',
-															hasConfiguredInstances ? '' : 'opacity-50 grayscale'
+															isEnabled ? '' : 'opacity-50 grayscale'
 														)}
 													/>
 												</div>
@@ -524,7 +528,7 @@ const Integrations = () => {
 											</Button>
 										</div>
 									</CardHeader>
-									<CardContent className={cn('pb-2', hasConfiguredInstances ? '' : 'opacity-75')}>
+									<CardContent className={cn('pb-2', isEnabled ? '' : 'opacity-75')}>
 										<CardDescription className="text-sm h-16 sm:h-14 md:h-12 lg:h-10 line-clamp-2 overflow-hidden">
 											{integration.description}
 										</CardDescription>
@@ -536,10 +540,10 @@ const Integrations = () => {
 														variant="outline"
 														className={cn(
 															'text-xs px-2 py-0.5 flex items-center',
-															hasConfiguredInstances
+															isEnabled
 																? TAG_COLORS[tag]?.bg || 'bg-gray-100 dark:bg-gray-800'
 																: 'bg-gray-200 dark:bg-gray-700',
-															hasConfiguredInstances
+															isEnabled
 																? TAG_COLORS[tag]?.text ||
 																		'text-gray-700 dark:text-gray-300'
 																: 'text-gray-500 dark:text-gray-400'
@@ -557,7 +561,7 @@ const Integrations = () => {
 											disabled={!integration.supported}
 											className={cn(
 												'w-full transition-all',
-												hoveredCard === integration.id && hasConfiguredInstances
+												hoveredCard === integration.id && isEnabled
 													? 'ring-2 ring-primary-foreground/20'
 													: '',
 												!integration.supported
@@ -602,16 +606,21 @@ const Integrations = () => {
 												setSelectedIntegration(integration);
 											}}
 											title={
-												hasConfiguredInstances
+												isEnabled
 													? `Configure ${integration.name} integration`
 													: `Add ${integration.name} integration`
 											}
 										>
 											<Settings className="mr-2 h-4 w-4" />
-											{hasConfiguredInstances ? 'Configure' : 'Add Integration'}
+											{isEnabled ? 'Configure' : 'Add Integration'}
 										</Button>
 									</CardFooter>
-									{hasConfiguredInstances ? (
+									{integration.enabled ? (
+										<div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+											<CheckCircle2 className="h-3 w-3" />
+											<span>Enabled</span>
+										</div>
+									) : hasConfiguredInstances ? (
 										<div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
 											<Server className="h-3 w-3" />
 											<span>

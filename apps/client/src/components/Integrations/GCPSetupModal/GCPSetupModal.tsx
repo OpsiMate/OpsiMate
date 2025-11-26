@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
@@ -11,14 +12,30 @@ export interface GCPSetupModalProps {
 
 export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 	const [copied, setCopied] = useState(false);
+	const { toast } = useToast();
 
-	// This should come from your backend configuration
-	const webhookUrl = `${window.location.origin}/api/webhooks/gcp`;
+	// Correct webhook URL with API token parameter
+	// User needs to replace {your_api_token} with their actual API_TOKEN environment variable value
+	const webhookUrl = `${window.location.protocol + '//' + window.location.hostname}:3001/api/v1/alerts/custom/gcp?api_token={your_api_token}`;
 
 	const handleCopyWebhook = async () => {
-		await navigator.clipboard.writeText(webhookUrl);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		try {
+			await navigator.clipboard.writeText(webhookUrl);
+			setCopied(true);
+			toast({
+				title: 'Copied!',
+				description: 'Webhook URL copied to clipboard',
+				duration: 2000,
+			});
+			setTimeout(() => setCopied(false), 2000);
+		} catch (error) {
+			toast({
+				title: 'Failed to copy',
+				description: 'Please copy the URL manually',
+				variant: 'destructive',
+				duration: 3000,
+			});
+		}
 	};
 
 	return (
@@ -55,6 +72,11 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 									</>
 								)}
 							</Button>
+						</div>
+						<div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mt-2">
+							<p className="text-sm text-amber-900 dark:text-amber-100">
+								<strong>Important:</strong> Replace <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">{'{your_api_token}'}</code> with your actual API_TOKEN environment variable value from your OpsiMate server configuration.
+							</p>
 						</div>
 					</div>
 
