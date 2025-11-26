@@ -656,6 +656,56 @@ describe('Alerts API', () => {
 			});
 		});
 
+		describe('Active to Archived transition', () => {
+			test('should archive alert with resolved status when deleted', async () => {
+				// Create a new alert
+				const newAlertPayload = {
+					id: 'alert-to-delete',
+					status: 'active',
+					tag: 'testing',
+					startsAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					alertUrl: 'https://example.com/delete-test',
+					alertName: 'Alert to Delete',
+					summary: 'This alert will be deleted',
+					runbookUrl: 'https://runbook.com/delete',
+					createdAt: new Date().toISOString(),
+				};
+
+				const createResponse = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(newAlertPayload);
+
+				expect(createResponse.status).toBe(200);
+				expect(createResponse.body.success).toBe(true);
+
+				// Verify alert exists in active alerts table
+				const activeRow = db.prepare('SELECT * FROM alerts WHERE id = ?').get(newAlertPayload.id);
+				expect(activeRow).toBeDefined();
+
+				// Delete the alert (this should archive it)
+				const deleteResponse = await app
+					.delete(`/api/v1/alerts/${newAlertPayload.id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(deleteResponse.status).toBe(200);
+				expect(deleteResponse.body.success).toBe(true);
+
+				// Verify alert is removed from active alerts table
+				const activeRowAfterDelete = db.prepare('SELECT * FROM alerts WHERE id = ?').get(newAlertPayload.id);
+				expect(activeRowAfterDelete).toBeUndefined();
+
+				// Verify alert is in archived alerts table with resolved status
+				const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(newAlertPayload.id) as any;
+				expect(archivedRow).toBeDefined();
+				expect(archivedRow.id).toBe(newAlertPayload.id);
+				expect(archivedRow.status).toBe('resolved');
+				expect(archivedRow.alert_name).toBe(newAlertPayload.alertName);
+				expect(archivedRow.archived_at).toBeDefined();
+			});
+		})
+
 		describe('DELETE /api/v1/alerts/archived/:id', () => {
 			test('should delete an archived alert successfully', async () => {
 				const response = await app
