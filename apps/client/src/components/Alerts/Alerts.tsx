@@ -195,6 +195,7 @@ const Alerts = () => {
 					{selectedAlert && (
 						<div className="w-96 border-l">
 							<AlertDetails
+								isActive={activeTab == 'active'}
 								alert={selectedAlert}
 								onClose={() => setSelectedAlert(null)}
 								onDismiss={handleDismissAlert}
