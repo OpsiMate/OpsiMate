@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import { GcpAlertWebhook, HttpAlertWebhookSchema } from './models';
+import { GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 
 const logger: Logger = new Logger('alerts.controller');
@@ -49,6 +49,56 @@ export class AlertController {
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
 			logger.error('Error undismissing alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createUptimeKumaAlert(req: Request, res: Response) {
+		try {
+			const payload = req.body as UptimeKumaWebhookPayload;
+
+			if (!payload?.heartbeat || !payload?.monitor) {
+				return res.status(400).json({ error: 'Invalid Uptime Kuma payload' });
+			}
+
+			const { heartbeat, monitor } = payload;
+			const monitorId = `UPKUMA_${String(monitor.id)}`;
+			const kumaStatus = heartbeat.status;
+
+			logger.info(`Received Uptime Kuma alert: ${JSON.stringify(payload)}`);
+
+			if (kumaStatus === 1) {
+				await this.alertBL.archiveAlert(monitorId);
+
+				return res.status(200).json({
+					success: true,
+					data: { alertId: monitorId, archived: true },
+				});
+			}
+
+			// Status 0 or 2 = DOWN/PENDING → active alert
+			const startsAt = new Date(heartbeat.time).toISOString();
+			const updatedAt = new Date().toISOString();
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: monitorId,
+				type: 'UptimeKuma',
+				status: AlertStatus.FIRING,
+				tag: monitor.name ?? 'UptimeKuma',
+				startsAt,
+				updatedAt,
+				alertUrl: '',
+				alertName: monitor.pathName || monitor.name || 'UNKNOWN',
+				summary: heartbeat.msg || payload.msg || 'No summary provided.',
+				runbookUrl: undefined,
+			});
+
+			return res.status(200).json({
+				success: true,
+				data: { alertId: monitorId, updated: true },
+			});
+		} catch (error) {
+			logger.error('Error while handling Uptime Kuma alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

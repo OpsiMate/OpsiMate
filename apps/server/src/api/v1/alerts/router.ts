@@ -21,6 +21,7 @@ export default function createAlertRouter(controller: AlertController) {
 
 	// Create custom alerts
 	router.post('/custom/gcp', controller.createCustomGCPAlert.bind(controller));
+	router.post('/custom/uptimekuma', controller.createUptimeKumaAlert.bind(controller));
 	router.post('/custom', controller.createCustomAlert.bind(controller));
 
 	return router;
