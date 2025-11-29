@@ -419,31 +419,31 @@ describe('Alerts API', () => {
 			monitorID: 4,
 			status: 0,
 			time: new Date().toISOString(),
-			msg: "connect ECONNREFUSED",
+			msg: 'connect ECONNREFUSED',
 			important: true,
 			retries: 1,
-			timezone: "Asia/Jerusalem",
-			timezoneOffset: "+02:00",
-			localDateTime: "2025-11-29 17:20:31",
+			timezone: 'Asia/Jerusalem',
+			timezoneOffset: '+02:00',
+			localDateTime: '2025-11-29 17:20:31',
 		};
 
 		const baseMonitor = {
 			id: 4,
-			name: "Test Monitor",
+			name: 'Test Monitor',
 			description: null,
-			path: ["Test Monitor"],
-			pathName: "Test Monitor",
+			path: ['Test Monitor'],
+			pathName: 'Test Monitor',
 			parent: null,
 			childrenIDs: [],
-			url: "http://localhost:9999/health",
-			method: "GET",
+			url: 'http://localhost:9999/health',
+			method: 'GET',
 			hostname: null,
 			port: null,
 			maxretries: 0,
 			weight: 2000,
 			active: true,
 			forceInactive: false,
-			type: "http",
+			type: 'http',
 			timeout: 30,
 			interval: 60,
 			retryInterval: 60,
@@ -455,19 +455,19 @@ describe('Alerts API', () => {
 			upsideDown: false,
 			packetSize: 56,
 			maxredirects: 10,
-			accepted_statuscodes: ["200-299"],
-			dns_resolve_type: "A",
-			dns_resolve_server: "1.1.1.1",
+			accepted_statuscodes: ['200-299'],
+			dns_resolve_type: 'A',
+			dns_resolve_server: '1.1.1.1',
 			dns_last_result: null,
-			docker_container: "",
+			docker_container: '',
 			docker_host: null,
 			proxyId: null,
-			notificationIDList: { "2": true },
+			notificationIDList: { '2': true },
 			tags: [],
 			maintenance: false,
-			mqttTopic: "",
-			mqttSuccessMessage: "",
-			mqttCheckType: "keyword",
+			mqttTopic: '',
+			mqttSuccessMessage: '',
+			mqttCheckType: 'keyword',
 			databaseQuery: null,
 			authMethod: null,
 			grpcUrl: null,
@@ -479,8 +479,8 @@ describe('Alerts API', () => {
 			radiusCallingStationId: null,
 			game: null,
 			gamedigGivenPortOnly: true,
-			httpBodyEncoding: "json",
-			jsonPath: "$",
+			httpBodyEncoding: 'json',
+			jsonPath: '$',
 			expectedValue: null,
 			kafkaProducerTopic: null,
 			kafkaProducerBrokers: [],
@@ -491,8 +491,8 @@ describe('Alerts API', () => {
 			cacheBust: false,
 			remote_browser: null,
 			snmpOid: null,
-			jsonPathOperator: "==",
-			snmpVersion: "2c",
+			jsonPathOperator: '==',
+			snmpVersion: '2c',
 			smtpSecurity: null,
 			rabbitmqNodes: [],
 			conditions: [],
@@ -510,7 +510,7 @@ describe('Alerts API', () => {
 			const payload = {
 				heartbeat: { ...baseHeartbeat, status: 0 },
 				monitor: baseMonitor,
-				msg: "[DOWN] ECONNREFUSED",
+				msg: '[DOWN] ECONNREFUSED',
 			};
 
 			const response = await app
@@ -520,12 +520,12 @@ describe('Alerts API', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data.alertId).toBe("UPTIMEKUMA_4");
+			expect(response.body.data.alertId).toBe('UPTIMEKUMA_4');
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get("UPTIMEKUMA_4");
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4');
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(baseMonitor.pathName);
-			expect(row.status).toBe("firing");
+			expect(row.status).toBe('firing');
 		});
 
 		// --------------------------------------------------------
@@ -533,14 +533,16 @@ describe('Alerts API', () => {
 		// --------------------------------------------------------
 		test('should archive alert on UP status', async () => {
 			// First create alert
-			db.prepare(`
+			db.prepare(
+				`
             INSERT INTO alerts (id, type, status, tag, starts_at, updated_at, alert_url, alert_name)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-				"UPTIMEKUMA_4",
-				"UptimeKuma",
-				"active",
-				"Test Monitor",
+        `
+			).run(
+				'UPTIMEKUMA_4',
+				'UptimeKuma',
+				'active',
+				'Test Monitor',
 				new Date().toISOString(),
 				new Date().toISOString(),
 				baseMonitor.url,
@@ -550,7 +552,7 @@ describe('Alerts API', () => {
 			const payload = {
 				heartbeat: { ...baseHeartbeat, status: 1 },
 				monitor: baseMonitor,
-				msg: "[UP] recovered",
+				msg: '[UP] recovered',
 			};
 
 			const response = await app
@@ -559,12 +561,12 @@ describe('Alerts API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body.data.alertId).toBe("UPTIMEKUMA_4");
+			expect(response.body.data.alertId).toBe('UPTIMEKUMA_4');
 
-			const archived = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get("UPTIMEKUMA_4");
+			const archived = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get('UPTIMEKUMA_4');
 			expect(archived).toBeDefined();
 
-			const active = db.prepare('SELECT * FROM alerts WHERE id = ?').get("UPTIMEKUMA_4");
+			const active = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4');
 			expect(active).toBeUndefined();
 		});
 
@@ -574,7 +576,7 @@ describe('Alerts API', () => {
 		test('should return 400 for invalid payload (missing heartbeat)', async () => {
 			const payload = {
 				monitor: baseMonitor,
-				msg: "no heartbeat",
+				msg: 'no heartbeat',
 			};
 
 			const response = await app
@@ -593,12 +595,10 @@ describe('Alerts API', () => {
 			const payload = {
 				heartbeat: baseHeartbeat,
 				monitor: baseMonitor,
-				msg: "unauthorized test"
+				msg: 'unauthorized test',
 			};
 
-			const response = await app
-				.post('/api/v1/alerts/custom/uptimekuma')
-				.send(payload);
+			const response = await app.post('/api/v1/alerts/custom/uptimekuma').send(payload);
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
