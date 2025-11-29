@@ -62,7 +62,7 @@ export class AlertController {
 			}
 
 			const { heartbeat, monitor } = payload;
-			const monitorId = `UPKUMA_${String(monitor.id)}`;
+			const monitorId = `UPTIMEKUMA_${String(monitor.id)}`;
 			const kumaStatus = heartbeat.status;
 
 			logger.info(`Received Uptime Kuma alert: ${JSON.stringify(payload)}`);

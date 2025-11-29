@@ -414,6 +414,197 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('POST /api/v1/alerts/custom/uptimekuma', () => {
+		const baseHeartbeat = {
+			monitorID: 4,
+			status: 0,
+			time: new Date().toISOString(),
+			msg: "connect ECONNREFUSED",
+			important: true,
+			retries: 1,
+			timezone: "Asia/Jerusalem",
+			timezoneOffset: "+02:00",
+			localDateTime: "2025-11-29 17:20:31",
+		};
+
+		const baseMonitor = {
+			id: 4,
+			name: "Test Monitor",
+			description: null,
+			path: ["Test Monitor"],
+			pathName: "Test Monitor",
+			parent: null,
+			childrenIDs: [],
+			url: "http://localhost:9999/health",
+			method: "GET",
+			hostname: null,
+			port: null,
+			maxretries: 0,
+			weight: 2000,
+			active: true,
+			forceInactive: false,
+			type: "http",
+			timeout: 30,
+			interval: 60,
+			retryInterval: 60,
+			resendInterval: 0,
+			keyword: null,
+			invertKeyword: false,
+			expiryNotification: false,
+			ignoreTls: false,
+			upsideDown: false,
+			packetSize: 56,
+			maxredirects: 10,
+			accepted_statuscodes: ["200-299"],
+			dns_resolve_type: "A",
+			dns_resolve_server: "1.1.1.1",
+			dns_last_result: null,
+			docker_container: "",
+			docker_host: null,
+			proxyId: null,
+			notificationIDList: { "2": true },
+			tags: [],
+			maintenance: false,
+			mqttTopic: "",
+			mqttSuccessMessage: "",
+			mqttCheckType: "keyword",
+			databaseQuery: null,
+			authMethod: null,
+			grpcUrl: null,
+			grpcProtobuf: null,
+			grpcMethod: null,
+			grpcServiceName: null,
+			grpcEnableTls: false,
+			radiusCalledStationId: null,
+			radiusCallingStationId: null,
+			game: null,
+			gamedigGivenPortOnly: true,
+			httpBodyEncoding: "json",
+			jsonPath: "$",
+			expectedValue: null,
+			kafkaProducerTopic: null,
+			kafkaProducerBrokers: [],
+			kafkaProducerSsl: false,
+			kafkaProducerAllowAutoTopicCreation: false,
+			kafkaProducerMessage: null,
+			screenshot: null,
+			cacheBust: false,
+			remote_browser: null,
+			snmpOid: null,
+			jsonPathOperator: "==",
+			snmpVersion: "2c",
+			smtpSecurity: null,
+			rabbitmqNodes: [],
+			conditions: [],
+			ipFamily: null,
+			ping_numeric: true,
+			ping_count: 3,
+			ping_per_request_timeout: 2,
+			includeSensitiveData: false,
+		};
+
+		// ---------------------------
+		// TEST 1: Should create alert
+		// ---------------------------
+		test('should create an alert on DOWN status', async () => {
+			const payload = {
+				heartbeat: { ...baseHeartbeat, status: 0 },
+				monitor: baseMonitor,
+				msg: "[DOWN] ECONNREFUSED",
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.alertId).toBe("UPTIMEKUMA_4");
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get("UPTIMEKUMA_4");
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(baseMonitor.pathName);
+			expect(row.status).toBe("firing");
+		});
+
+		// --------------------------------------------------------
+		// TEST 2: Should archive an existing alert on UP (status 1)
+		// --------------------------------------------------------
+		test('should archive alert on UP status', async () => {
+			// First create alert
+			db.prepare(`
+            INSERT INTO alerts (id, type, status, tag, starts_at, updated_at, alert_url, alert_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+				"UPTIMEKUMA_4",
+				"UptimeKuma",
+				"active",
+				"Test Monitor",
+				new Date().toISOString(),
+				new Date().toISOString(),
+				baseMonitor.url,
+				baseMonitor.name
+			);
+
+			const payload = {
+				heartbeat: { ...baseHeartbeat, status: 1 },
+				monitor: baseMonitor,
+				msg: "[UP] recovered",
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.alertId).toBe("UPTIMEKUMA_4");
+
+			const archived = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get("UPTIMEKUMA_4");
+			expect(archived).toBeDefined();
+
+			const active = db.prepare('SELECT * FROM alerts WHERE id = ?').get("UPTIMEKUMA_4");
+			expect(active).toBeUndefined();
+		});
+
+		// ----------------------------------
+		// TEST 3: Missing fields = 400 error
+		// ----------------------------------
+		test('should return 400 for invalid payload (missing heartbeat)', async () => {
+			const payload = {
+				monitor: baseMonitor,
+				msg: "no heartbeat",
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBeDefined();
+		});
+
+		// ----------------------------------------
+		// TEST 4: Unauthorized = 401 without token
+		// ----------------------------------------
+		test('should return 401 when no auth token is provided', async () => {
+			const payload = {
+				heartbeat: baseHeartbeat,
+				monitor: baseMonitor,
+				msg: "unauthorized test"
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.send(payload);
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
+	});
+
 	describe('POST /api/v1/alerts/custom/gcp', () => {
 		test('should create a new GCP alert successfully with valid payload', async () => {
 			const payload = {
