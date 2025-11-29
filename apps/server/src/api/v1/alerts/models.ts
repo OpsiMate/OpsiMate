@@ -89,7 +89,6 @@ export interface UptimeKumaMonitor {
 	docker_host: string | null;
 	proxyId: number | null;
 	notificationIDList: Record<string, boolean>;
-	tags: any[];
 	maintenance: boolean;
 	mqttTopic: string;
 	mqttSuccessMessage: string;
@@ -120,8 +119,6 @@ export interface UptimeKumaMonitor {
 	jsonPathOperator: string | null;
 	snmpVersion: string;
 	smtpSecurity: string | null;
-	rabbitmqNodes: any[];
-	conditions: any[];
 	ipFamily: number | null;
 	ping_numeric: boolean;
 	ping_count: number;
