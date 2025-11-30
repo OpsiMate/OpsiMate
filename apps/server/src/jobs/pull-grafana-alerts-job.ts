@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import { IntegrationType, Logger } from '@OpsiMate/shared';
-import { GrafanaClient } from '../dal/external-client/grafana-client';
+import { AlertStatus, IntegrationType, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../bl/alerts/alert.bl';
 import { IntegrationBL } from '../bl/integrations/integration.bl';
+import { GrafanaClient } from '../dal/external-client/grafana-client';
 
 const logger = new Logger('pull-grafana-alerts-job');
 
@@ -43,23 +43,24 @@ export class PullGrafanaAlertsJob {
 			const client = new GrafanaClient(grafana.externalUrl, token);
 			const grafanaAlerts = await client.getAlerts();
 			const activeAlertIds = new Set(grafanaAlerts.map((a) => a.fingerprint));
-			await this.alertBL.deleteAlertsNotInIds(activeAlertIds, 'Grafana');
+			await this.alertBL.archiveNonActiveAlerts(activeAlertIds, 'Grafana');
 
 			for (const alert of grafanaAlerts) {
 				try {
 					const tagName = alert.labels?.tag || '';
+
 					await this.alertBL.insertOrUpdateAlert({
 						id: alert.fingerprint,
 						type: 'Grafana',
-						status: alert.status?.state || '',
-						tag: tagName, // or another label key if appropriate
-						starts_at: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
-						updated_at: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '', // if available
-						alert_url: alert.generatorURL || '', // or the correct field for the alert URL
-						alert_name:
+						status: AlertStatus.FIRING,
+						tag: tagName,
+						startsAt: alert.startsAt ? new Date(alert.startsAt).toISOString() : '',
+						updatedAt: alert.updatedAt ? new Date(alert.updatedAt).toISOString() : '',
+						alertUrl: alert.generatorURL || '',
+						alertName:
 							alert.labels?.rulename || alert.labels?.alertname || alert.annotations?.summary || '',
 						summary: alert.annotations?.summary || '',
-						runbook_url: alert.annotations?.runbook_url || '',
+						runbookUrl: alert.annotations?.runbook_url || '',
 					});
 				} catch (e) {
 					logger.error(`Upsert failed for id=${alert.fingerprint}`, e);

@@ -8,6 +8,7 @@ import { ViewRepository } from './dal/viewRepository';
 import { TagRepository } from './dal/tagRepository';
 import { IntegrationRepository } from './dal/integrationRepository';
 import { AlertRepository } from './dal/alertRepository';
+import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
 import { ProviderBL } from './bl/providers/provider.bl';
 import { ViewBL } from './bl/custom-views/custom-view.bl';
 import { IntegrationBL } from './bl/integrations/integration.bl';
@@ -104,6 +105,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const customActionRepo = new CustomActionRepository(db);
+    const archivedAlertRepo = new ArchivedAlertRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -113,6 +115,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	await Promise.all([
 		viewRepo.initViewsTable(),
 		tagRepo.initTagsTables(),
+		integrationRepo.initIntegrationsTable(),
+		alertRepo.initAlertsTable(),
+		archivedAlertRepo.initArchivedAlertsTable(),
 		userRepo.initUsersTable(),
 		serviceCustomFieldRepo.initServiceCustomFieldTable(),
 		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
@@ -120,7 +125,11 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		customActionRepo.initCustomActionsTable(),
 	]);
 
-	// Additional BL (only for SERVER)
+	// BL
+	const auditBL = new AuditBL(auditLogRepo);
+	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
+	const alertBL = new AlertBL(alertRepo, archivedAlertRepo);
+	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);

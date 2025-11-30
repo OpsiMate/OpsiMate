@@ -1,4 +1,4 @@
-import { Alert, AlertType } from '@OpsiMate/shared';
+import { Alert, AlertType, AlertStatus } from '@OpsiMate/shared';
 
 export interface MockAlertsConfig {
 	count?: number;
@@ -13,7 +13,7 @@ export interface MockAlertsConfig {
 
 const ALERT_TYPES: AlertType[] = ['Grafana', 'GCP', 'Custom'];
 
-const STATUSES = ['firing', 'resolved', 'pending', 'suppressed', 'inhibited'];
+const STATUSES: AlertStatus[] = [AlertStatus.FIRING, AlertStatus.RESOLVED];
 
 const TAGS = [
 	'production',

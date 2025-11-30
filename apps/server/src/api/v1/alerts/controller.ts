@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Logger } from '@OpsiMate/shared';
+import { AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { GcpAlertWebhook, HttpAlertWebhookSchema } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
@@ -64,19 +64,19 @@ export class AlertController {
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
 			if (incident.state.toLowerCase() === 'closed') {
-				await this.alertBL.deleteAlert(incident.incident_id);
+				await this.alertBL.archiveAlert(incident.incident_id);
 			} else {
 				await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
 					type: 'GCP',
-					status: incident.state,
-					tag: incident.resource_name || 'unknown',
-					starts_at: this.normalizeGCPDate(incident.started_at),
-					updated_at: new Date().toISOString(),
-					alert_url: incident.url || 'unknown',
-					alert_name: incident.policy_name || 'unknown',
-					summary: incident.summary || 'unknown',
-					runbook_url: incident.documentation?.content || 'unknown',
+					status: AlertStatus.FIRING,
+					tag: incident.resource_name,
+					startsAt: this.normalizeGCPDate(incident.started_at),
+					updatedAt: new Date().toISOString(),
+					alertUrl: incident.url,
+					alertName: incident.policy_name || 'UNKNOWN',
+					summary: incident.summary || 'No summary provided for this alert.',
+					runbookUrl: incident.documentation?.content,
 				});
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
@@ -93,14 +93,14 @@ export class AlertController {
 			await this.alertBL.insertOrUpdateAlert({
 				id: alert.id,
 				type: 'Custom',
-				status: alert.status,
+				status: AlertStatus.FIRING,
 				tag: alert.tag,
-				starts_at: alert.startsAt,
-				updated_at: alert.updatedAt,
-				alert_url: alert.alertUrl,
-				alert_name: alert.alertName,
+				startsAt: alert.startsAt,
+				updatedAt: alert.updatedAt,
+				alertUrl: alert.alertUrl,
+				alertName: alert.alertName,
 				summary: alert.summary,
-				runbook_url: alert.runbookUrl,
+				runbookUrl: alert.runbookUrl,
 			});
 			return res.status(200).json({ success: true, data: { alertId: alert.id } });
 		} catch (error) {
@@ -119,10 +119,34 @@ export class AlertController {
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteAlert(alertId);
+			await this.alertBL.archiveAlert(alertId);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getArchivedAlerts(req: Request, res: Response) {
+		try {
+			const alerts = await this.alertBL.getAllArchivedAlerts();
+			return res.json({ success: true, data: { alerts } });
+		} catch (error) {
+			logger.error('Error getting archived alerts:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async deleteArchivedAlert(req: Request, res: Response) {
+		try {
+			const alertId = req.params.alertId;
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			await this.alertBL.deleteArchivedAlert(alertId);
+			return res.json({ success: true, message: 'Archived alert deleted permanently' });
+		} catch (error) {
+			logger.error('Error deleting archived alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
