@@ -1,2 +1,1 @@
-export { GCPSetupModal } from './GCPSetupModal';
-export type { GCPSetupModalProps } from './GCPSetupModal';
+export * from './GCPSetupModal';

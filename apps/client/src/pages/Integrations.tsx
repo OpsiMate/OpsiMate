@@ -1,5 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
+import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
+import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -52,6 +54,7 @@ enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
 	Datadog = 'Datadog',
+	UptimeKuma = 'UptimeKuma',
 }
 
 interface Integration {
@@ -59,7 +62,7 @@ interface Integration {
 	supported: boolean;
 	name: string;
 	description: string;
-	logo: string;
+	logo: string | React.ComponentType<{ className?: string }>;
 	tags: string[];
 	documentationUrl?: string;
 	configFields: {
@@ -139,6 +142,16 @@ const INTEGRATIONS: Integration[] = [
 		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
 		tags: ['Monitoring', 'Alerts', 'Cloud'],
 		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
+		configFields: [],
+	},
+	{
+		id: 'uptimekuma',
+		supported: true,
+		name: 'Uptime Kuma',
+		description: 'Receive alerts from Uptime Kuma monitoring via webhook.',
+		logo: UptimeKumaIcon,
+		tags: ['Monitoring', 'Alerts', 'Uptime'],
+		documentationUrl: 'https://github.com/louislam/uptime-kuma/wiki/Notifications',
 		configFields: [],
 	},
 	{
@@ -327,6 +340,7 @@ const Integrations = () => {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SharedIntegration | null>(null);
 	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
+	const [showUptimeKumaSetupModal, setShowUptimeKumaSetupModal] = useState(false);
 	const { toast } = useToast();
 
 	// Handle URL-based category filtering
@@ -503,14 +517,23 @@ const Integrations = () => {
 															: 'bg-gray-200 dark:bg-gray-700'
 													)}
 												>
-													<img
-														src={integration.logo}
-														alt={`${integration.name} logo`}
-														className={cn(
-															'h-8 w-8 object-contain',
-															hasConfiguredInstances ? '' : 'opacity-50 grayscale'
-														)}
-													/>
+													{typeof integration.logo === 'string' ? (
+														<img
+															src={integration.logo}
+															alt={`${integration.name} logo`}
+															className={cn(
+																'h-8 w-8 object-contain',
+																hasConfiguredInstances ? '' : 'opacity-50 grayscale'
+															)}
+														/>
+													) : (
+														<integration.logo
+															className={cn(
+																'h-8 w-8',
+																hasConfiguredInstances ? '' : 'opacity-50 grayscale'
+															)}
+														/>
+													)}
 												</div>
 												<CardTitle className="text-base">{integration.name}</CardTitle>
 											</div>
@@ -568,6 +591,12 @@ const Integrations = () => {
 												// Special handling for GCP - show webhook setup modal
 												if (integration.id === 'gcp') {
 													setShowGCPSetupModal(true);
+													return;
+												}
+
+												// Special handling for Uptime Kuma - show webhook setup modal
+												if (integration.id === 'uptimekuma') {
+													setShowUptimeKumaSetupModal(true);
 													return;
 												}
 
@@ -654,11 +683,15 @@ const Integrations = () => {
 								<SheetHeader className="pb-6">
 									<div className="flex items-center gap-4">
 										<div className="h-16 w-16 overflow-hidden flex items-center justify-center bg-muted rounded-lg p-2 border">
-											<img
-												src={selectedIntegration.logo}
-												alt={`${selectedIntegration.name} logo`}
-												className="max-h-12 max-w-12 object-contain"
-											/>
+											{typeof selectedIntegration.logo === 'string' ? (
+												<img
+													src={selectedIntegration.logo}
+													alt={`${selectedIntegration.name} logo`}
+													className="max-h-12 max-w-12 object-contain"
+												/>
+											) : (
+												<selectedIntegration.logo className="max-h-12 max-w-12" />
+											)}
 										</div>
 										<div>
 											<SheetTitle>
@@ -1110,6 +1143,7 @@ const Integrations = () => {
 			</AlertDialog>
 
 			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
+			<UptimeKumaSetupModal open={showUptimeKumaSetupModal} onOpenChange={setShowUptimeKumaSetupModal} />
 		</>
 	);
 };
