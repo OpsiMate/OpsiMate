@@ -6,10 +6,12 @@ import { queryKeys } from '../queryKeys';
 const shouldUseMockAlerts = (): boolean => {
 	if (typeof window !== 'undefined') {
 		const urlParams = new URLSearchParams(window.location.search);
-		if (urlParams.get('useMockAlerts') === 'true') {
+		const urlParam = urlParams.get('useMockAlerts');
+
+		if (urlParam === 'true') {
 			return true;
 		}
-		if (urlParams.get('useMockAlerts') === 'false') {
+		if (urlParam === 'false') {
 			return false;
 		}
 	}

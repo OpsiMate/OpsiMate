@@ -6,9 +6,10 @@ export const generateDiverseMockAlerts = (count: number = 5000): ReturnType<type
 		seed: 12345,
 		distribution: {
 			alertTypes: {
-				Grafana: 0.5,
-				GCP: 0.3,
-				Custom: 0.2,
+				Grafana: 0.4,
+				GCP: 0.25,
+				UptimeKuma: 0.2,
+				Custom: 0.15,
 			},
 			statuses: {
 				firing: 0.6,
@@ -41,9 +42,10 @@ export const generateProductionHeavyMockAlerts = (count: number = 5000): ReturnT
 		seed: 54321,
 		distribution: {
 			alertTypes: {
-				Grafana: 0.6,
-				GCP: 0.25,
-				Custom: 0.15,
+				Grafana: 0.5,
+				GCP: 0.2,
+				UptimeKuma: 0.2,
+				Custom: 0.1,
 			},
 			statuses: {
 				firing: 0.7,
@@ -71,9 +73,10 @@ export const generateBalancedMockAlerts = (count: number = 5000): ReturnType<typ
 		seed: 99999,
 		distribution: {
 			alertTypes: {
-				Grafana: 0.33,
-				GCP: 0.33,
-				Custom: 0.34,
+				Grafana: 0.25,
+				GCP: 0.25,
+				UptimeKuma: 0.25,
+				Custom: 0.25,
 			},
 			statuses: {
 				firing: 0.4,

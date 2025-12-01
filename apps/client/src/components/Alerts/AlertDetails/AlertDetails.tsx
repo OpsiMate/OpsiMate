@@ -1,5 +1,6 @@
 import { GCPIcon } from '@/components/icons/GCPIcon';
 import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
+import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,6 +26,7 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 		if (alert.type) return alert.type;
 		if (alert.id.toLowerCase().includes('grafana')) return 'Grafana';
 		if (alert.id.toLowerCase().includes('gcp')) return 'GCP';
+		if (alert.id.toLowerCase().includes('uptimekuma') || alert.id.toLowerCase().includes('uptime-kuma')) return 'UptimeKuma';
 		if (alert.tag?.toLowerCase().includes('prometheus')) return 'Prometheus';
 		if (alert.tag?.toLowerCase().includes('datadog')) return 'Datadog';
 		return 'Custom';
@@ -36,6 +38,8 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 				return <GrafanaIcon className="w-6 h-6" />;
 			case 'gcp':
 				return <GCPIcon className="w-6 h-6" />;
+			case 'uptimekuma':
+				return <UptimeKumaIcon className="w-6 h-6" />;
 			default:
 				return (
 					<div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center border border-border">

@@ -8,6 +8,8 @@ export const getIntegrationIcon = (alert: Alert): string => {
 			return '🟠';
 		case 'gcp':
 			return '🔵';
+		case 'uptimekuma':
+			return '🟢';
 		default:
 			return '🔔';
 	}

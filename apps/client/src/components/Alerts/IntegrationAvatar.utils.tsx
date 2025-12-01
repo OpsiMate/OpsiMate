@@ -1,5 +1,6 @@
 import { GCPIcon } from '@/components/icons/GCPIcon';
 import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
+import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell } from 'lucide-react';
@@ -20,6 +21,13 @@ export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDef
 		textClass: 'text-sky-600',
 		render: (iconSizeClass) => <GCPIcon className={cn(iconSizeClass)} />,
 	},
+	uptimekuma: {
+		label: 'Uptime Kuma',
+		bgClass: 'bg-white',
+		borderClass: 'border-green-200',
+		textClass: 'text-green-600',
+		render: (iconSizeClass) => <UptimeKumaIcon className={cn(iconSizeClass)} />,
+	},
 	custom: {
 		label: 'Custom',
 		bgClass: 'bg-slate-50',
@@ -34,6 +42,7 @@ const normalizeIntegration = (value?: string | null): AlertIntegrationKind | und
 	const normalized = value.toLowerCase();
 	if (normalized.includes('grafana')) return 'grafana';
 	if (normalized.includes('gcp') || normalized.includes('google')) return 'gcp';
+	if (normalized.includes('uptimekuma') || normalized.includes('uptime-kuma')) return 'uptimekuma';
 	if (normalized.includes('custom')) return 'custom';
 	return undefined;
 };

@@ -1,4 +1,4 @@
-import { Alert, AlertType, AlertStatus } from '@OpsiMate/shared';
+import { Alert, AlertStatus, AlertType } from '@OpsiMate/shared';
 
 export interface MockAlertsConfig {
 	count?: number;
@@ -11,7 +11,7 @@ export interface MockAlertsConfig {
 	};
 }
 
-const ALERT_TYPES: AlertType[] = ['Grafana', 'GCP', 'Custom'];
+const ALERT_TYPES: AlertType[] = ['Grafana', 'GCP', 'Custom', 'UptimeKuma'];
 
 const STATUSES: AlertStatus[] = [AlertStatus.FIRING, AlertStatus.RESOLVED];
 
@@ -76,6 +76,37 @@ const ALERT_NAMES = [
 	'Grafana Dashboard Unavailable',
 	'CloudWatch Metric Missing',
 	'GCP Pub/Sub Subscription Error',
+	'GCP Cloud Function Timeout',
+	'GCP Cloud Run Instance Crash',
+	'GCP BigQuery Query Failed',
+	'GCP Compute Engine Instance Down',
+	'GCP GKE Node Pool Scaling Issue',
+	'GCP Cloud Storage Bucket Quota Exceeded',
+	'GCP Cloud SQL Connection Pool Exhausted',
+	'GCP App Engine Instance Error',
+	'GCP Cloud Load Balancer Backend Unhealthy',
+	'GCP Cloud Monitoring Alert Policy Triggered',
+	'GCP IAM Policy Violation',
+	'GCP VPC Network Firewall Rule Blocking',
+	'GCP Cloud Scheduler Job Failed',
+	'GCP Cloud Tasks Queue Backlog',
+	'GCP Cloud Build Pipeline Failure',
+	'GCP Cloud Logging Export Error',
+	'GCP Cloud Trace Sampling Rate High',
+	'GCP Cloud Profiler CPU Spike',
+	'Uptime Kuma Monitor Down',
+	'Uptime Kuma HTTP Check Failed',
+	'Uptime Kuma SSL Certificate Expiring',
+	'Uptime Kuma DNS Resolution Failed',
+	'Uptime Kuma Port Check Failed',
+	'Uptime Kuma Ping Check Failed',
+	'Uptime Kuma Keyword Check Failed',
+	'Uptime Kuma Response Time High',
+	'Uptime Kuma Status Page Unavailable',
+	'Uptime Kuma Heartbeat Missed',
+	'Uptime Kuma Monitor Recovery',
+	'Uptime Kuma Maintenance Mode Active',
+	'Uptime Kuma Notification Failed',
 	'Azure Service Bus Dead Letter',
 	'CDN Cache Hit Rate Low',
 	'SSL Certificate Expiring Soon',
@@ -98,9 +129,10 @@ const ALERT_NAMES = [
 
 const DEFAULT_DISTRIBUTION = {
 	alertTypes: {
-		Grafana: 0.5,
-		GCP: 0.3,
-		Custom: 0.2,
+		Grafana: 0.4,
+		GCP: 0.25,
+		UptimeKuma: 0.2,
+		Custom: 0.15,
 	},
 	statuses: {
 		firing: 0.6,
@@ -209,10 +241,53 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 			? 'https://grafana.example.com'
 			: type === 'GCP'
 				? 'https://console.cloud.google.com'
-				: 'https://opsimate.example.com';
+				: type === 'UptimeKuma'
+					? 'https://uptime-kuma.example.com'
+					: 'https://opsimate.example.com';
+
+	const alertId =
+		type === 'GCP'
+			? `gcp-alert-${index}-${rng.nextInt(10000)}`
+			: type === 'Grafana'
+				? `grafana-alert-${index}-${rng.nextInt(10000)}`
+				: type === 'UptimeKuma'
+					? `uptimekuma-alert-${index}-${rng.nextInt(10000)}`
+					: `mock-alert-${index}-${rng.nextInt(10000)}`;
+
+	const gcpSummaryOptions = [
+		'GCP Cloud Monitoring detected an anomaly in resource utilization.',
+		'Google Cloud Platform alert triggered due to threshold breach.',
+		'GCP service experiencing degraded performance.',
+		'Cloud resource quota approaching limits.',
+		'GCP infrastructure component requires attention.',
+	];
+
+	const uptimeKumaSummaryOptions = [
+		'Uptime Kuma monitor detected service downtime.',
+		'Uptime Kuma health check failed for monitored endpoint.',
+		'Uptime Kuma SSL certificate expiration warning.',
+		'Uptime Kuma response time exceeded threshold.',
+		'Uptime Kuma monitor status changed.',
+		'Uptime Kuma heartbeat check missed.',
+		'Uptime Kuma keyword check failed.',
+		'Uptime Kuma port check timeout.',
+	];
+
+	const summaryOptions =
+		type === 'GCP'
+			? gcpSummaryOptions
+			: type === 'UptimeKuma'
+				? uptimeKumaSummaryOptions
+				: [
+						'This requires immediate attention.',
+						'Investigation in progress.',
+						'Root cause analysis needed.',
+						'Automated remediation attempted.',
+						'Manual intervention required.',
+					];
 
 	return {
-		id: `mock-alert-${index}-${rng.nextInt(10000)}`,
+		id: alertId,
 		type,
 		status,
 		tag,
@@ -220,15 +295,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		updatedAt: updatedAt.toISOString(),
 		alertUrl: `${baseUrl}/alert/${index}`,
 		alertName,
-		summary: hasSummary
-			? `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice([
-					'This requires immediate attention.',
-					'Investigation in progress.',
-					'Root cause analysis needed.',
-					'Automated remediation attempted.',
-					'Manual intervention required.',
-				])}`
-			: undefined,
+		summary: hasSummary ? `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}` : undefined,
 		runbookUrl: hasRunbook ? `https://runbook.example.com/alert-${index}` : undefined,
 		createdAt: startsAt.toISOString(),
 		isDismissed,
@@ -265,4 +332,52 @@ export const generateMockAlerts = (config: MockAlertsConfig | number = {}): Aler
 export const clearMockAlertsCache = (): void => {
 	cachedMockAlerts = null;
 	cachedConfig = null;
+};
+
+export const generateGCPMockAlerts = (count: number = 10): Alert[] => {
+	return generateMockAlerts({
+		count,
+		distribution: {
+			alertTypes: {
+				GCP: 1,
+				Grafana: 0,
+				Custom: 0,
+				UptimeKuma: 0,
+			},
+			statuses: {
+				firing: 0.7,
+				resolved: 0.3,
+			},
+			tags: {
+				gcp: 0.4,
+				production: 0.3,
+				cloud: 0.2,
+				monitoring: 0.1,
+			},
+		},
+	});
+};
+
+export const generateUptimeKumaMockAlerts = (count: number = 10): Alert[] => {
+	return generateMockAlerts({
+		count,
+		distribution: {
+			alertTypes: {
+				UptimeKuma: 1,
+				Grafana: 0,
+				GCP: 0,
+				Custom: 0,
+			},
+			statuses: {
+				firing: 0.7,
+				resolved: 0.3,
+			},
+			tags: {
+				uptimekuma: 0.4,
+				monitoring: 0.3,
+				production: 0.2,
+				infrastructure: 0.1,
+			},
+		},
+	});
 };
