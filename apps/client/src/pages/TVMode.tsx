@@ -544,14 +544,14 @@ const TVMode = ({
 		switch (status.toLowerCase()) {
 			case 'running':
 				return <CheckCircle className="h-6 w-6 text-green-500" />;
-		case 'stopped':
-			return <XCircle className="h-6 w-6 text-foreground" />;
-		case 'error':
-			return <AlertTriangle className="h-6 w-6 text-red-500" />;
-		case 'unknown':
-			return <HelpCircle className="h-6 w-6 text-yellow-500" />;
-		default:
-			return <HelpCircle className="h-6 w-6 text-foreground" />;
+			case 'stopped':
+				return <XCircle className="h-6 w-6 text-foreground" />;
+			case 'error':
+				return <AlertTriangle className="h-6 w-6 text-red-500" />;
+			case 'unknown':
+				return <HelpCircle className="h-6 w-6 text-yellow-500" />;
+			default:
+				return <HelpCircle className="h-6 w-6 text-foreground" />;
 		}
 	};
 
@@ -1133,8 +1133,7 @@ const TVMode = ({
 													isExtraCompact ? 'text-xs px-1 py-0 h-5' : 'text-xs',
 													service.serviceStatus === 'running' &&
 														'border-green-500 text-green-700',
-													service.serviceStatus === 'stopped' &&
-														'border-gray-500 text-white',
+													service.serviceStatus === 'stopped' && 'border-gray-500 text-white',
 													service.serviceStatus === 'error' && 'border-red-500 text-red-700',
 													service.serviceStatus === 'unknown' &&
 														'border-yellow-500 text-yellow-700'

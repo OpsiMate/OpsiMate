@@ -29,64 +29,60 @@ export const TableSettingsModal = ({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
-			<DialogHeader>
-				<DialogTitle className="text-foreground">Table Settings</DialogTitle>
-			</DialogHeader>
+				<DialogHeader>
+					<DialogTitle className="text-foreground">Table Settings</DialogTitle>
+				</DialogHeader>
 
-			<div className="space-y-4">
-				<p className="text-sm text-foreground">
-					Select which columns to display in the services table.
-				</p>
+				<div className="space-y-4">
+					<p className="text-sm text-foreground">Select which columns to display in the services table.</p>
 
-				<div className="space-y-3">
-					{/* Native Columns */}
-					{Object.entries(columnLabels).map(([key, label]) => (
-						<div key={key} className="flex items-center space-x-2">
-							<Checkbox
-								id={key}
-								checked={visibleColumns[key]}
-								onCheckedChange={() => onColumnToggle(key)}
-							/>
-							<label
-								htmlFor={key}
-								className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-							>
-								{label}
-							</label>
-						</div>
-					))}
-
-					{/* Custom Fields */}
-					{customFields.length > 0 && (
-						<>
-							<div className="border-t pt-3 mt-3">
-								<h4 className="text-sm font-semibold text-foreground mb-2">Custom Fields</h4>
+					<div className="space-y-3">
+						{/* Native Columns */}
+						{Object.entries(columnLabels).map(([key, label]) => (
+							<div key={key} className="flex items-center space-x-2">
+								<Checkbox
+									id={key}
+									checked={visibleColumns[key]}
+									onCheckedChange={() => onColumnToggle(key)}
+								/>
+								<label
+									htmlFor={key}
+									className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+								>
+									{label}
+								</label>
 							</div>
-							{customFields.map((field) => (
-								<div key={`custom-${field.id}`} className="flex items-center space-x-2">
-									<Checkbox
-										id={`custom-${field.id}`}
-										checked={visibleColumns[`custom-${field.id}`] || false}
-										onCheckedChange={() => onColumnToggle(`custom-${field.id}`)}
-									/>
-									<label
-										htmlFor={`custom-${field.id}`}
-										className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-									>
-										{field.name}
-									</label>
-								</div>
-							))}
-						</>
-					)}
-				</div>
+						))}
 
-				<div className="flex justify-end gap-2 pt-4">
-					<Button onClick={() => onOpenChange(false)}>
-						Close
-					</Button>
+						{/* Custom Fields */}
+						{customFields.length > 0 && (
+							<>
+								<div className="border-t pt-3 mt-3">
+									<h4 className="text-sm font-semibold text-foreground mb-2">Custom Fields</h4>
+								</div>
+								{customFields.map((field) => (
+									<div key={`custom-${field.id}`} className="flex items-center space-x-2">
+										<Checkbox
+											id={`custom-${field.id}`}
+											checked={visibleColumns[`custom-${field.id}`] || false}
+											onCheckedChange={() => onColumnToggle(`custom-${field.id}`)}
+										/>
+										<label
+											htmlFor={`custom-${field.id}`}
+											className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+										>
+											{field.name}
+										</label>
+									</div>
+								))}
+							</>
+						)}
+					</div>
+
+					<div className="flex justify-end gap-2 pt-4">
+						<Button onClick={() => onOpenChange(false)}>Close</Button>
+					</div>
 				</div>
-			</div>
 			</DialogContent>
 		</Dialog>
 	);

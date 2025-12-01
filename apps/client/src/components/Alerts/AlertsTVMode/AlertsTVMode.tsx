@@ -179,12 +179,7 @@ const AlertsTVMode = () => {
 						</Button>
 					</div>
 
-					<Button
-						size="sm"
-						onClick={handleManualRefresh}
-						disabled={isRefreshing}
-						className="gap-2"
-					>
+					<Button size="sm" onClick={handleManualRefresh} disabled={isRefreshing} className="gap-2">
 						<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
 						Refresh
 					</Button>
@@ -240,10 +235,12 @@ const AlertsTVMode = () => {
 			<div className="fixed bottom-4 right-4 text-xs text-foreground bg-background/80 backdrop-blur-sm rounded-lg p-2 border">
 				<div className="flex items-center gap-4">
 					<span>
-						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">ESC</kbd> Exit
+						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">ESC</kbd>{' '}
+						Exit
 					</span>
 					<span>
-						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">R</kbd> Refresh
+						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">R</kbd>{' '}
+						Refresh
 					</span>
 				</div>
 			</div>

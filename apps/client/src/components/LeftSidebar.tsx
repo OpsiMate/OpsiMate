@@ -162,13 +162,13 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											/>
 										</div>
 									</TooltipTrigger>
-								<TooltipContent
-									side="top"
-									align="center"
-									className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
-								>
-									Join our Slack community
-								</TooltipContent>
+									<TooltipContent
+										side="top"
+										align="center"
+										className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
+									>
+										Join our Slack community
+									</TooltipContent>
 								</Tooltip>
 
 								<Tooltip>
@@ -186,19 +186,17 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											/>
 										</div>
 									</TooltipTrigger>
-								<TooltipContent
-									side="top"
-									align="center"
-									className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
-								>
-									Star us on GitHub ⭐
-								</TooltipContent>
+									<TooltipContent
+										side="top"
+										align="center"
+										className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
+									>
+										Star us on GitHub ⭐
+									</TooltipContent>
 								</Tooltip>
 							</div>
 
-							<p className={cn('text-xs text-foreground', collapsed && 'sr-only')}>
-								© 2024 OpsiMate
-							</p>
+							<p className={cn('text-xs text-foreground', collapsed && 'sr-only')}>© 2024 OpsiMate</p>
 						</div>
 					</TooltipProvider>
 				</div>

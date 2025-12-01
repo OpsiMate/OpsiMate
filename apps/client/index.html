@@ -8,9 +8,11 @@
 		<link rel="icon" type="image/png" href="/images/logo.png" sizes="512x512" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<script>
-			(function() {
+			(function () {
 				const theme = localStorage.getItem('theme') || 'system';
-				const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				const isDark =
+					theme === 'dark' ||
+					(theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 				if (isDark) {
 					document.documentElement.classList.add('dark');
 				} else {

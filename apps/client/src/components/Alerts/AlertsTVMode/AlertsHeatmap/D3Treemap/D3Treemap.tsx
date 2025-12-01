@@ -425,7 +425,9 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 						onClick={(e) => e.stopPropagation()}
 					>
 						<div className="flex items-center justify-between p-4 border-b">
-							<h3 className="text-lg font-semibold text-foreground">Additional Alerts ({overflowAlerts.length})</h3>
+							<h3 className="text-lg font-semibold text-foreground">
+								Additional Alerts ({overflowAlerts.length})
+							</h3>
 							<button
 								onClick={() => setOverflowAlerts(null)}
 								className="text-foreground hover:text-foreground/80 transition-colors"

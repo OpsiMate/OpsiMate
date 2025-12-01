@@ -28,37 +28,35 @@ export const ColumnSettingsModal = ({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
-			<DialogHeader>
-				<DialogTitle className="text-foreground">{title}</DialogTitle>
-			</DialogHeader>
+				<DialogHeader>
+					<DialogTitle className="text-foreground">{title}</DialogTitle>
+				</DialogHeader>
 
-			<div className="space-y-4">
-				<p className="text-sm text-foreground">{description}</p>
+				<div className="space-y-4">
+					<p className="text-sm text-foreground">{description}</p>
 
-				<div className="space-y-3">
-					{availableColumns.map(([key, label]) => (
-						<div key={key} className="flex items-center space-x-2">
-							<Checkbox
-								id={key}
-								checked={visibleColumns.includes(key)}
-								onCheckedChange={() => onColumnToggle(key)}
-							/>
-							<label
-								htmlFor={key}
-								className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-							>
-								{label}
-							</label>
-						</div>
-					))}
+					<div className="space-y-3">
+						{availableColumns.map(([key, label]) => (
+							<div key={key} className="flex items-center space-x-2">
+								<Checkbox
+									id={key}
+									checked={visibleColumns.includes(key)}
+									onCheckedChange={() => onColumnToggle(key)}
+								/>
+								<label
+									htmlFor={key}
+									className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+								>
+									{label}
+								</label>
+							</div>
+						))}
+					</div>
+
+					<div className="flex justify-end gap-2 pt-4">
+						<Button onClick={() => onOpenChange(false)}>Close</Button>
+					</div>
 				</div>
-
-				<div className="flex justify-end gap-2 pt-4">
-					<Button onClick={() => onOpenChange(false)}>
-						Close
-					</Button>
-				</div>
-			</div>
 			</DialogContent>
 		</Dialog>
 	);

@@ -51,9 +51,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 										{alert.tag}
 									</Badge>
 									{serviceName !== '-' && (
-										<span className="text-[10px] text-foreground truncate">
-											{serviceName}
-										</span>
+										<span className="text-[10px] text-foreground truncate">{serviceName}</span>
 									)}
 								</div>
 							)}
