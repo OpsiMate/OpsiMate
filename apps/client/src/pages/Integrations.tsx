@@ -1,7 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
-import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import {
 	AlertDialog,
 	AlertDialogAction,

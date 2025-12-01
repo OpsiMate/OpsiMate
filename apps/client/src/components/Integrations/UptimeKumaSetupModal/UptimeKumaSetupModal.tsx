@@ -104,10 +104,7 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 						<Button
 							variant="outline"
 							onClick={() =>
-								window.open(
-									'https://github.com/louislam/uptime-kuma/wiki/Notifications',
-									'_blank'
-								)
+								window.open('https://github.com/louislam/uptime-kuma/wiki/Notifications', '_blank')
 							}
 							className="gap-2"
 						>

@@ -3,7 +3,15 @@ import { SVGProps } from 'react';
 export const UptimeKumaIcon = (props: SVGProps<SVGSVGElement>) => (
 	<svg xmlns="http://www.w3.org/2000/svg" xmlSpace="preserve" viewBox="0 0 622 622" {...props}>
 		<defs>
-			<linearGradient id="uptimekuma-gradient" x1="-82.404" x2="121.666" y1="38.077" y2="-157.263" gradientTransform="matrix(1 0 0 -1 .001 -16)" gradientUnits="userSpaceOnUse">
+			<linearGradient
+				id="uptimekuma-gradient"
+				x1="-82.404"
+				x2="121.666"
+				y1="38.077"
+				y2="-157.263"
+				gradientTransform="matrix(1 0 0 -1 .001 -16)"
+				gradientUnits="userSpaceOnUse"
+			>
 				<stop offset="0" style={{ stopColor: '#5cdd8b' }} />
 				<stop offset="1" style={{ stopColor: '#86e6a9' }} />
 			</linearGradient>

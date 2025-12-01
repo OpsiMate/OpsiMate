@@ -295,7 +295,9 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		updatedAt: updatedAt.toISOString(),
 		alertUrl: `${baseUrl}/alert/${index}`,
 		alertName,
-		summary: hasSummary ? `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}` : undefined,
+		summary: hasSummary
+			? `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}`
+			: undefined,
 		runbookUrl: hasRunbook ? `https://runbook.example.com/alert-${index}` : undefined,
 		createdAt: startsAt.toISOString(),
 		isDismissed,
