@@ -152,8 +152,8 @@ const AlertsTVMode = () => {
 						Back to Alerts
 					</Button>
 					<div className="flex items-center gap-2">
-						<Bell className="h-5 w-5 text-muted-foreground" />
-						<h1 className="text-xl font-bold">Alerts TV Mode</h1>
+						<Bell className="h-5 w-5 text-foreground" />
+						<h1 className="text-xl font-bold text-foreground">Alerts TV Mode</h1>
 						<Badge variant="secondary" className="ml-2">
 							{filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''}
 						</Badge>
@@ -180,7 +180,6 @@ const AlertsTVMode = () => {
 					</div>
 
 					<Button
-						variant="outline"
 						size="sm"
 						onClick={handleManualRefresh}
 						disabled={isRefreshing}
@@ -190,7 +189,7 @@ const AlertsTVMode = () => {
 						Refresh
 					</Button>
 					{lastRefresh && (
-						<span className="text-xs text-muted-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
+						<span className="text-xs text-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
 					)}
 				</div>
 			</div>
@@ -198,16 +197,16 @@ const AlertsTVMode = () => {
 			{isLoading ? (
 				<div className="flex items-center justify-center h-64 flex-1">
 					<div className="text-center">
-						<RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-						<p className="text-muted-foreground">Loading alerts...</p>
+						<RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-foreground" />
+						<p className="text-foreground">Loading alerts...</p>
 					</div>
 				</div>
 			) : filteredAlerts.length === 0 ? (
 				<div className="flex items-center justify-center h-64 flex-1">
 					<div className="text-center">
 						<CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-						<h2 className="text-xl font-semibold mb-2">No Active Alerts</h2>
-						<p className="text-muted-foreground">All systems are operating normally</p>
+						<h2 className="text-xl font-semibold mb-2 text-foreground">No Active Alerts</h2>
+						<p className="text-foreground">All systems are operating normally</p>
 					</div>
 				</div>
 			) : viewMode === 'heatmap' ? (
@@ -238,13 +237,13 @@ const AlertsTVMode = () => {
 				</div>
 			)}
 
-			<div className="fixed bottom-4 right-4 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm rounded-lg p-2 border">
+			<div className="fixed bottom-4 right-4 text-xs text-foreground bg-background/80 backdrop-blur-sm rounded-lg p-2 border">
 				<div className="flex items-center gap-4">
 					<span>
-						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">ESC</kbd> Exit
+						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">ESC</kbd> Exit
 					</span>
 					<span>
-						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">R</kbd> Refresh
+						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">R</kbd> Refresh
 					</span>
 				</div>
 			</div>

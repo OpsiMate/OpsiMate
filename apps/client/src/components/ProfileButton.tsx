@@ -26,7 +26,7 @@ export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 		<Button
 			variant={isActive ? 'default' : 'ghost'}
 			className={cn(
-				'gap-3 h-10 items-center group',
+				'gap-3 h-10 items-center group text-foreground',
 				collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 				isActive && 'text-primary-foreground'
 			)}

@@ -45,7 +45,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 					<Menu className="h-5 w-5" />
 					<span className="sr-only">Toggle Menu</span>
 				</Button>
-				<h1 className="text-lg font-semibold">OpsiMate</h1>
+				<h1 className="text-lg font-semibold text-foreground">OpsiMate</h1>
 			</div>
 
 			{/* Mobile Sidebar (Overlay) */}
@@ -80,13 +80,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 					<LeftSidebar collapsed={isSidebarCollapsed} />
 				</div>
 
-				<div className="flex-1 min-w-0 relative bg-muted/20 w-full">
+				<div className="flex-1 min-w-0 relative bg-background w-full">
 					{/* Desktop Sidebar Toggle Button */}
 					<Button
 						onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
 						variant="ghost"
 						size="icon"
-						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center !p-0"
+						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center !p-0 text-foreground"
 					>
 						{isSidebarCollapsed ? (
 							<ChevronRight className="h-4 w-4" />

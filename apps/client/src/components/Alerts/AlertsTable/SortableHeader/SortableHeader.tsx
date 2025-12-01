@@ -19,9 +19,9 @@ export interface SortableHeaderProps {
 export const SortableHeader = ({ column, label, sortField, sortDirection, onSort }: SortableHeaderProps) => {
 	const getSortIcon = () => {
 		if (sortField !== column) {
-			return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />;
+			return <ArrowUpDown className="h-3 w-3 text-foreground" />;
 		}
-		return sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+		return sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-foreground" /> : <ArrowDown className="h-3 w-3 text-foreground" />;
 	};
 
 	const handleClick = () => {
@@ -31,7 +31,7 @@ export const SortableHeader = ({ column, label, sortField, sortDirection, onSort
 	};
 
 	return (
-		<TableHead className="h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50" onClick={handleClick}>
+		<TableHead className="h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground" onClick={handleClick}>
 			<div className="flex items-center gap-1">
 				{label}
 				{getSortIcon()}

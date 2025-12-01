@@ -17,7 +17,7 @@ const queryClient = new QueryClient();
 const App: React.FC = () => {
 	return (
 		<ChakraProvider>
-			<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+			<ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme">
 				<QueryClientProvider client={queryClient}>
 					<TooltipProvider>
 						<Toaster />

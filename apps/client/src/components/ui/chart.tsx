@@ -274,7 +274,7 @@ const ChartLegendContent = React.forwardRef<
 								}}
 							/>
 						)}
-						<span className="text-sm font-medium text-gray-800">{itemConfig?.label}</span>
+						<span className="text-sm font-medium text-foreground">{itemConfig?.label}</span>
 					</div>
 				);
 			})}

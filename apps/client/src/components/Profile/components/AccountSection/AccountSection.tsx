@@ -9,7 +9,7 @@ export const AccountSection = ({ onLogout }: AccountSectionProps) => {
 	return (
 		<div className="border-t pt-6">
 			<div className="flex items-center gap-3 mb-4">
-				<LogOut className="h-5 w-5 text-gray-500" />
+				<LogOut className="h-5 w-5 text-muted-foreground" />
 				<h3 className="font-semibold">Account</h3>
 			</div>
 			<Button

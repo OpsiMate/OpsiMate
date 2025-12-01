@@ -22,9 +22,9 @@ export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDef
 	},
 	custom: {
 		label: 'Custom',
-		bgClass: 'bg-slate-50',
-		borderClass: 'border-slate-200',
-		textClass: 'text-slate-700',
+		bgClass: 'bg-slate-50 dark:bg-slate-800',
+		borderClass: 'border-slate-200 dark:border-slate-700',
+		textClass: 'text-slate-700 dark:text-foreground',
 		render: (iconSizeClass) => <Bell className={cn(iconSizeClass)} />,
 	},
 };

@@ -154,11 +154,11 @@ export const AlertsTable = ({
 
 					<div ref={parentRef} className="overflow-auto h-full w-full relative">
 						{isLoading ? (
-							<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+							<div className="flex items-center justify-center py-8 text-sm text-foreground">
 								Loading alerts...
 							</div>
 						) : flatRows.length === 0 ? (
-							<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+							<div className="flex items-center justify-center py-8 text-sm text-foreground">
 								{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
 							</div>
 						) : (

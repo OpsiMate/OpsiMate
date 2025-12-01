@@ -88,7 +88,7 @@ export const AlertsHeatmap = ({
 	if (!data || data.length === 0) {
 		return (
 			<div className="w-full h-full flex items-center justify-center min-h-[400px]">
-				<p className="text-muted-foreground">No data to display</p>
+				<p className="text-foreground">No data to display</p>
 			</div>
 		);
 	}

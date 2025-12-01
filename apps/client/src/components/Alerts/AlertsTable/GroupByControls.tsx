@@ -40,12 +40,12 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 		<Popover>
 			<PopoverTrigger asChild>
 				<Button variant="outline" size="sm" className="h-8 border-dashed">
-					<Layers className="mr-2 h-4 w-4" />
-					Group by
+					<Layers className="mr-2 h-4 w-4 text-foreground" />
+					<span className="text-foreground">Group by</span>
 					{groupByColumns.length > 0 && (
 						<>
-							<span className="mx-2 h-4 w-[1px] bg-primary/20" />
-							<span className="text-xs text-muted-foreground">
+							<span className="mx-2 h-4 w-[1px] bg-border" />
+							<span className="text-xs text-foreground">
 								{groupByColumns.map((col) => COLUMN_LABELS[col] || col).join(', ')}
 							</span>
 						</>
@@ -60,7 +60,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 								{groupByColumns.map((col, index) => (
 									<CommandItem
 										key={col}
-										className="flex items-center justify-between"
+										className="flex items-center justify-between text-foreground"
 										onSelect={() => {}}
 									>
 										<span className="truncate mr-2">{COLUMN_LABELS[col] || col}</span>
@@ -113,7 +113,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 									<CommandItem
 										key={col}
 										onSelect={() => handleAddColumn(col)}
-										className="cursor-pointer"
+										className="cursor-pointer text-foreground"
 									>
 										{COLUMN_LABELS[col] || col}
 									</CommandItem>

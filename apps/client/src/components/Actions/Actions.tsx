@@ -118,8 +118,8 @@ export const Actions = () => {
 			<div className="flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto">
 				<div className="flex items-center justify-between">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight">Actions</h1>
-						<p className="text-muted-foreground mt-1">Manage your custom actions</p>
+						<h1 className="text-3xl font-bold tracking-tight text-foreground">Actions</h1>
+						<p className="text-foreground mt-1">Manage your custom actions</p>
 					</div>
 					<Button onClick={() => setModalMode('create')} className="gap-2">
 						<Plus className="h-4 w-4" />
@@ -129,7 +129,7 @@ export const Actions = () => {
 
 				{isLoading ? (
 					<div className="flex items-center justify-center py-12">
-						<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+						<Loader2 className="h-8 w-8 animate-spin text-foreground" />
 					</div>
 				) : (
 					<>
@@ -143,7 +143,7 @@ export const Actions = () => {
 
 						{actions.length === 0 && (
 							<div className="flex flex-col items-center justify-center py-12 text-center">
-								<p className="text-muted-foreground mb-4">No actions yet</p>
+								<p className="text-foreground mb-4">No actions yet</p>
 								<Button onClick={() => setModalMode('create')} variant="outline">
 									<Plus className="h-4 w-4 mr-2" />
 									Create your first action
