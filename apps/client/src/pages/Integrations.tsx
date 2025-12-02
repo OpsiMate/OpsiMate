@@ -52,6 +52,7 @@ enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
 	Datadog = 'Datadog',
+  Coralogix = 'Coralogix',
 }
 
 interface Integration {
@@ -163,16 +164,17 @@ const INTEGRATIONS: Integration[] = [
 	},
 	{
 		id: 'coralogix',
-		supported: false,
+		supported: true,
 		name: 'Coralogix',
 		description: 'Log analytics platform powered by machine learning.',
 		logo: 'https://cdn.brandfetch.io/idCh7aU0wN/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1667744703603',
 		tags: ['Logging', 'Analytics', 'Monitoring'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
 		configFields: [
+			{ name: 'url', label: 'Coralogix URL', type: 'text', placeholder: 'https://api.us2.coralogix.com/', required: true },
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
-			{ name: 'applicationName', label: 'Application Name', type: 'text', required: true },
-			{ name: 'subsystemName', label: 'Subsystem Name', type: 'text', required: true },
+			{ name: 'applicationName', label: 'Application Name', type: 'text', placeholder: 'Optional', required: false },
+			{ name: 'subsystemName', label: 'Subsystem Name', type: 'text', placeholder: 'Optional', required: false },
 		],
 	},
 	{
@@ -738,13 +740,14 @@ const Integrations = () => {
 																selectedIntegration.id.slice(1)
 													);
 
-													// Map integration id to the correct IntegrationType
-													const typeMapping = {
-														grafana: IntegrationType.Grafana,
-														kibana: IntegrationType.Kibana,
-														datadog: IntegrationType.Datadog,
-														// Add other integration types as needed
-													};
+												// Map integration id to the correct IntegrationType
+												const typeMapping = {
+													grafana: IntegrationType.Grafana,
+													kibana: IntegrationType.Kibana,
+													datadog: IntegrationType.Datadog,
+													coralogix: IntegrationType.Coralogix,
+													// Add other integration types as needed
+												};
 
 													// Prepare the integration data
 													let credentials = {};
