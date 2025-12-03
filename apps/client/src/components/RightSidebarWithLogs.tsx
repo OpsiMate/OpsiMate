@@ -295,7 +295,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 		badge?: string | number;
 		className?: string;
 	}) => (
-		<Collapsible open={isOpen} onOpenChange={onToggle}>
+		<Collapsible open={isOpen} onOpenChange={onToggle} className={className}>
 			<CollapsibleTrigger asChild>
 				<Button
 					variant="ghost"
@@ -431,7 +431,8 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 						icon={ExternalLink}
 						isOpen={sectionsOpen.externalLinks}
 						onToggle={() => toggleSection('externalLinks')}
-					>
+					>className={serviceTags.length > 0 ? 'has-external-links' : 'no-external-links'}
+
 						{integrationDropdowns}
 					</CollapsibleSection>
 
