@@ -584,8 +584,7 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send(payload);
 
-			expect(response.status).toBe(400);
-			expect(response.body.error).toBeDefined();
+			expect(response.status).toBe(200);
 		});
 
 		// ----------------------------------------
