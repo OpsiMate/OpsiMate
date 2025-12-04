@@ -12,7 +12,7 @@ export interface UptimeKumaSetupModalProps {
 export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModalProps) => {
 	const [copied, setCopied] = useState(false);
 
-	const webhookUrl = `${window.location.origin}/api/webhooks/uptimekuma`;
+	const webhookUrl = `${window.location.protocol + '//' + window.location.hostname}:3001/api/v1/alerts/custom/UptimeKuma?api_token={your_api_token}`;
 
 	const handleCopyWebhook = async () => {
 		await navigator.clipboard.writeText(webhookUrl);
@@ -80,6 +80,8 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 									Ensure <strong>Content Type</strong> is set to "JSON" (default)
 								</li>
 								<li>Click "Test" to verify the connection</li>
+								<li>Check that the test succeeds and shows a success message, open OpsiMate to confirm the alert appears</li>
+								<li>Optionally, configure "Default enabled" to true for this notification and configure "Apply to all existing monitors"</li>
 								<li>Click "Save" to finish setup</li>
 							</ol>
 						</div>

@@ -531,7 +531,7 @@ const Integrations = () => {
 														<integration.logo
 															className={cn(
 																'h-8 w-8',
-																hasConfiguredInstances ? '' : 'opacity-50 grayscale'
+																isEnabled ? '' : 'opacity-50 grayscale'
 															)}
 														/>
 													)}
