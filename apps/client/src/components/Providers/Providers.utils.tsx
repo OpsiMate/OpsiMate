@@ -39,28 +39,28 @@ export const getProviderCategory = (type: ProviderType): ProviderCategory => {
 export const getStatusBadgeColor = (status?: Provider['status']) => {
 	switch (status) {
 		case 'online':
-			return 'bg-green-500/20 text-green-700 hover:bg-green-500/30';
+			return 'bg-green-500/20 text-white hover:bg-green-500/30';
 		case 'offline':
-			return 'bg-red-500/20 text-red-700 hover:bg-red-500/30';
+			return 'bg-red-500/20 text-white hover:bg-red-500/30';
 		case 'warning':
-			return 'bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30';
+			return 'bg-yellow-500/20 text-white hover:bg-yellow-500/30';
 		case 'unknown':
 		default:
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 	}
 };
 
 export const getServiceStatusBadgeColor = (status: ServiceConfig['status']) => {
 	switch (status.toLowerCase()) {
 		case 'running':
-			return 'bg-green-500/20 text-green-700 hover:bg-green-500/30';
+			return 'bg-green-500/20 text-white hover:bg-green-500/30';
 		case 'stopped':
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 		case 'error':
-			return 'bg-red-500/20 text-red-700 hover:bg-red-500/30';
+			return 'bg-red-500/20 text-white hover:bg-red-500/30';
 		case 'unknown':
 		default:
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 	}
 };
 

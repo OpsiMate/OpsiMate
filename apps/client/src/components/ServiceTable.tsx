@@ -228,15 +228,15 @@ export const ServiceTable = ({
 	const getStatusColor = (status: Service['serviceStatus']) => {
 		switch (status.toLowerCase()) {
 			case 'running':
-				return 'bg-green-100 text-green-800 border-green-200';
+				return 'bg-green-500/20 text-white border-green-500/30';
 			case 'stopped':
-				return 'bg-gray-100 text-gray-800 border-gray-200';
+				return 'bg-gray-500/20 text-white border-gray-500/30';
 			case 'error':
-				return 'bg-red-100 text-red-800 border-red-200';
+				return 'bg-red-500/20 text-white border-red-500/30';
 			case 'unknown':
-				return 'bg-gray-100 text-gray-800 border-gray-200';
+				return 'bg-gray-500/20 text-white border-gray-500/30';
 			default:
-				return 'bg-gray-100 text-gray-800 border-gray-200';
+				return 'bg-gray-500/20 text-white border-gray-500/30';
 		}
 	};
 

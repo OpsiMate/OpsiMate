@@ -155,7 +155,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 	}, []);
 
 	if (loading) {
-		return <div className="text-sm text-muted-foreground">Loading keys...</div>;
+		return <div className="text-sm text-foreground">Loading keys...</div>;
 	}
 
 	if (error) {
@@ -169,7 +169,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 	if (keys.length === 0) {
 		return (
 			<div className="space-y-2">
-				<div className="text-sm text-muted-foreground">No SSH keys available.</div>
+				<div className="text-sm text-foreground">No SSH keys available.</div>
 			</div>
 		);
 	}
@@ -234,7 +234,7 @@ const KubeconfigSelector = ({
 	}, []);
 
 	if (loading) {
-		return <div className="text-sm text-muted-foreground">Loading kubeconfig keys...</div>;
+		return <div className="text-sm text-foreground">Loading kubeconfig keys...</div>;
 	}
 
 	if (error) {
@@ -248,7 +248,7 @@ const KubeconfigSelector = ({
 	if (keys.length === 0) {
 		return (
 			<div className="space-y-2">
-				<div className="text-sm text-muted-foreground">No kubeconfig keys available.</div>
+				<div className="text-sm text-foreground">No kubeconfig keys available.</div>
 			</div>
 		);
 	}

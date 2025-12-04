@@ -47,7 +47,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-6 w-6 rounded-full"
+							className="h-6 w-6 rounded-full text-foreground"
 							onClick={(event) => event.stopPropagation()}
 							title="More actions"
 						>
@@ -96,7 +96,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 					variant="ghost"
 					size="icon"
 					onClick={handleToggle}
-					className="h-6 w-6 rounded-full text-muted-foreground hover:text-white hover:bg-primary transition-colors"
+					className="h-6 w-6 rounded-full text-foreground hover:text-white hover:bg-primary transition-colors"
 					title={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
 					aria-label={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
 					aria-pressed={isDismissed}

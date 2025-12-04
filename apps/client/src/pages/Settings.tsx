@@ -204,7 +204,7 @@ const Settings: React.FC = () => {
 			<div className="flex flex-col h-full">
 				{/* Header */}
 				<div className="flex-shrink-0 bg-background border-b border-border px-6 py-4">
-					<h1 className="text-2xl font-bold">Settings</h1>
+					<h1 className="text-2xl font-bold text-foreground">Settings</h1>
 				</div>
 
 				{/* Content */}
@@ -1116,7 +1116,7 @@ const SslKeysTable: React.FC = () => {
 				{searchQuery && (
 					<button
 						onClick={() => setSearchQuery('')}
-						className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+						className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 						aria-label="Clear search"
 					>
 						×
@@ -1135,7 +1135,7 @@ const SslKeysTable: React.FC = () => {
 				<TableBody>
 					{filteredSecrets.length === 0 ? (
 						<TableRow>
-							<TableCell colSpan={4} className="text-center text-gray-500">
+							<TableCell colSpan={4} className="text-center text-muted-foreground">
 								No secrets match your search.
 							</TableCell>
 						</TableRow>

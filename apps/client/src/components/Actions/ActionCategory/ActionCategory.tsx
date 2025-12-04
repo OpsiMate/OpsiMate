@@ -19,7 +19,7 @@ export const ActionCategory = ({ target, actions, onEdit, onDelete, onPlay }: Ac
 
 	return (
 		<div className="space-y-4">
-			<h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+			<h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
 				<div className={`flex items-center justify-center h-6 w-6 rounded-md ${iconContainerClass}`}>
 					<Zap className="h-[14px] w-[14px]" />
 				</div>

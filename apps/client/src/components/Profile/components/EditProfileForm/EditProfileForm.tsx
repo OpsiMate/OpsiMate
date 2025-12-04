@@ -39,7 +39,7 @@ export const EditProfileForm = ({
 	return (
 		<div className="space-y-4 border-t pt-6">
 			<div className="flex items-center gap-3">
-				<Lock className="h-5 w-5 text-gray-500" />
+				<Lock className="h-5 w-5 text-muted-foreground" />
 				<h3 className="font-semibold">Edit Profile</h3>
 			</div>
 

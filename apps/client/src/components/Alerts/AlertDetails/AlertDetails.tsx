@@ -55,8 +55,8 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 	return (
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
 			<div className="flex items-center justify-between p-4 border-b">
-				<h2 className="text-lg font-semibold">Alert Details</h2>
-				<Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+				<h2 className="text-lg font-semibold text-foreground">Alert Details</h2>
+				<Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-foreground">
 					<X className="h-4 w-4" />
 				</Button>
 			</div>
@@ -68,7 +68,7 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 							<div className="flex-shrink-0">{getAlertTypeIcon(alertType)}</div>
 							<div className="flex-1 min-w-0">
 								<div className="flex items-center gap-2 flex-wrap">
-									<h3 className="text-lg font-semibold break-words flex-1 min-w-0">
+									<h3 className="text-lg font-semibold break-words flex-1 min-w-0 text-foreground">
 										{alert.alertName}
 									</h3>
 									<Badge
@@ -99,7 +99,7 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 						<>
 							<Separator />
 							<div>
-								<p className="text-sm text-muted-foreground leading-relaxed">{alert.summary}</p>
+								<p className="text-sm text-foreground leading-relaxed">{alert.summary}</p>
 							</div>
 						</>
 					)}
@@ -108,10 +108,10 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 
 					<div className="space-y-3">
 						<div className="flex items-start gap-3">
-							<Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+							<Calendar className="h-4 w-4 text-foreground mt-0.5 flex-shrink-0" />
 							<div className="flex-1 min-w-0">
-								<div className="text-xs font-medium text-muted-foreground mb-1">Started At</div>
-								<div className="text-sm">
+								<div className="text-xs font-medium text-foreground mb-1">Started At</div>
+								<div className="text-sm text-foreground">
 									{(() => {
 										const date = new Date(alert.startsAt);
 										return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'PPpp');
@@ -122,10 +122,10 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 
 						{alert.updatedAt && (
 							<div className="flex items-start gap-3">
-								<Clock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+								<Clock className="h-4 w-4 text-foreground mt-0.5 flex-shrink-0" />
 								<div className="flex-1 min-w-0">
-									<div className="text-xs font-medium text-muted-foreground mb-1">Last Updated</div>
-									<div className="text-sm">
+									<div className="text-xs font-medium text-foreground mb-1">Last Updated</div>
+									<div className="text-sm text-foreground">
 										{(() => {
 											const date = new Date(alert.updatedAt);
 											return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'PPpp');
@@ -141,7 +141,6 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 					<div className="grid grid-cols-2 gap-2">
 						{alert.alertUrl && (
 							<Button
-								variant="outline"
 								size="sm"
 								className="w-full justify-start gap-2 text-xs h-8"
 								onClick={() => window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')}
@@ -153,7 +152,6 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 
 						{alert.runbookUrl && (
 							<Button
-								variant="outline"
 								size="sm"
 								className="w-full justify-start gap-2 text-xs h-8"
 								onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
@@ -170,7 +168,6 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 						<div className="space-y-2">
 							{alert.isDismissed ? (
 								<Button
-									variant="outline"
 									size="sm"
 									className="w-full justify-start gap-2"
 									onClick={() => onUndismiss?.(alert.id)}
@@ -180,7 +177,6 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 								</Button>
 							) : (
 								<Button
-									variant="outline"
 									size="sm"
 									className="w-full justify-start gap-2"
 									onClick={() => onDismiss?.(alert.id)}
@@ -193,8 +189,10 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 					)}
 
 					<div className="pt-2">
-						<div className="text-xs font-medium text-muted-foreground mb-1">Alert ID</div>
-						<code className="text-xs bg-muted px-2 py-1 rounded break-all block">{alert.id}</code>
+						<div className="text-xs font-medium text-foreground mb-1">Alert ID</div>
+						<code className="text-xs bg-muted px-2 py-1 rounded break-all block text-foreground">
+							{alert.id}
+						</code>
 					</div>
 				</div>
 			</ScrollArea>

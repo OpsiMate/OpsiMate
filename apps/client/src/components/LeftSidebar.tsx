@@ -29,7 +29,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					</div>
 					<div className={cn('ml-3', collapsed && 'sr-only')}>
 						<h2 className="text-xl font-bold text-foreground whitespace-nowrap tracking-tight">OpsiMate</h2>
-						<p className="text-xs text-muted-foreground">Operational Insights</p>
+						<p className="text-xs text-foreground">Operational Insights</p>
 					</div>
 				</div>
 			</Link>
@@ -43,7 +43,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				<Button
 					variant={location.pathname === '/alerts' ? 'default' : 'ghost'}
 					className={cn(
-						'gap-3 h-10',
+						'gap-3 h-10 text-foreground',
 						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 						location.pathname === '/alerts' && 'text-primary-foreground'
 					)}
@@ -58,7 +58,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				<Button
 					variant={location.pathname === '/' ? 'default' : 'ghost'}
 					className={cn(
-						'gap-3 h-10',
+						'gap-3 h-10 text-foreground',
 						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 						location.pathname === '/' && 'text-primary-foreground'
 					)}
@@ -74,7 +74,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					<Button
 						variant={location.pathname === '/providers' ? 'default' : 'ghost'}
 						className={cn(
-							'gap-3 h-10',
+							'gap-3 h-10 text-foreground',
 							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 							location.pathname === '/providers' && 'text-primary-foreground'
 						)}
@@ -91,7 +91,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					<Button
 						variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
 						className={cn(
-							'gap-3 h-10',
+							'gap-3 h-10 text-foreground',
 							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 							location.pathname === '/integrations' && 'text-primary-foreground'
 						)}
@@ -107,7 +107,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					<Button
 						variant={location.pathname === '/actions' ? 'default' : 'ghost'}
 						className={cn(
-							'gap-3 h-10',
+							'gap-3 h-10 text-foreground',
 							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 							location.pathname === '/actions' && 'text-primary-foreground'
 						)}
@@ -127,7 +127,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						<Button
 							variant={location.pathname === '/settings' ? 'default' : 'ghost'}
 							className={cn(
-								'gap-3 h-10 items-center',
+								'gap-3 h-10 items-center text-foreground',
 								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 								location.pathname === '/settings' && 'text-primary-foreground'
 							)}
@@ -165,7 +165,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 									<TooltipContent
 										side="top"
 										align="center"
-										className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+										className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
 									>
 										Join our Slack community
 									</TooltipContent>
@@ -189,16 +189,14 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 									<TooltipContent
 										side="top"
 										align="center"
-										className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+										className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
 									>
 										Star us on GitHub ⭐
 									</TooltipContent>
 								</Tooltip>
 							</div>
 
-							<p className={cn('text-xs text-muted-foreground', collapsed && 'sr-only')}>
-								© 2024 OpsiMate
-							</p>
+							<p className={cn('text-xs text-foreground', collapsed && 'sr-only')}>© 2024 OpsiMate</p>
 						</div>
 					</TooltipProvider>
 				</div>

@@ -29,11 +29,11 @@ export const ColumnSettingsModal = ({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
+					<DialogTitle className="text-foreground">{title}</DialogTitle>
 				</DialogHeader>
 
 				<div className="space-y-4">
-					<p className="text-sm text-muted-foreground">{description}</p>
+					<p className="text-sm text-foreground">{description}</p>
 
 					<div className="space-y-3">
 						{availableColumns.map(([key, label]) => (
@@ -45,7 +45,7 @@ export const ColumnSettingsModal = ({
 								/>
 								<label
 									htmlFor={key}
-									className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+									className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 								>
 									{label}
 								</label>
@@ -54,9 +54,7 @@ export const ColumnSettingsModal = ({
 					</div>
 
 					<div className="flex justify-end gap-2 pt-4">
-						<Button variant="outline" onClick={() => onOpenChange(false)}>
-							Close
-						</Button>
+						<Button onClick={() => onOpenChange(false)}>Close</Button>
 					</div>
 				</div>
 			</DialogContent>

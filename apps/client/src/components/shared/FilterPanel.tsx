@@ -71,7 +71,7 @@ export const FilterPanel = ({
 		return (
 			<div className={cn('flex flex-col items-center py-4 gap-4', className)}>
 				<div className="relative">
-					<Filter className="h-5 w-5 text-muted-foreground" />
+					<Filter className="h-5 w-5 text-foreground" />
 					{activeFilterCount > 0 && (
 						<Badge
 							variant="secondary"
@@ -85,7 +85,7 @@ export const FilterPanel = ({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="h-6 w-6"
+						className="h-6 w-6 text-foreground"
 						onClick={handleResetFilters}
 						title="Reset filters"
 					>
@@ -100,7 +100,7 @@ export const FilterPanel = ({
 		<div className={cn('h-full flex flex-col', className)}>
 			<div className="flex items-center justify-between p-3 border-b border-border">
 				<div className="flex items-center gap-2">
-					<h3 className="text-sm font-semibold">Filters</h3>
+					<h3 className="text-sm font-semibold text-foreground">Filters</h3>
 					{activeFilterCount > 0 && (
 						<Badge variant="outline" className="text-xs px-1.5 py-0 bg-muted/50 border-muted-foreground/20">
 							{activeFilterCount}
@@ -111,7 +111,7 @@ export const FilterPanel = ({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="h-6 w-6"
+						className="h-6 w-6 text-foreground"
 						onClick={handleResetFilters}
 						title="Reset all filters"
 					>
@@ -130,9 +130,9 @@ export const FilterPanel = ({
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
-									<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50">
+									<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50 text-foreground">
 										<div className="flex items-center justify-between w-full pr-2">
-											<span className="text-xs font-medium">
+											<span className="text-xs font-medium text-foreground">
 												{config.fieldLabels[field] || field}
 											</span>
 											{activeValues.length > 0 && (
@@ -184,7 +184,7 @@ export const FilterPanel = ({
 																			className="h-3 w-3 border-2 flex-shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors"
 																		/>
 																		<span
-																			className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px]"
+																			className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground"
 																			title={label}
 																		>
 																			{label}
@@ -204,7 +204,7 @@ export const FilterPanel = ({
 																variant="ghost"
 																size="sm"
 																onClick={() => handleLoadMore(field)}
-																className="w-full text-xs mt-1 h-7"
+																className="w-full text-xs mt-1 h-7 text-foreground"
 															>
 																Load {Math.min(5, remaining)} more...
 															</Button>

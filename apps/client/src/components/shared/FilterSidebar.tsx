@@ -24,7 +24,7 @@ export const FilterSidebar = ({ children, collapsed, onToggle, className }: Filt
 				onClick={onToggle}
 				variant="ghost"
 				size="icon"
-				className="z-10 absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 flex items-center justify-center !p-0"
+				className="z-10 absolute top-1/2 -right-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 flex items-center justify-center !p-0 text-foreground"
 				title={collapsed ? 'Expand filters' : 'Collapse filters'}
 			>
 				{collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

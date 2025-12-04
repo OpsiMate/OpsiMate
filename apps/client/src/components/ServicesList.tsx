@@ -100,9 +100,9 @@ export const ServicesList = ({ services, onStatusChange, onServiceClick, onDelet
 							<Badge
 								className={cn(
 									'text-xs',
-									service.status === 'running' && 'bg-green-500/20 text-green-700',
-									service.status === 'stopped' && 'bg-gray-500/20 text-gray-700',
-									service.status === 'error' && 'bg-red-500/20 text-red-700'
+									service.status === 'running' && 'bg-green-500/20 text-white',
+									service.status === 'stopped' && 'bg-gray-500/20 text-white',
+									service.status === 'error' && 'bg-red-500/20 text-white'
 								)}
 							>
 								{service.status}

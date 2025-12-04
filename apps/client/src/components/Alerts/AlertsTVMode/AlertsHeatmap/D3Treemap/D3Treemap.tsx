@@ -408,7 +408,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					}}
 				>
 					{tooltip.content.split('\n').map((line, index) => (
-						<div key={index} className={index === 0 ? 'font-semibold' : 'text-muted-foreground'}>
+						<div key={index} className={index === 0 ? 'font-semibold text-foreground' : 'text-foreground'}>
 							{line}
 						</div>
 					))}
@@ -425,10 +425,12 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 						onClick={(e) => e.stopPropagation()}
 					>
 						<div className="flex items-center justify-between p-4 border-b">
-							<h3 className="text-lg font-semibold">Additional Alerts ({overflowAlerts.length})</h3>
+							<h3 className="text-lg font-semibold text-foreground">
+								Additional Alerts ({overflowAlerts.length})
+							</h3>
 							<button
 								onClick={() => setOverflowAlerts(null)}
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="text-foreground hover:text-foreground/80 transition-colors"
 							>
 								✕
 							</button>
@@ -447,14 +449,14 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 								>
 									<div className="flex items-start justify-between gap-2">
 										<div className="flex-1 min-w-0">
-											<div className="font-semibold truncate group-hover:text-white transition-colors">
+											<div className="font-semibold truncate text-foreground group-hover:text-primary transition-colors">
 												{alert.alertName}
 											</div>
-											<div className="text-xs text-muted-foreground group-hover:text-white/90 mt-1 transition-colors">
+											<div className="text-xs text-foreground group-hover:text-primary/90 mt-1 transition-colors">
 												Status: {alert.isDismissed ? 'Dismissed' : alert.status}
 											</div>
 											{alert.summary && (
-												<div className="text-xs text-muted-foreground group-hover:text-white/80 mt-1 line-clamp-2 transition-colors">
+												<div className="text-xs text-foreground group-hover:text-primary/80 mt-1 line-clamp-2 transition-colors">
 													{alert.summary}
 												</div>
 											)}
