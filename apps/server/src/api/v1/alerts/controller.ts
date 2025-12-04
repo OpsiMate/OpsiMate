@@ -3,6 +3,7 @@ import { AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
+import {v4} from 'uuid';
 
 const logger: Logger = new Logger('alerts.controller');
 
@@ -58,7 +59,21 @@ export class AlertController {
 			const payload = req.body as UptimeKumaWebhookPayload;
 
 			if (!payload?.heartbeat || !payload?.monitor) {
-				return res.status(400).json({ error: 'Invalid Uptime Kuma payload' });
+				logger.info('UptimeKuma Test Alert Created');
+				await this.alertBL.insertOrUpdateAlert({
+					id: v4(),
+					type: 'UptimeKuma',
+					status: AlertStatus.FIRING,
+					tag: 'test',
+					startsAt: (new Date()).toISOString(),
+					updatedAt: (new Date()).toISOString(),
+					alertUrl: '',
+					alertName: 'Test Alert',
+					summary: 'Test Alert by UptimeKuma was created successfully',
+					runbookUrl: undefined,
+				});
+
+				return res.status(200).json({success: true, data: null});
 			}
 
 			const { heartbeat, monitor } = payload;
