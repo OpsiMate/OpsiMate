@@ -28,14 +28,7 @@ export const AlertsFilterPanel = ({
 	className,
 }: AlertsFilterPanelProps) => {
 	const getAlertType = (alert: Alert): string => {
-		if (alert.type) return alert.type;
-		if (alert.id.toLowerCase().includes('grafana')) return 'Grafana';
-		if (alert.id.toLowerCase().includes('gcp')) return 'GCP';
-		if (alert.id.toLowerCase().includes('uptimekuma') || alert.id.toLowerCase().includes('uptime-kuma'))
-			return 'UptimeKuma';
-		if (alert.tag?.toLowerCase().includes('prometheus')) return 'Prometheus';
-		if (alert.tag?.toLowerCase().includes('datadog')) return 'Datadog';
-		return 'Custom';
+		return alert.type || 'Custom';
 	};
 
 	const facets: FilterFacets = useMemo(() => {
