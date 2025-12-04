@@ -78,6 +78,28 @@ interface Integration {
 
 const INTEGRATIONS: Integration[] = [
 	{
+		id: 'gcp',
+		supported: true,
+		name: 'Google Cloud Platform',
+		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
+		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
+		tags: ['Monitoring', 'Alerts', 'Cloud'],
+		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
+		configFields: [],
+		enabled: true, // GCP integration is enabled by default
+	},
+	{
+		id: 'uptimekuma',
+		supported: true,
+		name: 'Uptime Kuma',
+		description: 'Receive alerts from Uptime Kuma monitoring via webhook.',
+		logo: UptimeKumaIcon,
+		tags: ['Monitoring', 'Alerts', 'Uptime'],
+		documentationUrl: 'https://github.com/louislam/uptime-kuma/wiki/Notifications',
+		configFields: [],
+		enabled: true, // integration is enabled by default
+	},
+	{
 		id: 'grafana',
 		supported: true,
 		name: 'Grafana',
@@ -136,46 +158,6 @@ const INTEGRATIONS: Integration[] = [
 		],
 	},
 	{
-		id: 'gcp',
-		supported: true,
-		name: 'Google Cloud Platform',
-		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
-		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
-		tags: ['Monitoring', 'Alerts', 'Cloud'],
-		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
-		configFields: [],
-		enabled: true, // GCP integration is enabled by default
-	},
-	{
-		id: 'uptimekuma',
-		supported: true,
-		name: 'Uptime Kuma',
-		description: 'Receive alerts from Uptime Kuma monitoring via webhook.',
-		logo: UptimeKumaIcon,
-		tags: ['Monitoring', 'Alerts', 'Uptime'],
-		documentationUrl: 'https://github.com/louislam/uptime-kuma/wiki/Notifications',
-		configFields: [],
-		enabled: true, // integration is enabled by default
-	},
-	{
-		id: 'prometheus',
-		supported: false,
-		name: 'Prometheus',
-		description: 'Open-source systems monitoring and alerting toolkit.',
-		logo: 'https://icon.icepanel.io/Technology/svg/Prometheus.svg',
-		tags: ['Monitoring', 'Metrics', 'Alerts'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{
-				name: 'url',
-				label: 'Prometheus URL',
-				type: 'text',
-				placeholder: 'http://prometheus:9090',
-				required: true,
-			},
-		],
-	},
-	{
 		id: 'coralogix',
 		supported: false,
 		name: 'Coralogix',
@@ -187,84 +169,6 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 			{ name: 'applicationName', label: 'Application Name', type: 'text', required: true },
 			{ name: 'subsystemName', label: 'Subsystem Name', type: 'text', required: true },
-		],
-	},
-	{
-		id: 'loki',
-		supported: false,
-		name: 'Loki',
-		description: 'Horizontally-scalable, highly-available log aggregation system.',
-		logo: 'https://grafana.com/static/img/logos/logo-loki.svg',
-		tags: ['Logging', 'Monitoring'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{
-				name: 'url',
-				label: 'Loki URL',
-				type: 'text',
-				placeholder: 'http://loki:3100',
-				required: true,
-			},
-		],
-	},
-	{
-		id: 'victoriaMetrics',
-		supported: false,
-		name: 'VictoriaMetrics',
-		description: 'Fast, cost-effective and scalable time series database.',
-		logo: 'https://upload.wikimedia.org/wikipedia/commons/c/c6/VictoriaMetrics_logo.svg',
-		tags: ['Metrics', 'Monitoring', 'Storage'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{
-				name: 'url',
-				label: 'VictoriaMetrics URL',
-				type: 'text',
-				placeholder: 'http://victoria-metrics:8428',
-				required: true,
-			},
-		],
-	},
-	{
-		id: 'cloudwatch',
-		supported: false,
-		name: 'AWS CloudWatch',
-		description: 'Monitoring and observability service for AWS resources.',
-		logo: 'https://icon.icepanel.io/AWS/svg/Management-Governance/CloudWatch.svg',
-		tags: ['Monitoring', 'Metrics', 'Logs', 'AWS'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{ name: 'accessKeyId', label: 'AWS Access Key ID', type: 'text', required: true },
-			{ name: 'secretAccessKey', label: 'AWS Secret Access Key', type: 'password', required: true },
-			{
-				name: 'region',
-				label: 'AWS Region',
-				type: 'select',
-				options: [
-					'us-east-1',
-					'us-east-2',
-					'us-west-1',
-					'us-west-2',
-					'eu-west-1',
-					'eu-central-1',
-					'ap-northeast-1',
-				],
-				required: true,
-			},
-		],
-	},
-	// Removed duplicate datadog entry
-	{
-		id: 'newrelic',
-		supported: false,
-		name: 'New Relic',
-		description: 'Observability platform built to help engineers create perfect software.',
-		logo: 'https://newrelic.com/themes/custom/erno/assets/mediakit/new_relic_logo_vertical.svg',
-		tags: ['Monitoring', 'APM', 'Observability'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{ name: 'accountId', label: 'Account ID', type: 'text', required: true },
-			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 		],
 	},
 ];

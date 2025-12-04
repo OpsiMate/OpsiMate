@@ -41,21 +41,6 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				)}
 			>
 				<Button
-					variant={location.pathname === '/alerts' ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10 text-foreground',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/alerts' && 'text-primary-foreground'
-					)}
-					asChild
-				>
-					<Link to="/alerts">
-						<Bell className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
-					</Link>
-				</Button>
-
-				<Button
 					variant={location.pathname === '/' ? 'default' : 'ghost'}
 					className={cn(
 						'gap-3 h-10 text-foreground',
@@ -65,27 +50,10 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					asChild
 				>
 					<Link to="/">
-						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboard</span>
+						<Bell className="h-5 w-5 flex-shrink-0" />
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
 					</Link>
 				</Button>
-
-				{isEditor() && (
-					<Button
-						variant={location.pathname === '/providers' ? 'default' : 'ghost'}
-						className={cn(
-							'gap-3 h-10 text-foreground',
-							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-							location.pathname === '/providers' && 'text-primary-foreground'
-						)}
-						asChild
-					>
-						<Link to="/providers">
-							<Database className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>Providers</span>
-						</Link>
-					</Button>
-				)}
 
 				{isEditor() && (
 					<Button
@@ -100,22 +68,6 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						<Link to="/integrations">
 							<Puzzle className="h-5 w-5 flex-shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
-						</Link>
-					</Button>
-				)}
-				{isEditor() && (
-					<Button
-						variant={location.pathname === '/actions' ? 'default' : 'ghost'}
-						className={cn(
-							'gap-3 h-10 text-foreground',
-							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-							location.pathname === '/actions' && 'text-primary-foreground'
-						)}
-						asChild
-					>
-						<Link to="/actions">
-							<Zap className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>Actions</span>
 						</Link>
 					</Button>
 				)}

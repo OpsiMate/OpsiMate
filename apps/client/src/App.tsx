@@ -26,12 +26,8 @@ const App: React.FC = () => {
 						<BrowserRouter>
 							<AuthGuard>
 								<Routes>
-									<Route path="/" element={<Dashboard />} />
+									<Route path="/" element={<Alerts />} />
 									<Route path="/tv-mode" element={<TVMode />} />
-									<Route
-										path="/providers"
-										element={!isEditor() ? <Navigate to="/" replace /> : <Providers />}
-									/>
 									<Route path="/integrations" element={<Integrations />} />
 									<Route path="/settings" element={<Settings />} />
 									<Route path="/profile" element={<Profile />} />
@@ -39,10 +35,6 @@ const App: React.FC = () => {
 									<Route path="/register" element={<Register />} />
 									<Route path="/alerts" element={<Alerts />} />
 									<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />
-									<Route
-										path="/actions"
-										element={!isEditor() ? <Navigate to="/" replace /> : <Actions />}
-									/>
 									<Route path="/forgot-password" element={<ForgotPassword />} />
 									<Route path="/reset-password" element={<ResetPasswordByEmail />} />
 									<Route path="*" element={<NotFound />} />

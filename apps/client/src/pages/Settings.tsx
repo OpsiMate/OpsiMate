@@ -244,14 +244,6 @@ const Settings: React.FC = () => {
 											<FileText className="h-4 w-4" />
 											Audit Log
 										</TabsTrigger>
-										<TabsTrigger value="secrets" className="justify-start gap-2">
-											<KeyRound className="h-4 w-4" />
-											Secrets
-										</TabsTrigger>
-										<TabsTrigger value="custom-fields" className="justify-start gap-2">
-											<SettingsIcon className="h-4 w-4" />
-											Custom Service Fields
-										</TabsTrigger>
 									</TabsList>
 								</div>
 								<div className="flex-1">
