@@ -84,7 +84,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
 		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
 		tags: ['Monitoring', 'Alerts', 'Cloud'],
-		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
+		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/gcp',
 		configFields: [],
 		enabled: true, // GCP integration is enabled by default
 	},
