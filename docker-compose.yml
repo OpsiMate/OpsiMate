@@ -14,6 +14,7 @@ services:
       - ./data/private-keys:/app/data/private-keys
       - ./config.yml:/app/config/config.yml
     environment:
+      - API_TOKEN=opsimate
       - NODE_ENV=production
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml

@@ -26,7 +26,7 @@ const Profile: React.FC = () => {
 		<DashboardLayout>
 			<div className="flex flex-col h-full">
 				<div className="flex-shrink-0 bg-background border-b border-border px-6 py-4">
-					<h1 className="text-2xl font-bold">Profile</h1>
+					<h1 className="text-2xl font-bold text-foreground">Profile</h1>
 				</div>
 				<ProfileContent
 					profile={profile}

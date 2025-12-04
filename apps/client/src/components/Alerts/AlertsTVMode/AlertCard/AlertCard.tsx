@@ -38,7 +38,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 						<div className="flex-1 min-w-0">
 							<h3
 								className={cn(
-									'font-semibold truncate',
+									'font-semibold truncate text-foreground',
 									cardSize === 'extra-small' ? 'text-xs' : 'text-sm'
 								)}
 								title={alert.alertName}
@@ -51,9 +51,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 										{alert.tag}
 									</Badge>
 									{serviceName !== '-' && (
-										<span className="text-[10px] text-muted-foreground truncate">
-											{serviceName}
-										</span>
+										<span className="text-[10px] text-foreground truncate">{serviceName}</span>
 									)}
 								</div>
 							)}
@@ -104,12 +102,12 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 			</CardHeader>
 			{showSummary && alert.summary && (
 				<CardContent className="pt-0 pb-3 px-3">
-					<p className="text-xs text-muted-foreground line-clamp-2">{alert.summary}</p>
+					<p className="text-xs text-foreground line-clamp-2">{alert.summary}</p>
 				</CardContent>
 			)}
 			{showDetails && (
 				<div className="px-3 pb-2">
-					<p className="text-[10px] text-muted-foreground">
+					<p className="text-[10px] text-foreground">
 						Started:{' '}
 						{(() => {
 							const date = new Date(alert.startsAt);

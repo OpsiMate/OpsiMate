@@ -412,8 +412,8 @@ const Integrations = () => {
 				<div className="flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto">
 					<div className="flex justify-between items-center">
 						<div>
-							<h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
-							<p className="text-muted-foreground mt-1">Connect your favorite tools and services</p>
+							<h1 className="text-3xl font-bold tracking-tight text-foreground">Integrations</h1>
+							<p className="text-foreground mt-1">Connect your favorite tools and services</p>
 						</div>
 						<Button className="gap-2" onClick={handleIntegrationButtonClick}>
 							<Plus className="h-4 w-4" />
@@ -438,7 +438,7 @@ const Integrations = () => {
 							<Separator />
 
 							<div>
-								<h3 className="text-sm font-medium mb-3">Filter by category</h3>
+								<h3 className="text-sm font-medium mb-3 text-foreground">Filter by category</h3>
 								<div className="flex flex-wrap gap-2">
 									{ALL_TAGS.map((tag) => (
 										<Badge

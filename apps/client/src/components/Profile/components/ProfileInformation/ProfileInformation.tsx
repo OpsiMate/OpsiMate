@@ -11,7 +11,7 @@ export const ProfileInformation = ({ email, role, createdAt }: ProfileInformatio
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center gap-3">
-				<User className="h-5 w-5 text-gray-500" />
+				<User className="h-5 w-5 text-muted-foreground" />
 				<h3 className="font-semibold">Profile Information</h3>
 			</div>
 

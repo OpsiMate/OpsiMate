@@ -545,13 +545,13 @@ const TVMode = ({
 			case 'running':
 				return <CheckCircle className="h-6 w-6 text-green-500" />;
 			case 'stopped':
-				return <XCircle className="h-6 w-6 text-gray-500" />;
+				return <XCircle className="h-6 w-6 text-foreground" />;
 			case 'error':
 				return <AlertTriangle className="h-6 w-6 text-red-500" />;
 			case 'unknown':
 				return <HelpCircle className="h-6 w-6 text-yellow-500" />;
 			default:
-				return <HelpCircle className="h-6 w-6 text-gray-500" />;
+				return <HelpCircle className="h-6 w-6 text-foreground" />;
 		}
 	};
 
@@ -592,8 +592,8 @@ const TVMode = ({
 						<div className="flex items-center gap-4">
 							<Monitor className="h-8 w-8 text-primary" />
 							<div>
-								<h1 className="text-3xl font-bold">OpsiMate TV Mode</h1>
-								<div className="text-muted-foreground space-y-0.5">
+								<h1 className="text-3xl font-bold text-foreground">OpsiMate TV Mode</h1>
+								<div className="text-foreground space-y-0.5">
 									<p>
 										{currentTime.toLocaleString()} • Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
 										{viewRotation && ' • View Rotation: ON'}
@@ -626,7 +626,7 @@ const TVMode = ({
 						<div className="flex flex-wrap items-center gap-4">
 							{/* Search Bar */}
 							<div className="relative min-w-[300px] max-w-[400px]">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-foreground" />
 								<Input
 									ref={searchInputRef}
 									placeholder="Search services, providers, IPs..."
@@ -685,31 +685,31 @@ const TVMode = ({
 										<p className="font-semibold text-sm">⌨️ Keyboard Shortcuts</p>
 										<div className="space-y-1 text-xs">
 											<div className="flex justify-between gap-4">
-												<span className="text-muted-foreground">Focus Search:</span>
+												<span className="text-foreground">Focus Search:</span>
 												<span className="font-mono">/</span>
 											</div>
 											<div className="flex justify-between gap-4">
-												<span className="text-muted-foreground">Status Views:</span>
+												<span className="text-foreground">Status Views:</span>
 												<span className="font-mono">1-4</span>
 											</div>
 											<div className="flex justify-between gap-4">
-												<span className="text-muted-foreground">Toggle Alerts:</span>
+												<span className="text-foreground">Toggle Alerts:</span>
 												<span className="font-mono">A</span>
 											</div>
 											<div className="flex justify-between gap-4">
-												<span className="text-muted-foreground">Manual Refresh:</span>
+												<span className="text-foreground">Manual Refresh:</span>
 												<span className="font-mono">Ctrl+R</span>
 											</div>
 											<div className="flex justify-between gap-4">
-												<span className="text-muted-foreground">Fullscreen:</span>
+												<span className="text-foreground">Fullscreen:</span>
 												<span className="font-mono">F11</span>
 											</div>
 											<div className="flex justify-between gap-4">
-												<span className="text-muted-foreground">Exit TV Mode:</span>
+												<span className="text-foreground">Exit TV Mode:</span>
 												<span className="font-mono">Esc</span>
 											</div>
 										</div>
-										<div className="pt-2 border-t text-xs text-muted-foreground">
+										<div className="pt-2 border-t text-xs text-foreground">
 											<p>
 												💡 <strong>Tips:</strong>
 											</p>
@@ -738,7 +738,7 @@ const TVMode = ({
 					<div className="flex flex-wrap items-center justify-center gap-6">
 						{/* Multi-State Filter Buttons */}
 						<div className="flex flex-wrap items-center gap-3">
-							<span className="text-sm font-medium text-muted-foreground">Status:</span>
+							<span className="text-sm font-medium text-foreground">Status:</span>
 							<div className="flex flex-wrap gap-1">
 								{(['all', 'running', 'stopped', 'error'] as const).map((state, index) => {
 									const isSelected = selectedStates.has(state);
@@ -834,13 +834,13 @@ const TVMode = ({
 
 					<Card className="border border-gray-500 bg-gray-50/50 dark:bg-gray-950/50">
 						<CardContent className="p-2 text-center">
-							<div className="text-lg font-bold text-gray-700 dark:text-gray-300 leading-none">
+							<div className="text-lg font-bold text-foreground leading-none">
 								{stats.filtered.stopped}
 								{stats.filtered.stopped !== stats.stopped && (
-									<span className="text-xs text-gray-500 dark:text-gray-400">/{stats.stopped}</span>
+									<span className="text-xs text-foreground">/{stats.stopped}</span>
 								)}
 							</div>
-							<div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-xs text-foreground mt-0.5 flex items-center justify-center min-h-[1.25rem]">
 								Stopped
 							</div>
 						</CardContent>
@@ -891,11 +891,11 @@ const TVMode = ({
 				{/* Services Grid */}
 				{isLoading ? (
 					<div className="flex items-center justify-center h-64">
-						<div className="text-xl text-muted-foreground">Loading services...</div>
+						<div className="text-xl text-foreground">Loading services...</div>
 					</div>
 				) : filteredServices.length === 0 ? (
 					<div className="flex items-center justify-center h-64">
-						<div className="text-xl text-muted-foreground">
+						<div className="text-xl text-foreground">
 							{alertFilter === 'with-alerts'
 								? 'No services with alerts found for current view'
 								: 'No services found for current view'}
@@ -1012,7 +1012,7 @@ const TVMode = ({
 																		)}
 																	{(!service.serviceAlerts ||
 																		service.serviceAlerts.length === 0) && (
-																		<p className="text-xs text-muted-foreground italic">
+																		<p className="text-xs text-foreground italic">
 																			No alert details available
 																		</p>
 																	)}
@@ -1096,7 +1096,7 @@ const TVMode = ({
 											</h3>
 
 											{!isExtraCompact && (
-												<div className="flex items-center gap-1 text-xs text-muted-foreground">
+												<div className="flex items-center gap-1 text-xs text-foreground">
 													{service.serviceType === 'SYSTEMD' ? (
 														<Wifi className="h-3 w-3" />
 													) : service.serviceIP ? (
@@ -1113,7 +1113,7 @@ const TVMode = ({
 											)}
 
 											{!isCompact && (
-												<div className="text-xs text-muted-foreground truncate">
+												<div className="text-xs text-foreground truncate">
 													Provider: {service.provider.name}
 												</div>
 											)}
@@ -1121,7 +1121,7 @@ const TVMode = ({
 											{!isCompact &&
 												service.serviceType === 'DOCKER' &&
 												service.containerDetails?.image && (
-													<div className="text-xs text-muted-foreground truncate">
+													<div className="text-xs text-foreground truncate">
 														Image: {service.containerDetails.image}
 													</div>
 												)}
@@ -1133,8 +1133,7 @@ const TVMode = ({
 													isExtraCompact ? 'text-xs px-1 py-0 h-5' : 'text-xs',
 													service.serviceStatus === 'running' &&
 														'border-green-500 text-green-700',
-													service.serviceStatus === 'stopped' &&
-														'border-gray-500 text-gray-700',
+													service.serviceStatus === 'stopped' && 'border-gray-500 text-white',
 													service.serviceStatus === 'error' && 'border-red-500 text-red-700',
 													service.serviceStatus === 'unknown' &&
 														'border-yellow-500 text-yellow-700'

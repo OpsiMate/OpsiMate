@@ -31,7 +31,7 @@ export const ProviderHeader = ({ searchQuery, onSearchChange, onProviderAdded }:
 		<>
 			<header className="bg-background border-b border-border p-4">
 				<div className="flex items-center justify-between">
-					<h1 className="text-2xl font-bold">Providers</h1>
+					<h1 className="text-2xl font-bold text-foreground">Providers</h1>
 					{canManageProviders() && (
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>

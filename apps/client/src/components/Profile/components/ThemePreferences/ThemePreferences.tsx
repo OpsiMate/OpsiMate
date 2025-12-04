@@ -8,7 +8,7 @@ export const ThemePreferences = () => {
 	return (
 		<div className="space-y-4 border-t pt-6">
 			<div className="flex items-center gap-3">
-				<Sun className="h-5 w-5 text-gray-500" />
+				<Sun className="h-5 w-5 text-muted-foreground" />
 				<h3 className="font-semibold">Theme Preferences</h3>
 			</div>
 

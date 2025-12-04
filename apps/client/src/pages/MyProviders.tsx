@@ -130,28 +130,28 @@ const getProviderCategory = (type: Provider['providerType']): string => {
 export const getStatusBadgeColor = (status?: Provider['status']) => {
 	switch (status) {
 		case 'online':
-			return 'bg-green-500/20 text-green-700 hover:bg-green-500/30';
+			return 'bg-green-500/20 text-white hover:bg-green-500/30';
 		case 'offline':
-			return 'bg-red-500/20 text-red-700 hover:bg-red-500/30';
+			return 'bg-red-500/20 text-white hover:bg-red-500/30';
 		case 'warning':
-			return 'bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30';
+			return 'bg-yellow-500/20 text-white hover:bg-yellow-500/30';
 		case 'unknown':
 		default:
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 	}
 };
 
 const getServiceStatusBadgeColor = (status: ServiceConfig['status']) => {
 	switch (status.toLowerCase()) {
 		case 'running':
-			return 'bg-green-500/20 text-green-700 hover:bg-green-500/30';
+			return 'bg-green-500/20 text-white hover:bg-green-500/30';
 		case 'stopped':
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 		case 'error':
-			return 'bg-red-500/20 text-red-700 hover:bg-red-500/30';
+			return 'bg-red-500/20 text-white hover:bg-red-500/30';
 		case 'unknown':
 		default:
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 	}
 };
 
@@ -706,7 +706,7 @@ export const Providers = () => {
 			<div className="flex flex-col h-full">
 				<header className="bg-background border-b border-border p-4">
 					<div className="flex items-center justify-between">
-						<h1 className="text-2xl font-bold">Providers</h1>
+						<h1 className="text-2xl font-bold text-foreground">Providers</h1>
 						{canManageProviders() && (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
