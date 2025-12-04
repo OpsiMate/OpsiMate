@@ -55,6 +55,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const alertRepo = new AlertRepository(db);
 	const auditLogRepo = new AuditLogRepository(db);
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
+	const archivedAlertRepo = new ArchivedAlertRepository(db);
 
 	// Init tables (needed by both)
 	await Promise.all([
@@ -69,7 +70,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// BL (needed by both)
 	const auditBL = new AuditBL(auditLogRepo);
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo);
+	const alertBL = new AlertBL(alertRepo, archivedAlertRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 
 	if (mode === AppMode.WORKER) {
@@ -105,7 +106,6 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const customActionRepo = new CustomActionRepository(db);
-    const archivedAlertRepo = new ArchivedAlertRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -126,10 +126,6 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	]);
 
 	// BL
-	const auditBL = new AuditBL(auditLogRepo);
-	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo, archivedAlertRepo);
-	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
