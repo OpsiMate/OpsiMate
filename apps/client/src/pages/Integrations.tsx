@@ -144,7 +144,7 @@ const INTEGRATIONS: Integration[] = [
 		tags: ['Monitoring', 'Alerts', 'Cloud'],
 		documentationUrl: 'https://cloud.google.com/monitoring/support/notification-options',
 		configFields: [],
-        enabled: true, // GCP integration is enabled by default
+		enabled: true, // GCP integration is enabled by default
 	},
 	{
 		id: 'uptimekuma',
@@ -155,7 +155,7 @@ const INTEGRATIONS: Integration[] = [
 		tags: ['Monitoring', 'Alerts', 'Uptime'],
 		documentationUrl: 'https://github.com/louislam/uptime-kuma/wiki/Notifications',
 		configFields: [],
-        enabled: true, // integration is enabled by default
+		enabled: true, // integration is enabled by default
 	},
 	{
 		id: 'prometheus',
