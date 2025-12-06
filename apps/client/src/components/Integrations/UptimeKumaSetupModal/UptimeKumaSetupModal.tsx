@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
@@ -11,13 +12,30 @@ export interface UptimeKumaSetupModalProps {
 
 export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModalProps) => {
 	const [copied, setCopied] = useState(false);
+	const { toast } = useToast();
 
+	// Correct webhook URL with API token parameter
+	// User needs to replace {your_api_token} with their actual API_TOKEN environment variable value
 	const webhookUrl = `${window.location.protocol + '//' + window.location.hostname}:3001/api/v1/alerts/custom/UptimeKuma?api_token={your_api_token}`;
 
 	const handleCopyWebhook = async () => {
-		await navigator.clipboard.writeText(webhookUrl);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		try {
+			await navigator.clipboard.writeText(webhookUrl);
+			setCopied(true);
+			toast({
+				title: 'Copied!',
+				description: 'Webhook URL copied to clipboard',
+				duration: 2000,
+			});
+			setTimeout(() => setCopied(false), 2000);
+		} catch (error) {
+			toast({
+				title: 'Failed to copy',
+				description: 'Please copy the URL manually',
+				variant: 'destructive',
+				duration: 3000,
+			});
+		}
 	};
 
 	return (
@@ -52,6 +70,16 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 									</>
 								)}
 							</Button>
+						</div>
+						<div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mt-2">
+							<p className="text-sm text-amber-900 dark:text-amber-100">
+								<strong>Important:</strong> Replace{' '}
+								<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
+									{'{your_api_token}'}
+								</code>{' '}
+								with your actual API_TOKEN environment variable value from your OpsiMate server
+								configuration.
+							</p>
 						</div>
 					</div>
 
@@ -105,6 +133,20 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 									OpsiMate
 								</li>
 							</ul>
+						</div>
+
+						<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+								<span className="text-green-600 dark:text-green-400">💡</span>
+								Tip
+							</h4>
+							<p className="text-sm text-muted-foreground">
+								If you installed OpsiMate using the default installation script, the default{' '}
+								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">api_token</code> is{' '}
+								<strong>opsimate</strong>. You can change this value in your{' '}
+								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">docker-compose.yml</code>{' '}
+								file.
+							</p>
 						</div>
 					</div>
 
