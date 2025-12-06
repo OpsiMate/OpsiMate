@@ -60,7 +60,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 								{groupByColumns.map((col, index) => (
 									<CommandItem
 										key={col}
-										className="flex items-center justify-between text-foreground"
+										className="flex items-center justify-between text-foreground data-[selected=true]:text-white"
 										onSelect={() => {}}
 									>
 										<span className="truncate mr-2">{COLUMN_LABELS[col] || col}</span>
@@ -68,7 +68,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 											<Button
 												variant="ghost"
 												size="icon"
-												className="h-5 w-5"
+												className="h-5 w-5 hover:bg-transparent"
 												disabled={index === 0}
 												onClick={(e) => {
 													e.stopPropagation();
@@ -80,7 +80,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 											<Button
 												variant="ghost"
 												size="icon"
-												className="h-5 w-5"
+												className="h-5 w-5 hover:bg-transparent"
 												disabled={index === groupByColumns.length - 1}
 												onClick={(e) => {
 													e.stopPropagation();
@@ -92,7 +92,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 											<Button
 												variant="ghost"
 												size="icon"
-												className="h-5 w-5 text-destructive hover:text-destructive"
+												className="h-5 w-5 text-destructive hover:text-white hover:bg-transparent"
 												onClick={(e) => {
 													e.stopPropagation();
 													handleRemoveColumn(col);
