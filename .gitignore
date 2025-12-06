@@ -35,3 +35,4 @@ config.yml
 private-keys/*
 *.timestamp-*.mjs
 .turbo
+.cursor/mcp.json
