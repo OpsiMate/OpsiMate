@@ -272,19 +272,32 @@ export class AlertController {
 
 	private normalizeDate(value: number | string): string {
 		// If null/undefined → fallback
-		if (!value) return new Date().toISOString();
+		if (value === null || value === undefined || value === '') {
+			return new Date().toISOString();
+		}
 
-		// If it's a number (unix seconds)
+		// Helper to normalize a numeric epoch that may be in seconds or milliseconds
+		const fromEpoch = (epoch: number): string => {
+			// Heuristic: values < 1e12 are treated as seconds; >= 1e12 as milliseconds
+			const asMs = epoch < 1e12 ? epoch * 1000 : epoch;
+			const date = new Date(asMs);
+			return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+		};
+
+		// If it's a number (epoch seconds or millis)
 		if (typeof value === 'number') {
-			return new Date(value * 1000).toISOString();
+			return fromEpoch(value);
 		}
 
-		// If it's a numeric string (e.g. "1763324240" or "1763324240.0")
+		// If it's a numeric string (e.g. "1763324240" or "1764869846000")
 		if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
-			return new Date(Number(value) * 1000).toISOString();
+			const num = Number(value);
+			if (!Number.isNaN(num)) {
+				return fromEpoch(num);
+			}
 		}
 
-		// If it's an ISO-like string, try parsing
+		// If it's an ISO-like string or other date-parseable format, try parsing
 		const iso = new Date(value);
 		if (!isNaN(iso.getTime())) {
 			return iso.toISOString();

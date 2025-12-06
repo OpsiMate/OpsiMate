@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
+import { API_BASE_URL } from '@/lib/api';
 import { Check, Copy, ExternalLink, Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -18,14 +19,13 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 	const [copiedPayload, setCopiedPayload] = useState(false);
 	const { toast } = useToast();
 
-	const baseUrl = useMemo(() => {
-		const { protocol, hostname, port } = window.location;
-		// In production the API may be fronted by a proxy – if so, update this base URL accordingly.
-		const effectivePort = port || '3001';
-		return `${protocol}//${hostname}:${effectivePort}`;
+	const webhookUrl = useMemo(() => {
+		// Prefer the shared API_BASE_URL, which already encodes the correct host + base path.
+		// In SSR/tests, API_BASE_URL may be an empty string; in that case fall back to a relative path.
+		const base = typeof window !== 'undefined' ? API_BASE_URL : '';
+		const trimmedBase = base.replace(/\/+$/, '');
+		return `${trimmedBase || ''}/alerts/custom/datadog?api_token={your_api_token}`;
 	}, []);
-
-	const webhookUrl = `${baseUrl}/api/v1/alerts/custom/datadog?api_token={your_api_token}`;
 
 	const payloadTemplate = `{
   "alert_id": "$ALERT_ID",
