@@ -13,3 +13,5 @@ export interface User {
 	role: Role;
 	createdAt: string;
 }
+
+export * from './TagKey';

@@ -1,3 +1,4 @@
+import { extractTagKeyFromColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 
@@ -5,13 +6,28 @@ const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
 };
 
-export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, string[]>) => {
+export const useAlertsFiltering = (
+	alerts: Alert[],
+	filters: Record<string, string[]>,
+	enabledTagKeys: TagKeyInfo[] = []
+) => {
 	const filteredAlerts = useMemo(() => {
 		if (Object.keys(filters).length === 0) return alerts;
 
 		return alerts.filter((alert) => {
 			for (const [field, values] of Object.entries(filters)) {
 				if (values.length === 0) continue;
+
+				if (isTagKeyColumn(field)) {
+					const tagKey = extractTagKeyFromColumnId(field);
+					if (tagKey) {
+						const tagValue = alert.tags?.[tagKey] || '';
+						if (!values.includes(tagValue)) {
+							return false;
+						}
+					}
+					continue;
+				}
 
 				let fieldValue: string;
 				switch (field) {
@@ -20,9 +36,6 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);
-						break;
-					case 'tag':
-						fieldValue = alert.tag ?? '';
 						break;
 					case 'alertName':
 						fieldValue = alert.alertName ?? '';
@@ -37,7 +50,7 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 			}
 			return true;
 		});
-	}, [alerts, filters]);
+	}, [alerts, filters, enabledTagKeys]);
 
 	return filteredAlerts;
 };

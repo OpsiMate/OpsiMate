@@ -35,7 +35,7 @@ export const AlertsHeatmap = ({
 	const data = useMemo(() => {
 		if (alerts.length === 0) return [];
 
-		const effectiveGroupBy = groupBy.length > 0 ? groupBy : ['tag'];
+		const effectiveGroupBy = groupBy.length > 0 ? groupBy : ['type'];
 
 		const normalizedValueGetter = (alert: Alert, field: string): string => {
 			if (field === 'serviceName' && customValueGetter) {

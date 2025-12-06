@@ -1,9 +1,9 @@
 import { Alert } from '@OpsiMate/shared';
-import { useEffect, useMemo, useState } from 'react';
-import { flattenGroups, groupAlerts } from '../AlertsTable.utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createTagKeyValueGetter, flattenGroups, groupAlerts } from '../AlertsTable.utils';
 import { ALERTS_GROUP_BY_STORAGE_KEY } from './useAlertGrouping.constants';
 
-export const useAlertGrouping = (sortedAlerts: Alert[]) => {
+export const useAlertGrouping = (sortedAlerts: Alert[], columnLabels: Record<string, string> = {}) => {
 	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
 		try {
 			const saved = localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
@@ -19,10 +19,12 @@ export const useAlertGrouping = (sortedAlerts: Alert[]) => {
 
 	const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+	const valueGetter = useMemo(() => createTagKeyValueGetter(columnLabels), [columnLabels]);
+
 	const groupedData = useMemo(() => {
 		if (groupByColumns.length === 0) return [];
-		return groupAlerts(sortedAlerts, groupByColumns);
-	}, [sortedAlerts, groupByColumns]);
+		return groupAlerts(sortedAlerts, groupByColumns, valueGetter);
+	}, [sortedAlerts, groupByColumns, valueGetter]);
 
 	const flatRows = useMemo(() => {
 		if (groupByColumns.length === 0) {
@@ -31,15 +33,17 @@ export const useAlertGrouping = (sortedAlerts: Alert[]) => {
 		return flattenGroups(groupedData, expandedGroups);
 	}, [sortedAlerts, groupedData, expandedGroups, groupByColumns]);
 
-	const toggleGroup = (key: string) => {
-		const newExpanded = new Set(expandedGroups);
-		if (newExpanded.has(key)) {
-			newExpanded.delete(key);
-		} else {
-			newExpanded.add(key);
-		}
-		setExpandedGroups(newExpanded);
-	};
+	const toggleGroup = useCallback((key: string) => {
+		setExpandedGroups((prev) => {
+			const newExpanded = new Set(prev);
+			if (newExpanded.has(key)) {
+				newExpanded.delete(key);
+			} else {
+				newExpanded.add(key);
+			}
+			return newExpanded;
+		});
+	}, []);
 
 	return {
 		groupByColumns,
