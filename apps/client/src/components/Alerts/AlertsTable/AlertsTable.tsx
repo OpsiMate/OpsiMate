@@ -37,13 +37,13 @@ export const AlertsTable = ({
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
-	const allColumnLabels = useMemo(
-		() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }),
-		[tagKeyColumnLabels]
-	);
+	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
 
 	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
-	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(sortedAlerts, allColumnLabels);
+	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(
+		sortedAlerts,
+		allColumnLabels
+	);
 	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
 
 	const virtualizer = useVirtualizer({
@@ -142,9 +142,7 @@ export const AlertsTable = ({
 											/>
 										);
 									}
-									if (
-										['alertName', 'status', 'startsAt', 'summary', 'type'].includes(column)
-									) {
+									if (['alertName', 'status', 'startsAt', 'summary', 'type'].includes(column)) {
 										return (
 											<SortableHeader
 												key={column}

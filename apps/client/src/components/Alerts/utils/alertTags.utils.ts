@@ -31,4 +31,3 @@ export const getAlertTagEntries = (alert: Alert): Array<{ key: string; value: st
 		.filter(([, value]) => Boolean(value))
 		.map(([key, value]) => ({ key, value }));
 };
-

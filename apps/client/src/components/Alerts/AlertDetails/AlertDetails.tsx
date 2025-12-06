@@ -89,15 +89,15 @@ export const AlertDetails = ({
 								</div>
 							</div>
 						</div>
-					{hasAlertTags(alert) && (
-						<div className="flex items-center gap-1 flex-wrap">
-							{getAlertTagEntries(alert).map(({ key, value }) => (
-								<Badge key={key} variant="outline" className="text-xs">
-									{key}: {value}
-								</Badge>
-							))}
-						</div>
-					)}
+						{hasAlertTags(alert) && (
+							<div className="flex items-center gap-1 flex-wrap">
+								{getAlertTagEntries(alert).map(({ key, value }) => (
+									<Badge key={key} variant="outline" className="text-xs">
+										{key}: {value}
+									</Badge>
+								))}
+							</div>
+						)}
 					</div>
 
 					{alert.summary && (

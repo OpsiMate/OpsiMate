@@ -15,13 +15,7 @@ import { AlertsHeader } from './AlertsHeader';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
-import {
-	useAlertActions,
-	useAlertsFiltering,
-	useAlertsRefresh,
-	useAlertTagKeys,
-	useColumnManagement,
-} from './hooks';
+import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useAlertTagKeys, useColumnManagement } from './hooks';
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -165,21 +159,21 @@ const Alerts = () => {
 										alerts.length === 0 && !isLoading && 'flex items-center justify-center'
 									)}
 								>
-								<AlertsTable
-									alerts={filteredAlerts}
-									services={services}
-									onDismissAlert={handleDismissAlert}
-									onUndismissAlert={handleUndismissAlert}
-									onDeleteAlert={handleDeleteAlert}
-									onSelectAlerts={setSelectedAlerts}
-									selectedAlerts={selectedAlerts}
-									isLoading={isLoading}
-									visibleColumns={visibleColumns}
-									columnOrder={columnOrder}
-									onAlertClick={setSelectedAlert}
-									onTableSettingsClick={() => setShowColumnSettings(true)}
-									tagKeyColumnLabels={tagKeyColumnLabels}
-								/>
+									<AlertsTable
+										alerts={filteredAlerts}
+										services={services}
+										onDismissAlert={handleDismissAlert}
+										onUndismissAlert={handleUndismissAlert}
+										onDeleteAlert={handleDeleteAlert}
+										onSelectAlerts={setSelectedAlerts}
+										selectedAlerts={selectedAlerts}
+										isLoading={isLoading}
+										visibleColumns={visibleColumns}
+										columnOrder={columnOrder}
+										onAlertClick={setSelectedAlert}
+										onTableSettingsClick={() => setShowColumnSettings(true)}
+										tagKeyColumnLabels={tagKeyColumnLabels}
+									/>
 								</div>
 
 								<div className="flex-shrink-0">
@@ -199,21 +193,21 @@ const Alerts = () => {
 										'flex items-center justify-center'
 								)}
 							>
-							<AlertsTable
-								alerts={filteredArchivedAlerts}
-								services={services}
-								onDismissAlert={undefined}
-								onUndismissAlert={undefined}
-								onDeleteAlert={handleDeleteArchivedAlert}
-								onSelectAlerts={undefined}
-								selectedAlerts={[]}
-								isLoading={isLoadingArchived}
-								visibleColumns={visibleColumns}
-								columnOrder={columnOrder}
-								onAlertClick={setSelectedAlert}
-								onTableSettingsClick={() => setShowColumnSettings(true)}
-								tagKeyColumnLabels={tagKeyColumnLabels}
-							/>
+								<AlertsTable
+									alerts={filteredArchivedAlerts}
+									services={services}
+									onDismissAlert={undefined}
+									onUndismissAlert={undefined}
+									onDeleteAlert={handleDeleteArchivedAlert}
+									onSelectAlerts={undefined}
+									selectedAlerts={[]}
+									isLoading={isLoadingArchived}
+									visibleColumns={visibleColumns}
+									columnOrder={columnOrder}
+									onAlertClick={setSelectedAlert}
+									onTableSettingsClick={() => setShowColumnSettings(true)}
+									tagKeyColumnLabels={tagKeyColumnLabels}
+								/>
 							</div>
 						)}
 					</div>
@@ -233,17 +227,17 @@ const Alerts = () => {
 				</div>
 			</div>
 
-		<ColumnSettingsModal
-			open={showColumnSettings}
-			onOpenChange={setShowColumnSettings}
-			visibleColumns={visibleColumns}
-			onColumnToggle={handleColumnToggle}
-			columnLabels={COLUMN_LABELS}
-			title="Alert Table Settings"
-			description="Select which columns to display in the alerts table."
-			excludeColumns={['actions']}
-			tagKeys={tagKeys}
-		/>
+			<ColumnSettingsModal
+				open={showColumnSettings}
+				onOpenChange={setShowColumnSettings}
+				visibleColumns={visibleColumns}
+				onColumnToggle={handleColumnToggle}
+				columnLabels={COLUMN_LABELS}
+				title="Alert Table Settings"
+				description="Select which columns to display in the alerts table."
+				excludeColumns={['actions']}
+				tagKeys={tagKeys}
+			/>
 		</DashboardLayout>
 	);
 };
