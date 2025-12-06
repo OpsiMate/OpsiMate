@@ -28,7 +28,7 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 				let fieldValue: string;
 				switch (field) {
 					case 'status':
-						fieldValue = alert.isDismissed ? 'Dismissed' : 'Firing';
+						fieldValue = alert.isDismissed ? 'Dismissed' : alert.status;
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);

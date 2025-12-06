@@ -33,7 +33,14 @@ const Alerts = () => {
 	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
 
-	const shouldPauseRefresh = showColumnSettings || selectedAlert !== null;
+	const currentAlertData = activeTab === 'active' ? alerts : archivedAlerts;
+	const syncedSelectedAlert = useMemo(() => {
+		if (!selectedAlert) return null;
+		const updatedAlert = currentAlertData.find((alert) => alert.id === selectedAlert.id);
+		return updatedAlert || selectedAlert;
+	}, [selectedAlert, currentAlertData]);
+
+	const shouldPauseRefresh = showColumnSettings || syncedSelectedAlert !== null;
 
 	// Active alerts refresh
 	const {
@@ -203,11 +210,11 @@ const Alerts = () => {
 						)}
 					</div>
 
-					{selectedAlert && (
+					{syncedSelectedAlert && (
 						<div className="w-96 border-l">
 							<AlertDetails
 								isActive={activeTab == 'active'}
-								alert={selectedAlert}
+								alert={syncedSelectedAlert}
 								onClose={() => setSelectedAlert(null)}
 								onDismiss={handleDismissAlert}
 								onUndismiss={handleUndismissAlert}

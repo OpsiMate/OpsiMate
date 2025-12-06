@@ -1,6 +1,3 @@
-import { GCPIcon } from '@/components/icons/GCPIcon';
-import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
-import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,8 +5,10 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { format } from 'date-fns';
-import { Archive, Bell, Book, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
+import { Archive, Book, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
+import { IntegrationAvatar, resolveAlertIntegration } from '../IntegrationAvatar';
 import { getAlertTagEntries, hasAlertTags } from '../utils/alertTags.utils';
+import { getTagKeyColor } from '../utils/tagColors.utils';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -32,28 +31,7 @@ export const AlertDetails = ({
 }: AlertDetailsProps) => {
 	if (!alert) return null;
 
-	const getAlertType = (alert: Alert): string => {
-		return alert.type || 'Custom';
-	};
-
-	const getAlertTypeIcon = (type: string) => {
-		switch (type.toLowerCase()) {
-			case 'grafana':
-				return <GrafanaIcon className="w-6 h-6" />;
-			case 'gcp':
-				return <GCPIcon className="w-6 h-6" />;
-			case 'uptimekuma':
-				return <UptimeKumaIcon className="w-6 h-6" />;
-			default:
-				return (
-					<div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center border border-border">
-						<Bell className="w-4 h-4 text-foreground" />
-					</div>
-				);
-		}
-	};
-
-	const alertType = getAlertType(alert);
+	const integration = resolveAlertIntegration(alert);
 
 	return (
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
@@ -68,7 +46,13 @@ export const AlertDetails = ({
 				<div className="p-4 space-y-4">
 					<div className="flex flex-col gap-3">
 						<div className="flex items-center gap-3">
-							<div className="flex-shrink-0">{getAlertTypeIcon(alertType)}</div>
+							<div className="flex-shrink-0">
+								<IntegrationAvatar
+									integration={integration}
+									size="md"
+									className="ring-2 ring-background shadow-sm"
+								/>
+							</div>
 							<div className="flex-1 min-w-0">
 								<div className="flex items-center gap-2 flex-wrap">
 									<h3 className="text-lg font-semibold break-words flex-1 min-w-0 text-foreground">
@@ -82,20 +66,30 @@ export const AlertDetails = ({
 													? 'destructive'
 													: 'secondary'
 										}
-										className="flex-shrink-0"
+										className="flex-shrink-0 text-xs px-1.5 py-0.5"
 									>
-										{alert.isDismissed ? 'Dismissed' : alert.status}
+										{alert.isDismissed ? 'dismissed' : alert.status}
 									</Badge>
 								</div>
 							</div>
 						</div>
 						{hasAlertTags(alert) && (
 							<div className="flex items-center gap-1 flex-wrap">
-								{getAlertTagEntries(alert).map(({ key, value }) => (
-									<Badge key={key} variant="outline" className="text-xs">
-										{key}: {value}
-									</Badge>
-								))}
+								{getAlertTagEntries(alert).map(({ key, value }) => {
+									const colors = getTagKeyColor(key);
+									return (
+										<Badge
+											key={key}
+											className="text-xs border-0"
+											style={{
+												backgroundColor: colors.background,
+												color: colors.text,
+											}}
+										>
+											{key}: {value}
+										</Badge>
+									);
+								})}
 							</div>
 						)}
 					</div>
@@ -146,17 +140,19 @@ export const AlertDetails = ({
 					<div className="grid grid-cols-2 gap-2">
 						{alert.alertUrl && (
 							<Button
+								variant="outline"
 								size="sm"
 								className="w-full justify-start gap-2 text-xs h-8"
 								onClick={() => window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')}
 							>
 								<ExternalLink className="h-3 w-3 flex-shrink-0" />
-								<span className="truncate">View Source</span>
+								<span className="truncate">Source</span>
 							</Button>
 						)}
 
 						{alert.runbookUrl && (
 							<Button
+								variant="outline"
 								size="sm"
 								className="w-full justify-start gap-2 text-xs h-8"
 								onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
@@ -173,6 +169,7 @@ export const AlertDetails = ({
 						<div className="space-y-2">
 							{alert.isDismissed ? (
 								<Button
+									variant="outline"
 									size="sm"
 									className="w-full justify-start gap-2"
 									onClick={() => onUndismiss?.(alert.id)}
@@ -182,6 +179,7 @@ export const AlertDetails = ({
 								</Button>
 							) : (
 								<Button
+									variant="outline"
 									size="sm"
 									className="w-full justify-start gap-2"
 									onClick={() => onDismiss?.(alert.id)}
@@ -191,8 +189,8 @@ export const AlertDetails = ({
 								</Button>
 							)}
 							<Button
-								size="sm"
 								variant="outline"
+								size="sm"
 								className="w-full justify-start gap-2"
 								onClick={() => onDelete?.(alert.id)}
 							>
@@ -203,8 +201,8 @@ export const AlertDetails = ({
 					) : (
 						<div className="space-y-2">
 							<Button
-								size="sm"
 								variant="destructive"
+								size="sm"
 								className="w-full justify-start gap-2"
 								onClick={() => onDelete?.(alert.id)}
 							>

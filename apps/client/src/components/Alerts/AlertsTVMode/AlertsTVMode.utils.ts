@@ -56,7 +56,7 @@ export const filterAlertsByFilters = (
 			let fieldValue: string;
 			switch (field) {
 				case 'status':
-					fieldValue = alert.isDismissed ? 'Dismissed' : 'Firing';
+					fieldValue = alert.isDismissed ? 'Dismissed' : alert.status;
 					break;
 				case 'serviceName': {
 					const serviceName = getServiceName(alert);

@@ -1,4 +1,3 @@
-import { Alert } from '@OpsiMate/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -9,10 +8,12 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Alert } from '@OpsiMate/shared';
 import { Book, Check, ExternalLink, MoreVertical, RotateCcw } from 'lucide-react';
-import { getAlertTagsArray, hasAlertTags } from '../../utils/alertTags.utils';
-import { CardSize } from '../AlertsTVMode.constants';
+import { getAlertTagEntries, hasAlertTags } from '../../utils/alertTags.utils';
+import { getTagKeyColor } from '../../utils/tagColors.utils';
 import { AlertCardIcon } from '../AlertCardIcon';
+import { CardSize } from '../AlertsTVMode.constants';
 
 interface AlertCardProps {
 	alert: Alert;
@@ -48,11 +49,21 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 							</h3>
 							{showDetails && hasAlertTags(alert) && (
 								<div className="flex items-center gap-2 mt-1">
-									{getAlertTagsArray(alert).map((tag, index) => (
-										<Badge key={index} variant="outline" className="text-[10px] px-1 py-0">
-											{tag}
-										</Badge>
-									))}
+									{getAlertTagEntries(alert).map(({ key, value }) => {
+										const colors = getTagKeyColor(key);
+										return (
+											<Badge
+												key={key}
+												className="text-[10px] px-1 py-0 border-0"
+												style={{
+													backgroundColor: colors.background,
+													color: colors.text,
+												}}
+											>
+												{value}
+											</Badge>
+										);
+									})}
 									{serviceName !== '-' && (
 										<span className="text-[10px] text-foreground truncate">{serviceName}</span>
 									)}
