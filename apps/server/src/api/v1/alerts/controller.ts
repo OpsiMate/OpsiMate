@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import { GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
+import { DatadogAlertWebhookSchema, GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { v4 } from 'uuid';
 
@@ -135,8 +135,8 @@ export class AlertController {
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
-					tag: incident.resource_name,
-					startsAt: this.normalizeGCPDate(incident.started_at),
+					tag: incident.resource_name || incident.resource_id || 'unknown',
+					startsAt: this.normalizeDate(incident.started_at),
 					updatedAt: new Date().toISOString(),
 					alertUrl: incident.url,
 					alertName: incident.policy_name || 'UNKNOWN',
@@ -147,6 +147,60 @@ export class AlertController {
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
 			logger.error('Error creating gcp alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createCustomDatadogAlert(req: Request, res: Response) {
+		try {
+			const payload = DatadogAlertWebhookSchema.parse(req.body);
+
+			// Prefer explicit alert_id if present, otherwise fall back to the Datadog event id.
+			const alertId = payload.alert_id ?? payload.id ?? new Date().getTime().toString();
+
+			// Determine whether this is a recovery / resolved transition
+			const transition = payload.alert_transition?.toLowerCase() ?? '';
+			const status = payload.alert_status?.toLowerCase() ?? '';
+
+			const isRecovered =
+				transition.includes('recovered') || status === 'ok' || status === 'recovered' || status === 'resolved';
+
+			logger.info(`got datadog alert: ${JSON.stringify(payload)}`);
+
+			if (isRecovered) {
+				await this.alertBL.archiveAlert(alertId);
+				return res.status(200).json({ success: true, data: { alertId } });
+			}
+
+			const now = new Date().toISOString();
+
+			const startsAtSource = payload.date ?? payload.last_updated ?? now;
+			const updatedAtSource = payload.last_updated ?? payload.date ?? now;
+
+			const tagsString = payload.alert_scope || payload.tags || '';
+			const primaryTag = tagsString.split(',')[0]?.trim();
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: alertId,
+				// Cast to any to avoid tight coupling to AlertType union while still
+				// storing a meaningful provider type in the DB.
+				type: 'Datadog',
+				status: AlertStatus.FIRING,
+				tag: primaryTag || 'unknown',
+				startsAt: this.normalizeDate(startsAtSource),
+				updatedAt: this.normalizeDate(updatedAtSource),
+				alertUrl: (payload.link ?? ''),
+				alertName: payload.title || 'UNKNOWN',
+				summary: payload.message,
+				runbookUrl: undefined,
+			});
+
+			return res.status(200).json({ success: true, data: { alertId } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error creating datadog alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -216,7 +270,7 @@ export class AlertController {
 		}
 	}
 
-	private normalizeGCPDate(value: number | string): string {
+	private normalizeDate(value: number | string): string {
 		// If null/undefined → fallback
 		if (!value) return new Date().toISOString();
 
