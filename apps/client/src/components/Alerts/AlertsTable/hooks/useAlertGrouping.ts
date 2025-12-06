@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Alert } from '@OpsiMate/shared';
+import { useEffect, useMemo, useState } from 'react';
 import { flattenGroups, groupAlerts } from '../AlertsTable.utils';
-import { FlatGroupItem } from '../AlertsTable.types';
 import { ALERTS_GROUP_BY_STORAGE_KEY } from './useAlertGrouping.constants';
 
 export const useAlertGrouping = (sortedAlerts: Alert[]) => {

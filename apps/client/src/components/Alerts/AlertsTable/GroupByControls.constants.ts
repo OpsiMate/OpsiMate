@@ -4,4 +4,3 @@ export const GROUP_BY_CONTROLS_TEXT = {
 	AVAILABLE_COLUMNS_HEADING: 'Available Columns',
 	RESET_TOOLTIP: 'Reset grouping',
 } as const;
-

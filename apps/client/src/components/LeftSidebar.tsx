@@ -15,7 +15,7 @@ interface LeftSidebarProps {
 
 export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	const location = useLocation();
-	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as typeof ALERTS_PATHS[number]);
+	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as (typeof ALERTS_PATHS)[number]);
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<Link
