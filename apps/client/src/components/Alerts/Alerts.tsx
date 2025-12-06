@@ -203,6 +203,7 @@ const Alerts = () => {
 								onClose={() => setSelectedAlert(null)}
 								onDismiss={handleDismissAlert}
 								onUndismiss={handleUndismissAlert}
+								onDelete={activeTab === 'active' ? handleDeleteAlert : handleDeleteArchivedAlert}
 							/>
 						</div>
 					)}

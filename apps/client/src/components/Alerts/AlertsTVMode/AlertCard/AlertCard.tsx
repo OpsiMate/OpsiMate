@@ -9,7 +9,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { Archive, ExternalLink, MoreVertical, RotateCcw, X } from 'lucide-react';
+import { Archive, Check, ExternalLink, MoreVertical, RotateCcw, X } from 'lucide-react';
 import { CardSize } from '../AlertsTVMode.constants';
 import { AlertCardIcon } from '../AlertCardIcon';
 
@@ -92,7 +92,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 								</DropdownMenuItem>
 							) : (
 								<DropdownMenuItem onClick={() => onDismissAlert(alert.id)}>
-									<Archive className="mr-2 h-3 w-3" />
+									<Check className="mr-2 h-3 w-3" />
 									Dismiss Alert
 								</DropdownMenuItem>
 							)}

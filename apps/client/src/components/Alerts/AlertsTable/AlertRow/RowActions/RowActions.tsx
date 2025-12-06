@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
+import { Archive, Check, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -18,6 +18,7 @@ export interface RowActionsProps {
 
 export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAlert }: RowActionsProps) => {
 	const { alertUrl, runbookUrl, isDismissed } = alert;
+	const isActive = Boolean(onDismissAlert);
 	const canToggle = (!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert));
 	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert);
 
@@ -81,10 +82,19 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 						{onDeleteAlert && (
 							<DropdownMenuItem
 								onClick={handleDelete}
-								className="text-destructive focus:text-destructive"
+								className={isActive ? '' : 'text-destructive focus:text-destructive'}
 							>
-								<Trash2 className="mr-2 h-3 w-3" />
-								Delete
+								{isActive ? (
+									<>
+										<Archive className="mr-2 h-3 w-3" />
+										Archive
+									</>
+								) : (
+									<>
+										<Trash2 className="mr-2 h-3 w-3" />
+										Delete
+									</>
+								)}
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>
@@ -101,7 +111,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 					aria-label={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
 					aria-pressed={isDismissed}
 				>
-					{isDismissed ? <RotateCcw className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+					{isDismissed ? <RotateCcw className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
 				</Button>
 			)}
 		</div>

@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { format } from 'date-fns';
-import { Archive, Bell, Calendar, Clock, ExternalLink, RotateCcw, X } from 'lucide-react';
+import { Archive, Bell, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -16,10 +16,11 @@ interface AlertDetailsProps {
 	onClose: () => void;
 	onDismiss?: (alertId: string) => void;
 	onUndismiss?: (alertId: string) => void;
+	onDelete?: (alertId: string) => void;
 	className?: string;
 }
 
-export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss, className }: AlertDetailsProps) => {
+export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss, onDelete, className }: AlertDetailsProps) => {
 	if (!alert) return null;
 
 	const getAlertType = (alert: Alert): string => {
@@ -157,7 +158,7 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 
 					<Separator />
 
-					{isActive && (
+					{isActive ? (
 						<div className="space-y-2">
 							{alert.isDismissed ? (
 								<Button
@@ -174,10 +175,31 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 									className="w-full justify-start gap-2"
 									onClick={() => onDismiss?.(alert.id)}
 								>
-									<Archive className="h-3 w-3" />
+									<Check className="h-3 w-3" />
 									Dismiss Alert
 								</Button>
 							)}
+							<Button
+								size="sm"
+								variant="outline"
+								className="w-full justify-start gap-2"
+								onClick={() => onDelete?.(alert.id)}
+							>
+								<Archive className="h-3 w-3" />
+								Archive Alert
+							</Button>
+						</div>
+					) : (
+						<div className="space-y-2">
+							<Button
+								size="sm"
+								variant="destructive"
+								className="w-full justify-start gap-2"
+								onClick={() => onDelete?.(alert.id)}
+							>
+								<Trash2 className="h-3 w-3" />
+								Delete Alert
+							</Button>
 						</div>
 					)}
 
