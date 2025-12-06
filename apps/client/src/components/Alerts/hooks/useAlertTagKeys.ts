@@ -16,7 +16,10 @@ export const useAlertTagKeys = (alerts: Alert[]): TagKeyInfo[] => {
 						if (!tagKeyMap.has(key)) {
 							tagKeyMap.set(key, new Set());
 						}
-						tagKeyMap.get(key)!.add(value);
+						const valueSet = tagKeyMap.get(key);
+						if (valueSet) {
+							valueSet.add(value);
+						}
 					}
 				});
 			}
@@ -33,8 +36,10 @@ export const useAlertTagKeys = (alerts: Alert[]): TagKeyInfo[] => {
 };
 
 const formatTagKeyLabel = (key: string): string => {
+	if (!key) return '';
 	return key
 		.split(/[-_]/)
+		.filter((word) => word.length > 0)
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 		.join(' ');
 };

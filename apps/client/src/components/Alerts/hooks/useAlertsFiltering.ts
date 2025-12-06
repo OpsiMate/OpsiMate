@@ -1,4 +1,4 @@
-import { extractTagKeyFromColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 
@@ -6,11 +6,7 @@ const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
 };
 
-export const useAlertsFiltering = (
-	alerts: Alert[],
-	filters: Record<string, string[]>,
-	enabledTagKeys: TagKeyInfo[] = []
-) => {
+export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, string[]>) => {
 	const filteredAlerts = useMemo(() => {
 		if (Object.keys(filters).length === 0) return alerts;
 
@@ -50,7 +46,7 @@ export const useAlertsFiltering = (
 			}
 			return true;
 		});
-	}, [alerts, filters, enabledTagKeys]);
+	}, [alerts, filters]);
 
 	return filteredAlerts;
 };

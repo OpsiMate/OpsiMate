@@ -16,8 +16,8 @@ export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 		const integrationLabel = getIntegrationLabel(integration).toLowerCase();
 		const tagsString = getAlertTagsString(alert).toLowerCase();
 		return (
-			alert.alertName.toLowerCase().includes(lower) ||
-			alert.status.toLowerCase().includes(lower) ||
+			(alert.alertName && alert.alertName.toLowerCase().includes(lower)) ||
+			(alert.status && alert.status.toLowerCase().includes(lower)) ||
 			tagsString.includes(lower) ||
 			(alert.summary && alert.summary.toLowerCase().includes(lower)) ||
 			integrationLabel.includes(lower)

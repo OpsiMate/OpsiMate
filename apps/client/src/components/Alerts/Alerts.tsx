@@ -69,8 +69,8 @@ const Alerts = () => {
 	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
 		tagKeys,
 	});
-	const filteredAlerts = useAlertsFiltering(alerts, activeFilters, enabledTagKeys);
-	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, archivedFilters, enabledTagKeys);
+	const filteredAlerts = useAlertsFiltering(alerts, activeFilters);
+	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, archivedFilters);
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 
