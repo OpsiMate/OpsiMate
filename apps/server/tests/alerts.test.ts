@@ -23,7 +23,7 @@ const seedAlerts = () => {
 			id: 'alert-1',
 			type: 'Grafana',
 			status: 'active',
-			tag: 'system',
+			tags: JSON.stringify({ tag: 'system' }),
 			starts_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 			alert_url: 'https://example.com/alert/1',
@@ -36,7 +36,7 @@ const seedAlerts = () => {
 			id: 'alert-2',
 			type: 'Grafana',
 			status: 'warning',
-			tag: 'security',
+			tags: JSON.stringify({ tag: 'security' }),
 			starts_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
 			updated_at: new Date().toISOString(),
 			alert_url: 'https://example.com/alert/2',
@@ -49,7 +49,7 @@ const seedAlerts = () => {
 			id: 'alert-3',
 			status: 'critical',
 			type: 'Grafana',
-			tag: 'database',
+			tags: JSON.stringify({ tag: 'database' }),
 			starts_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
 			updated_at: new Date().toISOString(),
 			alert_url: 'https://example.com/alert/3',
@@ -62,7 +62,7 @@ const seedAlerts = () => {
 
 	// Insert active alerts
 	const insertStmt = db.prepare(`
-		INSERT INTO alerts (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
+		INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`);
 
@@ -70,7 +70,7 @@ const seedAlerts = () => {
 		insertStmt.run(
 			alert.id,
 			alert.status,
-			alert.tag,
+			alert.tags,
 			alert.starts_at,
 			alert.updated_at,
 			alert.alert_url,
@@ -90,7 +90,7 @@ const seedAlerts = () => {
 			id: 'archived-1',
 			type: 'Grafana',
 			status: 'resolved',
-			tag: 'system',
+			tags: { tag: 'system' },
 			starts_at: new Date(Date.now() - 5 * 3600000).toISOString(), // 5 hours ago
 			updated_at: new Date().toISOString(),
 			alert_url: 'https://example.com/archived/1',
@@ -104,7 +104,7 @@ const seedAlerts = () => {
 
 	const insertArchivedStmt = db.prepare(`
         INSERT INTO alerts_archived 
-        (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at, is_dismissed)
+        (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at, is_dismissed)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -112,7 +112,7 @@ const seedAlerts = () => {
 		insertArchivedStmt.run(
 			alert.id,
 			alert.status,
-			alert.tag,
+			JSON.stringify(alert.tags ?? {}),
 			alert.starts_at,
 			alert.updated_at,
 			alert.alert_url,
@@ -129,7 +129,7 @@ const seedAlerts = () => {
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
-		tag: row.tag,
+		tags: row.tags,
 		startsAt: row.starts_at,
 		updatedAt: row.updated_at,
 		alertUrl: row.alert_url,
@@ -143,7 +143,7 @@ const seedAlerts = () => {
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
-		tag: row.tag,
+		tags: row.tags,
 		startsAt: row.starts_at,
 		updatedAt: row.updated_at,
 		alertUrl: row.alert_url,
@@ -188,7 +188,7 @@ describe('Alerts API', () => {
 
 			expect(alerts[0]).toHaveProperty('id');
 			expect(alerts[0]).toHaveProperty('status');
-			expect(alerts[0]).toHaveProperty('tag');
+			expect(alerts[0]).toHaveProperty('tags');
 			expect(alerts[0]).toHaveProperty('startsAt');
 			expect(alerts[0]).toHaveProperty('updatedAt');
 			expect(alerts[0]).toHaveProperty('alertUrl');
@@ -334,7 +334,7 @@ describe('Alerts API', () => {
 			const payload = {
 				id: 'new-alert-1',
 				status: 'active',
-				tag: 'testing',
+				tags: { tag: 'testing' },
 				startsAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				alertUrl: 'https://example.com/new',
@@ -362,7 +362,6 @@ describe('Alerts API', () => {
 			const payload = {
 				// Missing id, startsAt, etc.
 				status: 'active',
-				tag: 'invalid',
 			};
 
 			const response = await app
@@ -378,7 +377,7 @@ describe('Alerts API', () => {
 			const payload = {
 				id: 'bad-url-alert',
 				status: 'active',
-				tag: 'bad',
+				tags: { tag: 'bad' },
 				startsAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				alertUrl: 'not-a-url',
@@ -399,7 +398,7 @@ describe('Alerts API', () => {
 			const payload = {
 				id: 'unauthorized-alert',
 				status: 'active',
-				tag: 'security',
+				tags: { tag: 'security' },
 				startsAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				alertUrl: 'https://example.com/a',
@@ -535,14 +534,14 @@ describe('Alerts API', () => {
 			// First create alert
 			db.prepare(
 				`
-            INSERT INTO alerts (id, type, status, tag, starts_at, updated_at, alert_url, alert_name)
+            INSERT INTO alerts (id, type, status, tags, starts_at, updated_at, alert_url, alert_name)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `
 			).run(
 				'UPTIMEKUMA_4',
 				'UptimeKuma',
 				'active',
-				'Test Monitor',
+				JSON.stringify({ tag: 'Test Monitor' }),
 				new Date().toISOString(),
 				new Date().toISOString(),
 				baseMonitor.url,
@@ -632,7 +631,6 @@ describe('Alerts API', () => {
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
 			expect(row.status).toBe('firing');
-			expect(row.tag).toBe(payload.incident.resource_name);
 		});
 
 		test('should update an existing GCP alert when incident already exists', async () => {
@@ -663,7 +661,6 @@ describe('Alerts API', () => {
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
 			expect(row.status).toBe('firing');
-			expect(row.tag).toBe(payload.incident.resource_name);
 		});
 
 		test('should delete an alert when GCP incident state is closed', async () => {
@@ -799,7 +796,6 @@ describe('Alerts API', () => {
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe('mytestforgcp');
 			expect(row.summary).toContain('CPU usage for opsimate');
-			expect(row.tag).toBe('opsimate opsimate-server');
 			expect(row.status).toBe('firing');
 
 			// ISO 8601 regex: 2025-11-17T18:03:39.352Z
@@ -852,7 +848,7 @@ describe('Alerts API', () => {
 				const newAlertPayload = {
 					id: 'alert-to-delete',
 					status: 'active',
-					tag: 'testing',
+					tags: { tag: 'testing' },
 					startsAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					alertUrl: 'https://example.com/delete-test',

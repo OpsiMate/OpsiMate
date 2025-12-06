@@ -65,7 +65,7 @@ export type AlertRow = {
 	id: string;
 	type: AlertType;
 	status: string;
-	tag: string;
+	tags: string;
 	starts_at: string;
 	updated_at: string;
 	alert_url: string;
@@ -80,7 +80,7 @@ export type ArchivedAlertRow = {
 	id: string;
 	type: AlertType;
 	status: string;
-	tag: string;
+	tags: string;
 	starts_at: string;
 	updated_at: string;
 	alert_url: string;
@@ -144,4 +144,13 @@ export type CustomActionRow = {
 	script: string | null;
 	http_config: string | null;
 	created_at: string;
+};
+
+export type TableInfoRow = {
+	cid: number;
+	name: string;
+	type: string;
+	notnull: number;
+	dflt_value: unknown;
+	pk: number;
 };
