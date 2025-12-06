@@ -68,7 +68,7 @@ OpsiMate connects with your existing monitoring tools to centralize all alerts i
         <span style="font-size: 12px;">Webhook alerts</span>
     </td>
     <td align="center" width="150">
-        <img width="40" src="https://www.gstatic.com/devrel-devsite/prod/v2210deb8920cd4a55bd580441aa58e7853afc04b39a9d9ac4198e1cd7fbe04ef/cloud/images/favicons/onecloud/super_cloud.png" alt="GCP"/><br/>
+        <img width="40" src="https://www.gstatic.com/pantheon/images/welcome/supercloud.svg" alt="GCP"/><br/>
         <strong>Google Cloud</strong><br/>
         <span style="font-size: 12px;">Cloud Monitoring</span>
     </td>
@@ -241,8 +241,6 @@ We welcome contributions to OpsiMate! Here's how you can help:
 
 ### Upcoming Features
 
-- **� Alert Routing & Escalation** - Smart alert routing based on severity and tags
-- **� Notification Channels** - Email, Slack, PagerDuty, and webhook notifications
 - **📊 Alert Analytics** - Trends, patterns, and incident reports
 - **🤖 AI-Powered Insights** - Intelligent alert correlation and noise reduction
 - **🔄 Incident Management** - Full incident lifecycle management and postmortems
