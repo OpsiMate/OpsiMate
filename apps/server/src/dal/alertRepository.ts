@@ -1,7 +1,7 @@
 import { AlertStatus, AlertType, Alert as SharedAlert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { AlertRow } from './models';
+import { AlertRow, TableInfoRow } from './models';
 
 export class AlertRepository {
 	private db: Database.Database;
@@ -13,24 +13,25 @@ export class AlertRepository {
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO alerts (id, status, tag, type, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    status=excluded.status,
-                    tag=excluded.tag,
-                    type=excluded.type,
-                    starts_at=excluded.starts_at,
-                    updated_at=excluded.updated_at,
-                    alert_url=excluded.alert_url,
-                    alert_name=excluded.alert_name,
-                    summary=excluded.summary,
-                    runbook_url=excluded.runbook_url
-            `);
+				INSERT INTO alerts (id, status, type, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+											  status=excluded.status,
+											  type=excluded.type,
+											  tags=excluded.tags,
+											  starts_at=excluded.starts_at,
+											  updated_at=excluded.updated_at,
+											  alert_url=excluded.alert_url,
+											  alert_name=excluded.alert_name,
+											  summary=excluded.summary,
+											  runbook_url=excluded.runbook_url
+			`);
+
 			const result = stmt.run(
 				alert.id,
 				alert.status,
-				alert.tag,
 				alert.type,
+				JSON.stringify(alert.tags ?? {}),
 				alert.startsAt,
 				alert.updatedAt,
 				alert.alertUrl,
@@ -50,7 +51,7 @@ export class AlertRepository {
                 CREATE TABLE IF NOT EXISTS alerts (
                     id TEXT PRIMARY KEY,
                     status TEXT,
-                    tag TEXT,
+                    tags TEXT,
 					type TEXT,
                     starts_at TEXT,
                     updated_at TEXT,
@@ -63,16 +64,25 @@ export class AlertRepository {
                 )`
 				)
 				.run();
+
+			// Backward compatibility: ensure tags column exists
+			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all();
+			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
+
+			if (!hasTags) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN tags TEXT`).run();
+			}
 		});
 	}
 
 	private toSharedAlert = (row: AlertRow): SharedAlert => {
 		const status = row.status === 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED;
+
 		return {
 			id: row.id,
 			status,
-			tag: row.tag,
 			type: row.type,
+			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,
 			alertUrl: row.alert_url,
@@ -94,20 +104,16 @@ export class AlertRepository {
 
 	async dismissAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			const updateStmt = this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?');
-			updateStmt.run(id);
-			const selectStmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-			const row = selectStmt.get(id) as AlertRow | undefined;
+			this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?').run(id);
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
 
 	async undismissAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			const updateStmt = this.db.prepare('UPDATE alerts SET is_dismissed = 0 WHERE id = ?');
-			updateStmt.run(id);
-			const selectStmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-			const row = selectStmt.get(id) as AlertRow | undefined;
+			this.db.prepare('UPDATE alerts SET is_dismissed = 0 WHERE id = ?').run(id);
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
@@ -169,15 +175,13 @@ export class AlertRepository {
 
 	async deleteAlert(alertId: string) {
 		return runAsync(() => {
-			const stmt = this.db.prepare(`DELETE FROM alerts WHERE id = ?`);
-			stmt.run(alertId);
+			this.db.prepare(`DELETE FROM alerts WHERE id = ?`).run(alertId);
 		});
 	}
 
 	async getAlert(alertId: string) {
 		return runAsync(() => {
-			const selectStmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-			const row = selectStmt.get(alertId) as AlertRow | undefined;
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertId) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
