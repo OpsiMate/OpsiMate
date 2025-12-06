@@ -56,7 +56,8 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 			}
 			toast({
 				title: 'Copied!',
-				description: type === 'webhook' ? 'Webhook URL copied to clipboard' : 'Payload template copied to clipboard',
+				description:
+					type === 'webhook' ? 'Webhook URL copied to clipboard' : 'Payload template copied to clipboard',
 				duration: 2000,
 			});
 			setTimeout(() => {
@@ -78,7 +79,9 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 			<DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="text-2xl">Set Up Datadog Alert Webhooks</DialogTitle>
-					<DialogDescription>Configure Datadog to send monitor alerts to OpsiMate via webhook</DialogDescription>
+					<DialogDescription>
+						Configure Datadog to send monitor alerts to OpsiMate via webhook
+					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-6 py-4">
@@ -116,8 +119,8 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 								<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
 									{'{your_api_token}'}
 								</code>{' '}
-								with your actual <code>API_TOKEN</code> environment variable value from your OpsiMate server
-								configuration.
+								with your actual <code>API_TOKEN</code> environment variable value from your OpsiMate
+								server configuration.
 							</p>
 						</div>
 					</div>
@@ -146,10 +149,15 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 									</div>
 								</li>
 								<li>Click &quot;New&quot; to create a new webhook.</li>
-								<li>Give it a name, for example: <code>opsimate-alerts</code>.</li>
-								<li>Paste the webhook URL above into the <strong>URL</strong> field.</li>
 								<li>
-									(Optional) Add a custom header if you prefer header-based auth instead of query param:
+									Give it a name, for example: <code>opsimate-alerts</code>.
+								</li>
+								<li>
+									Paste the webhook URL above into the <strong>URL</strong> field.
+								</li>
+								<li>
+									(Optional) Add a custom header if you prefer header-based auth instead of query
+									param:
 									<ul className="list-disc list-inside ml-6 mt-1 space-y-1">
 										<li>
 											Header name: <code>X-API-Token</code>
@@ -165,8 +173,8 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 						<div className="space-y-3">
 							<h3 className="text-lg font-semibold mb-2">3. Set the payload (body) template</h3>
 							<p className="text-sm text-muted-foreground">
-								Use the following JSON as the <strong>Custom payload</strong> for your webhook. OpsiMate will
-								use this to map Datadog alerts into its internal alert model.
+								Use the following JSON as the <strong>Custom payload</strong> for your webhook. OpsiMate
+								will use this to map Datadog alerts into its internal alert model.
 							</p>
 							<div className="relative">
 								<Textarea
@@ -197,9 +205,10 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 								<Info className="h-4 w-4 mt-0.5" />
 								<p>
 									OpsiMate uses <code>alert_id</code> (or <code>id</code> if not present) as the alert
-									identifier, <code>title</code> as the alert name, <code>message</code> as the summary, and
-									the first tag from <code>$TAGS</code> / <code>$ALERT_SCOPE</code> as the alert tag. It
-									detects recovery based on <code>$ALERT_STATUS</code> / <code>$ALERT_TRANSITION</code>.
+									identifier, <code>title</code> as the alert name, <code>message</code> as the
+									summary, and the first tag from <code>$TAGS</code> / <code>$ALERT_SCOPE</code> as
+									the alert tag. It detects recovery based on <code>$ALERT_STATUS</code> /{' '}
+									<code>$ALERT_TRANSITION</code>.
 								</p>
 							</div>
 						</div>
@@ -209,8 +218,8 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 							<ol className="list-decimal list-inside space-y-3 text-sm">
 								<li>Create or edit a monitor in Datadog (for example, a CPU usage monitor).</li>
 								<li>
-									In the <strong>Notify</strong> section of the monitor, add your webhook by referencing it
-									with <code>@webhook-opsimate-alerts</code> (or the name you chose).
+									In the <strong>Notify</strong> section of the monitor, add your webhook by
+									referencing it with <code>@webhook-opsimate-alerts</code> (or the name you chose).
 								</li>
 								<li>Save the monitor and trigger a test alert to verify it appears in OpsiMate.</li>
 							</ol>
@@ -222,8 +231,8 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 								Additional resources
 							</h4>
 							<p className="text-sm text-muted-foreground">
-								For more details on the variables available in Datadog webhooks, see the official Datadog
-								documentation.
+								For more details on the variables available in Datadog webhooks, see the official
+								Datadog documentation.
 							</p>
 							<div className="mt-2">
 								<Button

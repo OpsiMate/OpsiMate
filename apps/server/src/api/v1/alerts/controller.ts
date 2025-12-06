@@ -189,7 +189,7 @@ export class AlertController {
 				tag: primaryTag || 'unknown',
 				startsAt: this.normalizeDate(startsAtSource),
 				updatedAt: this.normalizeDate(updatedAtSource),
-				alertUrl: (payload.link ?? ''),
+				alertUrl: payload.link ?? '',
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
 				runbookUrl: undefined,
