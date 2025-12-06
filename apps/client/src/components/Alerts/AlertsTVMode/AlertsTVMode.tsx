@@ -1,4 +1,5 @@
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
+import { ALERTS_GROUP_BY_STORAGE_KEY } from '@/components/Alerts/AlertsTable/hooks/useAlertGrouping.constants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
@@ -38,15 +39,15 @@ const AlertsTVMode = () => {
 	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
 	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
 		try {
-			const saved = localStorage.getItem('alerts-group-by');
-			return saved ? JSON.parse(saved) : ['tag'];
+			const saved = localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
+			return saved ? JSON.parse(saved) : [];
 		} catch {
-			return ['tag'];
+			return [];
 		}
 	});
 
 	useEffect(() => {
-		localStorage.setItem('alerts-group-by', JSON.stringify(groupByColumns));
+		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, JSON.stringify(groupByColumns));
 	}, [groupByColumns]);
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);

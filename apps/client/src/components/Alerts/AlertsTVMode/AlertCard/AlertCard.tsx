@@ -9,7 +9,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { Archive, Book, Check, ExternalLink, MoreVertical, RotateCcw, X } from 'lucide-react';
+import { Book, Check, ExternalLink, MoreVertical, RotateCcw, X } from 'lucide-react';
 import { CardSize } from '../AlertsTVMode.constants';
 import { AlertCardIcon } from '../AlertCardIcon';
 

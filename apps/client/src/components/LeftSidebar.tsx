@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
 import { ProfileButton } from './ProfileButton';
+import { ALERTS_PATHS } from './LeftSidebar.constants';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -14,6 +15,7 @@ interface LeftSidebarProps {
 
 export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	const location = useLocation();
+	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as typeof ALERTS_PATHS[number]);
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<Link
@@ -41,11 +43,11 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				)}
 			>
 				<Button
-					variant={['/', '/alerts'].includes(location.pathname) ? 'default' : 'ghost'}
+					variant={isAlertsActive ? 'default' : 'ghost'}
 					className={cn(
 						'gap-3 h-10 text-foreground',
 						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						['/', '/alerts'].includes(location.pathname) && 'text-primary-foreground'
+						isAlertsActive && 'text-primary-foreground'
 					)}
 					asChild
 				>

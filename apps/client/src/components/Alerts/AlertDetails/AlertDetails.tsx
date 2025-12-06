@@ -20,7 +20,15 @@ interface AlertDetailsProps {
 	className?: string;
 }
 
-export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss, onDelete, className }: AlertDetailsProps) => {
+export const AlertDetails = ({
+	isActive,
+	alert,
+	onClose,
+	onDismiss,
+	onUndismiss,
+	onDelete,
+	className,
+}: AlertDetailsProps) => {
 	if (!alert) return null;
 
 	const getAlertType = (alert: Alert): string => {
