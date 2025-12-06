@@ -18,8 +18,8 @@ export interface RowActionsProps {
 
 export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAlert }: RowActionsProps) => {
 	const { alertUrl, runbookUrl, isDismissed } = alert;
-	const hasLinks = Boolean(alertUrl || runbookUrl);
 	const canToggle = (!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert));
+	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert);
 
 	const handleToggle = (event: React.MouseEvent) => {
 		event.stopPropagation();
@@ -41,7 +41,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 
 	return (
 		<div className="flex items-center justify-end gap-1.5">
-			{hasLinks && (
+			{hasActions && (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
