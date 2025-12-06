@@ -41,6 +41,55 @@ export const HttpAlertWebhookSchema = z.object({
 	createdAt: isoDateString,
 });
 
+/**
+ * Datadog alerts webhook payload.
+ *
+ * This matches a recommended custom webhook payload configuration in Datadog, e.g.:
+ *
+ * {
+ *   "title": "$EVENT_TITLE",
+ *   "message": "$EVENT_MSG",
+ *   "alert_id": "$ALERT_ID",
+ *   "alert_transition": "$ALERT_TRANSITION",
+ *   "link": "$LINK",
+ *   "tags": "$TAGS",
+ *   "priority": "$PRIORITY",
+ *   "hostname": "$HOSTNAME",
+ *   "org_name": "$ORG_NAME",
+ *   "date": "$DATE",
+ *   "alert_scope": "$ALERT_SCOPE",
+ *   "alert_status": "$ALERT_STATUS",
+ *   "event_type": "$EVENT_TYPE",
+ *   "last_updated": "$LAST_UPDATED",
+ *   "id": "$ID"
+ * }
+ */
+export const DatadogAlertWebhookSchema = z
+	.object({
+		title: z.string(),
+		message: z.string().optional(),
+		// Some payloads use alert_id, others only expose id – both should be accepted.
+		alert_id: z.string().optional(),
+		alert_transition: z.string().optional(),
+		link: z.string().url().optional(),
+		tags: z.string().optional(),
+		priority: z.string().optional(),
+		hostname: z.string().optional(),
+		org_name: z.string().optional(),
+		// Datadog often sends epoch millis as strings (e.g. "1764869846000")
+		date: z.union([isoDateString, z.number(), z.string()]).optional(),
+		alert_scope: z.string().optional(),
+		alert_status: z.string().optional(),
+		event_type: z.string().optional(),
+		last_updated: z.union([isoDateString, z.number(), z.string()]).optional(),
+		id: z.string().optional(),
+		body: z.string().optional(),
+		org: z.any().optional(),
+	})
+	.passthrough();
+
+export type DatadogAlertWebhook = z.infer<typeof DatadogAlertWebhookSchema>;
+
 export interface UptimeKumaHeartbeat {
 	monitorID: number;
 	status: 0 | 1 | 2; // 0 = down, 1 = up, 2 = pending

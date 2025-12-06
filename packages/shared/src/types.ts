@@ -114,7 +114,7 @@ export interface DiscoveredPod {
 	name: string;
 }
 
-export type AlertType = 'Grafana' | 'GCP' | 'Custom' | 'UptimeKuma';
+export type AlertType = 'Grafana' | 'GCP' | 'Custom' | 'UptimeKuma' | 'Datadog';
 
 export enum AlertStatus {
 	FIRING = 'firing',

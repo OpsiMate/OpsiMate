@@ -2,6 +2,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
+import { DatadogSetupModal } from '@/components/Integrations/DatadogSetupModal';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -143,8 +144,10 @@ const INTEGRATIONS: Integration[] = [
 		name: 'Datadog',
 		description: 'Cloud monitoring and analytics platform for infrastructure, applications, and logs.',
 		logo: 'https://imgix.datadoghq.com/img/dd_logo_n_70x75.png',
-		tags: ['Monitoring', 'APM', 'Logs', 'Metrics'],
+		tags: ['Monitoring', 'APM', 'Logs', 'Metrics', 'Alerts'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/datadog',
+		// Datadog alert webhooks are supported by default (via /alerts/custom/datadog)
+		enabled: true,
 		configFields: [
 			{
 				name: 'url',
@@ -248,6 +251,7 @@ const Integrations = () => {
 	const [integrationToDelete, setIntegrationToDelete] = useState<SharedIntegration | null>(null);
 	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
 	const [showUptimeKumaSetupModal, setShowUptimeKumaSetupModal] = useState(false);
+	const [showDatadogSetupModal, setShowDatadogSetupModal] = useState(false);
 	const { toast } = useToast();
 
 	// Handle URL-based category filtering
@@ -499,6 +503,12 @@ const Integrations = () => {
 													return;
 												}
 
+												// Special handling for Datadog alert webhooks
+												if (integration.id === 'datadog') {
+													setShowDatadogSetupModal(true);
+													return;
+												}
+
 												// Special handling for Uptime Kuma - show webhook setup modal
 												if (integration.id === 'uptimekuma') {
 													setShowUptimeKumaSetupModal(true);
@@ -535,14 +545,10 @@ const Integrations = () => {
 
 												setSelectedIntegration(integration);
 											}}
-											title={
-												isEnabled
-													? `Configure ${integration.name} integration`
-													: `Add ${integration.name} integration`
-											}
+											title={`Configure ${integration.name} integration`}
 										>
 											<Settings className="mr-2 h-4 w-4" />
-											{isEnabled ? 'Configure' : 'Add Integration'}
+											Configure
 										</Button>
 									</CardFooter>
 									{integration.enabled ? (
@@ -1054,6 +1060,7 @@ const Integrations = () => {
 
 			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
 			<UptimeKumaSetupModal open={showUptimeKumaSetupModal} onOpenChange={setShowUptimeKumaSetupModal} />
+			<DatadogSetupModal open={showDatadogSetupModal} onOpenChange={setShowDatadogSetupModal} />
 		</>
 	);
 };
