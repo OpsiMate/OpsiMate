@@ -144,7 +144,9 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 								If you installed OpsiMate using the default installation script, the default{' '}
 								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">api_token</code> is{' '}
 								<strong>opsimate</strong>. You can change this value in your{' '}
-								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">docker-compose.yml</code>{' '}
+								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">
+									docker-compose.yml
+								</code>{' '}
 								file.
 							</p>
 						</div>
