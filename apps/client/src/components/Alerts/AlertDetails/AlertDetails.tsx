@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { format } from 'date-fns';
-import { Archive, Bell, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
+import { Archive, Bell, Book, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -150,7 +150,7 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 								className="w-full justify-start gap-2 text-xs h-8"
 								onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
 							>
-								<span className="flex-shrink-0">📖</span>
+								<Book className="h-3 w-3 flex-shrink-0" />
 								<span className="truncate">Runbook</span>
 							</Button>
 						)}

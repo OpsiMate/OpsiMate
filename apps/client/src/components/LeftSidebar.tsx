@@ -41,11 +41,11 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				)}
 			>
 				<Button
-					variant={location.pathname === '/' ? 'default' : 'ghost'}
+					variant={['/', '/alerts'].includes(location.pathname) ? 'default' : 'ghost'}
 					className={cn(
 						'gap-3 h-10 text-foreground',
 						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/' && 'text-primary-foreground'
+						['/', '/alerts'].includes(location.pathname) && 'text-primary-foreground'
 					)}
 					asChild
 				>

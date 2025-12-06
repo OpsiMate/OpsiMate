@@ -36,7 +36,18 @@ const AlertsTVMode = () => {
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
-	const [groupByColumns, setGroupByColumns] = useState<string[]>(['tag']);
+	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
+		try {
+			const saved = localStorage.getItem('alerts-group-by');
+			return saved ? JSON.parse(saved) : ['tag'];
+		} catch {
+			return ['tag'];
+		}
+	});
+
+	useEffect(() => {
+		localStorage.setItem('alerts-group-by', JSON.stringify(groupByColumns));
+	}, [groupByColumns]);
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
 

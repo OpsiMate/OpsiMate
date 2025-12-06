@@ -118,7 +118,7 @@ const Alerts = () => {
 										value="active"
 										aria-label="Active alerts"
 										size="sm"
-										className="gap-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground text-foreground"
+										className="gap-1.5 text-foreground hover:bg-primary/10 hover:text-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
 									>
 										<Bell className="h-4 w-4" />
 										<span>Active</span>
@@ -127,7 +127,7 @@ const Alerts = () => {
 										value="archived"
 										aria-label="Archived alerts"
 										size="sm"
-										className="gap-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground text-foreground"
+										className="gap-1.5 text-foreground hover:bg-primary/10 hover:text-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
 									>
 										<Archive className="h-4 w-4" />
 										<span>Archived</span>

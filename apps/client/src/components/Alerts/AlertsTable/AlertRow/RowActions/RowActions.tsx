@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Check, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
+import { Archive, Book, Check, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -63,7 +63,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 									handleOpenLink(runbookUrl);
 								}}
 							>
-								<span className="mr-2">📖</span>
+								<Book className="mr-2 h-3 w-3" />
 								Runbook
 							</DropdownMenuItem>
 						)}

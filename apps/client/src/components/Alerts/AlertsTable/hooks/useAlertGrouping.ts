@@ -1,10 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert } from '@OpsiMate/shared';
 import { flattenGroups, groupAlerts } from '../AlertsTable.utils';
 import { FlatGroupItem } from '../AlertsTable.types';
 
 export const useAlertGrouping = (sortedAlerts: Alert[]) => {
-	const [groupByColumns, setGroupByColumns] = useState<string[]>([]);
+	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
+		try {
+			const saved = localStorage.getItem('alerts-group-by');
+			return saved ? JSON.parse(saved) : [];
+		} catch {
+			return [];
+		}
+	});
+
+	useEffect(() => {
+		localStorage.setItem('alerts-group-by', JSON.stringify(groupByColumns));
+	}, [groupByColumns]);
+
 	const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
 	const groupedData = useMemo(() => {
