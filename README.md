@@ -38,9 +38,8 @@
 ---
 
 ### TL;DR
-- � **Centralized Alert Management** - Aggregate alerts from any platform!
-- � **Smart Filtering & Grouping** - Organize alerts by type, status, tags, and custom criteria
-- 📊 **Real-time Monitoring** - Live alert dashboard with auto-refresh and TV mode for NOC displays
+- 🚨 **Centralized Alert Management** - Aggregate alerts from any platform!
+- 📊 **Smart Filtering & Grouping** - Organize alerts by type, status, tags, and custom criteria
 - 🎯 **Quick Actions** - Acknowledge, resolve, and manage alerts with one click
 - 🏷️ **Flexible Tagging** - Categorize and filter alerts for faster incident response
 
@@ -121,51 +120,6 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 - **Client:** [http://localhost:8080](http://localhost:8080)
 
 
-## Manual Docker Run
-### OpsiMate now uses separate Docker images for frontend, backend (API), and worker (background jobs):
-
-```bash
-# Backend (API Server):
-docker run -d \
-  --name opsimate-backend \
-  --rm \
-  -p 3001:3001 \
-  opsimate/backend
-```
-
-```bash
-# Worker (Background Jobs - required for auto-refresh & alerts):
-docker run -d \
-  --name opsimate-worker \
-  --rm \
-  opsimate/backend node apps/server/dist/worker.js
-```
-
-```bash
-# Frontend:
-docker run -d \
-  --name opsimate-frontend \
-  --rm \
-  -p 8080:8080 \
-  opsimate/frontend
-```
-
-```bash
-# We also support the old Monolith version:
-docker run -d \
-  --name opsimate \
-  --rm \
-  -p 3001:3001 -p 8080:8080 \
-  opsimate/opsimate
-```
-
-**Access the application:**
-- **Backend API:** [http://localhost:3001](http://localhost:3001)
-- **Client UI:** [http://localhost:8080](http://localhost:8080)
-
-> **Note:** The worker container runs background jobs for auto-discovery and alert polling. Both backend and worker should share the same database volume for proper operation.
-
-
 ### Volume Mounts (optional but recommended)
 
 | Volume | Purpose | Required For |
@@ -173,33 +127,6 @@ docker run -d \
 | `/app/data/database` | SQLite database persistence | Backend + Worker |
 | `/app/data/private-keys` | SSH private keys for authentication | Backend + Worker |
 | `/app/config/config.yml` | Custom configuration | Backend + Worker |
-
-### Example with volumes:
-
-```bash
-# Backend with volumes
-docker run -d \
-  --name opsimate-backend \
-  --rm \
-  -p 3001:3001 \
-  -v $(pwd)/data/database:/app/data/database \
-  -v $(pwd)/data/private-keys:/app/data/private-keys \
-  -v $(pwd)/config.yml:/app/config/config.yml \
-  opsimate/backend
-```
-
-```bash
-# Worker with shared volumes
-docker run -d \
-  --name opsimate-worker \
-  --rm \
-  -v $(pwd)/data/database:/app/data/database \
-  -v $(pwd)/data/private-keys:/app/data/private-keys \
-  -v $(pwd)/config.yml:/app/config/config.yml \
-  opsimate/backend node apps/server/dist/worker.js
-```
-
-> **💡 Tip:** Use `docker-compose` for easier management of all containers and shared volumes. See the [docker-compose.yml](docker-compose.yml) in the repository.
 
 ## Configuration
 
