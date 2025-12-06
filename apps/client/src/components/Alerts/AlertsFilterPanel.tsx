@@ -1,6 +1,7 @@
 import { ActiveFilters, FilterFacets, FilterPanel, FilterPanelConfig } from '@/components/shared';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
+import { getAlertTagsArray } from './utils/alertTags.utils';
 
 interface AlertsFilterPanelProps {
 	alerts: Alert[];
@@ -45,9 +46,10 @@ export const AlertsFilterPanel = ({
 			const type = getAlertType(alert);
 			facetData.type.set(type, (facetData.type.get(type) || 0) + 1);
 
-			if (alert.tag) {
-				facetData.tag.set(alert.tag, (facetData.tag.get(alert.tag) || 0) + 1);
-			}
+			const tags = getAlertTagsArray(alert);
+			tags.forEach((tag) => {
+				facetData.tag.set(tag, (facetData.tag.get(tag) || 0) + 1);
+			});
 
 			if (alert.alertName) {
 				facetData.alertName.set(alert.alertName, (facetData.alertName.get(alert.alertName) || 0) + 1);

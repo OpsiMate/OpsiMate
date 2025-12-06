@@ -1,5 +1,6 @@
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
+import { alertMatchesTagFilter } from '../utils/alertTags.utils';
 
 const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
@@ -13,6 +14,13 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 			for (const [field, values] of Object.entries(filters)) {
 				if (values.length === 0) continue;
 
+				if (field === 'tag') {
+					if (!alertMatchesTagFilter(alert, values)) {
+						return false;
+					}
+					continue;
+				}
+
 				let fieldValue: string;
 				switch (field) {
 					case 'status':
@@ -20,9 +28,6 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);
-						break;
-					case 'tag':
-						fieldValue = alert.tag ?? '';
 						break;
 					case 'alertName':
 						fieldValue = alert.alertName ?? '';

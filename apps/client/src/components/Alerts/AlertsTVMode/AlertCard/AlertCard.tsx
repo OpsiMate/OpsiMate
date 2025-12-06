@@ -9,7 +9,8 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { Book, Check, ExternalLink, MoreVertical, RotateCcw, X } from 'lucide-react';
+import { Book, Check, ExternalLink, MoreVertical, RotateCcw } from 'lucide-react';
+import { getAlertTagsArray, hasAlertTags } from '../../utils/alertTags.utils';
 import { CardSize } from '../AlertsTVMode.constants';
 import { AlertCardIcon } from '../AlertCardIcon';
 
@@ -45,14 +46,21 @@ export const AlertCard = ({ alert, cardSize, serviceName, onDismissAlert, onUndi
 							>
 								{alert.alertName}
 							</h3>
-							{showDetails && (
+							{showDetails && hasAlertTags(alert) && (
 								<div className="flex items-center gap-2 mt-1">
-									<Badge variant="outline" className="text-[10px] px-1 py-0">
-										{alert.tag}
-									</Badge>
+									{getAlertTagsArray(alert).map((tag, index) => (
+										<Badge key={index} variant="outline" className="text-[10px] px-1 py-0">
+											{tag}
+										</Badge>
+									))}
 									{serviceName !== '-' && (
 										<span className="text-[10px] text-foreground truncate">{serviceName}</span>
 									)}
+								</div>
+							)}
+							{showDetails && !hasAlertTags(alert) && serviceName !== '-' && (
+								<div className="flex items-center gap-2 mt-1">
+									<span className="text-[10px] text-foreground truncate">{serviceName}</span>
 								</div>
 							)}
 						</div>

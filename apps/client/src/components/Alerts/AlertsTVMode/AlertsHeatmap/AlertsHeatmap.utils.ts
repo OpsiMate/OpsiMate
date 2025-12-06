@@ -1,5 +1,6 @@
 import { GroupNode } from '@/components/Alerts/AlertsTable/AlertsTable.types';
 import { Alert } from '@OpsiMate/shared';
+import { getAlertTagsString } from '../../utils/alertTags.utils';
 import { LIGHTNESS_RANGE, RECENCY_BUCKETS, STATUS_HUES, STATUS_SATURATION } from './AlertsHeatmap.constants';
 import { TreemapNode } from './AlertsHeatmap.types';
 
@@ -12,7 +13,7 @@ export const normalizeGroupValue = (value: string | null | undefined): string =>
 export const getNormalizedAlertValue = (alert: Alert, field: string): string => {
 	switch (field) {
 		case 'tag': {
-			return normalizeGroupValue(alert.tag);
+			return normalizeGroupValue(getAlertTagsString(alert));
 		}
 		case 'status': {
 			return alert.isDismissed ? 'Dismissed' : 'Firing';

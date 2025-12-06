@@ -1,6 +1,7 @@
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
 import { createServiceNameLookup } from '../utils';
+import { getAlertTagsString } from '../utils/alertTags.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, SortDirection } from './AlertsTable.types';
 
 export { createServiceNameLookup };
@@ -12,11 +13,11 @@ export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	return alerts.filter((alert) => {
 		const integration = resolveAlertIntegration(alert);
 		const integrationLabel = getIntegrationLabel(integration).toLowerCase();
-		const tag = alert.tag?.toLowerCase() || '';
+		const tagsString = getAlertTagsString(alert).toLowerCase();
 		return (
 			alert.alertName.toLowerCase().includes(lower) ||
 			alert.status.toLowerCase().includes(lower) ||
-			tag.includes(lower) ||
+			tagsString.includes(lower) ||
 			(alert.summary && alert.summary.toLowerCase().includes(lower)) ||
 			integrationLabel.includes(lower)
 		);
@@ -38,8 +39,8 @@ export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirec
 				bValue = b.isDismissed ? 'dismissed' : 'firing';
 				break;
 			case 'tag':
-				aValue = (a.tag ?? '').toLowerCase();
-				bValue = (b.tag ?? '').toLowerCase();
+				aValue = getAlertTagsString(a).toLowerCase();
+				bValue = getAlertTagsString(b).toLowerCase();
 				break;
 			case 'summary':
 				aValue = (a.summary || '').toLowerCase();
@@ -78,7 +79,7 @@ export const getAlertValue = (alert: Alert, field: string): string => {
 		case 'status':
 			return alert.isDismissed ? 'Dismissed' : 'Firing';
 		case 'tag':
-			return alert.tag || 'Unknown';
+			return getAlertTagsString(alert) || 'Unknown';
 		case 'summary':
 			return alert.summary || 'Unknown';
 		case 'startsAt': {

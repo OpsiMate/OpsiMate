@@ -1,4 +1,5 @@
 import { Alert } from '@OpsiMate/shared';
+import { alertMatchesTagFilter } from '../utils/alertTags.utils';
 import { createServiceNameLookup as createServiceNameLookupShared } from '../utils';
 import { CARD_SIZE_THRESHOLDS, CardSize } from './AlertsTVMode.constants';
 
@@ -51,13 +52,17 @@ export const filterAlertsByFilters = (
 		for (const [field, values] of Object.entries(filters)) {
 			if (!values || values.length === 0) continue;
 
+			if (field === 'tag') {
+				if (!alertMatchesTagFilter(alert, values)) {
+					return false;
+				}
+				continue;
+			}
+
 			let fieldValue: string;
 			switch (field) {
 				case 'status':
 					fieldValue = alert.isDismissed ? 'Dismissed' : 'Firing';
-					break;
-				case 'tag':
-					fieldValue = alert.tag;
 					break;
 				case 'serviceName': {
 					const serviceName = getServiceName(alert);
