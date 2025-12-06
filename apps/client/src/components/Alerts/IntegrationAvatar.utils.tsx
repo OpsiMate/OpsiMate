@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell } from 'lucide-react';
 import { AlertIntegrationKind, IntegrationDefinition } from './IntegrationAvatar.types';
+import { getAlertPrimaryTag } from './utils/alertTags.utils';
 
 export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDefinition> = {
 	grafana: {
@@ -50,7 +51,7 @@ const normalizeIntegration = (value?: string | null): AlertIntegrationKind | und
 export const resolveAlertIntegration = (alert: Alert): AlertIntegrationKind => {
 	return (
 		normalizeIntegration(alert.type) ||
-		normalizeIntegration(alert.tag) ||
+		normalizeIntegration(getAlertPrimaryTag(alert)) ||
 		normalizeIntegration(alert.id) ||
 		normalizeIntegration(alert.summary) ||
 		'custom'

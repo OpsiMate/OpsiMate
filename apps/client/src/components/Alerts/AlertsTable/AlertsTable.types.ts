@@ -1,6 +1,6 @@
 import { Alert } from '@OpsiMate/shared';
 
-export type AlertSortField = 'alertName' | 'status' | 'tag' | 'startsAt' | 'summary' | 'type';
+export type AlertSortField = string;
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -18,6 +18,7 @@ export interface AlertsTableProps {
 	visibleColumns?: string[];
 	columnOrder?: string[];
 	onAlertClick?: (alert: Alert) => void;
+	tagKeyColumnLabels?: Record<string, string>;
 }
 
 export interface SortConfig {

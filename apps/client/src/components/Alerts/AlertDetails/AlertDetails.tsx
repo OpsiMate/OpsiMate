@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { format } from 'date-fns';
 import { Archive, Bell, Book, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
+import { getAlertTagEntries, hasAlertTags } from '../utils/alertTags.utils';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -88,11 +89,13 @@ export const AlertDetails = ({
 								</div>
 							</div>
 						</div>
-						{alert.tag && (
+						{hasAlertTags(alert) && (
 							<div className="flex items-center gap-1 flex-wrap">
-								<Badge variant="outline" className="text-xs">
-									{alert.tag}
-								</Badge>
+								{getAlertTagEntries(alert).map(({ key, value }) => (
+									<Badge key={key} variant="outline" className="text-xs">
+										{key}: {value}
+									</Badge>
+								))}
 							</div>
 						)}
 					</div>

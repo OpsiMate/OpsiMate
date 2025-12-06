@@ -1,3 +1,4 @@
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 
@@ -13,6 +14,17 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 			for (const [field, values] of Object.entries(filters)) {
 				if (values.length === 0) continue;
 
+				if (isTagKeyColumn(field)) {
+					const tagKey = extractTagKeyFromColumnId(field);
+					if (tagKey) {
+						const tagValue = alert.tags?.[tagKey] || '';
+						if (!values.includes(tagValue)) {
+							return false;
+						}
+					}
+					continue;
+				}
+
 				let fieldValue: string;
 				switch (field) {
 					case 'status':
@@ -20,9 +32,6 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);
-						break;
-					case 'tag':
-						fieldValue = alert.tag ?? '';
 						break;
 					case 'alertName':
 						fieldValue = alert.alertName ?? '';
