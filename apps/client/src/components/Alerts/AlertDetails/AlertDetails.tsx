@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { format } from 'date-fns';
-import { Bell, Calendar, Clock, ExternalLink, RotateCcw, X } from 'lucide-react';
+import { Archive, Bell, Calendar, Clock, ExternalLink, RotateCcw, X } from 'lucide-react';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -174,7 +174,7 @@ export const AlertDetails = ({ isActive, alert, onClose, onDismiss, onUndismiss,
 									className="w-full justify-start gap-2"
 									onClick={() => onDismiss?.(alert.id)}
 								>
-									<X className="h-3 w-3" />
+									<Archive className="h-3 w-3" />
 									Dismiss Alert
 								</Button>
 							)}

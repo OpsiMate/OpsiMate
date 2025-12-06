@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
+import { Archive, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -101,7 +101,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 					aria-label={isDismissed ? 'Undismiss alert' : 'Dismiss alert'}
 					aria-pressed={isDismissed}
 				>
-					{isDismissed ? <RotateCcw className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+					{isDismissed ? <RotateCcw className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
 				</Button>
 			)}
 		</div>
