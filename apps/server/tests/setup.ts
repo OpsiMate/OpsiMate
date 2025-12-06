@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { createApp } from '../src/app.ts';
+import { createApp, AppMode } from '../src/app.ts';
 import request, { SuperTest, Test } from 'supertest';
 import { ProviderRepository } from '../src/dal/providerRepository.ts';
 import { ServiceRepository } from '../src/dal/serviceRepository.ts';
@@ -93,7 +93,10 @@ export async function setupDB(): Promise<Database.Database> {
 }
 
 export async function setupExpressApp(db: Database.Database): Promise<SuperTest<Test>> {
-	const expressApp = await createApp(db);
+	const expressApp = await createApp(db, AppMode.SERVER);
+	if (!expressApp) {
+		throw new Error('Failed to create Express app in test setup');
+	}
 	return request(expressApp) as unknown as SuperTest<Test>;
 }
 

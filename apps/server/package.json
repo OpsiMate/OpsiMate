@@ -5,20 +5,23 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"start": "node dist/index.js",
+		"start:worker": "node dist/worker.js",
 		"debug": "node --inspect=0.0.0.0:9229 dist/index.js",
+		"debug:worker": "node --inspect=0.0.0.0:9230 dist/worker.js",
 		"build": "vite build --config vite.config.prod.ts",
 		"build-dev": "vite build --mode development",
+		"dev": "vite",
+		"dev:worker": "tsx watch src/worker.ts",
 		"clean": "rm -rf dist",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"dev": "vite",
 		"lint": "eslint src --ext .ts",
 		"lint-fix": "eslint src --ext .ts --fix",
 		"format": "prettier --check .",
 		"format-fix": "prettier --write .",
-		"check": "npm run format && npm run lint",
-		"fix": "npm run format-fix && npm run lint-fix"
+		"check": "pnpm run format && pnpm run lint",
+		"fix": "pnpm run format-fix && pnpm run lint-fix"
 	},
 	"dependencies": {
 		"@OpsiMate/custom-actions": "workspace:*",
