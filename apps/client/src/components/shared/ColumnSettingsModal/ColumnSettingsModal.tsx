@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { getTagKeyColumnId, TagKeyInfo } from '@/types';
 
 export interface ColumnSettingsModalProps {
 	open: boolean;
@@ -11,6 +13,7 @@ export interface ColumnSettingsModalProps {
 	title?: string;
 	description?: string;
 	excludeColumns?: string[];
+	tagKeys?: TagKeyInfo[];
 }
 
 export const ColumnSettingsModal = ({
@@ -22,12 +25,13 @@ export const ColumnSettingsModal = ({
 	title = 'Table Settings',
 	description = 'Select which columns to display in the table.',
 	excludeColumns = [],
+	tagKeys = [],
 }: ColumnSettingsModalProps) => {
 	const availableColumns = Object.entries(columnLabels).filter(([key]) => !excludeColumns.includes(key));
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-md">
+			<DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="text-foreground">{title}</DialogTitle>
 				</DialogHeader>
@@ -52,6 +56,36 @@ export const ColumnSettingsModal = ({
 							</div>
 						))}
 					</div>
+
+					{tagKeys.length > 0 && (
+						<>
+							<Separator />
+							<div className="space-y-3">
+								<p className="text-sm font-medium text-foreground">Alert Tags</p>
+								<p className="text-xs text-muted-foreground">
+									Enable tag fields to show them as columns, filters, and grouping options.
+								</p>
+								{tagKeys.map((tagKey) => {
+									const columnId = getTagKeyColumnId(tagKey.key);
+									return (
+										<div key={columnId} className="flex items-center space-x-2">
+											<Checkbox
+												id={columnId}
+												checked={visibleColumns.includes(columnId)}
+												onCheckedChange={() => onColumnToggle(columnId)}
+											/>
+											<label
+												htmlFor={columnId}
+												className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+											>
+												{tagKey.label}
+											</label>
+										</div>
+									);
+								})}
+							</div>
+						</>
+					)}
 
 					<div className="flex justify-end gap-2 pt-4">
 						<Button onClick={() => onOpenChange(false)}>Close</Button>

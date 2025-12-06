@@ -1,13 +1,14 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
 import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
 import { AlertStatusColumn } from './Columns/AlertStatusColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
-import { AlertTagColumn } from './Columns/AlertTagColumn';
+import { AlertTagKeyColumn } from './Columns/AlertTagKeyColumn';
 import { AlertTypeColumn } from './Columns/AlertTypeColumn';
 
 export interface AlertRowProps {
@@ -57,6 +58,14 @@ export const AlertRow = ({
 				</TableCell>
 			)}
 			{orderedColumns.map((column) => {
+				if (isTagKeyColumn(column)) {
+					const tagKey = extractTagKeyFromColumnId(column);
+					if (tagKey) {
+						return <AlertTagKeyColumn key={column} alert={alert} tagKey={tagKey} />;
+					}
+					return null;
+				}
+
 				switch (column) {
 					case 'type':
 						return <AlertTypeColumn key={column} alert={alert} />;
@@ -64,8 +73,6 @@ export const AlertRow = ({
 						return <AlertNameColumn key={column} alert={alert} />;
 					case 'status':
 						return <AlertStatusColumn key={column} alert={alert} />;
-					case 'tag':
-						return <AlertTagColumn key={column} alert={alert} />;
 					case 'summary':
 						return <AlertSummaryColumn key={column} alert={alert} />;
 					case 'startsAt':

@@ -1,7 +1,7 @@
 import { ActiveFilters, FilterFacets, FilterPanel, FilterPanelConfig } from '@/components/shared';
+import { getTagKeyColumnId, TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
-import { getAlertTagsArray } from './utils/alertTags.utils';
 
 interface AlertsFilterPanelProps {
 	alerts: Alert[];
@@ -9,16 +9,15 @@ interface AlertsFilterPanelProps {
 	onFilterChange: (filters: ActiveFilters) => void;
 	collapsed?: boolean;
 	className?: string;
+	enabledTagKeys?: TagKeyInfo[];
 }
 
-const FILTER_CONFIG: FilterPanelConfig = {
-	fields: ['status', 'type', 'tag', 'alertName'],
-	fieldLabels: {
-		status: 'Status',
-		type: 'Type',
-		tag: 'Tag',
-		alertName: 'Alert Name',
-	},
+const BASE_FILTER_FIELDS = ['status', 'type', 'alertName'];
+
+const BASE_FIELD_LABELS: Record<string, string> = {
+	status: 'Status',
+	type: 'Type',
+	alertName: 'Alert Name',
 };
 
 export const AlertsFilterPanel = ({
@@ -27,15 +26,29 @@ export const AlertsFilterPanel = ({
 	onFilterChange,
 	collapsed = false,
 	className,
+	enabledTagKeys = [],
 }: AlertsFilterPanelProps) => {
 	const getAlertType = (alert: Alert): string => {
 		return alert.type || 'Custom';
 	};
 
+	const filterConfig: FilterPanelConfig = useMemo(() => {
+		const tagKeyFields = enabledTagKeys.map((tk) => getTagKeyColumnId(tk.key));
+		const tagKeyLabels: Record<string, string> = {};
+		enabledTagKeys.forEach((tk) => {
+			tagKeyLabels[getTagKeyColumnId(tk.key)] = tk.label;
+		});
+
+		return {
+			fields: [...BASE_FILTER_FIELDS, ...tagKeyFields],
+			fieldLabels: { ...BASE_FIELD_LABELS, ...tagKeyLabels },
+		};
+	}, [enabledTagKeys]);
+
 	const facets: FilterFacets = useMemo(() => {
 		const facetData: Record<string, Map<string, number>> = {};
 
-		FILTER_CONFIG.fields.forEach((field) => {
+		filterConfig.fields.forEach((field) => {
 			facetData[field] = new Map();
 		});
 
@@ -46,14 +59,17 @@ export const AlertsFilterPanel = ({
 			const type = getAlertType(alert);
 			facetData.type.set(type, (facetData.type.get(type) || 0) + 1);
 
-			const tags = getAlertTagsArray(alert);
-			tags.forEach((tag) => {
-				facetData.tag.set(tag, (facetData.tag.get(tag) || 0) + 1);
-			});
-
 			if (alert.alertName) {
 				facetData.alertName.set(alert.alertName, (facetData.alertName.get(alert.alertName) || 0) + 1);
 			}
+
+			enabledTagKeys.forEach((tagKeyInfo) => {
+				const colId = getTagKeyColumnId(tagKeyInfo.key);
+				const value = alert.tags?.[tagKeyInfo.key];
+				if (value) {
+					facetData[colId].set(value, (facetData[colId].get(value) || 0) + 1);
+				}
+			});
 		});
 
 		const result: FilterFacets = {};
@@ -67,11 +83,11 @@ export const AlertsFilterPanel = ({
 		});
 
 		return result;
-	}, [alerts]);
+	}, [alerts, filterConfig.fields, enabledTagKeys]);
 
 	return (
 		<FilterPanel
-			config={FILTER_CONFIG}
+			config={filterConfig}
 			facets={facets}
 			filters={filters}
 			onFilterChange={onFilterChange}

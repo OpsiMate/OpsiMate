@@ -9,11 +9,17 @@ interface GroupByControlsProps {
 	groupByColumns: string[];
 	onGroupByChange: (columns: string[]) => void;
 	availableColumns: string[];
+	columnLabels?: Record<string, string>;
 }
 
-export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColumns }: GroupByControlsProps) => {
-	// Filter out 'actions' or others that shouldn't be grouped
+export const GroupByControls = ({
+	groupByColumns,
+	onGroupByChange,
+	availableColumns,
+	columnLabels = COLUMN_LABELS,
+}: GroupByControlsProps) => {
 	const groupableColumns = availableColumns.filter((col) => col !== 'actions');
+	const getLabel = (col: string) => columnLabels[col] || COLUMN_LABELS[col] || col;
 
 	const handleAddColumn = (col: string) => {
 		onGroupByChange([...groupByColumns, col]);
@@ -48,7 +54,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 							<>
 								<span className="mx-2 h-4 w-[1px] bg-border" />
 								<span className="text-xs text-foreground">
-									{groupByColumns.map((col) => COLUMN_LABELS[col] || col).join(', ')}
+									{groupByColumns.map((col) => getLabel(col)).join(', ')}
 								</span>
 							</>
 						)}
@@ -65,7 +71,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 											className="flex items-center justify-between text-foreground data-[selected=true]:text-white"
 											onSelect={() => {}}
 										>
-											<span className="truncate mr-2">{COLUMN_LABELS[col] || col}</span>
+											<span className="truncate mr-2">{getLabel(col)}</span>
 											<div className="flex items-center gap-1">
 												<Button
 													variant="ghost"
@@ -120,7 +126,7 @@ export const GroupByControls = ({ groupByColumns, onGroupByChange, availableColu
 											onSelect={() => handleAddColumn(col)}
 											className="cursor-pointer text-foreground"
 										>
-											{COLUMN_LABELS[col] || col}
+											{getLabel(col)}
 										</CommandItem>
 									))}
 							</CommandGroup>

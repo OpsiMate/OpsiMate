@@ -1,3 +1,4 @@
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
 import { createServiceNameLookup } from '../utils';
@@ -24,41 +25,48 @@ export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	});
 };
 
+const getTagKeyValue = (alert: Alert, columnId: string): string => {
+	const tagKey = extractTagKeyFromColumnId(columnId);
+	if (!tagKey) return '';
+	return alert.tags?.[tagKey] || '';
+};
+
 export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirection: SortDirection): Alert[] => {
 	return [...alerts].sort((a, b) => {
 		let aValue: string | number;
 		let bValue: string | number;
 
-		switch (sortField) {
-			case 'alertName':
-				aValue = a.alertName.toLowerCase();
-				bValue = b.alertName.toLowerCase();
-				break;
-			case 'status':
-				aValue = a.isDismissed ? 'dismissed' : 'firing';
-				bValue = b.isDismissed ? 'dismissed' : 'firing';
-				break;
-			case 'tag':
-				aValue = getAlertTagsString(a).toLowerCase();
-				bValue = getAlertTagsString(b).toLowerCase();
-				break;
-			case 'summary':
-				aValue = (a.summary || '').toLowerCase();
-				bValue = (b.summary || '').toLowerCase();
-				break;
-			case 'startsAt': {
-				const aDate = new Date(a.startsAt);
-				const bDate = new Date(b.startsAt);
-				aValue = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
-				bValue = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
-				break;
+		if (isTagKeyColumn(sortField)) {
+			aValue = getTagKeyValue(a, sortField).toLowerCase();
+			bValue = getTagKeyValue(b, sortField).toLowerCase();
+		} else {
+			switch (sortField) {
+				case 'alertName':
+					aValue = a.alertName.toLowerCase();
+					bValue = b.alertName.toLowerCase();
+					break;
+				case 'status':
+					aValue = a.isDismissed ? 'dismissed' : 'firing';
+					bValue = b.isDismissed ? 'dismissed' : 'firing';
+					break;
+				case 'summary':
+					aValue = (a.summary || '').toLowerCase();
+					bValue = (b.summary || '').toLowerCase();
+					break;
+				case 'startsAt': {
+					const aDate = new Date(a.startsAt);
+					const bDate = new Date(b.startsAt);
+					aValue = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+					bValue = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
+					break;
+				}
+				case 'type':
+					aValue = getIntegrationLabel(resolveAlertIntegration(a)).toLowerCase();
+					bValue = getIntegrationLabel(resolveAlertIntegration(b)).toLowerCase();
+					break;
+				default:
+					return 0;
 			}
-			case 'type':
-				aValue = getIntegrationLabel(resolveAlertIntegration(a)).toLowerCase();
-				bValue = getIntegrationLabel(resolveAlertIntegration(b)).toLowerCase();
-				break;
-			default:
-				return 0;
 		}
 
 		if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -73,13 +81,15 @@ export const formatDate = (dateString: string): string => {
 };
 
 export const getAlertValue = (alert: Alert, field: string): string => {
+	if (isTagKeyColumn(field)) {
+		return getTagKeyValue(alert, field) || 'N/A';
+	}
+
 	switch (field) {
 		case 'alertName':
 			return alert.alertName;
 		case 'status':
 			return alert.isDismissed ? 'Dismissed' : 'Firing';
-		case 'tag':
-			return getAlertTagsString(alert) || 'Unknown';
 		case 'summary':
 			return alert.summary || 'Unknown';
 		case 'startsAt': {
@@ -92,6 +102,10 @@ export const getAlertValue = (alert: Alert, field: string): string => {
 		default:
 			return 'Unknown';
 	}
+};
+
+export const createTagKeyValueGetter = (_columnLabels: Record<string, string>) => {
+	return (alert: Alert, field: string): string => getAlertValue(alert, field);
 };
 
 interface GroupAlertsRecursiveOptions {
