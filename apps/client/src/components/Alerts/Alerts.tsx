@@ -4,7 +4,6 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert } from '@/hooks/queries/alerts';
 import { useServices } from '@/hooks/queries/services';
 import { cn } from '@/lib/utils';
-import { getTagKeyColumnId } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { Archive, Bell } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -67,14 +66,6 @@ const Alerts = () => {
 	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, archivedFilters);
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
-
-	const tagKeyColumnLabels = useMemo(() => {
-		const labels: Record<string, string> = {};
-		tagKeys.forEach((tk) => {
-			labels[getTagKeyColumnId(tk.key)] = tk.label;
-		});
-		return labels;
-	}, [tagKeys]);
 
 	const handleDismissAllSelected = async () => {
 		await handleDismissAll(selectedAlerts, () => setSelectedAlerts([]));
@@ -172,7 +163,7 @@ const Alerts = () => {
 										columnOrder={columnOrder}
 										onAlertClick={setSelectedAlert}
 										onTableSettingsClick={() => setShowColumnSettings(true)}
-										tagKeyColumnLabels={tagKeyColumnLabels}
+										tagKeyColumnLabels={allColumnLabels}
 									/>
 								</div>
 
@@ -206,7 +197,7 @@ const Alerts = () => {
 									columnOrder={columnOrder}
 									onAlertClick={setSelectedAlert}
 									onTableSettingsClick={() => setShowColumnSettings(true)}
-									tagKeyColumnLabels={tagKeyColumnLabels}
+									tagKeyColumnLabels={allColumnLabels}
 								/>
 							</div>
 						)}
