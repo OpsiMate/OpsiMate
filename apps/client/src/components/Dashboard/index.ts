@@ -1,7 +1,7 @@
 export { Dashboard } from './Dashboard';
 export type { ColumnVisibility, ServiceWithAlerts } from './Dashboard.types';
 export { DashboardHeader } from './DashboardHeader';
-export { FilterPanel, FilterSidebar } from './FilterPanel';
+export { ServiceFilterPanel } from './FilterPanel';
 export { useColumnManagement } from './hooks/useColumnManagement';
 export { useFilteredServices } from './hooks/useFilteredServices';
 export { useServiceActions } from './hooks/useServiceActions';

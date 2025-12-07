@@ -12,6 +12,16 @@ export class Logger {
 	private readonly sensitiveKeyPattern = /(password|pass|token|secret|key)$/i;
 
 	private sanitize(data: unknown): unknown {
+		if (data instanceof Error) {
+			const serialized: Record<string, unknown> = {
+				name: data.name,
+				message: data.message,
+				stack: data.stack,
+				cause: data.cause,
+			};
+
+			return serialized;
+		}
 		if (Array.isArray(data)) {
 			return data.map((item) => this.sanitize(item));
 		}

@@ -337,7 +337,7 @@ describe('Authentication API', () => {
 
 		expect(updateResponse.status).toBe(401);
 		expect(updateResponse.body.success).toBe(false);
-		expect(updateResponse.body.error).toBe('Missing or invalid Authorization header');
+		expect(updateResponse.body.error).toBe('Missing Authorization header or API token');
 	});
 
 	describe('Role-based access control for edit methods', () => {

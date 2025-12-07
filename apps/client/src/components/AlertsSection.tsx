@@ -59,7 +59,7 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 			{/* Remove the internal Alerts title bar, just render the list */}
 			<div className="space-y-2 max-h-96 overflow-y-auto">
 				{activeAlerts.length === 0 ? (
-					<div className="text-center py-8 text-muted-foreground">No active alerts</div>
+					<div className="text-center py-8 text-foreground">No active alerts</div>
 				) : (
 					activeAlerts.map((alert) => (
 						<div

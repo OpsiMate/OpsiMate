@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Bell, Database, Layers, LayoutDashboard, Puzzle, Settings } from 'lucide-react';
+import { Bell, Database, Layers, LayoutDashboard, Puzzle, Settings, Zap } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
 import { ProfileButton } from './ProfileButton';
+import { ALERTS_PATHS } from './LeftSidebar.constants';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -14,6 +15,7 @@ interface LeftSidebarProps {
 
 export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	const location = useLocation();
+	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as (typeof ALERTS_PATHS)[number]);
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<Link
@@ -29,7 +31,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					</div>
 					<div className={cn('ml-3', collapsed && 'sr-only')}>
 						<h2 className="text-xl font-bold text-foreground whitespace-nowrap tracking-tight">OpsiMate</h2>
-						<p className="text-xs text-muted-foreground">Operational Insights</p>
+						<p className="text-xs text-foreground">Operational Insights</p>
 					</div>
 				</div>
 			</Link>
@@ -41,59 +43,25 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				)}
 			>
 				<Button
-					variant={location.pathname === '/' ? 'default' : 'ghost'}
+					variant={isAlertsActive ? 'default' : 'ghost'}
 					className={cn(
-						'gap-3 h-10',
+						'gap-3 h-10 text-foreground',
 						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/' && 'text-primary-foreground'
+						isAlertsActive && 'text-primary-foreground'
 					)}
 					asChild
 				>
 					<Link to="/">
-						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboard</span>
+						<Bell className="h-5 w-5 flex-shrink-0" />
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
 					</Link>
 				</Button>
 
 				{isEditor() && (
 					<Button
-						variant={location.pathname === '/providers' ? 'default' : 'ghost'}
-						className={cn(
-							'gap-3 h-10',
-							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-							location.pathname === '/providers' && 'text-primary-foreground'
-						)}
-						asChild
-					>
-						<Link to="/providers">
-							<Layers className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>Add Provider</span>
-						</Link>
-					</Button>
-				)}
-
-				{isEditor() && (
-					<Button
-						variant={location.pathname === '/my-providers' ? 'default' : 'ghost'}
-						className={cn(
-							'gap-3 h-10',
-							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-							location.pathname === '/my-providers' && 'text-primary-foreground'
-						)}
-						asChild
-					>
-						<Link to="/my-providers">
-							<Database className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>My Providers</span>
-						</Link>
-					</Button>
-				)}
-
-				{isEditor() && (
-					<Button
 						variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
 						className={cn(
-							'gap-3 h-10',
+							'gap-3 h-10 text-foreground',
 							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 							location.pathname === '/integrations' && 'text-primary-foreground'
 						)}
@@ -105,21 +73,6 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						</Link>
 					</Button>
 				)}
-
-				<Button
-					variant={location.pathname === '/alerts' ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/alerts' && 'text-primary-foreground'
-					)}
-					asChild
-				>
-					<Link to="/alerts">
-						<Bell className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
-					</Link>
-				</Button>
 			</div>
 
 			<div className={cn('p-4 mt-auto flex flex-col gap-3', collapsed && 'items-center')}>
@@ -128,7 +81,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						<Button
 							variant={location.pathname === '/settings' ? 'default' : 'ghost'}
 							className={cn(
-								'gap-3 h-10 items-center',
+								'gap-3 h-10 items-center text-foreground',
 								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 								location.pathname === '/settings' && 'text-primary-foreground'
 							)}
@@ -166,7 +119,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 									<TooltipContent
 										side="top"
 										align="center"
-										className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+										className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
 									>
 										Join our Slack community
 									</TooltipContent>
@@ -190,16 +143,14 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 									<TooltipContent
 										side="top"
 										align="center"
-										className="rounded-md bg-gray-800 text-white px-2 py-1 text-sm"
+										className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
 									>
 										Star us on GitHub ⭐
 									</TooltipContent>
 								</Tooltip>
 							</div>
 
-							<p className={cn('text-xs text-muted-foreground', collapsed && 'sr-only')}>
-								© 2024 OpsiMate
-							</p>
+							<p className={cn('text-xs text-foreground', collapsed && 'sr-only')}>© 2024 OpsiMate</p>
 						</div>
 					</TooltipProvider>
 				</div>

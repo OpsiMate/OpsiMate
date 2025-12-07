@@ -6,13 +6,15 @@ export default defineConfig({
 		target: 'node20',
 		outDir: 'dist',
 		ssr: true,
-		lib: {
-			entry: resolve(__dirname, 'src/index.ts'),
-			name: 'OpsiMateServer',
-			fileName: 'index',
-			formats: ['es'],
-		},
 		rollupOptions: {
+			input: {
+				index: resolve(__dirname, 'src/index.ts'),
+				worker: resolve(__dirname, 'src/worker.ts'),
+			},
+			output: {
+				format: 'es',
+				entryFileNames: '[name].js',
+			},
 			external: [
 				// Node.js built-ins
 				'fs',
@@ -45,9 +47,6 @@ export default defineConfig({
 				'sshpk',
 				'@OpsiMate/shared',
 			],
-			output: {
-				format: 'es',
-			},
 		},
 		minify: false,
 		sourcemap: true,

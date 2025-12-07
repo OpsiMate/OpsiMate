@@ -1,4 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
+import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
+import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,7 +24,7 @@ import { ValidationFeedback, validationRules } from '@/components/ValidationFeed
 import { integrationApi } from '@/lib/api';
 import { canDelete, canManageIntegrations } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { Logger } from '@OpsiMate/shared';
+import { Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
 import {
 	Activity,
 	AlertCircle,
@@ -43,6 +46,7 @@ import {
 	X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const logger = new Logger('Integrations');
 // Define IntegrationType locally until shared package export is fixed
@@ -50,6 +54,7 @@ enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
 	Datadog = 'Datadog',
+	UptimeKuma = 'UptimeKuma',
 }
 
 interface Integration {
@@ -57,7 +62,7 @@ interface Integration {
 	supported: boolean;
 	name: string;
 	description: string;
-	logo: string;
+	logo: string | React.ComponentType<{ className?: string }>;
 	tags: string[];
 	documentationUrl?: string;
 	configFields: {
@@ -68,9 +73,32 @@ interface Integration {
 		options?: string[];
 		required: boolean;
 	}[];
+	enabled?: boolean; // For webhook-based integrations that are always enabled
 }
 
 const INTEGRATIONS: Integration[] = [
+	{
+		id: 'gcp',
+		supported: true,
+		name: 'Google Cloud Platform',
+		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
+		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
+		tags: ['Monitoring', 'Alerts', 'Cloud'],
+		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/gcp',
+		configFields: [],
+		enabled: true, // GCP integration is enabled by default
+	},
+	{
+		id: 'uptimekuma',
+		supported: true,
+		name: 'Uptime Kuma',
+		description: 'Receive alerts from Uptime Kuma monitoring via webhook.',
+		logo: UptimeKumaIcon,
+		tags: ['Monitoring', 'Alerts', 'Uptime'],
+		documentationUrl: 'https://github.com/louislam/uptime-kuma/wiki/Notifications',
+		configFields: [],
+		enabled: true, // integration is enabled by default
+	},
 	{
 		id: 'grafana',
 		supported: true,
@@ -130,24 +158,6 @@ const INTEGRATIONS: Integration[] = [
 		],
 	},
 	{
-		id: 'prometheus',
-		supported: false,
-		name: 'Prometheus',
-		description: 'Open-source systems monitoring and alerting toolkit.',
-		logo: 'https://icon.icepanel.io/Technology/svg/Prometheus.svg',
-		tags: ['Monitoring', 'Metrics', 'Alerts'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{
-				name: 'url',
-				label: 'Prometheus URL',
-				type: 'text',
-				placeholder: 'http://prometheus:9090',
-				required: true,
-			},
-		],
-	},
-	{
 		id: 'coralogix',
 		supported: false,
 		name: 'Coralogix',
@@ -159,84 +169,6 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 			{ name: 'applicationName', label: 'Application Name', type: 'text', required: true },
 			{ name: 'subsystemName', label: 'Subsystem Name', type: 'text', required: true },
-		],
-	},
-	{
-		id: 'loki',
-		supported: false,
-		name: 'Loki',
-		description: 'Horizontally-scalable, highly-available log aggregation system.',
-		logo: 'https://grafana.com/static/img/logos/logo-loki.svg',
-		tags: ['Logging', 'Monitoring'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{
-				name: 'url',
-				label: 'Loki URL',
-				type: 'text',
-				placeholder: 'http://loki:3100',
-				required: true,
-			},
-		],
-	},
-	{
-		id: 'victoriaMetrics',
-		supported: false,
-		name: 'VictoriaMetrics',
-		description: 'Fast, cost-effective and scalable time series database.',
-		logo: 'https://upload.wikimedia.org/wikipedia/commons/c/c6/VictoriaMetrics_logo.svg',
-		tags: ['Metrics', 'Monitoring', 'Storage'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{
-				name: 'url',
-				label: 'VictoriaMetrics URL',
-				type: 'text',
-				placeholder: 'http://victoria-metrics:8428',
-				required: true,
-			},
-		],
-	},
-	{
-		id: 'cloudwatch',
-		supported: false,
-		name: 'AWS CloudWatch',
-		description: 'Monitoring and observability service for AWS resources.',
-		logo: 'https://icon.icepanel.io/AWS/svg/Management-Governance/CloudWatch.svg',
-		tags: ['Monitoring', 'Metrics', 'Logs', 'AWS'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{ name: 'accessKeyId', label: 'AWS Access Key ID', type: 'text', required: true },
-			{ name: 'secretAccessKey', label: 'AWS Secret Access Key', type: 'password', required: true },
-			{
-				name: 'region',
-				label: 'AWS Region',
-				type: 'select',
-				options: [
-					'us-east-1',
-					'us-east-2',
-					'us-west-1',
-					'us-west-2',
-					'eu-west-1',
-					'eu-central-1',
-					'ap-northeast-1',
-				],
-				required: true,
-			},
-		],
-	},
-	// Removed duplicate datadog entry
-	{
-		id: 'newrelic',
-		supported: false,
-		name: 'New Relic',
-		description: 'Observability platform built to help engineers create perfect software.',
-		logo: 'https://newrelic.com/themes/custom/erno/assets/mediakit/new_relic_logo_vertical.svg',
-		tags: ['Monitoring', 'APM', 'Observability'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
-		configFields: [
-			{ name: 'accountId', label: 'Account ID', type: 'text', required: true },
-			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 		],
 	},
 ];
@@ -303,6 +235,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNo
 };
 
 const Integrations = () => {
+	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -310,17 +243,26 @@ const Integrations = () => {
 	const [configuredInstances, setConfiguredInstances] = useState<Record<string, number>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [formData, setFormData] = useState<Record<string, string>>({});
-	const [savedIntegrations, setSavedIntegrations] = useState<
-		Array<{ id: string; type: string; name: string; url: string }>
-	>([]);
+	const [savedIntegrations, setSavedIntegrations] = useState<SharedIntegration[]>([]);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [integrationToDelete, setIntegrationToDelete] = useState<{
-		id: string;
-		type: string;
-		name: string;
-		url: string;
-	} | null>(null);
+	const [integrationToDelete, setIntegrationToDelete] = useState<SharedIntegration | null>(null);
+	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
+	const [showUptimeKumaSetupModal, setShowUptimeKumaSetupModal] = useState(false);
 	const { toast } = useToast();
+
+	// Handle URL-based category filtering
+	useEffect(() => {
+		const categoryParam = searchParams.get('category');
+		if (categoryParam) {
+			// Support multiple categories separated by commas
+			const categoryValues = categoryParam.split(',').map((c) => c.trim().toLowerCase());
+			// Find canonical tags by case-insensitive lookup
+			const canonicalTags = ALL_TAGS.filter((tag) => categoryValues.includes(tag.toLowerCase()));
+			if (canonicalTags.length > 0) {
+				setSelectedTags(canonicalTags);
+			}
+		}
+	}, [searchParams]);
 
 	// Fetch saved integrations on component mount
 	useEffect(() => {
@@ -366,7 +308,17 @@ const Integrations = () => {
 	}, [searchQuery, selectedTags]);
 
 	const handleTagToggle = (tag: string) => {
-		setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+		setSelectedTags((prev) => {
+			const newTags = prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag];
+			// Update URL to reflect all selected tags
+			if (newTags.length > 0) {
+				const categoryValue = newTags.map((t) => t.toLowerCase()).join(',');
+				setSearchParams({ category: categoryValue });
+			} else {
+				setSearchParams({});
+			}
+			return newTags;
+		});
 	};
 
 	const handleIntegrationButtonClick = () => {
@@ -379,8 +331,8 @@ const Integrations = () => {
 				<div className="flex flex-col h-full p-6 gap-6 max-w-7xl mx-auto">
 					<div className="flex justify-between items-center">
 						<div>
-							<h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
-							<p className="text-muted-foreground mt-1">Connect your favorite tools and services</p>
+							<h1 className="text-3xl font-bold tracking-tight text-foreground">Integrations</h1>
+							<p className="text-foreground mt-1">Connect your favorite tools and services</p>
 						</div>
 						<Button className="gap-2" onClick={handleIntegrationButtonClick}>
 							<Plus className="h-4 w-4" />
@@ -405,7 +357,7 @@ const Integrations = () => {
 							<Separator />
 
 							<div>
-								<h3 className="text-sm font-medium mb-3">Filter by category</h3>
+								<h3 className="text-sm font-medium mb-3 text-foreground">Filter by category</h3>
 								<div className="flex flex-wrap gap-2">
 									{ALL_TAGS.map((tag) => (
 										<Badge
@@ -413,7 +365,9 @@ const Integrations = () => {
 											variant={selectedTags.includes(tag) ? 'default' : 'outline'}
 											className={cn(
 												'cursor-pointer transition-all hover:shadow-sm',
-												selectedTags.includes(tag) ? 'hover:bg-primary/90' : 'hover:bg-accent'
+												selectedTags.includes(tag)
+													? 'hover:bg-primary/90'
+													: 'hover:bg-primary hover:text-primary-foreground hover:border-primary'
 											)}
 											onClick={() => handleTagToggle(tag)}
 										>
@@ -437,15 +391,15 @@ const Integrations = () => {
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{filteredIntegrations.map((integration) => {
 							const hasConfiguredInstances = configuredInstances[integration.id] > 0;
+							// Treat integration as enabled if it has the enabled property (like GCP) or has configured instances
+							const isEnabled = integration.enabled || hasConfiguredInstances;
 							return (
 								<Card
 									key={integration.id}
 									className={cn(
 										'transition-all duration-200 overflow-hidden',
-										hoveredCard === integration.id && hasConfiguredInstances
-											? 'border-primary shadow-md'
-											: '',
-										hasConfiguredInstances
+										hoveredCard === integration.id && isEnabled ? 'border-primary shadow-md' : '',
+										isEnabled
 											? 'border-muted/60 hover:shadow-md'
 											: 'border-muted/20 bg-gray-100 dark:bg-gray-800/40'
 									)}
@@ -459,25 +413,32 @@ const Integrations = () => {
 									) : (
 										<div className="h-[16.8px]"></div>
 									)}
-									<CardHeader className={cn('pb-2', hasConfiguredInstances ? '' : 'opacity-75')}>
+									<CardHeader className={cn('pb-2', isEnabled ? '' : 'opacity-75')}>
 										<div className="flex items-center justify-between">
 											<div className="flex items-center gap-3">
 												<div
 													className={cn(
 														'h-10 w-10 rounded-md overflow-hidden border flex items-center justify-center',
-														hasConfiguredInstances
-															? 'bg-background'
-															: 'bg-gray-200 dark:bg-gray-700'
+														isEnabled ? 'bg-background' : 'bg-gray-200 dark:bg-gray-700'
 													)}
 												>
-													<img
-														src={integration.logo}
-														alt={`${integration.name} logo`}
-														className={cn(
-															'h-8 w-8 object-contain',
-															hasConfiguredInstances ? '' : 'opacity-50 grayscale'
-														)}
-													/>
+													{typeof integration.logo === 'string' ? (
+														<img
+															src={integration.logo}
+															alt={`${integration.name} logo`}
+															className={cn(
+																'h-8 w-8 object-contain',
+																isEnabled ? '' : 'opacity-50 grayscale'
+															)}
+														/>
+													) : (
+														<integration.logo
+															className={cn(
+																'h-8 w-8',
+																isEnabled ? '' : 'opacity-50 grayscale'
+															)}
+														/>
+													)}
 												</div>
 												<CardTitle className="text-base">{integration.name}</CardTitle>
 											</div>
@@ -491,7 +452,7 @@ const Integrations = () => {
 											</Button>
 										</div>
 									</CardHeader>
-									<CardContent className={cn('pb-2', hasConfiguredInstances ? '' : 'opacity-75')}>
+									<CardContent className={cn('pb-2', isEnabled ? '' : 'opacity-75')}>
 										<CardDescription className="text-sm h-16 sm:h-14 md:h-12 lg:h-10 line-clamp-2 overflow-hidden">
 											{integration.description}
 										</CardDescription>
@@ -503,10 +464,10 @@ const Integrations = () => {
 														variant="outline"
 														className={cn(
 															'text-xs px-2 py-0.5 flex items-center',
-															hasConfiguredInstances
+															isEnabled
 																? TAG_COLORS[tag]?.bg || 'bg-gray-100 dark:bg-gray-800'
 																: 'bg-gray-200 dark:bg-gray-700',
-															hasConfiguredInstances
+															isEnabled
 																? TAG_COLORS[tag]?.text ||
 																		'text-gray-700 dark:text-gray-300'
 																: 'text-gray-500 dark:text-gray-400'
@@ -524,7 +485,7 @@ const Integrations = () => {
 											disabled={!integration.supported}
 											className={cn(
 												'w-full transition-all',
-												hoveredCard === integration.id && hasConfiguredInstances
+												hoveredCard === integration.id && isEnabled
 													? 'ring-2 ring-primary-foreground/20'
 													: '',
 												!integration.supported
@@ -532,6 +493,18 @@ const Integrations = () => {
 													: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95'
 											)}
 											onClick={() => {
+												// Special handling for GCP - show webhook setup modal
+												if (integration.id === 'gcp') {
+													setShowGCPSetupModal(true);
+													return;
+												}
+
+												// Special handling for Uptime Kuma - show webhook setup modal
+												if (integration.id === 'uptimekuma') {
+													setShowUptimeKumaSetupModal(true);
+													return;
+												}
+
 												// Find existing integration of this type if it exists
 												const existingIntegration = savedIntegrations.find(
 													(integration2) =>
@@ -563,16 +536,21 @@ const Integrations = () => {
 												setSelectedIntegration(integration);
 											}}
 											title={
-												hasConfiguredInstances
+												isEnabled
 													? `Configure ${integration.name} integration`
 													: `Add ${integration.name} integration`
 											}
 										>
 											<Settings className="mr-2 h-4 w-4" />
-											{hasConfiguredInstances ? 'Configure' : 'Add Integration'}
+											{isEnabled ? 'Configure' : 'Add Integration'}
 										</Button>
 									</CardFooter>
-									{hasConfiguredInstances ? (
+									{integration.enabled ? (
+										<div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+											<CheckCircle2 className="h-3 w-3" />
+											<span>Enabled</span>
+										</div>
+									) : hasConfiguredInstances ? (
 										<div className="px-6 pb-3 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
 											<Server className="h-3 w-3" />
 											<span>
@@ -615,11 +593,15 @@ const Integrations = () => {
 								<SheetHeader className="pb-6">
 									<div className="flex items-center gap-4">
 										<div className="h-16 w-16 overflow-hidden flex items-center justify-center bg-muted rounded-lg p-2 border">
-											<img
-												src={selectedIntegration.logo}
-												alt={`${selectedIntegration.name} logo`}
-												className="max-h-12 max-w-12 object-contain"
-											/>
+											{typeof selectedIntegration.logo === 'string' ? (
+												<img
+													src={selectedIntegration.logo}
+													alt={`${selectedIntegration.name} logo`}
+													className="max-h-12 max-w-12 object-contain"
+												/>
+											) : (
+												<selectedIntegration.logo className="max-h-12 max-w-12" />
+											)}
 										</div>
 										<div>
 											<SheetTitle>
@@ -1069,6 +1051,9 @@ const Integrations = () => {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
+			<UptimeKumaSetupModal open={showUptimeKumaSetupModal} onOpenChange={setShowUptimeKumaSetupModal} />
 		</>
 	);
 };

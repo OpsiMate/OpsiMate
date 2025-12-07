@@ -9,10 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { providerApi } from '@/lib/api';
 import { getSecretsFromServer } from '@/lib/sslKeys';
-import { ProviderType } from '@/pages/Providers';
 import { AddSecretButton } from '@/pages/Settings';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Logger, SecretMetadata } from '@OpsiMate/shared';
+import { Logger, SecretMetadata, ClientProviderType } from '@OpsiMate/shared';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Control, Controller, SubmitHandler, useForm } from 'react-hook-form';
@@ -156,7 +155,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 	}, []);
 
 	if (loading) {
-		return <div className="text-sm text-muted-foreground">Loading keys...</div>;
+		return <div className="text-sm text-foreground">Loading keys...</div>;
 	}
 
 	if (error) {
@@ -170,7 +169,7 @@ const SSHKeySelector = ({ control }: { control: Control<ServerFormData> }) => {
 	if (keys.length === 0) {
 		return (
 			<div className="space-y-2">
-				<div className="text-sm text-muted-foreground">No SSH keys available.</div>
+				<div className="text-sm text-foreground">No SSH keys available.</div>
 			</div>
 		);
 	}
@@ -235,7 +234,7 @@ const KubeconfigSelector = ({
 	}, []);
 
 	if (loading) {
-		return <div className="text-sm text-muted-foreground">Loading kubeconfig keys...</div>;
+		return <div className="text-sm text-foreground">Loading kubeconfig keys...</div>;
 	}
 
 	if (error) {
@@ -249,7 +248,7 @@ const KubeconfigSelector = ({
 	if (keys.length === 0) {
 		return (
 			<div className="space-y-2">
-				<div className="text-sm text-muted-foreground">No kubeconfig keys available.</div>
+				<div className="text-sm text-foreground">No kubeconfig keys available.</div>
 			</div>
 		);
 	}
@@ -680,7 +679,7 @@ const AWSForm = ({ onSubmit, onClose }: ProviderFormProps<AWSFormData>) => {
 interface ProviderSidebarProps {
 	provider: {
 		id: string;
-		type: ProviderType;
+		type: ClientProviderType;
 		name: string;
 		description: string;
 		icon: React.ReactNode;
@@ -715,8 +714,8 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 							description: `Successfully added ${serverData.name} server provider`,
 						});
 						onClose();
-						// Redirect to My Providers page
-						navigate('/my-providers');
+						// Redirect to Providers page
+						navigate('/providers');
 					} else {
 						throw new Error(response.error || 'Failed to create provider');
 					}
@@ -766,8 +765,8 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 							description: `Successfully added ${serverData.name} server provider`,
 						});
 						onClose();
-						// Redirect to My Providers page
-						navigate('/my-providers');
+						// Redirect to Providers page
+						navigate('/providers');
 					} else {
 						throw new Error(response.error || 'Failed to create provider');
 					}
@@ -831,7 +830,7 @@ export const ProviderSidebar = ({ provider, onClose }: ProviderSidebarProps) => 
 					description: `Imported ${providersPayload.length} providers`,
 				});
 				onClose();
-				navigate('/my-providers');
+				navigate('/providers');
 			} else {
 				throw new Error((resp as { error?: string }).error || 'Failed to import providers');
 			}

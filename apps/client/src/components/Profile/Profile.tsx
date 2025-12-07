@@ -1,26 +1,13 @@
 import { useCallback } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import {
-	ProfileContent,
-	ProfileLoadingState,
-	ProfileErrorState,
-} from '@/components/Profile/components';
+import { ProfileContent, ProfileLoadingState, ProfileErrorState } from '@/components/Profile/components';
 import { useProfileData, useProfileEdit } from '@/components/Profile/hooks';
 
 const Profile: React.FC = () => {
 	const { profile, loading, setProfile } = useProfileData();
 
-	const {
-		isEditing,
-		saving,
-		formData,
-		errors,
-		generalError,
-		setFormData,
-		handleEdit,
-		handleCancel,
-		handleSave,
-	} = useProfileEdit({ profile, setProfile });
+	const { isEditing, saving, formData, errors, generalError, setFormData, handleEdit, handleCancel, handleSave } =
+		useProfileEdit({ profile, setProfile });
 
 	const handleLogout = useCallback(() => {
 		localStorage.removeItem('jwt');
@@ -39,7 +26,7 @@ const Profile: React.FC = () => {
 		<DashboardLayout>
 			<div className="flex flex-col h-full">
 				<div className="flex-shrink-0 bg-background border-b border-border px-6 py-4">
-					<h1 className="text-2xl font-bold">Profile</h1>
+					<h1 className="text-2xl font-bold text-foreground">Profile</h1>
 				</div>
 				<ProfileContent
 					profile={profile}

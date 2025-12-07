@@ -207,7 +207,6 @@ export class ServiceController {
 					);
 				}
 			}
-			await this.alertBL?.clearAlertsByService(serviceId);
 			await this.tagRepo?.deleteAllServiceTags(serviceId);
 
 			await this.servicesBL.deleteService(serviceId, req.user);
@@ -240,7 +239,7 @@ export class ServiceController {
 			}
 
 			const providerConnector = providerConnectorFactory(provider.providerType);
-			await providerConnector.startService(provider, service.name, service.serviceType);
+			await providerConnector.startService(provider, service);
 			await this.serviceRepo.updateService(serviceId, { serviceStatus: 'running' });
 
 			const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
@@ -276,7 +275,7 @@ export class ServiceController {
 			}
 
 			const providerConnector = providerConnectorFactory(provider.providerType);
-			await providerConnector.stopService(provider, service.name, service.serviceType);
+			await providerConnector.stopService(provider, service);
 			await this.serviceRepo.updateService(serviceId, { serviceStatus: 'stopped' });
 
 			const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);

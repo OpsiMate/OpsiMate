@@ -1,15 +1,22 @@
+import { getProviderTypeName, getStatusBadgeColor } from '@/components/Providers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { ExternalLink, X } from 'lucide-react';
-import { Provider } from '@OpsiMate/shared';
-import { getProviderTypeName, getStatusBadgeColor } from '@/pages/MyProviders';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Provider as SharedProvider } from '@OpsiMate/shared';
+import { ExternalLink } from 'lucide-react';
 import { ServiceConfig } from './AddServiceDialog';
 import { ServicesList } from './ServicesList';
 
+interface ProviderWithStatus extends SharedProvider {
+	status?: 'online' | 'offline' | 'warning' | 'unknown';
+	type?: string;
+	details?: Record<string, unknown>;
+	services?: ServiceConfig[];
+}
+
 interface ServiceDetailsSheetProps {
-	provider: Provider | null;
+	provider: ProviderWithStatus | null;
 	onClose: () => void;
 	onDeleteService?: (serviceId: string) => void;
 	onStatusChange?: (serviceId: string, newStatus: 'running' | 'stopped' | 'error') => void;
@@ -25,14 +32,14 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 const getServiceStatusBadgeColor = (status: ServiceConfig['status']) => {
 	switch (status) {
 		case 'running':
-			return 'bg-green-500/20 text-green-700 hover:bg-green-500/30';
+			return 'bg-green-500/20 text-white hover:bg-green-500/30';
 		case 'stopped':
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 		case 'error':
-			return 'bg-red-500/20 text-red-700 hover:bg-red-500/30';
+			return 'bg-red-500/20 text-white hover:bg-red-500/30';
 		case 'unknown':
 		default:
-			return 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30';
+			return 'bg-gray-500/20 text-white hover:bg-gray-500/30';
 	}
 };
 

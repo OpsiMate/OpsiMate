@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
 import { User } from '../types';
@@ -28,7 +28,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 		}
 	}, [user]);
 
-	const handleSave = async () => {
+	const handleSave = useCallback(async () => {
 		if (!user) return;
 
 		clearErrors();
@@ -54,12 +54,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 		} finally {
 			setSaving(false);
 		}
-	};
+	}, [user, fullName, email, clearErrors, handleApiResponse, onUserUpdated, onClose]);
 
-	const handleClose = () => {
+	const handleClose = useCallback(() => {
 		clearErrors();
 		onClose();
-	};
+	}, [clearErrors, onClose]);
 
 	React.useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {

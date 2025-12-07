@@ -45,7 +45,7 @@ export class GrafanaClient {
 		return (await res.json()) as GrafanaDashboardSummary[];
 	}
 
-	async getAlerts(tags: string[]): Promise<GrafanaAlert[]> {
+	async getAlerts(): Promise<GrafanaAlert[]> {
 		const res = await fetch(`${this.url}/api/alertmanager/grafana/api/v2/alerts`, {
 			headers: {
 				Authorization: `Bearer ${this.apiKey}`,
@@ -56,11 +56,21 @@ export class GrafanaClient {
 			throw new Error(`Grafana API error: ${res.status}`);
 		}
 
-		const alerts: GrafanaAlert[] = (await res.json()) as GrafanaAlert[];
+		return (await res.json()) as GrafanaAlert[];
+	}
 
-		return alerts.filter((alert) => {
-			const alertTag = alert.labels?.tag;
-			return alertTag && tags.includes(alertTag);
+	async getHealth() {
+		const res = await fetch(`${this.url}/api/health`, {
+			headers: {
+				Authorization: `Bearer ${this.apiKey}`,
+				'Content-Type': 'application/json',
+			},
 		});
+
+		if (!res.ok) {
+			throw new Error(`Grafana health check failed: ${res.status}`);
+		}
+
+		return (await res.json()) as { commit: string; database: string; version: string };
 	}
 }

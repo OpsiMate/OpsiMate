@@ -11,6 +11,7 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
+import { CustomAction } from '@OpsiMate/custom-actions';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
@@ -320,6 +321,7 @@ export const providerApi = {
 			id?: string;
 			image?: string;
 			created?: string;
+			namespace?: string;
 		};
 	}) => {
 		return apiRequest<ServiceWithProvider>('/services', 'POST', {
@@ -533,6 +535,11 @@ export const alertsApi = {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/undismiss`, 'PATCH');
 	},
 
+	// Delete an alert
+	async deleteAlert(alertId: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE');
+	},
+
 	// Get alerts by tag
 	async getAlertsByTag(tag: string): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
 		const response = await this.getAllAlerts();
@@ -561,6 +568,16 @@ export const alertsApi = {
 			};
 		}
 		return response;
+	},
+
+	// Get all archived alerts
+	async getAllArchivedAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
+		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts/archived');
+	},
+
+	// Delete an archived alert permanently
+	async deleteArchivedAlert(alertId: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/archived/${alertId}`, 'DELETE');
 	},
 };
 
@@ -648,6 +665,39 @@ export const secretsApi = {
 				error: error instanceof Error ? error.message : 'Unknown error occurred',
 			};
 		}
+	},
+};
+
+/**
+ * Custom Actions API endpoints
+ */
+export const customActionsApi = {
+	getActions: () => {
+		return apiRequest<{ actions: CustomAction[] }>('/custom-actions');
+	},
+
+	getActionById: (actionId: number) => {
+		return apiRequest<CustomAction>(`/custom-actions/${actionId}`);
+	},
+
+	createAction: (action: CustomAction) => {
+		return apiRequest<{ id: number }>('/custom-actions', 'POST', action);
+	},
+
+	updateAction: (actionId: number, action: CustomAction) => {
+		return apiRequest<void>(`/custom-actions/${actionId}`, 'PUT', action);
+	},
+
+	deleteAction: (actionId: number) => {
+		return apiRequest<void>(`/custom-actions/${actionId}`, 'DELETE');
+	},
+
+	runForProvider: (providerId: number, actionId: number) => {
+		return apiRequest<void>(`/custom-actions/run/provider/${providerId}/${actionId}`, 'POST');
+	},
+
+	runForService: (serviceId: number, actionId: number) => {
+		return apiRequest<void>(`/custom-actions/run/service/${serviceId}/${actionId}`, 'POST');
 	},
 };
 

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
 import { Check, Edit, FileText, KeyRound, Plus, Settings as SettingsIcon, Trash2, Users, X } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -64,11 +64,7 @@ const Settings: React.FC = () => {
 	const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
 	const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
-	useEffect(() => {
-		fetchUsers();
-	}, []);
-
-	const fetchUsers = async () => {
+	const fetchUsers = useCallback(async () => {
 		try {
 			const response = await apiRequest<User[]>('/users', 'GET');
 			if (response.success && response.data) {
@@ -84,7 +80,11 @@ const Settings: React.FC = () => {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [handleApiResponse]);
+
+	useEffect(() => {
+		fetchUsers();
+	}, [fetchUsers]);
 
 	const handleRoleUpdate = async (email: string, newRole: Role) => {
 		setUpdatingUser(email);
@@ -204,7 +204,7 @@ const Settings: React.FC = () => {
 			<div className="flex flex-col h-full">
 				{/* Header */}
 				<div className="flex-shrink-0 bg-background border-b border-border px-6 py-4">
-					<h1 className="text-2xl font-bold">Settings</h1>
+					<h1 className="text-2xl font-bold text-foreground">Settings</h1>
 				</div>
 
 				{/* Content */}
@@ -243,14 +243,6 @@ const Settings: React.FC = () => {
 										<TabsTrigger value="audit" className="justify-start gap-2">
 											<FileText className="h-4 w-4" />
 											Audit Log
-										</TabsTrigger>
-										<TabsTrigger value="secrets" className="justify-start gap-2">
-											<KeyRound className="h-4 w-4" />
-											Secrets
-										</TabsTrigger>
-										<TabsTrigger value="custom-fields" className="justify-start gap-2">
-											<SettingsIcon className="h-4 w-4" />
-											Custom Service Fields
 										</TabsTrigger>
 									</TabsList>
 								</div>
@@ -1116,7 +1108,7 @@ const SslKeysTable: React.FC = () => {
 				{searchQuery && (
 					<button
 						onClick={() => setSearchQuery('')}
-						className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+						className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 						aria-label="Clear search"
 					>
 						×
@@ -1135,7 +1127,7 @@ const SslKeysTable: React.FC = () => {
 				<TableBody>
 					{filteredSecrets.length === 0 ? (
 						<TableRow>
-							<TableCell colSpan={4} className="text-center text-gray-500">
+							<TableCell colSpan={4} className="text-center text-muted-foreground">
 								No secrets match your search.
 							</TableCell>
 						</TableRow>

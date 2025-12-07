@@ -54,7 +54,7 @@ export const TVModeLauncher = ({
 			{children}
 		</div>
 	) : (
-		<Button variant="outline" size="sm" onClick={handleLaunchTVMode} className="flex items-center gap-2">
+		<Button size="sm" onClick={handleLaunchTVMode} className="flex items-center gap-2">
 			<Monitor className="h-4 w-4" />
 			TV Mode
 		</Button>

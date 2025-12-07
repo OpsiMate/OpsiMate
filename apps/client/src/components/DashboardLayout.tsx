@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { Button } from '@/components/ui/button';
-import { Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface DashboardLayoutProps {
 	children: React.ReactNode;
@@ -46,7 +45,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 					<Menu className="h-5 w-5" />
 					<span className="sr-only">Toggle Menu</span>
 				</Button>
-				<h1 className="text-lg font-semibold">OpsiMate</h1>
+				<h1 className="text-lg font-semibold text-foreground">OpsiMate</h1>
 			</div>
 
 			{/* Mobile Sidebar (Overlay) */}
@@ -69,23 +68,25 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 				</div>
 			</div>
 
-			{/* Desktop Layout */}
-			<div className="hidden md:flex flex-1 overflow-hidden">
+			{/* Main Content Area */}
+			<div className="flex flex-1 overflow-hidden">
+				{/* Desktop Sidebar */}
 				<div
 					className={cn(
-						'bg-background border-r border-border transition-all duration-300 ease-in-out',
+						'bg-background border-r border-border transition-all duration-300 ease-in-out hidden md:block',
 						isSidebarCollapsed ? 'w-[70px]' : 'w-[207px]'
 					)}
 				>
 					<LeftSidebar collapsed={isSidebarCollapsed} />
 				</div>
 
-				<div className="flex-1 min-w-0 relative bg-muted/20 w-full">
+				<div className="flex-1 min-w-0 relative bg-background w-full">
+					{/* Desktop Sidebar Toggle Button */}
 					<Button
 						onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
 						variant="ghost"
 						size="icon"
-						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8"
+						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center !p-0 text-foreground"
 					>
 						{isSidebarCollapsed ? (
 							<ChevronRight className="h-4 w-4" />
@@ -96,9 +97,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 					<main className="h-full overflow-auto w-full">{children}</main>
 				</div>
 			</div>
-
-			{/* Mobile Content */}
-			<div className="md:hidden flex-1 overflow-auto">{children}</div>
 		</div>
 	);
 };

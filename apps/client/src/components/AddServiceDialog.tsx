@@ -16,7 +16,7 @@ import { providerApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { DiscoveredService, Logger, ServiceWithProvider } from '@OpsiMate/shared';
 import { AlertCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 // Define service types
 export interface ServiceConfig {
@@ -41,6 +41,7 @@ interface Container {
 	serviceStatus: string;
 	serviceIP: string;
 	image: string;
+	namespace: string;
 }
 
 interface AddServiceDialogProps {
@@ -90,7 +91,7 @@ export const AddServiceDialog = ({
 	const [existingServices, setExistingServices] = useState<ServiceWithProvider[]>([]);
 
 	// Function to fetch existing services for this provider
-	const fetchExistingServices = async () => {
+	const fetchExistingServices = useCallback(async () => {
 		try {
 			// Use getAllServices instead and filter by providerId
 			const response = await providerApi.getAllServices();
@@ -109,10 +110,10 @@ export const AddServiceDialog = ({
 			logger.error('Error fetching existing services:', err);
 			return [];
 		}
-	};
+	}, [serverId]);
 
 	// Function to fetch containers or pods from the API
-	const fetchContainers = async () => {
+	const fetchContainers = useCallback(async () => {
 		setLoadingContainers(true);
 		setError('');
 
@@ -141,6 +142,7 @@ export const AddServiceDialog = ({
 						selected: isAlreadyAdded, // Pre-select already added services
 						created: new Date().toISOString(),
 						alreadyAdded: isAlreadyAdded, // Mark if already added
+						namespace: service.namespace,
 						existingServiceId: isAlreadyAdded
 							? existingServices.find((es) => es.name === service.name)?.id
 							: undefined, // Store existing service ID for removal
@@ -160,21 +162,21 @@ export const AddServiceDialog = ({
 		} finally {
 			setLoadingContainers(false);
 		}
-	};
+	}, [serverId, isKubernetes, fetchExistingServices]);
 
 	// Load containers from the server using API when the dialog opens or tab changes
 	useEffect(() => {
 		if (open && (activeTab === 'container' || isKubernetes)) {
 			fetchContainers();
 		}
-	}, [open, activeTab, serverId, isKubernetes]);
+	}, [open, activeTab, serverId, isKubernetes, fetchContainers]);
 
 	// Reset form when dialog closes
 	useEffect(() => {
 		if (!open) {
 			setServiceName('');
 			setSelectedContainer(null);
-			setContainers(containers.map((container) => ({ ...container, selected: false })));
+			setContainers((prevContainers) => prevContainers.map((container) => ({ ...container, selected: false })));
 		}
 	}, [open]);
 
@@ -342,6 +344,7 @@ export const AddServiceDialog = ({
 							id: container.id,
 							image: container.image,
 							created: container.created,
+							namespace: container.namespace,
 						},
 					});
 

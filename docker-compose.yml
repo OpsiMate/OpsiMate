@@ -2,6 +2,9 @@ version: "3.8"
 
 services:
   backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
     image: opsimate/backend:latest
     container_name: opsimate-backend
     ports:
@@ -11,8 +14,25 @@ services:
       - ./data/private-keys:/app/data/private-keys
       - ./config.yml:/app/config/config.yml
     environment:
+      - API_TOKEN=opsimate
       - NODE_ENV=production
       - HOST=0.0.0.0
+      - CONFIG_FILE=/app/config/config.yml
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    image: opsimate/backend:latest
+    container_name: opsimate-worker
+    command: ["node", "apps/server/dist/worker.js"]
+    volumes:
+      - ./data/database:/app/data/database
+      - ./data/private-keys:/app/data/private-keys
+      - ./config.yml:/app/config/config.yml
+    environment:
+      - NODE_ENV=production
       - CONFIG_FILE=/app/config/config.yml
     restart: unless-stopped
 

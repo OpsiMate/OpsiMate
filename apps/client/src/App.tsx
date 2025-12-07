@@ -1,27 +1,14 @@
 // src/App.tsx
-import React from 'react';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import {
-	Providers,
-	MyProviders,
-	Integrations,
-	NotFound,
-	Register,
-	Login,
-	Settings,
-	Alerts,
-	TVMode,
-} from './pages';
-import { Dashboard } from '@/components/Dashboard';
-import { Profile } from '@/components/Profile';
-import { ThemeProvider } from './components/ThemeProvider';
-import { AuthGuard } from './components/AuthGuard';
+import { Actions, Alerts, AuthGuard, Dashboard, Profile, Providers, ThemeProvider } from '@/components';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
-import { isEditor } from './lib/auth';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { isEditor } from '@/lib/auth.ts';
+import { AlertsTVMode, Integrations, Login, NotFound, Register, Settings, TVMode } from '@/pages';
+import { ChakraProvider } from '@chakra-ui/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';
 
@@ -29,39 +16,37 @@ const queryClient = new QueryClient();
 
 const App: React.FC = () => {
 	return (
-		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-			<QueryClientProvider client={queryClient}>
-				<TooltipProvider>
-					<Toaster />
-					<Sonner />
+		<ChakraProvider>
+			<ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme">
+				<QueryClientProvider client={queryClient}>
+					<TooltipProvider>
+						<Toaster />
+						<Sonner />
 
-					<BrowserRouter>
-						<AuthGuard>
-							<Routes>
-								<Route path="/" element={<Dashboard />} />
-								<Route path="/tv-mode" element={<TVMode />} />
-								<Route path="/providers" element={<Providers />} />
-								<Route
-									path="/my-providers"
-									element={!isEditor() ? <Navigate to="/" replace /> : <MyProviders />}
-								/>
-								<Route path="/integrations" element={<Integrations />} />
-								<Route path="/settings" element={<Settings />} />
-								<Route path="/profile" element={<Profile />} />
-								<Route path="/login" element={<Login />} />
-								<Route path="/register" element={<Register />} />
-								<Route path="/alerts" element={<Alerts />} />
-								<Route path="/forgot-password" element={<ForgotPassword />} />
-								<Route path="/reset-password" element={<ResetPasswordByEmail />} />
-								<Route path="*" element={<NotFound />} />
-							</Routes>
-						</AuthGuard>
-					</BrowserRouter>
+						<BrowserRouter>
+							<AuthGuard>
+								<Routes>
+									<Route path="/" element={<Alerts />} />
+									<Route path="/tv-mode" element={<TVMode />} />
+									<Route path="/integrations" element={<Integrations />} />
+									<Route path="/settings" element={<Settings />} />
+									<Route path="/profile" element={<Profile />} />
+									<Route path="/login" element={<Login />} />
+									<Route path="/register" element={<Register />} />
+									<Route path="/alerts" element={<Alerts />} />
+									<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />
+									<Route path="/forgot-password" element={<ForgotPassword />} />
+									<Route path="/reset-password" element={<ResetPasswordByEmail />} />
+									<Route path="*" element={<NotFound />} />
+								</Routes>
+							</AuthGuard>
+						</BrowserRouter>
 
-					<ScrollToTopButton />
-				</TooltipProvider>
-			</QueryClientProvider>
-		</ThemeProvider>
+						<ScrollToTopButton />
+					</TooltipProvider>
+				</QueryClientProvider>
+			</ThemeProvider>
+		</ChakraProvider>
 	);
 };
 

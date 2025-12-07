@@ -1,4 +1,4 @@
-import { IntegrationType, Role } from '@OpsiMate/shared';
+import { AlertType, IntegrationType, Role } from '@OpsiMate/shared';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
 
 export type IntegrationRow = {
@@ -63,8 +63,9 @@ export interface ViewRow {
 
 export type AlertRow = {
 	id: string;
+	type: AlertType;
 	status: string;
-	tag: string;
+	tags: string;
 	starts_at: string;
 	updated_at: string;
 	alert_url: string;
@@ -73,7 +74,22 @@ export type AlertRow = {
 	runbook_url?: string;
 	created_at: string;
 	is_dismissed: boolean;
-	service_id: number | null;
+};
+
+export type ArchivedAlertRow = {
+	id: string;
+	type: AlertType;
+	status: string;
+	tags: string;
+	starts_at: string;
+	updated_at: string;
+	alert_url: string;
+	alert_name: string;
+	summary?: string;
+	runbook_url?: string;
+	created_at: string;
+	is_dismissed: boolean;
+	archived_at: string;
 };
 
 export type UserRow = {
@@ -117,4 +133,24 @@ export type ResetPasswordRow = {
 	token_hash: string;
 	expires_at: string;
 	created_at: string;
+};
+
+export type CustomActionRow = {
+	id: number;
+	name: string;
+	description: string;
+	type: 'bash' | 'http';
+	target: 'service' | 'provider' | null;
+	script: string | null;
+	http_config: string | null;
+	created_at: string;
+};
+
+export type TableInfoRow = {
+	cid: number;
+	name: string;
+	type: string;
+	notnull: number;
+	dflt_value: unknown;
+	pk: number;
 };

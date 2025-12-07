@@ -1,7 +1,7 @@
+import { AlertStatus, AlertType, Alert as SharedAlert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { AlertRow } from './models';
-import { Alert as SharedAlert } from '@OpsiMate/shared';
+import { AlertRow, TableInfoRow } from './models';
 
 export class AlertRepository {
 	private db: Database.Database;
@@ -10,33 +10,34 @@ export class AlertRepository {
 		this.db = db;
 	}
 
-	async insertOrUpdateAlert(alert: Omit<AlertRow, 'created_at' | 'is_dismissed'>): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO alerts (id, status, tag, starts_at, updated_at, alert_url, alert_name, summary, runbook_url,service_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
-                ON CONFLICT(id) DO UPDATE SET
-                    status=excluded.status,
-                    tag=excluded.tag,
-                    starts_at=excluded.starts_at,
-                    updated_at=excluded.updated_at,
-                    alert_url=excluded.alert_url,
-                    alert_name=excluded.alert_name,
-                    summary=excluded.summary,
-                    runbook_url=excluded.runbook_url,
-                    service_id=excluded.service_id
-            `);
+				INSERT INTO alerts (id, status, type, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+											  status=excluded.status,
+											  type=excluded.type,
+											  tags=excluded.tags,
+											  starts_at=excluded.starts_at,
+											  updated_at=excluded.updated_at,
+											  alert_url=excluded.alert_url,
+											  alert_name=excluded.alert_name,
+											  summary=excluded.summary,
+											  runbook_url=excluded.runbook_url
+			`);
+
 			const result = stmt.run(
 				alert.id,
 				alert.status,
-				alert.tag,
-				alert.starts_at,
-				alert.updated_at,
-				alert.alert_url,
-				alert.alert_name,
+				alert.type,
+				JSON.stringify(alert.tags ?? {}),
+				alert.startsAt,
+				alert.updatedAt,
+				alert.alertUrl,
+				alert.alertName,
 				alert.summary || null,
-				alert.runbook_url || null,
-				alert.service_id
+				alert.runbookUrl || null
 			);
 			return { changes: result.changes };
 		});
@@ -50,7 +51,8 @@ export class AlertRepository {
                 CREATE TABLE IF NOT EXISTS alerts (
                     id TEXT PRIMARY KEY,
                     status TEXT,
-                    tag TEXT,
+                    tags TEXT,
+					type TEXT,
                     starts_at TEXT,
                     updated_at TEXT,
                     alert_url TEXT,
@@ -58,68 +60,29 @@ export class AlertRepository {
                     is_dismissed BOOLEAN DEFAULT 0,
                     summary TEXT,
                     runbook_url TEXT,
-                     service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `
+                )`
 				)
 				.run();
 
-			const cols = this.db.prepare(`PRAGMA table_info(alerts)`).all() as { name: string }[];
-			const hasServiceId = cols.some((c) => c.name === 'service_id');
-			if (!hasServiceId) {
-				this.db
-					.prepare(
-						`ALTER TABLE alerts ADD COLUMN service_id INTEGER REFERENCES services(id) ON DELETE CASCADE`
-					)
-					.run();
+			// Backward compatibility: ensure tags column exists
+			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all();
+			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
+
+			if (!hasTags) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN tags TEXT`).run();
 			}
 		});
 	}
 
-	async deleteAlertsNotInIds(ids: string[]): Promise<{ changes: number }> {
-		return runAsync(() => {
-			// If the array is empty, delete all alerts
-			if (ids.length === 0) {
-				const stmt = this.db.prepare(`DELETE FROM alerts`);
-				const result = stmt.run();
-				return { changes: result.changes };
-			}
-			// Otherwise, delete alerts not in the provided ids
-			const placeholders = ids.map(() => '?').join(',');
-			const stmt = this.db.prepare(`DELETE FROM alerts WHERE id NOT IN (${placeholders})`);
-			const result = stmt.run(...ids);
-			return { changes: result.changes };
-		});
-	}
+	private toSharedAlert = (row: AlertRow): SharedAlert => {
+		const status = row.status === 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED;
 
-	async deleteAlertsByTag(tag: string): Promise<{ changes: number }> {
-		return runAsync(() => {
-			const stmt = this.db.prepare(`DELETE FROM alerts WHERE tag = ?`);
-			const result = stmt.run(tag);
-			return { changes: result.changes };
-		});
-	}
-	private toSharedAlert = (
-		row: AlertRow
-	): {
-		summary: string | undefined;
-		createdAt: string;
-		isDismissed: boolean;
-		alertName: string;
-		startsAt: string;
-		id: string;
-		tag: string;
-		alertUrl: string;
-		runbookUrl: string | undefined;
-		serviceId: number | undefined;
-		status: string;
-		updatedAt: string;
-	} => {
 		return {
 			id: row.id,
-			status: row.status,
-			tag: row.tag,
+			status,
+			type: row.type,
+			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,
 			alertUrl: row.alert_url,
@@ -128,7 +91,6 @@ export class AlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isDismissed: row.is_dismissed ? true : false,
-			serviceId: row.service_id ?? undefined,
 		};
 	};
 
@@ -142,35 +104,85 @@ export class AlertRepository {
 
 	async dismissAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			const updateStmt = this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?');
-			updateStmt.run(id);
-			const selectStmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-			const row = selectStmt.get(id) as AlertRow | undefined;
+			this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?').run(id);
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
 
 	async undismissAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			const updateStmt = this.db.prepare('UPDATE alerts SET is_dismissed = 0 WHERE id = ?');
-			updateStmt.run(id);
-			const selectStmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-			const row = selectStmt.get(id) as AlertRow | undefined;
+			this.db.prepare('UPDATE alerts SET is_dismissed = 0 WHERE id = ?').run(id);
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
-	// Deletes alerts linked to a specific service (by service_id).
-	async deleteAlertsByService(serviceId: number): Promise<{ changes: number }> {
+
+	async getAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType): Promise<SharedAlert[]> {
 		return runAsync(() => {
-			const r = this.db.prepare('DELETE FROM alerts WHERE service_id = ?').run(serviceId);
-			return { changes: r.changes };
+			if (activeAlertIds.size === 0) {
+				// No active alerts → get all alerts of this type
+				const stmt = this.db.prepare(`
+				SELECT * FROM alerts
+				WHERE type = ?
+			`);
+				const dbAlerts = stmt.all(alertType) as AlertRow[];
+				return dbAlerts.map(this.toSharedAlert);
+			}
+
+			// Build dynamic placeholders for SQLite
+			const placeholders = Array.from(activeAlertIds)
+				.map(() => '?')
+				.join(',');
+
+			const stmt = this.db.prepare(`
+			SELECT * FROM alerts
+			WHERE type = ?
+			AND id NOT IN (${placeholders})
+		`);
+
+			const dbAlerts = stmt.all(alertType, ...activeAlertIds) as AlertRow[];
+			return dbAlerts.map(this.toSharedAlert);
 		});
 	}
-	// Targeted cleanup: deletes only alerts that match BOTH service_id and tag.
-	async deleteAlertsByServiceAndTag(serviceId: number, tag: string): Promise<{ changes: number }> {
+
+	async deleteAlertsNotInIds(activeAlertIds: Set<string>, alertType: AlertType) {
 		return runAsync(() => {
-			const r = this.db.prepare('DELETE FROM alerts WHERE service_id = ? AND tag = ?').run(serviceId, tag);
-			return { changes: r.changes };
+			if (activeAlertIds.size === 0) {
+				// No active alerts → delete all alerts of this type
+				const stmt = this.db.prepare(`
+				DELETE FROM alerts
+				WHERE type = ?
+			`);
+				stmt.run(alertType);
+				return;
+			}
+
+			// Build dynamic placeholders for SQLite
+			const placeholders = Array.from(activeAlertIds)
+				.map(() => '?')
+				.join(',');
+
+			const stmt = this.db.prepare(`
+			DELETE FROM alerts
+			WHERE type = ?
+			AND id NOT IN (${placeholders})
+		`);
+
+			stmt.run(alertType, ...activeAlertIds);
+		});
+	}
+
+	async deleteAlert(alertId: string) {
+		return runAsync(() => {
+			this.db.prepare(`DELETE FROM alerts WHERE id = ?`).run(alertId);
+		});
+	}
+
+	async getAlert(alertId: string) {
+		return runAsync(() => {
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertId) as AlertRow | undefined;
+			return row ? this.toSharedAlert(row) : null;
 		});
 	}
 }

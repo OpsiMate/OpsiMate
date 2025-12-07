@@ -51,7 +51,17 @@
         "^build"
       ],
       "outputs": [],
-      "env": ["NODE_ENV"]
+      "env": [
+        "NODE_ENV"
+      ]
+    },
+    "dev:worker": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": []
     },
     "debug": {
       "cache": false,
