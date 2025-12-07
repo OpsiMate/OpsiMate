@@ -1,4 +1,5 @@
 import { TableHead } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { AlertSortField, SortDirection } from '../AlertsTable.types';
 
@@ -14,9 +15,17 @@ export interface SortableHeaderProps {
 	sortField: AlertSortField;
 	sortDirection: SortDirection;
 	onSort: (field: AlertSortField) => void;
+	className?: string;
 }
 
-export const SortableHeader = ({ column, label, sortField, sortDirection, onSort }: SortableHeaderProps) => {
+export const SortableHeader = ({
+	column,
+	label,
+	sortField,
+	sortDirection,
+	onSort,
+	className,
+}: SortableHeaderProps) => {
 	const getSortIcon = () => {
 		if (sortField !== column) {
 			return <ArrowUpDown className="h-3 w-3 text-foreground" />;
@@ -36,7 +45,10 @@ export const SortableHeader = ({ column, label, sortField, sortDirection, onSort
 
 	return (
 		<TableHead
-			className="h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground"
+			className={cn(
+				'h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground',
+				className
+			)}
 			onClick={handleClick}
 		>
 			<div className="flex items-center gap-1">
