@@ -106,7 +106,7 @@ export const AddBulkServiceSchema = z.array(
 		serviceStatus: z.string().min(1),
 		serviceType: z.nativeEnum(ServiceType),
 	}).superRefine((data, ctx) => {
-		if (data.serviceType === ServiceType.SYSTEMD && /\s/.test(data.name)) {
+		if (data.serviceType === ServiceType.SYSTEMD && data.name.indexOf(' ') !== -1) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Systemd service names cannot contain spaces',
@@ -143,7 +143,7 @@ export const ServiceSchema = z.object({
 });
 
 export const CreateServiceSchema = ServiceSchema.superRefine((data, ctx) => {
-	if (data.serviceType === ServiceType.SYSTEMD && /\s/.test(data.name)) {
+	if (data.serviceType === ServiceType.SYSTEMD && data.name.indexOf(' ') !== -1) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
 			message: 'Systemd service names cannot contain spaces',
@@ -156,7 +156,7 @@ export const UpdateServiceSchema = ServiceSchema.partial().extend({
 	id: z.number(),
 }).superRefine((data, ctx) => {
 	// If the update explicitly contains serviceType SYSTEMD and a name with spaces, reject
-	if (data.serviceType === ServiceType.SYSTEMD && data.name && /\s/.test(data.name)) {
+	if (data.serviceType === ServiceType.SYSTEMD && data.name && data.name.indexOf(' ') !== -1) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
 			message: 'Systemd service names cannot contain spaces',
