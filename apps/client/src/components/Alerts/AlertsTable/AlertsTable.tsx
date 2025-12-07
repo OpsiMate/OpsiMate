@@ -178,10 +178,7 @@ export const AlertsTable = ({
 						))}
 					</div>
 
-					<div
-						ref={parentRef}
-						className="overflow-auto h-full w-full relative"
-					>
+					<div ref={parentRef} className="overflow-auto h-full w-full relative">
 						{isLoading ? (
 							<div className="flex items-center justify-center py-8 text-sm text-foreground">
 								Loading alerts...

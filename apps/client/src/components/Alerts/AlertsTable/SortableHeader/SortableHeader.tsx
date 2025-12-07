@@ -18,14 +18,7 @@ export interface SortableHeaderProps {
 	className?: string;
 }
 
-export const SortableHeader = ({
-	column,
-	label,
-	sortField,
-	sortDirection,
-	onSort,
-	className,
-}: SortableHeaderProps) => {
+export const SortableHeader = ({ column, label, sortField, sortDirection, onSort, className }: SortableHeaderProps) => {
 	const getSortIcon = () => {
 		if (sortField !== column) {
 			return <ArrowUpDown className="h-3 w-3 text-foreground" />;
@@ -45,10 +38,7 @@ export const SortableHeader = ({
 
 	return (
 		<TableHead
-			className={cn(
-				'h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground',
-				className
-			)}
+			className={cn('h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground', className)}
 			onClick={handleClick}
 		>
 			<div className="flex items-center gap-1">
