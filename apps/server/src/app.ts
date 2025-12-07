@@ -4,18 +4,17 @@ import healthRouter from './api/health';
 import createV1Router from './api/v1/v1';
 import { ProviderRepository } from './dal/providerRepository';
 import { ServiceRepository } from './dal/serviceRepository';
-import { ViewRepository } from './dal/viewRepository';
+import { DashboardRepository } from './dal/dashboardRepository.ts';
 import { TagRepository } from './dal/tagRepository';
 import { IntegrationRepository } from './dal/integrationRepository';
 import { AlertRepository } from './dal/alertRepository';
 import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
 import { ProviderBL } from './bl/providers/provider.bl';
-import { ViewBL } from './bl/custom-views/custom-view.bl';
 import { IntegrationBL } from './bl/integrations/integration.bl';
 import { AlertBL } from './bl/alerts/alert.bl';
 import { ProviderController } from './api/v1/providers/controller';
 import { ServiceController } from './api/v1/services/controller';
-import { ViewController } from './api/v1/views/controller';
+import { DashboardController } from './api/v1/dashboards/controller';
 import { TagController } from './api/v1/tags/controller';
 import { IntegrationController } from './api/v1/integrations/controller';
 import { AlertController } from './api/v1/alerts/controller';
@@ -41,6 +40,7 @@ import { MailClient } from './dal/external-client/mail-client';
 import { CustomActionRepository } from './dal/customActionRepository';
 import { CustomActionBL } from './bl/custom-actions/customAction.bl';
 import { CustomActionsController } from './api/v1/custom-actions/controller';
+import { DashboardBL } from './bl/dashboards/dashboard.bl.ts';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -99,7 +99,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	);
 
 	// Additional repositories (only needed for SERVER)
-	const viewRepo = new ViewRepository(db);
+	const dashboardRepository = new DashboardRepository(db);
 	const tagRepo = new TagRepository(db);
 	const userRepo = new UserRepository(db);
 	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
@@ -113,7 +113,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// Init additional tables (only for SERVER)
 	await Promise.all([
-		viewRepo.initViewsTable(),
+		dashboardRepository.initDashboardTable(),
 		tagRepo.initTagsTables(),
 		integrationRepo.initIntegrationsTable(),
 		alertRepo.initAlertsTable(),
@@ -131,6 +131,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
 	const servicesBL = new ServicesBL(serviceRepo, auditBL);
 	const customActionBL = new CustomActionBL(customActionRepo, providerBL, servicesBL, serviceCustomFieldBL);
+	const dashboardBL = new DashboardBL(dashboardRepository, auditBL);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -142,7 +143,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		tagRepo,
 		alertBL
 	);
-	const viewController = new ViewController(new ViewBL(viewRepo));
+	const dashboardController = new DashboardController(dashboardBL);
 	const tagController = new TagController(tagRepo, serviceRepo, alertBL);
 	const integrationController = new IntegrationController(integrationBL);
 	const alertController = new AlertController(alertBL);
@@ -159,7 +160,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		createV1Router(
 			providerController,
 			serviceController,
-			viewController,
+			dashboardController,
 			tagController,
 			integrationController,
 			alertController,

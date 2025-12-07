@@ -107,16 +107,6 @@ export const AddBulkServiceSchema = z.array(
 	})
 );
 
-export const ProviderIdSchema = z.object({
-	providerId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid provider ID');
-		}
-		return parsed;
-	}),
-});
-
 export const ServiceSchema = z.object({
 	providerId: z.number(),
 	name: z.string().min(1, 'Service name is required'),
@@ -253,15 +243,12 @@ export const ResetPasswordSchema = z.object({
 		}),
 });
 
-export type UserSchemaType = z.infer<typeof UserSchema>;
-export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
-export type UpdateUserRoleRequest = z.infer<typeof UpdateUserRoleSchema>;
-export type UpdateProfileRequest = z.infer<typeof UpdateProfileSchema>;
-
-export type CreateProviderRequest = z.infer<typeof CreateProviderSchema>;
-export type CreateProviderBulkRequest = z.infer<typeof CreateProviderBulkSchema>;
-export type AddBulkServiceRequest = z.infer<typeof AddBulkServiceSchema>;
-export type ProviderIdParams = z.infer<typeof ProviderIdSchema>;
-
-export type CreateSecretRequest = z.infer<typeof CreateSecretsMetadataSchema>;
-export type UpdateSecretRequest = z.infer<typeof UpdateSecretsMetadataSchema>;
+export const CreateDashboardSchema = z.object({
+	name: z.string(),
+	type: z.enum(['services', 'alerts']),
+	description: z.string().optional(),
+	filters: z.record(z.unknown()),
+	visibleColumns: z.array(z.string()),
+	query: z.string(),
+	groupBy: z.array(z.string()),
+});

@@ -4,7 +4,7 @@ import { createApp, AppMode } from '../src/app.ts';
 import request, { SuperTest, Test } from 'supertest';
 import { ProviderRepository } from '../src/dal/providerRepository.ts';
 import { ServiceRepository } from '../src/dal/serviceRepository.ts';
-import { ViewRepository } from '../src/dal/viewRepository.ts';
+import { DashboardRepository } from '../src/dal/dashboardRepository.ts';
 import { TagRepository } from '../src/dal/tagRepository.ts';
 import { IntegrationRepository } from '../src/dal/integrationRepository.ts';
 import { AlertRepository } from '../src/dal/alertRepository.ts';
@@ -59,7 +59,7 @@ export async function setupDB(): Promise<Database.Database> {
 	const db = new Database(':memory:');
 	const providerRepo = new ProviderRepository(db);
 	const serviceRepo = new ServiceRepository(db);
-	const viewRepo = new ViewRepository(db);
+	const dashboardRepo = new DashboardRepository(db);
 	const tagRepo = new TagRepository(db);
 	const integrationRepo = new IntegrationRepository(db);
 	const alertRepo = new AlertRepository(db);
@@ -76,7 +76,7 @@ export async function setupDB(): Promise<Database.Database> {
 	await Promise.all([
 		providerRepo.initProvidersTable(),
 		serviceRepo.initServicesTable(),
-		viewRepo.initViewsTable(),
+		dashboardRepo.initDashboardTable(),
 		tagRepo.initTagsTables(),
 		integrationRepo.initIntegrationsTable(),
 		alertRepo.initAlertsTable(),
