@@ -142,7 +142,7 @@ const INTEGRATIONS: Integration[] = [
 		supported: true,
 		name: 'Datadog',
 		description: 'Cloud monitoring and analytics platform for infrastructure, applications, and logs.',
-		logo: 'https://imgix.datadoghq.com/img/dd_logo_n_70x75.png',
+		logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/datadog.svg',
 		tags: ['Monitoring', 'APM', 'Logs', 'Metrics'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/datadog',
 		configFields: [
