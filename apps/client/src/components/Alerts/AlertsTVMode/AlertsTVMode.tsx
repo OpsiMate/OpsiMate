@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import {
-	useCreateDashboard,
-	useDeleteDashboard,
-	useGetDashboards,
-	useUpdateDashboard,
+    useCreateDashboard,
+    useDeleteDashboard,
+    useGetDashboards,
+    useUpdateDashboard,
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
