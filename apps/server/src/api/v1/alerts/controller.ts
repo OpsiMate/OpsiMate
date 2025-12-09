@@ -135,7 +135,7 @@ export class AlertController {
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
-					tag: incident.resource_name || incident.resource_id || 'unknown',
+					tag: incident.resource_name,
 					startsAt: this.normalizeDate(incident.started_at),
 					updatedAt: new Date().toISOString(),
 					alertUrl: incident.url,
