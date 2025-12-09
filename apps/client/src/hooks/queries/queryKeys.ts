@@ -15,4 +15,5 @@ export const queryKeys = {
 	serviceTags: (id: number) => ['serviceTags', id] as const,
 	auditLogs: (page: number, pageSize: number) => ['audit', page, pageSize] as const,
 	customAction: (id: number) => ['customAction', id] as const,
+	dashboards: ['dashboards'] as const,
 };

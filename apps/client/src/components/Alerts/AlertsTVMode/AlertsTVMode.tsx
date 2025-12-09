@@ -1,5 +1,4 @@
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
-import { ALERTS_GROUP_BY_STORAGE_KEY } from '@/components/Alerts/AlertsTable/hooks/useAlertGrouping.constants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
@@ -7,48 +6,66 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { ArrowLeft, Bell, CheckCircle, LayoutGrid, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CheckCircle, LayoutGrid, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AlertCard } from './AlertCard';
 import { AlertsHeatmap } from './AlertsHeatmap';
 import { AUTO_REFRESH_INTERVAL_MS, GRID_CLASSES, GROUPABLE_COLUMNS } from './AlertsTVMode.constants';
 import { ViewMode } from './AlertsTVMode.types';
 import { createServiceNameLookup, filterAlertsByFilters, getAlertServiceId, getCardSize } from './AlertsTVMode.utils';
+import { useDashboard } from '@/context/DashboardContext';
+import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
+import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
+import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
+import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
+import { useGetDashboards } from '@/hooks/queries/dashboards/useGetDashboards';
 
 const AlertsTVMode = () => {
 	const navigate = useNavigate();
-	const [searchParams] = useSearchParams();
 	const { toast } = useToast();
 
-	const filters = useMemo(() => {
-		try {
-			return JSON.parse(searchParams.get('filters') || '{}');
-		} catch {
-			return {};
-		}
-	}, [searchParams]);
+    const {
+        dashboardState,
+        updateDashboardField,
+        isDirty,
+        initialState,
+        setInitialState,
+        setDashboardState
+    } = useDashboard();
+
+    // Use context state instead of search params
+	const filters = dashboardState.activeFilters;
 
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: services = [] } = useServices();
+    const { data: dashboards = [] } = useGetDashboards();
 	const dismissAlertMutation = useDismissAlert();
 	const undismissAlertMutation = useUndismissAlert();
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
-	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
-		try {
-			const saved = localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
-			return saved ? JSON.parse(saved) : [];
-		} catch {
-			return [];
-		}
+    const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+
+    // Sync group by columns with context
+    const groupByColumns = dashboardState.groupByColumns;
+    const setGroupByColumns = (cols: string[]) => updateDashboardField('groupByColumns', cols);
+
+    const allAlerts = useMemo(() => alerts, [alerts]);
+	const tagKeys = useAlertTagKeys(allAlerts);
+
+    const { visibleColumns, handleColumnToggle } = useColumnManagement({
+		tagKeys,
+        initialVisibleColumns: dashboardState.visibleColumns.length > 0 ? dashboardState.visibleColumns : undefined,
 	});
 
-	useEffect(() => {
-		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, JSON.stringify(groupByColumns));
-	}, [groupByColumns]);
+    useEffect(() => {
+        if (JSON.stringify(visibleColumns) !== JSON.stringify(dashboardState.visibleColumns)) {
+            updateDashboardField('visibleColumns', visibleColumns);
+        }
+    }, [visibleColumns, dashboardState.visibleColumns, updateDashboardField]);
+
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
 
@@ -105,6 +122,24 @@ const AlertsTVMode = () => {
 		}
 	}, [refetch, toast]);
 
+    const handleSaveDashboard = async () => {
+		// Mock API call
+		console.log('Saving dashboard:', dashboardState);
+
+		if (dashboardState.id) {
+			// PUT
+			console.log('PUT request');
+		} else {
+			// POST
+			console.log('POST request');
+			updateDashboardField('id', 'new-dashboard-id');
+		}
+
+		// Update initial state to match current state
+        setInitialState(dashboardState);
+	};
+
+
 	const handleDismissAlert = async (alertId: string) => {
 		try {
 			await dismissAlertMutation.mutateAsync(alertId);
@@ -157,48 +192,60 @@ const AlertsTVMode = () => {
 
 	return (
 		<div className="min-h-screen bg-background p-4 flex flex-col">
-			<div className="mb-4 flex items-center justify-between flex-shrink-0">
-				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-2">
+			<div className="mb-4 flex flex-col gap-4">
+                 <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-2">
 						<ArrowLeft className="h-4 w-4" />
 						Back to Alerts
 					</Button>
-					<div className="flex items-center gap-2">
-						<Bell className="h-5 w-5 text-foreground" />
-						<h1 className="text-xl font-bold text-foreground">Alerts TV Mode</h1>
-						<Badge variant="secondary" className="ml-2">
-							{filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''}
-						</Badge>
-					</div>
-				</div>
-				<div className="flex items-center gap-2">
-					<div className="flex items-center bg-muted rounded-lg p-1 mr-2">
-						<Button
-							variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-							size="sm"
-							onClick={() => setViewMode('grid')}
-							className="h-7 px-2 gap-1"
-						>
-							<LayoutGrid className="h-4 w-4" /> Grid
-						</Button>
-						<Button
-							variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
-							size="sm"
-							onClick={() => setViewMode('heatmap')}
-							className="h-7 px-2 gap-1"
-						>
-							<MapIcon className="h-4 w-4" /> Map
-						</Button>
-					</div>
+                </div>
 
-					<Button size="sm" onClick={handleManualRefresh} disabled={isRefreshing} className="gap-2">
-						<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-						Refresh
-					</Button>
-					{lastRefresh && (
-						<span className="text-xs text-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
-					)}
-				</div>
+                <div className="flex items-center justify-between">
+                     <div className="flex-1">
+                        <DashboardHeader
+                            dashboardName={dashboardState.name}
+                            onDashboardNameChange={(name) => updateDashboardField('name', name)}
+                            onDashboardNameBlur={() => {
+                                if (dashboardState.name && dashboardState.name !== initialState.name) {
+                                    handleSaveDashboard();
+                                }
+                            }}
+                            isDirty={isDirty}
+                            onSave={handleSaveDashboard}
+                            onSettingsClick={() => setShowDashboardSettings(true)}
+                            isRefreshing={isRefreshing}
+                            lastRefresh={lastRefresh}
+                            onRefresh={handleManualRefresh}
+                            showTvModeButton={false}
+                            dashboards={dashboards.map(d => ({ id: d.id, name: d.name }))}
+                            onDashboardSelect={(id) => console.log('Selected dashboard:', id)}
+                        />
+                     </div>
+
+                     <div className="flex items-center gap-2 ml-4 self-start mt-1">
+                         <div className="flex items-center bg-muted rounded-lg p-1">
+                            <Button
+                                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setViewMode('grid')}
+                                className="h-7 px-2 gap-1"
+                            >
+                                <LayoutGrid className="h-4 w-4" /> Grid
+                            </Button>
+                            <Button
+                                variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setViewMode('heatmap')}
+                                className="h-7 px-2 gap-1"
+                            >
+                                <MapIcon className="h-4 w-4" /> Map
+                            </Button>
+                        </div>
+                         <Badge variant="secondary" className="ml-2 h-7 flex items-center">
+                            {filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''}
+                        </Badge>
+                     </div>
+                </div>
 			</div>
 
 			{isLoading ? (
@@ -256,6 +303,20 @@ const AlertsTVMode = () => {
 					</span>
 				</div>
 			</div>
+
+            <DashboardSettingsDrawer
+				open={showDashboardSettings}
+				onOpenChange={setShowDashboardSettings}
+				dashboardName={dashboardState.name}
+				onDashboardNameChange={(name) => updateDashboardField('name', name)}
+				dashboardDescription={dashboardState.description}
+				onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
+				visibleColumns={visibleColumns}
+				onColumnToggle={handleColumnToggle}
+				columnLabels={COLUMN_LABELS}
+				excludeColumns={['actions']}
+				tagKeys={tagKeys}
+			/>
 		</div>
 	);
 };
