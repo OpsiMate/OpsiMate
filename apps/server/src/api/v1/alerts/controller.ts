@@ -273,7 +273,7 @@ export class AlertController {
 		}
 	}
 
-	private normalizeDate(value: number | string): string {
+	public normalizeDate(value: number | string): string {
 		// If null/undefined → fallback
 		if (value === null || value === undefined || value === '') {
 			return new Date().toISOString();
