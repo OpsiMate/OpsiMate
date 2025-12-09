@@ -3,7 +3,6 @@ import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
-import {uuidv4} from "zod/v4";
 
 const logger = new Logger('test-alerts');
 
@@ -418,8 +417,8 @@ describe('Alerts API', () => {
 		test('should create a new Datadog alert successfully with valid payload', async () => {
 			const now = new Date().toISOString();
 
-            const alertId = "alert-id";
-            const alertInstanceId = "alert-id-instance";
+			const alertId = 'alert-id';
+			const alertInstanceId = 'alert-id-instance';
 
 			const payload = {
 				alert_id: alertId,
@@ -453,6 +452,10 @@ describe('Alerts API', () => {
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.title);
 			expect(row.status).toBe('firing');
+
+			// Validate tags mapping – primary tag should be derived from alert_scope / tags
+			const parsedTags = row.tags ? JSON.parse(row.tags as string) : {};
+			expect(parsedTags).toEqual({ primary: 'service:web' });
 		});
 
 		test('should archive an existing Datadog alert when status is recovered', async () => {

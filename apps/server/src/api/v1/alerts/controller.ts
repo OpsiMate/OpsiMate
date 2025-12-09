@@ -141,7 +141,7 @@ export class AlertController {
 					type: 'GCP',
 					status: AlertStatus.FIRING,
 					tags: incident.policy_user_labels || {},
-                    startsAt: this.normalizeDate(incident.started_at),
+					startsAt: this.normalizeDate(incident.started_at),
 					updatedAt: new Date().toISOString(),
 					alertUrl: incident.url,
 					alertName: incident.policy_name || 'UNKNOWN',
@@ -160,7 +160,7 @@ export class AlertController {
 		try {
 			const payload = DatadogAlertWebhookSchema.parse(req.body);
 
-			const alertId = payload.id
+			const alertId = payload.id;
 
 			// Determine whether this is a recovery / resolved transition
 			const transition = payload.alert_transition?.toLowerCase() ?? '';
