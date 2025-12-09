@@ -10,3 +10,15 @@ export const COLUMN_LABELS: Record<string, string> = {
 	startsAt: 'Started At',
 	actions: '',
 };
+
+export const COLUMN_WIDTHS: Record<string, string> = {
+	select: 'w-10',
+	type: 'w-[10%]',
+	alertName: 'w-[20%]',
+	status: 'w-[10%]',
+	summary: 'w-auto',
+	startsAt: 'w-[15%]',
+	actions: 'w-20',
+	// Default for tag keys
+	default: 'w-[10%]',
+};

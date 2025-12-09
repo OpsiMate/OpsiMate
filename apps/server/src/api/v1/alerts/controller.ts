@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import { GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
+import { DatadogAlertWebhookSchema, GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { v4 } from 'uuid';
 
@@ -152,6 +152,58 @@ export class AlertController {
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
 			logger.error('Error creating gcp alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createCustomDatadogAlert(req: Request, res: Response) {
+		try {
+			const payload = DatadogAlertWebhookSchema.parse(req.body);
+
+			const alertId = payload.id;
+
+			// Determine whether this is a recovery / resolved transition
+			const transition = payload.alert_transition?.toLowerCase() ?? '';
+			const isRecovered = transition.includes('recovered');
+
+			logger.info(`got datadog alert: ${JSON.stringify(payload)}`);
+
+			if (isRecovered) {
+				await this.alertBL.archiveAlert(alertId);
+				return res.status(200).json({ success: true, data: { alertId } });
+			}
+
+			const now = new Date().toISOString();
+
+			const startsAtSource = payload.date ?? payload.last_updated ?? now;
+			const updatedAtSource = payload.last_updated ?? payload.date ?? now;
+
+			const tags = Object.fromEntries(
+				payload.tags
+					?.split(',')
+					.map((tag) => tag.split(':'))
+					.filter((pair): pair is [string, string] => pair.length === 2) ?? []
+			);
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: alertId,
+				type: 'Datadog',
+				status: AlertStatus.FIRING,
+				tags,
+				startsAt: new Date(Number(startsAtSource)).toISOString(),
+				updatedAt: new Date(Number(updatedAtSource)).toISOString(),
+				alertUrl: payload.link ?? '',
+				alertName: payload.title || 'UNKNOWN',
+				summary: payload.message,
+				runbookUrl: undefined,
+			});
+
+			return res.status(200).json({ success: true, data: { alertId } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error creating datadog alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

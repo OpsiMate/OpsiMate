@@ -13,7 +13,7 @@ export class AlertBL {
 	// region active
 	async insertOrUpdateAlert(alert: Omit<Alert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		try {
-			logger.info(`Inserting alert: ${JSON.stringify(alert)}`);
+			logger.info(`Inserting alert: ${alert.id}`);
 			return await this.alertRepo.insertOrUpdateAlert(alert);
 		} catch (error) {
 			logger.error('Error inserting alert', error);

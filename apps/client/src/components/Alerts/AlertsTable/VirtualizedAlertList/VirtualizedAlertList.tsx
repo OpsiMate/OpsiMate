@@ -38,7 +38,7 @@ export const VirtualizedAlertList = ({
 
 	return (
 		<div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
-			<Table className="w-full">
+			<Table className="w-full table-fixed">
 				<TableBody>
 					{virtualItems.map((virtualRow) => {
 						const item = flatRows[virtualRow.index];

@@ -20,6 +20,7 @@ export default function createAlertRouter(controller: AlertController) {
 	router.patch('/:id/undismiss', controller.undismissAlert.bind(controller));
 
 	// Create custom alerts
+	router.post('/custom/datadog', controller.createCustomDatadogAlert.bind(controller));
 	router.post('/custom/gcp', controller.createCustomGCPAlert.bind(controller));
 	router.post('/custom/uptimekuma', controller.createUptimeKumaAlert.bind(controller));
 	router.post('/custom', controller.createCustomAlert.bind(controller));

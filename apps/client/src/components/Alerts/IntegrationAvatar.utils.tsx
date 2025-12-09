@@ -1,6 +1,7 @@
 import { GCPIcon } from '@/components/icons/GCPIcon';
 import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
 import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
+import { DatadogIcon } from '@/components/icons/DatadogIcon';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell } from 'lucide-react';
@@ -29,6 +30,13 @@ export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDef
 		textClass: 'text-green-600',
 		render: (iconSizeClass) => <UptimeKumaIcon className={cn(iconSizeClass)} />,
 	},
+	datadog: {
+		label: 'Datadog',
+		bgClass: 'bg-white',
+		borderClass: 'border-purple-200',
+		textClass: 'text-purple-600',
+		render: (iconSizeClass) => <DatadogIcon className={cn(iconSizeClass)} />,
+	},
 	custom: {
 		label: 'Custom',
 		bgClass: 'bg-slate-50 dark:bg-slate-800',
@@ -44,6 +52,7 @@ const normalizeIntegration = (value?: string | null): AlertIntegrationKind | und
 	if (normalized.includes('grafana')) return 'grafana';
 	if (normalized.includes('gcp') || normalized.includes('google')) return 'gcp';
 	if (normalized.includes('uptimekuma') || normalized.includes('uptime-kuma')) return 'uptimekuma';
+	if (normalized.includes('datadog')) return 'datadog';
 	if (normalized.includes('custom')) return 'custom';
 	return undefined;
 };

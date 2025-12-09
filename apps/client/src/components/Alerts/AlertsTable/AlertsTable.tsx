@@ -5,7 +5,7 @@ import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
-import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
+import { COLUMN_LABELS, COLUMN_WIDTHS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
 import { GroupByControls } from './GroupByControls';
@@ -88,11 +88,11 @@ export const AlertsTable = ({
 
 			<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
 				<div className="border-b flex-shrink-0">
-					<Table>
+					<Table className="table-fixed w-full">
 						<TableHeader>
 							<TableRow className="h-8">
 								{onSelectAlerts && (
-									<TableHead className="w-10 h-8 py-1 px-2">
+									<TableHead className={cn('h-8 py-1 px-2', COLUMN_WIDTHS.select)}>
 										<div className="flex items-center justify-center">
 											<Checkbox
 												checked={
@@ -108,7 +108,10 @@ export const AlertsTable = ({
 								{orderedColumns.map((column) => {
 									if (column === 'actions') {
 										return (
-											<TableHead key={column} className="w-24 h-8 py-1 px-2 text-xs">
+											<TableHead
+												key={column}
+												className={cn('h-8 py-1 px-2 text-xs', COLUMN_WIDTHS.actions)}
+											>
 												<div className="flex items-center justify-between">
 													<span>{allColumnLabels[column] || ''}</span>
 												</div>
@@ -126,6 +129,7 @@ export const AlertsTable = ({
 												sortField={sortField}
 												sortDirection={sortDirection}
 												onSort={handleSort}
+												className={COLUMN_WIDTHS.default}
 											/>
 										);
 									}
@@ -138,6 +142,7 @@ export const AlertsTable = ({
 												sortField={sortField}
 												sortDirection={sortDirection}
 												onSort={handleSort}
+												className={COLUMN_WIDTHS[column]}
 											/>
 										);
 									}

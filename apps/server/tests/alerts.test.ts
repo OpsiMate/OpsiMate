@@ -62,9 +62,10 @@ const seedAlerts = () => {
 
 	// Insert active alerts
 	const insertStmt = db.prepare(`
-		INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`);
+        INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url,
+                            is_dismissed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
 	sampleAlerts.forEach((alert) => {
 		insertStmt.run(
@@ -103,8 +104,9 @@ const seedAlerts = () => {
 	];
 
 	const insertArchivedStmt = db.prepare(`
-        INSERT INTO alerts_archived 
-        (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at, is_dismissed)
+        INSERT INTO alerts_archived
+        (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at,
+         is_dismissed)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -413,6 +415,138 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('POST /api/v1/alerts/custom/datadog', () => {
+		test('should create a new Datadog alert successfully with valid payload', async () => {
+			const alertId = 'alert-id';
+			const alertInstanceId = 'alert-id-instance';
+
+			const payload = {
+				alert_id: alertId,
+				id: alertInstanceId,
+				title: '[Triggered] High CPU Usage',
+				message: 'CPU usage above 90%',
+				alert_status: 'Triggered',
+				alert_transition: 'Triggered',
+				event_type: 'query_alert_monitor',
+				link: 'https://app.datadoghq.com/monitors/123',
+				tags: 'service:web,env:prod',
+				alert_scope: 'service:web',
+				date: '1765302826000',
+				last_updated: '1765302826000',
+				org: {
+					id: '123456',
+					name: 'Opsimate',
+				},
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.alertId).toBe(alertInstanceId);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(payload.title);
+			expect(row.status).toBe('firing');
+
+			// Validate tags mapping – primary tag should be derived from alert_scope / tags
+			const parsedTags = row.tags ? JSON.parse(row.tags as string) : {};
+			expect(parsedTags).toEqual({ service: 'web', env: 'prod' });
+		});
+
+		test('should archive an existing Datadog alert when alert_transition is recovered', async () => {
+			const now = '1765302826000';
+			const alertId = 'datadog-alert-archive';
+			const alertInstanceId = 'datadog-alert-archive-1';
+
+			const firingPayload = {
+				id: alertInstanceId,
+				alert_id: alertId,
+				title: '[Triggered] Test Alert',
+				message: 'Initial firing event',
+				alert_status: 'Triggered',
+				alert_transition: 'Triggered',
+				event_type: 'query_alert_monitor',
+				link: 'https://app.datadoghq.com/monitors/456',
+				tags: 'service:test,env:dev',
+				alert_scope: 'service:test',
+				date: now,
+				last_updated: now,
+				org: {
+					id: '123456',
+					name: 'Opsimate',
+				},
+			};
+
+			// First create the active alert
+			const createResponse = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(firingPayload);
+
+			expect(createResponse.status).toBe(200);
+			expect(createResponse.body.success).toBe(true);
+
+			const activeRow = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
+			expect(activeRow).toBeDefined();
+
+			// Now send a recovered event for the same alert (only alert_transition matters)
+			const recoveredPayload = {
+				...firingPayload,
+				alert_transition: 'Recovered',
+				message: 'Alert has recovered',
+			};
+
+			const recoveredResponse = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(recoveredPayload);
+
+			expect(recoveredResponse.status).toBe(200);
+			expect(recoveredResponse.body.success).toBe(true);
+			expect(recoveredResponse.body.data.alertId).toBe(alertInstanceId);
+
+			const rowAfter = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
+			expect(rowAfter).toBeUndefined();
+
+			const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(alertInstanceId);
+			expect(archivedRow).toBeDefined();
+			expect(archivedRow.id).toBe(alertInstanceId);
+		});
+
+		test('should return 400 for invalid Datadog payload', async () => {
+			const payload = {
+				// Missing title
+				alert_id: 'bad-datadog-alert',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBeDefined();
+		});
+
+		test('should return 401 when no auth token is provided', async () => {
+			const payload = {
+				alert_id: 'unauthorized-datadog-alert',
+				title: 'Unauthorized Datadog Alert',
+				alert_status: 'Triggered',
+			};
+
+			const response = await app.post('/api/v1/alerts/custom/datadog').send(payload);
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
+	});
+
 	describe('POST /api/v1/alerts/custom/uptimekuma', () => {
 		const baseHeartbeat = {
 			monitorID: 4,
@@ -534,9 +668,9 @@ describe('Alerts API', () => {
 			// First create alert
 			db.prepare(
 				`
-            INSERT INTO alerts (id, type, status, tags, starts_at, updated_at, alert_url, alert_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `
+                    INSERT INTO alerts (id, type, status, tags, starts_at, updated_at, alert_url, alert_name)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `
 			).run(
 				'UPTIMEKUMA_4',
 				'UptimeKuma',
