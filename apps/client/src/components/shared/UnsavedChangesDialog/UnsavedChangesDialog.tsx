@@ -1,12 +1,12 @@
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
 interface UnsavedChangesDialogProps {
@@ -28,7 +28,10 @@ export const UnsavedChangesDialog = ({ open, onConfirm, onCancel }: UnsavedChang
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-					<AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+					<AlertDialogAction
+						onClick={onConfirm}
+						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+					>
 						Discard Changes
 					</AlertDialogAction>
 				</AlertDialogFooter>

@@ -94,42 +94,47 @@ export const DashboardHeader = ({
 			</div>
 
 			<div className="flex items-center gap-2">
-				<div className={cn("flex items-center transition-all duration-300 ease-in-out", isSearchOpen ? "w-64" : "w-auto")}>
-                    {isSearchOpen ? (
-                        <div className="relative w-full flex items-center">
-                            <Command className="rounded-lg border shadow-md absolute right-0 top-0 z-50 w-64 bg-popover">
-                                <CommandInput
-                                    placeholder="Search dashboards..."
-                                    autoFocus
-                                    onBlur={() => {
-                                        // Small delay to allow clicking on items
-                                        setTimeout(() => setIsSearchOpen(false), 200);
-                                    }}
-                                />
-                                <CommandList>
-                                    <CommandEmpty>No results found.</CommandEmpty>
-                                    <CommandGroup heading="Dashboards">
-                                        {dashboards.map((dashboard) => (
-                                            <CommandItem
-                                                key={dashboard.id}
-                                                onSelect={() => {
-                                                    onDashboardSelect?.(dashboard.id);
-                                                    setIsSearchOpen(false);
-                                                }}
-                                            >
-                                                {dashboard.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </div>
-                    ) : (
-                        <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
-                            <Search className="h-5 w-5" />
-                        </Button>
-                    )}
-                </div>
+				<div
+					className={cn(
+						'flex items-center transition-all duration-300 ease-in-out',
+						isSearchOpen ? 'w-64' : 'w-auto'
+					)}
+				>
+					{isSearchOpen ? (
+						<div className="relative w-full flex items-center">
+							<Command className="rounded-lg border shadow-md absolute right-0 top-0 z-50 w-64 bg-popover">
+								<CommandInput
+									placeholder="Search dashboards..."
+									autoFocus
+									onBlur={() => {
+										// Small delay to allow clicking on items
+										setTimeout(() => setIsSearchOpen(false), 200);
+									}}
+								/>
+								<CommandList>
+									<CommandEmpty>No results found.</CommandEmpty>
+									<CommandGroup heading="Dashboards">
+										{dashboards.map((dashboard) => (
+											<CommandItem
+												key={dashboard.id}
+												onSelect={() => {
+													onDashboardSelect?.(dashboard.id);
+													setIsSearchOpen(false);
+												}}
+											>
+												{dashboard.name}
+											</CommandItem>
+										))}
+									</CommandGroup>
+								</CommandList>
+							</Command>
+						</div>
+					) : (
+						<Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
+							<Search className="h-5 w-5" />
+						</Button>
+					)}
+				</div>
 
 				<Button size="sm" onClick={onRefresh} disabled={isRefreshing} className="gap-2">
 					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />

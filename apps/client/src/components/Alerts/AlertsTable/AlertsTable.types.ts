@@ -19,6 +19,8 @@ export interface AlertsTableProps {
 	columnOrder?: string[];
 	onAlertClick?: (alert: Alert) => void;
 	tagKeyColumnLabels?: Record<string, string>;
+	groupByColumns?: string[];
+	onGroupByChange?: (cols: string[]) => void;
 }
 
 export interface SortConfig {

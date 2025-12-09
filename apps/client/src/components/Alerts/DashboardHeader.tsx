@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
+import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { cn } from '@/lib/utils';
 import { Plus, RefreshCw, Save, Search, Settings, Tv } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface DashboardHeaderProps {
 	dashboardName: string;
@@ -16,9 +16,9 @@ export interface DashboardHeaderProps {
 	lastRefresh?: Date;
 	onRefresh: () => void;
 	onLaunchTVMode?: () => void;
-	dashboards?: { id: string; name: string }[];
-	onDashboardSelect?: (id: string) => void;
-    showTvModeButton?: boolean;
+	dashboards?: Dashboard[];
+	onDashboardSelect?: (dashboard: Dashboard) => void;
+	showTvModeButton?: boolean;
 	onNewDashboard?: () => void;
 }
 
@@ -35,12 +35,20 @@ export const DashboardHeader = ({
 	onLaunchTVMode,
 	dashboards = [],
 	onDashboardSelect,
-    showTvModeButton = true,
+	showTvModeButton = true,
 	onNewDashboard,
 }: DashboardHeaderProps) => {
 	const [isEditingName, setIsEditingName] = useState(false);
-	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+	const filteredDashboards = useMemo(() => {
+		return dashboards.filter(
+			(d) => d.name !== dashboardName && d.name.toLowerCase().includes(searchQuery.toLowerCase())
+		);
+	}, [dashboards, dashboardName, searchQuery]);
 
 	useEffect(() => {
 		if (isEditingName && inputRef.current) {
@@ -86,97 +94,88 @@ export const DashboardHeader = ({
 				)}
 
 				<Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onSettingsClick}
-                    title="Dashboard Settings"
-                    className="rounded-full h-8 w-8 hover:bg-muted"
-                >
+					variant="ghost"
+					size="icon"
+					onClick={onSettingsClick}
+					title="Dashboard Settings"
+					className="rounded-full h-8 w-8 hover:bg-muted"
+				>
 					<Settings className="h-4 w-4" />
 				</Button>
 
 				{isDirty && (
 					<Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onSave}
-                        title="Save Dashboard"
-                        className="rounded-full h-8 w-8 hover:bg-muted"
-                    >
+						variant="ghost"
+						size="icon"
+						onClick={onSave}
+						title="Save Dashboard"
+						className="rounded-full h-8 w-8 hover:bg-muted"
+					>
 						<Save className="h-4 w-4 text-primary" />
 					</Button>
 				)}
 			</div>
 
 			<div className="flex items-center gap-2">
-				{isSearchOpen ? (
-                    <div className="relative">
-                        <div className="flex items-center h-8 w-48 rounded-md border bg-background px-3">
-                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                            <input
-                                className="flex h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                                placeholder="Search dashboards..."
-                                autoFocus
-                                onBlur={() => {
-                                    setTimeout(() => setIsSearchOpen(false), 200);
-                                }}
-                            />
-                        </div>
-                        {dashboards.filter((d) => d.name !== dashboardName).length > 0 && (
-                            <Command className="absolute left-0 top-10 z-50 w-48 rounded-lg border shadow-md bg-popover">
-                                <CommandList className="max-h-[400px] overflow-y-auto overflow-x-hidden">
-                                    <CommandGroup heading="Dashboards">
-                                        {dashboards
-                                            .filter((d) => d.name !== dashboardName)
-                                            .map((dashboard) => (
-                                                <CommandItem
-                                                    key={dashboard.id}
-                                                    onSelect={() => {
-                                                        onDashboardSelect?.(dashboard.id);
-                                                        setIsSearchOpen(false);
-                                                    }}
-                                                >
-                                                    {dashboard.name}
-                                                </CommandItem>
-                                            ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        )}
-                    </div>
-                ) : (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsSearchOpen(true)}
-                        className="rounded-full h-8 w-8 hover:bg-muted"
-                    >
-                        <Search className="h-4 w-4" />
-                    </Button>
-                )}
+				<div className="relative">
+					<div className="flex items-center h-8 w-64 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
+						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+						<input
+							ref={searchInputRef}
+							className="flex h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+							placeholder="Search dashboards..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							onFocus={() => setIsSearchFocused(true)}
+							onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+						/>
+					</div>
+					{isSearchFocused && filteredDashboards.length > 0 && (
+						<div className="absolute left-0 top-10 z-50 w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
+							<ul className="max-h-[300px] overflow-y-auto py-1">
+								{filteredDashboards.map((dashboard) => (
+									<li
+										key={dashboard.id}
+										className="px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm mx-1"
+										onMouseDown={(e) => {
+											e.preventDefault();
+											onDashboardSelect?.(dashboard);
+											setSearchQuery('');
+											setIsSearchFocused(false);
+											searchInputRef.current?.blur();
+										}}
+									>
+										{dashboard.name}
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+				</div>
+
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={onRefresh}
+					disabled={isRefreshing}
+					className="rounded-full h-8 w-8 hover:bg-muted"
+					title="Refresh"
+				>
+					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+				</Button>
 
 				{onNewDashboard && (
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={onNewDashboard}
-						title="New Dashboard"
-						className="rounded-full h-8 w-8 hover:bg-muted"
-					>
+					<Button size="sm" onClick={onNewDashboard} className="gap-2">
 						<Plus className="h-4 w-4" />
+						New Dashboard
 					</Button>
 				)}
 
-				<Button size="sm" onClick={onRefresh} disabled={isRefreshing} className="gap-2">
-					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-					Refresh
-				</Button>
 				{showTvModeButton && onLaunchTVMode && (
-                    <Button size="sm" onClick={onLaunchTVMode} className="gap-2">
-                        <Tv className="h-4 w-4" />
-                        TV Mode
-                    </Button>
-                )}
+					<Button size="sm" onClick={onLaunchTVMode} className="gap-2">
+						<Tv className="h-4 w-4" />
+					</Button>
+				)}
 			</div>
 		</div>
 	);

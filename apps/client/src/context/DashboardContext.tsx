@@ -85,23 +85,6 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		);
 	}, [dashboardState, initialState, hasUserMadeChanges]);
 
-	useEffect(() => {
-		isDirtyRef.current = isDirty;
-	}, [isDirty]);
-
-	useEffect(() => {
-		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-			if (isDirtyRef.current) {
-				e.preventDefault();
-				e.returnValue = '';
-				return '';
-			}
-		};
-
-		window.addEventListener('beforeunload', handleBeforeUnload);
-		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-	}, []);
-
 	const updateDashboardField = useCallback(<K extends keyof DashboardState>(field: K, value: DashboardState[K]) => {
 		const userEditableFields: (keyof DashboardState)[] = ['name', 'description', 'groupBy', 'filters'];
 		if (userEditableFields.includes(field)) {

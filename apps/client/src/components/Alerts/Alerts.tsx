@@ -3,7 +3,13 @@ import { FilterSidebar } from '@/components/shared';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert } from '@/hooks/queries/alerts';
-import { useCreateDashboard, useGetDashboards, useUpdateDashboard } from '@/hooks/queries/dashboards';
+import {
+	useCreateDashboard,
+	useDeleteDashboard,
+	useGetDashboards,
+	useUpdateDashboard,
+} from '@/hooks/queries/dashboards';
+import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
@@ -24,20 +30,22 @@ const Alerts = () => {
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: archivedAlerts = [], isLoading: isLoadingArchived, refetch: refetchArchived } = useArchivedAlerts();
 	const { data: services = [] } = useServices();
-    const { data: dashboards = [] } = useGetDashboards();
-    const createDashboardMutation = useCreateDashboard();
-    const updateDashboardMutation = useUpdateDashboard();
+	const { data: dashboards = [] } = useGetDashboards();
+	const createDashboardMutation = useCreateDashboard();
+	const updateDashboardMutation = useUpdateDashboard();
+	const deleteDashboardMutation = useDeleteDashboard();
 
-    const {
-        dashboardState,
-        isDirty,
-        initialState,
-        updateDashboardField,
-        markAsClean,
-        resetDashboard,
-        setShowUnsavedChangesDialog,
-        setPendingNavigation
-    } = useDashboard();
+	const {
+		dashboardState,
+		isDirty,
+		initialState,
+		updateDashboardField,
+		markAsClean,
+		resetDashboard,
+		setShowUnsavedChangesDialog,
+		setPendingNavigation,
+		setInitialState,
+	} = useDashboard();
 
 	const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
@@ -79,55 +87,54 @@ const Alerts = () => {
 
 	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
 		tagKeys,
-        initialVisibleColumns: dashboardState.visibleColumns.length > 0 ? dashboardState.visibleColumns : undefined,
-        initialColumnOrder: dashboardState.columnOrder.length > 0 ? dashboardState.columnOrder : undefined,
+		initialVisibleColumns: dashboardState.visibleColumns.length > 0 ? dashboardState.visibleColumns : undefined,
+		initialColumnOrder: dashboardState.columnOrder.length > 0 ? dashboardState.columnOrder : undefined,
 	});
 
-    useEffect(() => {
-        if (JSON.stringify(visibleColumns) !== JSON.stringify(dashboardState.visibleColumns)) {
-            updateDashboardField('visibleColumns', visibleColumns);
-        }
-    }, [visibleColumns, dashboardState.visibleColumns, updateDashboardField]);
+	useEffect(() => {
+		if (JSON.stringify(visibleColumns) !== JSON.stringify(dashboardState.visibleColumns)) {
+			updateDashboardField('visibleColumns', visibleColumns);
+		}
+	}, [visibleColumns, dashboardState.visibleColumns, updateDashboardField]);
 
-    useEffect(() => {
-         if (JSON.stringify(columnOrder) !== JSON.stringify(dashboardState.columnOrder)) {
-            updateDashboardField('columnOrder', columnOrder);
-        }
-    }, [columnOrder, dashboardState.columnOrder, updateDashboardField]);
-
+	useEffect(() => {
+		if (JSON.stringify(columnOrder) !== JSON.stringify(dashboardState.columnOrder)) {
+			updateDashboardField('columnOrder', columnOrder);
+		}
+	}, [columnOrder, dashboardState.columnOrder, updateDashboardField]);
 
 	const handleSaveDashboard = async () => {
-        const dashboardData = {
-            name: dashboardState.name || 'New Dashboard',
-            type: dashboardState.type,
-            description: dashboardState.description,
-            filters: dashboardState.filters,
-            visibleColumns: dashboardState.visibleColumns,
-            query: dashboardState.query,
-            groupBy: dashboardState.groupBy,
-        };
+		const dashboardData = {
+			name: dashboardState.name || 'New Dashboard',
+			type: dashboardState.type,
+			description: dashboardState.description,
+			filters: dashboardState.filters,
+			visibleColumns: dashboardState.visibleColumns,
+			query: dashboardState.query,
+			groupBy: dashboardState.groupBy,
+		};
 
-        try {
-            if (dashboardState.id) {
-                await updateDashboardMutation.mutateAsync({
-                    id: dashboardState.id,
-                    ...dashboardData,
-                });
-            } else {
-                const result = await createDashboardMutation.mutateAsync(dashboardData);
-                if (result?.id) {
-                    updateDashboardField('id', result.id);
-                }
-            }
-            markAsClean();
-        } catch (error) {
-            console.error('Error saving dashboard:', error);
-        }
+		try {
+			if (dashboardState.id) {
+				await updateDashboardMutation.mutateAsync({
+					id: dashboardState.id,
+					...dashboardData,
+				});
+			} else {
+				const result = await createDashboardMutation.mutateAsync(dashboardData);
+				if (result?.id) {
+					updateDashboardField('id', result.id);
+				}
+			}
+			markAsClean();
+		} catch (error) {
+			// Error saving dashboard
+		}
 	};
 
-    const handleFilterChange = (newFilters: Record<string, string[]>) => {
-        updateDashboardField('filters', newFilters);
-    };
+	const handleFilterChange = (newFilters: Record<string, string[]>) => {
+		updateDashboardField('filters', newFilters);
+	};
 
 	const filteredAlerts = useAlertsFiltering(alerts, dashboardState.filters);
 	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, dashboardState.filters);
@@ -143,7 +150,7 @@ const Alerts = () => {
 	};
 
 	const handleLaunchTVMode = () => {
-		navigate(`/alerts/tv-mode`);
+		navigate('/alerts/tv-mode');
 	};
 
 	const handleNewDashboard = () => {
@@ -152,6 +159,41 @@ const Alerts = () => {
 			setShowUnsavedChangesDialog(true);
 		} else {
 			resetDashboard();
+		}
+	};
+
+	const handleDashboardSelect = (dashboard: Dashboard) => {
+		const loadDashboard = () => {
+			setInitialState({
+				id: dashboard.id,
+				name: dashboard.name,
+				type: dashboard.type,
+				description: dashboard.description || '',
+				visibleColumns: dashboard.visibleColumns || [],
+				filters: dashboard.filters || {},
+				columnOrder: [],
+				groupBy: dashboard.groupBy || [],
+				query: dashboard.query || '',
+			});
+		};
+
+		if (isDirty) {
+			setPendingNavigation(() => loadDashboard);
+			setShowUnsavedChangesDialog(true);
+		} else {
+			loadDashboard();
+		}
+	};
+
+	const handleDeleteDashboard = async () => {
+		if (!dashboardState.id) return;
+
+		try {
+			await deleteDashboardMutation.mutateAsync(dashboardState.id);
+			resetDashboard();
+			setShowDashboardSettings(false);
+		} catch (error) {
+			// Error deleting dashboard
 		}
 	};
 
@@ -189,8 +231,8 @@ const Alerts = () => {
 								lastRefresh={lastRefresh}
 								onRefresh={handleManualRefresh}
 								onLaunchTVMode={handleLaunchTVMode}
-								dashboards={dashboards.map(d => ({ id: d.id, name: d.name }))}
-								onDashboardSelect={(id) => console.log('Selected dashboard:', id)}
+								dashboards={dashboards}
+								onDashboardSelect={handleDashboardSelect}
 								onNewDashboard={handleNewDashboard}
 							/>
 
@@ -247,6 +289,8 @@ const Alerts = () => {
 										onAlertClick={setSelectedAlert}
 										onTableSettingsClick={() => setShowDashboardSettings(true)}
 										tagKeyColumnLabels={allColumnLabels}
+										groupByColumns={dashboardState.groupBy}
+										onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 									/>
 								</div>
 
@@ -281,6 +325,8 @@ const Alerts = () => {
 									onAlertClick={setSelectedAlert}
 									onTableSettingsClick={() => setShowDashboardSettings(true)}
 									tagKeyColumnLabels={allColumnLabels}
+									groupByColumns={dashboardState.groupBy}
+									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 								/>
 							</div>
 						)}
@@ -313,8 +359,8 @@ const Alerts = () => {
 				columnLabels={COLUMN_LABELS}
 				excludeColumns={['actions']}
 				tagKeys={tagKeys}
-				groupByColumns={dashboardState.groupBy}
-				onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
+				onDelete={handleDeleteDashboard}
+				canDelete={!!dashboardState.id}
 			/>
 		</DashboardLayout>
 	);

@@ -29,6 +29,8 @@ export const AlertsTable = ({
 	columnOrder = DEFAULT_COLUMN_ORDER,
 	onAlertClick,
 	tagKeyColumnLabels = {},
+	groupByColumns: controlledGroupBy,
+	onGroupByChange,
 }: AlertsTableProps) => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const parentRef = useRef<HTMLDivElement>(null);
@@ -40,7 +42,9 @@ export const AlertsTable = ({
 	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
 	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(
 		sortedAlerts,
-		allColumnLabels
+		allColumnLabels,
+		controlledGroupBy,
+		onGroupByChange
 	);
 	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
 
