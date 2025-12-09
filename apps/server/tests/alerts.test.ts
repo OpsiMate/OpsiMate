@@ -62,9 +62,10 @@ const seedAlerts = () => {
 
 	// Insert active alerts
 	const insertStmt = db.prepare(`
-		INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`);
+        INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url,
+                            is_dismissed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
 	sampleAlerts.forEach((alert) => {
 		insertStmt.run(
@@ -103,8 +104,9 @@ const seedAlerts = () => {
 	];
 
 	const insertArchivedStmt = db.prepare(`
-        INSERT INTO alerts_archived 
-        (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at, is_dismissed)
+        INSERT INTO alerts_archived
+        (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at,
+         is_dismissed)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -415,8 +417,6 @@ describe('Alerts API', () => {
 
 	describe('POST /api/v1/alerts/custom/datadog', () => {
 		test('should create a new Datadog alert successfully with valid payload', async () => {
-			const now = new Date().toISOString();
-
 			const alertId = 'alert-id';
 			const alertInstanceId = 'alert-id-instance';
 
@@ -431,8 +431,8 @@ describe('Alerts API', () => {
 				link: 'https://app.datadoghq.com/monitors/123',
 				tags: 'service:web,env:prod',
 				alert_scope: 'service:web',
-				date: now,
-				last_updated: now,
+				date: '1765302826000',
+				last_updated: '1765302826000',
 				org: {
 					id: '123456',
 					name: 'Opsimate',
@@ -455,11 +455,11 @@ describe('Alerts API', () => {
 
 			// Validate tags mapping – primary tag should be derived from alert_scope / tags
 			const parsedTags = row.tags ? JSON.parse(row.tags as string) : {};
-			expect(parsedTags).toEqual({ primary: 'service:web' });
+			expect(parsedTags).toEqual({ service: 'web', env: 'prod' });
 		});
 
 		test('should archive an existing Datadog alert when alert_transition is recovered', async () => {
-			const now = new Date().toISOString();
+			const now = '1765302826000';
 			const alertId = 'datadog-alert-archive';
 			const alertInstanceId = 'datadog-alert-archive-1';
 
@@ -668,9 +668,9 @@ describe('Alerts API', () => {
 			// First create alert
 			db.prepare(
 				`
-            INSERT INTO alerts (id, type, status, tags, starts_at, updated_at, alert_url, alert_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `
+                    INSERT INTO alerts (id, type, status, tags, starts_at, updated_at, alert_url, alert_name)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `
 			).run(
 				'UPTIMEKUMA_4',
 				'UptimeKuma',
