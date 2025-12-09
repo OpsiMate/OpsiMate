@@ -1,9 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 
 export interface AlertStatusColumnProps {
 	alert: Alert;
+	className?: string;
 }
 
 const getStatusBadge = (alert: Alert) => {
@@ -25,6 +27,6 @@ const getStatusBadge = (alert: Alert) => {
 	);
 };
 
-export const AlertStatusColumn = ({ alert }: AlertStatusColumnProps) => {
-	return <TableCell className="py-1 px-2">{getStatusBadge(alert)}</TableCell>;
+export const AlertStatusColumn = ({ alert, className }: AlertStatusColumnProps) => {
+	return <TableCell className={cn('py-1 px-2', className)}>{getStatusBadge(alert)}</TableCell>;
 };

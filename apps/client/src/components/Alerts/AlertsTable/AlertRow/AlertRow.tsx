@@ -1,13 +1,15 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
+import { COLUMN_WIDTHS } from '../AlertsTable.constants';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
 import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
 import { AlertStatusColumn } from './Columns/AlertStatusColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
-import { AlertTagColumn } from './Columns/AlertTagColumn';
+import { AlertTagKeyColumn } from './Columns/AlertTagKeyColumn';
 import { AlertTypeColumn } from './Columns/AlertTypeColumn';
 
 export interface AlertRowProps {
@@ -46,7 +48,7 @@ export const AlertRow = ({
 			onClick={handleRowClick}
 		>
 			{onSelectAlerts && (
-				<TableCell className="w-10 py-1 px-2" onClick={(e) => e.stopPropagation()}>
+				<TableCell className={cn('py-1 px-2', COLUMN_WIDTHS.select)} onClick={(e) => e.stopPropagation()}>
 					<div className="flex items-center justify-center">
 						<Checkbox
 							checked={isSelected}
@@ -57,19 +59,32 @@ export const AlertRow = ({
 				</TableCell>
 			)}
 			{orderedColumns.map((column) => {
+				if (isTagKeyColumn(column)) {
+					const tagKey = extractTagKeyFromColumnId(column);
+					if (tagKey) {
+						return (
+							<AlertTagKeyColumn
+								key={column}
+								alert={alert}
+								tagKey={tagKey}
+								className={COLUMN_WIDTHS.default}
+							/>
+						);
+					}
+					return null;
+				}
+
 				switch (column) {
 					case 'type':
-						return <AlertTypeColumn key={column} alert={alert} />;
+						return <AlertTypeColumn key={column} alert={alert} className={COLUMN_WIDTHS.type} />;
 					case 'alertName':
-						return <AlertNameColumn key={column} alert={alert} />;
+						return <AlertNameColumn key={column} alert={alert} className={COLUMN_WIDTHS.alertName} />;
 					case 'status':
-						return <AlertStatusColumn key={column} alert={alert} />;
-					case 'tag':
-						return <AlertTagColumn key={column} alert={alert} />;
+						return <AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />;
 					case 'summary':
-						return <AlertSummaryColumn key={column} alert={alert} />;
+						return <AlertSummaryColumn key={column} alert={alert} className={COLUMN_WIDTHS.summary} />;
 					case 'startsAt':
-						return <AlertStartsAtColumn key={column} alert={alert} />;
+						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
 					case 'actions':
 						return (
 							<AlertActionsColumn
@@ -78,6 +93,7 @@ export const AlertRow = ({
 								onDismissAlert={onDismissAlert}
 								onUndismissAlert={onUndismissAlert}
 								onDeleteAlert={onDeleteAlert}
+								className={COLUMN_WIDTHS.actions}
 							/>
 						);
 					default:

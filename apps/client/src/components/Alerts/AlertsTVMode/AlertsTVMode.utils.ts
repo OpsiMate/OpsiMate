@@ -1,3 +1,4 @@
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { createServiceNameLookup as createServiceNameLookupShared } from '../utils';
 import { CARD_SIZE_THRESHOLDS, CardSize } from './AlertsTVMode.constants';
@@ -11,16 +12,6 @@ export const getCardSize = (count: number): CardSize => {
 	return 'extra-small';
 };
 
-/**
- * Extracts the service ID from an alert.
- *
- * Prefers a dedicated `serviceId` property if present on the alert.
- * Otherwise, attempts to parse the service ID from the alert's `id` field,
- * which is expected to follow the format: `prefix:serviceId:suffix`.
- *
- * @param alert - The alert object
- * @returns The numeric service ID, or undefined if not found or invalid
- */
 export const getAlertServiceId = (alert: Alert): number | undefined => {
 	if (!alert?.id) return undefined;
 
@@ -51,13 +42,21 @@ export const filterAlertsByFilters = (
 		for (const [field, values] of Object.entries(filters)) {
 			if (!values || values.length === 0) continue;
 
+			if (isTagKeyColumn(field)) {
+				const tagKey = extractTagKeyFromColumnId(field);
+				if (tagKey) {
+					const tagValue = alert.tags?.[tagKey] || '';
+					if (!values.includes(tagValue)) {
+						return false;
+					}
+				}
+				continue;
+			}
+
 			let fieldValue: string;
 			switch (field) {
 				case 'status':
-					fieldValue = alert.isDismissed ? 'Dismissed' : 'Firing';
-					break;
-				case 'tag':
-					fieldValue = alert.tag;
+					fieldValue = alert.isDismissed ? 'Dismissed' : alert.status;
 					break;
 				case 'serviceName': {
 					const serviceName = getServiceName(alert);

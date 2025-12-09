@@ -1,13 +1,24 @@
-export const DEFAULT_VISIBLE_COLUMNS = ['type', 'alertName', 'status', 'tag', 'summary', 'startsAt', 'actions'];
+export const DEFAULT_VISIBLE_COLUMNS = ['type', 'alertName', 'status', 'summary', 'startsAt', 'actions'];
 
-export const DEFAULT_COLUMN_ORDER = ['type', 'alertName', 'status', 'tag', 'summary', 'startsAt', 'actions'];
+export const DEFAULT_COLUMN_ORDER = ['type', 'alertName', 'status', 'summary', 'startsAt', 'actions'];
 
 export const COLUMN_LABELS: Record<string, string> = {
 	type: 'Type',
 	alertName: 'Alert Name',
 	status: 'Status',
-	tag: 'Tag',
 	summary: 'Summary',
 	startsAt: 'Started At',
 	actions: '',
+};
+
+export const COLUMN_WIDTHS: Record<string, string> = {
+	select: 'w-10',
+	type: 'w-[10%]',
+	alertName: 'w-[20%]',
+	status: 'w-[10%]',
+	summary: 'w-auto',
+	startsAt: 'w-[15%]',
+	actions: 'w-20',
+	// Default for tag keys
+	default: 'w-[10%]',
 };

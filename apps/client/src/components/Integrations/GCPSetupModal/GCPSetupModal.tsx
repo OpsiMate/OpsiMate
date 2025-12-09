@@ -181,6 +181,22 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 								</li>
 							</ul>
 						</div>
+
+						<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+								<span className="text-green-600 dark:text-green-400">💡</span>
+								Tip
+							</h4>
+							<p className="text-sm text-muted-foreground">
+								If you installed OpsiMate using the default installation script, the default{' '}
+								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">api_token</code> is{' '}
+								<strong>opsimate</strong>. You can change this value in your{' '}
+								<code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">
+									docker-compose.yml
+								</code>{' '}
+								file.
+							</p>
+						</div>
 					</div>
 
 					<div className="pt-4 flex justify-between">

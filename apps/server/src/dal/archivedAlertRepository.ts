@@ -1,7 +1,7 @@
 import { AlertStatus, Alert as SharedAlert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { ArchivedAlertRow } from './models';
+import { ArchivedAlertRow, TableInfoRow } from './models';
 
 export class ArchivedAlertRepository {
 	private db: Database.Database;
@@ -18,7 +18,7 @@ export class ArchivedAlertRepository {
 						CREATE TABLE IF NOT EXISTS alerts_archived (
 																	   id TEXT PRIMARY KEY,
 																	   status TEXT,
-																	   tag TEXT,
+																	   tags TEXT,
 																	   type TEXT,
 																	   starts_at TEXT,
 																	   updated_at TEXT,
@@ -32,6 +32,14 @@ export class ArchivedAlertRepository {
 						)`
 				)
 				.run();
+
+			// Backward compatibility: ensure tags column exists
+			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all();
+			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
+
+			if (!hasTags) {
+				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN tags TEXT`).run();
+			}
 		});
 	}
 
@@ -39,11 +47,11 @@ export class ArchivedAlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts_archived
-                    (id, status, tag, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at)
+                    (id, status, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status = excluded.status,
-                    tag = excluded.tag,
+                    tags = excluded.tags,
                     type = excluded.type,
                     starts_at = excluded.starts_at,
                     updated_at = excluded.updated_at,
@@ -59,7 +67,7 @@ export class ArchivedAlertRepository {
 			const result = stmt.run(
 				alert.id,
 				AlertStatus.RESOLVED,
-				alert.tag,
+				JSON.stringify(alert.tags),
 				alert.type,
 				alert.startsAt,
 				alert.updatedAt,
@@ -79,7 +87,7 @@ export class ArchivedAlertRepository {
 		return {
 			id: row.id,
 			status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
-			tag: row.tag,
+			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
 			type: row.type,
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,

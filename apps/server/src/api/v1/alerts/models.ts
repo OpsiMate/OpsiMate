@@ -6,6 +6,7 @@ export interface GcpAlertWebhook {
 }
 
 export interface GcpIncident {
+	policy_user_labels?: Record<string, string>;
 	incident_id: string;
 	resource_id?: string;
 	resource_name?: string;
@@ -31,7 +32,7 @@ const isoDateString = z.string().refine(
 
 export const HttpAlertWebhookSchema = z.object({
 	id: z.string(),
-	tag: z.string(),
+	tags: z.record(z.string(), z.string()),
 	startsAt: isoDateString,
 	updatedAt: isoDateString,
 	alertUrl: z.string().url(),
@@ -100,7 +101,14 @@ export interface UptimeKumaHeartbeat {
 	localDateTime: string;
 }
 
+export interface UptimeKumaTag {
+	id: number;
+	name: string;
+	value?: string;
+}
+
 export interface UptimeKumaMonitor {
+	tags: UptimeKumaTag[];
 	id: number;
 	name: string;
 	description: string | null;

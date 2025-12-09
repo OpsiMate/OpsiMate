@@ -3,10 +3,10 @@
 </p>
 
 <h1 align="center">OpsiMate</h1>
-<p align="center"><b>One console for servers, Docker, and Kubernetes—discover, monitor, and act.</b></p>
+<p align="center"><b>Unified Alert Management & Monitoring Platform</b></p>
 <p align="center">
-  Built for DevOps/NOC/IT teams that need a single place to see service health,
-  jump to dashboards, and perform safe start/stop/restart operations.
+  Built for DevOps/NOC/IT teams to centralize alerts from multiple sources,
+  monitor system health, and respond to incidents faster.
 </p>
 
 <p align="center">
@@ -38,24 +38,55 @@
 ---
 
 ### TL;DR
-- 🔎 **Auto-discovery** of Docker/systemd services  
-- 📊 **Live health & metrics** with Grafana/Prometheus/Kibana links  
-- 🎛️ **Safe actions**: start/stop/restart from the dashboard  
-- 🏷️ **Smart tags** for quick filtering
+- 🚨 **Centralized Alert Management** - Aggregate alerts from any platform!
+- 📊 **Smart Filtering & Grouping** - Organize alerts by type, status, tags, and custom criteria
+- 🎯 **Quick Actions** - Acknowledge, resolve, and manage alerts with one click
+- 🏷️ **Flexible Tagging** - Categorize and filter alerts for faster incident response
 
-### Main Dashboard
+### Alert Management Dashboard
 
-![OpsiMate Dashboard](assets/images/dashboard.png)
+![OpsiMate Alerts Dashboard](assets/images/dashboard.png)
 
-### TV Mode
+### TV Mode for NOC Displays
 
 ![OpsiMate TV Mode](assets/images/tv-mode.png)
 
 </br>
 
-## Supported Infrastructure
+## Key Features
 
-### Compute Platforms
+### 🚨 Alert Integrations
+
+OpsiMate connects with your existing monitoring tools to centralize all alerts in one place:
+
+<table>
+<tr>
+    <td align="center" width="150">
+        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/grafana/grafana-original.svg" alt="Grafana"/><br/>
+        <strong>Grafana</strong><br/>
+        <span style="font-size: 12px;">Webhook alerts</span>
+    </td>
+    <td align="center" width="150">
+        <img width="40" src="https://www.gstatic.com/pantheon/images/welcome/supercloud.svg" alt="GCP"/><br/>
+        <strong>Google Cloud</strong><br/>
+        <span style="font-size: 12px;">Cloud Monitoring</span>
+    </td>
+    <td align="center" width="150">
+        <img width="40" src="https://uptime.kuma.pet/img/icon.svg" alt="Uptime Kuma"/><br/>
+        <strong>Uptime Kuma</strong><br/>
+        <span style="font-size: 12px;">Uptime alerts</span>
+    </td>
+    <td align="center" width="150">
+        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/prometheus/prometheus-original.svg" alt="Custom"/><br/>
+        <strong>Custom Webhooks</strong><br/>
+        <span style="font-size: 12px;">Any source</span>
+    </td>
+</tr>
+</table>
+
+### 📊 Service Discovery & Monitoring
+
+Automatically discover and monitor services across your infrastructure:
 
 <table>
 <tr>
@@ -69,26 +100,7 @@
     </td>
     <td align="center" width="150">
         <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux VMs"/><br/>
-        Linux VMs
-    </td>
-</tr>
-</table>
-
-### Monitoring Integrations
-
-<table>
-<tr>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/grafana/grafana-original.svg" alt="Grafana"/><br/>
-        Grafana
-    </td>
-  <td align="center" width="150">
-      <img width="40" src="https://github.com/datadog.png?size=200" alt="Datadog"/><br/>
-      Datadog
-  </td>
-    <td align="center" width="150">
-        <img width="40" src="https://avatars.githubusercontent.com/u/6764390?v=4" alt="Kibana"/><br/>
-        Kibana
+        Linux VMs (systemd)
     </td>
 </tr>
 </table>
@@ -108,51 +120,6 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 - **Client:** [http://localhost:8080](http://localhost:8080)
 
 
-## Manual Docker Run
-### OpsiMate now uses separate Docker images for frontend, backend (API), and worker (background jobs):
-
-```bash
-# Backend (API Server):
-docker run -d \
-  --name opsimate-backend \
-  --rm \
-  -p 3001:3001 \
-  opsimate/backend
-```
-
-```bash
-# Worker (Background Jobs - required for auto-refresh & alerts):
-docker run -d \
-  --name opsimate-worker \
-  --rm \
-  opsimate/backend node apps/server/dist/worker.js
-```
-
-```bash
-# Frontend:
-docker run -d \
-  --name opsimate-frontend \
-  --rm \
-  -p 8080:8080 \
-  opsimate/frontend
-```
-
-```bash
-# We also support the old Monolith version:
-docker run -d \
-  --name opsimate \
-  --rm \
-  -p 3001:3001 -p 8080:8080 \
-  opsimate/opsimate
-```
-
-**Access the application:**
-- **Backend API:** [http://localhost:3001](http://localhost:3001)
-- **Client UI:** [http://localhost:8080](http://localhost:8080)
-
-> **Note:** The worker container runs background jobs for auto-discovery and alert polling. Both backend and worker should share the same database volume for proper operation.
-
-
 ### Volume Mounts (optional but recommended)
 
 | Volume | Purpose | Required For |
@@ -160,33 +127,6 @@ docker run -d \
 | `/app/data/database` | SQLite database persistence | Backend + Worker |
 | `/app/data/private-keys` | SSH private keys for authentication | Backend + Worker |
 | `/app/config/config.yml` | Custom configuration | Backend + Worker |
-
-### Example with volumes:
-
-```bash
-# Backend with volumes
-docker run -d \
-  --name opsimate-backend \
-  --rm \
-  -p 3001:3001 \
-  -v $(pwd)/data/database:/app/data/database \
-  -v $(pwd)/data/private-keys:/app/data/private-keys \
-  -v $(pwd)/config.yml:/app/config/config.yml \
-  opsimate/backend
-```
-
-```bash
-# Worker with shared volumes
-docker run -d \
-  --name opsimate-worker \
-  --rm \
-  -v $(pwd)/data/database:/app/data/database \
-  -v $(pwd)/data/private-keys:/app/data/private-keys \
-  -v $(pwd)/config.yml:/app/config/config.yml \
-  opsimate/backend node apps/server/dist/worker.js
-```
-
-> **💡 Tip:** Use `docker-compose` for easier management of all containers and shared volumes. See the [docker-compose.yml](docker-compose.yml) in the repository.
 
 ## Configuration
 
@@ -218,19 +158,19 @@ We welcome contributions to OpsiMate! Here's how you can help:
 
 ### Areas for Contribution
 
-- **New Provider Support** - Add support for additional infrastructure platforms
-- **New Integrations** - Extend alerting and metrics capabilities
-- **UI/UX Improvements** - Enhance the dashboard and user experience
-- **Performance Optimizations** - Improve scalability and responsiveness
-- **Documentation** - Help improve guides and documentation
+- **New Alert Integrations** - Add support for additional monitoring platforms (Datadog, New Relic, etc.)
+- **Alert Routing & Escalation** - Implement advanced alert routing and escalation policies
+- **UI/UX Improvements** - Enhance the alert dashboard and user experience
+- **Performance Optimizations** - Improve alert processing and dashboard responsiveness
+- **Documentation** - Help improve integration guides and documentation
 
 ## Roadmap
 
 ### Upcoming Features
 
-- **📈 Advanced Analytics** - Service performance trends and insights
-- **🔄 GitOps Integration** - Infrastructure as Code workflows
-- **🤖 AI-Powered Insights** - Intelligent anomaly detection and recommendations
+- **📊 Alert Analytics** - Trends, patterns, and incident reports
+- **🤖 AI-Powered Insights** - Intelligent alert correlation and noise reduction
+- **🔄 Incident Management** - Full incident lifecycle management and postmortems
 
 
 ## Support

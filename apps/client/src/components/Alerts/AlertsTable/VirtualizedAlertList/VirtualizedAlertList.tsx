@@ -1,9 +1,9 @@
-import { Alert } from '@OpsiMate/shared';
 import { Table, TableBody } from '@/components/ui/table';
+import { Alert } from '@OpsiMate/shared';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { AlertRow } from '../AlertRow';
-import { GroupHeader } from '../GroupHeader';
 import { FlatGroupItem } from '../AlertsTable.types';
+import { GroupHeader } from '../GroupHeader';
 
 interface VirtualizedAlertListProps {
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -17,6 +17,7 @@ interface VirtualizedAlertListProps {
 	onUndismissAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
+	columnLabels?: Record<string, string>;
 }
 
 export const VirtualizedAlertList = ({
@@ -31,12 +32,13 @@ export const VirtualizedAlertList = ({
 	onUndismissAlert,
 	onDeleteAlert,
 	onSelectAlerts,
+	columnLabels,
 }: VirtualizedAlertListProps) => {
 	const virtualItems = virtualizer.getVirtualItems();
 
 	return (
 		<div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
-			<Table className="w-full">
+			<Table className="w-full table-fixed">
 				<TableBody>
 					{virtualItems.map((virtualRow) => {
 						const item = flatRows[virtualRow.index];
@@ -55,7 +57,7 @@ export const VirtualizedAlertList = ({
 										transform: `translateY(${virtualRow.start}px)`,
 									}}
 								>
-									<GroupHeader item={item} onToggle={onToggleGroup} />
+									<GroupHeader item={item} onToggle={onToggleGroup} columnLabels={columnLabels} />
 								</div>
 							);
 						}

@@ -1,4 +1,4 @@
-export const GROUPABLE_COLUMNS = ['tag', 'serviceName', 'status', 'type', 'alertName'];
+export const GROUPABLE_COLUMNS = ['serviceName', 'status', 'type', 'alertName'];
 
 export const AUTO_REFRESH_INTERVAL_MS = 30000;
 

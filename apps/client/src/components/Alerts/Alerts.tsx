@@ -6,7 +6,7 @@ import { useServices } from '@/hooks/queries/services';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Archive, Bell } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetails } from './AlertDetails';
@@ -14,7 +14,7 @@ import { AlertsHeader } from './AlertsHeader';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
-import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useColumnManagement } from './hooks';
+import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useAlertTagKeys, useColumnManagement } from './hooks';
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -30,7 +30,17 @@ const Alerts = () => {
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showColumnSettings, setShowColumnSettings] = useState(false);
 
-	const shouldPauseRefresh = showColumnSettings || selectedAlert !== null;
+	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
+	const tagKeys = useAlertTagKeys(allAlerts);
+
+	const currentAlertData = activeTab === 'active' ? alerts : archivedAlerts;
+	const syncedSelectedAlert = useMemo(() => {
+		if (!selectedAlert) return null;
+		const updatedAlert = currentAlertData.find((alert) => alert.id === selectedAlert.id);
+		return updatedAlert || selectedAlert;
+	}, [selectedAlert, currentAlertData]);
+
+	const shouldPauseRefresh = showColumnSettings || syncedSelectedAlert !== null;
 
 	// Active alerts refresh
 	const {
@@ -56,9 +66,11 @@ const Alerts = () => {
 	const handleManualRefresh = activeTab === 'active' ? handleManualRefreshActive : handleManualRefreshArchived;
 	const currentFilters = activeTab === 'active' ? activeFilters : archivedFilters;
 	const currentAlerts = activeTab === 'active' ? alerts : archivedAlerts;
+	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
+		tagKeys,
+	});
 	const filteredAlerts = useAlertsFiltering(alerts, activeFilters);
 	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, archivedFilters);
-	const { visibleColumns, columnOrder, handleColumnToggle } = useColumnManagement();
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 
@@ -91,11 +103,12 @@ const Alerts = () => {
 						filters={currentFilters}
 						onFilterChange={activeTab === 'active' ? setActiveFilters : setArchivedFilters}
 						collapsed={filterPanelCollapsed}
+						enabledTagKeys={enabledTagKeys}
 					/>
 				</FilterSidebar>
 
 				<div className="flex-1 flex min-h-0">
-					<div className="flex-1 flex flex-col p-4 min-h-0">
+					<div className="flex-1 flex flex-col p-4 min-h-0 min-w-0">
 						<div className="flex-shrink-0 mb-4">
 							<AlertsHeader
 								alertsCount={activeTab === 'active' ? alerts.length : archivedAlerts.length}
@@ -157,6 +170,7 @@ const Alerts = () => {
 										columnOrder={columnOrder}
 										onAlertClick={setSelectedAlert}
 										onTableSettingsClick={() => setShowColumnSettings(true)}
+										tagKeyColumnLabels={allColumnLabels}
 									/>
 								</div>
 
@@ -190,16 +204,17 @@ const Alerts = () => {
 									columnOrder={columnOrder}
 									onAlertClick={setSelectedAlert}
 									onTableSettingsClick={() => setShowColumnSettings(true)}
+									tagKeyColumnLabels={allColumnLabels}
 								/>
 							</div>
 						)}
 					</div>
 
-					{selectedAlert && (
-						<div className="w-96 border-l">
+					{syncedSelectedAlert && (
+						<div className="w-96 border-l flex-shrink-0">
 							<AlertDetails
 								isActive={activeTab == 'active'}
-								alert={selectedAlert}
+								alert={syncedSelectedAlert}
 								onClose={() => setSelectedAlert(null)}
 								onDismiss={handleDismissAlert}
 								onUndismiss={handleUndismissAlert}
@@ -219,6 +234,7 @@ const Alerts = () => {
 				title="Alert Table Settings"
 				description="Select which columns to display in the alerts table."
 				excludeColumns={['actions']}
+				tagKeys={tagKeys}
 			/>
 		</DashboardLayout>
 	);

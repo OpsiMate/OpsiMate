@@ -64,7 +64,7 @@ export class AlertController {
 					id: v4(),
 					type: 'UptimeKuma',
 					status: AlertStatus.FIRING,
-					tag: 'test',
+					tags: {},
 					startsAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					alertUrl: '',
@@ -95,11 +95,16 @@ export class AlertController {
 			const startsAt = new Date(heartbeat.time).toISOString();
 			const updatedAt = new Date().toISOString();
 
+			const tags: Record<string, string> = {};
+			for (const tag of monitor.tags) {
+				tags[tag.name] = tag.value || 'unknown';
+			}
+
 			await this.alertBL.insertOrUpdateAlert({
 				id: monitorId,
 				type: 'UptimeKuma',
 				status: AlertStatus.FIRING,
-				tag: monitor.name ?? 'UptimeKuma',
+				tags: tags,
 				startsAt,
 				updatedAt,
 				alertUrl: '',
@@ -135,8 +140,8 @@ export class AlertController {
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
-					tag: incident.resource_name,
-					startsAt: this.normalizeDate(incident.started_at),
+					tags: incident.policy_user_labels || {},
+                    startsAt: this.normalizeDate(incident.started_at),
 					updatedAt: new Date().toISOString(),
 					alertUrl: incident.url,
 					alertName: incident.policy_name || 'UNKNOWN',
@@ -210,7 +215,7 @@ export class AlertController {
 				id: alert.id,
 				type: 'Custom',
 				status: AlertStatus.FIRING,
-				tag: alert.tag,
+				tags: alert.tags,
 				startsAt: alert.startsAt,
 				updatedAt: alert.updatedAt,
 				alertUrl: alert.alertUrl,

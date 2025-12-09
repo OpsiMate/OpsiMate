@@ -2,11 +2,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Settings } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
-import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
+import { COLUMN_LABELS, COLUMN_WIDTHS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
 import { GroupByControls } from './GroupByControls';
@@ -29,14 +30,20 @@ export const AlertsTable = ({
 	visibleColumns = DEFAULT_VISIBLE_COLUMNS,
 	columnOrder = DEFAULT_COLUMN_ORDER,
 	onAlertClick,
+	tagKeyColumnLabels = {},
 }: AlertsTableProps) => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const parentRef = useRef<HTMLDivElement>(null);
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
+	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
+
 	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
-	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(sortedAlerts);
+	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(
+		sortedAlerts,
+		allColumnLabels
+	);
 	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
 
 	const virtualizer = useVirtualizer({
@@ -77,16 +84,17 @@ export const AlertsTable = ({
 					groupByColumns={groupByColumns}
 					onGroupByChange={setGroupByColumns}
 					availableColumns={visibleColumns}
+					columnLabels={allColumnLabels}
 				/>
 			</div>
 
 			<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
 				<div className="border-b flex-shrink-0">
-					<Table>
+					<Table className="table-fixed w-full">
 						<TableHeader>
 							<TableRow className="h-8">
 								{onSelectAlerts && (
-									<TableHead className="w-10 h-8 py-1 px-2">
+									<TableHead className={cn('h-8 py-1 px-2', COLUMN_WIDTHS.select)}>
 										<div className="flex items-center justify-center">
 											<Checkbox
 												checked={
@@ -102,9 +110,12 @@ export const AlertsTable = ({
 								{orderedColumns.map((column) => {
 									if (column === 'actions') {
 										return (
-											<TableHead key={column} className="w-24 h-8 py-1 px-2 text-xs">
+											<TableHead
+												key={column}
+												className={cn('h-8 py-1 px-2 text-xs', COLUMN_WIDTHS.actions)}
+											>
 												<div className="flex items-center justify-between">
-													<span>{COLUMN_LABELS[column]}</span>
+													<span>{allColumnLabels[column] || ''}</span>
 													{onTableSettingsClick && (
 														<Button
 															variant="outline"
@@ -120,17 +131,31 @@ export const AlertsTable = ({
 											</TableHead>
 										);
 									}
-									if (
-										['alertName', 'status', 'tag', 'startsAt', 'summary', 'type'].includes(column)
-									) {
+									if (isTagKeyColumn(column)) {
+										const tagKey = extractTagKeyFromColumnId(column);
+										const label = allColumnLabels[column] || tagKey || column;
 										return (
 											<SortableHeader
 												key={column}
 												column={column as AlertSortField}
-												label={COLUMN_LABELS[column]}
+												label={label}
 												sortField={sortField}
 												sortDirection={sortDirection}
 												onSort={handleSort}
+												className={COLUMN_WIDTHS.default}
+											/>
+										);
+									}
+									if (['alertName', 'status', 'startsAt', 'summary', 'type'].includes(column)) {
+										return (
+											<SortableHeader
+												key={column}
+												column={column as AlertSortField}
+												label={allColumnLabels[column]}
+												sortField={sortField}
+												sortDirection={sortDirection}
+												onSort={handleSort}
+												className={COLUMN_WIDTHS[column]}
 											/>
 										);
 									}
@@ -148,6 +173,7 @@ export const AlertsTable = ({
 								key={`sticky-${item.type === 'group' ? item.key : ''}`}
 								item={item}
 								onToggle={toggleGroup}
+								columnLabels={allColumnLabels}
 							/>
 						))}
 					</div>
@@ -174,6 +200,7 @@ export const AlertsTable = ({
 								onUndismissAlert={onUndismissAlert}
 								onDeleteAlert={onDeleteAlert}
 								onSelectAlerts={onSelectAlerts}
+								columnLabels={allColumnLabels}
 							/>
 						)}
 					</div>
