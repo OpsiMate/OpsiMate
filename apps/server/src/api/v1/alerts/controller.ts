@@ -178,12 +178,12 @@ export class AlertController {
 			const startsAtSource = payload.date ?? payload.last_updated ?? now;
 			const updatedAtSource = payload.last_updated ?? payload.date ?? now;
 
-			const tagsString = payload.alert_scope || payload.tags || '';
-			const primaryTag = tagsString.split(',')[0]?.trim() || 'unknown';
-			const tags: Record<string, string> = {};
-			if (primaryTag) {
-				tags.primary = primaryTag;
-			}
+            const tags = Object.fromEntries(
+                payload.tags
+                    ?.split(",")
+                    .map(tag => tag.split(":"))
+                    .filter((pair): pair is [string, string] => pair.length === 2) ?? []
+            );
 
 			await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
