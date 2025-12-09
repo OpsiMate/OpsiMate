@@ -19,7 +19,7 @@ import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
 import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
 import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
 import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
-import { useGetDashboards } from '@/hooks/queries/dashboards/useGetDashboards';
+import { useGetDashboards, useCreateDashboard, useUpdateDashboard } from '@/hooks/queries/dashboards';
 
 const AlertsTVMode = () => {
 	const navigate = useNavigate();
@@ -30,16 +30,14 @@ const AlertsTVMode = () => {
         updateDashboardField,
         isDirty,
         initialState,
-        setInitialState,
-        setDashboardState
+        markAsClean
     } = useDashboard();
-
-    // Use context state instead of search params
-	const filters = dashboardState.activeFilters;
 
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: services = [] } = useServices();
     const { data: dashboards = [] } = useGetDashboards();
+    const createDashboardMutation = useCreateDashboard();
+    const updateDashboardMutation = useUpdateDashboard();
 	const dismissAlertMutation = useDismissAlert();
 	const undismissAlertMutation = useUndismissAlert();
 
@@ -47,10 +45,6 @@ const AlertsTVMode = () => {
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
     const [showDashboardSettings, setShowDashboardSettings] = useState(false);
-
-    // Sync group by columns with context
-    const groupByColumns = dashboardState.groupByColumns;
-    const setGroupByColumns = (cols: string[]) => updateDashboardField('groupByColumns', cols);
 
     const allAlerts = useMemo(() => alerts, [alerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -65,7 +59,6 @@ const AlertsTVMode = () => {
             updateDashboardField('visibleColumns', visibleColumns);
         }
     }, [visibleColumns, dashboardState.visibleColumns, updateDashboardField]);
-
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
 
@@ -89,8 +82,8 @@ const AlertsTVMode = () => {
 	);
 
 	const filteredAlerts = useMemo(
-		() => filterAlertsByFilters(alerts, filters, getServiceName),
-		[alerts, filters, getServiceName]
+		() => filterAlertsByFilters(alerts, dashboardState.filters, getServiceName),
+		[alerts, dashboardState.filters, getServiceName]
 	);
 
 	useEffect(() => {
@@ -123,22 +116,45 @@ const AlertsTVMode = () => {
 	}, [refetch, toast]);
 
     const handleSaveDashboard = async () => {
-		// Mock API call
-		console.log('Saving dashboard:', dashboardState);
+        const dashboardData = {
+            name: dashboardState.name || 'New Dashboard',
+            type: dashboardState.type,
+            description: dashboardState.description,
+            filters: dashboardState.filters,
+            visibleColumns: dashboardState.visibleColumns,
+            query: dashboardState.query,
+            groupBy: dashboardState.groupBy,
+        };
 
-		if (dashboardState.id) {
-			// PUT
-			console.log('PUT request');
-		} else {
-			// POST
-			console.log('POST request');
-			updateDashboardField('id', 'new-dashboard-id');
-		}
-
-		// Update initial state to match current state
-        setInitialState(dashboardState);
+        try {
+            if (dashboardState.id) {
+                await updateDashboardMutation.mutateAsync({
+                    id: dashboardState.id,
+                    ...dashboardData,
+                });
+                toast({
+                    title: 'Dashboard updated',
+                    description: 'Your dashboard has been saved.',
+                });
+            } else {
+                const result = await createDashboardMutation.mutateAsync(dashboardData);
+                if (result?.id) {
+                    updateDashboardField('id', result.id);
+                }
+                toast({
+                    title: 'Dashboard created',
+                    description: 'Your new dashboard has been saved.',
+                });
+            }
+            markAsClean();
+        } catch (error) {
+            toast({
+                title: 'Error saving dashboard',
+                description: error instanceof Error ? error.message : 'Failed to save dashboard',
+                variant: 'destructive',
+            });
+        }
 	};
-
 
 	const handleDismissAlert = async (alertId: string) => {
 		try {
@@ -267,12 +283,12 @@ const AlertsTVMode = () => {
 				<div className="flex-1 border rounded-lg overflow-hidden bg-card shadow-sm">
 					<AlertsHeatmap
 						alerts={filteredAlerts}
-						groupBy={groupByColumns}
+						groupBy={dashboardState.groupBy}
 						customValueGetter={getAlertValueWithService}
 						onDismiss={handleDismissAlert}
 						onUndismiss={handleUndismissAlert}
-						groupByColumns={groupByColumns}
-						onGroupByChange={setGroupByColumns}
+						groupByColumns={dashboardState.groupBy}
+						onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 						availableColumns={GROUPABLE_COLUMNS}
 					/>
 				</div>

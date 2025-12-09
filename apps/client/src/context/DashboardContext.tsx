@@ -1,66 +1,100 @@
-import React, { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { clearStorage, loadFromStorage, saveToStorage } from './DashboardContext.utils';
+
+export type DashboardType = 'services' | 'alerts';
 
 export interface DashboardState {
 	id: string | null;
 	name: string;
+	type: DashboardType;
 	description: string;
 	visibleColumns: string[];
-	activeFilters: Record<string, string[]>;
-	archivedFilters: Record<string, string[]>;
+	filters: Record<string, string[]>;
 	columnOrder: string[];
-	groupByColumns: string[];
+	groupBy: string[];
+	query: string;
 }
 
 interface DashboardContextType {
 	dashboardState: DashboardState;
 	setDashboardState: React.Dispatch<React.SetStateAction<DashboardState>>;
 	isDirty: boolean;
-	setIsDirty: (isDirty: boolean) => void;
 	initialState: DashboardState;
 	setInitialState: (state: DashboardState) => void;
 	updateDashboardField: <K extends keyof DashboardState>(field: K, value: DashboardState[K]) => void;
-    resetDashboard: () => void;
+	resetDashboard: () => void;
+	markAsClean: () => void;
 }
 
 const defaultState: DashboardState = {
 	id: null,
 	name: '',
+	type: 'alerts',
 	description: '',
 	visibleColumns: [],
-	activeFilters: {},
-	archivedFilters: {},
+	filters: {},
 	columnOrder: [],
-	groupByColumns: [],
+	groupBy: [],
+	query: '',
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export const DashboardProvider = ({ children }: { children: ReactNode }) => {
-	const [dashboardState, setDashboardState] = useState<DashboardState>(defaultState);
-	const [initialState, setInitialStateState] = useState<DashboardState>(defaultState);
-	// We calculate isDirty derived from state vs initial state, but sometimes we need to force it or manage it?
-    // Actually, deriving it is safer.
+	const [dashboardState, setDashboardState] = useState<DashboardState>(() => loadFromStorage(defaultState));
+	const [initialState, setInitialStateState] = useState<DashboardState>(() => loadFromStorage(defaultState));
+	const [hasUserMadeChanges, setHasUserMadeChanges] = useState(false);
 
-    const setInitialState = (state: DashboardState) => {
-        setInitialStateState(JSON.parse(JSON.stringify(state)));
-        setDashboardState(JSON.parse(JSON.stringify(state)));
-    }
+	useEffect(() => {
+		saveToStorage(dashboardState);
+	}, [dashboardState]);
+
+	const setInitialState = useCallback((state: DashboardState) => {
+		setInitialStateState(JSON.parse(JSON.stringify(state)));
+		setDashboardState(JSON.parse(JSON.stringify(state)));
+		setHasUserMadeChanges(false);
+	}, []);
 
 	const isDirty = useMemo(() => {
-		return JSON.stringify(dashboardState) !== JSON.stringify(initialState);
-	}, [dashboardState, initialState]);
+		if (!hasUserMadeChanges) {
+			return false;
+		}
+		const currentName = dashboardState.name;
+		const initialName = initialState.name;
+		const currentDescription = dashboardState.description;
+		const initialDescription = initialState.description;
+		const currentGroupBy = JSON.stringify(dashboardState.groupBy);
+		const initialGroupBy = JSON.stringify(initialState.groupBy);
+		const currentFilters = JSON.stringify(dashboardState.filters);
+		const initialFilters = JSON.stringify(initialState.filters);
 
-	const updateDashboardField = <K extends keyof DashboardState>(field: K, value: DashboardState[K]) => {
+		return (
+			currentName !== initialName ||
+			currentDescription !== initialDescription ||
+			currentGroupBy !== initialGroupBy ||
+			currentFilters !== initialFilters
+		);
+	}, [dashboardState, initialState, hasUserMadeChanges]);
+
+	const updateDashboardField = useCallback(<K extends keyof DashboardState>(field: K, value: DashboardState[K]) => {
+		const userEditableFields: (keyof DashboardState)[] = ['name', 'description', 'groupBy', 'filters'];
+		if (userEditableFields.includes(field)) {
+			setHasUserMadeChanges(true);
+		}
 		setDashboardState((prev) => ({ ...prev, [field]: value }));
-	};
+	}, []);
 
-    const resetDashboard = () => {
-        setDashboardState(defaultState);
-        setInitialStateState(defaultState);
-    }
+	const resetDashboard = useCallback(() => {
+		setDashboardState(defaultState);
+		setInitialStateState(defaultState);
+		setHasUserMadeChanges(false);
+		clearStorage();
+	}, []);
 
-    // Mock loading from local storage or API could happen here or in the consuming components
-    // For now, we just provide the state container.
+	const markAsClean = useCallback(() => {
+		setInitialStateState(JSON.parse(JSON.stringify(dashboardState)));
+		setHasUserMadeChanges(false);
+	}, [dashboardState]);
 
 	return (
 		<DashboardContext.Provider
@@ -68,11 +102,11 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 				dashboardState,
 				setDashboardState,
 				isDirty,
-				setIsDirty: () => {}, // No-op since we derive it, but keeping interface if we change strategy
 				initialState,
 				setInitialState,
 				updateDashboardField,
-                resetDashboard
+				resetDashboard,
+				markAsClean,
 			}}
 		>
 			{children}

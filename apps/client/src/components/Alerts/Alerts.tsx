@@ -1,23 +1,23 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { FilterSidebar } from '@/components/shared';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert } from '@/hooks/queries/alerts';
+import { useCreateDashboard, useGetDashboards, useUpdateDashboard } from '@/hooks/queries/dashboards';
 import { useServices } from '@/hooks/queries/services';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Archive, Bell } from 'lucide-react';
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetails } from './AlertDetails';
-import { DashboardHeader } from './DashboardHeader';
-import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
+import { DashboardHeader } from './DashboardHeader';
+import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useAlertTagKeys, useColumnManagement } from './hooks';
-import { useDashboard } from '@/context/DashboardContext';
-import { useGetDashboards } from '@/hooks/queries/dashboards/useGetDashboards';
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -25,14 +25,15 @@ const Alerts = () => {
 	const { data: archivedAlerts = [], isLoading: isLoadingArchived, refetch: refetchArchived } = useArchivedAlerts();
 	const { data: services = [] } = useServices();
     const { data: dashboards = [] } = useGetDashboards();
+    const createDashboardMutation = useCreateDashboard();
+    const updateDashboardMutation = useUpdateDashboard();
 
     const {
         dashboardState,
-        setDashboardState,
         isDirty,
         initialState,
-        setInitialState,
-        updateDashboardField
+        updateDashboardField,
+        markAsClean
     } = useDashboard();
 
 	const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
@@ -53,7 +54,6 @@ const Alerts = () => {
 
 	const shouldPauseRefresh = showDashboardSettings || syncedSelectedAlert !== null;
 
-	// Active alerts refresh
 	const {
 		lastRefresh: lastRefreshActive,
 		isRefreshing: isRefreshingActive,
@@ -62,7 +62,6 @@ const Alerts = () => {
 		shouldPause: shouldPauseRefresh || activeTab !== 'active',
 	});
 
-	// Archived alerts refresh
 	const {
 		lastRefresh: lastRefreshArchived,
 		isRefreshing: isRefreshingArchived,
@@ -71,14 +70,9 @@ const Alerts = () => {
 		shouldPause: shouldPauseRefresh || activeTab !== 'archived',
 	});
 
-	// Use the appropriate refresh state based on active tab
 	const lastRefresh = activeTab === 'active' ? lastRefreshActive : lastRefreshArchived;
 	const isRefreshing = activeTab === 'active' ? isRefreshingActive : isRefreshingArchived;
 	const handleManualRefresh = activeTab === 'active' ? handleManualRefreshActive : handleManualRefreshArchived;
-
-    // We map context state to local variables for compatibility with existing hooks
-    // but hooks should probably be updated to use context directly in a real refactor.
-    // For now, we sync context state with what useColumnManagement expects.
 
 	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
 		tagKeys,
@@ -86,7 +80,6 @@ const Alerts = () => {
         initialColumnOrder: dashboardState.columnOrder.length > 0 ? dashboardState.columnOrder : undefined,
 	});
 
-    // Sync column changes back to context
     useEffect(() => {
         if (JSON.stringify(visibleColumns) !== JSON.stringify(dashboardState.visibleColumns)) {
             updateDashboardField('visibleColumns', visibleColumns);
@@ -101,36 +94,40 @@ const Alerts = () => {
 
 
 	const handleSaveDashboard = async () => {
-		// Mock API call
-		console.log('Saving dashboard:', dashboardState);
+        const dashboardData = {
+            name: dashboardState.name || 'New Dashboard',
+            type: dashboardState.type,
+            description: dashboardState.description,
+            filters: dashboardState.filters,
+            visibleColumns: dashboardState.visibleColumns,
+            query: dashboardState.query,
+            groupBy: dashboardState.groupBy,
+        };
 
-		if (dashboardState.id) {
-			// PUT
-			console.log('PUT request');
-		} else {
-			// POST
-			console.log('POST request');
-			// Simulate creating a new ID
-			updateDashboardField('id', 'new-dashboard-id');
-		}
-
-		// Update initial state to match current state
-        setInitialState(dashboardState);
+        try {
+            if (dashboardState.id) {
+                await updateDashboardMutation.mutateAsync({
+                    id: dashboardState.id,
+                    ...dashboardData,
+                });
+            } else {
+                const result = await createDashboardMutation.mutateAsync(dashboardData);
+                if (result?.id) {
+                    updateDashboardField('id', result.id);
+                }
+            }
+            markAsClean();
+        } catch (error) {
+            console.error('Error saving dashboard:', error);
+        }
 	};
 
-    // Sync filters
     const handleFilterChange = (newFilters: Record<string, string[]>) => {
-        if (activeTab === 'active') {
-            updateDashboardField('activeFilters', newFilters);
-        } else {
-            updateDashboardField('archivedFilters', newFilters);
-        }
+        updateDashboardField('filters', newFilters);
     };
 
-    const currentFilters = activeTab === 'active' ? dashboardState.activeFilters : dashboardState.archivedFilters;
-
-	const filteredAlerts = useAlertsFiltering(alerts, dashboardState.activeFilters);
-	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, dashboardState.archivedFilters);
+	const filteredAlerts = useAlertsFiltering(alerts, dashboardState.filters);
+	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, dashboardState.filters);
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 
@@ -143,7 +140,6 @@ const Alerts = () => {
 	};
 
 	const handleLaunchTVMode = () => {
-        // No need to pass params in URL anymore since we use context
 		navigate(`/alerts/tv-mode`);
 	};
 
@@ -156,7 +152,7 @@ const Alerts = () => {
 				>
 					<AlertsFilterPanel
 						alerts={currentAlertData}
-						filters={currentFilters}
+						filters={dashboardState.filters}
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
 						enabledTagKeys={enabledTagKeys}

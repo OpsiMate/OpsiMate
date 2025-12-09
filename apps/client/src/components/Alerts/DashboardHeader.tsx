@@ -109,8 +109,8 @@ export const DashboardHeader = ({
 			<div className="flex items-center gap-2">
 				<div className={cn("flex items-center transition-all duration-300 ease-in-out relative", isSearchOpen ? "w-64" : "w-10")}>
                     {isSearchOpen ? (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-50 w-64">
-                            <Command className="rounded-lg border shadow-md bg-popover overflow-visible">
+                        <div className="absolute right-0 top-full mt-2 z-50 w-64">
+                            <Command className="rounded-lg border shadow-md bg-popover">
                                 <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
                                     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                                     <input
@@ -122,9 +122,9 @@ export const DashboardHeader = ({
                                         }}
                                     />
                                 </div>
-                                <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
-                                     <CommandList>
-                                        <CommandEmpty>No results found.</CommandEmpty>
+                                <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+                                    <CommandEmpty>No results found.</CommandEmpty>
+                                    {dashboards.length > 0 && (
                                         <CommandGroup heading="Dashboards">
                                             {dashboards.map((dashboard) => (
                                                 <CommandItem
@@ -138,8 +138,8 @@ export const DashboardHeader = ({
                                                 </CommandItem>
                                             ))}
                                         </CommandGroup>
-                                    </CommandList>
-                                </div>
+                                    )}
+                                </CommandList>
                             </Command>
                         </div>
                     ) : (
