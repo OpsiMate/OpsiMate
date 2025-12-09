@@ -141,7 +141,7 @@ export class AlertController {
 					type: 'GCP',
 					status: AlertStatus.FIRING,
 					tags: incident.policy_user_labels || {},
-					startsAt: this.normalizeDate(incident.started_at),
+					startsAt: this.normalizeGCPDate(incident.started_at),
 					updatedAt: new Date().toISOString(),
 					alertUrl: incident.url,
 					alertName: incident.policy_name || 'UNKNOWN',
@@ -178,20 +178,20 @@ export class AlertController {
 			const startsAtSource = payload.date ?? payload.last_updated ?? now;
 			const updatedAtSource = payload.last_updated ?? payload.date ?? now;
 
-            const tags = Object.fromEntries(
-                payload.tags
-                    ?.split(",")
-                    .map(tag => tag.split(":"))
-                    .filter((pair): pair is [string, string] => pair.length === 2) ?? []
-            );
+			const tags = Object.fromEntries(
+				payload.tags
+					?.split(',')
+					.map((tag) => tag.split(':'))
+					.filter((pair): pair is [string, string] => pair.length === 2) ?? []
+			);
 
 			await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
 				tags,
-				startsAt: this.normalizeDate(startsAtSource),
-				updatedAt: this.normalizeDate(updatedAtSource),
+				startsAt: new Date(Number(startsAtSource)).toISOString(),
+				updatedAt: new Date(updatedAtSource).toISOString(),
 				alertUrl: payload.link ?? '',
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
@@ -273,34 +273,21 @@ export class AlertController {
 		}
 	}
 
-	public normalizeDate(value: number | string): string {
+	private normalizeGCPDate(value: number | string): string {
 		// If null/undefined → fallback
-		if (value === null || value === undefined || value === '') {
-			return new Date().toISOString();
-		}
+		if (!value) return new Date().toISOString();
 
-		// Helper to normalize a numeric epoch that may be in seconds or milliseconds
-		const fromEpoch = (epoch: number): string => {
-			// Heuristic: values < 1e12 are treated as seconds; >= 1e12 as milliseconds
-			const asMs = epoch < 1e12 ? epoch * 1000 : epoch;
-			const date = new Date(asMs);
-			return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
-		};
-
-		// If it's a number (epoch seconds or millis)
+		// If it's a number (unix seconds)
 		if (typeof value === 'number') {
-			return fromEpoch(value);
+			return new Date(value * 1000).toISOString();
 		}
 
-		// If it's a numeric string (e.g. "1763324240" or "1764869846000")
+		// If it's a numeric string (e.g. "1763324240" or "1763324240.0")
 		if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
-			const num = Number(value);
-			if (!Number.isNaN(num)) {
-				return fromEpoch(num);
-			}
+			return new Date(Number(value) * 1000).toISOString();
 		}
 
-		// If it's an ISO-like string or other date-parseable format, try parsing
+		// If it's an ISO-like string, try parsing
 		const iso = new Date(value);
 		if (!isNaN(iso.getTime())) {
 			return iso.toISOString();
