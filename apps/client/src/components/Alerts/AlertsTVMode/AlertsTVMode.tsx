@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import {
-    useCreateDashboard,
-    useDeleteDashboard,
-    useGetDashboards,
-    useUpdateDashboard,
+	useCreateDashboard,
+	useDeleteDashboard,
+	useGetDashboards,
+	useUpdateDashboard,
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
@@ -151,8 +151,16 @@ const AlertsTVMode = () => {
 				}
 			}
 			markAsClean();
+			toast({
+				title: 'Dashboard saved',
+				description: 'Your changes have been saved successfully.',
+			});
 		} catch (error) {
-			// Error saving dashboard
+			toast({
+				title: 'Error saving dashboard',
+				description: 'Failed to save dashboard changes',
+				variant: 'destructive',
+			});
 		}
 	};
 
@@ -209,9 +217,13 @@ const AlertsTVMode = () => {
 			resetDashboard();
 			setShowDashboardSettings(false);
 		} catch (error) {
-			// Error deleting dashboard
+			toast({
+				title: 'Error deleting dashboard',
+				description: 'Failed to delete dashboard',
+				variant: 'destructive',
+			});
 		}
-	}, [dashboardState.id, deleteDashboardMutation, resetDashboard]);
+	}, [dashboardState.id, deleteDashboardMutation, resetDashboard, toast]);
 
 	const handleDismissAlert = async (alertId: string) => {
 		try {

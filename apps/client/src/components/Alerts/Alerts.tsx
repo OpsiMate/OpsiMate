@@ -11,6 +11,7 @@ import {
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Archive, Bell } from 'lucide-react';
@@ -27,6 +28,7 @@ import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useAlertTagKeys,
 
 const Alerts = () => {
 	const navigate = useNavigate();
+	const { toast } = useToast();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: archivedAlerts = [], isLoading: isLoadingArchived, refetch: refetchArchived } = useArchivedAlerts();
 	const { data: services = [] } = useServices();
@@ -127,8 +129,16 @@ const Alerts = () => {
 				}
 			}
 			markAsClean();
+			toast({
+				title: 'Dashboard saved',
+				description: 'Your changes have been saved successfully.',
+			});
 		} catch (error) {
-			// Error saving dashboard
+			toast({
+				title: 'Error saving dashboard',
+				description: 'Failed to save dashboard changes',
+				variant: 'destructive',
+			});
 		}
 	};
 
@@ -193,7 +203,11 @@ const Alerts = () => {
 			resetDashboard();
 			setShowDashboardSettings(false);
 		} catch (error) {
-			// Error deleting dashboard
+			toast({
+				title: 'Error deleting dashboard',
+				description: 'Failed to delete dashboard',
+				variant: 'destructive',
+			});
 		}
 	};
 
