@@ -191,7 +191,7 @@ export class AlertController {
 				status: AlertStatus.FIRING,
 				tags,
 				startsAt: new Date(Number(startsAtSource)).toISOString(),
-				updatedAt: new Date(updatedAtSource).toISOString(),
+				updatedAt: new Date(Number(updatedAtSource)).toISOString(),
 				alertUrl: payload.link ?? '',
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
