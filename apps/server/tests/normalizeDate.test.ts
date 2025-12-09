@@ -67,4 +67,3 @@ describe('normalizeDate', () => {
 		expect(uptimeKumaResult).toMatch(isoRegex);
 	});
 });
-
