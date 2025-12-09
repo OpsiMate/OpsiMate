@@ -3,6 +3,7 @@ import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import {uuidv4} from "zod/v4";
 
 const logger = new Logger('test-alerts');
 
@@ -407,6 +408,137 @@ describe('Alerts API', () => {
 			};
 
 			const response = await app.post('/api/v1/alerts/custom').send(payload);
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
+	});
+
+	describe('POST /api/v1/alerts/custom/datadog', () => {
+		test('should create a new Datadog alert successfully with valid payload', async () => {
+			const now = new Date().toISOString();
+
+            const alertId = "alert-id";
+            const alertInstanceId = "alert-id-instance";
+
+			const payload = {
+				alert_id: alertId,
+				id: alertInstanceId,
+				title: '[Triggered] High CPU Usage',
+				message: 'CPU usage above 90%',
+				alert_status: 'Triggered',
+				alert_transition: 'Triggered',
+				event_type: 'query_alert_monitor',
+				link: 'https://app.datadoghq.com/monitors/123',
+				tags: 'service:web,env:prod',
+				alert_scope: 'service:web',
+				date: now,
+				last_updated: now,
+				org: {
+					id: '123456',
+					name: 'Opsimate',
+				},
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.alertId).toBe(alertInstanceId);
+
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			expect(row).toBeDefined();
+			expect(row.alert_name).toBe(payload.title);
+			expect(row.status).toBe('firing');
+		});
+
+		test('should archive an existing Datadog alert when status is recovered', async () => {
+			const now = new Date().toISOString();
+			const alertId = 'datadog-alert-archive';
+			const alertInstanceId = 'datadog-alert-archive-1';
+
+			const firingPayload = {
+				id: alertInstanceId,
+				alert_id: alertId,
+				title: '[Triggered] Test Alert',
+				message: 'Initial firing event',
+				alert_status: 'Triggered',
+				alert_transition: 'Triggered',
+				event_type: 'query_alert_monitor',
+				link: 'https://app.datadoghq.com/monitors/456',
+				tags: 'service:test,env:dev',
+				alert_scope: 'service:test',
+				date: now,
+				last_updated: now,
+				org: {
+					id: '123456',
+					name: 'Opsimate',
+				},
+			};
+
+			// First create the active alert
+			const createResponse = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(firingPayload);
+
+			expect(createResponse.status).toBe(200);
+			expect(createResponse.body.success).toBe(true);
+
+			const activeRow = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
+			expect(activeRow).toBeDefined();
+
+			// Now send a recovered event for the same alert
+			const recoveredPayload = {
+				...firingPayload,
+				alert_status: 'Recovered',
+				alert_transition: 'Recovered',
+				message: 'Alert has recovered',
+			};
+
+			const recoveredResponse = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(recoveredPayload);
+
+			expect(recoveredResponse.status).toBe(200);
+			expect(recoveredResponse.body.success).toBe(true);
+			expect(recoveredResponse.body.data.alertId).toBe(alertInstanceId);
+
+			const rowAfter = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
+			expect(rowAfter).toBeUndefined();
+
+			const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(alertInstanceId);
+			expect(archivedRow).toBeDefined();
+			expect(archivedRow.id).toBe(alertInstanceId);
+		});
+
+		test('should return 400 for invalid Datadog payload', async () => {
+			const payload = {
+				// Missing title
+				alert_id: 'bad-datadog-alert',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBeDefined();
+		});
+
+		test('should return 401 when no auth token is provided', async () => {
+			const payload = {
+				alert_id: 'unauthorized-datadog-alert',
+				title: 'Unauthorized Datadog Alert',
+				alert_status: 'Triggered',
+			};
+
+			const response = await app.post('/api/v1/alerts/custom/datadog').send(payload);
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
