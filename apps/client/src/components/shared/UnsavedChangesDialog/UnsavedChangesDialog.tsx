@@ -36,3 +36,4 @@ export const UnsavedChangesDialog = ({ open, onConfirm, onCancel }: UnsavedChang
 		</AlertDialog>
 	);
 };
+
