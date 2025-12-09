@@ -67,22 +67,20 @@ export const HttpAlertWebhookSchema = z.object({
 export const DatadogAlertWebhookSchema = z
 	.object({
 		title: z.string(),
-		message: z.string().optional(),
-		// Some payloads use alert_id, others only expose id – both should be accepted.
+		id: z.string(),
 		alert_id: z.string().optional(),
+		message: z.string().optional(),
 		alert_transition: z.string().optional(),
 		link: z.string().url().optional(),
 		tags: z.string().optional(),
 		priority: z.string().optional(),
 		hostname: z.string().optional(),
 		org_name: z.string().optional(),
-		// Datadog often sends epoch millis as strings (e.g. "1764869846000")
 		date: z.union([isoDateString, z.number(), z.string()]).optional(),
 		alert_scope: z.string().optional(),
 		alert_status: z.string().optional(),
 		event_type: z.string().optional(),
 		last_updated: z.union([isoDateString, z.number(), z.string()]).optional(),
-		id: z.string().optional(),
 		body: z.string().optional(),
 		org: z.any().optional(),
 	})
