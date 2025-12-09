@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { clearStorage, loadFromStorage, saveToStorage } from './DashboardContext.utils';
 
 export type DashboardType = 'services' | 'alerts';
@@ -24,6 +24,12 @@ interface DashboardContextType {
 	updateDashboardField: <K extends keyof DashboardState>(field: K, value: DashboardState[K]) => void;
 	resetDashboard: () => void;
 	markAsClean: () => void;
+	showUnsavedChangesDialog: boolean;
+	setShowUnsavedChangesDialog: (show: boolean) => void;
+	pendingNavigation: (() => void) | null;
+	setPendingNavigation: (fn: (() => void) | null) => void;
+	confirmNavigation: () => void;
+	cancelNavigation: () => void;
 }
 
 const defaultState: DashboardState = {
@@ -44,6 +50,9 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 	const [dashboardState, setDashboardState] = useState<DashboardState>(() => loadFromStorage(defaultState));
 	const [initialState, setInitialStateState] = useState<DashboardState>(() => loadFromStorage(defaultState));
 	const [hasUserMadeChanges, setHasUserMadeChanges] = useState(false);
+	const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
+	const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+	const isDirtyRef = useRef(false);
 
 	useEffect(() => {
 		saveToStorage(dashboardState);
@@ -76,6 +85,23 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		);
 	}, [dashboardState, initialState, hasUserMadeChanges]);
 
+	useEffect(() => {
+		isDirtyRef.current = isDirty;
+	}, [isDirty]);
+
+	useEffect(() => {
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			if (isDirtyRef.current) {
+				e.preventDefault();
+				e.returnValue = '';
+				return '';
+			}
+		};
+
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+	}, []);
+
 	const updateDashboardField = useCallback(<K extends keyof DashboardState>(field: K, value: DashboardState[K]) => {
 		const userEditableFields: (keyof DashboardState)[] = ['name', 'description', 'groupBy', 'filters'];
 		if (userEditableFields.includes(field)) {
@@ -96,6 +122,20 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		setHasUserMadeChanges(false);
 	}, [dashboardState]);
 
+	const confirmNavigation = useCallback(() => {
+		if (pendingNavigation) {
+			setHasUserMadeChanges(false);
+			pendingNavigation();
+			setPendingNavigation(null);
+		}
+		setShowUnsavedChangesDialog(false);
+	}, [pendingNavigation]);
+
+	const cancelNavigation = useCallback(() => {
+		setPendingNavigation(null);
+		setShowUnsavedChangesDialog(false);
+	}, []);
+
 	return (
 		<DashboardContext.Provider
 			value={{
@@ -107,6 +147,12 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 				updateDashboardField,
 				resetDashboard,
 				markAsClean,
+				showUnsavedChangesDialog,
+				setShowUnsavedChangesDialog,
+				pendingNavigation,
+				setPendingNavigation,
+				confirmNavigation,
+				cancelNavigation,
 			}}
 		>
 			{children}

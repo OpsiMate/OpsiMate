@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { RefreshCw, Save, Search, Settings, Tv } from 'lucide-react';
+import { Plus, RefreshCw, Save, Search, Settings, Tv } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export interface DashboardHeaderProps {
@@ -16,9 +16,10 @@ export interface DashboardHeaderProps {
 	lastRefresh?: Date;
 	onRefresh: () => void;
 	onLaunchTVMode?: () => void;
-	dashboards?: { id: string; name: string }[]; // For autocomplete
+	dashboards?: { id: string; name: string }[];
 	onDashboardSelect?: (id: string) => void;
     showTvModeButton?: boolean;
+	onNewDashboard?: () => void;
 }
 
 export const DashboardHeader = ({
@@ -35,6 +36,7 @@ export const DashboardHeader = ({
 	dashboards = [],
 	onDashboardSelect,
     showTvModeButton = true,
+	onNewDashboard,
 }: DashboardHeaderProps) => {
 	const [isEditingName, setIsEditingName] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -107,26 +109,26 @@ export const DashboardHeader = ({
 			</div>
 
 			<div className="flex items-center gap-2">
-				<div className={cn("flex items-center transition-all duration-300 ease-in-out relative", isSearchOpen ? "w-64" : "w-10")}>
-                    {isSearchOpen ? (
-                        <div className="absolute right-0 top-full mt-2 z-50 w-64">
-                            <Command className="rounded-lg border shadow-md bg-popover">
-                                <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-                                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                                    <input
-                                        className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                        placeholder="Search dashboards..."
-                                        autoFocus
-                                        onBlur={() => {
-                                            setTimeout(() => setIsSearchOpen(false), 200);
-                                        }}
-                                    />
-                                </div>
-                                <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
-                                    <CommandEmpty>No results found.</CommandEmpty>
-                                    {dashboards.length > 0 && (
-                                        <CommandGroup heading="Dashboards">
-                                            {dashboards.map((dashboard) => (
+				{isSearchOpen ? (
+                    <div className="relative">
+                        <div className="flex items-center h-8 w-48 rounded-md border bg-background px-3">
+                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <input
+                                className="flex h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                                placeholder="Search dashboards..."
+                                autoFocus
+                                onBlur={() => {
+                                    setTimeout(() => setIsSearchOpen(false), 200);
+                                }}
+                            />
+                        </div>
+                        {dashboards.filter((d) => d.name !== dashboardName).length > 0 && (
+                            <Command className="absolute left-0 top-10 z-50 w-48 rounded-lg border shadow-md bg-popover">
+                                <CommandList className="max-h-[400px] overflow-y-auto overflow-x-hidden">
+                                    <CommandGroup heading="Dashboards">
+                                        {dashboards
+                                            .filter((d) => d.name !== dashboardName)
+                                            .map((dashboard) => (
                                                 <CommandItem
                                                     key={dashboard.id}
                                                     onSelect={() => {
@@ -137,22 +139,33 @@ export const DashboardHeader = ({
                                                     {dashboard.name}
                                                 </CommandItem>
                                             ))}
-                                        </CommandGroup>
-                                    )}
+                                    </CommandGroup>
                                 </CommandList>
                             </Command>
-                        </div>
-                    ) : (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setIsSearchOpen(true)}
-                            className="rounded-full h-8 w-8 hover:bg-muted"
-                        >
-                            <Search className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
+                        )}
+                    </div>
+                ) : (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsSearchOpen(true)}
+                        className="rounded-full h-8 w-8 hover:bg-muted"
+                    >
+                        <Search className="h-4 w-4" />
+                    </Button>
+                )}
+
+				{onNewDashboard && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onNewDashboard}
+						title="New Dashboard"
+						className="rounded-full h-8 w-8 hover:bg-muted"
+					>
+						<Plus className="h-4 w-4" />
+					</Button>
+				)}
 
 				<Button size="sm" onClick={onRefresh} disabled={isRefreshing} className="gap-2">
 					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />

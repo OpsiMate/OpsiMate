@@ -33,7 +33,10 @@ const Alerts = () => {
         isDirty,
         initialState,
         updateDashboardField,
-        markAsClean
+        markAsClean,
+        resetDashboard,
+        setShowUnsavedChangesDialog,
+        setPendingNavigation
     } = useDashboard();
 
 	const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
@@ -143,6 +146,15 @@ const Alerts = () => {
 		navigate(`/alerts/tv-mode`);
 	};
 
+	const handleNewDashboard = () => {
+		if (isDirty) {
+			setPendingNavigation(() => resetDashboard);
+			setShowUnsavedChangesDialog(true);
+		} else {
+			resetDashboard();
+		}
+	};
+
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
@@ -179,6 +191,7 @@ const Alerts = () => {
 								onLaunchTVMode={handleLaunchTVMode}
 								dashboards={dashboards.map(d => ({ id: d.id, name: d.name }))}
 								onDashboardSelect={(id) => console.log('Selected dashboard:', id)}
+								onNewDashboard={handleNewDashboard}
 							/>
 
 							<div className="mt-3">
@@ -300,6 +313,8 @@ const Alerts = () => {
 				columnLabels={COLUMN_LABELS}
 				excludeColumns={['actions']}
 				tagKeys={tagKeys}
+				groupByColumns={dashboardState.groupBy}
+				onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 			/>
 		</DashboardLayout>
 	);

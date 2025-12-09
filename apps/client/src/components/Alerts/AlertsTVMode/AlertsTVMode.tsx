@@ -1,7 +1,13 @@
+import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
+import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
+import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
+import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import { useCreateDashboard, useGetDashboards, useUpdateDashboard } from '@/hooks/queries/dashboards';
 import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -14,12 +20,6 @@ import { AlertsHeatmap } from './AlertsHeatmap';
 import { AUTO_REFRESH_INTERVAL_MS, GRID_CLASSES, GROUPABLE_COLUMNS } from './AlertsTVMode.constants';
 import { ViewMode } from './AlertsTVMode.types';
 import { createServiceNameLookup, filterAlertsByFilters, getAlertServiceId, getCardSize } from './AlertsTVMode.utils';
-import { useDashboard } from '@/context/DashboardContext';
-import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
-import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
-import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
-import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
-import { useGetDashboards, useCreateDashboard, useUpdateDashboard } from '@/hooks/queries/dashboards';
 
 const AlertsTVMode = () => {
 	const navigate = useNavigate();
@@ -30,7 +30,10 @@ const AlertsTVMode = () => {
         updateDashboardField,
         isDirty,
         initialState,
-        markAsClean
+        markAsClean,
+        resetDashboard,
+        setShowUnsavedChangesDialog,
+        setPendingNavigation
     } = useDashboard();
 
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
@@ -132,29 +135,36 @@ const AlertsTVMode = () => {
                     id: dashboardState.id,
                     ...dashboardData,
                 });
-                toast({
-                    title: 'Dashboard updated',
-                    description: 'Your dashboard has been saved.',
-                });
             } else {
                 const result = await createDashboardMutation.mutateAsync(dashboardData);
                 if (result?.id) {
                     updateDashboardField('id', result.id);
                 }
-                toast({
-                    title: 'Dashboard created',
-                    description: 'Your new dashboard has been saved.',
-                });
             }
             markAsClean();
         } catch (error) {
-            toast({
-                title: 'Error saving dashboard',
-                description: error instanceof Error ? error.message : 'Failed to save dashboard',
-                variant: 'destructive',
-            });
+            console.error('Error saving dashboard:', error);
         }
 	};
+
+    const handleNavigateBack = useCallback(() => {
+        if (isDirty) {
+            const navigateToAlerts = () => navigate('/alerts');
+            setPendingNavigation(() => navigateToAlerts);
+            setShowUnsavedChangesDialog(true);
+        } else {
+            navigate('/alerts');
+        }
+    }, [isDirty, navigate, setPendingNavigation, setShowUnsavedChangesDialog]);
+
+    const handleNewDashboard = useCallback(() => {
+        if (isDirty) {
+            setPendingNavigation(() => resetDashboard);
+            setShowUnsavedChangesDialog(true);
+        } else {
+            resetDashboard();
+        }
+    }, [isDirty, resetDashboard, setPendingNavigation, setShowUnsavedChangesDialog]);
 
 	const handleDismissAlert = async (alertId: string) => {
 		try {
@@ -193,7 +203,7 @@ const AlertsTVMode = () => {
 			if (e.key === 'Escape') {
 				const dialogOpen = document.querySelector('[role="dialog"]');
 				if (!dialogOpen) {
-					navigate('/alerts');
+					handleNavigateBack();
 				}
 			} else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
 				handleManualRefresh();
@@ -202,7 +212,7 @@ const AlertsTVMode = () => {
 
 		window.addEventListener('keydown', handleKeyPress);
 		return () => window.removeEventListener('keydown', handleKeyPress);
-	}, [navigate, handleManualRefresh]);
+	}, [handleNavigateBack, handleManualRefresh]);
 
 	const cardSize = getCardSize(filteredAlerts.length);
 
@@ -210,7 +220,7 @@ const AlertsTVMode = () => {
 		<div className="min-h-screen bg-background p-4 flex flex-col">
 			<div className="mb-4 flex flex-col gap-4">
                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-2">
+                    <Button variant="ghost" size="sm" onClick={handleNavigateBack} className="gap-2">
 						<ArrowLeft className="h-4 w-4" />
 						Back to Alerts
 					</Button>
@@ -235,6 +245,7 @@ const AlertsTVMode = () => {
                             showTvModeButton={false}
                             dashboards={dashboards.map(d => ({ id: d.id, name: d.name }))}
                             onDashboardSelect={(id) => console.log('Selected dashboard:', id)}
+                            onNewDashboard={handleNewDashboard}
                         />
                      </div>
 
@@ -332,6 +343,8 @@ const AlertsTVMode = () => {
 				columnLabels={COLUMN_LABELS}
 				excludeColumns={['actions']}
 				tagKeys={tagKeys}
+				groupByColumns={dashboardState.groupBy}
+				onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 			/>
 		</div>
 	);
