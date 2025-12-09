@@ -160,7 +160,7 @@ export class AlertController {
 		try {
 			const payload = DatadogAlertWebhookSchema.parse(req.body);
 
-			const alertId = payload.id;
+			const alertId = payload.id
 
 			// Determine whether this is a recovery / resolved transition
 			const transition = payload.alert_transition?.toLowerCase() ?? '';
@@ -182,13 +182,17 @@ export class AlertController {
 			const updatedAtSource = payload.last_updated ?? payload.date ?? now;
 
 			const tagsString = payload.alert_scope || payload.tags || '';
-			const primaryTag = tagsString.split(',')[0]?.trim();
+			const primaryTag = tagsString.split(',')[0]?.trim() || 'unknown';
+			const tags: Record<string, string> = {};
+			if (primaryTag) {
+				tags.primary = primaryTag;
+			}
 
 			await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
-				tag: primaryTag || 'unknown',
+				tags,
 				startsAt: this.normalizeDate(startsAtSource),
 				updatedAt: this.normalizeDate(updatedAtSource),
 				alertUrl: payload.link ?? '',
