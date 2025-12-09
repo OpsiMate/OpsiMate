@@ -458,7 +458,7 @@ describe('Alerts API', () => {
 			expect(parsedTags).toEqual({ primary: 'service:web' });
 		});
 
-		test('should archive an existing Datadog alert when status is recovered', async () => {
+		test('should archive an existing Datadog alert when alert_transition is recovered', async () => {
 			const now = new Date().toISOString();
 			const alertId = 'datadog-alert-archive';
 			const alertInstanceId = 'datadog-alert-archive-1';
@@ -494,10 +494,9 @@ describe('Alerts API', () => {
 			const activeRow = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
 			expect(activeRow).toBeDefined();
 
-			// Now send a recovered event for the same alert
+			// Now send a recovered event for the same alert (only alert_transition matters)
 			const recoveredPayload = {
 				...firingPayload,
-				alert_status: 'Recovered',
 				alert_transition: 'Recovered',
 				message: 'Alert has recovered',
 			};
