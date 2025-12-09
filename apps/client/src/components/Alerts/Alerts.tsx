@@ -108,7 +108,7 @@ const Alerts = () => {
 				</FilterSidebar>
 
 				<div className="flex-1 flex min-h-0">
-					<div className="flex-1 flex flex-col p-4 min-h-0">
+					<div className="flex-1 flex flex-col p-4 min-h-0 min-w-0">
 						<div className="flex-shrink-0 mb-4">
 							<AlertsHeader
 								alertsCount={activeTab === 'active' ? alerts.length : archivedAlerts.length}
@@ -211,7 +211,7 @@ const Alerts = () => {
 					</div>
 
 					{syncedSelectedAlert && (
-						<div className="w-96 border-l">
+						<div className="w-96 border-l flex-shrink-0">
 							<AlertDetails
 								isActive={activeTab == 'active'}
 								alert={syncedSelectedAlert}
