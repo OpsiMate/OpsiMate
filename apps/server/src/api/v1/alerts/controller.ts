@@ -164,10 +164,7 @@ export class AlertController {
 
 			// Determine whether this is a recovery / resolved transition
 			const transition = payload.alert_transition?.toLowerCase() ?? '';
-			const status = payload.alert_status?.toLowerCase() ?? '';
-
-			const isRecovered =
-				transition.includes('recovered') || status === 'ok' || status === 'recovered' || status === 'resolved';
+			const isRecovered = transition.includes('recovered');
 
 			logger.info(`got datadog alert: ${JSON.stringify(payload)}`);
 
