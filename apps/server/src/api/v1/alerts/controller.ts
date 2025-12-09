@@ -155,8 +155,7 @@ export class AlertController {
 		try {
 			const payload = DatadogAlertWebhookSchema.parse(req.body);
 
-			// Prefer explicit alert_id if present, otherwise fall back to the Datadog event id.
-			const alertId = payload.alert_id ?? payload.id ?? new Date().getTime().toString();
+			const alertId = payload.id;
 
 			// Determine whether this is a recovery / resolved transition
 			const transition = payload.alert_transition?.toLowerCase() ?? '';
