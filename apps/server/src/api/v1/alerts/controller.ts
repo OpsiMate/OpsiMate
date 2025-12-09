@@ -181,8 +181,6 @@ export class AlertController {
 
 			await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
-				// Cast to any to avoid tight coupling to AlertType union while still
-				// storing a meaningful provider type in the DB.
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
 				tag: primaryTag || 'unknown',
