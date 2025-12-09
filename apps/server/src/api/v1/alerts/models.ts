@@ -77,11 +77,11 @@ export const DatadogAlertWebhookSchema = z
 		priority: z.string().optional(),
 		hostname: z.string().optional(),
 		org_name: z.string().optional(),
-		date: z.union([isoDateString, z.number(), z.string()]).optional(),
+		date: z.string(),
 		alert_scope: z.string().optional(),
 		alert_status: z.string().optional(),
 		event_type: z.string().optional(),
-		last_updated: z.union([isoDateString, z.number(), z.string()]).optional(),
+		last_updated: z.string().optional(),
 		body: z.string().optional(),
 		org: z.any().optional(),
 	})
