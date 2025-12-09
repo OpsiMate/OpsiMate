@@ -1,34 +1,59 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { ColumnSettingsModal, FilterSidebar } from '@/components/shared';
+import { FilterSidebar } from '@/components/shared';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert } from '@/hooks/queries/alerts';
+import {
+	useCreateDashboard,
+	useDeleteDashboard,
+	useGetDashboards,
+	useUpdateDashboard,
+} from '@/hooks/queries/dashboards';
+import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Archive, Bell } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetails } from './AlertDetails';
-import { AlertsHeader } from './AlertsHeader';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
+import { DashboardHeader } from './DashboardHeader';
+import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useAlertTagKeys, useColumnManagement } from './hooks';
 
 const Alerts = () => {
 	const navigate = useNavigate();
+	const { toast } = useToast();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: archivedAlerts = [], isLoading: isLoadingArchived, refetch: refetchArchived } = useArchivedAlerts();
 	const { data: services = [] } = useServices();
+	const { data: dashboards = [] } = useGetDashboards();
+	const createDashboardMutation = useCreateDashboard();
+	const updateDashboardMutation = useUpdateDashboard();
+	const deleteDashboardMutation = useDeleteDashboard();
+
+	const {
+		dashboardState,
+		isDirty,
+		initialState,
+		updateDashboardField,
+		markAsClean,
+		resetDashboard,
+		setShowUnsavedChangesDialog,
+		setPendingNavigation,
+		setInitialState,
+	} = useDashboard();
 
 	const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
-	const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
-	const [archivedFilters, setArchivedFilters] = useState<Record<string, string[]>>({});
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
-	const [showColumnSettings, setShowColumnSettings] = useState(false);
+	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 
 	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -40,9 +65,8 @@ const Alerts = () => {
 		return updatedAlert || selectedAlert;
 	}, [selectedAlert, currentAlertData]);
 
-	const shouldPauseRefresh = showColumnSettings || syncedSelectedAlert !== null;
+	const shouldPauseRefresh = showDashboardSettings || syncedSelectedAlert !== null;
 
-	// Active alerts refresh
 	const {
 		lastRefresh: lastRefreshActive,
 		isRefreshing: isRefreshingActive,
@@ -51,7 +75,6 @@ const Alerts = () => {
 		shouldPause: shouldPauseRefresh || activeTab !== 'active',
 	});
 
-	// Archived alerts refresh
 	const {
 		lastRefresh: lastRefreshArchived,
 		isRefreshing: isRefreshingArchived,
@@ -60,17 +83,71 @@ const Alerts = () => {
 		shouldPause: shouldPauseRefresh || activeTab !== 'archived',
 	});
 
-	// Use the appropriate refresh state based on active tab
 	const lastRefresh = activeTab === 'active' ? lastRefreshActive : lastRefreshArchived;
 	const isRefreshing = activeTab === 'active' ? isRefreshingActive : isRefreshingArchived;
 	const handleManualRefresh = activeTab === 'active' ? handleManualRefreshActive : handleManualRefreshArchived;
-	const currentFilters = activeTab === 'active' ? activeFilters : archivedFilters;
-	const currentAlerts = activeTab === 'active' ? alerts : archivedAlerts;
+
 	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
 		tagKeys,
+		initialVisibleColumns: dashboardState.visibleColumns.length > 0 ? dashboardState.visibleColumns : undefined,
+		initialColumnOrder: dashboardState.columnOrder.length > 0 ? dashboardState.columnOrder : undefined,
 	});
-	const filteredAlerts = useAlertsFiltering(alerts, activeFilters);
-	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, archivedFilters);
+
+	useEffect(() => {
+		if (JSON.stringify(visibleColumns) !== JSON.stringify(dashboardState.visibleColumns)) {
+			updateDashboardField('visibleColumns', visibleColumns);
+		}
+	}, [visibleColumns, dashboardState.visibleColumns, updateDashboardField]);
+
+	useEffect(() => {
+		if (JSON.stringify(columnOrder) !== JSON.stringify(dashboardState.columnOrder)) {
+			updateDashboardField('columnOrder', columnOrder);
+		}
+	}, [columnOrder, dashboardState.columnOrder, updateDashboardField]);
+
+	const handleSaveDashboard = async () => {
+		const dashboardData = {
+			name: dashboardState.name || 'New Dashboard',
+			type: dashboardState.type,
+			description: dashboardState.description,
+			filters: dashboardState.filters,
+			visibleColumns: dashboardState.visibleColumns,
+			query: dashboardState.query,
+			groupBy: dashboardState.groupBy,
+		};
+
+		try {
+			if (dashboardState.id) {
+				await updateDashboardMutation.mutateAsync({
+					id: dashboardState.id,
+					...dashboardData,
+				});
+			} else {
+				const result = await createDashboardMutation.mutateAsync(dashboardData);
+				if (result?.id) {
+					updateDashboardField('id', result.id);
+				}
+			}
+			markAsClean();
+			toast({
+				title: 'Dashboard saved',
+				description: 'Your changes have been saved successfully.',
+			});
+		} catch (error) {
+			toast({
+				title: 'Error saving dashboard',
+				description: 'Failed to save dashboard changes',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleFilterChange = (newFilters: Record<string, string[]>) => {
+		updateDashboardField('filters', newFilters);
+	};
+
+	const filteredAlerts = useAlertsFiltering(alerts, dashboardState.filters);
+	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, dashboardState.filters);
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 
@@ -83,12 +160,55 @@ const Alerts = () => {
 	};
 
 	const handleLaunchTVMode = () => {
-		const params = new URLSearchParams({
-			filters: JSON.stringify(activeFilters),
-			visibleColumns: JSON.stringify(visibleColumns),
-			columnOrder: JSON.stringify(columnOrder),
-		});
-		navigate(`/alerts/tv-mode?${params.toString()}`);
+		navigate('/alerts/tv-mode');
+	};
+
+	const handleNewDashboard = () => {
+		if (isDirty) {
+			setPendingNavigation(() => resetDashboard);
+			setShowUnsavedChangesDialog(true);
+		} else {
+			resetDashboard();
+		}
+	};
+
+	const handleDashboardSelect = (dashboard: Dashboard) => {
+		const loadDashboard = () => {
+			setInitialState({
+				id: dashboard.id,
+				name: dashboard.name,
+				type: dashboard.type,
+				description: dashboard.description || '',
+				visibleColumns: dashboard.visibleColumns || [],
+				filters: dashboard.filters || {},
+				columnOrder: [],
+				groupBy: dashboard.groupBy || [],
+				query: dashboard.query || '',
+			});
+		};
+
+		if (isDirty) {
+			setPendingNavigation(() => loadDashboard);
+			setShowUnsavedChangesDialog(true);
+		} else {
+			loadDashboard();
+		}
+	};
+
+	const handleDeleteDashboard = async () => {
+		if (!dashboardState.id) return;
+
+		try {
+			await deleteDashboardMutation.mutateAsync(dashboardState.id);
+			resetDashboard();
+			setShowDashboardSettings(false);
+		} catch (error) {
+			toast({
+				title: 'Error deleting dashboard',
+				description: 'Failed to delete dashboard',
+				variant: 'destructive',
+			});
+		}
 	};
 
 	return (
@@ -99,9 +219,9 @@ const Alerts = () => {
 					onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
 				>
 					<AlertsFilterPanel
-						alerts={currentAlerts}
-						filters={currentFilters}
-						onFilterChange={activeTab === 'active' ? setActiveFilters : setArchivedFilters}
+						alerts={currentAlertData}
+						filters={dashboardState.filters}
+						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
 						enabledTagKeys={enabledTagKeys}
 					/>
@@ -110,12 +230,24 @@ const Alerts = () => {
 				<div className="flex-1 flex min-h-0">
 					<div className="flex-1 flex flex-col p-4 min-h-0 min-w-0">
 						<div className="flex-shrink-0 mb-4">
-							<AlertsHeader
-								alertsCount={activeTab === 'active' ? alerts.length : archivedAlerts.length}
+							<DashboardHeader
+								dashboardName={dashboardState.name}
+								onDashboardNameChange={(name) => updateDashboardField('name', name)}
+								onDashboardNameBlur={() => {
+									if (dashboardState.name && dashboardState.name !== initialState.name) {
+										handleSaveDashboard();
+									}
+								}}
+								isDirty={isDirty}
+								onSave={handleSaveDashboard}
+								onSettingsClick={() => setShowDashboardSettings(true)}
 								isRefreshing={isRefreshing}
 								lastRefresh={lastRefresh}
 								onRefresh={handleManualRefresh}
 								onLaunchTVMode={handleLaunchTVMode}
+								dashboards={dashboards}
+								onDashboardSelect={handleDashboardSelect}
+								onNewDashboard={handleNewDashboard}
 							/>
 
 							<div className="mt-3">
@@ -169,8 +301,10 @@ const Alerts = () => {
 										visibleColumns={visibleColumns}
 										columnOrder={columnOrder}
 										onAlertClick={setSelectedAlert}
-										onTableSettingsClick={() => setShowColumnSettings(true)}
+										onTableSettingsClick={() => setShowDashboardSettings(true)}
 										tagKeyColumnLabels={allColumnLabels}
+										groupByColumns={dashboardState.groupBy}
+										onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 									/>
 								</div>
 
@@ -203,8 +337,10 @@ const Alerts = () => {
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
 									onAlertClick={setSelectedAlert}
-									onTableSettingsClick={() => setShowColumnSettings(true)}
+									onTableSettingsClick={() => setShowDashboardSettings(true)}
 									tagKeyColumnLabels={allColumnLabels}
+									groupByColumns={dashboardState.groupBy}
+									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 								/>
 							</div>
 						)}
@@ -225,16 +361,20 @@ const Alerts = () => {
 				</div>
 			</div>
 
-			<ColumnSettingsModal
-				open={showColumnSettings}
-				onOpenChange={setShowColumnSettings}
+			<DashboardSettingsDrawer
+				open={showDashboardSettings}
+				onOpenChange={setShowDashboardSettings}
+				dashboardName={dashboardState.name}
+				onDashboardNameChange={(name) => updateDashboardField('name', name)}
+				dashboardDescription={dashboardState.description}
+				onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
 				visibleColumns={visibleColumns}
 				onColumnToggle={handleColumnToggle}
 				columnLabels={COLUMN_LABELS}
-				title="Alert Table Settings"
-				description="Select which columns to display in the alerts table."
 				excludeColumns={['actions']}
 				tagKeys={tagKeys}
+				onDelete={handleDeleteDashboard}
+				canDelete={!!dashboardState.id}
 			/>
 		</DashboardLayout>
 	);

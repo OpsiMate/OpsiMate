@@ -1,10 +1,8 @@
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Settings } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import { COLUMN_LABELS, COLUMN_WIDTHS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
@@ -31,6 +29,8 @@ export const AlertsTable = ({
 	columnOrder = DEFAULT_COLUMN_ORDER,
 	onAlertClick,
 	tagKeyColumnLabels = {},
+	groupByColumns: controlledGroupBy,
+	onGroupByChange,
 }: AlertsTableProps) => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const parentRef = useRef<HTMLDivElement>(null);
@@ -42,7 +42,9 @@ export const AlertsTable = ({
 	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
 	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(
 		sortedAlerts,
-		allColumnLabels
+		allColumnLabels,
+		controlledGroupBy,
+		onGroupByChange
 	);
 	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
 
@@ -116,17 +118,6 @@ export const AlertsTable = ({
 											>
 												<div className="flex items-center justify-between">
 													<span>{allColumnLabels[column] || ''}</span>
-													{onTableSettingsClick && (
-														<Button
-															variant="outline"
-															size="icon"
-															className="h-6 w-6 ml-auto rounded-full"
-															onClick={onTableSettingsClick}
-															title="Table settings"
-														>
-															<Settings className="h-3.5 w-3.5" />
-														</Button>
-													)}
 												</div>
 											</TableHead>
 										);

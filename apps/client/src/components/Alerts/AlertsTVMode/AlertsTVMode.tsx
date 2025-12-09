@@ -1,15 +1,26 @@
+import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
-import { ALERTS_GROUP_BY_STORAGE_KEY } from '@/components/Alerts/AlertsTable/hooks/useAlertGrouping.constants';
+import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
+import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
+import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import {
+	useCreateDashboard,
+	useDeleteDashboard,
+	useGetDashboards,
+	useUpdateDashboard,
+} from '@/hooks/queries/dashboards';
+import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { ArrowLeft, Bell, CheckCircle, LayoutGrid, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CheckCircle, LayoutGrid, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AlertCard } from './AlertCard';
 import { AlertsHeatmap } from './AlertsHeatmap';
 import { AUTO_REFRESH_INTERVAL_MS, GRID_CLASSES, GROUPABLE_COLUMNS } from './AlertsTVMode.constants';
@@ -18,37 +29,48 @@ import { createServiceNameLookup, filterAlertsByFilters, getAlertServiceId, getC
 
 const AlertsTVMode = () => {
 	const navigate = useNavigate();
-	const [searchParams] = useSearchParams();
 	const { toast } = useToast();
 
-	const filters = useMemo(() => {
-		try {
-			return JSON.parse(searchParams.get('filters') || '{}');
-		} catch {
-			return {};
-		}
-	}, [searchParams]);
+	const {
+		dashboardState,
+		updateDashboardField,
+		isDirty,
+		initialState,
+		markAsClean,
+		resetDashboard,
+		setShowUnsavedChangesDialog,
+		setPendingNavigation,
+		setInitialState,
+	} = useDashboard();
 
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: services = [] } = useServices();
+	const { data: dashboards = [] } = useGetDashboards();
+	const createDashboardMutation = useCreateDashboard();
+	const updateDashboardMutation = useUpdateDashboard();
+	const deleteDashboardMutation = useDeleteDashboard();
 	const dismissAlertMutation = useDismissAlert();
 	const undismissAlertMutation = useUndismissAlert();
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
-	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
-		try {
-			const saved = localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
-			return saved ? JSON.parse(saved) : [];
-		} catch {
-			return [];
-		}
+	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+
+	const allAlerts = useMemo(() => alerts, [alerts]);
+	const tagKeys = useAlertTagKeys(allAlerts);
+
+	const { visibleColumns, handleColumnToggle } = useColumnManagement({
+		tagKeys,
+		initialVisibleColumns: dashboardState.visibleColumns.length > 0 ? dashboardState.visibleColumns : undefined,
+		initialColumnOrder: dashboardState.columnOrder.length > 0 ? dashboardState.columnOrder : undefined,
 	});
 
 	useEffect(() => {
-		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, JSON.stringify(groupByColumns));
-	}, [groupByColumns]);
+		if (JSON.stringify(visibleColumns) !== JSON.stringify(dashboardState.visibleColumns)) {
+			updateDashboardField('visibleColumns', visibleColumns);
+		}
+	}, [visibleColumns, dashboardState.visibleColumns, updateDashboardField]);
 
 	const serviceNameById = useMemo(() => createServiceNameLookup(services), [services]);
 
@@ -72,8 +94,8 @@ const AlertsTVMode = () => {
 	);
 
 	const filteredAlerts = useMemo(
-		() => filterAlertsByFilters(alerts, filters, getServiceName),
-		[alerts, filters, getServiceName]
+		() => filterAlertsByFilters(alerts, dashboardState.filters, getServiceName),
+		[alerts, dashboardState.filters, getServiceName]
 	);
 
 	useEffect(() => {
@@ -104,6 +126,104 @@ const AlertsTVMode = () => {
 			setIsRefreshing(false);
 		}
 	}, [refetch, toast]);
+
+	const handleSaveDashboard = async () => {
+		const dashboardData = {
+			name: dashboardState.name || 'New Dashboard',
+			type: dashboardState.type,
+			description: dashboardState.description,
+			filters: dashboardState.filters,
+			visibleColumns: dashboardState.visibleColumns,
+			query: dashboardState.query,
+			groupBy: dashboardState.groupBy,
+		};
+
+		try {
+			if (dashboardState.id) {
+				await updateDashboardMutation.mutateAsync({
+					id: dashboardState.id,
+					...dashboardData,
+				});
+			} else {
+				const result = await createDashboardMutation.mutateAsync(dashboardData);
+				if (result?.id) {
+					updateDashboardField('id', result.id);
+				}
+			}
+			markAsClean();
+			toast({
+				title: 'Dashboard saved',
+				description: 'Your changes have been saved successfully.',
+			});
+		} catch (error) {
+			toast({
+				title: 'Error saving dashboard',
+				description: 'Failed to save dashboard changes',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleNavigateBack = useCallback(() => {
+		if (isDirty) {
+			const navigateToAlerts = () => navigate('/alerts');
+			setPendingNavigation(() => navigateToAlerts);
+			setShowUnsavedChangesDialog(true);
+		} else {
+			navigate('/alerts');
+		}
+	}, [isDirty, navigate, setPendingNavigation, setShowUnsavedChangesDialog]);
+
+	const handleNewDashboard = useCallback(() => {
+		if (isDirty) {
+			setPendingNavigation(() => resetDashboard);
+			setShowUnsavedChangesDialog(true);
+		} else {
+			resetDashboard();
+		}
+	}, [isDirty, resetDashboard, setPendingNavigation, setShowUnsavedChangesDialog]);
+
+	const handleDashboardSelect = useCallback(
+		(dashboard: Dashboard) => {
+			const loadDashboard = () => {
+				setInitialState({
+					id: dashboard.id,
+					name: dashboard.name,
+					type: dashboard.type,
+					description: dashboard.description || '',
+					visibleColumns: dashboard.visibleColumns || [],
+					filters: dashboard.filters || {},
+					columnOrder: [],
+					groupBy: dashboard.groupBy || [],
+					query: dashboard.query || '',
+				});
+			};
+
+			if (isDirty) {
+				setPendingNavigation(() => loadDashboard);
+				setShowUnsavedChangesDialog(true);
+			} else {
+				loadDashboard();
+			}
+		},
+		[isDirty, setInitialState, setPendingNavigation, setShowUnsavedChangesDialog]
+	);
+
+	const handleDeleteDashboard = useCallback(async () => {
+		if (!dashboardState.id) return;
+
+		try {
+			await deleteDashboardMutation.mutateAsync(dashboardState.id);
+			resetDashboard();
+			setShowDashboardSettings(false);
+		} catch (error) {
+			toast({
+				title: 'Error deleting dashboard',
+				description: 'Failed to delete dashboard',
+				variant: 'destructive',
+			});
+		}
+	}, [dashboardState.id, deleteDashboardMutation, resetDashboard, toast]);
 
 	const handleDismissAlert = async (alertId: string) => {
 		try {
@@ -142,7 +262,7 @@ const AlertsTVMode = () => {
 			if (e.key === 'Escape') {
 				const dialogOpen = document.querySelector('[role="dialog"]');
 				if (!dialogOpen) {
-					navigate('/alerts');
+					handleNavigateBack();
 				}
 			} else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
 				handleManualRefresh();
@@ -151,53 +271,66 @@ const AlertsTVMode = () => {
 
 		window.addEventListener('keydown', handleKeyPress);
 		return () => window.removeEventListener('keydown', handleKeyPress);
-	}, [navigate, handleManualRefresh]);
+	}, [handleNavigateBack, handleManualRefresh]);
 
 	const cardSize = getCardSize(filteredAlerts.length);
 
 	return (
 		<div className="min-h-screen bg-background p-4 flex flex-col">
-			<div className="mb-4 flex items-center justify-between flex-shrink-0">
-				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-2">
+			<div className="mb-4 flex flex-col gap-4">
+				<div className="flex items-center gap-2">
+					<Button variant="ghost" size="sm" onClick={handleNavigateBack} className="gap-2">
 						<ArrowLeft className="h-4 w-4" />
 						Back to Alerts
 					</Button>
-					<div className="flex items-center gap-2">
-						<Bell className="h-5 w-5 text-foreground" />
-						<h1 className="text-xl font-bold text-foreground">Alerts TV Mode</h1>
-						<Badge variant="secondary" className="ml-2">
+				</div>
+
+				<div className="flex items-center justify-between">
+					<div className="flex-1">
+						<DashboardHeader
+							dashboardName={dashboardState.name}
+							onDashboardNameChange={(name) => updateDashboardField('name', name)}
+							onDashboardNameBlur={() => {
+								if (dashboardState.name && dashboardState.name !== initialState.name) {
+									handleSaveDashboard();
+								}
+							}}
+							isDirty={isDirty}
+							onSave={handleSaveDashboard}
+							onSettingsClick={() => setShowDashboardSettings(true)}
+							isRefreshing={isRefreshing}
+							lastRefresh={lastRefresh}
+							onRefresh={handleManualRefresh}
+							showTvModeButton={false}
+							dashboards={dashboards}
+							onDashboardSelect={handleDashboardSelect}
+							onNewDashboard={handleNewDashboard}
+						/>
+					</div>
+
+					<div className="flex items-center gap-2 ml-4 self-start mt-1">
+						<div className="flex items-center bg-muted rounded-lg p-1">
+							<Button
+								variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+								size="sm"
+								onClick={() => setViewMode('grid')}
+								className="h-7 px-2 gap-1"
+							>
+								<LayoutGrid className="h-4 w-4" /> Grid
+							</Button>
+							<Button
+								variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
+								size="sm"
+								onClick={() => setViewMode('heatmap')}
+								className="h-7 px-2 gap-1"
+							>
+								<MapIcon className="h-4 w-4" /> Map
+							</Button>
+						</div>
+						<Badge variant="secondary" className="ml-2 h-7 flex items-center">
 							{filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''}
 						</Badge>
 					</div>
-				</div>
-				<div className="flex items-center gap-2">
-					<div className="flex items-center bg-muted rounded-lg p-1 mr-2">
-						<Button
-							variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-							size="sm"
-							onClick={() => setViewMode('grid')}
-							className="h-7 px-2 gap-1"
-						>
-							<LayoutGrid className="h-4 w-4" /> Grid
-						</Button>
-						<Button
-							variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
-							size="sm"
-							onClick={() => setViewMode('heatmap')}
-							className="h-7 px-2 gap-1"
-						>
-							<MapIcon className="h-4 w-4" /> Map
-						</Button>
-					</div>
-
-					<Button size="sm" onClick={handleManualRefresh} disabled={isRefreshing} className="gap-2">
-						<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-						Refresh
-					</Button>
-					{lastRefresh && (
-						<span className="text-xs text-foreground">Last: {lastRefresh.toLocaleTimeString()}</span>
-					)}
 				</div>
 			</div>
 
@@ -220,12 +353,12 @@ const AlertsTVMode = () => {
 				<div className="flex-1 border rounded-lg overflow-hidden bg-card shadow-sm">
 					<AlertsHeatmap
 						alerts={filteredAlerts}
-						groupBy={groupByColumns}
+						groupBy={dashboardState.groupBy}
 						customValueGetter={getAlertValueWithService}
 						onDismiss={handleDismissAlert}
 						onUndismiss={handleUndismissAlert}
-						groupByColumns={groupByColumns}
-						onGroupByChange={setGroupByColumns}
+						groupByColumns={dashboardState.groupBy}
+						onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 						availableColumns={GROUPABLE_COLUMNS}
 					/>
 				</div>
@@ -256,6 +389,22 @@ const AlertsTVMode = () => {
 					</span>
 				</div>
 			</div>
+
+			<DashboardSettingsDrawer
+				open={showDashboardSettings}
+				onOpenChange={setShowDashboardSettings}
+				dashboardName={dashboardState.name}
+				onDashboardNameChange={(name) => updateDashboardField('name', name)}
+				dashboardDescription={dashboardState.description}
+				onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
+				visibleColumns={visibleColumns}
+				onColumnToggle={handleColumnToggle}
+				columnLabels={COLUMN_LABELS}
+				excludeColumns={['actions']}
+				tagKeys={tagKeys}
+				onDelete={handleDeleteDashboard}
+				canDelete={!!dashboardState.id}
+			/>
 		</div>
 	);
 };

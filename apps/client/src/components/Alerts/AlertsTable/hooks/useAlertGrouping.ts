@@ -3,8 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createTagKeyValueGetter, flattenGroups, groupAlerts } from '../AlertsTable.utils';
 import { ALERTS_GROUP_BY_STORAGE_KEY } from './useAlertGrouping.constants';
 
-export const useAlertGrouping = (sortedAlerts: Alert[], columnLabels: Record<string, string> = {}) => {
-	const [groupByColumns, setGroupByColumns] = useState<string[]>(() => {
+export const useAlertGrouping = (
+	sortedAlerts: Alert[],
+	columnLabels: Record<string, string> = {},
+	controlledGroupBy?: string[],
+	onGroupByChange?: (cols: string[]) => void
+) => {
+	const [localGroupByColumns, setLocalGroupByColumns] = useState<string[]>(() => {
 		try {
 			const saved = localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
 			return saved ? JSON.parse(saved) : [];
@@ -13,9 +18,25 @@ export const useAlertGrouping = (sortedAlerts: Alert[], columnLabels: Record<str
 		}
 	});
 
+	const groupByColumns = controlledGroupBy !== undefined ? controlledGroupBy : localGroupByColumns;
+
+	const setGroupByColumns = useCallback(
+		(cols: string[] | ((prev: string[]) => string[])) => {
+			if (onGroupByChange) {
+				const newCols = typeof cols === 'function' ? cols(groupByColumns) : cols;
+				onGroupByChange(newCols);
+			} else {
+				setLocalGroupByColumns(cols);
+			}
+		},
+		[groupByColumns, onGroupByChange]
+	);
+
 	useEffect(() => {
-		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, JSON.stringify(groupByColumns));
-	}, [groupByColumns]);
+		if (controlledGroupBy === undefined) {
+			localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, JSON.stringify(groupByColumns));
+		}
+	}, [groupByColumns, controlledGroupBy]);
 
 	const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
