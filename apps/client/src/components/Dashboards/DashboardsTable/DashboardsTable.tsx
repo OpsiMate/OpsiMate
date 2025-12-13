@@ -2,7 +2,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { LayoutDashboard, Star, Tags } from 'lucide-react';
+import { LayoutDashboard, Tags } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { COLUMN_WIDTHS } from '../Dashboards.constants';
 import { DashboardsTableProps, DashboardWithFavorite } from '../Dashboards.types';
@@ -93,9 +93,7 @@ export const DashboardsTable = ({
 				<Table className="table-fixed w-full">
 					<TableHeader>
 						<TableRow className="h-10">
-							<TableHead className={cn('py-2 px-3 text-center', COLUMN_WIDTHS.favorite)}>
-								<Star className="h-4 w-4 text-muted-foreground mx-auto" />
-							</TableHead>
+							<TableHead className={cn('py-2 px-3 text-center', COLUMN_WIDTHS.favorite)}></TableHead>
 							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.name)}>Name</TableHead>
 							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.description)}>
 								Description
