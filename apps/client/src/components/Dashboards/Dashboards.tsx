@@ -42,6 +42,18 @@ export const Dashboards = () => {
 		return map;
 	}, [dashboardTagsData]);
 
+	const usedDashboardTags = useMemo(() => {
+		const tagMap = new Map<number, Tag>();
+		for (const item of dashboardTagsData) {
+			for (const tag of item.tags) {
+				if (!tagMap.has(tag.id)) {
+					tagMap.set(tag.id, tag);
+				}
+			}
+		}
+		return Array.from(tagMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+	}, [dashboardTagsData]);
+
 	const enrichedDashboards = useMemo<DashboardWithFavorite[]>(() => {
 		return dashboards.map((d) => ({
 			...d,
@@ -158,7 +170,7 @@ export const Dashboards = () => {
 				<DashboardsFilter
 					searchTerm={searchTerm}
 					onSearchChange={setSearchTerm}
-					availableTags={availableTags}
+					availableTags={usedDashboardTags}
 					selectedTagIds={selectedTagFilters}
 					onTagToggle={handleTagFilterToggle}
 					onClearTagFilters={clearTagFilters}
