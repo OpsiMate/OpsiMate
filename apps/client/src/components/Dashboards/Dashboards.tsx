@@ -1,6 +1,12 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useDashboard } from '@/context/DashboardContext';
-import { useDeleteDashboard, useGetDashboards } from '@/hooks/queries/dashboards';
+import {
+	useAddTagToDashboard,
+	useDeleteDashboard,
+	useGetAllDashboardTags,
+	useGetDashboards,
+	useRemoveTagFromDashboard,
+} from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useTags } from '@/hooks/queries/tags';
 import { useToast } from '@/hooks/use-toast';
@@ -11,35 +17,38 @@ import { DashboardsFilter } from './DashboardsFilter';
 import { DashboardsHeader } from './DashboardsHeader';
 import { DashboardsTable } from './DashboardsTable';
 import { DashboardWithFavorite } from './Dashboards.types';
-import {
-	addTagToDashboard,
-	filterDashboards,
-	getDashboardTags,
-	getFavoriteDashboards,
-	removeTagFromDashboard,
-	toggleFavorite,
-} from './Dashboards.utils';
+import { filterDashboards, getFavoriteDashboards, toggleFavorite } from './Dashboards.utils';
 
 export const Dashboards = () => {
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { data: dashboards = [], isLoading } = useGetDashboards();
 	const { data: availableTags = [] } = useTags();
+	const { data: dashboardTagsData = [] } = useGetAllDashboardTags();
 	const deleteDashboardMutation = useDeleteDashboard();
+	const addTagMutation = useAddTagToDashboard();
+	const removeTagMutation = useRemoveTagFromDashboard();
 	const { setInitialState, resetDashboard } = useDashboard();
 
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedTagFilters, setSelectedTagFilters] = useState<number[]>([]);
 	const [favorites, setFavorites] = useState<string[]>(() => getFavoriteDashboards());
-	const [dashboardTags, setDashboardTags] = useState<Record<string, Tag[]>>(() => getDashboardTags());
+
+	const dashboardTagsMap = useMemo(() => {
+		const map: Record<string, Tag[]> = {};
+		for (const item of dashboardTagsData) {
+			map[String(item.dashboardId)] = item.tags;
+		}
+		return map;
+	}, [dashboardTagsData]);
 
 	const enrichedDashboards = useMemo<DashboardWithFavorite[]>(() => {
 		return dashboards.map((d) => ({
 			...d,
 			isFavorite: favorites.includes(d.id),
-			tags: dashboardTags[d.id] || [],
+			tags: dashboardTagsMap[d.id] || [],
 		}));
-	}, [dashboards, favorites, dashboardTags]);
+	}, [dashboards, favorites, dashboardTagsMap]);
 
 	const filteredDashboards = useMemo(() => {
 		let result = filterDashboards(enrichedDashboards, searchTerm);
@@ -52,7 +61,9 @@ export const Dashboards = () => {
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
 
 	const handleTagFilterToggle = useCallback((tagId: number) => {
-		setSelectedTagFilters((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
+		setSelectedTagFilters((prev) =>
+			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+		);
 	}, []);
 
 	const clearTagFilters = useCallback(() => {
@@ -102,15 +113,37 @@ export const Dashboards = () => {
 		setFavorites(newFavorites);
 	}, []);
 
-	const handleAddTag = useCallback((dashboardId: string, tag: Tag) => {
-		const newTags = addTagToDashboard(dashboardId, tag);
-		setDashboardTags({ ...newTags });
-	}, []);
+	const handleAddTag = useCallback(
+		async (dashboardId: string, tag: Tag) => {
+			try {
+				await addTagMutation.mutateAsync({ dashboardId, tagId: tag.id });
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Failed to add tag';
+				toast({
+					title: 'Error',
+					description: errorMessage,
+					variant: 'destructive',
+				});
+			}
+		},
+		[addTagMutation, toast]
+	);
 
-	const handleRemoveTag = useCallback((dashboardId: string, tagId: number) => {
-		const newTags = removeTagFromDashboard(dashboardId, tagId);
-		setDashboardTags({ ...newTags });
-	}, []);
+	const handleRemoveTag = useCallback(
+		async (dashboardId: string, tagId: number) => {
+			try {
+				await removeTagMutation.mutateAsync({ dashboardId, tagId });
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Failed to remove tag';
+				toast({
+					title: 'Error',
+					description: errorMessage,
+					variant: 'destructive',
+				});
+			}
+		},
+		[removeTagMutation, toast]
+	);
 
 	const handleCreateDashboard = useCallback(() => {
 		resetDashboard();

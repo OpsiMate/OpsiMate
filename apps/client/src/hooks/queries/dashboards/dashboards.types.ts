@@ -23,3 +23,10 @@ export interface CreateDashboardInput {
 export interface UpdateDashboardInput extends CreateDashboardInput {
 	id: string;
 }
+
+import { Tag } from '@OpsiMate/shared';
+
+export interface DashboardTagsResponse {
+	dashboardId: number;
+	tags: Tag[];
+}

@@ -126,6 +126,23 @@ export class TagRepository {
             `
 				)
 				.run();
+
+			this.db
+				.prepare(
+					`
+                CREATE TABLE IF NOT EXISTS dashboard_tags
+                (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    dashboard_id INTEGER NOT NULL,
+                    tag_id       INTEGER NOT NULL,
+                    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (dashboard_id, tag_id),
+                    FOREIGN KEY (dashboard_id) REFERENCES dashboards (id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
+                )
+            `
+				)
+				.run();
 		});
 	}
 	// Deletes all tag links for the given service (from the pivot table).
@@ -149,6 +166,70 @@ export class TagRepository {
 				)
 				.all(tagName) as { service_id: number }[];
 			return rows.map((r) => r.service_id);
+		});
+	}
+
+	async addTagToDashboard(dashboardId: number, tagId: number): Promise<void> {
+		return runAsync(() => {
+			this.db
+				.prepare('INSERT OR IGNORE INTO dashboard_tags (dashboard_id, tag_id) VALUES (?, ?)')
+				.run(dashboardId, tagId);
+		});
+	}
+
+	async removeTagFromDashboard(dashboardId: number, tagId: number): Promise<void> {
+		return runAsync(() => {
+			this.db.prepare('DELETE FROM dashboard_tags WHERE dashboard_id = ? AND tag_id = ?').run(dashboardId, tagId);
+		});
+	}
+
+	async getDashboardTags(dashboardId: number): Promise<Tag[]> {
+		return runAsync(() => {
+			const query = `
+                SELECT t.id as id, t.name as name, t.color as color, t.created_at as createdAt
+                FROM tags t
+                         JOIN dashboard_tags dt ON t.id = dt.tag_id
+                WHERE dt.dashboard_id = ?
+                ORDER BY t.name
+            `;
+			return this.db.prepare(query).all(dashboardId) as Tag[];
+		});
+	}
+
+	async getAllDashboardTags(): Promise<{ dashboardId: number; tags: Tag[] }[]> {
+		return runAsync(() => {
+			const query = `
+                SELECT dt.dashboard_id, t.id, t.name, t.color, t.created_at as createdAt
+                FROM dashboard_tags dt
+                JOIN tags t ON t.id = dt.tag_id
+                ORDER BY dt.dashboard_id, t.name
+            `;
+			const rows = this.db.prepare(query).all() as { dashboard_id: number; id: number; name: string; color: string; createdAt: string }[];
+
+			const dashboardTagsMap = new Map<number, Tag[]>();
+			for (const row of rows) {
+				if (!dashboardTagsMap.has(row.dashboard_id)) {
+					dashboardTagsMap.set(row.dashboard_id, []);
+				}
+				dashboardTagsMap.get(row.dashboard_id)!.push({
+					id: row.id,
+					name: row.name,
+					color: row.color,
+					createdAt: row.createdAt,
+				});
+			}
+
+			return Array.from(dashboardTagsMap.entries()).map(([dashboardId, tags]) => ({
+				dashboardId,
+				tags,
+			}));
+		});
+	}
+
+	async deleteAllDashboardTags(dashboardId: number): Promise<number> {
+		return runAsync(() => {
+			const r = this.db.prepare('DELETE FROM dashboard_tags WHERE dashboard_id = ?').run(dashboardId);
+			return r.changes;
 		});
 	}
 }

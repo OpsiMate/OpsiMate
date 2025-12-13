@@ -141,7 +141,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		tagRepo,
 		alertBL
 	);
-	const dashboardController = new DashboardController(dashboardBL);
+	const dashboardController = new DashboardController(dashboardBL, tagRepo);
 	const tagController = new TagController(tagRepo, serviceRepo);
 	const integrationController = new IntegrationController(integrationBL);
 	const alertController = new AlertController(alertBL);

@@ -12,6 +12,10 @@ export class DashboardBL {
 		return await this.dashboardRepository.getAllDashboards();
 	}
 
+	async getDashboardById(id: string): Promise<Dashboard | null> {
+		return await this.dashboardRepository.getDashboardById(id);
+	}
+
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>, user: User): Promise<number> {
 		const dashboardId = await this.dashboardRepository.createDashboard(dashboard);
 

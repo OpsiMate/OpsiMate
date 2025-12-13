@@ -3,11 +3,25 @@ import { CreateDashboardSchema, Logger } from '@OpsiMate/shared';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { DashboardBL } from '../../../bl/dashboards/dashboard.bl.ts';
+import { TagRepository } from '../../../dal/tagRepository';
+import { z } from 'zod';
 
 const logger = new Logger('api/v1/dashboards/controller');
 
+const DashboardTagSchema = z.object({
+	dashboardId: z.string().transform((val) => {
+		const parsed = parseInt(val);
+		if (isNaN(parsed)) throw new Error('Invalid dashboard ID');
+		return parsed;
+	}),
+	tagId: z.number().int().positive(),
+});
+
 export class DashboardController {
-	constructor(private dashboardBL: DashboardBL) {}
+	constructor(
+		private dashboardBL: DashboardBL,
+		private tagRepo?: TagRepository
+	) {}
 
 	getDashboardsHandler = async (req: Request, res: Response) => {
 		try {
@@ -84,6 +98,109 @@ export class DashboardController {
 			logger.error('Error deleting dashboards:', error);
 			const message = error instanceof Error ? error.message : String(error);
 			return res.status(500).json({ success: false, error: message || 'Failed to delete dashboard' });
+		}
+	};
+
+	getDashboardTagsHandler = async (req: Request, res: Response) => {
+		try {
+			if (!this.tagRepo) {
+				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
+			}
+
+			const { dashboardId } = z
+				.object({
+					dashboardId: z.string().transform((val) => {
+						const parsed = parseInt(val);
+						if (isNaN(parsed)) throw new Error('Invalid dashboard ID');
+						return parsed;
+					}),
+				})
+				.parse({ dashboardId: req.params.dashboardId });
+
+			const tags = await this.tagRepo.getDashboardTags(dashboardId);
+			return res.json({ success: true, data: tags });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error getting dashboard tags:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	getAllDashboardTagsHandler = async (req: Request, res: Response) => {
+		try {
+			if (!this.tagRepo) {
+				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
+			}
+
+			const dashboardTags = await this.tagRepo.getAllDashboardTags();
+			return res.json({ success: true, data: dashboardTags });
+		} catch (error) {
+			logger.error('Error getting all dashboard tags:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	addTagToDashboardHandler = async (req: Request, res: Response) => {
+		try {
+			if (!this.tagRepo) {
+				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
+			}
+
+			const { dashboardId } = req.params;
+			const { tagId } = req.body as { tagId: number };
+			const parsed = DashboardTagSchema.parse({
+				dashboardId,
+				tagId,
+			});
+
+			const dashboard = await this.dashboardBL.getDashboardById(String(parsed.dashboardId));
+			if (!dashboard) {
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
+			}
+
+			const tag = await this.tagRepo.getTagById(parsed.tagId);
+			if (!tag) {
+				return res.status(404).json({ success: false, error: 'Tag not found' });
+			}
+
+			await this.tagRepo.addTagToDashboard(parsed.dashboardId, parsed.tagId);
+			return res.json({ success: true, message: 'Tag added to dashboard successfully' });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error adding tag to dashboard:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	removeTagFromDashboardHandler = async (req: Request, res: Response) => {
+		try {
+			if (!this.tagRepo) {
+				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
+			}
+
+			const { dashboardId, tagId } = req.params;
+			const parsed = DashboardTagSchema.parse({
+				dashboardId,
+				tagId: Number(tagId),
+			});
+
+			const tag = await this.tagRepo.getTagById(parsed.tagId);
+			if (!tag) {
+				return res.status(404).json({ success: false, error: 'Tag not found' });
+			}
+
+			await this.tagRepo.removeTagFromDashboard(parsed.dashboardId, parsed.tagId);
+			return res.json({ success: true, message: 'Tag removed from dashboard successfully' });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error removing tag from dashboard:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 }
