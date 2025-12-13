@@ -12,10 +12,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Tag } from '@OpsiMate/shared';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardsFilter } from './DashboardsFilter';
-import { DashboardsTable } from './DashboardsTable';
 import { DashboardWithFavorite } from './Dashboards.types';
 import { filterDashboards, getFavoriteDashboards, toggleFavorite } from './Dashboards.utils';
+import { DashboardsFilter } from './DashboardsFilter';
+import { DashboardsTable } from './DashboardsTable';
 
 export const Dashboards = () => {
 	const navigate = useNavigate();

@@ -20,6 +20,7 @@ export interface DashboardHeaderProps {
 	onDashboardSelect?: (dashboard: Dashboard) => void;
 	showTvModeButton?: boolean;
 	onNewDashboard?: () => void;
+	isDraft?: boolean;
 }
 
 export const DashboardHeader = ({
@@ -37,6 +38,7 @@ export const DashboardHeader = ({
 	onDashboardSelect,
 	showTvModeButton = true,
 	onNewDashboard,
+	isDraft = false,
 }: DashboardHeaderProps) => {
 	const [isEditingName, setIsEditingName] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -85,11 +87,18 @@ export const DashboardHeader = ({
 						className="text-2xl font-bold h-10 w-auto min-w-[200px] max-w-[400px]"
 					/>
 				) : (
-					<div
-						onClick={handleNameClick}
-						className="text-2xl font-bold tracking-tight text-foreground cursor-pointer border border-transparent hover:border-input rounded px-2 py-1 -ml-2 transition-colors"
-					>
-						{dashboardName || 'New Dashboard'}
+					<div className="flex items-center gap-2">
+						<div
+							onClick={handleNameClick}
+							className="text-2xl font-bold tracking-tight text-foreground cursor-pointer border border-transparent hover:border-input rounded px-2 py-1 -ml-2 transition-colors"
+						>
+							{dashboardName || 'New Dashboard'}
+						</div>
+						{isDraft && (
+							<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none">
+								Draft
+							</span>
+						)}
 					</div>
 				)}
 

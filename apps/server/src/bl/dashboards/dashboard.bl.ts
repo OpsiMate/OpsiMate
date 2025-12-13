@@ -1,11 +1,13 @@
-import { AuditActionType, AuditResourceType, Dashboard, User } from '@OpsiMate/shared';
+import { AuditActionType, AuditResourceType, Dashboard, Tag, User } from '@OpsiMate/shared';
 import { DashboardRepository } from '../../dal/dashboardRepository.ts';
 import { AuditBL } from '../audit/audit.bl';
+import { TagBL } from '../tags/tag.bl';
 
 export class DashboardBL {
 	constructor(
 		private dashboardRepository: DashboardRepository,
-		private auditBL: AuditBL
+		private auditBL: AuditBL,
+		private tagBL: TagBL
 	) {}
 
 	async getAllDashboards(): Promise<Dashboard[]> {
@@ -58,5 +60,29 @@ export class DashboardBL {
 			userName: user.fullName,
 			resourceName: dashboard.name,
 		});
+	}
+
+	async getDashboardTags(dashboardId: number): Promise<Tag[]> {
+		return await this.tagBL.getDashboardTags(dashboardId);
+	}
+
+	async getAllDashboardTags(): Promise<{ dashboardId: number; tags: Tag[] }[]> {
+		return await this.tagBL.getAllDashboardTags();
+	}
+
+	async addTagToDashboard(dashboardId: number, tagId: number): Promise<void> {
+		const tag = await this.tagBL.getTagById(tagId);
+		if (!tag) {
+			throw new Error(`Tag with ID ${tagId} not found`);
+		}
+		return await this.tagBL.addTagToDashboard(dashboardId, tagId);
+	}
+
+	async removeTagFromDashboard(dashboardId: number, tagId: number): Promise<void> {
+		const tag = await this.tagBL.getTagById(tagId);
+		if (!tag) {
+			throw new Error(`Tag with ID ${tagId} not found`);
+		}
+		return await this.tagBL.removeTagFromDashboard(dashboardId, tagId);
 	}
 }

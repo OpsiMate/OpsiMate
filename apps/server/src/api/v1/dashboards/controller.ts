@@ -3,15 +3,11 @@ import { CreateDashboardSchema, DashboardIdSchema, DashboardTagSchema, Logger } 
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { DashboardBL } from '../../../bl/dashboards/dashboard.bl.ts';
-import { TagRepository } from '../../../dal/tagRepository';
 
 const logger = new Logger('api/v1/dashboards/controller');
 
 export class DashboardController {
-	constructor(
-		private dashboardBL: DashboardBL,
-		private tagRepo?: TagRepository
-	) {}
+	constructor(private dashboardBL: DashboardBL) {}
 
 	getDashboardsHandler = async (req: Request, res: Response) => {
 		try {
@@ -93,13 +89,9 @@ export class DashboardController {
 
 	getDashboardTagsHandler = async (req: Request, res: Response) => {
 		try {
-			if (!this.tagRepo) {
-				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
-			}
-
 			const { dashboardId } = DashboardIdSchema.parse({ dashboardId: req.params.dashboardId });
 
-			const tags = await this.tagRepo.getDashboardTags(dashboardId);
+			const tags = await this.dashboardBL.getDashboardTags(dashboardId);
 			return res.json({ success: true, data: tags });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -112,11 +104,7 @@ export class DashboardController {
 
 	getAllDashboardTagsHandler = async (req: Request, res: Response) => {
 		try {
-			if (!this.tagRepo) {
-				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
-			}
-
-			const dashboardTags = await this.tagRepo.getAllDashboardTags();
+			const dashboardTags = await this.dashboardBL.getAllDashboardTags();
 			return res.json({ success: true, data: dashboardTags });
 		} catch (error) {
 			logger.error('Error getting all dashboard tags:', error);
@@ -126,10 +114,6 @@ export class DashboardController {
 
 	addTagToDashboardHandler = async (req: Request, res: Response) => {
 		try {
-			if (!this.tagRepo) {
-				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
-			}
-
 			const { dashboardId } = req.params;
 			const { tagId } = req.body as { tagId: number };
 			const parsed = DashboardTagSchema.parse({
@@ -142,16 +126,15 @@ export class DashboardController {
 				return res.status(404).json({ success: false, error: 'Dashboard not found' });
 			}
 
-			const tag = await this.tagRepo.getTagById(parsed.tagId);
-			if (!tag) {
-				return res.status(404).json({ success: false, error: 'Tag not found' });
-			}
-
-			await this.tagRepo.addTagToDashboard(parsed.dashboardId, parsed.tagId);
+			await this.dashboardBL.addTagToDashboard(parsed.dashboardId, parsed.tagId);
 			return res.json({ success: true, message: 'Tag added to dashboard successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			const message = error instanceof Error ? error.message : 'Internal server error';
+			if (message.includes('not found')) {
+				return res.status(404).json({ success: false, error: message });
 			}
 			logger.error('Error adding tag to dashboard:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -160,26 +143,21 @@ export class DashboardController {
 
 	removeTagFromDashboardHandler = async (req: Request, res: Response) => {
 		try {
-			if (!this.tagRepo) {
-				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
-			}
-
 			const { dashboardId, tagId } = req.params;
 			const parsed = DashboardTagSchema.parse({
 				dashboardId: Number(dashboardId),
 				tagId: Number(tagId),
 			});
 
-			const tag = await this.tagRepo.getTagById(parsed.tagId);
-			if (!tag) {
-				return res.status(404).json({ success: false, error: 'Tag not found' });
-			}
-
-			await this.tagRepo.removeTagFromDashboard(parsed.dashboardId, parsed.tagId);
+			await this.dashboardBL.removeTagFromDashboard(parsed.dashboardId, parsed.tagId);
 			return res.json({ success: true, message: 'Tag removed from dashboard successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			const message = error instanceof Error ? error.message : 'Internal server error';
+			if (message.includes('not found')) {
+				return res.status(404).json({ success: false, error: message });
 			}
 			logger.error('Error removing tag from dashboard:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
