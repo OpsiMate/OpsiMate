@@ -52,9 +52,7 @@ export const Dashboards = () => {
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
 
 	const handleTagFilterToggle = useCallback((tagId: number) => {
-		setSelectedTagFilters((prev) =>
-			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-		);
+		setSelectedTagFilters((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
 	}, []);
 
 	const clearTagFilters = useCallback(() => {

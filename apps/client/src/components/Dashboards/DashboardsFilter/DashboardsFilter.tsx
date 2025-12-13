@@ -63,4 +63,3 @@ export const DashboardsFilter = ({
 		</div>
 	);
 };
-

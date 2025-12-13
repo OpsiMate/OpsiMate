@@ -107,4 +107,3 @@ export const TagsFilter = ({ availableTags, selectedTagIds, onTagToggle, onClear
 		</div>
 	);
 };
-
