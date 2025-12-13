@@ -1,13 +1,15 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDashboard } from '@/context/DashboardContext';
 import { useDeleteDashboard, useGetDashboards } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useTags } from '@/hooks/queries/tags';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
-import { LayoutDashboard, Plus, Search, X } from 'lucide-react';
+import { Check, LayoutDashboard, Plus, Search, Tags, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardsTable } from './DashboardsTable';
@@ -30,6 +32,8 @@ export const Dashboards = () => {
 	const { setInitialState, resetDashboard } = useDashboard();
 
 	const [searchTerm, setSearchTerm] = useState('');
+	const [selectedTagFilters, setSelectedTagFilters] = useState<number[]>([]);
+	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [favorites, setFavorites] = useState<string[]>(() => getFavoriteDashboards());
 	const [dashboardTags, setDashboardTags] = useState<Record<string, Tag[]>>(() => getDashboardTags());
 
@@ -42,8 +46,24 @@ export const Dashboards = () => {
 	}, [dashboards, favorites, dashboardTags]);
 
 	const filteredDashboards = useMemo(() => {
-		return filterDashboards(enrichedDashboards, searchTerm);
-	}, [enrichedDashboards, searchTerm]);
+		let result = filterDashboards(enrichedDashboards, searchTerm);
+
+		if (selectedTagFilters.length > 0) {
+			result = result.filter((d) => d.tags?.some((tag) => selectedTagFilters.includes(tag.id)));
+		}
+
+		return result;
+	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
+
+	const handleTagFilterToggle = (tagId: number) => {
+		setSelectedTagFilters((prev) =>
+			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+		);
+	};
+
+	const clearTagFilters = () => {
+		setSelectedTagFilters([]);
+	};
 
 	const handleDashboardClick = useCallback(
 		(dashboard: Dashboard) => {
@@ -116,13 +136,20 @@ export const Dashboards = () => {
 					</Button>
 				</div>
 
-				<div className="flex items-center gap-4 mb-4">
-					<div className="relative flex-1 max-w-md">
+				<div className="flex items-center justify-between gap-4 mb-4">
+					<div
+						className={cn(
+							'relative transition-all duration-300 ease-in-out',
+							isSearchFocused || searchTerm ? 'w-96' : 'w-64'
+						)}
+					>
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 						<Input
-							placeholder="Search dashboards by name, description, or tag..."
+							placeholder="Search dashboards..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
+							onFocus={() => setIsSearchFocused(true)}
+							onBlur={() => setIsSearchFocused(false)}
 							className="pl-10 pr-10"
 						/>
 						{searchTerm && (
@@ -136,10 +163,69 @@ export const Dashboards = () => {
 							</Button>
 						)}
 					</div>
-					<div className="text-sm text-muted-foreground">
-						{filteredDashboards.length} dashboard{filteredDashboards.length !== 1 ? 's' : ''}
-						{searchTerm && ` matching "${searchTerm}"`}
-					</div>
+
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button
+								variant="outline"
+								size="sm"
+								className={cn(
+									'gap-2',
+									selectedTagFilters.length > 0 && 'border-primary text-primary'
+								)}
+							>
+								<Tags className="h-4 w-4" />
+								Tags
+								{selectedTagFilters.length > 0 && (
+									<span className="ml-1 px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
+										{selectedTagFilters.length}
+									</span>
+								)}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-[200px] p-2" align="end">
+							{availableTags.length === 0 ? (
+								<div className="text-sm text-muted-foreground text-center py-2">No tags available</div>
+							) : (
+								<>
+									<div className="space-y-1">
+										{availableTags.map((tag) => (
+											<button
+												key={tag.id}
+												className={cn(
+													'w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left',
+													selectedTagFilters.includes(tag.id)
+														? 'bg-primary/10'
+														: 'hover:bg-muted'
+												)}
+												onClick={() => handleTagFilterToggle(tag.id)}
+											>
+												<div
+													className="w-3 h-3 rounded-full flex-shrink-0"
+													style={{ backgroundColor: tag.color }}
+												/>
+												<span className="text-sm flex-1 truncate">{tag.name}</span>
+												{selectedTagFilters.includes(tag.id) && (
+													<Check className="h-4 w-4 text-primary" />
+												)}
+											</button>
+										))}
+									</div>
+									{selectedTagFilters.length > 0 && (
+										<>
+											<div className="border-t my-2" />
+											<button
+												className="w-full text-sm text-muted-foreground hover:text-foreground text-center py-1"
+												onClick={clearTagFilters}
+											>
+												Clear filters
+											</button>
+										</>
+									)}
+								</>
+							)}
+						</PopoverContent>
+					</Popover>
 				</div>
 
 				<DashboardsTable
