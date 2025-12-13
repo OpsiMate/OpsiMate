@@ -1,21 +1,11 @@
 import { Request, Response } from 'express';
-import { CreateDashboardSchema, Logger } from '@OpsiMate/shared';
+import { CreateDashboardSchema, DashboardIdSchema, DashboardTagSchema, Logger } from '@OpsiMate/shared';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { DashboardBL } from '../../../bl/dashboards/dashboard.bl.ts';
 import { TagRepository } from '../../../dal/tagRepository';
-import { z } from 'zod';
 
 const logger = new Logger('api/v1/dashboards/controller');
-
-const DashboardTagSchema = z.object({
-	dashboardId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) throw new Error('Invalid dashboard ID');
-		return parsed;
-	}),
-	tagId: z.number().int().positive(),
-});
 
 export class DashboardController {
 	constructor(
@@ -107,15 +97,7 @@ export class DashboardController {
 				return res.status(500).json({ success: false, error: 'Tag repository not configured' });
 			}
 
-			const { dashboardId } = z
-				.object({
-					dashboardId: z.string().transform((val) => {
-						const parsed = parseInt(val);
-						if (isNaN(parsed)) throw new Error('Invalid dashboard ID');
-						return parsed;
-					}),
-				})
-				.parse({ dashboardId: req.params.dashboardId });
+			const { dashboardId } = DashboardIdSchema.parse({ dashboardId: req.params.dashboardId });
 
 			const tags = await this.tagRepo.getDashboardTags(dashboardId);
 			return res.json({ success: true, data: tags });
@@ -151,7 +133,7 @@ export class DashboardController {
 			const { dashboardId } = req.params;
 			const { tagId } = req.body as { tagId: number };
 			const parsed = DashboardTagSchema.parse({
-				dashboardId,
+				dashboardId: Number(dashboardId),
 				tagId,
 			});
 
@@ -184,7 +166,7 @@ export class DashboardController {
 
 			const { dashboardId, tagId } = req.params;
 			const parsed = DashboardTagSchema.parse({
-				dashboardId,
+				dashboardId: Number(dashboardId),
 				tagId: Number(tagId),
 			});
 
