@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { Check, Tags } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 
 interface TagsFilterProps {
 	availableTags: Tag[];
@@ -12,6 +13,48 @@ interface TagsFilterProps {
 	onTagToggle: (tagId: number) => void;
 	onClearAll: () => void;
 }
+
+interface FilterTagBadgeProps {
+	tag: Tag;
+	onRemove: () => void;
+}
+
+const FilterTagBadge = ({ tag, onRemove }: FilterTagBadgeProps) => {
+	const [isTruncated, setIsTruncated] = useState(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	const checkTruncation = useCallback(() => {
+		if (containerRef.current) {
+			const span = containerRef.current.querySelector('span');
+			if (span) {
+				setIsTruncated(span.scrollWidth > span.clientWidth);
+			}
+		}
+	}, []);
+
+	const badge = (
+		<div ref={containerRef} className="max-w-[120px]" onMouseEnter={checkTruncation}>
+			<TagBadge
+				tag={tag}
+				onRemove={onRemove}
+				className="text-[10px] py-0.5 cursor-pointer [&>span]:truncate [&>span]:max-w-[80px]"
+			/>
+		</div>
+	);
+
+	if (!isTruncated) {
+		return badge;
+	}
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>{badge}</TooltipTrigger>
+			<TooltipContent side="top" className="text-xs">
+				{tag.name}
+			</TooltipContent>
+		</Tooltip>
+	);
+};
 
 export const TagsFilter = ({ availableTags, selectedTagIds, onTagToggle, onClearAll }: TagsFilterProps) => {
 	const selectedTags = availableTags.filter((tag) => selectedTagIds.includes(tag.id));
@@ -73,20 +116,7 @@ export const TagsFilter = ({ availableTags, selectedTagIds, onTagToggle, onClear
 				<TooltipProvider delayDuration={200}>
 					<div className="flex items-center gap-1 flex-wrap max-w-[300px]">
 						{selectedTags.map((tag) => (
-							<Tooltip key={tag.id}>
-								<TooltipTrigger asChild>
-									<div className="max-w-[120px]">
-										<TagBadge
-											tag={tag}
-											onRemove={() => onTagToggle(tag.id)}
-											className="text-[10px] py-0.5 cursor-pointer [&>span]:truncate [&>span]:max-w-[80px]"
-										/>
-									</div>
-								</TooltipTrigger>
-								<TooltipContent side="top" className="text-xs">
-									{tag.name}
-								</TooltipContent>
-							</Tooltip>
+							<FilterTagBadge key={tag.id} tag={tag} onRemove={() => onTagToggle(tag.id)} />
 						))}
 					</div>
 				</TooltipProvider>
