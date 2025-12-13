@@ -56,7 +56,9 @@ export const Dashboards = () => {
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
 
 	const handleTagFilterToggle = (tagId: number) => {
-		setSelectedTagFilters((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
+		setSelectedTagFilters((prev) =>
+			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+		);
 	};
 
 	const clearTagFilters = () => {
@@ -134,7 +136,7 @@ export const Dashboards = () => {
 					</Button>
 				</div>
 
-				<div className="flex items-center justify-between gap-4 mb-4">
+				<div className="flex items-center gap-4 mb-4">
 					<div
 						className={cn(
 							'relative transition-all duration-300 ease-in-out',
@@ -167,7 +169,10 @@ export const Dashboards = () => {
 							<Button
 								variant="outline"
 								size="sm"
-								className={cn('gap-2', selectedTagFilters.length > 0 && 'border-primary text-primary')}
+								className={cn(
+									'gap-2',
+									selectedTagFilters.length > 0 && 'border-primary text-primary'
+								)}
 							>
 								<Tags className="h-4 w-4" />
 								Tags
@@ -178,7 +183,7 @@ export const Dashboards = () => {
 								)}
 							</Button>
 						</PopoverTrigger>
-						<PopoverContent className="w-[200px] p-2" align="end">
+						<PopoverContent className="w-[200px] p-2" align="start">
 							{availableTags.length === 0 ? (
 								<div className="text-sm text-muted-foreground text-center py-2">No tags available</div>
 							) : (
