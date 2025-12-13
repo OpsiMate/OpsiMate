@@ -2,6 +2,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDashboard } from '@/context/DashboardContext';
 import { useDeleteDashboard, useGetDashboards } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
@@ -202,23 +203,36 @@ export const Dashboards = () => {
 						</Popover>
 
 						{selectedTags.length > 0 && (
-							<div className="flex items-center gap-1 flex-wrap max-w-[280px]">
-								{selectedTags.map((tag) => (
-									<button
-										key={tag.id}
-										className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors hover:opacity-80"
-										style={{
-											backgroundColor: tag.color,
-											color: getContrastColor(tag.color),
-										}}
-										onClick={() => handleTagFilterToggle(tag.id)}
-										title={tag.name}
-									>
-										<span className="max-w-[50px] truncate">{tag.name.split(' ')[0]}</span>
-										<X className="h-2.5 w-2.5 flex-shrink-0" />
-									</button>
-								))}
-							</div>
+							<TooltipProvider delayDuration={200}>
+								<div className="flex items-center gap-1 flex-wrap max-w-[280px]">
+									{selectedTags.map((tag) => {
+										const firstWord = tag.name.split(' ')[0];
+										const isTruncated = firstWord.length > 6 || tag.name !== firstWord;
+										const displayText = firstWord.length > 6 ? firstWord.slice(0, 6) : firstWord;
+
+										return (
+											<Tooltip key={tag.id}>
+												<TooltipTrigger asChild>
+													<button
+														className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors hover:opacity-80"
+														style={{
+															backgroundColor: tag.color,
+															color: getContrastColor(tag.color),
+														}}
+														onClick={() => handleTagFilterToggle(tag.id)}
+													>
+														<span>{displayText}{isTruncated && '...'}</span>
+														<X className="h-2.5 w-2.5 flex-shrink-0" />
+													</button>
+												</TooltipTrigger>
+												<TooltipContent side="top" className="text-xs">
+													{tag.name}
+												</TooltipContent>
+											</Tooltip>
+										);
+									})}
+								</div>
+							</TooltipProvider>
 						)}
 					</div>
 
