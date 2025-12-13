@@ -56,9 +56,7 @@ export const Dashboards = () => {
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
 
 	const handleTagFilterToggle = (tagId: number) => {
-		setSelectedTagFilters((prev) =>
-			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-		);
+		setSelectedTagFilters((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
 	};
 
 	const clearTagFilters = () => {
@@ -169,10 +167,7 @@ export const Dashboards = () => {
 							<Button
 								variant="outline"
 								size="sm"
-								className={cn(
-									'gap-2',
-									selectedTagFilters.length > 0 && 'border-primary text-primary'
-								)}
+								className={cn('gap-2', selectedTagFilters.length > 0 && 'border-primary text-primary')}
 							>
 								<Tags className="h-4 w-4" />
 								Tags

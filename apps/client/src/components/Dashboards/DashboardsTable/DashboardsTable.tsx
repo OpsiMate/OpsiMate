@@ -137,10 +137,7 @@ export const DashboardsTable = ({
 									<Table className="table-fixed w-full">
 										<TableBody>
 											<TableRow className="bg-muted/50 hover:bg-muted/50">
-												<TableCell
-													colSpan={6}
-													className="py-2 px-4"
-												>
+												<TableCell colSpan={6} className="py-2 px-4">
 													<span className="text-sm font-medium text-foreground">
 														{item.label}
 													</span>
@@ -175,7 +172,9 @@ export const DashboardsTable = ({
 											onToggleFavorite={() => onToggleFavorite(dashboard.id)}
 											onAddTag={onAddTag ? (tag) => handleAddTag(dashboard.id, tag) : undefined}
 											onRemoveTag={
-												onRemoveTag ? (tagId) => handleRemoveTag(dashboard.id, tagId) : undefined
+												onRemoveTag
+													? (tagId) => handleRemoveTag(dashboard.id, tagId)
+													: undefined
 											}
 											availableTags={availableTags}
 										/>
