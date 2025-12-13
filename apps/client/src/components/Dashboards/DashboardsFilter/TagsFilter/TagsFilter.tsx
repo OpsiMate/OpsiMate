@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TagBadge } from '@/components/ui/tag-badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
-import { Check, Tags, X } from 'lucide-react';
-import { getContrastColor } from '../../Dashboards.utils';
+import { Check, Tags } from 'lucide-react';
 
 interface TagsFilterProps {
 	availableTags: Tag[];
@@ -75,17 +75,13 @@ export const TagsFilter = ({ availableTags, selectedTagIds, onTagToggle, onClear
 						{selectedTags.map((tag) => (
 							<Tooltip key={tag.id}>
 								<TooltipTrigger asChild>
-									<button
-										className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors hover:opacity-80 max-w-[100px]"
-										style={{
-											backgroundColor: tag.color,
-											color: getContrastColor(tag.color),
-										}}
-										onClick={() => onTagToggle(tag.id)}
-									>
-										<span className="truncate">{tag.name}</span>
-										<X className="h-2.5 w-2.5 flex-shrink-0" />
-									</button>
+									<div className="max-w-[120px]">
+										<TagBadge
+											tag={tag}
+											onRemove={() => onTagToggle(tag.id)}
+											className="text-[10px] py-0.5 cursor-pointer [&>span]:truncate [&>span]:max-w-[80px]"
+										/>
+									</div>
 								</TooltipTrigger>
 								<TooltipContent side="top" className="text-xs">
 									{tag.name}
