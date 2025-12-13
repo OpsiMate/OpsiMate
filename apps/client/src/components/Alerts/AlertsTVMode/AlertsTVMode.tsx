@@ -54,7 +54,7 @@ const AlertsTVMode = () => {
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
-	const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
+	const [viewMode, setViewMode] = useState<ViewMode>('grid');
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 
 	const allAlerts = useMemo(() => alerts, [alerts]);

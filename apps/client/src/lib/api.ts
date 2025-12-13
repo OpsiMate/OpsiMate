@@ -1,5 +1,7 @@
 import { SavedView } from '@/types/SavedView';
+import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AlertHistory,
 	AuditLog,
 	DiscoveredService,
 	Integration,
@@ -10,9 +12,7 @@ import {
 	ServiceWithProvider,
 	Alert as SharedAlert,
 	Tag,
-	AlertHistory,
 } from '@OpsiMate/shared';
-import { CustomAction } from '@OpsiMate/custom-actions';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
