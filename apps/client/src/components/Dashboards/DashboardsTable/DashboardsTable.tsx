@@ -145,7 +145,9 @@ export const DashboardsTable = ({
 												>
 													<div className="flex items-center gap-2">
 														{item.label === 'Favorites' && (
-															<Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+															<div className="pl-[21px]">
+																<Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+															</div>
 														)}
 														<span className="text-sm font-medium text-foreground">
 															{item.label}
