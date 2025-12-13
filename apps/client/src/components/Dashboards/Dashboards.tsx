@@ -8,7 +8,6 @@ import {
 	useRemoveTagFromDashboard,
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
-import { useTags } from '@/hooks/queries/tags';
 import { useToast } from '@/hooks/use-toast';
 import { Tag } from '@OpsiMate/shared';
 import { useCallback, useMemo, useState } from 'react';
@@ -23,7 +22,6 @@ export const Dashboards = () => {
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { data: dashboards = [], isLoading } = useGetDashboards();
-	const { data: availableTags = [] } = useTags();
 	const { data: dashboardTagsData = [] } = useGetAllDashboardTags();
 	const deleteDashboardMutation = useDeleteDashboard();
 	const addTagMutation = useAddTagToDashboard();
@@ -185,7 +183,7 @@ export const Dashboards = () => {
 					onCreateDashboard={handleCreateDashboard}
 					onAddTag={handleAddTag}
 					onRemoveTag={handleRemoveTag}
-					availableTags={availableTags}
+					availableTags={usedDashboardTags}
 				/>
 			</div>
 		</DashboardLayout>
