@@ -17,6 +17,7 @@ import { DashboardWithFavorite } from './Dashboards.types';
 import {
 	addTagToDashboard,
 	filterDashboards,
+	getContrastColor,
 	getDashboardTags,
 	getFavoriteDashboards,
 	removeTagFromDashboard,
@@ -54,6 +55,10 @@ export const Dashboards = () => {
 
 		return result;
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
+
+	const selectedTags = useMemo(() => {
+		return availableTags.filter((tag) => selectedTagFilters.includes(tag.id));
+	}, [availableTags, selectedTagFilters]);
 
 	const handleTagFilterToggle = (tagId: number) => {
 		setSelectedTagFilters((prev) =>
@@ -137,25 +142,21 @@ export const Dashboards = () => {
 				</div>
 
 				<div className="flex items-center gap-4 mb-4">
-					<Popover>
-						<PopoverTrigger asChild>
-							<Button
-								variant="outline"
-								size="sm"
-								className={cn(
-									'gap-2',
-									selectedTagFilters.length > 0 && 'border-primary text-primary'
-								)}
-							>
-								<Tags className="h-4 w-4" />
-								Tags
-								{selectedTagFilters.length > 0 && (
-									<span className="ml-1 px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
-										{selectedTagFilters.length}
-									</span>
-								)}
-							</Button>
-						</PopoverTrigger>
+					<div className="flex items-center gap-2">
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									variant="outline"
+									size="sm"
+									className={cn(
+										'gap-2',
+										selectedTagFilters.length > 0 && 'border-primary text-primary'
+									)}
+								>
+									<Tags className="h-4 w-4" />
+									Tags
+								</Button>
+							</PopoverTrigger>
 						<PopoverContent className="w-[200px] p-2" align="start">
 							{availableTags.length === 0 ? (
 								<div className="text-sm text-muted-foreground text-center py-2">No tags available</div>
@@ -198,7 +199,27 @@ export const Dashboards = () => {
 								</>
 							)}
 						</PopoverContent>
-					</Popover>
+						</Popover>
+
+						{selectedTags.length > 0 && (
+							<div className="flex items-center gap-1.5 flex-wrap">
+								{selectedTags.map((tag) => (
+									<button
+										key={tag.id}
+										className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80"
+										style={{
+											backgroundColor: tag.color,
+											color: getContrastColor(tag.color),
+										}}
+										onClick={() => handleTagFilterToggle(tag.id)}
+									>
+										{tag.name}
+										<X className="h-3 w-3" />
+									</button>
+								))}
+							</div>
+						)}
+					</div>
 
 					<div
 						className={cn(
