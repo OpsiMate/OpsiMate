@@ -1,18 +1,15 @@
-import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { alertsApi } from '@/lib/api';
-
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import {Alert, AlertStatus, AlertHistory, Logger} from '@OpsiMate/shared';
-import { format } from 'date-fns';
-import { Archive, Book, Calendar, Check, Clock, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
-import { IntegrationAvatar, resolveAlertIntegration } from '../IntegrationAvatar';
-import { getAlertTagEntries, hasAlertTags } from '../utils/alertTags.utils';
-import { getTagKeyColor } from '../utils/tagColors.utils';
+import { Alert } from '@OpsiMate/shared';
+import { AlertActionsSection } from './AlertActionsSection';
+import { AlertDetailsHeader } from './AlertDetailsHeader';
+import { AlertHistorySection } from './AlertHistorySection';
+import { AlertIdSection } from './AlertIdSection';
+import { AlertInfoSection } from './AlertInfoSection';
+import { AlertLinksSection } from './AlertLinksSection';
+import { AlertSummarySection } from './AlertSummarySection';
+import { AlertTimestampsSection } from './AlertTimestampsSection';
+import { useAlertHistory } from './hooks';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -24,8 +21,6 @@ interface AlertDetailsProps {
 	className?: string;
 }
 
-const logger = new Logger('AlertDetails');
-
 export const AlertDetails = ({
 	isActive,
 	alert,
@@ -35,269 +30,35 @@ export const AlertDetails = ({
 	onDelete,
 	className,
 }: AlertDetailsProps) => {
+	const historyData = useAlertHistory(alert?.id);
+
 	if (!alert) return null;
-
-	const integration = resolveAlertIntegration(alert);
-	const [historyData, setHistoryData] = useState<AlertHistory | null>(null);
-
-	useEffect(() => {
-		const fetchHistory = async () => {
-			if (alert.id) {
-				try {
-					const alertHistoryResponse = await alertsApi.getAlertHistory(alert.id);
-
-					if (!alertHistoryResponse.success) {
-						throw new Error(alertHistoryResponse.error || 'Failed to fetch alert history');
-					}
-
-					setHistoryData(alertHistoryResponse.data);
-				} catch (error) {
-					logger.error('Failed to fetch alert history:', error);
-				}
-			}
-		};
-
-		fetchHistory();
-	}, [alert.id]);
 
 	return (
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
-			<div className="flex items-center justify-between p-4 border-b">
-				<h2 className="text-lg font-semibold text-foreground">Alert Details</h2>
-				<Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-foreground">
-					<X className="h-4 w-4" />
-				</Button>
-			</div>
+			<AlertDetailsHeader onClose={onClose} />
 
 			<ScrollArea className="flex-1">
 				<div className="p-4 space-y-4">
-					<div className="flex flex-col gap-3">
-						<div className="flex items-center gap-3">
-							<div className="flex-shrink-0">
-								<IntegrationAvatar
-									integration={integration}
-									size="md"
-									className="ring-2 ring-background shadow-sm"
-								/>
-							</div>
-							<div className="flex-1 min-w-0">
-								<div className="flex items-center gap-2 flex-wrap">
-									<h3 className="text-lg font-semibold break-words flex-1 min-w-0 text-foreground">
-										{alert.alertName}
-									</h3>
-									<Badge
-										variant={
-											alert.isDismissed
-												? 'secondary'
-												: alert.status === AlertStatus.FIRING
-													? 'destructive'
-													: 'secondary'
-										}
-										className="flex-shrink-0 text-xs px-1.5 py-0.5"
-									>
-										{alert.isDismissed ? 'dismissed' : alert.status}
-									</Badge>
-								</div>
-							</div>
-						</div>
-						{hasAlertTags(alert) && (
-							<div className="flex items-center gap-1 flex-wrap">
-								{getAlertTagEntries(alert).map(({ key, value }) => {
-									const colors = getTagKeyColor(key);
-									return (
-										<Badge
-											key={key}
-											className="text-xs border-0"
-											style={{
-												backgroundColor: colors.background,
-												color: colors.text,
-											}}
-										>
-											{key}: {value}
-										</Badge>
-									);
-								})}
-							</div>
-						)}
-					</div>
+					<AlertInfoSection alert={alert} />
 
-					{alert.summary && (
-						<>
-							<Separator />
-							<div>
-								<p className="text-sm text-foreground leading-relaxed">{alert.summary}</p>
-							</div>
-						</>
-					)}
+					{alert.summary && <AlertSummarySection summary={alert.summary} />}
 
-					<Separator />
+					<AlertTimestampsSection alert={alert} />
 
-					<div className="space-y-3">
-						<div className="flex items-start gap-3">
-							<Calendar className="h-4 w-4 text-foreground mt-0.5 flex-shrink-0" />
-							<div className="flex-1 min-w-0">
-								<div className="text-xs font-medium text-foreground mb-1">Started At</div>
-								<div className="text-sm text-foreground">
-									{(() => {
-										const date = new Date(alert.startsAt);
-										return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'PPpp');
-									})()}
-								</div>
-							</div>
-						</div>
+					{historyData && <AlertHistorySection historyData={historyData} />}
 
-						{alert.updatedAt && (
-							<div className="flex items-start gap-3">
-								<Clock className="h-4 w-4 text-foreground mt-0.5 flex-shrink-0" />
-								<div className="flex-1 min-w-0">
-									<div className="text-xs font-medium text-foreground mb-1">Last Updated</div>
-									<div className="text-sm text-foreground">
-										{(() => {
-											const date = new Date(alert.updatedAt);
-											return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'PPpp');
-										})()}
-									</div>
-								</div>
-							</div>
-						)}
-					</div>
+					<AlertLinksSection alert={alert} />
 
-					{historyData && historyData.data.length > 0 && (
-						<>
-							<Separator />
-							<div>
-								<div className="text-xs font-medium text-foreground mb-3">Alert History</div>
-								<ResponsiveContainer width="100%" height={150}>
-									<LineChart data={historyData.data.map((item, index) => ({
-										...item,
-										statusValue: item.status === AlertStatus.FIRING ? 1 : 0,
-										index
-									}))}>
-										<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-										<XAxis
-											dataKey="date"
-											tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }}
-											tickFormatter={(value) => format(new Date(value), 'MM/dd HH:mm')}
-											stroke="hsl(var(--border))"
-										/>
-										<YAxis
-											domain={[0, 1]}
-											ticks={[0, 1]}
-											tickFormatter={(value) => value === 1 ? 'Firing' : 'Resolved'}
-											tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }}
-											stroke="hsl(var(--border))"
-										/>
-										<Tooltip
-											labelFormatter={(value) => format(new Date(value), 'PPpp')}
-											contentStyle={{
-												fontSize: '12px',
-												backgroundColor: 'hsl(var(--background))',
-												border: '1px solid hsl(var(--border))',
-												borderRadius: '6px'
-											}}
-											formatter={(value: any, name: string) => {
-												if (name === 'statusValue') {
-													return [value === 1 ? 'Firing' : 'Resolved', 'Status'];
-												}
-												return [value, name];
-											}}
-										/>
-										<Line
-											type="stepAfter"
-											dataKey="statusValue"
-											stroke="hsl(var(--primary))"
-											strokeWidth={2}
-											dot={{ r: 4, fill: 'hsl(var(--primary))' }}
-										/>
-									</LineChart>
-								</ResponsiveContainer>
-							</div>
-						</>
-					)}
+					<AlertActionsSection
+						alert={alert}
+						isActive={isActive}
+						onDismiss={onDismiss}
+						onUndismiss={onUndismiss}
+						onDelete={onDelete}
+					/>
 
-					<Separator />
-
-					<div className="grid grid-cols-2 gap-2">
-						{alert.alertUrl && (
-							<Button
-								variant="outline"
-								size="sm"
-								className="w-full justify-start gap-2 text-xs h-8"
-								onClick={() => window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')}
-							>
-								<ExternalLink className="h-3 w-3 flex-shrink-0" />
-								<span className="truncate">Source</span>
-							</Button>
-						)}
-
-						{alert.runbookUrl && (
-							<Button
-								variant="outline"
-								size="sm"
-								className="w-full justify-start gap-2 text-xs h-8"
-								onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
-							>
-								<Book className="h-3 w-3 flex-shrink-0" />
-								<span className="truncate">Runbook</span>
-							</Button>
-						)}
-					</div>
-
-					<Separator />
-
-					{isActive ? (
-						<div className="space-y-2">
-							{alert.isDismissed ? (
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full justify-start gap-2"
-									onClick={() => onUndismiss?.(alert.id)}
-								>
-									<RotateCcw className="h-3 w-3" />
-									Undismiss Alert
-								</Button>
-							) : (
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full justify-start gap-2"
-									onClick={() => onDismiss?.(alert.id)}
-								>
-									<Check className="h-3 w-3" />
-									Dismiss Alert
-								</Button>
-							)}
-							<Button
-								variant="outline"
-								size="sm"
-								className="w-full justify-start gap-2"
-								onClick={() => onDelete?.(alert.id)}
-							>
-								<Archive className="h-3 w-3" />
-								Archive Alert
-							</Button>
-						</div>
-					) : (
-						<div className="space-y-2">
-							<Button
-								variant="destructive"
-								size="sm"
-								className="w-full justify-start gap-2"
-								onClick={() => onDelete?.(alert.id)}
-							>
-								<Trash2 className="h-3 w-3" />
-								Delete Alert
-							</Button>
-						</div>
-					)}
-
-					<div className="pt-2">
-						<div className="text-xs font-medium text-foreground mb-1">Alert ID</div>
-						<code className="text-xs bg-muted px-2 py-1 rounded break-all block text-foreground">
-							{alert.id}
-						</code>
-					</div>
+					<AlertIdSection alertId={alert.id} />
 				</div>
 			</ScrollArea>
 		</div>

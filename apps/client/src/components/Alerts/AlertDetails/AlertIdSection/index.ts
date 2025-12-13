@@ -1,0 +1,1 @@
+export { AlertIdSection } from './AlertIdSection';

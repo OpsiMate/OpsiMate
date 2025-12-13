@@ -9,7 +9,8 @@ import {
 	Service,
 	ServiceWithProvider,
 	Alert as SharedAlert,
-	Tag, AlertHistory,
+	Tag,
+	AlertHistory,
 } from '@OpsiMate/shared';
 import { CustomAction } from '@OpsiMate/custom-actions';
 
@@ -541,7 +542,6 @@ export const alertsApi = {
 	},
 
 	getAlertHistory: (alertId: string) => {
-		// Make sure we're using the correct path
 		return apiRequest<AlertHistory>(`/alerts/${alertId}/history`, 'GET');
 	},
 
