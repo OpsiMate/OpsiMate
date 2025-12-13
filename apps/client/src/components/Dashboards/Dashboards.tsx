@@ -137,33 +137,6 @@ export const Dashboards = () => {
 				</div>
 
 				<div className="flex items-center gap-4 mb-4">
-					<div
-						className={cn(
-							'relative transition-all duration-300 ease-in-out',
-							isSearchFocused || searchTerm ? 'w-96' : 'w-64'
-						)}
-					>
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder="Search dashboards..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							onFocus={() => setIsSearchFocused(true)}
-							onBlur={() => setIsSearchFocused(false)}
-							className="pl-10 pr-10"
-						/>
-						{searchTerm && (
-							<Button
-								variant="ghost"
-								size="icon"
-								className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-								onClick={() => setSearchTerm('')}
-							>
-								<X className="h-4 w-4" />
-							</Button>
-						)}
-					</div>
-
 					<Popover>
 						<PopoverTrigger asChild>
 							<Button
@@ -226,6 +199,33 @@ export const Dashboards = () => {
 							)}
 						</PopoverContent>
 					</Popover>
+
+					<div
+						className={cn(
+							'relative transition-all duration-300 ease-in-out',
+							isSearchFocused || searchTerm ? 'w-96' : 'w-64'
+						)}
+					>
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input
+							placeholder="Search dashboards..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							onFocus={() => setIsSearchFocused(true)}
+							onBlur={() => setIsSearchFocused(false)}
+							className="pl-10 pr-10"
+						/>
+						{searchTerm && (
+							<Button
+								variant="ghost"
+								size="icon"
+								className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+								onClick={() => setSearchTerm('')}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						)}
+					</div>
 				</div>
 
 				<DashboardsTable
