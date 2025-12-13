@@ -143,16 +143,9 @@ export const DashboardsTable = ({
 													colSpan={6}
 													className="py-2 px-4"
 												>
-													<div className="flex items-center gap-2">
-														{item.label === 'Favorites' && (
-															<div className="pl-[21px]">
-																<Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-															</div>
-														)}
-														<span className="text-sm font-medium text-foreground">
-															{item.label}
-														</span>
-													</div>
+													<span className="text-sm font-medium text-foreground">
+														{item.label}
+													</span>
 												</TableCell>
 											</TableRow>
 										</TableBody>
