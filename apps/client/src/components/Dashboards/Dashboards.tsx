@@ -13,7 +13,6 @@ import { Tag } from '@OpsiMate/shared';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardsFilter } from './DashboardsFilter';
-import { DashboardsHeader } from './DashboardsHeader';
 import { DashboardsTable } from './DashboardsTable';
 import { DashboardWithFavorite } from './Dashboards.types';
 import { filterDashboards, getFavoriteDashboards, toggleFavorite } from './Dashboards.utils';
@@ -71,9 +70,7 @@ export const Dashboards = () => {
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
 
 	const handleTagFilterToggle = useCallback((tagId: number) => {
-		setSelectedTagFilters((prev) =>
-			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-		);
+		setSelectedTagFilters((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
 	}, []);
 
 	const clearTagFilters = useCallback(() => {
@@ -163,8 +160,6 @@ export const Dashboards = () => {
 	return (
 		<DashboardLayout>
 			<div className="flex flex-col h-full p-6">
-				<DashboardsHeader onCreateDashboard={handleCreateDashboard} />
-
 				<DashboardsFilter
 					searchTerm={searchTerm}
 					onSearchChange={setSearchTerm}
@@ -172,6 +167,7 @@ export const Dashboards = () => {
 					selectedTagIds={selectedTagFilters}
 					onTagToggle={handleTagFilterToggle}
 					onClearTagFilters={clearTagFilters}
+					onCreateDashboard={handleCreateDashboard}
 				/>
 
 				<DashboardsTable

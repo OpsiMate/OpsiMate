@@ -204,7 +204,13 @@ export class TagRepository {
                 JOIN tags t ON t.id = dt.tag_id
                 ORDER BY dt.dashboard_id, t.name
             `;
-			const rows = this.db.prepare(query).all() as { dashboard_id: number; id: number; name: string; color: string; createdAt: string }[];
+			const rows = this.db.prepare(query).all() as {
+				dashboard_id: number;
+				id: number;
+				name: string;
+				color: string;
+				createdAt: string;
+			}[];
 
 			const dashboardTagsMap = new Map<number, Tag[]>();
 			for (const row of rows) {

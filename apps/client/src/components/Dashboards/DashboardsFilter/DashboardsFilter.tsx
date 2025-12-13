@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
-import { Search, X } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { TagsFilter } from './TagsFilter';
 
@@ -13,6 +13,7 @@ interface DashboardsFilterProps {
 	selectedTagIds: number[];
 	onTagToggle: (tagId: number) => void;
 	onClearTagFilters: () => void;
+	onCreateDashboard: () => void;
 }
 
 export const DashboardsFilter = ({
@@ -22,6 +23,7 @@ export const DashboardsFilter = ({
 	selectedTagIds,
 	onTagToggle,
 	onClearTagFilters,
+	onCreateDashboard,
 }: DashboardsFilterProps) => {
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -60,6 +62,13 @@ export const DashboardsFilter = ({
 					</Button>
 				)}
 			</div>
+
+			<div className="flex-1" />
+
+			<Button onClick={onCreateDashboard} className="gap-2">
+				<Plus className="h-4 w-4" />
+				New Dashboard
+			</Button>
 		</div>
 	);
 };
