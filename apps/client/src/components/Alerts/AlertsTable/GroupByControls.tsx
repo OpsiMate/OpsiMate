@@ -92,7 +92,7 @@ export const GroupByControls = ({
 		<div className="flex items-center gap-1">
 			<Popover>
 				<PopoverTrigger asChild>
-					<Button variant="outline" size="sm" className="h-8 border-dashed">
+					<Button variant="outline" size="sm" className="h-8 border-dashed group">
 						<Layers className="mr-2 h-4 w-4 text-foreground" />
 						<span className="text-foreground">{GROUP_BY_CONTROLS_TEXT.TRIGGER_LABEL}</span>
 						{groupByColumns.length > 0 && (
@@ -101,6 +101,19 @@ export const GroupByControls = ({
 								<span className="text-xs text-foreground">
 									{groupByColumns.map((col) => getLabel(col)).join(', ')}
 								</span>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="ml-2 h-6 w-6 -mr-1 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+									onClick={(e) => {
+										e.stopPropagation();
+										onGroupByChange([]);
+									}}
+									title={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
+									aria-label={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
+								>
+									<X className="h-3.5 w-3.5" />
+								</Button>
 							</>
 						)}
 					</Button>
@@ -186,18 +199,6 @@ export const GroupByControls = ({
 					</Command>
 				</PopoverContent>
 			</Popover>
-			{groupByColumns.length > 0 && (
-				<Button
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-muted-foreground hover:text-foreground"
-					onClick={() => onGroupByChange([])}
-					title={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
-					aria-label={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
-				>
-					<X className="h-4 w-4" />
-				</Button>
-			)}
 		</div>
 	);
 };
