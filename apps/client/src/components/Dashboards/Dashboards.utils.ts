@@ -1,6 +1,9 @@
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
+import { Tag } from '@OpsiMate/shared';
 import { FAVORITES_STORAGE_KEY } from './Dashboards.constants';
 import { DashboardWithFavorite } from './Dashboards.types';
+
+const DASHBOARD_TAGS_STORAGE_KEY = 'OpsiMate-dashboard-tags';
 
 export const getFavoriteDashboards = (): string[] => {
 	try {
@@ -29,11 +32,46 @@ export const toggleFavorite = (dashboardId: string): string[] => {
 	return favorites;
 };
 
+export const getDashboardTags = (): Record<string, Tag[]> => {
+	try {
+		const stored = localStorage.getItem(DASHBOARD_TAGS_STORAGE_KEY);
+		return stored ? JSON.parse(stored) : {};
+	} catch {
+		return {};
+	}
+};
+
+export const saveDashboardTags = (dashboardTags: Record<string, Tag[]>): void => {
+	localStorage.setItem(DASHBOARD_TAGS_STORAGE_KEY, JSON.stringify(dashboardTags));
+};
+
+export const addTagToDashboard = (dashboardId: string, tag: Tag): Record<string, Tag[]> => {
+	const dashboardTags = getDashboardTags();
+	const currentTags = dashboardTags[dashboardId] || [];
+
+	if (!currentTags.some((t) => t.id === tag.id)) {
+		dashboardTags[dashboardId] = [...currentTags, tag];
+		saveDashboardTags(dashboardTags);
+	}
+
+	return dashboardTags;
+};
+
+export const removeTagFromDashboard = (dashboardId: string, tagId: number): Record<string, Tag[]> => {
+	const dashboardTags = getDashboardTags();
+	const currentTags = dashboardTags[dashboardId] || [];
+	dashboardTags[dashboardId] = currentTags.filter((t) => t.id !== tagId);
+	saveDashboardTags(dashboardTags);
+	return dashboardTags;
+};
+
 export const enrichDashboardsWithFavorites = (dashboards: Dashboard[]): DashboardWithFavorite[] => {
 	const favorites = getFavoriteDashboards();
+	const dashboardTags = getDashboardTags();
 	return dashboards.map((dashboard) => ({
 		...dashboard,
 		isFavorite: favorites.includes(dashboard.id),
+		tags: dashboardTags[dashboard.id] || [],
 	}));
 };
 
@@ -52,7 +90,8 @@ export const filterDashboards = (dashboards: DashboardWithFavorite[], searchTerm
 	return dashboards.filter(
 		(d) =>
 			d.name.toLowerCase().includes(lowerSearch) ||
-			(d.description && d.description.toLowerCase().includes(lowerSearch))
+			(d.description && d.description.toLowerCase().includes(lowerSearch)) ||
+			(d.tags && d.tags.some((tag) => tag.name.toLowerCase().includes(lowerSearch)))
 	);
 };
 
@@ -67,8 +106,4 @@ export const formatDate = (dateString?: string): string => {
 	} catch {
 		return '-';
 	}
-};
-
-export const getActiveFiltersCount = (filters: Record<string, string[]>): number => {
-	return Object.values(filters).reduce((count, values) => count + (values?.length || 0), 0);
 };

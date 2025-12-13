@@ -4,30 +4,42 @@ import { Input } from '@/components/ui/input';
 import { useDashboard } from '@/context/DashboardContext';
 import { useDeleteDashboard, useGetDashboards } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
+import { useTags } from '@/hooks/queries/tags';
 import { useToast } from '@/hooks/use-toast';
+import { Tag } from '@OpsiMate/shared';
 import { LayoutDashboard, Plus, Search, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardsTable } from './DashboardsTable';
 import { DashboardWithFavorite } from './Dashboards.types';
-import { enrichDashboardsWithFavorites, filterDashboards, getFavoriteDashboards, toggleFavorite } from './Dashboards.utils';
+import {
+	addTagToDashboard,
+	filterDashboards,
+	getDashboardTags,
+	getFavoriteDashboards,
+	removeTagFromDashboard,
+	toggleFavorite,
+} from './Dashboards.utils';
 
 export const Dashboards = () => {
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { data: dashboards = [], isLoading } = useGetDashboards();
+	const { data: availableTags = [] } = useTags();
 	const deleteDashboardMutation = useDeleteDashboard();
 	const { setInitialState, resetDashboard } = useDashboard();
 
 	const [searchTerm, setSearchTerm] = useState('');
 	const [favorites, setFavorites] = useState<string[]>(() => getFavoriteDashboards());
+	const [dashboardTags, setDashboardTags] = useState<Record<string, Tag[]>>(() => getDashboardTags());
 
 	const enrichedDashboards = useMemo<DashboardWithFavorite[]>(() => {
 		return dashboards.map((d) => ({
 			...d,
 			isFavorite: favorites.includes(d.id),
+			tags: dashboardTags[d.id] || [],
 		}));
-	}, [dashboards, favorites]);
+	}, [dashboards, favorites, dashboardTags]);
 
 	const filteredDashboards = useMemo(() => {
 		return filterDashboards(enrichedDashboards, searchTerm);
@@ -75,6 +87,16 @@ export const Dashboards = () => {
 		setFavorites(newFavorites);
 	}, []);
 
+	const handleAddTag = useCallback((dashboardId: string, tag: Tag) => {
+		const newTags = addTagToDashboard(dashboardId, tag);
+		setDashboardTags({ ...newTags });
+	}, []);
+
+	const handleRemoveTag = useCallback((dashboardId: string, tagId: number) => {
+		const newTags = removeTagFromDashboard(dashboardId, tagId);
+		setDashboardTags({ ...newTags });
+	}, []);
+
 	const handleCreateDashboard = useCallback(() => {
 		resetDashboard();
 		navigate('/alerts');
@@ -98,7 +120,7 @@ export const Dashboards = () => {
 					<div className="relative flex-1 max-w-md">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 						<Input
-							placeholder="Search dashboards by name or description..."
+							placeholder="Search dashboards by name, description, or tag..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
 							className="pl-10 pr-10"
@@ -127,6 +149,9 @@ export const Dashboards = () => {
 					onDeleteDashboard={handleDeleteDashboard}
 					onToggleFavorite={handleToggleFavorite}
 					onCreateDashboard={handleCreateDashboard}
+					onAddTag={handleAddTag}
+					onRemoveTag={handleRemoveTag}
+					availableTags={availableTags}
 				/>
 			</div>
 		</DashboardLayout>

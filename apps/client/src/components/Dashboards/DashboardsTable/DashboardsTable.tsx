@@ -1,7 +1,8 @@
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { Tag } from '@OpsiMate/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { LayoutDashboard, Star } from 'lucide-react';
+import { LayoutDashboard, Star, Tags } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { COLUMN_WIDTHS } from '../Dashboards.constants';
 import { DashboardsTableProps, DashboardWithFavorite } from '../Dashboards.types';
@@ -13,6 +14,9 @@ export const DashboardsTable = ({
 	onDashboardClick,
 	onDeleteDashboard,
 	onToggleFavorite,
+	onAddTag,
+	onRemoveTag,
+	availableTags = [],
 }: DashboardsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
 
@@ -75,24 +79,39 @@ export const DashboardsTable = ({
 		);
 	}
 
+	const handleAddTag = (dashboardId: string, tag: Tag) => {
+		onAddTag?.(dashboardId, tag);
+	};
+
+	const handleRemoveTag = (dashboardId: string, tagId: number) => {
+		onRemoveTag?.(dashboardId, tagId);
+	};
+
 	return (
 		<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
 			<div className="border-b flex-shrink-0">
 				<Table className="table-fixed w-full">
 					<TableHeader>
 						<TableRow className="h-10">
-							<TableHead className={cn('py-2 px-3', COLUMN_WIDTHS.favorite)}>
-								<Star className="h-4 w-4 text-muted-foreground" />
+							<TableHead className={cn('py-2 px-3 text-center', COLUMN_WIDTHS.favorite)}>
+								<Star className="h-4 w-4 text-muted-foreground mx-auto" />
 							</TableHead>
 							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.name)}>Name</TableHead>
 							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.description)}>
 								Description
 							</TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.filters)}>Filters</TableHead>
+							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.tags)}>
+								<div className="flex items-center gap-1">
+									<Tags className="h-4 w-4" />
+									Tags
+								</div>
+							</TableHead>
 							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.createdAt)}>
 								Created
 							</TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.actions)}>Actions</TableHead>
+							<TableHead className={cn('py-2 px-3 font-medium text-center', COLUMN_WIDTHS.actions)}>
+								Actions
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 				</Table>
@@ -117,12 +136,25 @@ export const DashboardsTable = ({
 										transform: `translateY(${virtualRow.start}px)`,
 									}}
 								>
-									<div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b">
-										{item.label === 'Favorites' && (
-											<Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-										)}
-										<span className="text-sm font-medium text-foreground">{item.label}</span>
-									</div>
+									<Table className="table-fixed w-full">
+										<TableBody>
+											<TableRow className="bg-muted/50 hover:bg-muted/50">
+												<TableCell
+													colSpan={6}
+													className="py-2 px-4"
+												>
+													<div className="flex items-center gap-2">
+														{item.label === 'Favorites' && (
+															<Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+														)}
+														<span className="text-sm font-medium text-foreground">
+															{item.label}
+														</span>
+													</div>
+												</TableCell>
+											</TableRow>
+										</TableBody>
+									</Table>
 								</div>
 							);
 						}
@@ -148,6 +180,11 @@ export const DashboardsTable = ({
 											onClick={() => onDashboardClick(dashboard)}
 											onDelete={() => onDeleteDashboard(dashboard.id)}
 											onToggleFavorite={() => onToggleFavorite(dashboard.id)}
+											onAddTag={onAddTag ? (tag) => handleAddTag(dashboard.id, tag) : undefined}
+											onRemoveTag={
+												onRemoveTag ? (tagId) => handleRemoveTag(dashboard.id, tagId) : undefined
+											}
+											availableTags={availableTags}
 										/>
 									</TableBody>
 								</Table>
