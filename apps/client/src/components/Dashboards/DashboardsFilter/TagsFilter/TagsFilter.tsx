@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { Check, Tags } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 interface TagsFilterProps {
 	availableTags: Tag[];
@@ -32,8 +32,19 @@ const FilterTagBadge = ({ tag, onRemove }: FilterTagBadgeProps) => {
 		}
 	}, []);
 
+	useLayoutEffect(() => {
+		checkTruncation();
+		const resizeObserver = new ResizeObserver(checkTruncation);
+		if (containerRef.current) {
+			resizeObserver.observe(containerRef.current);
+		}
+		return () => {
+			resizeObserver.disconnect();
+		};
+	}, [checkTruncation, tag.name]);
+
 	const badge = (
-		<div ref={containerRef} className="max-w-[120px]" onMouseEnter={checkTruncation}>
+		<div ref={containerRef} className="max-w-[120px]">
 			<TagBadge
 				tag={tag}
 				onRemove={onRemove}
@@ -48,7 +59,9 @@ const FilterTagBadge = ({ tag, onRemove }: FilterTagBadgeProps) => {
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>{badge}</TooltipTrigger>
+			<TooltipTrigger asChild>
+				<div>{badge}</div>
+			</TooltipTrigger>
 			<TooltipContent side="top" className="text-xs">
 				{tag.name}
 			</TooltipContent>

@@ -52,7 +52,9 @@ export const Dashboards = () => {
 	}, [enrichedDashboards, searchTerm, selectedTagFilters]);
 
 	const handleTagFilterToggle = useCallback((tagId: number) => {
-		setSelectedTagFilters((prev) => (prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]));
+		setSelectedTagFilters((prev) =>
+			prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+		);
 	}, []);
 
 	const clearTagFilters = useCallback(() => {
@@ -86,9 +88,10 @@ export const Dashboards = () => {
 					description: 'The dashboard has been successfully deleted.',
 				});
 			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Failed to delete dashboard';
 				toast({
 					title: 'Error',
-					description: 'Failed to delete dashboard',
+					description: errorMessage,
 					variant: 'destructive',
 				});
 			}
