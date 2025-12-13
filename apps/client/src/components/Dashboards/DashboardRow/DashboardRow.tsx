@@ -21,7 +21,7 @@ import { providerApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Loader2, Plus, Star, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { COLUMN_WIDTHS } from '../Dashboards.constants';
 import { DashboardRowProps } from '../Dashboards.types';
@@ -77,10 +77,6 @@ export const DashboardRow = ({
 			if (response.success && response.data) {
 				onAddTag?.(response.data);
 				queryClient.invalidateQueries({ queryKey: queryKeys.tags });
-				toast({
-					title: 'Tag created',
-					description: `"${newTagName}" has been created and added.`,
-				});
 				resetCreateForm();
 				setTagPopoverOpen(false);
 			} else {
@@ -210,16 +206,18 @@ export const DashboardRow = ({
 											</Button>
 											<Button
 												size="sm"
-												className="flex-1 h-8 gap-1"
+												className="flex-1 h-8"
 												onClick={handleCreateTag}
 												disabled={isSubmitting || !newTagName.trim()}
 											>
 												{isSubmitting ? (
-													<Loader2 className="h-3 w-3 animate-spin" />
+													<>
+														<Loader2 className="h-3 w-3 animate-spin mr-1" />
+														Creating...
+													</>
 												) : (
-													<Check className="h-3 w-3" />
+													'Create'
 												)}
-												Create
 											</Button>
 										</div>
 									</div>
