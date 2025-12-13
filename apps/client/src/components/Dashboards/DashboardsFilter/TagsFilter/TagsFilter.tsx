@@ -71,36 +71,27 @@ export const TagsFilter = ({ availableTags, selectedTagIds, onTagToggle, onClear
 
 			{selectedTags.length > 0 && (
 				<TooltipProvider delayDuration={200}>
-					<div className="flex items-center gap-1 flex-wrap max-w-[280px]">
-						{selectedTags.map((tag) => {
-							const firstWord = tag.name.split(' ')[0];
-							const isTruncated = firstWord.length > 6 || tag.name !== firstWord;
-							const displayText = firstWord.length > 6 ? firstWord.slice(0, 6) : firstWord;
-
-							return (
-								<Tooltip key={tag.id}>
-									<TooltipTrigger asChild>
-										<button
-											className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors hover:opacity-80"
-											style={{
-												backgroundColor: tag.color,
-												color: getContrastColor(tag.color),
-											}}
-											onClick={() => onTagToggle(tag.id)}
-										>
-											<span>
-												{displayText}
-												{isTruncated && '...'}
-											</span>
-											<X className="h-2.5 w-2.5 flex-shrink-0" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="top" className="text-xs">
-										{tag.name}
-									</TooltipContent>
-								</Tooltip>
-							);
-						})}
+					<div className="flex items-center gap-1 flex-wrap max-w-[300px]">
+						{selectedTags.map((tag) => (
+							<Tooltip key={tag.id}>
+								<TooltipTrigger asChild>
+									<button
+										className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors hover:opacity-80 max-w-[100px]"
+										style={{
+											backgroundColor: tag.color,
+											color: getContrastColor(tag.color),
+										}}
+										onClick={() => onTagToggle(tag.id)}
+									>
+										<span className="truncate">{tag.name}</span>
+										<X className="h-2.5 w-2.5 flex-shrink-0" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="top" className="text-xs">
+									{tag.name}
+								</TooltipContent>
+							</Tooltip>
+						))}
 					</div>
 				</TooltipProvider>
 			)}
