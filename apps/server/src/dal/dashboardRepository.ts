@@ -11,10 +11,12 @@ export class DashboardRepository {
 			id: dashboardRow.id,
 			type: dashboardRow.type,
 			name: dashboardRow.name,
+			description: dashboardRow.description,
 			filters: JSON.parse(dashboardRow.filters) as Record<string, unknown>,
 			visibleColumns: JSON.parse(dashboardRow.visible_columns) as string[],
 			query: dashboardRow.query,
 			groupBy: JSON.parse(dashboardRow.group_by) as string[],
+			createdAt: dashboardRow.created_at,
 		};
 	};
 

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Bell, Database, Layers, LayoutDashboard, Puzzle, Settings, Zap } from 'lucide-react';
+import { Bell, LayoutDashboard, Puzzle, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
@@ -57,26 +57,40 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					</Link>
 				</Button>
 
-				{isEditor() && (
-					<Button
-						variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
-						className={cn(
-							'gap-3 h-10 text-foreground',
-							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-							location.pathname === '/integrations' && 'text-primary-foreground'
-						)}
-						asChild
-					>
-						<Link to="/integrations">
-							<Puzzle className="h-5 w-5 flex-shrink-0" />
-							<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
-						</Link>
-					</Button>
-				)}
+				<Button
+					variant={location.pathname === '/dashboards' ? 'default' : 'ghost'}
+					className={cn(
+						'gap-3 h-10 text-foreground',
+						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
+						location.pathname === '/dashboards' && 'text-primary-foreground'
+					)}
+					asChild
+				>
+					<Link to="/dashboards">
+						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
+					</Link>
+				</Button>
 			</div>
 
 			<div className={cn('p-4 mt-auto flex flex-col gap-3', collapsed && 'items-center')}>
 				<div className={cn('flex flex-col gap-2 items-center')}>
+					{isEditor() && (
+						<Button
+							variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
+							className={cn(
+								'gap-3 h-10 items-center text-foreground',
+								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
+								location.pathname === '/integrations' && 'text-primary-foreground'
+							)}
+							asChild
+						>
+							<Link to="/integrations">
+								<Puzzle className="h-5 w-5 flex-shrink-0" />
+								<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
+							</Link>
+						</Button>
+					)}
 					{isAdmin() && (
 						<Button
 							variant={location.pathname === '/settings' ? 'default' : 'ghost'}

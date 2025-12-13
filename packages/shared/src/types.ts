@@ -223,4 +223,5 @@ export interface Dashboard {
 	visibleColumns: string[];
 	query: string;
 	groupBy: string[];
+	createdAt?: string;
 }
