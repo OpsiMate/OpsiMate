@@ -109,13 +109,13 @@ const getColor = (node: GroupNode, depth: number): { bg: string; glow: string; t
 };
 
 // Squarified treemap algorithm for better aspect ratios
-const squarify = (
-	nodes: GroupNode[],
-	x: number,
-	y: number,
-	width: number,
-	height: number
-): TreemapRect[] => {
+interface SquarifyParams {
+	nodes: GroupNode[];
+	bounds: { x: number; y: number; width: number; height: number };
+}
+
+const squarify = ({ nodes, bounds }: SquarifyParams): TreemapRect[] => {
+	const { x, y, width, height } = bounds;
 	if (nodes.length === 0 || width <= 0 || height <= 0) return [];
 
 	const totalValue = nodes.reduce((sum, n) => sum + Math.max(1, countAlerts(n)), 0);
@@ -353,7 +353,7 @@ export const AlertsGroupedView = ({
 	// Calculate treemap
 	const tiles = useMemo(() => {
 		if (dimensions.width === 0 || dimensions.height === 0) return [];
-		return squarify(currentData, 0, 0, dimensions.width, dimensions.height);
+		return squarify({ nodes: currentData, bounds: { x: 0, y: 0, width: dimensions.width, height: dimensions.height } });
 	}, [currentData, dimensions]);
 
 	// Total alerts for percentage
