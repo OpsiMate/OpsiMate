@@ -3,6 +3,7 @@ export { AlertDetails } from './Alerts/AlertDetails';
 export { AuthGuard } from './AuthGuard';
 export { Dashboard } from './Dashboard';
 export { DashboardLayout } from './DashboardLayout';
+export { Dashboards } from './Dashboards';
 export { Profile } from './Profile';
 export { Providers } from './Providers';
 export { default as ScrollToTopButton } from './ScrollToTopButton';

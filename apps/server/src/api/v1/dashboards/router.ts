@@ -11,5 +11,11 @@ export default function createDashboardRouter(controller: DashboardController) {
 	router.put('/:dashboardId', controller.updateDashboardHandler);
 	router.delete('/:dashboardId', controller.deleteDashboardHandler);
 
+	// Dashboard Tags API
+	router.get('/tags', controller.getAllDashboardTagsHandler);
+	router.get('/:dashboardId/tags', controller.getDashboardTagsHandler);
+	router.post('/:dashboardId/tags', controller.addTagToDashboardHandler);
+	router.delete('/:dashboardId/tags/:tagId', controller.removeTagFromDashboardHandler);
+
 	return router;
 }

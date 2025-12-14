@@ -252,3 +252,18 @@ export const CreateDashboardSchema = z.object({
 	query: z.string(),
 	groupBy: z.array(z.string()),
 });
+
+export const DashboardIdSchema = z.object({
+	dashboardId: z.string().transform((val) => {
+		const parsed = parseInt(val);
+		if (isNaN(parsed)) {
+			throw new Error('Invalid dashboard ID');
+		}
+		return parsed;
+	}),
+});
+
+export const DashboardTagSchema = z.object({
+	dashboardId: z.number(),
+	tagId: z.number(),
+});

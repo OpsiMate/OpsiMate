@@ -248,6 +248,7 @@ const Alerts = () => {
 								dashboards={dashboards}
 								onDashboardSelect={handleDashboardSelect}
 								onNewDashboard={handleNewDashboard}
+								isDraft={!dashboardState.id}
 							/>
 
 							<div className="mt-3">

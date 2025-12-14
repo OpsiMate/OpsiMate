@@ -16,4 +16,5 @@ export const queryKeys = {
 	auditLogs: (page: number, pageSize: number) => ['audit', page, pageSize] as const,
 	customAction: (id: number) => ['customAction', id] as const,
 	dashboards: ['dashboards'] as const,
+	dashboardTags: ['dashboardTags'] as const,
 };
