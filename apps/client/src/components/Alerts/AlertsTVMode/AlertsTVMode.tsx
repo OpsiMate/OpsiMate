@@ -65,7 +65,7 @@ const AlertsTVMode = () => {
 
 	// Combine base groupable columns with tag keys
 	const allGroupableColumns = useMemo(() => {
-		const tagKeyColumns = tagKeys.map(tk => `tagKey:${tk.key}`);
+		const tagKeyColumns = tagKeys.map((tk) => `tagKey:${tk.key}`);
 		return [...GROUPABLE_COLUMNS, ...tagKeyColumns];
 	}, [tagKeys]);
 
@@ -280,7 +280,9 @@ const AlertsTVMode = () => {
 	const cardSize = getCardSize(filteredAlerts.length);
 
 	const activeAlertsCount = filteredAlerts.filter((a) => !a.isDismissed).length;
-	const criticalCount = filteredAlerts.filter((a) => !a.isDismissed && (a.tags?.severity || a.tags?.priority || '').toLowerCase() === 'critical').length;
+	const criticalCount = filteredAlerts.filter(
+		(a) => !a.isDismissed && (a.tags?.severity || a.tags?.priority || '').toLowerCase() === 'critical'
+	).length;
 
 	return (
 		<div className="h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col overflow-hidden">
@@ -326,7 +328,9 @@ const AlertsTVMode = () => {
 								{criticalCount > 0 && (
 									<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
 										<AlertTriangle className="h-4 w-4 text-red-500" />
-										<span className="text-sm font-semibold text-red-500">{criticalCount} Critical</span>
+										<span className="text-sm font-semibold text-red-500">
+											{criticalCount} Critical
+										</span>
 									</div>
 								)}
 								<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
@@ -334,9 +338,7 @@ const AlertsTVMode = () => {
 										{activeAlertsCount} Active
 									</span>
 									<span className="text-sm text-muted-foreground">/</span>
-									<span className="text-sm text-muted-foreground">
-										{filteredAlerts.length} Total
-									</span>
+									<span className="text-sm text-muted-foreground">{filteredAlerts.length} Total</span>
 								</div>
 							</div>
 
@@ -367,7 +369,9 @@ const AlertsTVMode = () => {
 			</div>
 
 			{/* Main Content */}
-			<div className={cn('flex-1', viewMode === 'heatmap' ? 'p-0 overflow-hidden relative' : 'p-6 overflow-auto')}>
+			<div
+				className={cn('flex-1', viewMode === 'heatmap' ? 'p-0 overflow-hidden relative' : 'p-6 overflow-auto')}
+			>
 				{isLoading ? (
 					<div className="flex items-center justify-center h-full">
 						<div className="text-center">
@@ -422,11 +426,15 @@ const AlertsTVMode = () => {
 			<div className="fixed bottom-4 right-4 text-xs bg-background/90 backdrop-blur-xl rounded-xl px-4 py-2 border shadow-lg">
 				<div className="flex items-center gap-4">
 					<span className="flex items-center gap-2">
-						<kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded-md border text-foreground">ESC</kbd>
+						<kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded-md border text-foreground">
+							ESC
+						</kbd>
 						<span className="text-muted-foreground">Exit</span>
 					</span>
 					<span className="flex items-center gap-2">
-						<kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded-md border text-foreground">R</kbd>
+						<kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded-md border text-foreground">
+							R
+						</kbd>
 						<span className="text-muted-foreground">Refresh</span>
 					</span>
 				</div>

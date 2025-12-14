@@ -39,7 +39,11 @@ const getSeverityConfig = (alert: Alert) => {
 	}
 
 	// Check tags for severity, fall back to status-based determination
-	const severity = (alert.tags?.severity || alert.tags?.priority || (alert.status === 'firing' ? 'warning' : 'info')).toLowerCase();
+	const severity = (
+		alert.tags?.severity ||
+		alert.tags?.priority ||
+		(alert.status === 'firing' ? 'warning' : 'info')
+	).toLowerCase();
 
 	switch (severity) {
 		case 'critical':
@@ -104,9 +108,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 			)}
 		>
 			{/* Pulse animation for active critical alerts */}
-			{config.pulse && (
-				<div className="absolute inset-0 rounded-xl animate-pulse bg-destructive/5" />
-			)}
+			{config.pulse && <div className="absolute inset-0 rounded-xl animate-pulse bg-destructive/5" />}
 
 			{/* Header with icon and title */}
 			<div className="relative flex items-start gap-3">
@@ -121,7 +123,9 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 					{alert.isDismissed ? (
 						<BellOff className={cn(config.iconColor, cardSize === 'extra-small' ? 'h-3 w-3' : 'h-5 w-5')} />
 					) : (
-						<AlertCircle className={cn(config.iconColor, cardSize === 'extra-small' ? 'h-3 w-3' : 'h-5 w-5')} />
+						<AlertCircle
+							className={cn(config.iconColor, cardSize === 'extra-small' ? 'h-3 w-3' : 'h-5 w-5')}
+						/>
 					)}
 				</div>
 
@@ -155,29 +159,29 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 				</div>
 
 				{/* Status badge for small cards */}
-				{!showDetails && (
-					<span className="text-[9px] text-muted-foreground">{timeAgo}</span>
-				)}
+				{!showDetails && <span className="text-[9px] text-muted-foreground">{timeAgo}</span>}
 			</div>
 
 			{/* Tags */}
 			{showTags && hasAlertTags(alert) && (
 				<div className="mt-3 flex flex-wrap gap-1">
-					{getAlertTagEntries(alert).slice(0, 3).map(({ key, value }) => {
-						const colors = getTagKeyColor(key);
-						return (
-							<Badge
-								key={key}
-								className="text-[10px] px-1.5 py-0.5 border-0 font-medium"
-								style={{
-									backgroundColor: colors.background,
-									color: colors.text,
-								}}
-							>
-								{value}
-							</Badge>
-						);
-					})}
+					{getAlertTagEntries(alert)
+						.slice(0, 3)
+						.map(({ key, value }) => {
+							const colors = getTagKeyColor(key);
+							return (
+								<Badge
+									key={key}
+									className="text-[10px] px-1.5 py-0.5 border-0 font-medium"
+									style={{
+										backgroundColor: colors.background,
+										color: colors.text,
+									}}
+								>
+									{value}
+								</Badge>
+							);
+						})}
 					{getAlertTagEntries(alert).length > 3 && (
 						<Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
 							+{getAlertTagEntries(alert).length - 3}
@@ -188,9 +192,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 
 			{/* Summary */}
 			{showSummary && alert.summary && (
-				<p className="mt-3 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-					{alert.summary}
-				</p>
+				<p className="mt-3 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{alert.summary}</p>
 			)}
 
 			{/* Hover indicator */}

@@ -60,7 +60,7 @@ const getSeverityLevel = (node: GroupNode): number => {
 // Filter to only keep active alerts
 const filterActiveOnly = (nodes: GroupNode[]): GroupNode[] => {
 	const filtered: GroupNode[] = [];
-	
+
 	for (const node of nodes) {
 		if (node.type === 'leaf') {
 			if (!node.alert.isDismissed && node.alert.status === 'firing') {
@@ -77,7 +77,7 @@ const filterActiveOnly = (nodes: GroupNode[]): GroupNode[] => {
 			}
 		}
 	}
-	
+
 	return filtered;
 };
 
@@ -96,14 +96,14 @@ const getColor = (node: GroupNode, depth: number): { bg: string; glow: string; t
 	if (isDismissed(node)) {
 		return { bg: 'from-slate-500 to-slate-400', glow: 'shadow-slate-400/40', text: 'text-white' };
 	}
-	
+
 	const severity = getSeverityLevel(node);
-	
+
 	// Active alerts - vibrant colors based on severity
 	if (severity >= 3) return { bg: 'from-red-600 to-red-500', glow: 'shadow-red-400/60', text: 'text-white' };
 	if (severity >= 2) return { bg: 'from-orange-500 to-orange-400', glow: 'shadow-orange-400/60', text: 'text-white' };
 	if (severity >= 1) return { bg: 'from-amber-500 to-amber-400', glow: 'shadow-amber-400/60', text: 'text-white' };
-	
+
 	// Default for active alerts
 	return { bg: 'from-red-500 to-red-400', glow: 'shadow-red-400/50', text: 'text-white' };
 };
@@ -123,7 +123,7 @@ const squarify = ({ nodes, bounds }: SquarifyParams): TreemapRect[] => {
 
 	const results: TreemapRect[] = [];
 	const sortedNodes = [...nodes].sort((a, b) => countAlerts(b) - countAlerts(a));
-	
+
 	let currentX = x;
 	let currentY = y;
 	let remainingWidth = width;
@@ -134,17 +134,17 @@ const squarify = ({ nodes, bounds }: SquarifyParams): TreemapRect[] => {
 	while (remainingNodes.length > 0) {
 		const isWide = remainingWidth >= remainingHeight;
 		const side = isWide ? remainingHeight : remainingWidth;
-		
+
 		// Find best row
 		let row: GroupNode[] = [];
 		let rowValue = 0;
 		let bestAspect = Infinity;
-		
+
 		for (let i = 0; i < remainingNodes.length; i++) {
 			const testRow = remainingNodes.slice(0, i + 1);
 			const testValue = testRow.reduce((s, n) => s + Math.max(1, countAlerts(n)), 0);
 			const rowLength = (testValue / remainingValue) * (isWide ? remainingWidth : remainingHeight);
-			
+
 			let worstAspect = 0;
 			for (const node of testRow) {
 				const nodeValue = Math.max(1, countAlerts(node));
@@ -152,7 +152,7 @@ const squarify = ({ nodes, bounds }: SquarifyParams): TreemapRect[] => {
 				const aspect = Math.max(rowLength / nodeSize, nodeSize / rowLength);
 				worstAspect = Math.max(worstAspect, aspect);
 			}
-			
+
 			if (worstAspect <= bestAspect) {
 				bestAspect = worstAspect;
 				row = testRow;
@@ -161,25 +161,25 @@ const squarify = ({ nodes, bounds }: SquarifyParams): TreemapRect[] => {
 				break;
 			}
 		}
-		
+
 		if (row.length === 0) row = [remainingNodes[0]];
-		
+
 		// Layout row
 		const rowLength = (rowValue / remainingValue) * (isWide ? remainingWidth : remainingHeight);
 		let offset = 0;
-		
+
 		for (const node of row) {
 			const nodeValue = Math.max(1, countAlerts(node));
 			const nodeSize = (nodeValue / rowValue) * side;
-			
+
 			const rect: TreemapRect = isWide
 				? { x: currentX, y: currentY + offset, width: rowLength, height: nodeSize, node }
 				: { x: currentX + offset, y: currentY, width: nodeSize, height: rowLength, node };
-			
+
 			results.push(rect);
 			offset += nodeSize;
 		}
-		
+
 		// Update remaining space
 		if (isWide) {
 			currentX += rowLength;
@@ -188,11 +188,11 @@ const squarify = ({ nodes, bounds }: SquarifyParams): TreemapRect[] => {
 			currentY += rowLength;
 			remainingHeight -= rowLength;
 		}
-		
+
 		remainingNodes = remainingNodes.slice(row.length);
 		remainingValue -= rowValue;
 	}
-	
+
 	return results;
 };
 
@@ -222,11 +222,11 @@ const Tile = ({ rect, onAlertClick, onDrillDown, totalAlerts }: TileProps) => {
 	const isLeaf = node.type === 'leaf';
 	const alertCount = countAlerts(node);
 	const severity = getSeverityLevel(node);
-	
+
 	// Size thresholds
 	const isLarge = width > 120 && height > 80;
 	const isMedium = width > 60 && height > 40;
-	
+
 	const label = isLeaf ? node.alert.alertName : node.value || 'Unknown';
 
 	const handleClick = (e: React.MouseEvent) => {
@@ -263,11 +263,13 @@ const Tile = ({ rect, onAlertClick, onDrillDown, totalAlerts }: TileProps) => {
 			<div className="w-full h-full flex flex-col justify-between p-2 overflow-hidden">
 				{/* Top: Label */}
 				<div className="flex items-start justify-between gap-1">
-					<span className={cn(
-						'font-bold truncate flex-1',
-						isLarge ? 'text-sm' : isMedium ? 'text-xs' : 'text-[10px]',
-						color.text
-					)}>
+					<span
+						className={cn(
+							'font-bold truncate flex-1',
+							isLarge ? 'text-sm' : isMedium ? 'text-xs' : 'text-[10px]',
+							color.text
+						)}
+					>
 						{label}
 					</span>
 					{!isLeaf && (
@@ -276,7 +278,7 @@ const Tile = ({ rect, onAlertClick, onDrillDown, totalAlerts }: TileProps) => {
 						</span>
 					)}
 				</div>
-				
+
 				{/* Bottom: Additional info for large tiles */}
 				{isLarge && (
 					<div className="mt-auto">
@@ -298,7 +300,7 @@ const Tile = ({ rect, onAlertClick, onDrillDown, totalAlerts }: TileProps) => {
 						)}
 					</div>
 				)}
-				
+
 				{/* Medium tile - just show chevron for groups */}
 				{!isLarge && isMedium && !isLeaf && (
 					<div className="mt-auto flex items-center text-white/60">
@@ -353,7 +355,10 @@ export const AlertsGroupedView = ({
 	// Calculate treemap
 	const tiles = useMemo(() => {
 		if (dimensions.width === 0 || dimensions.height === 0) return [];
-		return squarify({ nodes: currentData, bounds: { x: 0, y: 0, width: dimensions.width, height: dimensions.height } });
+		return squarify({
+			nodes: currentData,
+			bounds: { x: 0, y: 0, width: dimensions.width, height: dimensions.height },
+		});
 	}, [currentData, dimensions]);
 
 	// Total alerts for percentage
@@ -373,22 +378,22 @@ export const AlertsGroupedView = ({
 				const rect = containerRef.current.getBoundingClientRect();
 				let width = rect.width;
 				let height = rect.height;
-				
+
 				// Fallback to parent dimensions
 				if (height <= 0 && containerRef.current.parentElement) {
 					const parentRect = containerRef.current.parentElement.getBoundingClientRect();
 					height = parentRect.height - 50; // Account for header
 					width = parentRect.width;
 				}
-				
+
 				// Fallback to window dimensions
 				if (height <= 0) {
 					height = window.innerHeight - 150;
 					width = window.innerWidth - 20;
 				}
-				
+
 				if (width > 0 && height > 0) {
-					setDimensions(prev => {
+					setDimensions((prev) => {
 						// Only update if dimensions actually changed
 						if (prev.width !== width || prev.height !== height) {
 							return { width, height };
@@ -403,14 +408,14 @@ export const AlertsGroupedView = ({
 		const timer1 = setTimeout(updateDimensions, 50);
 		const timer2 = setTimeout(updateDimensions, 150);
 		const timer3 = setTimeout(updateDimensions, 300);
-		
+
 		const resizeObserver = new ResizeObserver(updateDimensions);
 		if (containerRef.current) {
 			resizeObserver.observe(containerRef.current);
 		}
-		
+
 		window.addEventListener('resize', updateDimensions);
-		
+
 		return () => {
 			clearTimeout(timer1);
 			clearTimeout(timer2);
@@ -423,7 +428,7 @@ export const AlertsGroupedView = ({
 	// Drill down handler
 	const handleDrillDown = useCallback((node: GroupNode) => {
 		if (node.type === 'group' && node.children.length > 0) {
-			setBreadcrumbs(prev => [...prev, { label: node.value, node }]);
+			setBreadcrumbs((prev) => [...prev, { label: node.value, node }]);
 		}
 	}, []);
 
@@ -436,11 +441,7 @@ export const AlertsGroupedView = ({
 	if (totalActiveAlerts === 0) {
 		return (
 			<div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-				<motion.div 
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}
-					className="text-center"
-				>
+				<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
 					<div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
 						<AlertTriangle className="w-10 h-10 text-green-500" />
 					</div>
@@ -461,7 +462,7 @@ export const AlertsGroupedView = ({
 						onGroupByChange={onGroupByChange}
 						availableColumns={availableColumns}
 					/>
-					
+
 					{/* Breadcrumbs */}
 					{breadcrumbs.length > 0 && (
 						<div className="flex items-center gap-1 text-sm">
@@ -476,11 +477,11 @@ export const AlertsGroupedView = ({
 								<div key={idx} className="flex items-center">
 									<ChevronRight className="w-4 h-4 text-slate-400" />
 									<button
-										onClick={() => setBreadcrumbs(prev => prev.slice(0, idx + 1))}
+										onClick={() => setBreadcrumbs((prev) => prev.slice(0, idx + 1))}
 										className={cn(
 											'px-2 py-1 rounded transition-colors',
-											idx === breadcrumbs.length - 1 
-												? 'bg-slate-200 text-slate-900 font-medium' 
+											idx === breadcrumbs.length - 1
+												? 'bg-slate-200 text-slate-900 font-medium'
 												: 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
 										)}
 									>
@@ -491,7 +492,7 @@ export const AlertsGroupedView = ({
 						</div>
 					)}
 				</div>
-				
+
 				<div className="flex items-center gap-3">
 					<div className="text-sm flex items-center gap-3">
 						<div>
@@ -511,7 +512,7 @@ export const AlertsGroupedView = ({
 			<div ref={containerRef} className="flex-1 relative m-1" style={{ minHeight: 'calc(100vh - 200px)' }}>
 				<AnimatePresence mode="wait">
 					{dimensions.width === 0 || dimensions.height === 0 ? (
-						<motion.div 
+						<motion.div
 							key="loading"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -524,7 +525,7 @@ export const AlertsGroupedView = ({
 							</div>
 						</motion.div>
 					) : tiles.length === 0 ? (
-						<motion.div 
+						<motion.div
 							key="empty"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -534,7 +535,7 @@ export const AlertsGroupedView = ({
 							<p className="text-slate-500">No data to display</p>
 						</motion.div>
 					) : (
-						<motion.div 
+						<motion.div
 							key="tiles"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -543,8 +544,13 @@ export const AlertsGroupedView = ({
 						>
 							{tiles.map((rect, idx) => (
 								<Tile
-									key={rect.node.type === 'group' ? rect.node.key : 
-										(rect.node.type === 'leaf' ? rect.node.alert.id : idx)}
+									key={
+										rect.node.type === 'group'
+											? rect.node.key
+											: rect.node.type === 'leaf'
+												? rect.node.alert.id
+												: idx
+									}
 									rect={rect}
 									onAlertClick={onAlertClick}
 									onDrillDown={handleDrillDown}
