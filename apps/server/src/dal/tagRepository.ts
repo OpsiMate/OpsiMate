@@ -28,14 +28,6 @@ export class TagRepository {
 			return stmt.get(id) as Tag | undefined;
 		});
 	}
-	// Counts how many services are currently linked to the given tag.
-	async countServicesUsingTag(tagId: number): Promise<number> {
-		return runAsync(() => {
-			const stmt = this.db.prepare(`SELECT COUNT(*) as cnt FROM service_tags WHERE tag_id = ?`);
-			const row = stmt.get(tagId) as { cnt: number };
-			return row?.cnt ?? 0;
-		});
-	}
 
 	async updateTag(id: number, data: Partial<Omit<Tag, 'id' | 'createdAt'>>): Promise<void> {
 		return runAsync(() => {
@@ -152,22 +144,6 @@ export class TagRepository {
 			return r.changes;
 		});
 	}
-	// Finds all service IDs that are linked to a tag by its NAME.
-	async findServiceIdsByTagName(tagName: string): Promise<number[]> {
-		return runAsync(() => {
-			const rows = this.db
-				.prepare(
-					`
-      SELECT st.service_id
-      FROM service_tags st
-      JOIN tags t ON t.id = st.tag_id
-      WHERE t.name = ?
-    `
-				)
-				.all(tagName) as { service_id: number }[];
-			return rows.map((r) => r.service_id);
-		});
-	}
 
 	async addTagToDashboard(dashboardId: number, tagId: number): Promise<void> {
 		return runAsync(() => {
@@ -229,13 +205,6 @@ export class TagRepository {
 				dashboardId,
 				tags,
 			}));
-		});
-	}
-
-	async deleteAllDashboardTags(dashboardId: number): Promise<number> {
-		return runAsync(() => {
-			const r = this.db.prepare('DELETE FROM dashboard_tags WHERE dashboard_id = ?').run(dashboardId);
-			return r.changes;
 		});
 	}
 }
