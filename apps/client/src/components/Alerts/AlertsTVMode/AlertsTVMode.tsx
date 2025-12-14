@@ -1,3 +1,4 @@
+import { AlertDetails } from '@/components/Alerts/AlertDetails';
 import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
 import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
@@ -5,6 +6,7 @@ import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDr
 import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
 import {
@@ -18,11 +20,11 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { ArrowLeft, CheckCircle, LayoutGrid, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, Layers, LayoutGrid, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCard } from './AlertCard';
-import { AlertsHeatmap } from './AlertsHeatmap';
+import { AlertsGroupedView } from './AlertsGroupedView';
 import { AUTO_REFRESH_INTERVAL_MS, GRID_CLASSES, GROUPABLE_COLUMNS } from './AlertsTVMode.constants';
 import { ViewMode } from './AlertsTVMode.types';
 import { createServiceNameLookup, filterAlertsByFilters, getAlertServiceId, getCardSize } from './AlertsTVMode.utils';
@@ -56,9 +58,16 @@ const AlertsTVMode = () => {
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>('grid');
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
 	const allAlerts = useMemo(() => alerts, [alerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
+
+	// Combine base groupable columns with tag keys
+	const allGroupableColumns = useMemo(() => {
+		const tagKeyColumns = tagKeys.map(tk => `tagKey:${tk.key}`);
+		return [...GROUPABLE_COLUMNS, ...tagKeyColumns];
+	}, [tagKeys]);
 
 	const { visibleColumns, handleColumnToggle } = useColumnManagement({
 		tagKeys,
@@ -165,14 +174,9 @@ const AlertsTVMode = () => {
 	};
 
 	const handleNavigateBack = useCallback(() => {
-		if (isDirty) {
-			const navigateToAlerts = () => navigate('/alerts');
-			setPendingNavigation(() => navigateToAlerts);
-			setShowUnsavedChangesDialog(true);
-		} else {
-			navigate('/alerts');
-		}
-	}, [isDirty, navigate, setPendingNavigation, setShowUnsavedChangesDialog]);
+		// TV Mode doesn't save changes - just navigate back
+		navigate('/alerts');
+	}, [navigate]);
 
 	const handleNewDashboard = useCallback(() => {
 		if (isDirty) {
@@ -275,120 +279,171 @@ const AlertsTVMode = () => {
 
 	const cardSize = getCardSize(filteredAlerts.length);
 
+	const activeAlertsCount = filteredAlerts.filter((a) => !a.isDismissed).length;
+	const criticalCount = filteredAlerts.filter((a) => !a.isDismissed && (a.tags?.severity || a.tags?.priority || '').toLowerCase() === 'critical').length;
+
 	return (
-		<div className="min-h-screen bg-background p-4 flex flex-col">
-			<div className="mb-4 flex flex-col gap-4">
-				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" onClick={handleNavigateBack} className="gap-2">
-						<ArrowLeft className="h-4 w-4" />
-						Back to Alerts
-					</Button>
-				</div>
-
-				<div className="flex items-center justify-between">
-					<div className="flex-1">
-						<DashboardHeader
-							dashboardName={dashboardState.name}
-							onDashboardNameChange={(name) => updateDashboardField('name', name)}
-							onDashboardNameBlur={() => {
-								if (dashboardState.name && dashboardState.name !== initialState.name) {
-									handleSaveDashboard();
-								}
-							}}
-							isDirty={isDirty}
-							onSave={handleSaveDashboard}
-							onSettingsClick={() => setShowDashboardSettings(true)}
-							isRefreshing={isRefreshing}
-							lastRefresh={lastRefresh}
-							onRefresh={handleManualRefresh}
-							showTvModeButton={false}
-							dashboards={dashboards}
-							onDashboardSelect={handleDashboardSelect}
-							onNewDashboard={handleNewDashboard}
-						/>
-					</div>
-
-					<div className="flex items-center gap-2 ml-4 self-start mt-1">
-						<div className="flex items-center bg-muted rounded-lg p-1">
+		<div className="h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col overflow-hidden">
+			{/* Modern Header */}
+			<div className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b">
+				<div className="px-6 py-4">
+					<div className="flex items-center justify-between">
+						{/* Left side - Back button and title */}
+						<div className="flex items-center gap-4">
 							<Button
-								variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+								variant="ghost"
 								size="sm"
-								onClick={() => setViewMode('grid')}
-								className="h-7 px-2 gap-1"
+								onClick={handleNavigateBack}
+								className="gap-2 hover:bg-muted"
 							>
-								<LayoutGrid className="h-4 w-4" /> Grid
+								<ArrowLeft className="h-4 w-4" />
+								Back
 							</Button>
-							<Button
-								variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
-								size="sm"
-								onClick={() => setViewMode('heatmap')}
-								className="h-7 px-2 gap-1"
-							>
-								<MapIcon className="h-4 w-4" /> Map
-							</Button>
+
+							<div className="h-6 w-px bg-border" />
+
+							<div>
+								<DashboardHeader
+									dashboardName={dashboardState.name}
+									onDashboardNameChange={(name) => updateDashboardField('name', name)}
+									onDashboardNameBlur={() => {}}
+									isDirty={false}
+									onSave={undefined}
+									isRefreshing={isRefreshing}
+									lastRefresh={lastRefresh}
+									onRefresh={handleManualRefresh}
+									showTvModeButton={false}
+									dashboards={dashboards}
+									onDashboardSelect={handleDashboardSelect}
+								/>
+							</div>
 						</div>
-						<Badge variant="secondary" className="ml-2 h-7 flex items-center">
-							{filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''}
-						</Badge>
+
+						{/* Right side - Stats and controls */}
+						<div className="flex items-center gap-4">
+							{/* Stats */}
+							<div className="flex items-center gap-3">
+								{criticalCount > 0 && (
+									<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
+										<AlertTriangle className="h-4 w-4 text-red-500" />
+										<span className="text-sm font-semibold text-red-500">{criticalCount} Critical</span>
+									</div>
+								)}
+								<div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
+									<span className="text-sm font-medium text-foreground">
+										{activeAlertsCount} Active
+									</span>
+									<span className="text-sm text-muted-foreground">/</span>
+									<span className="text-sm text-muted-foreground">
+										{filteredAlerts.length} Total
+									</span>
+								</div>
+							</div>
+
+							{/* View toggle */}
+							<div className="flex items-center bg-muted/50 rounded-lg p-1 border">
+								<Button
+									variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+									size="sm"
+									onClick={() => setViewMode('grid')}
+									className="h-8 px-3 gap-2"
+								>
+									<LayoutGrid className="h-4 w-4" />
+									Grid
+								</Button>
+								<Button
+									variant={viewMode === 'heatmap' ? 'secondary' : 'ghost'}
+									size="sm"
+									onClick={() => setViewMode('heatmap')}
+									className="h-8 px-3 gap-2"
+								>
+									<Layers className="h-4 w-4" />
+									Grouped
+								</Button>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
 
-			{isLoading ? (
-				<div className="flex items-center justify-center h-64 flex-1">
-					<div className="text-center">
-						<RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-foreground" />
-						<p className="text-foreground">Loading alerts...</p>
+			{/* Main Content */}
+			<div className={cn("flex-1", viewMode === 'heatmap' ? 'p-0 overflow-hidden relative' : 'p-6 overflow-auto')}>
+				{isLoading ? (
+					<div className="flex items-center justify-center h-full">
+						<div className="text-center">
+							<div className="relative">
+								<RefreshCw className="h-12 w-12 animate-spin mx-auto text-primary" />
+								<div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 animate-ping" />
+							</div>
+							<p className="mt-4 text-lg text-muted-foreground">Loading alerts...</p>
+						</div>
 					</div>
-				</div>
-			) : filteredAlerts.length === 0 ? (
-				<div className="flex items-center justify-center h-64 flex-1">
-					<div className="text-center">
-						<CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-						<h2 className="text-xl font-semibold mb-2 text-foreground">No Active Alerts</h2>
-						<p className="text-foreground">All systems are operating normally</p>
+				) : filteredAlerts.length === 0 ? (
+					<div className="flex items-center justify-center h-full">
+						<div className="text-center">
+							<div className="relative mb-6">
+								<div className="h-20 w-20 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
+									<CheckCircle className="h-10 w-10 text-green-500" />
+								</div>
+								<div className="absolute inset-0 h-20 w-20 mx-auto rounded-full bg-green-500/20 animate-pulse" />
+							</div>
+							<h2 className="text-2xl font-semibold text-foreground">All Clear</h2>
+							<p className="mt-2 text-muted-foreground">No active alerts • All systems operational</p>
+						</div>
 					</div>
+				) : viewMode === 'heatmap' ? (
+					<div className="absolute inset-0">
+						<AlertsGroupedView
+							alerts={filteredAlerts}
+							groupBy={dashboardState.groupBy}
+							customValueGetter={getAlertValueWithService}
+							onAlertClick={(alert) => setSelectedAlert(alert)}
+							groupByColumns={dashboardState.groupBy}
+							onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
+							availableColumns={allGroupableColumns}
+						/>
+					</div>
+				) : (
+					<div className={cn('grid', GRID_CLASSES[cardSize])}>
+						{filteredAlerts.map((alert) => (
+							<AlertCard
+								key={alert.id}
+								alert={alert}
+								cardSize={cardSize}
+								serviceName={getServiceName(alert)}
+								onClick={() => setSelectedAlert(alert)}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+
+			{/* Keyboard shortcuts hint */}
+			<div className="fixed bottom-4 right-4 text-xs bg-background/90 backdrop-blur-xl rounded-xl px-4 py-2 border shadow-lg">
+				<div className="flex items-center gap-4">
+					<span className="flex items-center gap-2">
+						<kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded-md border text-foreground">ESC</kbd>
+						<span className="text-muted-foreground">Exit</span>
+					</span>
+					<span className="flex items-center gap-2">
+						<kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded-md border text-foreground">R</kbd>
+						<span className="text-muted-foreground">Refresh</span>
+					</span>
 				</div>
-			) : viewMode === 'heatmap' ? (
-				<div className="flex-1 border rounded-lg overflow-hidden bg-card shadow-sm">
-					<AlertsHeatmap
-						alerts={filteredAlerts}
-						groupBy={dashboardState.groupBy}
-						customValueGetter={getAlertValueWithService}
+			</div>
+
+			{/* Alert Details Modal */}
+			<Dialog open={!!selectedAlert} onOpenChange={(open) => !open && setSelectedAlert(null)}>
+				<DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden" showClose={false}>
+					<AlertDetails
+						isActive={true}
+						alert={selectedAlert}
+						onClose={() => setSelectedAlert(null)}
 						onDismiss={handleDismissAlert}
 						onUndismiss={handleUndismissAlert}
-						groupByColumns={dashboardState.groupBy}
-						onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
-						availableColumns={GROUPABLE_COLUMNS}
 					/>
-				</div>
-			) : (
-				<div className={cn('grid', GRID_CLASSES[cardSize])}>
-					{filteredAlerts.map((alert) => (
-						<AlertCard
-							key={alert.id}
-							alert={alert}
-							cardSize={cardSize}
-							serviceName={getServiceName(alert)}
-							onDismissAlert={handleDismissAlert}
-							onUndismissAlert={handleUndismissAlert}
-						/>
-					))}
-				</div>
-			)}
-
-			<div className="fixed bottom-4 right-4 text-xs text-foreground bg-background/80 backdrop-blur-sm rounded-lg p-2 border">
-				<div className="flex items-center gap-4">
-					<span>
-						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">ESC</kbd>{' '}
-						Exit
-					</span>
-					<span>
-						<kbd className="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded text-foreground">R</kbd>{' '}
-						Refresh
-					</span>
-				</div>
-			</div>
+				</DialogContent>
+			</Dialog>
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}

@@ -11,7 +11,7 @@ export interface DashboardHeaderProps {
 	onDashboardNameBlur: () => void;
 	isDirty: boolean;
 	onSave: () => void;
-	onSettingsClick: () => void;
+	onSettingsClick?: () => void;
 	isRefreshing: boolean;
 	lastRefresh?: Date;
 	onRefresh: () => void;
@@ -93,15 +93,17 @@ export const DashboardHeader = ({
 					</div>
 				)}
 
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={onSettingsClick}
-					title="Dashboard Settings"
-					className="rounded-full h-8 w-8 hover:bg-muted"
-				>
-					<Settings className="h-4 w-4" />
-				</Button>
+				{onSettingsClick && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onSettingsClick}
+						title="Dashboard Settings"
+						className="rounded-full h-8 w-8 hover:bg-muted"
+					>
+						<Settings className="h-4 w-4" />
+					</Button>
+				)}
 
 				{isDirty && (
 					<Button
