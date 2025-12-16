@@ -6,6 +6,7 @@ import { Alert } from '@OpsiMate/shared';
 import { COLUMN_WIDTHS } from '../AlertsTable.constants';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
+import { AlertOwnerColumn } from './Columns/AlertOwnerColumn';
 import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
 import { AlertStatusColumn } from './Columns/AlertStatusColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
@@ -83,6 +84,8 @@ export const AlertRow = ({
 						return <AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />;
 					case 'summary':
 						return <AlertSummaryColumn key={column} alert={alert} className={COLUMN_WIDTHS.summary} />;
+					case 'owner':
+						return <AlertOwnerColumn key={column} alert={alert} className={COLUMN_WIDTHS.owner} />;
 					case 'startsAt':
 						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
 					case 'actions':
