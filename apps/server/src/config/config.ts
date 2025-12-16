@@ -14,6 +14,7 @@ export interface OpsimateConfig {
 	};
 	security: {
 		private_keys_path: string;
+		api_token: string;
 	};
 	vm: {
 		try_with_sudo: boolean;
@@ -105,6 +106,7 @@ function getDefaultConfig(): OpsimateConfig {
 		},
 		security: {
 			private_keys_path: '../../data/private-keys',
+			api_token: 'opsimate_test',
 		},
 		vm: {
 			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',

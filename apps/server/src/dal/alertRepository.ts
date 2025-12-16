@@ -45,25 +45,30 @@ export class AlertRepository {
 
 	async initAlertsTable(): Promise<void> {
 		return runAsync(() => {
-			this.db
-				.prepare(
-					`
-                CREATE TABLE IF NOT EXISTS alerts (
-                    id TEXT PRIMARY KEY,
-                    status TEXT,
-                    tags TEXT,
+			this.db.exec(`
+				CREATE TABLE IF NOT EXISTS alerts (
+					id TEXT PRIMARY KEY,
+					status TEXT,
+					tags TEXT,
 					type TEXT,
-                    starts_at TEXT,
-                    updated_at TEXT,
-                    alert_url TEXT,
-                    alert_name TEXT,
-                    is_dismissed BOOLEAN DEFAULT 0,
-                    summary TEXT,
-                    runbook_url TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )`
-				)
-				.run();
+					starts_at TEXT,
+					updated_at TEXT,
+					alert_url TEXT,
+					alert_name TEXT,
+					is_dismissed BOOLEAN DEFAULT 0,
+					summary TEXT,
+					runbook_url TEXT,
+					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+				);
+	
+				CREATE TRIGGER IF NOT EXISTS archive_alert_on_insert
+					AFTER INSERT ON alerts
+					FOR EACH ROW
+				BEGIN
+					INSERT INTO alerts_history (alert_id, status)
+					VALUES (NEW.id, NEW.status);
+				END;
+        	`);
 
 			// Backward compatibility: ensure tags column exists
 			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all();

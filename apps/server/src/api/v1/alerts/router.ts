@@ -19,6 +19,9 @@ export default function createAlertRouter(controller: AlertController) {
 	router.patch('/:id/dismiss', controller.dismissAlert.bind(controller));
 	router.patch('/:id/undismiss', controller.undismissAlert.bind(controller));
 
+	// Alert History
+	router.get('/:alertId/history', controller.getAlertHistory.bind(controller));
+
 	// Create custom alerts
 	router.post('/custom/datadog', controller.createCustomDatadogAlert.bind(controller));
 	router.post('/custom/gcp', controller.createCustomGCPAlert.bind(controller));

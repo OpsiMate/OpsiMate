@@ -50,15 +50,16 @@ export type ServiceRowWithProviderRow = {
 	provider_type: string;
 };
 
-export interface ViewRow {
+export interface DashboardRow {
 	id: string;
+	type: 'services' | 'alerts';
 	name: string;
 	description?: string;
-	createdAt: string;
-	filters: string;
-	visibleColumns: string;
-	searchTerm: string;
-	isDefault?: number;
+	created_at: string;
+	filters: string; // Record<string, string>
+	visible_columns: string; // string[]
+	query: string;
+	group_by: string; // string[]
 }
 
 export type AlertRow = {

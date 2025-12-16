@@ -92,7 +92,7 @@ export const GroupByControls = ({
 		<div className="flex items-center gap-1">
 			<Popover>
 				<PopoverTrigger asChild>
-					<Button variant="outline" size="sm" className="h-8 border-dashed">
+					<Button variant="outline" size="sm" className="h-8 border-dashed group">
 						<Layers className="mr-2 h-4 w-4 text-foreground" />
 						<span className="text-foreground">{GROUP_BY_CONTROLS_TEXT.TRIGGER_LABEL}</span>
 						{groupByColumns.length > 0 && (
@@ -100,6 +100,27 @@ export const GroupByControls = ({
 								<span className="mx-2 h-4 w-[1px] bg-border" />
 								<span className="text-xs text-foreground">
 									{groupByColumns.map((col) => getLabel(col)).join(', ')}
+								</span>
+								<span
+									role="button"
+									tabIndex={0}
+									className="ml-2 h-6 w-6 -mr-1 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+									onClick={(e) => {
+										e.stopPropagation();
+										e.preventDefault();
+										onGroupByChange([]);
+									}}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.stopPropagation();
+											e.preventDefault();
+											onGroupByChange([]);
+										}
+									}}
+									title={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
+									aria-label={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
+								>
+									<X className="h-3.5 w-3.5" />
 								</span>
 							</>
 						)}
@@ -186,18 +207,6 @@ export const GroupByControls = ({
 					</Command>
 				</PopoverContent>
 			</Popover>
-			{groupByColumns.length > 0 && (
-				<Button
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-muted-foreground hover:text-foreground"
-					onClick={() => onGroupByChange([])}
-					title={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
-					aria-label={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
-				>
-					<X className="h-4 w-4" />
-				</Button>
-			)}
 		</div>
 	);
 };

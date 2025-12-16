@@ -1,46 +1,47 @@
-import express from 'express';
+import Database from 'better-sqlite3';
 import cors from 'cors';
+import express from 'express';
 import healthRouter from './api/health';
+import { AlertController } from './api/v1/alerts/controller';
+import { AuditController } from './api/v1/audit/controller';
+import { CustomActionsController } from './api/v1/custom-actions/controller';
+import { CustomFieldsController } from './api/v1/custom-fields/controller';
+import { DashboardController } from './api/v1/dashboards/controller';
+import { IntegrationController } from './api/v1/integrations/controller';
+import { ProviderController } from './api/v1/providers/controller';
+import { SecretsController } from './api/v1/secrets/controller';
+import { ServiceController } from './api/v1/services/controller';
+import { TagController } from './api/v1/tags/controller';
+import { UsersController } from './api/v1/users/controller';
 import createV1Router from './api/v1/v1';
-import { ProviderRepository } from './dal/providerRepository';
-import { ServiceRepository } from './dal/serviceRepository';
-import { ViewRepository } from './dal/viewRepository';
-import { TagRepository } from './dal/tagRepository';
-import { IntegrationRepository } from './dal/integrationRepository';
+import { AlertBL } from './bl/alerts/alert.bl';
+import { AuditBL } from './bl/audit/audit.bl';
+import { CustomActionBL } from './bl/custom-actions/customAction.bl';
+import { ServiceCustomFieldBL } from './bl/custom-fields/serviceCustomField.bl';
+import { DashboardBL } from './bl/dashboards/dashboard.bl.ts';
+import { IntegrationBL } from './bl/integrations/integration.bl';
+import { ProviderBL } from './bl/providers/provider.bl';
+import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
+import { ServicesBL } from './bl/services/services.bl';
+import { TagBL } from './bl/tags/tag.bl';
+import { UserBL } from './bl/users/user.bl';
 import { AlertRepository } from './dal/alertRepository';
 import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
-import { ProviderBL } from './bl/providers/provider.bl';
-import { ViewBL } from './bl/custom-views/custom-view.bl';
-import { IntegrationBL } from './bl/integrations/integration.bl';
-import { AlertBL } from './bl/alerts/alert.bl';
-import { ProviderController } from './api/v1/providers/controller';
-import { ServiceController } from './api/v1/services/controller';
-import { ViewController } from './api/v1/views/controller';
-import { TagController } from './api/v1/tags/controller';
-import { IntegrationController } from './api/v1/integrations/controller';
-import { AlertController } from './api/v1/alerts/controller';
-import { UserRepository } from './dal/userRepository';
-import { UserBL } from './bl/users/user.bl';
-import { UsersController } from './api/v1/users/controller';
-import Database from 'better-sqlite3';
-import { RefreshJob } from './jobs/refresh-job';
-import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
 import { AuditLogRepository } from './dal/auditLogRepository';
-import { AuditBL } from './bl/audit/audit.bl';
-import { AuditController } from './api/v1/audit/controller';
-import { SecretsController } from './api/v1/secrets/controller';
-import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
+import { CustomActionRepository } from './dal/customActionRepository';
+import { DashboardRepository } from './dal/dashboardRepository.ts';
+import { MailClient } from './dal/external-client/mail-client';
+import { IntegrationRepository } from './dal/integrationRepository';
+import { PasswordResetsRepository } from './dal/passwordResetsRepository';
+import { ProviderRepository } from './dal/providerRepository';
 import { SecretsMetadataRepository } from './dal/secretsMetadataRepository';
 import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository';
 import { ServiceCustomFieldValueRepository } from './dal/serviceCustomFieldValueRepository';
-import { ServiceCustomFieldBL } from './bl/custom-fields/serviceCustomField.bl';
-import { CustomFieldsController } from './api/v1/custom-fields/controller';
-import { ServicesBL } from './bl/services/services.bl';
-import { PasswordResetsRepository } from './dal/passwordResetsRepository';
-import { MailClient } from './dal/external-client/mail-client';
-import { CustomActionRepository } from './dal/customActionRepository';
-import { CustomActionBL } from './bl/custom-actions/customAction.bl';
-import { CustomActionsController } from './api/v1/custom-actions/controller';
+import { ServiceRepository } from './dal/serviceRepository';
+import { TagRepository } from './dal/tagRepository';
+import { UserRepository } from './dal/userRepository';
+import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
+import { RefreshJob } from './jobs/refresh-job';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -62,6 +63,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		providerRepo.initProvidersTable(),
 		serviceRepo.initServicesTable(),
 		integrationRepo.initIntegrationsTable(),
+		archivedAlertRepo.initArchivedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
 		alertRepo.initAlertsTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
@@ -77,7 +79,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		// WORKER mode: Only start background jobs
 		new RefreshJob(providerBL).startRefreshJob();
 		new PullGrafanaAlertsJob(alertBL, integrationBL).startPullGrafanaAlertsJob();
-		return; // No Express app needed
+		return;
 	}
 
 	// SERVER mode: Create Express app and API routes
@@ -99,7 +101,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	);
 
 	// Additional repositories (only needed for SERVER)
-	const viewRepo = new ViewRepository(db);
+	const dashboardRepository = new DashboardRepository(db);
 	const tagRepo = new TagRepository(db);
 	const userRepo = new UserRepository(db);
 	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
@@ -113,11 +115,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// Init additional tables (only for SERVER)
 	await Promise.all([
-		viewRepo.initViewsTable(),
+		dashboardRepository.initDashboardTable(),
 		tagRepo.initTagsTables(),
-		integrationRepo.initIntegrationsTable(),
-		alertRepo.initAlertsTable(),
-		archivedAlertRepo.initArchivedAlertsTable(),
 		userRepo.initUsersTable(),
 		serviceCustomFieldRepo.initServiceCustomFieldTable(),
 		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
@@ -131,6 +130,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
 	const servicesBL = new ServicesBL(serviceRepo, auditBL);
 	const customActionBL = new CustomActionBL(customActionRepo, providerBL, servicesBL, serviceCustomFieldBL);
+	const tagBL = new TagBL(tagRepo);
+	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -142,8 +143,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		tagRepo,
 		alertBL
 	);
-	const viewController = new ViewController(new ViewBL(viewRepo));
-	const tagController = new TagController(tagRepo, serviceRepo, alertBL);
+	const dashboardController = new DashboardController(dashboardBL);
+	const tagController = new TagController(tagRepo, serviceRepo);
 	const integrationController = new IntegrationController(integrationBL);
 	const alertController = new AlertController(alertBL);
 	const usersController = new UsersController(userBL);
@@ -159,7 +160,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		createV1Router(
 			providerController,
 			serviceController,
-			viewController,
+			dashboardController,
 			tagController,
 			integrationController,
 			alertController,

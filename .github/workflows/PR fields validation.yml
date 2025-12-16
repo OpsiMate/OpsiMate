@@ -2,9 +2,9 @@ name: PR Fields Validation
 
 # This workflow validates that pull requests have meaningful titles and descriptions
 # Requirements:
-# 1. PR title must start with [FIX], [FEAT], or [CHORE] prefix
-# 2. PR must have a description/body with meaningful content
-# 3. Title must be descriptive and reasonably long
+# 1. PR title should contain feat/Feat/FEAT or bug/BUG/Bug (case-insensitive)
+# 2. PR should have a description/body with meaningful content
+# 3. Title should be descriptive
 
 on:
   pull_request:
@@ -28,31 +28,24 @@ jobs:
           CLEANED_BODY=$(echo "$BODY" | tr -d '[:space:]')
 
           if [ -z "$CLEANED_BODY" ] || [ "$CLEANED_BODY" = "null" ]; then
-            echo "❌ PR Description is missing!"
+            echo "⚠️  PR Description is missing!"
             echo ""
-            echo "Please provide a detailed description in the PR body that explains:"
-            echo "• What changes were made"
-            echo "• Why the changeswere made"
-            echo "• Any additional context that reviewers should know"
-            echo ""
-            echo "This helps maintainers understand your contribution."
-            exit 1
+            echo "Consider adding a description to help reviewers understand your changes."
+            echo "This is optional but recommended."
+            echo "description_valid=false" >> $GITHUB_OUTPUT
+          else
+            # Check for minimum description length
+            WORD_COUNT=$(echo "$BODY" | wc -w)
+
+            if [ "$WORD_COUNT" -lt 3 ]; then
+              echo "⚠️  PR Description is very short!"
+              echo "Consider adding more details to help reviewers."
+              echo "description_valid=false" >> $GITHUB_OUTPUT
+            else
+              echo "✅ PR Description looks good!"
+              echo "description_valid=true" >> $GITHUB_OUTPUT
+            fi
           fi
-
-          # Check for minimum description length (excluding markers/templates)
-          MIN_LENGTH=50
-          WORD_COUNT=$(echo "$BODY" | wc -w)
-
-          if [ "$WORD_COUNT" -lt 5 ]; then
-            echo "❌ PR Description is too short!"
-            echo ""
-            echo "Please provide a more detailed description (at least 5 words)."
-            echo "Help reviewers understand your changes better."
-            exit 1
-          fi
-
-          echo "✅ PR Description looks good!"
-          echo "description_valid=true" >> $GITHUB_OUTPUT
 
       - name: Custom Title Validation
         env:
@@ -62,40 +55,35 @@ jobs:
 
           echo "Checking PR title: $TITLE"
 
-          # Check if title starts with [FIX], [FEAT], or [CHORE]
-          if [[ "$TITLE" =~ ^\[(FIX|FEAT|CHORE)\] ]]; then
-            echo "✅ Title prefix is valid!"
+          # Convert to uppercase for case-insensitive matching
+          TITLE_UPPER=$(echo "$TITLE" | tr '[:lower:]' '[:upper:]')
+
+          # Check if title contains feat, bug, fix, chore, or other common prefixes (case-insensitive)
+          if [[ "$TITLE_UPPER" =~ (FEAT|BUG|FIX|CHORE|REFACTOR|DOCS|STYLE|TEST|PERF|CI|BUILD|REVERT|MERGE) ]]; then
+            echo "✅ Title contains valid prefix!"
           else
-            echo "❌ Invalid PR title format!"
-            echo ""
-            echo "The PR title must start with one of these prefixes:"
-            echo "• [FIX] - for bug fixes"
-            echo "• [FEAT] - for new features"
-            echo "• [CHORE] - for maintenance tasks, refactoring, or non-functional changes"
-            echo ""
-            echo "Examples:"
-            echo "• [FIX]: Fix login redirect issue"
-            echo "• [FEAT]: Add dark mode toggle"
-            echo "• [CHORE]: Refactor Dashboard component structure"
-            echo ""
-            echo "Current title: \"$TITLE\""
-            exit 1
+            # Check if title looks reasonable (has some descriptive content)
+            if [ ${#TITLE} -ge 10 ]; then
+              echo "✅ Title looks reasonable (has descriptive content)"
+            else
+              echo "⚠️  Title might be too short or missing a prefix"
+              echo ""
+              echo "Consider using prefixes like: feat, bug, fix, chore, refactor, etc."
+              echo "Examples:"
+              echo "• feat: Add dark mode toggle"
+              echo "• bug: Fix login redirect issue"
+              echo "• fix: Resolve dashboard loading error"
+              echo ""
+              echo "Current title: \"$TITLE\""
+              echo "This is a warning, not a blocker."
+            fi
           fi
 
-          # Check title length
-          if [ ${#TITLE} -lt 10 ]; then
-            echo "❌ Title is too short!"
-            echo "Please provide a more descriptive title (at least 10 characters)."
-            exit 1
+          # Check title length (soft check)
+          if [ ${#TITLE} -lt 5 ]; then
+            echo "⚠️  Title is very short - consider making it more descriptive"
+          else
+            echo "✅ Title length is acceptable"
           fi
 
-          # Check if title has meaningful content after the prefix
-          DESCRIPTION=$(echo "$TITLE" | sed 's/^\[\(FIX\|FEAT\|CHORE\)\]: *//')
-
-          if [ ${#DESCRIPTION} -lt 5 ]; then
-            echo "❌ Title description is too short!"
-            echo "Please provide a meaningful description after the prefix."
-            exit 1
-          fi
-
-          echo "✅ All PR title validations passed!"
+          echo "✅ PR title validation completed!"

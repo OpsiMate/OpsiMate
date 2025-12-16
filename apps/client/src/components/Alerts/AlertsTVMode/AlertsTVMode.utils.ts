@@ -36,7 +36,7 @@ export const filterAlertsByFilters = (
 	filters: Record<string, string[]>,
 	getServiceName: (alert: Alert) => string
 ): Alert[] => {
-	if (Object.keys(filters).length === 0) return alerts;
+	if (!filters || Object.keys(filters).length === 0) return alerts;
 
 	return alerts.filter((alert) => {
 		for (const [field, values] of Object.entries(filters)) {
@@ -57,6 +57,12 @@ export const filterAlertsByFilters = (
 			switch (field) {
 				case 'status':
 					fieldValue = alert.isDismissed ? 'Dismissed' : alert.status;
+					break;
+				case 'type':
+					fieldValue = alert.type || 'Custom';
+					break;
+				case 'alertName':
+					fieldValue = alert.alertName ?? '';
 					break;
 				case 'serviceName': {
 					const serviceName = getServiceName(alert);

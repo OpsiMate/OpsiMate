@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AlertStatus, Logger } from '@OpsiMate/shared';
+import { AlertHistory, AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import { DatadogAlertWebhookSchema, GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
@@ -267,6 +267,20 @@ export class AlertController {
 			}
 			await this.alertBL.deleteArchivedAlert(alertId);
 			return res.json({ success: true, message: 'Archived alert deleted permanently' });
+		} catch (error) {
+			logger.error('Error deleting archived alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getAlertHistory(req: Request, res: Response) {
+		try {
+			const alertId = req.params.alertId;
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			const alertHistory: AlertHistory = await this.alertBL.getAlertHistory(alertId);
+			return res.json({ success: true, data: { ...alertHistory } });
 		} catch (error) {
 			logger.error('Error deleting archived alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

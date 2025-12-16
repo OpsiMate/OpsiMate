@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { Role, User } from '@OpsiMate/shared';
+import { getSecurityConfig } from '../config/config.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 
@@ -30,7 +31,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 
 function authenticateApiToken(apiToken: string, res: Response, next: NextFunction) {
 	// Double check the apiToken is not empty
-	if (apiToken !== process.env.API_TOKEN && apiToken.length > 0) {
+	if (apiToken !== getSecurityConfig().api_token && apiToken.length > 0) {
 		return res.status(401).json({ success: false, error: 'Invalid API token' });
 	}
 

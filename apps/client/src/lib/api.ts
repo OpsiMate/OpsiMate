@@ -1,5 +1,7 @@
 import { SavedView } from '@/types/SavedView';
+import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AlertHistory,
 	AuditLog,
 	DiscoveredService,
 	Integration,
@@ -11,7 +13,6 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
-import { CustomAction } from '@OpsiMate/custom-actions';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
@@ -538,6 +539,10 @@ export const alertsApi = {
 	// Delete an alert
 	async deleteAlert(alertId: string): Promise<ApiResponse<void>> {
 		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE');
+	},
+
+	getAlertHistory: (alertId: string) => {
+		return apiRequest<AlertHistory>(`/alerts/${alertId}/history`, 'GET');
 	},
 
 	// Get alerts by tag

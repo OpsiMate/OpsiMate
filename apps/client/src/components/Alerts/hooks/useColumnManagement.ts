@@ -4,12 +4,18 @@ import { DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from '../AlertsTable/Al
 
 export interface ColumnManagementOptions {
 	tagKeys?: TagKeyInfo[];
+	initialVisibleColumns?: string[];
+	initialColumnOrder?: string[];
 }
 
 export const useColumnManagement = (options: ColumnManagementOptions = {}) => {
-	const { tagKeys = [] } = options;
-	const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
-	const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
+	const { tagKeys = [], initialVisibleColumns, initialColumnOrder } = options;
+	const [visibleColumns, setVisibleColumns] = useState<string[]>(
+		initialVisibleColumns && initialVisibleColumns.length > 0 ? initialVisibleColumns : DEFAULT_VISIBLE_COLUMNS
+	);
+	const [columnOrder, setColumnOrder] = useState<string[]>(
+		initialColumnOrder && initialColumnOrder.length > 0 ? initialColumnOrder : DEFAULT_COLUMN_ORDER
+	);
 
 	const allColumnLabels = useMemo(() => {
 		const labels: Record<string, string> = {};

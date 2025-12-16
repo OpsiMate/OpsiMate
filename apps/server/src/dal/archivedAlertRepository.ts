@@ -1,4 +1,4 @@
-import { AlertStatus, Alert as SharedAlert } from '@OpsiMate/shared';
+import { AlertStatus, Alert as SharedAlert, AlertHistory } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ArchivedAlertRow, TableInfoRow } from './models';
@@ -12,12 +12,11 @@ export class ArchivedAlertRepository {
 
 	async initArchivedAlertsTable(): Promise<void> {
 		return runAsync(() => {
-			this.db
-				.prepare(
-					`
+			this.db.exec(
+				`
 						CREATE TABLE IF NOT EXISTS alerts_archived (
 																	   id TEXT PRIMARY KEY,
-																	   status TEXT,
+																	   status TEXT NOT NULL,
 																	   tags TEXT,
 																	   type TEXT,
 																	   starts_at TEXT,
@@ -29,12 +28,35 @@ export class ArchivedAlertRepository {
 																	   runbook_url TEXT,
 																	   created_at TEXT,
 																	   archived_at DATETIME DEFAULT CURRENT_TIMESTAMP
-						)`
-				)
-				.run();
+						);
+
+						CREATE TABLE IF NOT EXISTS alerts_history (
+																	  history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+																	  alert_id TEXT NOT NULL,
+																	  archived_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+																	  status TEXT NOT NULL
+						);
+
+						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_update
+							BEFORE UPDATE ON alerts_archived
+							FOR EACH ROW
+						BEGIN
+							INSERT INTO alerts_history (alert_id, status)
+							VALUES (OLD.id, OLD.status);
+						END;
+
+						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_insert
+							AFTER INSERT ON alerts_archived
+							FOR EACH ROW
+						BEGIN
+							INSERT INTO alerts_history (alert_id, status)
+							VALUES (NEW.id, NEW.status);
+						END;
+						`
+			);
 
 			// Backward compatibility: ensure tags column exists
-			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all();
+			const columns = this.db.prepare(`PRAGMA table_info(alerts_archived)`).all();
 			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
 
 			if (!hasTags) {
@@ -113,5 +135,30 @@ export class ArchivedAlertRepository {
 			const stmt = this.db.prepare(`DELETE FROM alerts_archived WHERE id = ?`);
 			stmt.run(alertId);
 		});
+	}
+
+	async getAlertHistory(alertId: string): Promise<AlertHistory> {
+		const history: { archived_at: string; status: string }[] = await runAsync(() => {
+			return this.db
+				.prepare(
+					`
+					SELECT
+						archived_at,
+						status
+					FROM alerts_history
+					WHERE alert_id = ?
+					ORDER BY archived_at ASC
+				`
+				)
+				.all(alertId) as { archived_at: string; status: string }[];
+		});
+
+		return {
+			alertId,
+			data: history.map((h) => ({
+				date: h.archived_at,
+				status: h.status as AlertStatus,
+			})),
+		};
 	}
 }

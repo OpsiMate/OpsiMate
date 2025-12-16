@@ -1,6 +1,6 @@
 import { AlertRepository } from '../../dal/alertRepository';
 import { ArchivedAlertRepository } from '../../dal/archivedAlertRepository';
-import { Alert, AlertType, Logger } from '@OpsiMate/shared';
+import { Alert, AlertHistory, AlertType, Logger } from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
 
@@ -116,6 +116,12 @@ export class AlertBL {
 			logger.error('Error deleting archived alert', error);
 			throw error;
 		}
+	}
+	// endregion
+
+	// region history
+	async getAlertHistory(alertId: string): Promise<AlertHistory> {
+		return await this.archivedAlertRepo.getAlertHistory(alertId);
 	}
 	// endregion
 }

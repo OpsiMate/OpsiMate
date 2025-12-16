@@ -1,0 +1,1 @@
+export { AlertDetailsHeader } from './AlertDetailsHeader';

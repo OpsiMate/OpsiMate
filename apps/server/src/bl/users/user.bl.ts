@@ -138,7 +138,7 @@ export class UserBL {
 	}
 
 	async validateResetPasswordToken(token: string): Promise<boolean> {
-		if (!token || typeof token !== 'string') {
+		if (!token) {
 			return false;
 		}
 
