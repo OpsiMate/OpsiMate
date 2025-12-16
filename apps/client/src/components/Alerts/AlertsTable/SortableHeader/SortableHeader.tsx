@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { AlertSortField, SortDirection } from '../AlertsTable.types';
 
-const VALID_SORT_FIELDS: AlertSortField[] = ['alertName', 'status', 'tag', 'startsAt', 'summary', 'type'];
+const VALID_SORT_FIELDS: AlertSortField[] = ['alertName', 'status', 'tag', 'startsAt', 'summary', 'type', 'owner'];
 
 const isValidSortField = (value: string): value is AlertSortField => {
 	return VALID_SORT_FIELDS.includes(value as AlertSortField);
