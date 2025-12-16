@@ -75,6 +75,7 @@ export type AlertRow = {
 	runbook_url?: string;
 	created_at: string;
 	is_dismissed: boolean;
+	owner_id?: number | null;
 };
 
 export type ArchivedAlertRow = {
@@ -91,6 +92,7 @@ export type ArchivedAlertRow = {
 	created_at: string;
 	is_dismissed: boolean;
 	archived_at: string;
+	owner_id?: number | null;
 };
 
 export type UserRow = {
