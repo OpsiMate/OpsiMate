@@ -56,11 +56,17 @@ export class ArchivedAlertRepository {
 			);
 
 			// Backward compatibility: ensure tags column exists
-			const columns = this.db.prepare(`PRAGMA table_info(alerts_archived)`).all();
+			const columns = this.db.prepare(`PRAGMA table_info(alerts_archived)`).all() as TableInfoRow[];
 			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
 
 			if (!hasTags) {
 				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN tags TEXT`).run();
+			}
+
+			// Backward compatibility: ensure owner_id column exists
+			const hasOwnerId = columns.some((col: TableInfoRow) => col.name === 'owner_id');
+			if (!hasOwnerId) {
+				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
 			}
 		});
 	}
@@ -69,8 +75,8 @@ export class ArchivedAlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts_archived
-                    (id, status, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, status, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status = excluded.status,
                     tags = excluded.tags,
@@ -83,6 +89,7 @@ export class ArchivedAlertRepository {
                     summary = excluded.summary,
                     runbook_url = excluded.runbook_url,
                     created_at = excluded.created_at,
+                    owner_id = excluded.owner_id,
                     archived_at = CURRENT_TIMESTAMP
             `);
 
@@ -98,7 +105,8 @@ export class ArchivedAlertRepository {
 				alert.isDismissed ? 1 : 0,
 				alert.summary || null,
 				alert.runbookUrl || null,
-				alert.createdAt
+				alert.createdAt,
+				alert.ownerId ?? null
 			);
 
 			return { changes: result.changes };
@@ -119,6 +127,7 @@ export class ArchivedAlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isDismissed: row.is_dismissed ? true : false,
+			ownerId: row.owner_id ?? null,
 		};
 	};
 
