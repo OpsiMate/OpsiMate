@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import { useUsers } from '@/hooks/queries/users';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -47,6 +48,7 @@ const AlertsTVMode = () => {
 
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: services = [] } = useServices();
+	const { data: users = [] } = useUsers();
 	const { data: dashboards = [] } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
@@ -103,8 +105,8 @@ const AlertsTVMode = () => {
 	);
 
 	const filteredAlerts = useMemo(
-		() => filterAlertsByFilters(alerts, dashboardState.filters, getServiceName),
-		[alerts, dashboardState.filters, getServiceName]
+		() => filterAlertsByFilters(alerts, dashboardState.filters, getServiceName, users),
+		[alerts, dashboardState.filters, getServiceName, users]
 	);
 
 	useEffect(() => {
