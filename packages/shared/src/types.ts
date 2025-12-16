@@ -134,6 +134,7 @@ export interface Alert {
 	runbookUrl?: string;
 	createdAt: string;
 	isDismissed: boolean;
+	ownerId?: number | null;
 }
 
 export interface AlertHistory {
