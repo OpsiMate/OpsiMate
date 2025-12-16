@@ -89,6 +89,10 @@ export const DatadogAlertWebhookSchema = z
 
 export type DatadogAlertWebhook = z.infer<typeof DatadogAlertWebhookSchema>;
 
+export const SetAlertOwnerSchema = z.object({
+	ownerId: z.number().int().positive().nullable(),
+});
+
 export interface UptimeKumaHeartbeat {
 	monitorID: number;
 	status: 0 | 1 | 2; // 0 = down, 1 = up, 2 = pending
