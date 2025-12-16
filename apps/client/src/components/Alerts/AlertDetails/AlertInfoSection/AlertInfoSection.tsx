@@ -1,4 +1,7 @@
+import { PersonPicker } from '@/components/PersonPicker';
 import { Badge } from '@/components/ui/badge';
+import { useSetAlertOwner } from '@/hooks/queries/alerts';
+import { useUsers } from '@/hooks/queries/users';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 import { getAlertTagEntries, hasAlertTags } from '../../utils/alertTags.utils';
@@ -10,6 +13,12 @@ interface AlertInfoSectionProps {
 
 export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 	const integration = resolveAlertIntegration(alert);
+	const { data: users = [] } = useUsers();
+	const { mutate: setOwner } = useSetAlertOwner();
+
+	const handleOwnerChange = (userId: number | null) => {
+		setOwner({ alertId: alert.id, ownerId: userId });
+	};
 
 	return (
 		<div className="flex flex-col gap-3">
@@ -40,6 +49,10 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 						</Badge>
 					</div>
 				</div>
+			</div>
+			<div className="flex items-center gap-2">
+				<span className="text-sm text-muted-foreground">Owner:</span>
+				<PersonPicker selectedUserId={alert.ownerId} onSelect={handleOwnerChange} users={users} />
 			</div>
 			{hasAlertTags(alert) && (
 				<div className="flex items-center gap-1 flex-wrap">
