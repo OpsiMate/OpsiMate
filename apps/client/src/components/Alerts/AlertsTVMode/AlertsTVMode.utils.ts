@@ -1,6 +1,8 @@
+import { UserInfo } from '@/hooks/queries/users';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { createServiceNameLookup as createServiceNameLookupShared } from '../utils';
+import { getOwnerDisplayName } from '../utils/owner.utils';
 import { CARD_SIZE_THRESHOLDS, CardSize } from './AlertsTVMode.constants';
 
 export { createServiceNameLookupShared as createServiceNameLookup };
@@ -34,7 +36,8 @@ export const getAlertServiceId = (alert: Alert): number | undefined => {
 export const filterAlertsByFilters = (
 	alerts: Alert[],
 	filters: Record<string, string[]>,
-	getServiceName: (alert: Alert) => string
+	getServiceName: (alert: Alert) => string,
+	users: UserInfo[] = []
 ): Alert[] => {
 	if (!filters || Object.keys(filters).length === 0) return alerts;
 
@@ -69,6 +72,9 @@ export const filterAlertsByFilters = (
 					fieldValue = serviceName;
 					break;
 				}
+				case 'owner':
+					fieldValue = getOwnerDisplayName(alert.ownerId, users);
+					break;
 				default:
 					continue;
 			}

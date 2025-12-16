@@ -1,8 +1,10 @@
+import { UserInfo } from '@/hooks/queries/users';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
 import { createServiceNameLookup } from '../utils';
 import { getAlertTagsString } from '../utils/alertTags.utils';
+import { getOwnerSortKey } from '../utils/owner.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, SortDirection } from './AlertsTable.types';
 
 export { createServiceNameLookup };
@@ -31,7 +33,12 @@ const getTagKeyValue = (alert: Alert, columnId: string): string => {
 	return alert.tags?.[tagKey] || '';
 };
 
-export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirection: SortDirection): Alert[] => {
+export const sortAlerts = (
+	alerts: Alert[],
+	sortField: AlertSortField,
+	sortDirection: SortDirection,
+	users: UserInfo[] = []
+): Alert[] => {
 	return [...alerts].sort((a, b) => {
 		let aValue: string | number;
 		let bValue: string | number;
@@ -63,6 +70,10 @@ export const sortAlerts = (alerts: Alert[], sortField: AlertSortField, sortDirec
 				case 'type':
 					aValue = getIntegrationLabel(resolveAlertIntegration(a)).toLowerCase();
 					bValue = getIntegrationLabel(resolveAlertIntegration(b)).toLowerCase();
+					break;
+				case 'owner':
+					aValue = getOwnerSortKey(a.ownerId, users);
+					bValue = getOwnerSortKey(b.ownerId, users);
 					break;
 				default:
 					return 0;
