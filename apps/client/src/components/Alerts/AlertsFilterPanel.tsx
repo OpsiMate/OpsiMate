@@ -1,8 +1,9 @@
 import { ActiveFilters, FilterFacets, FilterPanel, FilterPanelConfig } from '@/components/shared';
-import { useUsers, UserInfo } from '@/hooks/queries/users';
+import { useUsers } from '@/hooks/queries/users';
 import { getTagKeyColumnId, TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
+import { getOwnerDisplayName } from './utils/owner.utils';
 
 interface AlertsFilterPanelProps {
 	alerts: Alert[];
@@ -20,12 +21,6 @@ const BASE_FIELD_LABELS: Record<string, string> = {
 	type: 'Type',
 	alertName: 'Alert Name',
 	owner: 'Owner',
-};
-
-const getOwnerDisplayName = (ownerId: number | null | undefined, users: UserInfo[]): string => {
-	if (ownerId === null || ownerId === undefined) return 'Unassigned';
-	const user = users.find((u) => u.id === ownerId);
-	return user?.fullName || `User ${ownerId}`;
 };
 
 export const AlertsFilterPanel = ({
