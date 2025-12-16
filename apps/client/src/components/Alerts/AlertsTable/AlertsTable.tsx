@@ -137,7 +137,7 @@ export const AlertsTable = ({
 											/>
 										);
 									}
-									if (['alertName', 'status', 'startsAt', 'summary', 'type'].includes(column)) {
+									if (['alertName', 'status', 'startsAt', 'summary', 'type', 'owner'].includes(column)) {
 										return (
 											<SortableHeader
 												key={column}
