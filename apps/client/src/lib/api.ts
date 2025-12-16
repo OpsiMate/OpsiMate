@@ -584,6 +584,11 @@ export const alertsApi = {
 	async deleteArchivedAlert(alertId: string): Promise<ApiResponse<void>> {
 		return await apiRequest<void>(`/alerts/archived/${alertId}`, 'DELETE');
 	},
+
+	// Set alert owner
+	async setAlertOwner(alertId: string, ownerId: number | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/owner`, 'PATCH', { ownerId });
+	},
 };
 
 export const auditApi = {
@@ -703,6 +708,16 @@ export const customActionsApi = {
 
 	runForService: (serviceId: number, actionId: number) => {
 		return apiRequest<void>(`/custom-actions/run/service/${serviceId}/${actionId}`, 'POST');
+	},
+};
+
+/**
+ * Users API endpoints
+ */
+export const usersApi = {
+	// Get all users
+	getAllUsers: () => {
+		return apiRequest<{ id: number; email: string; fullName: string; role: string }[]>('/users');
 	},
 };
 
