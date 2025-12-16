@@ -71,11 +71,17 @@ export class AlertRepository {
         	`);
 
 			// Backward compatibility: ensure tags column exists
-			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all();
+			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all() as TableInfoRow[];
 			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
 
 			if (!hasTags) {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN tags TEXT`).run();
+			}
+
+			// Backward compatibility: ensure owner_id column exists
+			const hasOwnerId = columns.some((col: TableInfoRow) => col.name === 'owner_id');
+			if (!hasOwnerId) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
 			}
 		});
 	}
@@ -96,6 +102,7 @@ export class AlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isDismissed: row.is_dismissed ? true : false,
+			ownerId: row.owner_id ?? null,
 		};
 	};
 
@@ -186,6 +193,14 @@ export class AlertRepository {
 
 	async getAlert(alertId: string) {
 		return runAsync(() => {
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertId) as AlertRow | undefined;
+			return row ? this.toSharedAlert(row) : null;
+		});
+	}
+
+	async updateAlertOwner(alertId: string, ownerId: number | null): Promise<SharedAlert | null> {
+		return runAsync(() => {
+			this.db.prepare('UPDATE alerts SET owner_id = ? WHERE id = ?').run(ownerId, alertId);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertId) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
