@@ -331,6 +331,109 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('PATCH /api/v1/alerts/:id/owner', () => {
+		test('should set owner for an alert successfully', async () => {
+			const alertId = testAlerts[0].id; // 'alert-1'
+			// User ID 1 is the test user created in setupUserWithToken
+			const ownerId = 1;
+
+			const response = await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId });
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data?.alert.ownerId).toBe(ownerId);
+			expect(response.body.data?.alert.id).toBe(alertId);
+		});
+
+		test('should change owner for an alert successfully', async () => {
+			const alertId = testAlerts[0].id; // 'alert-1'
+
+			// First set owner to 1
+			await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: 1 });
+
+			// Then change owner to a different user (we'll use the same ID since we only have one test user)
+			const response = await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: 1 });
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data?.alert.ownerId).toBe(1);
+		});
+
+		test('should clear owner for an alert (set to null)', async () => {
+			const alertId = testAlerts[0].id; // 'alert-1'
+
+			// First set an owner
+			await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: 1 });
+
+			// Then clear the owner
+			const response = await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: null });
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data?.alert.ownerId).toBeNull();
+		});
+
+		test('should return 404 for non-existent alert', async () => {
+			const response = await app
+				.patch('/api/v1/alerts/nonexistent-id-123/owner')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: 1 });
+
+			expect(response.status).toBe(404);
+			expect(response.body.success).toBe(false);
+		});
+
+		test('should return 400 for invalid ownerId (string)', async () => {
+			const alertId = testAlerts[0].id;
+
+			const response = await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: 'invalid' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.success).toBe(false);
+			expect(response.body.error).toBe('Validation error');
+		});
+
+		test('should return 400 for invalid ownerId (negative number)', async () => {
+			const alertId = testAlerts[0].id;
+
+			const response = await app
+				.patch(`/api/v1/alerts/${alertId}/owner`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ownerId: -1 });
+
+			expect(response.status).toBe(400);
+			expect(response.body.success).toBe(false);
+			expect(response.body.error).toBe('Validation error');
+		});
+
+		test('should return 401 for request without authentication', async () => {
+			const alertId = testAlerts[0].id;
+
+			const response = await app.patch(`/api/v1/alerts/${alertId}/owner`).send({ ownerId: 1 });
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+		});
+	});
+
 	describe('POST /api/v1/alerts/custom', () => {
 		test('should create a new alert successfully with valid payload', async () => {
 			const payload = {
