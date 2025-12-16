@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
 import { AlertHistory, AlertStatus, Logger } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
-import { DatadogAlertWebhookSchema, GcpAlertWebhook, HttpAlertWebhookSchema, UptimeKumaWebhookPayload } from './models';
+import {
+	DatadogAlertWebhookSchema,
+	GcpAlertWebhook,
+	HttpAlertWebhookSchema,
+	SetAlertOwnerSchema,
+	UptimeKumaWebhookPayload,
+} from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { v4 } from 'uuid';
 
@@ -283,6 +289,27 @@ export class AlertController {
 			return res.json({ success: true, data: { ...alertHistory } });
 		} catch (error) {
 			logger.error('Error deleting archived alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async setAlertOwner(req: Request, res: Response) {
+		try {
+			const { id } = req.params;
+			if (!id) {
+				return res.status(400).json({ success: false, error: 'Alert id is required' });
+			}
+			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId);
+			if (!alert) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			return res.json({ success: true, data: { alert } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error setting alert owner:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
