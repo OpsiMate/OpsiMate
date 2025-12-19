@@ -146,8 +146,13 @@ export class UsersController {
 			return res.status(401).json({ success: false, error: 'Unauthorized' });
 		}
 
+		const numericUserId = parseInt(req.user.id, 10);
+		if (isNaN(numericUserId)) {
+			return res.status(401).json({ success: false, error: 'Invalid user ID in token' });
+		}
+
 		try {
-			const user = await this.userBL.getUserById(req.user.id);
+			const user = await this.userBL.getUserById(numericUserId);
 			if (!user) {
 				return res.status(404).json({ success: false, error: 'User not found' });
 			}
@@ -164,9 +169,14 @@ export class UsersController {
 			return res.status(401).json({ success: false, error: 'Unauthorized' });
 		}
 
+		const numericUserId = parseInt(req.user.id, 10);
+		if (isNaN(numericUserId)) {
+			return res.status(401).json({ success: false, error: 'Invalid user ID in token' });
+		}
+
 		try {
 			const { fullName, newPassword } = UpdateProfileSchema.parse(req.body);
-			const updatedUser = await this.userBL.updateProfile(req.user.id, fullName, newPassword);
+			const updatedUser = await this.userBL.updateProfile(numericUserId, fullName, newPassword);
 
 			const responseData: { user: User; token?: string | undefined } = { user: updatedUser };
 
@@ -210,7 +220,7 @@ export class UsersController {
 			}
 
 			// Don't allow admin to reset their own password this way
-			if (userId === req.user.id) {
+			if (userId === parseInt(req.user.id, 10)) {
 				return res.status(400).json({
 					success: false,
 					error: 'Cannot reset your own password. Use profile settings instead.',
