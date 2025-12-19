@@ -339,11 +339,11 @@ describe('Alerts API', () => {
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/owner`)
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: "1" });
+				.send({ ownerId: '1' });
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.ownerId).toBe("1");
+			expect(response.body.data?.alert.ownerId).toBe('1');
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
@@ -356,15 +356,13 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send({ ownerId: 1 });
 
-            // Register a non-admin user (admin creates them)
-            await app.post('/api/v1/users')
-                .set('Authorization', `Bearer ${jwtToken}`)
-                .send({
-                    email: 'who@example.com',
-                    fullName: 'Who User',
-                    password: 'securepassword',
-                    role: 'viewer',
-                });
+			// Register a non-admin user (admin creates them)
+			await app.post('/api/v1/users').set('Authorization', `Bearer ${jwtToken}`).send({
+				email: 'who@example.com',
+				fullName: 'Who User',
+				password: 'securepassword',
+				role: 'viewer',
+			});
 
 			// Then change owner to a different user (we'll use the same ID since we only have one test user)
 			const response = await app
