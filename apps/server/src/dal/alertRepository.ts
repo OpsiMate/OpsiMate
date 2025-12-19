@@ -102,7 +102,7 @@ export class AlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isDismissed: row.is_dismissed ? true : false,
-			ownerId: row.owner_id ?? null,
+			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
 	};
 

@@ -126,10 +126,12 @@ export class AlertBL {
 	// endregion
 
 	// region owner
-	async setAlertOwner(alertId: string, ownerId: number | null): Promise<Alert | null> {
+	async setAlertOwner(alertId: string, ownerId: string | null): Promise<Alert | null> {
 		try {
 			logger.info(`Setting owner ${ownerId} for alert: ${alertId}`);
-			return await this.alertRepo.updateAlertOwner(alertId, ownerId);
+			// Convert string to number for database storage
+			const numericOwnerId = ownerId !== null ? parseInt(ownerId, 10) : null;
+			return await this.alertRepo.updateAlertOwner(alertId, numericOwnerId);
 		} catch (error) {
 			logger.error('Error setting alert owner', error);
 			throw error;

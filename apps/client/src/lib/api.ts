@@ -586,7 +586,7 @@ export const alertsApi = {
 	},
 
 	// Set alert owner
-	async setAlertOwner(alertId: string, ownerId: number | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
+	async setAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/owner`, 'PATCH', { ownerId });
 	},
 };
@@ -717,7 +717,7 @@ export const customActionsApi = {
 export const usersApi = {
 	// Get all users
 	getAllUsers: () => {
-		return apiRequest<{ id: number; email: string; fullName: string; role: string }[]>('/users');
+		return apiRequest<{ id: string; email: string; fullName: string; role: string }[]>('/users');
 	},
 };
 

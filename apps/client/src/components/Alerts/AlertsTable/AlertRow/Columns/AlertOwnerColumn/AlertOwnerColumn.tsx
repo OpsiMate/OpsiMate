@@ -14,7 +14,7 @@ export const AlertOwnerColumn = ({ alert, className }: AlertOwnerColumnProps) =>
 	const { data: users = [] } = useUsers();
 	const setOwnerMutation = useSetAlertOwner();
 
-	const handleOwnerChange = (userId: number | null) => {
+	const handleOwnerChange = (userId: string | null) => {
 		setOwnerMutation.mutate({ alertId: alert.id, ownerId: userId });
 	};
 

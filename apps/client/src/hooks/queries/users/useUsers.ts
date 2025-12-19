@@ -3,7 +3,7 @@ import { usersApi } from '@/lib/api';
 import { queryKeys } from '../queryKeys';
 
 export interface UserInfo {
-	id: number;
+	id: string;
 	email: string;
 	fullName: string;
 	role: string;

@@ -39,7 +39,7 @@ export enum SecretType {
 }
 
 export interface User {
-	id: number;
+	id: string;
 	email: string;
 	fullName: string;
 	role: Role;
@@ -134,7 +134,7 @@ export interface Alert {
 	runbookUrl?: string;
 	createdAt: string;
 	isDismissed: boolean;
-	ownerId?: number | null;
+	ownerId?: string | null;
 }
 
 export interface AlertHistory {

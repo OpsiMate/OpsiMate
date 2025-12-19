@@ -27,7 +27,7 @@ export const PersonPicker = ({
 
 	const selectedUser = users.find((u) => u.id === selectedUserId);
 
-	const handleSelect = (userId: number | null) => {
+	const handleSelect = (userId: string | null) => {
 		onSelect(userId);
 		setOpen(false);
 	};

@@ -335,16 +335,15 @@ describe('Alerts API', () => {
 		test('should set owner for an alert successfully', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1'
 			// User ID 1 is the test user created in setupUserWithToken
-			const ownerId = 1;
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/owner`)
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId });
+				.send({ ownerId: "1" });
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.ownerId).toBe(ownerId);
+			expect(response.body.data?.alert.ownerId).toBe("1");
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
@@ -357,15 +356,25 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send({ ownerId: 1 });
 
+            // Register a non-admin user (admin creates them)
+            await app.post('/api/v1/users')
+                .set('Authorization', `Bearer ${jwtToken}`)
+                .send({
+                    email: 'who@example.com',
+                    fullName: 'Who User',
+                    password: 'securepassword',
+                    role: 'viewer',
+                });
+
 			// Then change owner to a different user (we'll use the same ID since we only have one test user)
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/owner`)
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: 1 });
+				.send({ ownerId: '2' });
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.ownerId).toBe(1);
+			expect(response.body.data?.alert.ownerId).toBe('2');
 		});
 
 		test('should clear owner for an alert (set to null)', async () => {
@@ -375,7 +384,7 @@ describe('Alerts API', () => {
 			await app
 				.patch(`/api/v1/alerts/${alertId}/owner`)
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: 1 });
+				.send({ ownerId: '1' });
 
 			// Then clear the owner
 			const response = await app
@@ -392,32 +401,19 @@ describe('Alerts API', () => {
 			const response = await app
 				.patch('/api/v1/alerts/nonexistent-id-123/owner')
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: 1 });
+				.send({ ownerId: '1' });
 
 			expect(response.status).toBe(404);
 			expect(response.body.success).toBe(false);
 		});
 
-		test('should return 400 for invalid ownerId (string)', async () => {
+		test('should return 400 for invalid ownerId (number)', async () => {
 			const alertId = testAlerts[0].id;
 
 			const response = await app
 				.patch(`/api/v1/alerts/${alertId}/owner`)
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: 'invalid' });
-
-			expect(response.status).toBe(400);
-			expect(response.body.success).toBe(false);
-			expect(response.body.error).toBe('Validation error');
-		});
-
-		test('should return 400 for invalid ownerId (negative number)', async () => {
-			const alertId = testAlerts[0].id;
-
-			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/owner`)
-				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: -1 });
+				.send({ ownerId: 1 });
 
 			expect(response.status).toBe(400);
 			expect(response.body.success).toBe(false);
@@ -427,7 +423,7 @@ describe('Alerts API', () => {
 		test('should return 401 for request without authentication', async () => {
 			const alertId = testAlerts[0].id;
 
-			const response = await app.patch(`/api/v1/alerts/${alertId}/owner`).send({ ownerId: 1 });
+			const response = await app.patch(`/api/v1/alerts/${alertId}/owner`).send({ ownerId: '1' });
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);

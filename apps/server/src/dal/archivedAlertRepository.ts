@@ -106,7 +106,7 @@ export class ArchivedAlertRepository {
 				alert.summary || null,
 				alert.runbookUrl || null,
 				alert.createdAt,
-				alert.ownerId ?? null
+				alert.ownerId != null ? Number(alert.ownerId) : null
 			);
 
 			return { changes: result.changes };
@@ -127,7 +127,7 @@ export class ArchivedAlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isDismissed: row.is_dismissed ? true : false,
-			ownerId: row.owner_id ?? null,
+			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
 	};
 

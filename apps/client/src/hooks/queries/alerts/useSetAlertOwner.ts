@@ -5,7 +5,7 @@ import { queryKeys } from '../queryKeys';
 
 interface SetAlertOwnerParams {
 	alertId: string;
-	ownerId: number | null;
+	ownerId: string | null;
 }
 
 export const useSetAlertOwner = () => {

@@ -1,13 +1,13 @@
 export interface PersonPickerUser {
-	id: number;
+	id: string;
 	email: string;
 	fullName: string;
 }
 
 export interface PersonPickerProps {
-	selectedUserId: number | null | undefined;
+	selectedUserId: string | null | undefined;
 	users: PersonPickerUser[];
-	onSelect: (userId: number | null) => void;
+	onSelect: (userId: string | null) => void;
 	disabled?: boolean;
 	className?: string;
 	placeholder?: string;

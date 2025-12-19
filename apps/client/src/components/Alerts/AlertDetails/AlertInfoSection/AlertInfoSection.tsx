@@ -16,7 +16,7 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 	const { data: users = [] } = useUsers();
 	const { mutate: setOwner } = useSetAlertOwner();
 
-	const handleOwnerChange = (userId: number | null) => {
+	const handleOwnerChange = (userId: string | null) => {
 		setOwner({ alertId: alert.id, ownerId: userId });
 	};
 

@@ -142,7 +142,7 @@ export class UserRepository {
 
 	private toSharedUser = (row: UserRow): User => {
 		return {
-			id: row.id,
+			id: String(row.id),
 			email: row.email,
 			fullName: row.full_name,
 			role: row.role,
