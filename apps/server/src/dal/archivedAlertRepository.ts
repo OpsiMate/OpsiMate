@@ -156,7 +156,7 @@ export class ArchivedAlertRepository {
 						status
 					FROM alerts_history
 					WHERE alert_id = ?
-					ORDER BY archived_at ASC
+					ORDER BY archived_at DESC 
 				`
 				)
 				.all(alertId) as { archived_at: string; status: string }[];

@@ -6,53 +6,55 @@ interface AlertHistoryChartProps {
 	historyData: AlertHistory;
 }
 
-export const AlertHistoryChart = ({ historyData }: AlertHistoryChartProps) => {
-	const chartData = historyData.data.map((item, index) => ({
-		...item,
-		statusValue: item.status === AlertStatus.FIRING ? 1 : 0,
-		index,
-	}));
+const formatFullDate = (dateStr: string) => {
+	const date = new Date(dateStr);
+	return date.toLocaleString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+	});
+};
 
+export const AlertHistoryChart = ({ historyData }: AlertHistoryChartProps) => {
 	return (
-		<ResponsiveContainer width="100%" height={150}>
-			<LineChart data={chartData}>
-				<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-				<XAxis
-					dataKey="date"
-					tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }}
-					tickFormatter={(value) => format(new Date(value), 'MM/dd HH:mm')}
-					stroke="hsl(var(--border))"
-				/>
-				<YAxis
-					domain={[0, 1]}
-					ticks={[0, 1]}
-					tickFormatter={(value) => (value === 1 ? 'Firing' : 'Resolved')}
-					tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }}
-					stroke="hsl(var(--border))"
-				/>
-				<Tooltip
-					labelFormatter={(value) => format(new Date(value), 'PPpp')}
-					contentStyle={{
-						fontSize: '12px',
-						backgroundColor: 'hsl(var(--background))',
-						border: '1px solid hsl(var(--border))',
-						borderRadius: '6px',
-					}}
-					formatter={(value: number, name: string) => {
-						if (name === 'statusValue') {
-							return [value === 1 ? 'Firing' : 'Resolved', 'Status'];
-						}
-						return [value, name];
-					}}
-				/>
-				<Line
-					type="stepAfter"
-					dataKey="statusValue"
-					stroke="hsl(var(--primary))"
-					strokeWidth={2}
-					dot={{ r: 4, fill: 'hsl(var(--primary))' }}
-				/>
-			</LineChart>
-		</ResponsiveContainer>
+		<div className="border border-border rounded-lg bg-background">
+			<div className="overflow-y-auto max-h-[300px]">
+				{historyData.data.map((item, index) => {
+					const isFiring = item.status === AlertStatus.FIRING;
+					return (
+						<div
+							key={index}
+							className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
+						>
+							<div
+								className={`w-3 h-3 rounded-full flex-shrink-0 ${
+									isFiring
+										? 'bg-red-500 border-2 border-red-600'
+										: 'bg-green-500 border-2 border-green-600'
+								}`}
+							/>
+							<div className="flex-1 min-w-0">
+								<div className="flex items-center gap-3 flex-wrap">
+									<span
+										className={`font-medium text-sm ${
+											isFiring ? 'text-red-500' : 'text-green-500'
+										}`}
+									>
+										{isFiring ? 'Firing' : 'Resolved'}
+									</span>
+									<span className="text-xs text-muted-foreground">{formatFullDate(item.date)}</span>
+								</div>
+							</div>
+						</div>
+					);
+				})}
+			</div>
+			{historyData.data.length === 0 && (
+				<div className="px-4 py-8 text-center text-sm text-muted-foreground">No alert history available</div>
+			)}
+		</div>
 	);
 };

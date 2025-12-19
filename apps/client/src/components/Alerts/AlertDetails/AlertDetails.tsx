@@ -57,8 +57,6 @@ export const AlertDetails = ({
 						onUndismiss={onUndismiss}
 						onDelete={onDelete}
 					/>
-
-					<AlertIdSection alertId={alert.id} />
 				</div>
 			</ScrollArea>
 		</div>
