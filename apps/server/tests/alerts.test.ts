@@ -354,7 +354,7 @@ describe('Alerts API', () => {
 			await app
 				.patch(`/api/v1/alerts/${alertId}/owner`)
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ ownerId: 1 });
+				.send({ ownerId: '1' });
 
 			// Register a non-admin user (admin creates them)
 			await app.post('/api/v1/users').set('Authorization', `Bearer ${jwtToken}`).send({
