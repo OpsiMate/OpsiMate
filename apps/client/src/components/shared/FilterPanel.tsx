@@ -126,7 +126,15 @@ export const FilterPanel = ({
 							const fieldFacets = facets[field] || [];
 							const activeValues = filters[field] || [];
 
-							if (fieldFacets.length === 0) return null;
+							// Include active filter values that are no longer in the data (with count 0)
+							const existingValues = new Set(fieldFacets.map((f) => f.value));
+							const orphanedFilters = activeValues
+								.filter((v) => !existingValues.has(v))
+								.map((value) => ({ value, count: 0 }));
+							const allFacets = [...fieldFacets, ...orphanedFilters];
+
+							// Hide field only if there are no facets AND no active filters
+							if (allFacets.length === 0) return null;
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
@@ -146,7 +154,7 @@ export const FilterPanel = ({
 										</div>
 									</AccordionTrigger>
 									<AccordionContent className="pb-2 overflow-hidden">
-										{shouldShowSearch(fieldFacets) && (
+										{shouldShowSearch(allFacets) && (
 											<div className="px-2 pb-2">
 												<Input
 													placeholder="Search..."
@@ -159,7 +167,7 @@ export const FilterPanel = ({
 										<div className="space-y-1 px-2 w-full">
 											{(() => {
 												const { filteredAndLimitedFacets, hasMore, remaining, searchTerm } =
-													getFilteredAndLimitedFacets(field, fieldFacets);
+													getFilteredAndLimitedFacets(field, allFacets);
 
 												return (
 													<>
