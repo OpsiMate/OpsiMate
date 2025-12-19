@@ -4,7 +4,7 @@ import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
 import { createServiceNameLookup } from '../utils';
 import { getAlertTagsString } from '../utils/alertTags.utils';
-import { getOwnerSortKey } from '../utils/owner.utils';
+import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, SortDirection } from './AlertsTable.types';
 
 export { createServiceNameLookup };
@@ -91,7 +91,7 @@ export const formatDate = (dateString: string): string => {
 	return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString();
 };
 
-export const getAlertValue = (alert: Alert, field: string): string => {
+export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string => {
 	if (isTagKeyColumn(field)) {
 		return getTagKeyValue(alert, field) || 'N/A';
 	}
@@ -110,13 +110,15 @@ export const getAlertValue = (alert: Alert, field: string): string => {
 		}
 		case 'type':
 			return getIntegrationLabel(resolveAlertIntegration(alert));
+		case 'owner':
+			return getOwnerDisplayName(alert.ownerId, users);
 		default:
 			return 'Unknown';
 	}
 };
 
-export const createTagKeyValueGetter = (_columnLabels: Record<string, string>) => {
-	return (alert: Alert, field: string): string => getAlertValue(alert, field);
+export const createTagKeyValueGetter = (_columnLabels: Record<string, string>, users: UserInfo[] = []) => {
+	return (alert: Alert, field: string): string => getAlertValue(alert, field, users);
 };
 
 interface GroupAlertsRecursiveOptions {

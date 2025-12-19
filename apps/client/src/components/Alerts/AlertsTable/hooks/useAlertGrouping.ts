@@ -1,3 +1,4 @@
+import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createTagKeyValueGetter, flattenGroups, groupAlerts } from '../AlertsTable.utils';
@@ -9,6 +10,8 @@ export const useAlertGrouping = (
 	controlledGroupBy?: string[],
 	onGroupByChange?: (cols: string[]) => void
 ) => {
+	const { data: users = [] } = useUsers();
+
 	const [localGroupByColumns, setLocalGroupByColumns] = useState<string[]>(() => {
 		try {
 			const saved = localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
@@ -40,7 +43,7 @@ export const useAlertGrouping = (
 
 	const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-	const valueGetter = useMemo(() => createTagKeyValueGetter(columnLabels), [columnLabels]);
+	const valueGetter = useMemo(() => createTagKeyValueGetter(columnLabels, users), [columnLabels, users]);
 
 	const groupedData = useMemo(() => {
 		if (groupByColumns.length === 0) return [];
