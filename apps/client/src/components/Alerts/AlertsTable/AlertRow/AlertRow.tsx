@@ -3,7 +3,8 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { ACTIONS_COLUMN, COLUMN_WIDTHS } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH, TABLE_HEAD_CLASSES } from '../AlertsTable.constants';
+import { CELL_PADDING } from './AlertRow.constants';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
 import { AlertOwnerColumn } from './Columns/AlertOwnerColumn';
@@ -50,8 +51,8 @@ export const AlertRow = ({
 		>
 			{onSelectAlerts && (
 				<TableCell
-					className="py-1 px-2"
-					style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+					className={CELL_PADDING}
+					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
 					onClick={(e) => e.stopPropagation()}
 				>
 					<div className="flex items-center justify-center">

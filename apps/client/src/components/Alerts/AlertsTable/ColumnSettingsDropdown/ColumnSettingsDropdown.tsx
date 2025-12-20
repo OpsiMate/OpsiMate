@@ -10,6 +10,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getTagKeyColumnId, TagKeyInfo } from '@/types';
 import { Columns3 } from 'lucide-react';
+import { ALERT_TAGS_LABEL, TOGGLE_COLUMNS_LABEL } from './ColumnSettingsDropdown.constants';
 
 export interface ColumnSettingsDropdownProps {
 	visibleColumns: string[];
@@ -38,10 +39,10 @@ export const ColumnSettingsDropdown = ({
 						</Button>
 					</DropdownMenuTrigger>
 				</TooltipTrigger>
-				<TooltipContent>Toggle columns</TooltipContent>
+				<TooltipContent>{TOGGLE_COLUMNS_LABEL}</TooltipContent>
 			</Tooltip>
 			<DropdownMenuContent align="end" className="w-48">
-				<DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+				<DropdownMenuLabel>{TOGGLE_COLUMNS_LABEL}</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				{availableColumns.map(([key, label]) => (
 					<DropdownMenuCheckboxItem
@@ -55,7 +56,7 @@ export const ColumnSettingsDropdown = ({
 				{tagKeys.length > 0 && (
 					<>
 						<DropdownMenuSeparator />
-						<DropdownMenuLabel>Alert Tags</DropdownMenuLabel>
+						<DropdownMenuLabel>{ALERT_TAGS_LABEL}</DropdownMenuLabel>
 						{tagKeys.map((tagKey) => {
 							const columnId = getTagKeyColumnId(tagKey.key);
 							return (

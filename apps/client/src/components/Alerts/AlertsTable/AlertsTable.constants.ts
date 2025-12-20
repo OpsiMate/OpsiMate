@@ -1,5 +1,9 @@
 export const ACTIONS_COLUMN = 'actions';
 
+export const SELECT_COLUMN_WIDTH = '40px';
+export const ACTIONS_COLUMN_WIDTH = '56px';
+export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
+
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'alertName', 'status', 'summary', 'owner', 'startsAt'];
 
 export const DEFAULT_COLUMN_ORDER = ['type', 'alertName', 'status', 'summary', 'owner', 'startsAt'];

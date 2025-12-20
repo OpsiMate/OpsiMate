@@ -7,10 +7,13 @@ import { useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
+	ACTIONS_COLUMN_WIDTH,
 	COLUMN_LABELS,
 	COLUMN_WIDTHS,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
+	SELECT_COLUMN_WIDTH,
+	TABLE_HEAD_CLASSES,
 } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
@@ -105,8 +108,12 @@ export const AlertsTable = ({
 							<TableRow className="h-8">
 								{onSelectAlerts && (
 									<TableHead
-										className="h-8 py-1 px-2"
-										style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+										className={TABLE_HEAD_CLASSES}
+										style={{
+											width: SELECT_COLUMN_WIDTH,
+											minWidth: SELECT_COLUMN_WIDTH,
+											maxWidth: SELECT_COLUMN_WIDTH,
+										}}
 									>
 										<div className="flex items-center justify-center">
 											<Checkbox
@@ -125,8 +132,12 @@ export const AlertsTable = ({
 										return (
 											<TableHead
 												key={column}
-												className="h-8 py-1 px-2 text-xs"
-												style={{ width: '56px', minWidth: '56px', maxWidth: '56px' }}
+												className={`${TABLE_HEAD_CLASSES} text-xs`}
+												style={{
+													width: ACTIONS_COLUMN_WIDTH,
+													minWidth: ACTIONS_COLUMN_WIDTH,
+													maxWidth: ACTIONS_COLUMN_WIDTH,
+												}}
 											>
 												<div className="flex items-center justify-end">
 													{onColumnToggle && (

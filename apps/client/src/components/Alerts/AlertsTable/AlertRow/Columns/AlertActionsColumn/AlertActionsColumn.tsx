@@ -1,5 +1,7 @@
 import { TableCell } from '@/components/ui/table';
 import { Alert } from '@OpsiMate/shared';
+import { ACTIONS_COLUMN_WIDTH } from '../../../AlertsTable.constants';
+import { ACTIONS_COLUMN_PADDING } from './AlertActionsColumn.constants';
 import { RowActions } from '../../RowActions';
 
 export interface AlertActionsColumnProps {
@@ -17,8 +19,8 @@ export const AlertActionsColumn = ({
 }: AlertActionsColumnProps) => {
 	return (
 		<TableCell
-			className="py-1 px-2"
-			style={{ width: '56px', minWidth: '56px', maxWidth: '56px' }}
+			className={ACTIONS_COLUMN_PADDING}
+			style={{ width: ACTIONS_COLUMN_WIDTH, minWidth: ACTIONS_COLUMN_WIDTH, maxWidth: ACTIONS_COLUMN_WIDTH }}
 			onClick={(e) => e.stopPropagation()}
 		>
 			<RowActions

@@ -3,8 +3,7 @@ import { cn } from '@/lib/utils';
 import { isTagKeyColumn } from '@/types';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { AlertSortField, SortDirection } from '../AlertsTable.types';
-
-const BASE_SORT_FIELDS = ['alertName', 'status', 'startsAt', 'summary', 'type', 'owner'];
+import { BASE_SORT_FIELDS } from './SortableHeader.constants';
 
 const isValidSortField = (value: string): boolean => {
 	return BASE_SORT_FIELDS.includes(value) || isTagKeyColumn(value);
