@@ -76,17 +76,26 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		const initialGroupBy = JSON.stringify(initialState.groupBy);
 		const currentFilters = JSON.stringify(dashboardState.filters);
 		const initialFilters = JSON.stringify(initialState.filters);
+		const currentVisibleColumns = JSON.stringify(dashboardState.visibleColumns);
+		const initialVisibleColumns = JSON.stringify(initialState.visibleColumns);
 
 		return (
 			currentName !== initialName ||
 			currentDescription !== initialDescription ||
 			currentGroupBy !== initialGroupBy ||
-			currentFilters !== initialFilters
+			currentFilters !== initialFilters ||
+			currentVisibleColumns !== initialVisibleColumns
 		);
 	}, [dashboardState, initialState, hasUserMadeChanges]);
 
 	const updateDashboardField = useCallback(<K extends keyof DashboardState>(field: K, value: DashboardState[K]) => {
-		const userEditableFields: (keyof DashboardState)[] = ['name', 'description', 'groupBy', 'filters'];
+		const userEditableFields: (keyof DashboardState)[] = [
+			'name',
+			'description',
+			'groupBy',
+			'filters',
+			'visibleColumns',
+		];
 		if (userEditableFields.includes(field)) {
 			setHasUserMadeChanges(true);
 		}

@@ -3,7 +3,7 @@ import { Command, CommandGroup, CommandItem, CommandList, CommandSeparator } fro
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { GripVertical, Layers, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { COLUMN_LABELS } from './AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable.constants';
 import { GROUP_BY_CONTROLS_TEXT } from './GroupByControls.constants';
 
 interface GroupByControlsProps {
@@ -26,7 +26,7 @@ export const GroupByControls = ({
 	availableColumns,
 	columnLabels = COLUMN_LABELS,
 }: GroupByControlsProps) => {
-	const groupableColumns = availableColumns.filter((col) => col !== 'actions');
+	const groupableColumns = availableColumns.filter((col) => col !== ACTIONS_COLUMN);
 	const getLabel = (col: string) => columnLabels[col] || COLUMN_LABELS[col] || col;
 	const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);

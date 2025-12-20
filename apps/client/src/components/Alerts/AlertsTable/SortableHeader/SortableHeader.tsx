@@ -1,12 +1,12 @@
 import { TableHead } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { isTagKeyColumn } from '@/types';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { AlertSortField, SortDirection } from '../AlertsTable.types';
+import { BASE_SORT_FIELDS } from './SortableHeader.constants';
 
-const VALID_SORT_FIELDS: AlertSortField[] = ['alertName', 'status', 'tag', 'startsAt', 'summary', 'type', 'owner'];
-
-const isValidSortField = (value: string): value is AlertSortField => {
-	return VALID_SORT_FIELDS.includes(value as AlertSortField);
+const isValidSortField = (value: string): boolean => {
+	return BASE_SORT_FIELDS.includes(value) || isTagKeyColumn(value);
 };
 
 export interface SortableHeaderProps {

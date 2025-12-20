@@ -1,6 +1,7 @@
 import { TableCell } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
+import { ACTIONS_COLUMN_WIDTH } from '../../../AlertsTable.constants';
+import { ACTIONS_COLUMN_PADDING } from './AlertActionsColumn.constants';
 import { RowActions } from '../../RowActions';
 
 export interface AlertActionsColumnProps {
@@ -8,7 +9,6 @@ export interface AlertActionsColumnProps {
 	onDismissAlert?: (alertId: string) => void;
 	onUndismissAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
-	className?: string;
 }
 
 export const AlertActionsColumn = ({
@@ -16,10 +16,13 @@ export const AlertActionsColumn = ({
 	onDismissAlert,
 	onUndismissAlert,
 	onDeleteAlert,
-	className,
 }: AlertActionsColumnProps) => {
 	return (
-		<TableCell className={cn('py-1 px-2', className)} onClick={(e) => e.stopPropagation()}>
+		<TableCell
+			className={ACTIONS_COLUMN_PADDING}
+			style={{ width: ACTIONS_COLUMN_WIDTH, minWidth: ACTIONS_COLUMN_WIDTH, maxWidth: ACTIONS_COLUMN_WIDTH }}
+			onClick={(e) => e.stopPropagation()}
+		>
 			<RowActions
 				alert={alert}
 				onDismissAlert={onDismissAlert}

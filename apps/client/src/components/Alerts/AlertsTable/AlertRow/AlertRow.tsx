@@ -3,7 +3,8 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { COLUMN_WIDTHS } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH, TABLE_HEAD_CLASSES } from '../AlertsTable.constants';
+import { CELL_PADDING } from './AlertRow.constants';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
 import { AlertOwnerColumn } from './Columns/AlertOwnerColumn';
@@ -49,7 +50,11 @@ export const AlertRow = ({
 			onClick={handleRowClick}
 		>
 			{onSelectAlerts && (
-				<TableCell className={cn('py-1 px-2', COLUMN_WIDTHS.select)} onClick={(e) => e.stopPropagation()}>
+				<TableCell
+					className={CELL_PADDING}
+					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
+					onClick={(e) => e.stopPropagation()}
+				>
 					<div className="flex items-center justify-center">
 						<Checkbox
 							checked={isSelected}
@@ -88,7 +93,7 @@ export const AlertRow = ({
 						return <AlertOwnerColumn key={column} alert={alert} className={COLUMN_WIDTHS.owner} />;
 					case 'startsAt':
 						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
-					case 'actions':
+					case ACTIONS_COLUMN:
 						return (
 							<AlertActionsColumn
 								key={column}
@@ -96,7 +101,6 @@ export const AlertRow = ({
 								onDismissAlert={onDismissAlert}
 								onUndismissAlert={onUndismissAlert}
 								onDeleteAlert={onDeleteAlert}
-								className={COLUMN_WIDTHS.actions}
 							/>
 						);
 					default:
