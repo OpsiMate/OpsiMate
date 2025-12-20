@@ -12,6 +12,7 @@ interface AlertsFilterPanelProps {
 	collapsed?: boolean;
 	className?: string;
 	enabledTagKeys?: TagKeyInfo[];
+	isArchived?: boolean;
 }
 
 const BASE_FILTER_FIELDS = ['status', 'type', 'alertName', 'owner'];
@@ -30,6 +31,7 @@ export const AlertsFilterPanel = ({
 	collapsed = false,
 	className,
 	enabledTagKeys = [],
+	isArchived = false,
 }: AlertsFilterPanelProps) => {
 	const { data: users = [] } = useUsers();
 
@@ -44,11 +46,13 @@ export const AlertsFilterPanel = ({
 			tagKeyLabels[getTagKeyColumnId(tk.key)] = tk.label;
 		});
 
+		const baseFields = isArchived ? BASE_FILTER_FIELDS.filter((f) => f !== 'status') : BASE_FILTER_FIELDS;
+
 		return {
-			fields: [...BASE_FILTER_FIELDS, ...tagKeyFields],
+			fields: [...baseFields, ...tagKeyFields],
 			fieldLabels: { ...BASE_FIELD_LABELS, ...tagKeyLabels },
 		};
-	}, [enabledTagKeys]);
+	}, [enabledTagKeys, isArchived]);
 
 	const facets: FilterFacets = useMemo(() => {
 		const facetData: Record<string, Map<string, number>> = {};
@@ -58,8 +62,10 @@ export const AlertsFilterPanel = ({
 		});
 
 		alerts.forEach((alert) => {
-			const status = alert.isDismissed ? 'Dismissed' : alert.status;
-			facetData.status.set(status, (facetData.status.get(status) || 0) + 1);
+			if (facetData.status) {
+				const status = alert.isDismissed ? 'Dismissed' : alert.status;
+				facetData.status.set(status, (facetData.status.get(status) || 0) + 1);
+			}
 
 			const type = getAlertType(alert);
 			facetData.type.set(type, (facetData.type.get(type) || 0) + 1);
@@ -83,7 +89,10 @@ export const AlertsFilterPanel = ({
 		const result: FilterFacets = {};
 		Object.entries(facetData).forEach(([field, map]) => {
 			result[field] = Array.from(map.entries())
-				.map(([value, count]) => ({ value, count }))
+				.map(([value, count]) => ({
+					value,
+					count,
+				}))
 				.sort((a, b) => {
 					if (b.count !== a.count) return b.count - a.count;
 					return a.value.localeCompare(b.value);

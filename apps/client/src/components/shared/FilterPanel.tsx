@@ -12,6 +12,7 @@ export type FilterFacet = {
 	value: string;
 	count: number;
 	displayValue?: string;
+	disabled?: boolean;
 };
 
 export type FilterFacets = Record<string, FilterFacet[]>;
@@ -164,24 +165,28 @@ export const FilterPanel = ({
 												return (
 													<>
 														{filteredAndLimitedFacets.map(
-															({ value, count, displayValue }) => {
+															({ value, count, displayValue, disabled }) => {
 																const isChecked = activeValues.includes(value);
 																const label = displayValue || value;
+																const isDisabled = disabled === true;
 																return (
 																	<label
 																		key={value}
 																		className={cn(
-																			'flex items-center gap-2 py-1 px-1 rounded cursor-pointer transition-colors w-full overflow-hidden',
-																			'hover:bg-muted/50',
+																			'flex items-center gap-2 py-1 px-1 rounded transition-colors w-full overflow-hidden',
+																			isDisabled
+																				? 'cursor-not-allowed opacity-50'
+																				: 'cursor-pointer hover:bg-muted/50',
 																			isChecked && 'bg-muted'
 																		)}
 																	>
 																		<Checkbox
 																			checked={isChecked}
+																			disabled={isDisabled}
 																			onCheckedChange={() =>
 																				handleFilterToggle(field, value)
 																			}
-																			className="h-3 w-3 border-2 flex-shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors"
+																			className="h-3 w-3 border-2 flex-shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors disabled:cursor-not-allowed"
 																		/>
 																		<span
 																			className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground"

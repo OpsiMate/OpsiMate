@@ -25,7 +25,14 @@ import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
-import { useAlertActions, useAlertsFiltering, useAlertsRefresh, useAlertTagKeys, useColumnManagement } from './hooks';
+import {
+	useAlertActions,
+	useAlertsFiltering,
+	useAlertsRefresh,
+	useAlertTagKeys,
+	useArchivedTabStatusFilterReset,
+	useColumnManagement,
+} from './hooks';
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -140,6 +147,12 @@ const Alerts = () => {
 		updateDashboardField('filters', newFilters);
 	};
 
+	useArchivedTabStatusFilterReset({
+		activeTab,
+		filters: dashboardState.filters,
+		onFilterChange: handleFilterChange,
+	});
+
 	const filteredAlerts = useAlertsFiltering(alerts, dashboardState.filters);
 	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, dashboardState.filters);
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
@@ -222,6 +235,7 @@ const Alerts = () => {
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
 						enabledTagKeys={enabledTagKeys}
+						isArchived={activeTab === AlertTab.Archived}
 					/>
 				</FilterSidebar>
 
@@ -259,18 +273,6 @@ const Alerts = () => {
 											setActiveTab(newTab);
 											setSelectedAlert(null);
 											setSelectedAlerts([]);
-											if (newTab === AlertTab.Archived) {
-												const currentFilters = dashboardState.filters;
-												if (currentFilters.status?.includes('Firing')) {
-													const newStatusValues = currentFilters.status.filter(
-														(s) => s !== 'Firing'
-													);
-													handleFilterChange({
-														...currentFilters,
-														status: newStatusValues,
-													});
-												}
-											}
 										}
 									}}
 									className="justify-start"
