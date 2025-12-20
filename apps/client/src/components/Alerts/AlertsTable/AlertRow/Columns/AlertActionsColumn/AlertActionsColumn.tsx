@@ -1,5 +1,4 @@
 import { TableCell } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { RowActions } from '../../RowActions';
 
@@ -8,7 +7,6 @@ export interface AlertActionsColumnProps {
 	onDismissAlert?: (alertId: string) => void;
 	onUndismissAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
-	className?: string;
 }
 
 export const AlertActionsColumn = ({
@@ -16,10 +14,13 @@ export const AlertActionsColumn = ({
 	onDismissAlert,
 	onUndismissAlert,
 	onDeleteAlert,
-	className,
 }: AlertActionsColumnProps) => {
 	return (
-		<TableCell className={cn('py-1 px-2', className)} onClick={(e) => e.stopPropagation()}>
+		<TableCell
+			className="py-1 px-2"
+			style={{ width: '56px', minWidth: '56px', maxWidth: '56px' }}
+			onClick={(e) => e.stopPropagation()}
+		>
 			<RowActions
 				alert={alert}
 				onDismissAlert={onDismissAlert}

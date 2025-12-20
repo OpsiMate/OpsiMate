@@ -1,21 +1,29 @@
 import { getTagKeyColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
-import { useCallback, useMemo, useState } from 'react';
-import { DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from '../AlertsTable/AlertsTable.constants';
+import { useCallback, useMemo } from 'react';
+import { ACTIONS_COLUMN, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from '../AlertsTable/AlertsTable.constants';
 
 export interface ColumnManagementOptions {
 	tagKeys?: TagKeyInfo[];
-	initialVisibleColumns?: string[];
-	initialColumnOrder?: string[];
+	visibleColumns?: string[];
+	columnOrder?: string[];
+	onVisibleColumnsChange?: (columns: string[]) => void;
 }
 
 export const useColumnManagement = (options: ColumnManagementOptions = {}) => {
-	const { tagKeys = [], initialVisibleColumns, initialColumnOrder } = options;
-	const [visibleColumns, setVisibleColumns] = useState<string[]>(
-		initialVisibleColumns && initialVisibleColumns.length > 0 ? initialVisibleColumns : DEFAULT_VISIBLE_COLUMNS
-	);
-	const [columnOrder, setColumnOrder] = useState<string[]>(
-		initialColumnOrder && initialColumnOrder.length > 0 ? initialColumnOrder : DEFAULT_COLUMN_ORDER
-	);
+	const {
+		tagKeys = [],
+		visibleColumns: controlledVisibleColumns,
+		columnOrder: controlledColumnOrder,
+		onVisibleColumnsChange,
+	} = options;
+
+	const visibleColumns =
+		controlledVisibleColumns && controlledVisibleColumns.length > 0
+			? controlledVisibleColumns
+			: DEFAULT_VISIBLE_COLUMNS;
+
+	const columnOrder =
+		controlledColumnOrder && controlledColumnOrder.length > 0 ? controlledColumnOrder : DEFAULT_COLUMN_ORDER;
 
 	const allColumnLabels = useMemo(() => {
 		const labels: Record<string, string> = {};
@@ -29,23 +37,22 @@ export const useColumnManagement = (options: ColumnManagementOptions = {}) => {
 
 	const effectiveColumnOrder = useMemo(() => {
 		const tagKeysInOrder = visibleColumns.filter((col) => isTagKeyColumn(col));
-		const baseOrder = columnOrder.filter((col) => !isTagKeyColumn(col));
-		const actionsIdx = baseOrder.indexOf('actions');
-		if (actionsIdx >= 0 && tagKeysInOrder.length > 0) {
-			return [...baseOrder.slice(0, actionsIdx), ...tagKeysInOrder, ...baseOrder.slice(actionsIdx)];
-		}
+		const baseOrder = columnOrder.filter((col) => !isTagKeyColumn(col) && col !== ACTIONS_COLUMN);
 		return [...baseOrder, ...tagKeysInOrder];
 	}, [columnOrder, visibleColumns]);
 
-	const handleColumnToggle = useCallback((column: string) => {
-		setVisibleColumns((prev) => {
-			if (prev.includes(column)) {
-				return prev.filter((col) => col !== column);
-			} else {
-				return [...prev, column];
-			}
-		});
-	}, []);
+	const handleColumnToggle = useCallback(
+		(column: string) => {
+			if (!onVisibleColumnsChange) return;
+
+			const newColumns = visibleColumns.includes(column)
+				? visibleColumns.filter((col) => col !== column)
+				: [...visibleColumns, column];
+
+			onVisibleColumnsChange(newColumns);
+		},
+		[visibleColumns, onVisibleColumnsChange]
+	);
 
 	const enabledTagKeys = useMemo(
 		() => tagKeys.filter((tk) => visibleColumns.includes(getTagKeyColumnId(tk.key))),

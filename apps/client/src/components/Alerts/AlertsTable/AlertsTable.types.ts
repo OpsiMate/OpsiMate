@@ -1,4 +1,10 @@
+import { TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
+
+export enum AlertTab {
+	Active = 'active',
+	Archived = 'archived',
+}
 
 export type AlertSortField = string;
 
@@ -14,13 +20,14 @@ export interface AlertsTableProps {
 	selectedAlerts?: Alert[];
 	isLoading?: boolean;
 	className?: string;
-	onTableSettingsClick?: () => void;
 	visibleColumns?: string[];
 	columnOrder?: string[];
 	onAlertClick?: (alert: Alert) => void;
 	tagKeyColumnLabels?: Record<string, string>;
 	groupByColumns?: string[];
 	onGroupByChange?: (cols: string[]) => void;
+	onColumnToggle?: (column: string) => void;
+	tagKeys?: TagKeyInfo[];
 }
 
 export interface SortConfig {

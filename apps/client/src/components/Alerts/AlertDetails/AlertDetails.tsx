@@ -4,7 +4,6 @@ import { Alert } from '@OpsiMate/shared';
 import { AlertActionsSection } from './AlertActionsSection';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
 import { AlertHistorySection } from './AlertHistorySection';
-import { AlertIdSection } from './AlertIdSection';
 import { AlertInfoSection } from './AlertInfoSection';
 import { AlertLinksSection } from './AlertLinksSection';
 import { AlertSummarySection } from './AlertSummarySection';

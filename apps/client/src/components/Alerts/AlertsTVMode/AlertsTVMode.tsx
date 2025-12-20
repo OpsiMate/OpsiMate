@@ -1,15 +1,13 @@
 import { AlertDetails } from '@/components/Alerts/AlertDetails';
-import { COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_LABELS } from '@/components/Alerts/AlertsTable/AlertsTable.constants';
 import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
 import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
 import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
 import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
-import { useUsers } from '@/hooks/queries/users';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -18,6 +16,7 @@ import {
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useServices } from '@/hooks/queries/services';
+import { useUsers } from '@/hooks/queries/users';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
@@ -465,7 +464,7 @@ const AlertsTVMode = () => {
 				visibleColumns={visibleColumns}
 				onColumnToggle={handleColumnToggle}
 				columnLabels={COLUMN_LABELS}
-				excludeColumns={['actions']}
+				excludeColumns={[ACTIONS_COLUMN]}
 				tagKeys={tagKeys}
 				onDelete={handleDeleteDashboard}
 				canDelete={!!dashboardState.id}

@@ -5,9 +5,16 @@ import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
-import { COLUMN_LABELS, COLUMN_WIDTHS, DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from './AlertsTable.constants';
+import {
+	ACTIONS_COLUMN,
+	COLUMN_LABELS,
+	COLUMN_WIDTHS,
+	DEFAULT_COLUMN_ORDER,
+	DEFAULT_VISIBLE_COLUMNS,
+} from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
+import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
 import { useAlertGrouping, useAlertSelection, useAlertSorting, useStickyHeaders } from './hooks';
 import { SearchBar } from './SearchBar';
@@ -24,13 +31,14 @@ export const AlertsTable = ({
 	selectedAlerts = [],
 	isLoading = false,
 	className,
-	onTableSettingsClick,
 	visibleColumns = DEFAULT_VISIBLE_COLUMNS,
 	columnOrder = DEFAULT_COLUMN_ORDER,
 	onAlertClick,
 	tagKeyColumnLabels = {},
 	groupByColumns: controlledGroupBy,
 	onGroupByChange,
+	onColumnToggle,
+	tagKeys = [],
 }: AlertsTableProps) => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const parentRef = useRef<HTMLDivElement>(null);
@@ -62,10 +70,10 @@ export const AlertsTable = ({
 	const virtualItems = virtualizer.getVirtualItems();
 	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
 
-	const orderedColumns = useMemo(
-		() => columnOrder.filter((col) => visibleColumns.includes(col)),
-		[columnOrder, visibleColumns]
-	);
+	const orderedColumns = useMemo(() => {
+		const filtered = columnOrder.filter((col) => col !== ACTIONS_COLUMN && visibleColumns.includes(col));
+		return [...filtered, ACTIONS_COLUMN];
+	}, [columnOrder, visibleColumns]);
 
 	// Show empty state if no alerts at all (not just filtered out)
 	if (!isLoading && alerts.length === 0) {
@@ -96,7 +104,10 @@ export const AlertsTable = ({
 						<TableHeader>
 							<TableRow className="h-8">
 								{onSelectAlerts && (
-									<TableHead className={cn('h-8 py-1 px-2', COLUMN_WIDTHS.select)}>
+									<TableHead
+										className="h-8 py-1 px-2"
+										style={{ width: '40px', minWidth: '40px', maxWidth: '40px' }}
+									>
 										<div className="flex items-center justify-center">
 											<Checkbox
 												checked={
@@ -110,14 +121,23 @@ export const AlertsTable = ({
 									</TableHead>
 								)}
 								{orderedColumns.map((column) => {
-									if (column === 'actions') {
+									if (column === ACTIONS_COLUMN) {
 										return (
 											<TableHead
 												key={column}
-												className={cn('h-8 py-1 px-2 text-xs', COLUMN_WIDTHS.actions)}
+												className="h-8 py-1 px-2 text-xs"
+												style={{ width: '56px', minWidth: '56px', maxWidth: '56px' }}
 											>
-												<div className="flex items-center justify-between">
-													<span>{allColumnLabels[column] || ''}</span>
+												<div className="flex items-center justify-end">
+													{onColumnToggle && (
+														<ColumnSettingsDropdown
+															visibleColumns={visibleColumns}
+															onColumnToggle={onColumnToggle}
+															columnLabels={COLUMN_LABELS}
+															excludeColumns={[ACTIONS_COLUMN]}
+															tagKeys={tagKeys}
+														/>
+													)}
 												</div>
 											</TableHead>
 										);
