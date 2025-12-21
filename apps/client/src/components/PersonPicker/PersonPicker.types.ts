@@ -2,6 +2,7 @@ export interface PersonPickerUser {
 	id: string;
 	email: string;
 	fullName: string;
+	avatarUrl?: string | null;
 }
 
 export interface PersonPickerProps {

@@ -42,6 +42,18 @@ export interface OpsimateConfig {
 			rejectUnauthorized: boolean;
 		};
 	};
+	storage?: {
+		enabled: boolean;
+		s3?: {
+			bucket: string;
+			region: string;
+			endpoint?: string;
+			publicEndpoint?: string; // Public endpoint for presigned URLs (accessible from browser)
+			forcePathStyle?: boolean;
+			accessKeyId?: string;
+			secretAccessKey?: string;
+		};
+	};
 }
 
 let cachedConfig: OpsimateConfig | null = null;
@@ -90,6 +102,19 @@ export function loadConfig(): OpsimateConfig {
 		}
 	}
 
+	// Set default storage config if not provided
+	if (!config.storage) {
+		config.storage = { enabled: false };
+	}
+
+	// Ensure storage is properly configured if enabled
+	if (config.storage.enabled) {
+		if (!config.storage.s3?.bucket || !config.storage.s3?.region) {
+			logger.warn('Storage is enabled but S3 configuration is incomplete. Storage features will be disabled.');
+			config.storage.enabled = false;
+		}
+	}
+
 	cachedConfig = config;
 	logger.info(`Configuration loaded from ${configPath}`);
 	return config;
@@ -122,6 +147,18 @@ function getDefaultConfig(): OpsimateConfig {
 				pass: process.env.SMTP_PASS || '',
 			},
 		},
+		storage: {
+			enabled: process.env.S3_ENABLED === 'true',
+			s3: {
+				bucket: process.env.S3_BUCKET || 'opsimate-avatars',
+				region: process.env.S3_REGION || 'us-east-1',
+				endpoint: process.env.S3_ENDPOINT || undefined,
+				publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || undefined, // For presigned URLs accessible from browser
+				forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+				accessKeyId: process.env.S3_ACCESS_KEY_ID || undefined,
+				secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || undefined,
+			},
+		},
 	};
 }
 
@@ -149,4 +186,13 @@ export function getMailerConfig() {
 export function isEmailEnabled(): boolean {
 	const mailerConfig = getMailerConfig();
 	return mailerConfig?.enabled === true;
+}
+
+export function getStorageConfig() {
+	return loadConfig().storage;
+}
+
+export function isStorageEnabled(): boolean {
+	const storageConfig = getStorageConfig();
+	return storageConfig?.enabled === true;
 }

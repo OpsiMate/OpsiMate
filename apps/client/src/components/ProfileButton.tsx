@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/hooks/queries/users';
 
 interface ProfileButtonProps {
 	collapsed: boolean;
@@ -19,8 +20,12 @@ const getInitials = (name: string) => {
 export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 	const location = useLocation();
 	const isActive = location.pathname === '/profile';
-	const currentUser = getCurrentUser();
-	const userInitials = currentUser ? getInitials(currentUser.email.split('@')[0]) : 'U';
+	const jwtUser = getCurrentUser();
+	const { data: userProfile } = useCurrentUser();
+
+	const displayName = userProfile?.fullName || jwtUser?.email.split('@')[0] || 'User';
+	const userInitials = getInitials(displayName);
+	const avatarUrl = userProfile?.avatarUrl;
 
 	return (
 		<Button
@@ -35,20 +40,24 @@ export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 			<Link to="/profile">
 				<div
 					className={cn(
-						'flex items-center justify-center rounded-full border transition-colors duration-200',
+						'flex items-center justify-center rounded-full border transition-colors duration-200 overflow-hidden',
 						collapsed ? 'w-6 h-6' : 'w-5 h-5',
 						isActive ? 'bg-background border-border' : 'bg-muted border-border group-hover:bg-background'
 					)}
 				>
-					<span
-						className={cn(
-							'font-semibold transition-colors duration-200',
-							collapsed ? 'text-xs' : 'text-xs',
-							isActive ? 'text-foreground' : 'text-foreground group-hover:text-foreground'
-						)}
-					>
-						{userInitials}
-					</span>
+					{avatarUrl ? (
+						<img src={avatarUrl} alt={`${displayName}'s avatar`} className="w-full h-full object-cover" />
+					) : (
+						<span
+							className={cn(
+								'font-semibold transition-colors duration-200',
+								collapsed ? 'text-xs' : 'text-xs',
+								isActive ? 'text-foreground' : 'text-foreground group-hover:text-foreground'
+							)}
+						>
+							{userInitials}
+						</span>
+					)}
 				</div>
 				<span className={cn('font-medium', collapsed && 'sr-only')}>Profile</span>
 			</Link>

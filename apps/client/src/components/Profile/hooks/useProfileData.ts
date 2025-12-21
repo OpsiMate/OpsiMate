@@ -33,6 +33,8 @@ export const useProfileData = (): UseProfileDataReturn => {
 							fullName: response.data.fullName,
 							role: response.data.role,
 							createdAt: response.data.createdAt,
+							avatarKey: response.data.avatarKey,
+							avatarUrl: response.data.avatarUrl,
 						});
 					} else {
 						// Fallback to JWT data if server request fails

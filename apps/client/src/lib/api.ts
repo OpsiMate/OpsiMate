@@ -717,7 +717,47 @@ export const customActionsApi = {
 export const usersApi = {
 	// Get all users
 	getAllUsers: () => {
-		return apiRequest<{ id: string; email: string; fullName: string; role: string }[]>('/users');
+		return apiRequest<
+			{
+				id: string;
+				email: string;
+				fullName: string;
+				role: string;
+				avatarKey?: string | null;
+				avatarUrl?: string | null;
+			}[]
+		>('/users');
+	},
+
+	// Get presigned URL for avatar upload
+	getAvatarUploadUrl: (contentType: string) => {
+		return apiRequest<{ uploadUrl: string; key: string }>(
+			`/users/profile/avatar/upload-url?contentType=${encodeURIComponent(contentType)}`
+		);
+	},
+
+	// Confirm avatar upload
+	confirmAvatarUpload: (avatarKey: string) => {
+		return apiRequest<{
+			id: string;
+			email: string;
+			fullName: string;
+			role: string;
+			avatarKey?: string | null;
+			avatarUrl?: string | null;
+		}>('/users/profile/avatar', 'PATCH', { avatarKey });
+	},
+
+	// Delete avatar
+	deleteAvatar: () => {
+		return apiRequest<{
+			id: string;
+			email: string;
+			fullName: string;
+			role: string;
+			avatarKey?: string | null;
+			avatarUrl?: string | null;
+		}>('/users/profile/avatar', 'DELETE');
 	},
 };
 

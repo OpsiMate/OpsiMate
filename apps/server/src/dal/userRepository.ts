@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { UserRow } from './models';
+import { TableInfoRow, UserRow } from './models';
 import { User } from '@OpsiMate/shared';
 
 export class UserRepository {
@@ -26,6 +26,13 @@ export class UserRepository {
             `
 				)
 				.run();
+
+			// Migration: Add avatar_key column if it doesn't exist
+			const columns = this.db.prepare(`PRAGMA table_info(users)`).all() as TableInfoRow[];
+			const hasAvatarKey = columns.some((col: TableInfoRow) => col.name === 'avatar_key');
+			if (!hasAvatarKey) {
+				this.db.prepare(`ALTER TABLE users ADD COLUMN avatar_key TEXT`).run();
+			}
 		});
 	}
 
@@ -69,7 +76,7 @@ export class UserRepository {
 
 	async getAllUsers(): Promise<User[]> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('SELECT id, email, full_name, role, created_at FROM users');
+			const stmt = this.db.prepare('SELECT id, email, full_name, role, created_at, avatar_key FROM users');
 			const userRows = stmt.all() as UserRow[];
 			return userRows.map(this.toSharedUser);
 		});
@@ -78,7 +85,7 @@ export class UserRepository {
 	async getUserById(id: number): Promise<User | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ?')
+				.prepare('SELECT id, email, full_name, role, created_at, avatar_key FROM users WHERE id = ?')
 				.get(id) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
 		});
@@ -147,15 +154,32 @@ export class UserRepository {
 			fullName: row.full_name,
 			role: row.role,
 			createdAt: row.created_at,
+			avatarKey: row.avatar_key ?? null,
 		};
 	};
 
 	async getUserByEmail(email: string): Promise<User | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, email, full_name, role, created_at FROM users WHERE email = ?')
+				.prepare('SELECT id, email, full_name, role, created_at, avatar_key FROM users WHERE email = ?')
 				.get(email) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
+		});
+	}
+
+	async updateAvatarKey(userId: number, avatarKey: string | null): Promise<void> {
+		return runAsync(() => {
+			const stmt = this.db.prepare('UPDATE users SET avatar_key = ? WHERE id = ?');
+			stmt.run(avatarKey, userId);
+		});
+	}
+
+	async getAvatarKey(userId: number): Promise<string | null> {
+		return runAsync(() => {
+			const row = this.db.prepare('SELECT avatar_key FROM users WHERE id = ?').get(userId) as
+				| { avatar_key: string | null }
+				| undefined;
+			return row?.avatar_key ?? null;
 		});
 	}
 }

@@ -31,6 +31,7 @@ import { AuditLogRepository } from './dal/auditLogRepository';
 import { CustomActionRepository } from './dal/customActionRepository';
 import { DashboardRepository } from './dal/dashboardRepository.ts';
 import { MailClient } from './dal/external-client/mail-client';
+import { S3Client } from './dal/external-client/s3-client';
 import { IntegrationRepository } from './dal/integrationRepository';
 import { PasswordResetsRepository } from './dal/passwordResetsRepository';
 import { ProviderRepository } from './dal/providerRepository';
@@ -113,6 +114,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const mailClient = new MailClient();
 	await mailClient.initialize();
 
+	// Initialize S3 Storage Service
+	const s3Client = new S3Client();
+	await s3Client.initialize();
+
 	// Init additional tables (only for SERVER)
 	await Promise.all([
 		dashboardRepository.initDashboardTable(),
@@ -125,7 +130,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	]);
 
 	// BL
-	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
+	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL, s3Client);
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo, serviceCustomFieldValueRepo);
 	const servicesBL = new ServicesBL(serviceRepo, auditBL);
