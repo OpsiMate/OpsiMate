@@ -161,6 +161,15 @@ export class ServiceController {
 				return res.status(404).json({ success: false, error: 'Service not found' });
 			}
 
+			// If updating the name of a systemd service, ensure it does not contain spaces
+			if (
+				validatedData.name &&
+				service.serviceType === ServiceType.SYSTEMD &&
+				/\s/.test(validatedData.name)
+			) {
+				return res.status(400).json({ success: false, error: 'Systemd service names cannot contain spaces' });
+			}
+
 			await this.serviceRepo.updateService(serviceId, validatedData);
 			const updatedService = await this.serviceRepo.getServiceWithProvider(serviceId);
 
