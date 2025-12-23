@@ -38,9 +38,7 @@ export const ColumnSettingsDropdown = ({
 		label.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
-	const filteredTagKeys = tagKeys.filter((tagKey) =>
-		tagKey.label.toLowerCase().includes(searchQuery.toLowerCase())
-	);
+	const filteredTagKeys = tagKeys.filter((tagKey) => tagKey.label.toLowerCase().includes(searchQuery.toLowerCase()));
 
 	const totalItems = filteredColumns.length + filteredTagKeys.length;
 
@@ -59,7 +57,7 @@ export const ColumnSettingsDropdown = ({
 			<DropdownMenuContent align="end" className="w-56">
 				<DropdownMenuLabel>{TOGGLE_COLUMNS_LABEL}</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				
+
 				{/* Search Input */}
 				<div className="px-2 pb-2">
 					<div className="relative">
@@ -92,7 +90,7 @@ export const ColumnSettingsDropdown = ({
 							onSelect={(e) => e.preventDefault()}
 						>
 							{label}
-							</DropdownMenuCheckboxItem>
+						</DropdownMenuCheckboxItem>
 					))}
 					{filteredTagKeys.length > 0 && (
 						<>
