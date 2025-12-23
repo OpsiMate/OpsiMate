@@ -20,6 +20,16 @@ export default function createUsersRouter(usersController: UsersController) {
 	// PATCH /users/profile - update user profile
 	router.patch('/profile', usersController.updateProfileHandler);
 
+	// Avatar routes
+	// GET /users/profile/avatar/upload-url - get presigned upload URL
+	router.get('/profile/avatar/upload-url', usersController.getAvatarUploadUrlHandler);
+
+	// PATCH /users/profile/avatar - confirm avatar upload
+	router.patch('/profile/avatar', usersController.confirmAvatarUploadHandler);
+
+	// DELETE /users/profile/avatar - delete avatar
+	router.delete('/profile/avatar', usersController.deleteAvatarHandler);
+
 	// DELETE /users/:id - delete user by ID (admin only)
 	router.delete('/:id', usersController.deleteUserHandler);
 

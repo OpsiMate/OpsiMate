@@ -1,4 +1,28 @@
 services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: opsimate-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+      - DEBUG=0
+      - PERSISTENCE=1  # Enable data persistence across restarts
+      # CORS configuration for browser uploads
+      - EXTRA_CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
+      - EXTRA_CORS_ALLOWED_HEADERS=*
+      - EXTRA_CORS_EXPOSE_HEADERS=ETag
+    volumes:
+      - localstack-data:/var/lib/localstack
+    networks:
+      - appnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   client:
     build:
       context: .
@@ -33,6 +57,15 @@ services:
       - PORT=3001
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml
+      # S3 Storage for profile images (connects to LocalStack)
+      - S3_ENABLED=true
+      - S3_BUCKET=opsimate-avatars
+      - S3_REGION=us-east-1
+      - S3_ENDPOINT=http://localstack:4566
+      - S3_PUBLIC_ENDPOINT=http://localhost:4566
+      - S3_FORCE_PATH_STYLE=true
+      - S3_ACCESS_KEY_ID=test
+      - S3_SECRET_ACCESS_KEY=test
     volumes:
       - ./apps/server:/app/apps/server
       - ./packages/shared:/app/packages/shared
@@ -41,6 +74,9 @@ services:
       - pnpm-store-server:/root/.pnpm-store
     networks:
       - appnet
+    depends_on:
+      localstack:
+        condition: service_healthy
 
   worker:
     build:
@@ -69,3 +105,4 @@ volumes:
   pnpm-store-client:
   pnpm-store-server:
   pnpm-store-worker:
+  localstack-data:

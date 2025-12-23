@@ -22,3 +22,27 @@ security:
 # VM configuration 
 vm:
   try_with_sudo: true # Run docker commands with sudo
+
+# Storage configuration (for profile images)
+# Option 1: Use LocalStack (included in docker-compose, no AWS needed)
+storage:
+  enabled: true
+  s3:
+    bucket: "opsimate-avatars"
+    region: "us-east-1"
+    endpoint: "http://localstack:4566"       # Internal endpoint (server to LocalStack)
+    publicEndpoint: "http://localhost:4566"  # Public endpoint (browser to LocalStack)
+    forcePathStyle: true                     # Required for LocalStack
+    accessKeyId: "test"                      # LocalStack accepts any credentials
+    secretAccessKey: "test"
+
+# Option 2: Use real AWS S3 (comment out above, uncomment below)
+# storage:
+#   enabled: true
+#   s3:
+#     bucket: "your-bucket-name"
+#     region: "us-east-1"
+#     # No endpoint needed - uses default AWS endpoints
+#     # accessKeyId and secretAccessKey can be omitted if using IAM roles
+#     accessKeyId: "YOUR_AWS_ACCESS_KEY_ID"
+#     secretAccessKey: "YOUR_AWS_SECRET_ACCESS_KEY"

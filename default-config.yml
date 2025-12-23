@@ -40,3 +40,18 @@ mailer:
     pass: "your-smtp-password"     # Replace with your SMTP password
   tls:
     rejectUnauthorized: true
+
+# Storage configuration (S3)
+# Storage is used for profile images and other file uploads
+# For local development, use LocalStack (see docker-compose.dev.yml)
+# For production, configure with real AWS S3 credentials
+storage:
+  enabled: false
+  s3:
+    bucket: "opsimate-avatars"
+    region: "us-east-1"
+    # endpoint: "http://localstack:4566"        # Internal endpoint (server to S3)
+    # publicEndpoint: "http://localhost:4566"   # Public endpoint (browser to S3)
+    # forcePathStyle: true                      # Required for LocalStack
+    # accessKeyId: "test"                       # Use IAM role in production
+    # secretAccessKey: "test"                   # Use IAM role in production

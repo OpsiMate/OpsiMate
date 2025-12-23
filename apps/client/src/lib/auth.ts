@@ -4,7 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 const logger = new Logger('auth');
 
 export interface JWTPayload {
-	id: number;
+	id: string;
 	email: string;
 	role: Role;
 	iat: number;

@@ -347,4 +347,105 @@ export class UsersController {
 			}
 		}
 	};
+
+	// Avatar handlers
+
+	/**
+	 * Gets a presigned URL for uploading an avatar.
+	 * GET /users/profile/avatar/upload-url?contentType=image/jpeg
+	 */
+	getAvatarUploadUrlHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!req.user) {
+			return res.status(401).json({ success: false, error: 'Unauthorized' });
+		}
+
+		const contentType = req.query.contentType as string;
+		if (!contentType) {
+			return res.status(400).json({ success: false, error: 'contentType query parameter is required' });
+		}
+
+		try {
+			const result = await this.userBL.getAvatarUploadUrl(req.user.id, contentType);
+			return res.status(200).json({ success: true, data: result });
+		} catch (error) {
+			if (error instanceof Error) {
+				if (error.message === 'Storage service is not available') {
+					return res.status(503).json({ success: false, error: error.message });
+				}
+				if (error.message.includes('Invalid content type')) {
+					return res.status(400).json({ success: false, error: error.message });
+				}
+			}
+			logger.error('Error getting avatar upload URL:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	/**
+	 * Confirms avatar upload by saving the avatar key to the database.
+	 * PATCH /users/profile/avatar
+	 * Body: { avatarKey: string }
+	 */
+	confirmAvatarUploadHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!req.user) {
+			return res.status(401).json({ success: false, error: 'Unauthorized' });
+		}
+
+		const numericUserId = parseInt(req.user.id, 10);
+		if (isNaN(numericUserId)) {
+			return res.status(401).json({ success: false, error: 'Invalid user ID in token' });
+		}
+
+		const { avatarKey } = req.body as { avatarKey?: string };
+		if (!avatarKey || typeof avatarKey !== 'string') {
+			return res.status(400).json({ success: false, error: 'avatarKey is required' });
+		}
+
+		try {
+			const updatedUser = await this.userBL.confirmAvatarUpload(numericUserId, avatarKey);
+			return res.status(200).json({ success: true, data: updatedUser });
+		} catch (error) {
+			if (error instanceof Error) {
+				if (error.message === 'Storage service is not available') {
+					return res.status(503).json({ success: false, error: error.message });
+				}
+				if (error.message === 'User not found') {
+					return res.status(404).json({ success: false, error: error.message });
+				}
+			}
+			logger.error('Error confirming avatar upload:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	/**
+	 * Deletes the user's avatar.
+	 * DELETE /users/profile/avatar
+	 */
+	deleteAvatarHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!req.user) {
+			return res.status(401).json({ success: false, error: 'Unauthorized' });
+		}
+
+		const numericUserId = parseInt(req.user.id, 10);
+		if (isNaN(numericUserId)) {
+			return res.status(401).json({ success: false, error: 'Invalid user ID in token' });
+		}
+
+		try {
+			const updatedUser = await this.userBL.deleteAvatar(numericUserId);
+			return res.status(200).json({ success: true, data: updatedUser });
+		} catch (error) {
+			if (error instanceof Error) {
+				if (error.message === 'Storage service is not available') {
+					return res.status(503).json({ success: false, error: error.message });
+				}
+				if (error.message === 'User not found') {
+					return res.status(404).json({ success: false, error: error.message });
+				}
+			}
+			logger.error('Error deleting avatar:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
 }

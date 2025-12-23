@@ -39,7 +39,7 @@ export const ProfileContent = ({
 		<div className="flex-1 overflow-auto p-6">
 			<div className="max-w-6xl mx-auto">
 				<Card>
-					<ProfileHeader fullName={profile.fullName} email={profile.email} />
+					<ProfileHeader fullName={profile.fullName} email={profile.email} avatarUrl={profile.avatarUrl} />
 					<CardContent className="space-y-6">
 						{generalError && <ErrorAlert message={generalError} />}
 

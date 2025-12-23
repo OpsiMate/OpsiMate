@@ -102,6 +102,7 @@ export type UserRow = {
 	full_name: string;
 	role: Role;
 	created_at: string;
+	avatar_key?: string | null;
 };
 
 export type AuditLogRow = {

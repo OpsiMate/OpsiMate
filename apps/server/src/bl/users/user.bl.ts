@@ -2,6 +2,7 @@ import { UserRepository } from '../../dal/userRepository';
 import bcrypt from 'bcrypt';
 import { AuditActionType, AuditResourceType, Logger, Role, User } from '@OpsiMate/shared';
 import { MailClient, MailType } from '../../dal/external-client/mail-client';
+import { S3Client } from '../../dal/external-client/s3-client';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
@@ -13,7 +14,8 @@ export class UserBL {
 		private userRepo: UserRepository,
 		private mailClient: MailClient,
 		private passwordResetsRepo: PasswordResetsRepository,
-		private auditBL: AuditBL
+		private auditBL: AuditBL,
+		private s3Client?: S3Client
 	) {}
 
 	async register(email: string, fullName: string, password: string): Promise<User> {
@@ -75,7 +77,8 @@ export class UserBL {
 	}
 
 	async getAllUsers(): Promise<User[]> {
-		return await this.userRepo.getAllUsers();
+		const users = await this.userRepo.getAllUsers();
+		return await this.populateAvatarUrls(users);
 	}
 
 	async deleteUser(id: number): Promise<void> {
@@ -83,7 +86,9 @@ export class UserBL {
 	}
 
 	async getUserById(id: number): Promise<User | null> {
-		return this.userRepo.getUserById(id);
+		const user = await this.userRepo.getUserById(id);
+		if (!user) return null;
+		return await this.populateAvatarUrl(user);
 	}
 
 	/**
@@ -217,5 +222,128 @@ export class UserBL {
 			logger.error(`Error resetting password for user`, error);
 			throw error;
 		}
+	}
+
+	// Avatar-related methods
+
+	/**
+	 * Generates a presigned URL for uploading an avatar.
+	 * @param userId - The user's ID
+	 * @param contentType - The MIME type of the file (image/jpeg or image/png)
+	 * @returns Object containing uploadUrl and key
+	 */
+	async getAvatarUploadUrl(userId: string, contentType: string): Promise<{ uploadUrl: string; key: string }> {
+		if (!this.s3Client || !this.s3Client.isReady()) {
+			throw new Error('Storage service is not available');
+		}
+
+		if (!this.s3Client.isValidContentType(contentType)) {
+			throw new Error('Invalid content type. Only JPEG and PNG images are allowed.');
+		}
+
+		return await this.s3Client.generateUploadUrl(userId, contentType);
+	}
+
+	/**
+	 * Confirms avatar upload by saving the avatar key to the database.
+	 * Also deletes the old avatar from S3 if it exists.
+	 * @param userId - The user's ID
+	 * @param avatarKey - The S3 key of the uploaded avatar
+	 */
+	async confirmAvatarUpload(userId: number, avatarKey: string): Promise<User> {
+		if (!this.s3Client || !this.s3Client.isReady()) {
+			throw new Error('Storage service is not available');
+		}
+
+		// Get the old avatar key to delete it later
+		const oldAvatarKey = await this.userRepo.getAvatarKey(userId);
+
+		// Update the user's avatar key in the database
+		await this.userRepo.updateAvatarKey(userId, avatarKey);
+
+		// Delete the old avatar from S3 if it exists
+		if (oldAvatarKey) {
+			try {
+				// Invalidate the cached URL for the old avatar
+				this.s3Client.invalidateCachedUrl(oldAvatarKey);
+				await this.s3Client.deleteObject(oldAvatarKey);
+				logger.info(`Deleted old avatar for user ${userId}: ${oldAvatarKey}`);
+			} catch (error) {
+				// Log but don't fail the operation if delete fails
+				logger.warn(
+					`Failed to delete old avatar for user ${userId}: ${oldAvatarKey} - ${(error as Error).message}`
+				);
+			}
+		}
+
+		const updatedUser = await this.userRepo.getUserById(userId);
+		if (!updatedUser) {
+			throw new Error('User not found');
+		}
+
+		return await this.populateAvatarUrl(updatedUser);
+	}
+
+	/**
+	 * Deletes the user's avatar from S3 and removes the avatar key from the database.
+	 * @param userId - The user's ID
+	 */
+	async deleteAvatar(userId: number): Promise<User> {
+		if (!this.s3Client || !this.s3Client.isReady()) {
+			throw new Error('Storage service is not available');
+		}
+
+		const avatarKey = await this.userRepo.getAvatarKey(userId);
+
+		if (avatarKey) {
+			try {
+				// Invalidate the cached URL
+				this.s3Client.invalidateCachedUrl(avatarKey);
+				await this.s3Client.deleteObject(avatarKey);
+				logger.info(`Deleted avatar for user ${userId}: ${avatarKey}`);
+			} catch (error) {
+				logger.warn(
+					`Failed to delete avatar from S3 for user ${userId}: ${avatarKey} - ${(error as Error).message}`
+				);
+			}
+		}
+
+		// Remove the avatar key from the database
+		await this.userRepo.updateAvatarKey(userId, null);
+
+		const updatedUser = await this.userRepo.getUserById(userId);
+		if (!updatedUser) {
+			throw new Error('User not found');
+		}
+
+		return updatedUser;
+	}
+
+	/**
+	 * Populates the avatarUrl for a single user.
+	 */
+	private async populateAvatarUrl(user: User): Promise<User> {
+		if (!user.avatarKey || !this.s3Client || !this.s3Client.isReady()) {
+			return user;
+		}
+
+		try {
+			const avatarUrl = await this.s3Client.generateViewUrl(user.avatarKey);
+			return { ...user, avatarUrl };
+		} catch (error) {
+			logger.warn(`Failed to generate avatar URL for user ${user.id}: ${(error as Error).message}`);
+			return user;
+		}
+	}
+
+	/**
+	 * Populates the avatarUrl for multiple users.
+	 */
+	private async populateAvatarUrls(users: User[]): Promise<User[]> {
+		if (!this.s3Client || !this.s3Client.isReady()) {
+			return users;
+		}
+
+		return await Promise.all(users.map((user) => this.populateAvatarUrl(user)));
 	}
 }

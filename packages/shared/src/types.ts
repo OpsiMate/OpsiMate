@@ -44,6 +44,8 @@ export interface User {
 	fullName: string;
 	role: Role;
 	createdAt: string;
+	avatarKey?: string | null;
+	avatarUrl?: string | null;
 }
 
 export interface IntegrationUrls {

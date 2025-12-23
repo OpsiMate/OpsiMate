@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { User, UserX } from 'lucide-react';
 import { useState } from 'react';
-import { PersonPickerProps } from './PersonPicker.types';
+import { PersonPickerProps, PersonPickerUser } from './PersonPicker.types';
 
 const getInitials = (fullName: string): string => {
 	return fullName
@@ -13,6 +13,34 @@ const getInitials = (fullName: string): string => {
 		.join('')
 		.toUpperCase()
 		.slice(0, 2);
+};
+
+/**
+ * Avatar component that displays user's image or initials as fallback
+ */
+const UserAvatar = ({ user, size = 'sm' }: { user: PersonPickerUser; size?: 'sm' | 'md' }) => {
+	const sizeClasses = size === 'sm' ? 'w-5 h-5 text-[10px]' : 'w-6 h-6 text-xs';
+
+	if (user.avatarUrl) {
+		return (
+			<img
+				src={user.avatarUrl}
+				alt={`${user.fullName}'s avatar`}
+				className={cn('rounded-full object-cover', sizeClasses)}
+			/>
+		);
+	}
+
+	return (
+		<div
+			className={cn(
+				'rounded-full bg-primary/10 text-primary flex items-center justify-center font-medium',
+				sizeClasses
+			)}
+		>
+			{getInitials(user.fullName)}
+		</div>
+	);
 };
 
 export const PersonPicker = ({
@@ -48,9 +76,7 @@ export const PersonPicker = ({
 				>
 					{selectedUser ? (
 						<>
-							<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium">
-								{getInitials(selectedUser.fullName)}
-							</div>
+							<UserAvatar user={selectedUser} size="sm" />
 							<span className="truncate max-w-[100px]">{selectedUser.fullName}</span>
 						</>
 					) : (
@@ -77,9 +103,7 @@ export const PersonPicker = ({
 									onSelect={() => handleSelect(user.id)}
 									className="flex items-center gap-2"
 								>
-									<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium">
-										{getInitials(user.fullName)}
-									</div>
+									<UserAvatar user={user} size="sm" />
 									<div className="flex flex-col">
 										<span className="text-sm">{user.fullName}</span>
 										<span className="text-xs text-muted-foreground">{user.email}</span>

@@ -7,6 +7,8 @@ export interface UserInfo {
 	email: string;
 	fullName: string;
 	role: string;
+	avatarKey?: string | null;
+	avatarUrl?: string | null;
 }
 
 export const useUsers = () => {
