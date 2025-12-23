@@ -7,7 +7,7 @@ import { AlertSortField, SortDirection } from '../AlertsTable.types';
 import { BASE_SORT_FIELDS } from './SortableHeader.constants';
 
 const isValidSortField = (value: string): boolean => {
-	return (BASE_SORT_FIELDS as readonly string[]).includes(value) || isTagKeyColumn(value);
+	return BASE_SORT_FIELDS.some((field) => field === value) || isTagKeyColumn(value);
 };
 
 export interface SortableHeaderProps {

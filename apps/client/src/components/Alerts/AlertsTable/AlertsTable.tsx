@@ -23,7 +23,7 @@ import { useAlertGrouping, useAlertSelection, useAlertSorting, useStickyHeaders 
 import { SearchBar } from './SearchBar';
 import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
-import { TimeFilter } from './TimeFilter';
+import { TimeFilter, createEmptyTimeRange, isTimeRangeEmpty } from './TimeFilter';
 import { VirtualizedAlertList } from './VirtualizedAlertList';
 
 export const AlertsTable = ({
@@ -81,8 +81,7 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
-	const defaultTimeRange = { from: null, to: null, preset: null };
-	const hasActiveTimeFilter = timeRange?.from || timeRange?.to || timeRange?.preset;
+	const hasActiveTimeFilter = timeRange && !isTimeRangeEmpty(timeRange);
 
 	return (
 		<div className={cn('flex flex-col h-full', className)}>
@@ -90,7 +89,9 @@ export const AlertsTable = ({
 				<div className="flex-1">
 					<SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 				</div>
-				{onTimeRangeChange && <TimeFilter value={timeRange ?? defaultTimeRange} onChange={onTimeRangeChange} />}
+				{onTimeRangeChange && (
+					<TimeFilter value={timeRange ?? createEmptyTimeRange()} onChange={onTimeRangeChange} />
+				)}
 			</div>
 
 			{!isLoading && alerts.length === 0 && !hasActiveTimeFilter && !searchTerm ? (

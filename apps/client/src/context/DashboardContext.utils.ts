@@ -1,7 +1,7 @@
 import { Logger } from '@OpsiMate/shared';
 import { DashboardState, TimeRange } from './DashboardContext';
 
-const logger = new Logger('DasbhoardContext.utils');
+const logger = new Logger('DashboardContext.utils');
 
 export const DASHBOARD_STORAGE_KEY = 'OpsiMate-active-dashboard';
 
