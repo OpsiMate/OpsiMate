@@ -3,7 +3,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH, TABLE_HEAD_CLASSES } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';

@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Command, CommandGroup, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { GripVertical, Layers, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable.constants';
@@ -89,43 +91,44 @@ export const GroupByControls = ({
 	};
 
 	return (
-		<div className="flex items-center gap-1">
+		<TooltipProvider>
 			<Popover>
-				<PopoverTrigger asChild>
-					<Button variant="outline" size="sm" className="h-8 border-dashed group">
-						<Layers className="mr-2 h-4 w-4 text-foreground" />
-						<span className="text-foreground">{GROUP_BY_CONTROLS_TEXT.TRIGGER_LABEL}</span>
-						{groupByColumns.length > 0 && (
-							<>
-								<span className="mx-2 h-4 w-[1px] bg-border" />
-								<span className="text-xs text-foreground">
-									{groupByColumns.map((col) => getLabel(col)).join(', ')}
-								</span>
-								<span
-									role="button"
-									tabIndex={0}
-									className="ml-2 h-6 w-6 -mr-1 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-									onClick={(e) => {
-										e.stopPropagation();
-										e.preventDefault();
-										onGroupByChange([]);
-									}}
-									onKeyDown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
-											e.stopPropagation();
-											e.preventDefault();
-											onGroupByChange([]);
-										}
-									}}
-									title={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
-									aria-label={GROUP_BY_CONTROLS_TEXT.RESET_TOOLTIP}
-								>
-									<X className="h-3.5 w-3.5" />
-								</span>
-							</>
+				<Tooltip>
+					<PopoverTrigger asChild>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className={cn(
+									'h-7 w-7 rounded-md flex-shrink-0 border',
+									groupByColumns.length > 0 && 'text-primary border-primary'
+								)}
+							>
+								<div className="relative">
+									<Layers className="h-4 w-4" />
+									{groupByColumns.length > 0 && (
+										<span
+											className="absolute h-3.5 w-3.5 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center"
+											style={{ top: '-10px', right: '-10px' }}
+										>
+											{groupByColumns.length}
+										</span>
+									)}
+								</div>
+							</Button>
+						</TooltipTrigger>
+					</PopoverTrigger>
+					<TooltipContent>
+						{groupByColumns.length > 0 ? (
+							<div className="flex flex-col gap-0.5">
+								<span className="font-medium">Grouped by:</span>
+								<span>{groupByColumns.map((col) => getLabel(col)).join(', ')}</span>
+							</div>
+						) : (
+							<p>Group by</p>
 						)}
-					</Button>
-				</PopoverTrigger>
+					</TooltipContent>
+				</Tooltip>
 				<PopoverContent className="w-[240px] p-0" align="start">
 					<Command>
 						<CommandList>
@@ -207,6 +210,6 @@ export const GroupByControls = ({
 					</Command>
 				</PopoverContent>
 			</Popover>
-		</div>
+		</TooltipProvider>
 	);
 };

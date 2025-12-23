@@ -1,3 +1,4 @@
+import { TimeRange } from '@/context/DashboardContext';
 import { TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 
@@ -28,6 +29,8 @@ export interface AlertsTableProps {
 	onGroupByChange?: (cols: string[]) => void;
 	onColumnToggle?: (column: string) => void;
 	tagKeys?: TagKeyInfo[];
+	timeRange?: TimeRange;
+	onTimeRangeChange?: (range: TimeRange) => void;
 }
 
 export interface SortConfig {

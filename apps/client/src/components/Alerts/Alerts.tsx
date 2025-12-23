@@ -153,8 +153,14 @@ const Alerts = () => {
 		onFilterChange: handleFilterChange,
 	});
 
-	const filteredAlerts = useAlertsFiltering(alerts, dashboardState.filters);
-	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, dashboardState.filters);
+	const filteredAlerts = useAlertsFiltering(alerts, {
+		filters: dashboardState.filters,
+		timeRange: dashboardState.timeRange,
+	});
+	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, {
+		filters: dashboardState.filters,
+		timeRange: dashboardState.timeRange,
+	});
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 
@@ -324,6 +330,8 @@ const Alerts = () => {
 										onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 										onColumnToggle={handleColumnToggle}
 										tagKeys={tagKeys}
+										timeRange={dashboardState.timeRange}
+										onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
 									/>
 								</div>
 
@@ -361,6 +369,8 @@ const Alerts = () => {
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 									onColumnToggle={handleColumnToggle}
 									tagKeys={tagKeys}
+									timeRange={dashboardState.timeRange}
+									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
 								/>
 							</div>
 						)}

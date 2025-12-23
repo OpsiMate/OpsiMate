@@ -3,6 +3,28 @@ import { clearStorage, loadFromStorage, saveToStorage } from './DashboardContext
 
 export type DashboardType = 'services' | 'alerts';
 
+export type QuickPreset =
+	| 'last1m'
+	| 'last5m'
+	| 'last15m'
+	| 'last30m'
+	| 'last1h'
+	| 'last2h'
+	| 'last6h'
+	| 'last12h'
+	| 'last24h'
+	| 'today'
+	| 'last2d'
+	| 'last3d'
+	| 'last5d'
+	| 'last7d';
+
+export interface TimeRange {
+	from: Date | null;
+	to: Date | null;
+	preset: QuickPreset | 'custom' | null;
+}
+
 export interface DashboardState {
 	id: string | null;
 	name: string;
@@ -13,6 +35,7 @@ export interface DashboardState {
 	columnOrder: string[];
 	groupBy: string[];
 	query: string;
+	timeRange: TimeRange;
 }
 
 interface DashboardContextType {
@@ -42,6 +65,7 @@ const defaultState: DashboardState = {
 	columnOrder: [],
 	groupBy: [],
 	query: '',
+	timeRange: { from: null, to: null, preset: null },
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);

@@ -1,3 +1,4 @@
+import { TimeRange } from '@/context/DashboardContext';
 import { useUsers } from '@/hooks/queries/users';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
@@ -8,13 +9,44 @@ const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
 };
 
-export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, string[]>) => {
+interface UseAlertsFilteringOptions {
+	filters: Record<string, string[]>;
+	timeRange?: TimeRange;
+}
+
+export const useAlertsFiltering = (
+	alerts: Alert[],
+	filtersOrOptions: Record<string, string[]> | UseAlertsFilteringOptions
+) => {
 	const { data: users = [] } = useUsers();
 
-	const filteredAlerts = useMemo(() => {
-		if (Object.keys(filters).length === 0) return alerts;
+	const { filters, timeRange } = useMemo(() => {
+		if ('filters' in filtersOrOptions) {
+			return {
+				filters: filtersOrOptions.filters,
+				timeRange: filtersOrOptions.timeRange,
+			};
+		}
+		return { filters: filtersOrOptions, timeRange: undefined };
+	}, [filtersOrOptions]);
 
-		return alerts.filter((alert) => {
+	const filteredAlerts = useMemo(() => {
+		let result = alerts;
+
+		if (timeRange?.from || timeRange?.to) {
+			result = result.filter((alert) => {
+				const alertStartDate = new Date(alert.startsAt);
+				const alertEndDate = new Date(alert.updatedAt);
+				const filterStart = timeRange.from || new Date(0);
+				const filterEnd = timeRange.to || new Date();
+
+				return alertStartDate <= filterEnd && alertEndDate >= filterStart;
+			});
+		}
+
+		if (Object.keys(filters).length === 0) return result;
+
+		return result.filter((alert) => {
 			for (const [field, values] of Object.entries(filters)) {
 				if (values.length === 0) continue;
 
@@ -53,7 +85,7 @@ export const useAlertsFiltering = (alerts: Alert[], filters: Record<string, stri
 			}
 			return true;
 		});
-	}, [alerts, filters, users]);
+	}, [alerts, filters, timeRange, users]);
 
 	return filteredAlerts;
 };
