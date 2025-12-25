@@ -5,3 +5,4 @@ export { useDeleteArchivedAlert } from './useDeleteArchivedAlert';
 export { useDismissAlert } from './useDismissAlert';
 export { useUndismissAlert } from './useUndismissAlert';
 export { useSetAlertOwner } from './useSetAlertOwner';
+export { useSetArchivedAlertOwner } from './useSetArchivedAlertOwner';
