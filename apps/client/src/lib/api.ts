@@ -589,6 +589,11 @@ export const alertsApi = {
 	async setAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/owner`, 'PATCH', { ownerId });
 	},
+
+	// Set archived alert owner
+	async setArchivedAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/archived/${alertId}/owner`, 'PATCH', { ownerId });
+	},
 };
 
 export const auditApi = {
