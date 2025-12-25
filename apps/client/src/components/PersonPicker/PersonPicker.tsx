@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { User, UserX } from 'lucide-react';
+import { Check, User, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { PersonPickerProps } from './PersonPicker.types';
 
@@ -67,25 +67,39 @@ export const PersonPicker = ({
 					<CommandList>
 						<CommandEmpty>No users found</CommandEmpty>
 						<CommandGroup>
-							<CommandItem onSelect={() => handleSelect(null)} className="flex items-center gap-2">
+							<CommandItem
+								onSelect={() => handleSelect(null)}
+								className={cn(
+									"flex items-center gap-2 cursor-pointer data-[selected='true']:bg-muted/50 data-[selected=true]:text-foreground",
+									!selectedUserId && 'bg-muted'
+								)}
+							>
 								<UserX className="h-4 w-4 text-muted-foreground" />
-								<span className="text-muted-foreground">Unassigned</span>
+								<span className="text-muted-foreground flex-1">Unassigned</span>
+								{!selectedUserId && <Check className="h-4 w-4 text-primary" />}
 							</CommandItem>
-							{users.map((user) => (
-								<CommandItem
-									key={user.id}
-									onSelect={() => handleSelect(user.id)}
-									className="flex items-center gap-2"
-								>
-									<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium">
-										{getInitials(user.fullName)}
-									</div>
-									<div className="flex flex-col">
-										<span className="text-sm">{user.fullName}</span>
-										<span className="text-xs text-muted-foreground">{user.email}</span>
-									</div>
-								</CommandItem>
-							))}
+							{users.map((user) => {
+								const isSelected = user.id === selectedUserId;
+								return (
+									<CommandItem
+										key={user.id}
+										onSelect={() => handleSelect(user.id)}
+										className={cn(
+											"flex items-center gap-2 cursor-pointer data-[selected='true']:bg-muted/50 data-[selected=true]:text-foreground",
+											isSelected && 'bg-muted'
+										)}
+									>
+										<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium">
+											{getInitials(user.fullName)}
+										</div>
+										<div className="flex flex-col flex-1">
+											<span className="text-sm">{user.fullName}</span>
+											<span className="text-xs text-muted-foreground">{user.email}</span>
+										</div>
+										{isSelected && <Check className="h-4 w-4 text-primary" />}
+									</CommandItem>
+								);
+							})}
 						</CommandGroup>
 					</CommandList>
 				</Command>
