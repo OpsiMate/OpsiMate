@@ -295,13 +295,21 @@ export class AlertController {
 	}
 
 	async setAlertOwner(req: Request, res: Response) {
+		return this.setAlertOwnerWrapper(req, res, false);
+	}
+
+	async setArchivedAlertOwner(req: Request, res: Response) {
+		return this.setAlertOwnerWrapper(req, res, true);
+	}
+
+	async setAlertOwnerWrapper(req: Request, res: Response, isArchived: boolean) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isArchived);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
