@@ -146,6 +146,16 @@ export class ArchivedAlertRepository {
 		});
 	}
 
+	async updateArchivedAlertOwner(alertId: string, ownerId: number | null): Promise<SharedAlert | null> {
+		return runAsync(() => {
+			this.db.prepare('UPDATE alerts_archived SET owner_id = ? WHERE id = ?').run(ownerId, alertId);
+			const row = this.db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(alertId) as
+				| ArchivedAlertRow
+				| undefined;
+			return row ? this.toSharedAlert(row) : null;
+		});
+	}
+
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {
 		const history: { archived_at: string; status: string }[] = await runAsync(() => {
 			return this.db
