@@ -22,6 +22,12 @@ export default function createAlertRouter(controller: AlertController) {
 	// Set alert owner
 	router.patch('/:id/owner', controller.setAlertOwner.bind(controller));
 
+	// Alert Comments
+	router.get('/:alertId/comments', controller.getCommentsByAlertId.bind(controller));
+	router.post('/:alertId/comments', controller.createComment.bind(controller));
+	router.patch('/comments/:commentId', controller.updateComment.bind(controller));
+	router.delete('/comments/:commentId', controller.deleteComment.bind(controller));
+
 	// Alert History
 	router.get('/:alertId/history', controller.getAlertHistory.bind(controller));
 

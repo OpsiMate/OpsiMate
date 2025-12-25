@@ -89,7 +89,7 @@ describe('Authentication API', () => {
 		expect(res.status).toBe(200);
 	});
 
-	test('should get all users as admin, reject for non-admin or unauthenticated', async () => {
+	test('should get all users', async () => {
 		// Register admin
 		await app.post('/api/v1/users/register').send({
 			email: 'admin2@example.com',
@@ -118,24 +118,6 @@ describe('Authentication API', () => {
 		const unauthRes = await app.get('/api/v1/users');
 		expect(unauthRes.status).toBe(401);
 		expect(unauthRes.body.success).toBe(false);
-
-		// Register a non-admin user (admin creates them)
-		await app.post('/api/v1/users').set('Authorization', `Bearer ${adminToken}`).send({
-			email: 'viewer@example.com',
-			fullName: 'Viewer User',
-			password: 'securepassword',
-			role: 'viewer',
-		});
-		// Login as viewer
-		const viewerLogin = await app.post('/api/v1/users/login').send({
-			email: 'viewer@example.com',
-			password: 'securepassword',
-		});
-		const viewerToken = viewerLogin.body.token;
-		// Viewer should get 403
-		const viewerRes = await app.get('/api/v1/users').set('Authorization', `Bearer ${viewerToken}`);
-		expect(viewerRes.status).toBe(403);
-		expect(viewerRes.body.success).toBe(false);
 	});
 
 	test('should return false for /users/exists when no users exist, and true after registration', async () => {

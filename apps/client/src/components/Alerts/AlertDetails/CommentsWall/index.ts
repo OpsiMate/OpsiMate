@@ -1,0 +1,1 @@
+export { CommentsWall } from './CommentsWall';

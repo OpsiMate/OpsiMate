@@ -267,3 +267,11 @@ export const DashboardTagSchema = z.object({
 	dashboardId: z.number(),
 	tagId: z.number(),
 });
+
+export const CreateCommentSchema = z.object({
+	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
+});
+
+export const UpdateCommentSchema = z.object({
+	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
+});

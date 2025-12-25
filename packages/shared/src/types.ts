@@ -226,3 +226,12 @@ export interface Dashboard {
 	groupBy: string[];
 	createdAt?: string;
 }
+
+export interface AlertComment {
+	id: string;
+	alertId: string;
+	userId: string;
+	comment: string;
+	createdAt: string;
+	updatedAt: string;
+}

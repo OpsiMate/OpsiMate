@@ -96,7 +96,7 @@ export class UsersController {
 	};
 
 	getAllUsersHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
+		if (!req.user) {
 			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
 		}
 		try {

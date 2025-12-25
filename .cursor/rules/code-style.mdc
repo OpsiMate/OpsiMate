@@ -30,5 +30,7 @@ Always design for split subcomponents and strong separation of concerns.
 5. Types:
    - No anonymous inline object types.
    - Use interfaces only.
-   - Extract shared/non-props interfaces to `${componentName}.types.ts` in the component directory.
-   - Props interfaces remain in the component/hook file.
+   - Props interfaces remain in the component/hook file (never in a separate types file).
+   - Only create `${componentName}.types.ts` for shared domain interfaces that are NOT props.
+   - Always use types from `@OpsiMate/shared` package when available instead of creating duplicates.
+   - Before creating a new interface, check if it already exists in the shared package.

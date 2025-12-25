@@ -42,6 +42,7 @@ import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
 import { RefreshJob } from './jobs/refresh-job';
+import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -54,6 +55,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const serviceRepo = new ServiceRepository(db);
 	const integrationRepo = new IntegrationRepository(db);
 	const alertRepo = new AlertRepository(db);
+	const alertCommentsRepo = new AlertCommentsRepository(db);
 	const auditLogRepo = new AuditLogRepository(db);
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
 	const archivedAlertRepo = new ArchivedAlertRepository(db);
@@ -65,6 +67,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		integrationRepo.initIntegrationsTable(),
 		archivedAlertRepo.initArchivedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
 		alertRepo.initAlertsTable(),
+		alertCommentsRepo.initAlertCommentsTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
 	]);
@@ -72,7 +75,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// BL (needed by both)
 	const auditBL = new AuditBL(auditLogRepo);
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo, archivedAlertRepo);
+	const alertBL = new AlertBL(alertRepo, archivedAlertRepo, alertCommentsRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 
 	if (mode === AppMode.WORKER) {

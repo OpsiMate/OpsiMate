@@ -18,7 +18,7 @@ import { Archive, Bell } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
-import { AlertDetails } from './AlertDetails';
+import { AlertDetailsDrawer } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
@@ -197,6 +197,7 @@ const Alerts = () => {
 				columnOrder: [],
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
+				timeRange: { from: null, to: null, preset: null },
 			});
 		};
 
@@ -375,21 +376,18 @@ const Alerts = () => {
 							</div>
 						)}
 					</div>
-
-					{syncedSelectedAlert && (
-						<div className="w-96 border-l flex-shrink-0">
-							<AlertDetails
-								isActive={activeTab === AlertTab.Active}
-								alert={syncedSelectedAlert}
-								onClose={() => setSelectedAlert(null)}
-								onDismiss={handleDismissAlert}
-								onUndismiss={handleUndismissAlert}
-								onDelete={activeTab === AlertTab.Active ? handleDeleteAlert : handleDeleteArchivedAlert}
-							/>
-						</div>
-					)}
 				</div>
 			</div>
+
+			<AlertDetailsDrawer
+				open={!!syncedSelectedAlert}
+				alert={syncedSelectedAlert}
+				isActive={activeTab === AlertTab.Active}
+				onClose={() => setSelectedAlert(null)}
+				onDismiss={handleDismissAlert}
+				onUndismiss={handleUndismissAlert}
+				onDelete={activeTab === AlertTab.Active ? handleDeleteAlert : handleDeleteArchivedAlert}
+			/>
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}

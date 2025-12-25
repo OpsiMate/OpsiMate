@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AlertHistory, AlertStatus, Logger } from '@OpsiMate/shared';
+import { AlertHistory, AlertStatus, CreateCommentSchema, Logger, UpdateCommentSchema } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
 	DatadogAlertWebhookSchema,
@@ -10,6 +10,7 @@ import {
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { v4 } from 'uuid';
+import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('alerts.controller');
 
@@ -337,4 +338,93 @@ export class AlertController {
 		// Fallback
 		return new Date().toISOString();
 	}
+
+	// region Alert Comments
+	async getCommentsByAlertId(req: Request, res: Response) {
+		try {
+			const { alertId } = req.params;
+			if (!alertId) {
+				return res.status(400).json({ success: false, error: 'Alert id is required' });
+			}
+			const comments = await this.alertBL.getCommentsByAlertId(alertId);
+			return res.json({ success: true, data: { comments } });
+		} catch (error) {
+			logger.error('Error getting comments:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createComment(req: AuthenticatedRequest, res: Response) {
+		try {
+			const { alertId } = req.params;
+			if (!alertId) {
+				return res.status(400).json({ success: false, error: 'Alert id is required' });
+			}
+			if (!req.user) {
+				return res.status(400).json({ success: false, error: 'user id is required' });
+			}
+
+			const { comment } = CreateCommentSchema.parse(req.body);
+
+			const newComment = await this.alertBL.createComment({
+				alertId: alertId,
+				userId: req.user.id,
+				comment: comment,
+			});
+
+			return res.status(201).json({ success: true, data: { comment: newComment } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error creating comment:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async updateComment(req: AuthenticatedRequest, res: Response) {
+		try {
+			const { commentId } = req.params;
+			if (!commentId) {
+				return res.status(400).json({ success: false, error: 'Comment id is required' });
+			}
+			if (!req.user) {
+				return res.status(400).json({ success: false, error: 'user id is required' });
+			}
+
+			const { comment } = UpdateCommentSchema.parse(req.body);
+
+			const updatedComment = await this.alertBL.updateComment(commentId, req.user.id, comment);
+			if (!updatedComment) {
+				return res.status(404).json({ success: false, error: 'Comment not found' });
+			}
+
+			return res.json({ success: true, data: { comment: updatedComment } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error updating comment:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async deleteComment(req: AuthenticatedRequest, res: Response) {
+		try {
+			const { commentId } = req.params;
+			if (!commentId) {
+				return res.status(400).json({ success: false, error: 'Comment id is required' });
+			}
+			if (!req.user) {
+				return res.status(400).json({ success: false, error: 'user id is required' });
+			}
+
+			await this.alertBL.deleteComment(commentId, req.user.id);
+			return res.json({ success: true, message: 'Comment deleted successfully' });
+		} catch (error) {
+			logger.error('Error deleting comment:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+	// endregion
 }

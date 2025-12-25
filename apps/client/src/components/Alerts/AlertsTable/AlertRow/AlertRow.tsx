@@ -38,9 +38,6 @@ export const AlertRow = ({
 	onSelectAlerts,
 }: AlertRowProps) => {
 	const handleRowClick = () => {
-		if (onSelectAlerts) {
-			onSelectAlert(alert);
-		}
 		onAlertClick?.(alert);
 	};
 
@@ -51,15 +48,19 @@ export const AlertRow = ({
 		>
 			{onSelectAlerts && (
 				<TableCell
-					className={CELL_PADDING}
+					className={cn(CELL_PADDING, 'cursor-pointer')}
 					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
-					onClick={(e) => e.stopPropagation()}
+					onClick={(e) => {
+						e.stopPropagation();
+						onSelectAlert(alert);
+					}}
 				>
 					<div className="flex items-center justify-center">
 						<Checkbox
 							checked={isSelected}
 							onCheckedChange={() => onSelectAlert(alert)}
 							className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+							onClick={(e) => e.stopPropagation()}
 						/>
 					</div>
 				</TableCell>
