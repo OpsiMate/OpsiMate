@@ -20,6 +20,7 @@ export interface AlertsTableProps {
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	selectedAlerts?: Alert[];
 	isLoading?: boolean;
+	isArchived?: boolean;
 	className?: string;
 	visibleColumns?: string[];
 	columnOrder?: string[];

@@ -18,6 +18,7 @@ interface VirtualizedAlertListProps {
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	columnLabels?: Record<string, string>;
+	isArchived?: boolean;
 }
 
 export const VirtualizedAlertList = ({
@@ -33,6 +34,7 @@ export const VirtualizedAlertList = ({
 	onDeleteAlert,
 	onSelectAlerts,
 	columnLabels,
+	isArchived = false,
 }: VirtualizedAlertListProps) => {
 	const virtualItems = virtualizer.getVirtualItems();
 
@@ -89,6 +91,7 @@ export const VirtualizedAlertList = ({
 									onUndismissAlert={onUndismissAlert}
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
+									isArchived={isArchived}
 								/>
 							</div>
 						);

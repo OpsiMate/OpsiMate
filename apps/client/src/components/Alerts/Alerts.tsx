@@ -362,6 +362,7 @@ const Alerts = () => {
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
 									isLoading={isLoadingArchived}
+									isArchived={true}
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
 									onAlertClick={handleAlertClick}
