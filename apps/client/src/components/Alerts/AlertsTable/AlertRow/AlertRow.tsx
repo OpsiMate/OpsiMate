@@ -93,7 +93,14 @@ export const AlertRow = ({
 					case 'summary':
 						return <AlertSummaryColumn key={column} alert={alert} className={COLUMN_WIDTHS.summary} />;
 					case 'owner':
-						return <AlertOwnerColumn key={column} alert={alert} className={COLUMN_WIDTHS.owner} isArchived={isArchived} />;
+						return (
+							<AlertOwnerColumn
+								key={column}
+								alert={alert}
+								className={COLUMN_WIDTHS.owner}
+								isArchived={isArchived}
+							/>
+						);
 					case 'startsAt':
 						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
 					case ACTIONS_COLUMN:
