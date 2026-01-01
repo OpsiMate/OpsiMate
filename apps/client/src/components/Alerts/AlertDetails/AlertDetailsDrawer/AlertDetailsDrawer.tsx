@@ -1,6 +1,9 @@
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
+import { Info, MessageSquare, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertHistorySection } from '../AlertHistorySection';
@@ -10,7 +13,6 @@ import { AlertSummarySection } from '../AlertSummarySection';
 import { AlertTimestampsSection } from '../AlertTimestampsSection';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
-import { DRAWER_COMMENTS_WIDTH, DRAWER_DETAILS_WIDTH, DRAWER_WIDTH } from './AlertDetailsDrawer.constants';
 
 interface AlertDetailsDrawerProps {
 	open: boolean;
@@ -41,46 +43,64 @@ export const AlertDetailsDrawer = ({
 
 	const historyData = useAlertHistory(renderedAlert?.id);
 
+	if (!open) return null;
+
 	return (
-		<Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-			<SheetContent side="right" className={`${DRAWER_WIDTH} p-0 flex flex-col`}>
-				<SheetHeader className="px-6 py-4 border-b flex-shrink-0">
-					<SheetTitle className="text-lg">Alert Details</SheetTitle>
-					<SheetDescription className="sr-only">View and manage alert details and comments</SheetDescription>
-				</SheetHeader>
+		<div
+			className={cn(
+				'fixed top-0 right-0 h-full w-[480px] bg-background border-l shadow-xl z-40 flex flex-col',
+				'animate-in slide-in-from-right duration-300'
+			)}
+		>
+			<div className="px-6 py-4 border-b flex-shrink-0 flex items-center justify-between">
+				<h2 className="text-lg font-semibold">Alert Details</h2>
+				<Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+					<X className="h-4 w-4" />
+				</Button>
+			</div>
 
-				<div className="flex-1 flex min-h-0">
-					<div className={`${DRAWER_DETAILS_WIDTH} flex flex-col min-h-0`}>
-						<ScrollArea className="flex-1">
-							<div className="p-4 space-y-4">
-								{renderedAlert && <AlertInfoSection alert={renderedAlert} />}
+			<Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
+				<TabsList className="mx-4 mt-4 grid w-auto grid-cols-2">
+					<TabsTrigger value="details" className="gap-1.5">
+						<Info className="h-4 w-4" />
+						Details
+					</TabsTrigger>
+					<TabsTrigger value="comments" className="gap-1.5">
+						<MessageSquare className="h-4 w-4" />
+						Comments
+					</TabsTrigger>
+				</TabsList>
 
-								{renderedAlert?.summary && <AlertSummarySection summary={renderedAlert.summary} />}
+				<TabsContent value="details" className="flex-1 min-h-0 mt-0">
+					<ScrollArea className="h-full">
+						<div className="p-4 space-y-4">
+							{renderedAlert && <AlertInfoSection alert={renderedAlert} />}
 
-								{renderedAlert && <AlertTimestampsSection alert={renderedAlert} />}
+							{renderedAlert?.summary && <AlertSummarySection summary={renderedAlert.summary} />}
 
-								{historyData && <AlertHistorySection historyData={historyData} />}
+							{renderedAlert && <AlertTimestampsSection alert={renderedAlert} />}
 
-								{renderedAlert && <AlertLinksSection alert={renderedAlert} />}
+							{historyData && <AlertHistorySection historyData={historyData} />}
 
-								{renderedAlert && (
-									<AlertActionsSection
-										alert={renderedAlert}
-										isActive={isActive}
-										onDismiss={onDismiss}
-										onUndismiss={onUndismiss}
-										onDelete={onDelete}
-									/>
-								)}
-							</div>
-						</ScrollArea>
-					</div>
+							{renderedAlert && <AlertLinksSection alert={renderedAlert} />}
 
-					<div className={DRAWER_COMMENTS_WIDTH}>
-						{renderedAlert && <CommentsWall alertId={renderedAlert.id} />}
-					</div>
-				</div>
-			</SheetContent>
-		</Sheet>
+							{renderedAlert && (
+								<AlertActionsSection
+									alert={renderedAlert}
+									isActive={isActive}
+									onDismiss={onDismiss}
+									onUndismiss={onUndismiss}
+									onDelete={onDelete}
+								/>
+							)}
+						</div>
+					</ScrollArea>
+				</TabsContent>
+
+				<TabsContent value="comments" className="flex-1 min-h-0 mt-0">
+					{renderedAlert && <CommentsWall alertId={renderedAlert.id} />}
+				</TabsContent>
+			</Tabs>
+		</div>
 	);
 };
