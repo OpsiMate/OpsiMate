@@ -193,10 +193,10 @@ export interface UptimeKumaWebhookPayload {
 
 /**
  * Zabbix webhook payload
- * 
+ *
  * Zabbix sends alerts via media type webhooks. The payload structure
  * depends on the webhook configuration in Zabbix.
- * 
+ *
  * Default Zabbix webhook payload (configurable in Media Type):
  * {
  *   "event_id": "{EVENT.ID}",

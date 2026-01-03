@@ -156,20 +156,22 @@ export class AlertController {
 			}
 
 			const alertId = `ZABBIX_${payload.event_id || payload.trigger_id}`;
-			
+
 			// Check if this is a recovery/resolved event
 			// event_value: "0" = resolved, "1" = problem
 			// trigger_status: "OK" = resolved, "PROBLEM" = active
 			// Note: Unexpanded Zabbix macros like {EVENT.RECOVERY.DATE} should not be treated as valid values
-			const hasValidRecoveryDate = payload.event_recovery_date && 
-				!payload.event_recovery_date.startsWith('{') && 
+			const hasValidRecoveryDate =
+				payload.event_recovery_date &&
+				!payload.event_recovery_date.startsWith('{') &&
 				payload.event_recovery_date.trim() !== '';
-			const hasValidRecoveryTime = payload.event_recovery_time && 
-				!payload.event_recovery_time.startsWith('{') && 
+			const hasValidRecoveryTime =
+				payload.event_recovery_time &&
+				!payload.event_recovery_time.startsWith('{') &&
 				payload.event_recovery_time.trim() !== '';
-			
-			const isResolved = 
-				payload.event_value === '0' || 
+
+			const isResolved =
+				payload.event_value === '0' ||
 				payload.trigger_status?.toUpperCase() === 'OK' ||
 				(hasValidRecoveryDate && hasValidRecoveryTime);
 
@@ -201,12 +203,12 @@ export class AlertController {
 					}
 				});
 			}
-			
+
 			// Add severity as a tag
 			if (payload.trigger_severity) {
 				tags['severity'] = payload.trigger_severity;
 			}
-			
+
 			// Add host info as tags
 			if (payload.host_name) {
 				tags['host'] = payload.host_name;
@@ -216,7 +218,8 @@ export class AlertController {
 			}
 
 			const alertName = payload.trigger_name || payload.event_name || 'Unknown Zabbix Alert';
-			const summary = payload.alert_message || 
+			const summary =
+				payload.alert_message ||
 				`${payload.trigger_name || ''} on ${payload.host_name || 'unknown host'}${payload.item_value ? ` - Value: ${payload.item_value}` : ''}`;
 
 			// Build alert URL from Zabbix
