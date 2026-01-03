@@ -18,7 +18,7 @@ import { Archive, Bell } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
-import { AlertDetailsDrawer } from './AlertDetails';
+import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
@@ -73,7 +73,7 @@ const Alerts = () => {
 		return updatedAlert || selectedAlert;
 	}, [selectedAlert, currentAlertData]);
 
-	const shouldPauseRefresh = showDashboardSettings || syncedSelectedAlert !== null;
+	const shouldPauseRefresh = showDashboardSettings;
 
 	const {
 		lastRefresh: lastRefreshActive,
@@ -173,6 +173,7 @@ const Alerts = () => {
 	};
 
 	const handleLaunchTVMode = () => {
+		setSelectedAlert(null); // Close alert details panel before navigating
 		navigate('/alerts/tv-mode');
 	};
 
@@ -246,8 +247,8 @@ const Alerts = () => {
 					/>
 				</FilterSidebar>
 
-				<div className="flex-1 flex min-h-0">
-					<div className="flex-1 flex flex-col p-4 min-h-0 min-w-0">
+				<div className="flex-1 flex min-h-0 overflow-hidden">
+					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', 'flex-1 min-w-0')}>
 						<div className="flex-shrink-0 mb-4">
 							<DashboardHeader
 								dashboardName={dashboardState.name}
@@ -381,18 +382,19 @@ const Alerts = () => {
 							</div>
 						)}
 					</div>
+
+					{syncedSelectedAlert && (
+						<AlertDetailsPanel
+							alert={syncedSelectedAlert}
+							isActive={activeTab === AlertTab.Active}
+							onClose={() => setSelectedAlert(null)}
+							onDismiss={handleDismissAlert}
+							onUndismiss={handleUndismissAlert}
+							onDelete={activeTab === AlertTab.Active ? handleDeleteAlert : handleDeleteArchivedAlert}
+						/>
+					)}
 				</div>
 			</div>
-
-			<AlertDetailsDrawer
-				open={!!syncedSelectedAlert}
-				alert={syncedSelectedAlert}
-				isActive={activeTab === AlertTab.Active}
-				onClose={() => setSelectedAlert(null)}
-				onDismiss={handleDismissAlert}
-				onUndismiss={handleUndismissAlert}
-				onDelete={activeTab === AlertTab.Active ? handleDeleteAlert : handleDeleteArchivedAlert}
-			/>
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}
