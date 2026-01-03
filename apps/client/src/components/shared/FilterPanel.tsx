@@ -166,6 +166,14 @@ export const FilterPanel = ({
 												const { filteredAndLimitedFacets, hasMore, remaining, searchTerm } =
 													getFilteredAndLimitedFacets(field, allFacets);
 
+												if (filteredAndLimitedFacets.length === 0) {
+													return (
+														<div className="text-xs text-muted-foreground py-2 px-1">
+															No options available
+														</div>
+													);
+												}
+
 												return (
 													<>
 														{filteredAndLimitedFacets.map(
