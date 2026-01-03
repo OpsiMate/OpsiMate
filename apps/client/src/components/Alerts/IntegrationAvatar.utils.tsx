@@ -2,6 +2,7 @@ import { GCPIcon } from '@/components/icons/GCPIcon';
 import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
 import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { DatadogIcon } from '@/components/icons/DatadogIcon';
+import { ZabbixIcon } from '@/components/icons/ZabbixIcon';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell } from 'lucide-react';
@@ -37,6 +38,13 @@ export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDef
 		textClass: 'text-purple-600',
 		render: (iconSizeClass) => <DatadogIcon className={cn(iconSizeClass)} />,
 	},
+	zabbix: {
+		label: 'Zabbix',
+		bgClass: 'bg-white',
+		borderClass: 'border-red-200',
+		textClass: 'text-red-600',
+		render: (iconSizeClass) => <ZabbixIcon className={cn(iconSizeClass)} />,
+	},
 	custom: {
 		label: 'Custom',
 		bgClass: 'bg-slate-50 dark:bg-slate-800',
@@ -53,6 +61,7 @@ const normalizeIntegration = (value?: string | null): AlertIntegrationKind | und
 	if (normalized.includes('gcp') || normalized.includes('google')) return 'gcp';
 	if (normalized.includes('uptimekuma') || normalized.includes('uptime-kuma')) return 'uptimekuma';
 	if (normalized.includes('datadog')) return 'datadog';
+	if (normalized.includes('zabbix')) return 'zabbix';
 	if (normalized.includes('custom')) return 'custom';
 	return undefined;
 };

@@ -215,7 +215,9 @@ export interface UptimeKumaWebhookPayload {
  *   "item_value": "{ITEM.VALUE}",
  *   "alert_message": "{ALERT.MESSAGE}",
  *   "event_recovery_date": "{EVENT.RECOVERY.DATE}",
- *   "event_recovery_time": "{EVENT.RECOVERY.TIME}"
+ *   "event_recovery_time": "{EVENT.RECOVERY.TIME}",
+ *   "zabbix_url": "https://your-zabbix-server",
+ *   "trigger_url": "{TRIGGER.URL}"
  * }
  */
 export interface ZabbixWebhookPayload {
@@ -236,6 +238,8 @@ export interface ZabbixWebhookPayload {
 	alert_message?: string;
 	event_recovery_date?: string;
 	event_recovery_time?: string;
+	zabbix_url?: string; // Base URL of the Zabbix server
+	trigger_url?: string; // Direct URL to the trigger (from {TRIGGER.URL} macro)
 	// Allow additional fields
 	[key: string]: string | undefined;
 }

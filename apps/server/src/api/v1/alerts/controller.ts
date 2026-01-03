@@ -160,10 +160,18 @@ export class AlertController {
 			// Check if this is a recovery/resolved event
 			// event_value: "0" = resolved, "1" = problem
 			// trigger_status: "OK" = resolved, "PROBLEM" = active
+			// Note: Unexpanded Zabbix macros like {EVENT.RECOVERY.DATE} should not be treated as valid values
+			const hasValidRecoveryDate = payload.event_recovery_date && 
+				!payload.event_recovery_date.startsWith('{') && 
+				payload.event_recovery_date.trim() !== '';
+			const hasValidRecoveryTime = payload.event_recovery_time && 
+				!payload.event_recovery_time.startsWith('{') && 
+				payload.event_recovery_time.trim() !== '';
+			
 			const isResolved = 
 				payload.event_value === '0' || 
 				payload.trigger_status?.toUpperCase() === 'OK' ||
-				(payload.event_recovery_date && payload.event_recovery_time);
+				(hasValidRecoveryDate && hasValidRecoveryTime);
 
 			if (isResolved) {
 				await this.alertBL.archiveAlert(alertId);
@@ -211,6 +219,17 @@ export class AlertController {
 			const summary = payload.alert_message || 
 				`${payload.trigger_name || ''} on ${payload.host_name || 'unknown host'}${payload.item_value ? ` - Value: ${payload.item_value}` : ''}`;
 
+			// Build alert URL from Zabbix
+			// Priority: trigger_url (from {TRIGGER.URL} macro) > constructed URL from zabbix_url + event_id
+			let alertUrl = '';
+			if (payload.trigger_url && !payload.trigger_url.startsWith('{')) {
+				alertUrl = payload.trigger_url;
+			} else if (payload.zabbix_url && payload.event_id) {
+				// Construct URL to the problem in Zabbix
+				const baseUrl = payload.zabbix_url.replace(/\/$/, ''); // Remove trailing slash
+				alertUrl = `${baseUrl}/tr_events.php?triggerid=${payload.trigger_id}&eventid=${payload.event_id}`;
+			}
+
 			await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Zabbix',
@@ -218,7 +237,7 @@ export class AlertController {
 				tags,
 				startsAt,
 				updatedAt: new Date().toISOString(),
-				alertUrl: '',
+				alertUrl,
 				alertName,
 				summary,
 				runbookUrl: undefined,
