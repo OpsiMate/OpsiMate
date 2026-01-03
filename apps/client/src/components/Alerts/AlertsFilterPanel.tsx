@@ -110,7 +110,6 @@ export const AlertsFilterPanel = ({
 			onFilterChange={onFilterChange}
 			collapsed={collapsed}
 			className={className}
-			variant="compact"
 		/>
 	);
 };

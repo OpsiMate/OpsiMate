@@ -49,3 +49,10 @@ Always design for split subcomponents and strong separation of concerns.
      if (!data) return <Layout><Empty /></Layout>;
      return <Layout><Content data={data} /></Layout>;
      ```
+
+7. Unused Variables & Code Cleanup:
+   - Remove all unused variables, parameters, and imports immediately.
+   - If a variable is intentionally unused (e.g., future feature), prefix it with underscore (`_variant`).
+   - Never leave unused code "for later" - remove it and add it back when needed.
+   - Unused props should be removed from interfaces and component destructuring.
+   - Run linter/formatter before committing to catch unused code.
