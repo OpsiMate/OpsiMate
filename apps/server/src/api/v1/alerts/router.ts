@@ -36,6 +36,7 @@ export default function createAlertRouter(controller: AlertController) {
 	router.post('/custom/datadog', controller.createCustomDatadogAlert.bind(controller));
 	router.post('/custom/gcp', controller.createCustomGCPAlert.bind(controller));
 	router.post('/custom/uptimekuma', controller.createUptimeKumaAlert.bind(controller));
+	router.post('/custom/zabbix', controller.createZabbixAlert.bind(controller));
 	router.post('/custom', controller.createCustomAlert.bind(controller));
 
 	return router;

@@ -7,6 +7,7 @@ import {
 	HttpAlertWebhookSchema,
 	SetAlertOwnerSchema,
 	UptimeKumaWebhookPayload,
+	ZabbixWebhookPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { v4 } from 'uuid';
@@ -126,6 +127,109 @@ export class AlertController {
 			});
 		} catch (error) {
 			logger.error('Error while handling Uptime Kuma alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async createZabbixAlert(req: Request, res: Response) {
+		try {
+			const payload = req.body as ZabbixWebhookPayload;
+
+			logger.info(`Received Zabbix alert: ${JSON.stringify(payload)}`);
+
+			// Handle test alert (no event_id)
+			if (!payload.event_id && !payload.trigger_id) {
+				logger.info('Zabbix Test Alert Created');
+				await this.alertBL.insertOrUpdateAlert({
+					id: v4(),
+					type: 'Zabbix',
+					status: AlertStatus.FIRING,
+					tags: {},
+					startsAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					alertUrl: '',
+					alertName: 'Test Alert',
+					summary: 'Test Alert from Zabbix was created successfully',
+					runbookUrl: undefined,
+				});
+				return res.status(200).json({ success: true, data: null });
+			}
+
+			const alertId = `ZABBIX_${payload.event_id || payload.trigger_id}`;
+			
+			// Check if this is a recovery/resolved event
+			// event_value: "0" = resolved, "1" = problem
+			// trigger_status: "OK" = resolved, "PROBLEM" = active
+			const isResolved = 
+				payload.event_value === '0' || 
+				payload.trigger_status?.toUpperCase() === 'OK' ||
+				(payload.event_recovery_date && payload.event_recovery_time);
+
+			if (isResolved) {
+				await this.alertBL.archiveAlert(alertId);
+				return res.status(200).json({
+					success: true,
+					data: { alertId, archived: true },
+				});
+			}
+
+			// Parse event date/time
+			let startsAt = new Date().toISOString();
+			if (payload.event_date && payload.event_time) {
+				try {
+					startsAt = new Date(`${payload.event_date} ${payload.event_time}`).toISOString();
+				} catch {
+					startsAt = new Date().toISOString();
+				}
+			}
+
+			// Parse tags from event_tags (format: "tag1:value1,tag2:value2")
+			const tags: Record<string, string> = {};
+			if (payload.event_tags) {
+				payload.event_tags.split(',').forEach((tag) => {
+					const [key, value] = tag.split(':').map((s) => s.trim());
+					if (key) {
+						tags[key] = value || 'true';
+					}
+				});
+			}
+			
+			// Add severity as a tag
+			if (payload.trigger_severity) {
+				tags['severity'] = payload.trigger_severity;
+			}
+			
+			// Add host info as tags
+			if (payload.host_name) {
+				tags['host'] = payload.host_name;
+			}
+			if (payload.host_ip) {
+				tags['host_ip'] = payload.host_ip;
+			}
+
+			const alertName = payload.trigger_name || payload.event_name || 'Unknown Zabbix Alert';
+			const summary = payload.alert_message || 
+				`${payload.trigger_name || ''} on ${payload.host_name || 'unknown host'}${payload.item_value ? ` - Value: ${payload.item_value}` : ''}`;
+
+			await this.alertBL.insertOrUpdateAlert({
+				id: alertId,
+				type: 'Zabbix',
+				status: AlertStatus.FIRING,
+				tags,
+				startsAt,
+				updatedAt: new Date().toISOString(),
+				alertUrl: '',
+				alertName,
+				summary,
+				runbookUrl: undefined,
+			});
+
+			return res.status(200).json({
+				success: true,
+				data: { alertId, updated: true },
+			});
+		} catch (error) {
+			logger.error('Error while handling Zabbix alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

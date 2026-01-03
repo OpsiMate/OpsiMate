@@ -3,6 +3,7 @@ import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
 import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
 import { DatadogSetupModal } from '@/components/Integrations/DatadogSetupModal';
+import { ZabbixSetupModal } from '@/components/Integrations/ZabbixSetupModal';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -161,6 +162,17 @@ const INTEGRATIONS: Integration[] = [
 		],
 	},
 	{
+		id: 'zabbix',
+		supported: true,
+		name: 'Zabbix',
+		description: 'Enterprise-class open source monitoring solution for networks and applications.',
+		logo: 'https://assets.zabbix.com/img/logo/zabbix_logo_500x131.png',
+		tags: ['Monitoring', 'Alerts', 'Infrastructure'],
+		documentationUrl: 'https://www.zabbix.com/documentation/current/en/manual/config/notifications/media/webhook',
+		configFields: [],
+		enabled: true,
+	},
+	{
 		id: 'coralogix',
 		supported: false,
 		name: 'Coralogix',
@@ -252,6 +264,7 @@ const Integrations = () => {
 	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
 	const [showUptimeKumaSetupModal, setShowUptimeKumaSetupModal] = useState(false);
 	const [showDatadogSetupModal, setShowDatadogSetupModal] = useState(false);
+	const [showZabbixSetupModal, setShowZabbixSetupModal] = useState(false);
 	const { toast } = useToast();
 
 	// Handle URL-based category filtering
@@ -506,6 +519,12 @@ const Integrations = () => {
 												// Special handling for Datadog alert webhooks
 												if (integration.id === 'datadog') {
 													setShowDatadogSetupModal(true);
+													return;
+												}
+
+												// Special handling for Zabbix - show webhook setup modal
+												if (integration.id === 'zabbix') {
+													setShowZabbixSetupModal(true);
 													return;
 												}
 
@@ -1061,6 +1080,7 @@ const Integrations = () => {
 			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
 			<UptimeKumaSetupModal open={showUptimeKumaSetupModal} onOpenChange={setShowUptimeKumaSetupModal} />
 			<DatadogSetupModal open={showDatadogSetupModal} onOpenChange={setShowDatadogSetupModal} />
+			<ZabbixSetupModal open={showZabbixSetupModal} onOpenChange={setShowZabbixSetupModal} />
 		</>
 	);
 };

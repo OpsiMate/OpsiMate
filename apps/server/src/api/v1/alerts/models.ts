@@ -190,3 +190,52 @@ export interface UptimeKumaWebhookPayload {
 	monitor: UptimeKumaMonitor;
 	msg: string;
 }
+
+/**
+ * Zabbix webhook payload
+ * 
+ * Zabbix sends alerts via media type webhooks. The payload structure
+ * depends on the webhook configuration in Zabbix.
+ * 
+ * Default Zabbix webhook payload (configurable in Media Type):
+ * {
+ *   "event_id": "{EVENT.ID}",
+ *   "event_name": "{EVENT.NAME}",
+ *   "host_name": "{HOST.NAME}",
+ *   "host_ip": "{HOST.IP}",
+ *   "trigger_id": "{TRIGGER.ID}",
+ *   "trigger_name": "{TRIGGER.NAME}",
+ *   "trigger_severity": "{TRIGGER.SEVERITY}",
+ *   "trigger_status": "{TRIGGER.STATUS}",
+ *   "event_date": "{EVENT.DATE}",
+ *   "event_time": "{EVENT.TIME}",
+ *   "event_value": "{EVENT.VALUE}",
+ *   "event_tags": "{EVENT.TAGS}",
+ *   "item_name": "{ITEM.NAME}",
+ *   "item_value": "{ITEM.VALUE}",
+ *   "alert_message": "{ALERT.MESSAGE}",
+ *   "event_recovery_date": "{EVENT.RECOVERY.DATE}",
+ *   "event_recovery_time": "{EVENT.RECOVERY.TIME}"
+ * }
+ */
+export interface ZabbixWebhookPayload {
+	event_id?: string;
+	event_name?: string;
+	host_name?: string;
+	host_ip?: string;
+	trigger_id?: string;
+	trigger_name?: string;
+	trigger_severity?: string;
+	trigger_status?: string; // "PROBLEM" or "OK"
+	event_date?: string;
+	event_time?: string;
+	event_value?: string; // "1" for problem, "0" for resolved
+	event_tags?: string;
+	item_name?: string;
+	item_value?: string;
+	alert_message?: string;
+	event_recovery_date?: string;
+	event_recovery_time?: string;
+	// Allow additional fields
+	[key: string]: string | undefined;
+}
