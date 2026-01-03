@@ -44,8 +44,8 @@ import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
 import { RefreshJob } from './jobs/refresh-job';
-import {PlaygroundRepository} from "./dal/playgroundRepository.ts";
-import {PlaygroundBL} from "./bl/playground/playground.bl.ts";
+import { PlaygroundRepository } from './dal/playgroundRepository.ts';
+import { PlaygroundBL } from './bl/playground/playground.bl.ts';
 
 export enum AppMode {
 	SERVER = 'SERVER',
