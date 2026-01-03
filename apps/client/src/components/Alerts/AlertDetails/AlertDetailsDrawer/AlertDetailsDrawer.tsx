@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Info, MessageSquare, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
@@ -44,10 +44,29 @@ export const AlertDetailsDrawer = ({
 
 	const historyData = useAlertHistory(renderedAlert?.id);
 
+	// Handle escape key to close drawer
+	const handleKeyDown = useCallback(
+		(e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				onClose();
+			}
+		},
+		[onClose]
+	);
+
+	useEffect(() => {
+		if (open) {
+			document.addEventListener('keydown', handleKeyDown);
+			return () => document.removeEventListener('keydown', handleKeyDown);
+		}
+	}, [open, handleKeyDown]);
+
 	if (!open) return null;
 
 	return (
 		<div
+			role="complementary"
+			aria-label="Alert details panel"
 			className={cn(
 				'fixed top-0 right-0 h-full bg-background border-l shadow-xl z-40 flex flex-col',
 				DRAWER_WIDTH,
@@ -56,7 +75,13 @@ export const AlertDetailsDrawer = ({
 		>
 			<div className="px-6 py-4 border-b flex-shrink-0 flex items-center justify-between">
 				<h2 className="text-lg font-semibold">Alert Details</h2>
-				<Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-8 w-8"
+					onClick={onClose}
+					aria-label="Close alert details panel"
+				>
 					<X className="h-4 w-4" />
 				</Button>
 			</div>

@@ -248,7 +248,7 @@ const Alerts = () => {
 				</FilterSidebar>
 
 				<div className="flex-1 flex min-h-0 overflow-hidden">
-					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', syncedSelectedAlert ? 'flex-1 min-w-0' : 'flex-1 min-w-0')}>
+					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', 'flex-1 min-w-0')}>
 						<div className="flex-shrink-0 mb-4">
 							<DashboardHeader
 								dashboardName={dashboardState.name}
