@@ -13,6 +13,7 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
+import { isPlaygroundMode, playgroundApiRequest } from './playground';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
@@ -33,6 +34,10 @@ async function apiRequest<T>(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
 	data?: unknown
 ): Promise<ApiResponse<T>> {
+	if (isPlaygroundMode() && endpoint !== '/playground/book-demo') {
+		return (await playgroundApiRequest<T>(endpoint, method, data)) as ApiResponse<T>;
+	}
+
 	const url = `${API_BASE_URL}${endpoint}`;
 
 	const token = localStorage.getItem('jwt');
@@ -599,6 +604,15 @@ export const alertsApi = {
 export const auditApi = {
 	getAuditLogs: async (page = 1, pageSize = 20) => {
 		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
+	},
+};
+
+/**
+ * Playground API endpoints
+ */
+export const playgroundApi = {
+	bookDemo: async (email: string) => {
+		return apiRequest<void>('/playground/book-demo', 'POST', { email });
 	},
 };
 

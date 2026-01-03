@@ -1,9 +1,14 @@
 import { alertsApi } from '@/lib/api';
+import { isPlaygroundMode } from '@/lib/playground';
 import { generateDiverseMockAlerts } from '@/mocks/mockAlerts.utils';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
 const shouldUseMockAlerts = (): boolean => {
+	if (isPlaygroundMode()) {
+		return true;
+	}
+
 	if (typeof window !== 'undefined') {
 		const urlParams = new URLSearchParams(window.location.search);
 		const urlParam = urlParams.get('useMockAlerts');

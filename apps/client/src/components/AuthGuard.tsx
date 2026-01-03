@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUsersExist } from '@/hooks/queries';
+import { isPlaygroundMode } from '@/lib/playground';
 
 interface AuthGuardProps {
 	children: React.ReactNode;
@@ -9,9 +10,14 @@ interface AuthGuardProps {
 export const AuthGuard = ({ children }: AuthGuardProps) => {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const playgroundMode = isPlaygroundMode();
 	const { data: usersExist, isLoading, error } = useUsersExist();
 
 	useEffect(() => {
+		if (playgroundMode) {
+			return;
+		}
+
 		// Check if user is already authenticated
 		const jwt = localStorage.getItem('jwt');
 		const isOnRegisterPage = location.pathname === '/register';
@@ -69,7 +75,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 			// User is authenticated, allow access
 			return;
 		}
-	}, [usersExist, isLoading, error, navigate, location.pathname]);
+	}, [usersExist, isLoading, error, navigate, location.pathname, playgroundMode]);
+
+	if (playgroundMode) {
+		return <>{children}</>;
+	}
 
 	// Show loading state while checking
 	if (isLoading) {

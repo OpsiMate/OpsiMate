@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest, EMAIL_STATUS_URL } from '../lib/api';
+import { isPlaygroundMode } from '../lib/playground';
 
 const logger = new Logger('Login');
 
@@ -21,6 +22,11 @@ const Login: React.FC = () => {
 	useEffect(() => {
 		if (localStorage.getItem('jwt') && window.location.pathname === '/login') {
 			window.location.href = '/';
+		}
+
+		if (isPlaygroundMode()) {
+			setEmailEnabled(false);
+			return;
 		}
 
 		const fetchEmailStatus = async () => {
