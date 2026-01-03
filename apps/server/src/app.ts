@@ -44,6 +44,8 @@ import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
 import { RefreshJob } from './jobs/refresh-job';
+import {PlaygroundRepository} from "./dal/playgroundRepository.ts";
+import {PlaygroundBL} from "./bl/playground/playground.bl.ts";
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -112,6 +114,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const customActionRepo = new CustomActionRepository(db);
+	const playgroundRepo = new PlaygroundRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -126,6 +129,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		serviceCustomFieldValueRepo.initServiceCustomFieldValueTable(),
 		passwordResetsRepo.initPasswordResetsTable(),
 		customActionRepo.initCustomActionsTable(),
+		playgroundRepo.initPlaygroundTable(),
 	]);
 
 	// BL
@@ -136,6 +140,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionBL = new CustomActionBL(customActionRepo, providerBL, servicesBL, serviceCustomFieldBL);
 	const tagBL = new TagBL(tagRepo);
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
+	const playgroundBL = new PlaygroundBL(playgroundRepo);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -156,7 +161,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const secretController = new SecretsController(secretMetadataBL);
 	const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
 	const customActionsController = new CustomActionsController(customActionBL);
-	const playgroundController = new PlaygroundController();
+	const playgroundController = new PlaygroundController(playgroundBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
