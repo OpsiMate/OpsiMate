@@ -1,18 +1,18 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useToast } from '@/hooks/use-toast';
 import { playgroundApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Github, Calendar, Send, Info } from 'lucide-react';
+import { Calendar, Github, Info, Send } from 'lucide-react';
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
 import {
-	PLAYGROUND_BANNER_TEXT,
 	BOOK_DEMO_BUTTON_TEXT,
+	DEMO_ERROR_MESSAGE,
+	DEMO_SUCCESS_MESSAGE,
 	GITHUB_BUTTON_TEXT,
 	GITHUB_REPO_URL,
-	DEMO_SUCCESS_MESSAGE,
-	DEMO_ERROR_MESSAGE,
+	PLAYGROUND_BANNER_TEXT,
 } from './PlaygroundBanner.constants';
 import { PlaygroundBannerProps } from './PlaygroundBanner.types';
 
