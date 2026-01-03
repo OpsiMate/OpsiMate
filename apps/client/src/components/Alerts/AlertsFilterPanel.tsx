@@ -11,7 +11,7 @@ interface AlertsFilterPanelProps {
 	onFilterChange: (filters: ActiveFilters) => void;
 	collapsed?: boolean;
 	className?: string;
-	enabledTagKeys?: TagKeyInfo[];
+	tagKeys?: TagKeyInfo[];
 	isArchived?: boolean;
 }
 
@@ -30,7 +30,7 @@ export const AlertsFilterPanel = ({
 	onFilterChange,
 	collapsed = false,
 	className,
-	enabledTagKeys = [],
+	tagKeys = [],
 	isArchived = false,
 }: AlertsFilterPanelProps) => {
 	const { data: users = [] } = useUsers();
@@ -40,9 +40,9 @@ export const AlertsFilterPanel = ({
 	};
 
 	const filterConfig: FilterPanelConfig = useMemo(() => {
-		const tagKeyFields = enabledTagKeys.map((tk) => getTagKeyColumnId(tk.key));
+		const tagKeyFields = tagKeys.map((tk) => getTagKeyColumnId(tk.key));
 		const tagKeyLabels: Record<string, string> = {};
-		enabledTagKeys.forEach((tk) => {
+		tagKeys.forEach((tk) => {
 			tagKeyLabels[getTagKeyColumnId(tk.key)] = tk.label;
 		});
 
@@ -52,7 +52,7 @@ export const AlertsFilterPanel = ({
 			fields: [...baseFields, ...tagKeyFields],
 			fieldLabels: { ...BASE_FIELD_LABELS, ...tagKeyLabels },
 		};
-	}, [enabledTagKeys, isArchived]);
+	}, [tagKeys, isArchived]);
 
 	const facets: FilterFacets = useMemo(() => {
 		const facetData: Record<string, Map<string, number>> = {};
@@ -77,7 +77,7 @@ export const AlertsFilterPanel = ({
 			const ownerName = getOwnerDisplayName(alert.ownerId, users);
 			facetData.owner.set(ownerName, (facetData.owner.get(ownerName) || 0) + 1);
 
-			enabledTagKeys.forEach((tagKeyInfo) => {
+			tagKeys.forEach((tagKeyInfo) => {
 				const colId = getTagKeyColumnId(tagKeyInfo.key);
 				const value = alert.tags?.[tagKeyInfo.key];
 				if (value) {
@@ -100,7 +100,7 @@ export const AlertsFilterPanel = ({
 		});
 
 		return result;
-	}, [alerts, filterConfig.fields, enabledTagKeys, users]);
+	}, [alerts, filterConfig.fields, tagKeys, users]);
 
 	return (
 		<FilterPanel
