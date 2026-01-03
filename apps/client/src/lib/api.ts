@@ -22,11 +22,12 @@ export type ApiResponse<T = unknown> = {
 	success: boolean;
 	data?: T;
 	error?: string;
-	[key: string]: unknown; // Allow extra properties like token
+	[key: string]: unknown;
 };
 
 /**
  * Generic API request handler
+ * In playground mode, MSW intercepts requests at the network level
  */
 async function apiRequest<T>(
 	endpoint: string,
@@ -599,6 +600,15 @@ export const alertsApi = {
 export const auditApi = {
 	getAuditLogs: async (page = 1, pageSize = 20) => {
 		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
+	},
+};
+
+/**
+ * Playground API endpoints
+ */
+export const playgroundApi = {
+	bookDemo: async (payload: { email?: string; trackingId: string }) => {
+		return apiRequest<void>('/playground/book-demo', 'POST', payload);
 	},
 };
 

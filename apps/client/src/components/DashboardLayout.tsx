@@ -1,5 +1,7 @@
 import { LeftSidebar } from '@/components/LeftSidebar';
+import { PlaygroundBanner } from '@/components/shared';
 import { Button } from '@/components/ui/button';
+import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -14,6 +16,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 		return savedState ? JSON.parse(savedState) : false;
 	});
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+	const showPlaygroundBanner = isPlaygroundMode();
 
 	useEffect(() => {
 		localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
@@ -34,6 +37,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
 	return (
 		<div className="flex flex-col h-screen">
+			{showPlaygroundBanner && <PlaygroundBanner />}
 			{/* Mobile Header */}
 			<div className="md:hidden flex items-center justify-between p-4 border-b border-border">
 				<Button

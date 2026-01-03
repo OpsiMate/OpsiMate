@@ -1,5 +1,6 @@
 import { Logger, Role } from '@OpsiMate/shared';
 import { jwtDecode } from 'jwt-decode';
+import { getPlaygroundUser, isPlaygroundMode } from './playground';
 
 const logger = new Logger('auth');
 
@@ -12,6 +13,17 @@ export interface JWTPayload {
 }
 
 export function getCurrentUser(): JWTPayload | null {
+	if (isPlaygroundMode()) {
+		const playgroundUser = getPlaygroundUser();
+		return {
+			id: Number(playgroundUser.id) || 0,
+			email: playgroundUser.email,
+			role: playgroundUser.role,
+			iat: 0,
+			exp: 0,
+		};
+	}
+
 	const token = localStorage.getItem('jwt');
 	if (!token) return null;
 

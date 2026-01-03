@@ -3,3 +3,4 @@ export { FilterPanel } from './FilterPanel';
 export type { ActiveFilters, FilterFacet, FilterFacets, FilterPanelConfig } from './FilterPanel';
 export { FilterSidebar } from './FilterSidebar';
 export { UnsavedChangesDialog } from './UnsavedChangesDialog';
+export { PlaygroundBanner } from './PlaygroundBanner';

@@ -1,28 +1,30 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
-import providerRouter from './providers/router';
-import serviceRouter from './services/router';
-import dashboardRouter from './dashboards/router';
-import tagRouter from './tags/router';
-import integrationRouter from './integrations/router';
-import alertRouter from './alerts/router';
-import usersRouter from './users/router';
-import createAuditRouter from './audit/router';
-import { ProviderController } from './providers/controller';
-import { ServiceController } from './services/controller';
-import { DashboardController } from './dashboards/controller';
-import { TagController } from './tags/controller';
-import { IntegrationController } from './integrations/controller';
-import { AlertController } from './alerts/controller';
-import { UsersController } from './users/controller';
-import { AuditController } from './audit/controller';
 import { authenticateJWT } from '../../middleware/auth';
-import createSecretsRouter from './secrets/router';
-import { SecretsController } from './secrets/controller';
-import createCustomFieldsRouter from './custom-fields/router';
-import { CustomFieldsController } from './custom-fields/controller';
-import createCustomActionsRouter from './custom-actions/router';
+import { AlertController } from './alerts/controller';
+import alertRouter from './alerts/router';
+import { AuditController } from './audit/controller';
+import createAuditRouter from './audit/router';
 import { CustomActionsController } from './custom-actions/controller';
+import createCustomActionsRouter from './custom-actions/router';
+import { CustomFieldsController } from './custom-fields/controller';
+import createCustomFieldsRouter from './custom-fields/router';
+import { DashboardController } from './dashboards/controller';
+import dashboardRouter from './dashboards/router';
+import { IntegrationController } from './integrations/controller';
+import integrationRouter from './integrations/router';
+import { PlaygroundController } from './playground/controller';
+import playgroundRouter from './playground/router';
+import { ProviderController } from './providers/controller';
+import providerRouter from './providers/router';
+import { SecretsController } from './secrets/controller';
+import createSecretsRouter from './secrets/router';
+import { ServiceController } from './services/controller';
+import serviceRouter from './services/router';
+import { TagController } from './tags/controller';
+import tagRouter from './tags/router';
+import { UsersController } from './users/controller';
+import usersRouter from './users/router';
 
 export default function createV1Router(
 	providerController: ProviderController,
@@ -35,7 +37,8 @@ export default function createV1Router(
 	auditController: AuditController, // optional for backward compatibility
 	secretsController: SecretsController,
 	customFieldsController: CustomFieldsController,
-	customActionsController: CustomActionsController
+	customActionsController: CustomActionsController,
+	playgroundController: PlaygroundController
 ) {
 	const router = PromiseRouter();
 
@@ -46,6 +49,9 @@ export default function createV1Router(
 	router.post('/users/forgot-password', usersController.forgotPasswordHandler);
 	router.post('/users/validate-reset-password-token', usersController.validateResetPasswordTokenHandler);
 	router.post('/users/reset-password', usersController.resetPasswordHandler);
+
+	// Playground endpoints (public)
+	router.use('/playground', playgroundRouter(playgroundController));
 
 	// JWT-protected endpoints
 	router.use(authenticateJWT);

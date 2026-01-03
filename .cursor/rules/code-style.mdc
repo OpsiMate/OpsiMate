@@ -56,3 +56,10 @@ Always design for split subcomponents and strong separation of concerns.
    - Never leave unused code "for later" - remove it and add it back when needed.
    - Unused props should be removed from interfaces and component destructuring.
    - Run linter/formatter before committing to catch unused code.
+
+8. Logging:
+   - NEVER use `console.log`, `console.error`, `console.warn`, or any other `console.*` methods.
+   - ALWAYS use `Logger` from `@OpsiMate/shared` for all logging needs.
+   - Create a logger instance: `const logger = new Logger('module-name');`
+   - Use appropriate log levels: `logger.info()`, `logger.warn()`, `logger.error()`, `logger.debug()`.
+   - Logger provides structured logging and can be configured for different environments.
