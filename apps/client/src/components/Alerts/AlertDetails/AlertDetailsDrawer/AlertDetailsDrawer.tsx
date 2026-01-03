@@ -13,6 +13,7 @@ import { AlertSummarySection } from '../AlertSummarySection';
 import { AlertTimestampsSection } from '../AlertTimestampsSection';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
+import { DRAWER_WIDTH } from './AlertDetailsDrawer.constants';
 
 interface AlertDetailsDrawerProps {
 	open: boolean;
@@ -48,7 +49,8 @@ export const AlertDetailsDrawer = ({
 	return (
 		<div
 			className={cn(
-				'fixed top-0 right-0 h-full w-[480px] bg-background border-l shadow-xl z-40 flex flex-col',
+				'fixed top-0 right-0 h-full bg-background border-l shadow-xl z-40 flex flex-col',
+				DRAWER_WIDTH,
 				'animate-in slide-in-from-right duration-300'
 			)}
 		>
