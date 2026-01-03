@@ -13,7 +13,7 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
-import { isPlaygroundMode, isPlaygroundModeFromEnv, playgroundApiRequest } from './playground';
+import { isPlaygroundModeFromEnv } from './playground';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
@@ -23,43 +23,23 @@ export type ApiResponse<T = unknown> = {
 	success: boolean;
 	data?: T;
 	error?: string;
-	[key: string]: unknown; // Allow extra properties like token
+	[key: string]: unknown;
 };
-
-async function handlePlaygroundRequest<T>(
-	endpoint: string,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
-	data?: unknown
-): Promise<ApiResponse<T> | null> {
-	if (endpoint === '/playground/book-demo') {
-		return null;
-	}
-
-	if (isPlaygroundModeFromEnv() && method !== 'GET') {
-		return {
-			success: false,
-			error: 'Write operations are disabled in playground mode (environment variable). Use query parameter mode for full playground access.',
-		} as ApiResponse<T>;
-	}
-
-	if (isPlaygroundMode()) {
-		return (await playgroundApiRequest<T>(endpoint, method, data)) as ApiResponse<T>;
-	}
-
-	return null;
-}
 
 /**
  * Generic API request handler
+ * In playground mode, MSW intercepts requests at the network level
  */
 async function apiRequest<T>(
 	endpoint: string,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
 	data?: unknown
 ): Promise<ApiResponse<T>> {
-	const playgroundResponse = await handlePlaygroundRequest<T>(endpoint, method, data);
-	if (playgroundResponse !== null) {
-		return playgroundResponse;
+	if (isPlaygroundModeFromEnv() && method !== 'GET' && endpoint !== '/playground/book-demo') {
+		return {
+			success: false,
+			error: 'Write operations are disabled in playground mode (environment variable). Use query parameter mode for full playground access.',
+		} as ApiResponse<T>;
 	}
 
 	const url = `${API_BASE_URL}${endpoint}`;
