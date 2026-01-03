@@ -20,7 +20,7 @@ import {
 	Tag,
 	User,
 } from '@OpsiMate/shared';
-import { PLAYGROUND_QUERY_KEYS } from './playground.constants';
+import { PLAYGROUND_QUERY_KEY } from './playground.constants';
 
 export type PlaygroundMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -58,10 +58,8 @@ export const isPlaygroundMode = (): boolean => {
 	if (isPlaygroundModeFromEnv()) return true;
 	if (!isBrowser) return false;
 	const params = new URLSearchParams(window.location.search);
-	return PLAYGROUND_QUERY_KEYS.some((key) => {
-		const value = params.get(key);
-		return value === '' || value === 'true';
-	});
+	const value = params.get(PLAYGROUND_QUERY_KEY);
+	return value === '' || value === 'true';
 };
 
 export const getPlaygroundUser = (): User => ({

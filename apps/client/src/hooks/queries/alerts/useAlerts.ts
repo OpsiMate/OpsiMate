@@ -4,27 +4,8 @@ import { generateDiverseMockAlerts } from '@/mocks/mockAlerts.utils';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
-const shouldUseMockAlerts = (): boolean => {
-	if (isPlaygroundMode()) {
-		return true;
-	}
-
-	if (typeof window !== 'undefined') {
-		const urlParams = new URLSearchParams(window.location.search);
-		const urlParam = urlParams.get('useMockAlerts');
-
-		if (urlParam === 'true') {
-			return true;
-		}
-		if (urlParam === 'false') {
-			return false;
-		}
-	}
-	return false;
-};
-
 export const useAlerts = () => {
-	const useMock = shouldUseMockAlerts();
+	const useMock = isPlaygroundMode();
 
 	return useQuery({
 		queryKey: [...queryKeys.alerts, useMock ? 'mock' : 'api'],
