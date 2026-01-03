@@ -19,13 +19,18 @@ export const ZabbixSetupModal = ({ open, onOpenChange }: ZabbixSetupModalProps) 
 
 	const webhookUrl = `${window.location.protocol}//${window.location.hostname}:3001/api/v1/alerts/custom/zabbix?api_token={your_api_token}`;
 
-	const getCurlCommand = (
-		zabbixUrl: string,
-		opsimateUrl: string,
-		mediaName: string,
-		username: string,
-		password: string
-	) => `#!/bin/bash
+	interface CurlCommandOptions {
+		zabbixUrl: string;
+		opsimateUrl: string;
+		mediaName: string;
+		username: string;
+		password: string;
+	}
+
+	const getCurlCommand = (options: CurlCommandOptions) => {
+		const { zabbixUrl, opsimateUrl, mediaName, username, password } = options;
+		const dollar = '$';
+		return `#!/bin/bash
 # Export environment variables for easy configuration
 export ZABBIX_URL="${zabbixUrl}"
 export OPSIMATE_WEBHOOK_URL="${opsimateUrl}"
@@ -34,27 +39,27 @@ export ZABBIX_USER="${username}"
 export ZABBIX_PASSWORD="${password}"
 
 # Step 1: Login to Zabbix API and get auth token
-AUTH_TOKEN=\$(curl -s -X POST "\$ZABBIX_URL/api_jsonrpc.php" \\
+AUTH_TOKEN=${dollar}(curl -s -X POST "${dollar}ZABBIX_URL/api_jsonrpc.php" \\
   -H "Content-Type: application/json-rpc" \\
-  -d "{\\"jsonrpc\\":\\"2.0\\",\\"method\\":\\"user.login\\",\\"params\\":{\\"username\\":\\"\$ZABBIX_USER\\",\\"password\\":\\"\$ZABBIX_PASSWORD\\"},\\"id\\":1}" \\
+  -d "{\\"jsonrpc\\":\\"2.0\\",\\"method\\":\\"user.login\\",\\"params\\":{\\"username\\":\\"${dollar}ZABBIX_USER\\",\\"password\\":\\"${dollar}ZABBIX_PASSWORD\\"},\\"id\\":1}" \\
   | grep -o '"result":"[^"]*"' | cut -d'"' -f4)
 
-echo "✓ Logged in to Zabbix (Auth token: \$AUTH_TOKEN)"
+echo "✓ Logged in to Zabbix (Auth token: ${dollar}AUTH_TOKEN)"
 
 # Step 2: Create the OpsiMate media type
 WEBHOOK_SCRIPT='try { var params = JSON.parse(value); var req = new HttpRequest(); req.addHeader(\\"Content-Type: application/json\\"); var payload = { event_id: params.event_id, event_name: params.event_name, host_name: params.host_name, host_ip: params.host_ip, trigger_id: params.trigger_id, trigger_name: params.trigger_name, trigger_severity: params.trigger_severity, trigger_status: params.trigger_status, event_date: params.event_date, event_time: params.event_time, event_value: params.event_value, event_tags: params.event_tags, item_name: params.item_name, item_value: params.item_value, alert_message: params.alert_message, event_recovery_date: params.event_recovery_date, event_recovery_time: params.event_recovery_time, zabbix_url: params.zabbix_url, trigger_url: params.trigger_url }; var response = req.post(params.URL, JSON.stringify(payload)); if (req.getStatus() != 200) { throw \\"HTTP error: \\" + req.getStatus(); } return \\"OK\\"; } catch (error) { throw \\"OpsiMate webhook error: \\" + error; }'
 
-RESPONSE=\$(curl -s -X POST "\$ZABBIX_URL/api_jsonrpc.php" \\
+RESPONSE=${dollar}(curl -s -X POST "${dollar}ZABBIX_URL/api_jsonrpc.php" \\
   -H "Content-Type: application/json-rpc" \\
   -d "{
   \\"jsonrpc\\": \\"2.0\\",
   \\"method\\": \\"mediatype.create\\",
   \\"params\\": {
-    \\"name\\": \\"\$MEDIA_TYPE_NAME\\",
+    \\"name\\": \\"${dollar}MEDIA_TYPE_NAME\\",
     \\"type\\": 4,
     \\"status\\": 0,
     \\"parameters\\": [
-      {\\"name\\": \\"URL\\", \\"value\\": \\"\$OPSIMATE_WEBHOOK_URL\\"},
+      {\\"name\\": \\"URL\\", \\"value\\": \\"${dollar}OPSIMATE_WEBHOOK_URL\\"},
       {\\"name\\": \\"event_id\\", \\"value\\": \\"{EVENT.ID}\\"},
       {\\"name\\": \\"event_name\\", \\"value\\": \\"{EVENT.NAME}\\"},
       {\\"name\\": \\"host_name\\", \\"value\\": \\"{HOST.NAME}\\"},
@@ -72,27 +77,28 @@ RESPONSE=\$(curl -s -X POST "\$ZABBIX_URL/api_jsonrpc.php" \\
       {\\"name\\": \\"alert_message\\", \\"value\\": \\"{ALERT.MESSAGE}\\"},
       {\\"name\\": \\"event_recovery_date\\", \\"value\\": \\"{EVENT.RECOVERY.DATE}\\"},
       {\\"name\\": \\"event_recovery_time\\", \\"value\\": \\"{EVENT.RECOVERY.TIME}\\"},
-      {\\"name\\": \\"zabbix_url\\", \\"value\\": \\"\$ZABBIX_URL\\"},
+      {\\"name\\": \\"zabbix_url\\", \\"value\\": \\"${dollar}ZABBIX_URL\\"},
       {\\"name\\": \\"trigger_url\\", \\"value\\": \\"{TRIGGER.URL}\\"}
     ],
-    \\"script\\": \\"\$WEBHOOK_SCRIPT\\"
+    \\"script\\": \\"${dollar}WEBHOOK_SCRIPT\\"
   },
-  \\"auth\\": \\"\$AUTH_TOKEN\\",
+  \\"auth\\": \\"${dollar}AUTH_TOKEN\\",
   \\"id\\": 2
 }")
 
-echo "\$RESPONSE"
+echo "${dollar}RESPONSE"
 
-if echo "\$RESPONSE" | grep -q '"result"'; then
-  echo "✓ \$MEDIA_TYPE_NAME media type created successfully!"
+if echo "${dollar}RESPONSE" | grep -q '"result"'; then
+  echo "✓ ${dollar}MEDIA_TYPE_NAME media type created successfully!"
   echo ""
   echo "Next steps:"
   echo "1. Go to Users → Users in Zabbix"
-  echo "2. Add '\$MEDIA_TYPE_NAME' media to your alert user"
+  echo "2. Add '${dollar}MEDIA_TYPE_NAME' media to your alert user"
   echo "3. Create an action in Alerts → Actions → Trigger actions"
 else
   echo "✗ Failed to create media type. Check the response above."
 fi`;
+	};
 
 	const [zabbixUrlInput, setZabbixUrlInput] = useState('http://your-zabbix-server:8080');
 	const [opsimateUrlInput, setOpsimateUrlInput] = useState(
@@ -260,12 +266,12 @@ fi`;
 							<h3 className="text-lg font-semibold">Run This Script</h3>
 							<div className="relative">
 								<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto max-h-64 whitespace-pre-wrap">
-									{getCurlCommand(zabbixUrlInput, opsimateUrlInput, mediaTypeName, zabbixUsername, zabbixPassword)}
+									{getCurlCommand({ zabbixUrl: zabbixUrlInput, opsimateUrl: opsimateUrlInput, mediaName: mediaTypeName, username: zabbixUsername, password: zabbixPassword })}
 								</pre>
 								<Button
 									onClick={() =>
 										handleCopy(
-											getCurlCommand(zabbixUrlInput, opsimateUrlInput, mediaTypeName, zabbixUsername, zabbixPassword),
+											getCurlCommand({ zabbixUrl: zabbixUrlInput, opsimateUrl: opsimateUrlInput, mediaName: mediaTypeName, username: zabbixUsername, password: zabbixPassword }),
 											setCopiedCurl,
 											'Script copied'
 										)
