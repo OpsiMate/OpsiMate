@@ -13,7 +13,7 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
-import { isPlaygroundMode, playgroundApiRequest } from './playground';
+import { isPlaygroundMode, isPlaygroundModeFromEnv, playgroundApiRequest } from './playground';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
@@ -26,6 +26,29 @@ export type ApiResponse<T = unknown> = {
 	[key: string]: unknown; // Allow extra properties like token
 };
 
+async function handlePlaygroundRequest<T>(
+	endpoint: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+	data?: unknown
+): Promise<ApiResponse<T> | null> {
+	if (endpoint === '/playground/book-demo') {
+		return null;
+	}
+
+	if (isPlaygroundModeFromEnv() && method !== 'GET') {
+		return {
+			success: false,
+			error: 'Write operations are disabled in playground mode (environment variable). Use query parameter mode for full playground access.',
+		} as ApiResponse<T>;
+	}
+
+	if (isPlaygroundMode()) {
+		return (await playgroundApiRequest<T>(endpoint, method, data)) as ApiResponse<T>;
+	}
+
+	return null;
+}
+
 /**
  * Generic API request handler
  */
@@ -34,8 +57,9 @@ async function apiRequest<T>(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
 	data?: unknown
 ): Promise<ApiResponse<T>> {
-	if (isPlaygroundMode() && endpoint !== '/playground/book-demo') {
-		return (await playgroundApiRequest<T>(endpoint, method, data)) as ApiResponse<T>;
+	const playgroundResponse = await handlePlaygroundRequest<T>(endpoint, method, data);
+	if (playgroundResponse !== null) {
+		return playgroundResponse;
 	}
 
 	const url = `${API_BASE_URL}${endpoint}`;
@@ -611,8 +635,8 @@ export const auditApi = {
  * Playground API endpoints
  */
 export const playgroundApi = {
-	bookDemo: async (email: string) => {
-		return apiRequest<void>('/playground/book-demo', 'POST', { email });
+	bookDemo: async (payload: { email?: string; trackingId: string }) => {
+		return apiRequest<void>('/playground/book-demo', 'POST', payload);
 	},
 };
 

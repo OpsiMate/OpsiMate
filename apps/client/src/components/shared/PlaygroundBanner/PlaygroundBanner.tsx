@@ -16,10 +16,29 @@ import {
 } from './PlaygroundBanner.constants';
 import { PlaygroundBannerProps } from './PlaygroundBanner.types';
 
+const TRACKING_STORAGE_KEY = 'opsimate-demo-tracking-id';
+
+const createTrackingId = () => {
+	if (typeof window === 'undefined') {
+		return `demo-${Date.now()}`;
+	}
+	const existing = localStorage.getItem(TRACKING_STORAGE_KEY);
+	if (existing) return existing;
+
+	const id =
+		typeof crypto !== 'undefined' && 'randomUUID' in crypto
+			? crypto.randomUUID()
+			: `demo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+	localStorage.setItem(TRACKING_STORAGE_KEY, id);
+	return id;
+};
+
 export const PlaygroundBanner = ({ className }: PlaygroundBannerProps) => {
 	const [email, setEmail] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
+	const [hasTrackedInterest, setHasTrackedInterest] = useState(false);
+	const [trackingId] = useState(createTrackingId);
 	const { toast } = useToast();
 
 	const handleBookDemo = async (e: React.FormEvent) => {
@@ -28,7 +47,7 @@ export const PlaygroundBanner = ({ className }: PlaygroundBannerProps) => {
 
 		setIsSubmitting(true);
 		try {
-			const response = await playgroundApi.bookDemo(email);
+			const response = await playgroundApi.bookDemo({ email, trackingId });
 			if (response.success) {
 				toast({
 					title: 'Success!',
@@ -50,6 +69,19 @@ export const PlaygroundBanner = ({ className }: PlaygroundBannerProps) => {
 		}
 	};
 
+	const handleOpenChange = async (open: boolean) => {
+		setIsOpen(open);
+
+		if (open && !hasTrackedInterest) {
+			try {
+				await playgroundApi.bookDemo({ trackingId });
+				setHasTrackedInterest(true);
+			} catch {
+				// Silent fail; best-effort tracking only
+			}
+		}
+	};
+
 	const handleGithubClick = () => {
 		window.open(GITHUB_REPO_URL, '_blank', 'noopener,noreferrer');
 	};
@@ -67,7 +99,7 @@ export const PlaygroundBanner = ({ className }: PlaygroundBannerProps) => {
 			</div>
 
 			<div className="flex items-center gap-2">
-				<Popover open={isOpen} onOpenChange={setIsOpen}>
+				<Popover open={isOpen} onOpenChange={handleOpenChange}>
 					<PopoverTrigger asChild>
 						<Button variant="outline" size="sm" className="h-8 gap-2 border-primary/30 hover:bg-primary/20">
 							<Calendar className="h-3.5 w-3.5" />

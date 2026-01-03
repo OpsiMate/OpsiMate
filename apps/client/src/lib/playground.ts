@@ -50,7 +50,12 @@ type PlaygroundState = {
 
 const isBrowser = typeof window !== 'undefined';
 
+export const isPlaygroundModeFromEnv = (): boolean => {
+	return import.meta.env.VITE_PLAYGROUND_MODE === 'true';
+};
+
 export const isPlaygroundMode = (): boolean => {
+	if (isPlaygroundModeFromEnv()) return true;
 	if (!isBrowser) return false;
 	const params = new URLSearchParams(window.location.search);
 	return PLAYGROUND_QUERY_KEYS.some((key) => {
