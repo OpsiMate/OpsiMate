@@ -266,12 +266,24 @@ fi`;
 							<h3 className="text-lg font-semibold">Run This Script</h3>
 							<div className="relative">
 								<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto max-h-64 whitespace-pre-wrap">
-									{getCurlCommand({ zabbixUrl: zabbixUrlInput, opsimateUrl: opsimateUrlInput, mediaName: mediaTypeName, username: zabbixUsername, password: zabbixPassword })}
+									{getCurlCommand({
+										zabbixUrl: zabbixUrlInput,
+										opsimateUrl: opsimateUrlInput,
+										mediaName: mediaTypeName,
+										username: zabbixUsername,
+										password: zabbixPassword,
+									})}
 								</pre>
 								<Button
 									onClick={() =>
 										handleCopy(
-											getCurlCommand({ zabbixUrl: zabbixUrlInput, opsimateUrl: opsimateUrlInput, mediaName: mediaTypeName, username: zabbixUsername, password: zabbixPassword }),
+											getCurlCommand({
+												zabbixUrl: zabbixUrlInput,
+												opsimateUrl: opsimateUrlInput,
+												mediaName: mediaTypeName,
+												username: zabbixUsername,
+												password: zabbixPassword,
+											}),
 											setCopiedCurl,
 											'Script copied'
 										)
@@ -398,8 +410,9 @@ fi`;
 								))}
 							</div>
 							<p className="text-xs text-muted-foreground">
-								<strong>Important:</strong> Set <code className="bg-muted px-1 rounded">zabbix_url</code>{' '}
-								to your Zabbix server URL so alerts link back to Zabbix.
+								<strong>Important:</strong> Set{' '}
+								<code className="bg-muted px-1 rounded">zabbix_url</code> to your Zabbix server URL so
+								alerts link back to Zabbix.
 							</p>
 						</div>
 
@@ -471,9 +484,7 @@ fi`;
 										<li>Click Create action</li>
 										<li>Set Name to "Send to OpsiMate"</li>
 										<li>In Operations tab, add an operation:</li>
-										<li className="ml-4">
-											• Send to user groups or users with "OpsiMate" media
-										</li>
+										<li className="ml-4">• Send to user groups or users with "OpsiMate" media</li>
 										<li>In Recovery operations, add same operation for resolved alerts</li>
 										<li>Click Add</li>
 									</ol>
