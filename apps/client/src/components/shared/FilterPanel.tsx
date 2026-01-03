@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Filter, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFilterPanel } from './hooks/useFilterPanel';
 
 export type FilterFacet = {
@@ -66,7 +67,20 @@ export const FilterPanel = ({
 
 	const activeFilterCount = Object.values(filters).reduce((count, values) => count + values.length, 0);
 
-	const defaultOpenValues = config.defaultOpen || config.fields.map((f) => f);
+	const defaultOpenValues = useMemo(
+		() => (config.defaultOpen !== undefined ? config.defaultOpen : [...config.fields]),
+		[config.defaultOpen, config.fields]
+	);
+
+	const [openValues, setOpenValues] = useState<string[]>(defaultOpenValues);
+
+	useEffect(() => {
+		const allFields = [...config.fields];
+		const newFields = allFields.filter((field) => !openValues.includes(field));
+		if (newFields.length > 0) {
+			setOpenValues((prev) => [...prev, ...newFields]);
+		}
+	}, [config.fields]);
 
 	if (collapsed) {
 		return (
@@ -122,7 +136,7 @@ export const FilterPanel = ({
 			</div>
 			<ScrollArea className="flex-1">
 				<div className="px-2 py-2">
-					<Accordion type="multiple" defaultValue={defaultOpenValues} className="w-full">
+					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
 						{config.fields.map((field) => {
 							const fieldFacets = facets[field] || [];
 							const activeValues = filters[field] || [];
