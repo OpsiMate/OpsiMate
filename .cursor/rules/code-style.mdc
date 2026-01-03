@@ -57,24 +57,9 @@ Always design for split subcomponents and strong separation of concerns.
    - Unused props should be removed from interfaces and component destructuring.
    - Run linter/formatter before committing to catch unused code.
 
-6. Component Composition & Conditional Rendering:
-   - Avoid conditional rendering for mutually exclusive states (loading, error, empty, data).
-   - Use early returns instead of nested conditional rendering in JSX.
-   - Break down UI into component hierarchy - identify shared layout vs. state-specific content.
-   - Extract shared layout into separate components that accept `children` prop.
-   - Use early returns for different component states to reduce cognitive load and improve type inference.
-   - Each early return represents one state the user can see - makes code easier to reason about top-down.
-   - Layout duplication across early returns is acceptable and helps components evolve better.
-   - Example: Instead of `{isPending ? <Skeleton /> : data ? <Content /> : <Empty />}`, use:
-     ```
-     if (isPending) return <Layout><Skeleton /></Layout>;
-     if (!data) return <Layout><Empty /></Layout>;
-     return <Layout><Content data={data} /></Layout>;
-     ```
-
-7. Unused Variables & Code Cleanup:
-   - Remove all unused variables, parameters, and imports immediately.
-   - If a variable is intentionally unused (e.g., future feature), prefix it with underscore (`_variant`).
-   - Never leave unused code "for later" - remove it and add it back when needed.
-   - Unused props should be removed from interfaces and component destructuring.
-   - Run linter/formatter before committing to catch unused code.
+8. Logging:
+   - NEVER use `console.log`, `console.error`, `console.warn`, or any other `console.*` methods.
+   - ALWAYS use `Logger` from `@OpsiMate/shared` for all logging needs.
+   - Create a logger instance: `const logger = new Logger('module-name');`
+   - Use appropriate log levels: `logger.info()`, `logger.warn()`, `logger.error()`, `logger.debug()`.
+   - Logger provides structured logging and can be configured for different environments.

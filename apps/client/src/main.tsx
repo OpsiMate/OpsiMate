@@ -1,19 +1,17 @@
+import { Logger } from '@OpsiMate/shared';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+
+const logger = new Logger('main');
 
 async function startApp() {
 	const envPlayground = import.meta.env.VITE_PLAYGROUND_MODE === 'true';
 	const queryPlayground = new URLSearchParams(window.location.search).has('playground');
 	const isPlayground = envPlayground || queryPlayground;
 
-	console.log(
-		'[Playground] env:',
-		import.meta.env.VITE_PLAYGROUND_MODE,
-		'| query:',
-		queryPlayground,
-		'| active:',
-		isPlayground
+	logger.info(
+		`Playground mode - env: ${import.meta.env.VITE_PLAYGROUND_MODE}, query: ${queryPlayground}, active: ${isPlayground}`
 	);
 
 	if (isPlayground) {
@@ -21,7 +19,7 @@ async function startApp() {
 		await worker.start({
 			onUnhandledRequest: 'bypass',
 		});
-		console.log('[Playground] MSW worker started');
+		logger.info('MSW worker started');
 	}
 
 	createRoot(document.getElementById('root')!).render(<App />);

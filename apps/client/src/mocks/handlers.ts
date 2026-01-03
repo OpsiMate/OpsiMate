@@ -271,7 +271,7 @@ export const handlers = [
 		} as (typeof playgroundState.dashboards)[0];
 
 		playgroundState.dashboards.push(newDashboard);
-		return HttpResponse.json({ success: true, data: { dashboard: newDashboard } });
+		return HttpResponse.json({ success: true, data: { id: newDashboard.id } });
 	}),
 
 	http.put(`${API_BASE}/dashboards/:id`, async ({ params, request }) => {
@@ -284,13 +284,22 @@ export const handlers = [
 		}
 
 		Object.assign(dashboard, body);
-		return HttpResponse.json({ success: true, data: { dashboard } });
+		return HttpResponse.json({ success: true, data: null });
 	}),
 
 	http.delete(`${API_BASE}/dashboards/:id`, ({ params }) => {
 		const id = params.id as string;
-		playgroundState.dashboards = playgroundState.dashboards.filter((d) => d.id !== id);
-		return HttpResponse.json({ success: true });
+		const dashboardIndex = playgroundState.dashboards.findIndex((d) => d.id === id);
+
+		if (dashboardIndex === -1) {
+			return HttpResponse.json(
+				{ success: false, error: 'dashboard not found or could not be deleted' },
+				{ status: 404 }
+			);
+		}
+
+		playgroundState.dashboards.splice(dashboardIndex, 1);
+		return HttpResponse.json({ success: true, message: 'dashboards deleted successfully' });
 	}),
 
 	// ==================== SAVED VIEWS ====================
