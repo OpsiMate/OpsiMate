@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Filter, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFilterPanel } from './hooks/useFilterPanel';
 
 export type FilterFacet = {
@@ -22,6 +23,7 @@ export interface FilterPanelConfig {
 	fields: readonly string[];
 	fieldLabels: Record<string, string>;
 	defaultOpen?: string[];
+	allPossibleValues?: Record<string, string[]>;
 }
 
 interface FilterPanelProps {
@@ -32,7 +34,6 @@ interface FilterPanelProps {
 	collapsed?: boolean;
 	onToggle?: () => void;
 	className?: string;
-	variant?: 'default' | 'compact';
 }
 
 export const FilterPanel = ({
@@ -43,10 +44,49 @@ export const FilterPanel = ({
 	collapsed = false,
 	onToggle,
 	className,
-	variant = 'default',
 }: FilterPanelProps) => {
 	const { searchTerms, getFilteredAndLimitedFacets, handleSearchChange, handleLoadMore, shouldShowSearch } =
 		useFilterPanel();
+
+	const allSeenValuesRef = useRef<Record<string, Set<string>>>({});
+
+	useEffect(() => {
+		config.fields.forEach((field) => {
+			if (!allSeenValuesRef.current[field]) {
+				allSeenValuesRef.current[field] = new Set();
+			}
+		});
+	}, [config.fields]);
+
+	useEffect(() => {
+		Object.entries(facets).forEach(([field, fieldFacets]) => {
+			if (!allSeenValuesRef.current[field]) {
+				allSeenValuesRef.current[field] = new Set();
+			}
+			fieldFacets.forEach((facet) => {
+				allSeenValuesRef.current[field]?.add(facet.value);
+			});
+		});
+	}, [facets]);
+
+	useEffect(() => {
+		Object.entries(filters).forEach(([field, values]) => {
+			if (!allSeenValuesRef.current[field]) {
+				allSeenValuesRef.current[field] = new Set();
+			}
+			values.forEach((value) => {
+				allSeenValuesRef.current[field]?.add(value);
+			});
+		});
+	}, [filters]);
+
+	const allSeenValues = useMemo(() => {
+		const result: Record<string, Set<string>> = {};
+		config.fields.forEach((field) => {
+			result[field] = allSeenValuesRef.current[field] || new Set();
+		});
+		return result;
+	}, [config.fields]);
 
 	const handleFilterToggle = (field: string, value: string) => {
 		const currentValues = filters[field] || [];
@@ -66,7 +106,20 @@ export const FilterPanel = ({
 
 	const activeFilterCount = Object.values(filters).reduce((count, values) => count + values.length, 0);
 
-	const defaultOpenValues = config.defaultOpen || config.fields.map((f) => f);
+	const defaultOpenValues = useMemo(
+		() => (config.defaultOpen !== undefined ? config.defaultOpen : [...config.fields]),
+		[config.defaultOpen, config.fields]
+	);
+
+	const [openValues, setOpenValues] = useState<string[]>(defaultOpenValues);
+
+	useEffect(() => {
+		const allFields = [...config.fields];
+		const newFields = allFields.filter((field) => !openValues.includes(field));
+		if (newFields.length > 0) {
+			setOpenValues((prev) => [...prev, ...newFields]);
+		}
+	}, [config.fields]);
 
 	if (collapsed) {
 		return (
@@ -122,20 +175,22 @@ export const FilterPanel = ({
 			</div>
 			<ScrollArea className="flex-1">
 				<div className="px-2 py-2">
-					<Accordion type="multiple" defaultValue={defaultOpenValues} className="w-full">
+					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
 						{config.fields.map((field) => {
 							const fieldFacets = facets[field] || [];
 							const activeValues = filters[field] || [];
+							const seenValues = allSeenValues[field] || new Set();
 
-							// Include active filter values that are no longer in the data (with count 0)
 							const existingValues = new Set(fieldFacets.map((f) => f.value));
 							const orphanedFilters = activeValues
 								.filter((v) => !existingValues.has(v))
 								.map((value) => ({ value, count: 0 }));
-							const allFacets = [...fieldFacets, ...orphanedFilters];
 
-							// Hide field only if there are no facets AND no active filters
-							if (allFacets.length === 0) return null;
+							const missingSeenValues = Array.from(seenValues)
+								.filter((v) => !existingValues.has(v) && !activeValues.includes(v))
+								.map((value) => ({ value, count: 0 }));
+
+							const allFacets = [...fieldFacets, ...orphanedFilters, ...missingSeenValues];
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
@@ -169,6 +224,14 @@ export const FilterPanel = ({
 											{(() => {
 												const { filteredAndLimitedFacets, hasMore, remaining, searchTerm } =
 													getFilteredAndLimitedFacets(field, allFacets);
+
+												if (filteredAndLimitedFacets.length === 0) {
+													return (
+														<div className="text-xs text-muted-foreground py-2 px-1">
+															No options available
+														</div>
+													);
+												}
 
 												return (
 													<>

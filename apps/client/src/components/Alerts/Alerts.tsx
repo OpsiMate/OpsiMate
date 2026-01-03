@@ -242,7 +242,7 @@ const Alerts = () => {
 						filters={dashboardState.filters}
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
-						enabledTagKeys={enabledTagKeys}
+						tagKeys={tagKeys}
 						isArchived={activeTab === AlertTab.Archived}
 					/>
 				</FilterSidebar>
