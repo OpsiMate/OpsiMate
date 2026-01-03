@@ -1,10 +1,13 @@
 import { Logger } from '@OpsiMate/shared';
 import { Request, Response } from 'express';
+import { PlaygroundBL } from '../../../bl/playground/playground.bl.ts';
 
 const logger = new Logger('api/v1/playground/controller');
 
 export class PlaygroundController {
-	bookDemoHandler = (req: Request, res: Response) => {
+	constructor(private readonly playgroundBL: PlaygroundBL) {}
+
+	bookDemoHandler = async (req: Request, res: Response) => {
 		try {
 			const { email, trackingId } = req.body as { email?: string; trackingId?: string };
 
@@ -18,6 +21,7 @@ export class PlaygroundController {
 				logger.info(`Demo interest tracked - trackingId: ${trackingId}`);
 			}
 
+			await this.playgroundBL.bookDemo(email, trackingId);
 			return res.json({ success: true });
 		} catch (error) {
 			logger.error('Error booking demo:', error);
