@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
-export const useUsersExist = () => {
+export const useUsersExist = (options?: Omit<UseQueryOptions<boolean>, 'queryKey' | 'queryFn'>) => {
 	return useQuery({
 		queryKey: queryKeys.usersExist,
 		queryFn: async () => {
@@ -13,5 +13,6 @@ export const useUsersExist = () => {
 			return response?.exists || false;
 		},
 		staleTime: 5 * 60 * 1000, // 5 minutes
+		...options,
 	});
 };

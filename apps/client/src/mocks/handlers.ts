@@ -5,6 +5,15 @@ import { getPlaygroundUser, playgroundState, randomId } from './state';
 const API_BASE = '*/api/v1';
 const nowIso = () => new Date().toISOString();
 
+const isPlaygroundModeFromEnv = (): boolean => {
+	if (typeof window === 'undefined') return false;
+	return import.meta.env.VITE_PLAYGROUND_MODE === 'true';
+};
+
+const shouldBlockWriteOperation = (): boolean => {
+	return isPlaygroundModeFromEnv();
+};
+
 export const handlers = [
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, () => {
@@ -88,7 +97,6 @@ export const handlers = [
 		}
 
 		const alert = { ...playgroundState.alerts[alertIndex] };
-		alert.status = AlertStatus.RESOLVED;
 		alert.updatedAt = nowIso();
 
 		playgroundState.alerts.splice(alertIndex, 1);
@@ -100,7 +108,7 @@ export const handlers = [
 	http.delete(`${API_BASE}/alerts/archived/:alertId`, ({ params }) => {
 		const alertId = params.alertId as string;
 		playgroundState.archivedAlerts = playgroundState.archivedAlerts.filter((a) => a.id !== alertId);
-		return HttpResponse.json({ success: true });
+		return HttpResponse.json({ success: true, message: 'Archived alert deleted permanently' });
 	}),
 
 	http.get(`${API_BASE}/alerts/:alertId/history`, ({ params }) => {
@@ -158,7 +166,7 @@ export const handlers = [
 	http.delete(`${API_BASE}/alerts/comments/:commentId`, ({ params }) => {
 		const commentId = params.commentId as string;
 		playgroundState.alertComments = playgroundState.alertComments.filter((c) => c.id !== commentId);
-		return HttpResponse.json({ success: true, data: { message: 'Deleted' } });
+		return HttpResponse.json({ success: true, message: 'Comment deleted successfully' });
 	}),
 
 	// ==================== PROVIDERS ====================
@@ -388,7 +396,7 @@ export const handlers = [
 
 	http.put(`${API_BASE}/custom-actions/:id`, async ({ params, request }) => {
 		const id = Number(params.id);
-		const body = await request.json();
+		const body = (await request.json()) as Partial<(typeof playgroundState.customActions)[0]>;
 		const action = playgroundState.customActions.find((a) => a.id === id);
 
 		if (!action) {

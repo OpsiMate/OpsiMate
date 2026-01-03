@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useUsersExist } from '@/hooks/queries';
 import { isPlaygroundMode } from '@/lib/playground';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface AuthGuardProps {
 	children: React.ReactNode;
@@ -11,7 +11,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const playgroundMode = isPlaygroundMode();
-	const { data: usersExist, isLoading, error } = useUsersExist();
+	const { data: usersExist, isLoading, error } = useUsersExist({ enabled: !playgroundMode });
 
 	useEffect(() => {
 		if (playgroundMode) {

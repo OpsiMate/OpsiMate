@@ -25,7 +25,6 @@ const Login: React.FC = () => {
 		}
 
 		if (isPlaygroundMode()) {
-			setEmailEnabled(false);
 			return;
 		}
 

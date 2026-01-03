@@ -13,6 +13,8 @@ import { DashboardController } from './dashboards/controller';
 import dashboardRouter from './dashboards/router';
 import { IntegrationController } from './integrations/controller';
 import integrationRouter from './integrations/router';
+import { PlaygroundController } from './playground/controller';
+import playgroundRouter from './playground/router';
 import { ProviderController } from './providers/controller';
 import providerRouter from './providers/router';
 import { SecretsController } from './secrets/controller';
@@ -35,7 +37,8 @@ export default function createV1Router(
 	auditController: AuditController, // optional for backward compatibility
 	secretsController: SecretsController,
 	customFieldsController: CustomFieldsController,
-	customActionsController: CustomActionsController
+	customActionsController: CustomActionsController,
+	playgroundController: PlaygroundController
 ) {
 	const router = PromiseRouter();
 
@@ -47,12 +50,8 @@ export default function createV1Router(
 	router.post('/users/validate-reset-password-token', usersController.validateResetPasswordTokenHandler);
 	router.post('/users/reset-password', usersController.resetPasswordHandler);
 
-	// Playground book-demo
-	router.post('/playground/book-demo', (req, res) => {
-		const { email } = req.body as { email: string };
-		console.log(`[API] Demo booked for: ${email}`);
-		res.json({ success: true });
-	});
+	// Playground endpoints (public)
+	router.use('/playground', playgroundRouter(playgroundController));
 
 	// JWT-protected endpoints
 	router.use(authenticateJWT);

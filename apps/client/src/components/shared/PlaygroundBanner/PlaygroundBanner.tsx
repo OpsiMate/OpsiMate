@@ -14,7 +14,10 @@ import {
 	GITHUB_REPO_URL,
 	PLAYGROUND_BANNER_TEXT,
 } from './PlaygroundBanner.constants';
-import { PlaygroundBannerProps } from './PlaygroundBanner.types';
+
+interface PlaygroundBannerProps {
+	className?: string;
+}
 
 const TRACKING_STORAGE_KEY = 'opsimate-demo-tracking-id';
 

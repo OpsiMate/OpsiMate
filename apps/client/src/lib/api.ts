@@ -13,7 +13,6 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
-import { isPlaygroundModeFromEnv } from './playground';
 
 const logger = new Logger('api');
 const { protocol, hostname } = window.location;
@@ -35,13 +34,6 @@ async function apiRequest<T>(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
 	data?: unknown
 ): Promise<ApiResponse<T>> {
-	if (isPlaygroundModeFromEnv() && method !== 'GET' && endpoint !== '/playground/book-demo') {
-		return {
-			success: false,
-			error: 'Write operations are disabled in playground mode (environment variable). Use query parameter mode for full playground access.',
-		} as ApiResponse<T>;
-	}
-
 	const url = `${API_BASE_URL}${endpoint}`;
 
 	const token = localStorage.getItem('jwt');

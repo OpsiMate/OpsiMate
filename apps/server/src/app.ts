@@ -8,6 +8,7 @@ import { CustomActionsController } from './api/v1/custom-actions/controller';
 import { CustomFieldsController } from './api/v1/custom-fields/controller';
 import { DashboardController } from './api/v1/dashboards/controller';
 import { IntegrationController } from './api/v1/integrations/controller';
+import { PlaygroundController } from './api/v1/playground/controller';
 import { ProviderController } from './api/v1/providers/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { ServiceController } from './api/v1/services/controller';
@@ -25,6 +26,7 @@ import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { ServicesBL } from './bl/services/services.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
+import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertRepository } from './dal/alertRepository';
 import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
 import { AuditLogRepository } from './dal/auditLogRepository';
@@ -42,7 +44,6 @@ import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
 import { RefreshJob } from './jobs/refresh-job';
-import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -155,6 +156,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const secretController = new SecretsController(secretMetadataBL);
 	const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
 	const customActionsController = new CustomActionsController(customActionBL);
+	const playgroundController = new PlaygroundController();
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -171,7 +173,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			auditController,
 			secretController,
 			customFieldsController,
-			customActionsController
+			customActionsController,
+			playgroundController
 		)
 	);
 
