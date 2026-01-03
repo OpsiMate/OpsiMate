@@ -173,7 +173,7 @@ const Alerts = () => {
 	};
 
 	const handleLaunchTVMode = () => {
-		setSelectedAlert(null); // Close drawer before navigating
+		setSelectedAlert(null); // Close alert details panel before navigating
 		navigate('/alerts/tv-mode');
 	};
 
