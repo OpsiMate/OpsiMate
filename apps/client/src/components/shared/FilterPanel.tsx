@@ -127,15 +127,11 @@ export const FilterPanel = ({
 							const fieldFacets = facets[field] || [];
 							const activeValues = filters[field] || [];
 
-							// Include active filter values that are no longer in the data (with count 0)
 							const existingValues = new Set(fieldFacets.map((f) => f.value));
 							const orphanedFilters = activeValues
 								.filter((v) => !existingValues.has(v))
 								.map((value) => ({ value, count: 0 }));
 							const allFacets = [...fieldFacets, ...orphanedFilters];
-
-							// Hide field only if there are no facets AND no active filters
-							if (allFacets.length === 0) return null;
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
