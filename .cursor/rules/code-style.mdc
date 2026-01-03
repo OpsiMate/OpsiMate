@@ -34,3 +34,25 @@ Always design for split subcomponents and strong separation of concerns.
    - Only create `${componentName}.types.ts` for shared domain interfaces that are NOT props.
    - Always use types from `@OpsiMate/shared` package when available instead of creating duplicates.
    - Before creating a new interface, check if it already exists in the shared package.
+
+6. Component Composition & Conditional Rendering:
+   - Avoid conditional rendering for mutually exclusive states (loading, error, empty, data).
+   - Use early returns instead of nested conditional rendering in JSX.
+   - Break down UI into component hierarchy - identify shared layout vs. state-specific content.
+   - Extract shared layout into separate components that accept `children` prop.
+   - Use early returns for different component states to reduce cognitive load and improve type inference.
+   - Each early return represents one state the user can see - makes code easier to reason about top-down.
+   - Layout duplication across early returns is acceptable and helps components evolve better.
+   - Example: Instead of `{isPending ? <Skeleton /> : data ? <Content /> : <Empty />}`, use:
+     ```
+     if (isPending) return <Layout><Skeleton /></Layout>;
+     if (!data) return <Layout><Empty /></Layout>;
+     return <Layout><Content data={data} /></Layout>;
+     ```
+
+7. Unused Variables & Code Cleanup:
+   - Remove all unused variables, parameters, and imports immediately.
+   - If a variable is intentionally unused (e.g., future feature), prefix it with underscore (`_variant`).
+   - Never leave unused code "for later" - remove it and add it back when needed.
+   - Unused props should be removed from interfaces and component destructuring.
+   - Run linter/formatter before committing to catch unused code.

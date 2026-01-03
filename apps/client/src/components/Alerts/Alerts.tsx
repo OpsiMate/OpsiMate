@@ -173,7 +173,7 @@ const Alerts = () => {
 	};
 
 	const handleLaunchTVMode = () => {
-		setSelectedAlert(null); // Close drawer before navigating
+		setSelectedAlert(null); // Close alert details panel before navigating
 		navigate('/alerts/tv-mode');
 	};
 
@@ -242,13 +242,13 @@ const Alerts = () => {
 						filters={dashboardState.filters}
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
-						enabledTagKeys={enabledTagKeys}
+						tagKeys={tagKeys}
 						isArchived={activeTab === AlertTab.Archived}
 					/>
 				</FilterSidebar>
 
 				<div className="flex-1 flex min-h-0 overflow-hidden">
-					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', syncedSelectedAlert ? 'flex-1 min-w-0' : 'flex-1 min-w-0')}>
+					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', 'flex-1 min-w-0')}>
 						<div className="flex-shrink-0 mb-4">
 							<DashboardHeader
 								dashboardName={dashboardState.name}

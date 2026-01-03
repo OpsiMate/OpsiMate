@@ -33,7 +33,14 @@ export default tseslint.config(
 			'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
 			// TypeScript rules
-			'@typescript-eslint/no-unused-vars': 'off',
+			'@typescript-eslint/no-unused-vars': [
+				'warn',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+				},
+			],
 
 			// Semicolons - enforce semicolons everywhere
 			semi: ['error', 'always'],
