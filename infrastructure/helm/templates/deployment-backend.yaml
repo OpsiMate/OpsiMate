@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsimate.fullname" . }}-backend
+  labels:
+    {{- include "opsimate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "opsimate.backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opsimate.backend.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.env.nodeEnv }}
+            - name: HOST
+              value: "0.0.0.0"
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsimate.fullname" . }}-secret
+                  key: API_TOKEN
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /app/data/database
+              subPath: database
+            - name: data
+              mountPath: /app/data/private-keys
+              subPath: private-keys
+            {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "opsimate.fullname" . }}-data
+        {{- end }}

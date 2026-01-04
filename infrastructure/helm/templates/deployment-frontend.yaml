@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsimate.fullname" . }}-frontend
+  labels:
+    {{- include "opsimate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "opsimate.frontend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opsimate.frontend.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.port }}
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.env.nodeEnv }}
+            - name: HOST
+              value: "0.0.0.0"
+            - name: API_URL
+              value: "http://{{ include "opsimate.fullname" . }}-backend:{{ .Values.backend.port }}"
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
