@@ -106,7 +106,7 @@ function getDefaultConfig(): OpsimateConfig {
 		},
 		security: {
 			private_keys_path: '../../data/private-keys',
-			api_token: 'opsimate_test',
+			api_token: process.env.API_TOKEN || 'opsimate_test',
 		},
 		vm: {
 			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',
