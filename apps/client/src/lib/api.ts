@@ -15,9 +15,15 @@ import {
 } from '@OpsiMate/shared';
 
 const logger = new Logger('api');
-const { protocol, hostname } = window.location;
-export const EMAIL_STATUS_URL = `${protocol}//${hostname}:3001/email-status`;
-export const API_BASE_URL = `${protocol}//${hostname}:3001/api/v1`;
+const { protocol, hostname, port } = window.location;
+
+// In production (standard ports 80/443), don't add a port suffix
+// In development (e.g., port 5173), use port 3001 for the API
+const isStandardPort = port === '' || port === '80' || port === '443';
+
+export const API_HOST = isStandardPort ? `${protocol}//${hostname}` : `${protocol}//${hostname}:3001`;
+export const EMAIL_STATUS_URL = `${API_HOST}/email-status`;
+export const API_BASE_URL = `${API_HOST}/api/v1`;
 export type ApiResponse<T = unknown> = {
 	success: boolean;
 	data?: T;
