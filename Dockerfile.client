@@ -1,5 +1,8 @@
 FROM node:20-alpine AS client-builder
 
+ARG VITE_PLAYGROUND_MODE=false
+ENV VITE_PLAYGROUND_MODE=${VITE_PLAYGROUND_MODE}
+
 RUN npm install -g pnpm typescript && npm cache clean --force
 WORKDIR /app
 
