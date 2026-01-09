@@ -218,7 +218,9 @@ export const FilterPanel = ({
 			{/* Active Filters Section */}
 			{activeFilterCount > 0 && (
 				<div className="px-3 py-2 border-b border-border bg-muted/30">
-					<div className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Active Filters</div>
+					<div className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+						Active Filters
+					</div>
 					<div className="flex flex-wrap gap-1">
 						{Object.entries(filters).map(([field, values]) =>
 							values.map((value) => (
@@ -230,7 +232,9 @@ export const FilterPanel = ({
 									title={`Remove ${config.fieldLabels[field]}: ${getDisplayValue(field, value)}`}
 								>
 									<span className="text-primary font-semibold">{config.fieldLabels[field]}:</span>
-									<span className="max-w-[60px] truncate font-medium">{getDisplayValue(field, value)}</span>
+									<span className="max-w-[60px] truncate font-medium">
+										{getDisplayValue(field, value)}
+									</span>
 									<X className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
 								</Badge>
 							))
@@ -255,7 +259,7 @@ export const FilterPanel = ({
 							const globalSearchLower = globalSearch.toLowerCase();
 							const fieldLabel = config.fieldLabels[field] || field;
 							const fieldMatchesSearch = fieldLabel.toLowerCase().includes(globalSearchLower);
-							
+
 							const matchesGlobalSearch = (facet: { value: string; displayValue?: string }) => {
 								if (!globalSearch) return true;
 								// If field name matches, show all facets in this section

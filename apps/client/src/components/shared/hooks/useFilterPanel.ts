@@ -16,7 +16,7 @@ export const useFilterPanel = () => {
 					const valueMatch = f.value.toLowerCase().includes(searchLower);
 					const displayMatch = f.displayValue?.toLowerCase().includes(searchLower) || false;
 					return valueMatch || displayMatch;
-			  })
+				})
 			: fieldFacets;
 
 		const currentDisplayCount = displayCounts[field] || INITIAL_DISPLAY_LIMIT;
