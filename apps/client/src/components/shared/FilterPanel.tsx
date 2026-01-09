@@ -2,11 +2,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Filter, RotateCcw, Search, X } from 'lucide-react';
+import { Filter, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActiveFiltersSection } from './FilterPanel/ActiveFiltersSection';
+import { FilterSearchInput } from './FilterPanel/FilterSearchInput';
 import { useFilterPanel } from './hooks/useFilterPanel';
 
 export type FilterFacet = {
@@ -194,54 +195,14 @@ export const FilterPanel = ({
 				)}
 			</div>
 
-			{/* Global Search Input */}
-			<div className="px-3 py-2 border-b border-border">
-				<div className="relative">
-					<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-					<Input
-						placeholder="Search filters..."
-						value={globalSearch}
-						onChange={(e) => setGlobalSearch(e.target.value)}
-						className="pl-8 pr-8 h-7 text-xs"
-					/>
-					{globalSearch && (
-						<button
-							onClick={() => setGlobalSearch('')}
-							className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-						>
-							<X className="h-3.5 w-3.5" />
-						</button>
-					)}
-				</div>
-			</div>
+			<FilterSearchInput value={globalSearch} onChange={setGlobalSearch} />
 
-			{/* Active Filters Section */}
-			{activeFilterCount > 0 && (
-				<div className="px-3 py-2 border-b border-border bg-muted/30">
-					<div className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
-						Active Filters
-					</div>
-					<div className="flex flex-wrap gap-1">
-						{Object.entries(filters).map(([field, values]) =>
-							values.map((value) => (
-								<Badge
-									key={`${field}-${value}`}
-									variant="outline"
-									className="text-[10px] px-1.5 py-0.5 h-5 gap-1 cursor-pointer hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-colors group bg-background"
-									onClick={() => handleRemoveFilter(field, value)}
-									title={`Remove ${config.fieldLabels[field]}: ${getDisplayValue(field, value)}`}
-								>
-									<span className="text-primary font-semibold">{config.fieldLabels[field]}:</span>
-									<span className="max-w-[60px] truncate font-medium">
-										{getDisplayValue(field, value)}
-									</span>
-									<X className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
-								</Badge>
-							))
-						)}
-					</div>
-				</div>
-			)}
+			<ActiveFiltersSection
+				filters={filters}
+				fieldLabels={config.fieldLabels}
+				getDisplayValue={getDisplayValue}
+				onRemoveFilter={handleRemoveFilter}
+			/>
 			<ScrollArea className="flex-1">
 				<div className="px-2 py-2">
 					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
