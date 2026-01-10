@@ -8,7 +8,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { KibanaIcon } from './icons/KibanaIcon';
 import { GrafanaIcon } from './icons/GrafanaIcon';
 import { DatadogIcon } from './icons/DatadogIcon';
 import { ChevronDown, ExternalLink, Loader2 } from 'lucide-react';
@@ -23,7 +22,7 @@ interface Dashboard {
 
 interface IntegrationDashboardDropdownProps {
 	tags: Tag[];
-	integrationType: 'Kibana' | 'Grafana' | 'Datadog';
+	integrationType: 'Grafana' | 'Datadog';
 	className?: string;
 }
 
@@ -42,8 +41,6 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 
 	const getIconComponent = useCallback(() => {
 		switch (integrationType) {
-			case 'Kibana':
-				return KibanaIcon;
 			case 'Datadog':
 				return DatadogIcon;
 			case 'Grafana':

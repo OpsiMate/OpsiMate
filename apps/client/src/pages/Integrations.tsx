@@ -54,7 +54,6 @@ const logger = new Logger('Integrations');
 // Define IntegrationType locally until shared package export is fixed
 enum IntegrationType {
 	Grafana = 'Grafana',
-	Kibana = 'Kibana',
 	Datadog = 'Datadog',
 	UptimeKuma = 'UptimeKuma',
 }
@@ -120,26 +119,7 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 		],
 	},
-	{
-		id: 'kibana',
-		supported: true,
-		name: 'Kibana',
-		description: 'Visualize and explore data from Elasticsearch.',
-		logo: 'https://static-www.elastic.co/v3/assets/bltefdd0b53724fa2ce/blt8781708f8f37ed16/5c11ec2edf09df047814db23/logo-elastic-kibana-lt.svg',
-		tags: ['Monitoring', 'Visualization', 'Elasticsearch'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/kibana',
-		configFields: [
-			{
-				name: 'url',
-				label: 'Kibana URL',
-				type: 'text',
-				placeholder: 'https://your-kibana-instance.com',
-				required: true,
-			},
-			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
-		],
-	},
-	{
+		{
 		id: 'datadog',
 		supported: true,
 		name: 'Datadog',
@@ -551,7 +531,7 @@ const Integrations = () => {
 															appKey: existingIntegration.credentials?.appKey || '',
 														});
 													} else {
-														// Default for other integrations like Grafana and Kibana
+														// Default for other integrations like Grafana
 														setFormData({
 															url: existingIntegration.externalUrl || '',
 															apiKey: existingIntegration.credentials?.apiKey || '',
@@ -704,7 +684,6 @@ const Integrations = () => {
 													// Map integration id to the correct IntegrationType
 													const typeMapping = {
 														grafana: IntegrationType.Grafana,
-														kibana: IntegrationType.Kibana,
 														datadog: IntegrationType.Datadog,
 														// Add other integration types as needed
 													};
@@ -719,7 +698,7 @@ const Integrations = () => {
 															appKey: formData.appKey || '',
 														};
 													} else {
-														// Default for other integrations like Grafana and Kibana
+														// Default for other integrations like Grafana
 														credentials = {
 															apiKey: formData.apiKey || '',
 														};

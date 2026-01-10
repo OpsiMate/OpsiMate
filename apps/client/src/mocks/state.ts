@@ -145,14 +145,6 @@ const createIntegrations = (): Integration[] => [
 		createdAt: nowIso(),
 	},
 	{
-		id: 2,
-		name: 'Kibana Logs',
-		type: IntegrationType.Kibana,
-		externalUrl: 'https://kibana.example.com',
-		credentials: { apiKey: 'demo-kibana-key' },
-		createdAt: nowIso(),
-	},
-	{
 		id: 3,
 		name: 'Datadog APM',
 		type: IntegrationType.Datadog,
