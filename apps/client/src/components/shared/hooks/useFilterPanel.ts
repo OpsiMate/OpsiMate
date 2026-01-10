@@ -11,7 +11,12 @@ export const useFilterPanel = () => {
 	const getFilteredAndLimitedFacets = (field: string, fieldFacets: FilterFacets[string]) => {
 		const searchTerm = searchTerms[field] || '';
 		const filteredFacets = searchTerm
-			? fieldFacets.filter((f) => f.value.toLowerCase().includes(searchTerm.toLowerCase()))
+			? fieldFacets.filter((f) => {
+					const searchLower = searchTerm.toLowerCase();
+					const valueMatch = f.value.toLowerCase().includes(searchLower);
+					const displayMatch = f.displayValue?.toLowerCase().includes(searchLower) || false;
+					return valueMatch || displayMatch;
+				})
 			: fieldFacets;
 
 		const currentDisplayCount = displayCounts[field] || INITIAL_DISPLAY_LIMIT;

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
+import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
@@ -16,7 +17,7 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 
 	// Correct webhook URL with API token parameter
 	// User needs to replace {your_api_token} with their actual API_TOKEN environment variable value
-	const webhookUrl = `${window.location.protocol + '//' + window.location.hostname}:3001/api/v1/alerts/custom/UptimeKuma?api_token={your_api_token}`;
+	const webhookUrl = `${API_HOST}/api/v1/alerts/custom/UptimeKuma?api_token={your_api_token}`;
 
 	const handleCopyWebhook = async () => {
 		try {

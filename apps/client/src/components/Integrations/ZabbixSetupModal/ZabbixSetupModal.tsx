@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
@@ -17,7 +18,7 @@ export const ZabbixSetupModal = ({ open, onOpenChange }: ZabbixSetupModalProps) 
 	const [copiedCurl, setCopiedCurl] = useState(false);
 	const { toast } = useToast();
 
-	const webhookUrl = `${window.location.protocol}//${window.location.hostname}:3001/api/v1/alerts/custom/zabbix?api_token={your_api_token}`;
+	const webhookUrl = `${API_HOST}/api/v1/alerts/custom/zabbix?api_token={your_api_token}`;
 
 	interface CurlCommandOptions {
 		zabbixUrl: string;
@@ -102,7 +103,7 @@ fi`;
 
 	const [zabbixUrlInput, setZabbixUrlInput] = useState('http://your-zabbix-server:8080');
 	const [opsimateUrlInput, setOpsimateUrlInput] = useState(
-		`${window.location.protocol}//${window.location.hostname}:3001/api/v1/alerts/custom/zabbix?api_token=opsimate`
+		`${API_HOST}/api/v1/alerts/custom/zabbix?api_token=opsimate`
 	);
 	const [mediaTypeName, setMediaTypeName] = useState('OpsiMate');
 	const [zabbixUsername, setZabbixUsername] = useState('Admin');

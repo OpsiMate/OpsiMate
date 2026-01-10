@@ -2,11 +2,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Filter, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActiveFiltersSection } from './FilterPanel/ActiveFiltersSection';
+import { FilterSearchInput } from './FilterPanel/FilterSearchInput';
 import { useFilterPanel } from './hooks/useFilterPanel';
 
 export type FilterFacet = {
@@ -36,6 +37,8 @@ interface FilterPanelProps {
 	className?: string;
 }
 
+const SEARCHABLE_THRESHOLD = 8;
+
 export const FilterPanel = ({
 	config,
 	facets,
@@ -47,6 +50,9 @@ export const FilterPanel = ({
 }: FilterPanelProps) => {
 	const { searchTerms, getFilteredAndLimitedFacets, handleSearchChange, handleLoadMore, shouldShowSearch } =
 		useFilterPanel();
+
+	// Global search for all filter options
+	const [globalSearch, setGlobalSearch] = useState('');
 
 	const allSeenValuesRef = useRef<Record<string, Set<string>>>({});
 
@@ -98,6 +104,21 @@ export const FilterPanel = ({
 			...filters,
 			[field]: newValues,
 		});
+	};
+
+	const handleRemoveFilter = (field: string, value: string) => {
+		const currentValues = filters[field] || [];
+		const newValues = currentValues.filter((v) => v !== value);
+		onFilterChange({
+			...filters,
+			[field]: newValues,
+		});
+	};
+
+	const getDisplayValue = (field: string, value: string): string => {
+		const fieldFacets = facets[field] || [];
+		const facet = fieldFacets.find((f) => f.value === value);
+		return facet?.displayValue || value;
 	};
 
 	const handleResetFilters = () => {
@@ -173,6 +194,15 @@ export const FilterPanel = ({
 					</Button>
 				)}
 			</div>
+
+			<FilterSearchInput value={globalSearch} onChange={setGlobalSearch} />
+
+			<ActiveFiltersSection
+				filters={filters}
+				fieldLabels={config.fieldLabels}
+				getDisplayValue={getDisplayValue}
+				onRemoveFilter={handleRemoveFilter}
+			/>
 			<ScrollArea className="flex-1">
 				<div className="px-2 py-2">
 					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
@@ -186,11 +216,34 @@ export const FilterPanel = ({
 								.filter((v) => !existingValues.has(v))
 								.map((value) => ({ value, count: 0 }));
 
+							// Apply global search filter
+							const globalSearchLower = globalSearch.toLowerCase();
+							const fieldLabel = config.fieldLabels[field] || field;
+							const fieldMatchesSearch = fieldLabel.toLowerCase().includes(globalSearchLower);
+
+							const matchesGlobalSearch = (facet: { value: string; displayValue?: string }) => {
+								if (!globalSearch) return true;
+								// If field name matches, show all facets in this section
+								if (fieldMatchesSearch) return true;
+								return (
+									facet.value.toLowerCase().includes(globalSearchLower) ||
+									(facet.displayValue?.toLowerCase().includes(globalSearchLower) ?? false)
+								);
+							};
+
 							const missingSeenValues = Array.from(seenValues)
 								.filter((v) => !existingValues.has(v) && !activeValues.includes(v))
 								.map((value) => ({ value, count: 0 }));
 
 							const allFacets = [...fieldFacets, ...orphanedFilters, ...missingSeenValues];
+
+							// Filter by global search
+							const filteredByGlobalSearch = allFacets.filter(matchesGlobalSearch);
+
+							// Hide entire section if no matches in global search AND field name doesn't match
+							if (globalSearch && filteredByGlobalSearch.length === 0 && !fieldMatchesSearch) {
+								return null;
+							}
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
@@ -210,20 +263,12 @@ export const FilterPanel = ({
 										</div>
 									</AccordionTrigger>
 									<AccordionContent className="pb-2 overflow-hidden">
-										{shouldShowSearch(allFacets) && (
-											<div className="px-2 pb-2">
-												<Input
-													placeholder="Search..."
-													value={searchTerms[field] || ''}
-													onChange={(e) => handleSearchChange(field, e.target.value)}
-													className="h-7 text-xs"
-												/>
-											</div>
-										)}
 										<div className="space-y-1 px-2 w-full">
 											{(() => {
+												// Use global search filtered facets
+												const facetsToShow = globalSearch ? filteredByGlobalSearch : allFacets;
 												const { filteredAndLimitedFacets, hasMore, remaining, searchTerm } =
-													getFilteredAndLimitedFacets(field, allFacets);
+													getFilteredAndLimitedFacets(field, facetsToShow);
 
 												if (filteredAndLimitedFacets.length === 0) {
 													return (
