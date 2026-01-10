@@ -1,5 +1,10 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { CoralogixIcon } from '@/components/icons/CoralogixIcon';
+import { DatadogIcon } from '@/components/icons/DatadogIcon';
+import { GCPIcon } from '@/components/icons/GCPIcon';
+import { GrafanaIcon } from '@/components/icons/GrafanaIcon';
 import { UptimeKumaIcon } from '@/components/icons/UptimeKumaIcon';
+import { ZabbixIcon } from '@/components/icons/ZabbixIcon';
 import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
 import { DatadogSetupModal } from '@/components/Integrations/DatadogSetupModal';
@@ -83,7 +88,7 @@ const INTEGRATIONS: Integration[] = [
 		supported: true,
 		name: 'Google Cloud Platform',
 		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
-		logo: 'https://www.gstatic.com/images/branding/product/2x/google_cloud_48dp.png',
+		logo: GCPIcon,
 		tags: ['Monitoring', 'Alerts', 'Cloud'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/gcp',
 		configFields: [],
@@ -105,7 +110,7 @@ const INTEGRATIONS: Integration[] = [
 		supported: true,
 		name: 'Grafana',
 		description: 'Open source analytics & monitoring solution for every database.',
-		logo: 'https://grafana.com/static/img/menu/grafana2.svg',
+		logo: GrafanaIcon,
 		tags: ['Monitoring', 'Visualization', 'Alerts'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/grafana',
 		configFields: [
@@ -124,7 +129,7 @@ const INTEGRATIONS: Integration[] = [
 		supported: true,
 		name: 'Datadog',
 		description: 'Cloud monitoring and analytics platform for infrastructure, applications, and logs.',
-		logo: 'https://imgix.datadoghq.com/img/dd_logo_n_70x75.png',
+		logo: DatadogIcon,
 		tags: ['Monitoring', 'APM', 'Logs', 'Metrics', 'Alerts'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/datadog',
 		// Datadog alert webhooks are supported by default (via /alerts/custom/datadog)
@@ -146,7 +151,7 @@ const INTEGRATIONS: Integration[] = [
 		supported: true,
 		name: 'Zabbix',
 		description: 'Enterprise-class open source monitoring solution for networks and applications.',
-		logo: 'https://assets.zabbix.com/img/logo/zabbix_logo_500x131.png',
+		logo: ZabbixIcon,
 		tags: ['Monitoring', 'Alerts', 'Infrastructure'],
 		documentationUrl: 'https://www.zabbix.com/documentation/current/en/manual/config/notifications/media/webhook',
 		configFields: [],
@@ -157,7 +162,7 @@ const INTEGRATIONS: Integration[] = [
 		supported: false,
 		name: 'Coralogix',
 		description: 'Log analytics platform powered by machine learning.',
-		logo: 'https://cdn.brandfetch.io/idCh7aU0wN/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1667744703603',
+		logo: CoralogixIcon,
 		tags: ['Logging', 'Analytics', 'Monitoring'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
 		configFields: [
