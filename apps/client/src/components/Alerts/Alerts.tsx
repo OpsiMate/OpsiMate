@@ -271,7 +271,7 @@ const Alerts = () => {
 								isDraft={!dashboardState.id}
 							/>
 
-							<div className="mt-3">
+							<div className="mt-3 flex items-center gap-4">
 								<ToggleGroup
 									type="single"
 									value={activeTab}
@@ -304,6 +304,11 @@ const Alerts = () => {
 										<span>Archived</span>
 									</ToggleGroupItem>
 								</ToggleGroup>
+								<span className="text-sm text-muted-foreground">
+									{activeTab === AlertTab.Active
+										? `${filteredAlerts.length} alert${filteredAlerts.length !== 1 ? 's' : ''}`
+										: `${filteredArchivedAlerts.length} alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
+								</span>
 							</div>
 						</div>
 
