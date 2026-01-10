@@ -3,7 +3,7 @@ import { Command, CommandGroup, CommandItem, CommandList, CommandSeparator } fro
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { GripVertical, Layers, X } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, GripVertical, Layers, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable.constants';
 import { GROUP_BY_CONTROLS_TEXT } from './GroupByControls.constants';
@@ -13,6 +13,8 @@ interface GroupByControlsProps {
 	onGroupByChange: (columns: string[]) => void;
 	availableColumns: string[];
 	columnLabels?: Record<string, string>;
+	onExpandAll?: () => void;
+	onCollapseAll?: () => void;
 }
 
 const reorderArray = <T,>(arr: T[], fromIndex: number, toIndex: number): T[] => {
@@ -27,6 +29,8 @@ export const GroupByControls = ({
 	onGroupByChange,
 	availableColumns,
 	columnLabels = COLUMN_LABELS,
+	onExpandAll,
+	onCollapseAll,
 }: GroupByControlsProps) => {
 	const groupableColumns = availableColumns.filter((col) => col !== ACTIONS_COLUMN);
 	const getLabel = (col: string) => columnLabels[col] || COLUMN_LABELS[col] || col;
@@ -131,6 +135,40 @@ export const GroupByControls = ({
 				</Tooltip>
 				<PopoverContent className="w-[240px] p-0" align="start">
 					<Command>
+						<div className="flex items-center justify-between px-2 py-1.5">
+							<span className="text-sm font-semibold">{GROUP_BY_CONTROLS_TEXT.HEADLINE}</span>
+							{groupByColumns.length > 0 && onExpandAll && onCollapseAll && (
+								<div className="flex items-center gap-1">
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6"
+												onClick={onExpandAll}
+											>
+												<ChevronsUpDown className="h-3.5 w-3.5" />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>{GROUP_BY_CONTROLS_TEXT.EXPAND_ALL}</TooltipContent>
+									</Tooltip>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6"
+												onClick={onCollapseAll}
+											>
+												<ChevronsDownUp className="h-3.5 w-3.5" />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>{GROUP_BY_CONTROLS_TEXT.COLLAPSE_ALL}</TooltipContent>
+									</Tooltip>
+								</div>
+							)}
+						</div>
+						<CommandSeparator />
 						<CommandList>
 							{groupByColumns.length > 0 && (
 								<CommandGroup heading={GROUP_BY_CONTROLS_TEXT.GROUPED_BY_HEADING}>

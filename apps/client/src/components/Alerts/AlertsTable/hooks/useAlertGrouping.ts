@@ -69,11 +69,35 @@ export const useAlertGrouping = (
 		});
 	}, []);
 
+	const getAllGroupKeys = useCallback((groups: typeof groupedData): string[] => {
+		const keys: string[] = [];
+		groups.forEach((node) => {
+			if (node.type === 'group') {
+				keys.push(node.key);
+				if (node.children && node.children.length > 0) {
+					keys.push(...getAllGroupKeys(node.children));
+				}
+			}
+		});
+		return keys;
+	}, []);
+
+	const expandAll = useCallback(() => {
+		const allKeys = getAllGroupKeys(groupedData);
+		setExpandedGroups(new Set(allKeys));
+	}, [groupedData, getAllGroupKeys]);
+
+	const collapseAll = useCallback(() => {
+		setExpandedGroups(new Set());
+	}, []);
+
 	return {
 		groupByColumns,
 		setGroupByColumns,
 		expandedGroups,
 		flatRows,
 		toggleGroup,
+		expandAll,
+		collapseAll,
 	};
 };

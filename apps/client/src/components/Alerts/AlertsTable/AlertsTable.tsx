@@ -56,7 +56,7 @@ export const AlertsTable = ({
 	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
 
 	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
-	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup } = useAlertGrouping(
+	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup, expandAll, collapseAll } = useAlertGrouping(
 		sortedAlerts,
 		allColumnLabels,
 		controlledGroupBy,
@@ -143,6 +143,8 @@ export const AlertsTable = ({
 															onGroupByChange={setGroupByColumns}
 															availableColumns={visibleColumns}
 															columnLabels={allColumnLabels}
+															onExpandAll={expandAll}
+															onCollapseAll={collapseAll}
 														/>
 														{onColumnToggle && (
 															<ColumnSettingsDropdown
