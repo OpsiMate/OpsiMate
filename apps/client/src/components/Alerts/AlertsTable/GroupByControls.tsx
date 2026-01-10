@@ -4,8 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ChevronsDownUp, ChevronsUpDown, GripVertical, Layers, X } from 'lucide-react';
-import type { DragEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable.constants';
 import { GROUP_BY_CONTROLS_TEXT } from './GroupByControls.constants';
 
