@@ -3,7 +3,7 @@
 backend:
   image:
     repository: opsimate/backend
-    tag: latest
+    tag: 1.0
     pullPolicy: IfNotPresent
   replicaCount: 1
   port: 3001
@@ -18,7 +18,7 @@ backend:
 worker:
   image:
     repository: opsimate/backend
-    tag: latest
+    tag: 1.0
     pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
@@ -32,7 +32,7 @@ worker:
 frontend:
   image:
     repository: opsimate/frontend
-    tag: latest
+    tag: 1.0
     pullPolicy: IfNotPresent
   replicaCount: 1
   port: 8080
@@ -48,7 +48,7 @@ frontend:
       memory: 256Mi
 
 env:
-  nodeEnv: production
+  nodeEnv: test
   apiToken: opsimate
 
 persistence:
