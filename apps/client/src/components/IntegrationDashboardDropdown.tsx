@@ -20,9 +20,87 @@ interface Dashboard {
 	url: string;
 }
 
+interface IntegrationInfo {
+	type: string;
+	id: number;
+	externalUrl?: string;
+}
+
+type IntegrationType = 'Grafana' | 'Datadog';
+
+interface DashboardMenuContentProps {
+	loading: boolean;
+	error: Error | null;
+	dashboards: Dashboard[];
+	integrationUrl: string;
+	integrationType: IntegrationType;
+	IconComponent: React.ComponentType<{ className?: string }>;
+	onDashboardClick: (url: string, name: string) => void;
+}
+
+const DashboardMenuContent = ({
+	loading,
+	error,
+	dashboards,
+	integrationUrl,
+	integrationType,
+	IconComponent,
+	onDashboardClick,
+}: DashboardMenuContentProps) => {
+	if (loading) {
+		return (
+			<DropdownMenuItem disabled className="text-xs">
+				<Loader2 className="h-3 w-3 mr-2 animate-spin" />
+				Loading dashboards...
+			</DropdownMenuItem>
+		);
+	}
+
+	if (error) {
+		return (
+			<DropdownMenuItem disabled className="text-xs text-red-500">
+				<span>Error: {error.message}</span>
+			</DropdownMenuItem>
+		);
+	}
+
+	if (dashboards.length === 0) {
+		return (
+			<DropdownMenuItem disabled className="text-xs text-muted-foreground">
+				No dashboards found for these tags
+			</DropdownMenuItem>
+		);
+	}
+
+	return (
+		<>
+			{dashboards.map((dashboard) => (
+				<DropdownMenuItem
+					key={dashboard.url}
+					className="text-xs cursor-pointer"
+					onClick={() => onDashboardClick(dashboard.url, dashboard.name)}
+				>
+					<div className="flex items-center justify-between w-full">
+						<span className="truncate">{dashboard.name}</span>
+						<ExternalLink className="h-3 w-3 ml-2 flex-shrink-0" />
+					</div>
+				</DropdownMenuItem>
+			))}
+			<DropdownMenuSeparator />
+			<DropdownMenuItem
+				className="text-xs text-muted-foreground"
+				onClick={() => window.open(integrationUrl, '_blank', 'noopener,noreferrer')}
+			>
+				<IconComponent className="h-3 w-3 mr-2" />
+				Open {integrationType}
+			</DropdownMenuItem>
+		</>
+	);
+};
+
 interface IntegrationDashboardDropdownProps {
 	tags: Tag[];
-	integrationType: 'Grafana' | 'Datadog';
+	integrationType: IntegrationType;
 	className?: string;
 }
 
@@ -53,9 +131,7 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 
 	// Find the specific integration from cached data
 	const integration = useMemo(() => {
-		return integrations.find(
-			(integration: { type: string; id: string; externalUrl?: string }) => integration.type === integrationType
-		);
+		return integrations.find((item: IntegrationInfo) => item.type === integrationType);
 	}, [integrations, integrationType]);
 
 	const integrationId = integration?.id;
@@ -121,49 +197,15 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 
-				{loading && (
-					<DropdownMenuItem disabled className="text-xs">
-						<Loader2 className="h-3 w-3 mr-2 animate-spin" />
-						Loading dashboards...
-					</DropdownMenuItem>
-				)}
-
-				{error && (
-					<DropdownMenuItem disabled className="text-xs text-red-500">
-						<span>Error: {error.message}</span>
-					</DropdownMenuItem>
-				)}
-
-				{!loading && !error && dashboards.length === 0 && (
-					<DropdownMenuItem disabled className="text-xs text-muted-foreground">
-						No dashboards found for these tags
-					</DropdownMenuItem>
-				)}
-
-				{!loading && !error && dashboards.length > 0 && (
-					<>
-						{dashboards.map((dashboard, index) => (
-							<DropdownMenuItem
-								key={index}
-								className="text-xs cursor-pointer"
-								onClick={() => handleDashboardClick(dashboard.url, dashboard.name)}
-							>
-								<div className="flex items-center justify-between w-full">
-									<span className="truncate">{dashboard.name}</span>
-									<ExternalLink className="h-3 w-3 ml-2 flex-shrink-0" />
-								</div>
-							</DropdownMenuItem>
-						))}
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							className="text-xs text-muted-foreground"
-							onClick={() => window.open(integrationUrl, '_blank')}
-						>
-							<IconComponent className="h-3 w-3 mr-2" />
-							Open {integrationType}
-						</DropdownMenuItem>
-					</>
-				)}
+				<DashboardMenuContent
+					loading={loading}
+					error={error}
+					dashboards={dashboards}
+					integrationUrl={integrationUrl}
+					integrationType={integrationType}
+					IconComponent={IconComponent}
+					onDashboardClick={handleDashboardClick}
+				/>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

@@ -69,23 +69,22 @@ export const useAlertGrouping = (
 		});
 	}, []);
 
-	const getAllGroupKeys = useCallback((groups: typeof groupedData): string[] => {
-		const keys: string[] = [];
-		groups.forEach((node) => {
-			if (node.type === 'group') {
-				keys.push(node.key);
-				if (node.children && node.children.length > 0) {
-					keys.push(...getAllGroupKeys(node.children));
-				}
-			}
-		});
-		return keys;
-	}, []);
-
 	const expandAll = useCallback(() => {
-		const allKeys = getAllGroupKeys(groupedData);
+		const collectGroupKeys = (groups: typeof groupedData): string[] => {
+			const keys: string[] = [];
+			groups.forEach((node) => {
+				if (node.type === 'group') {
+					keys.push(node.key);
+					if (node.children && node.children.length > 0) {
+						keys.push(...collectGroupKeys(node.children));
+					}
+				}
+			});
+			return keys;
+		};
+		const allKeys = collectGroupKeys(groupedData);
 		setExpandedGroups(new Set(allKeys));
-	}, [groupedData, getAllGroupKeys]);
+	}, [groupedData]);
 
 	const collapseAll = useCallback(() => {
 		setExpandedGroups(new Set());

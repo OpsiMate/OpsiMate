@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ChevronsDownUp, ChevronsUpDown, GripVertical, Layers, X } from 'lucide-react';
+import type { DragEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable.constants';
 import { GROUP_BY_CONTROLS_TEXT } from './GroupByControls.constants';
@@ -23,6 +24,44 @@ const reorderArray = <T,>(arr: T[], fromIndex: number, toIndex: number): T[] => 
 	result.splice(toIndex, 0, removed);
 	return result;
 };
+
+interface ExpandCollapseButtonsProps {
+	onExpandAll: () => void;
+	onCollapseAll: () => void;
+}
+
+const ExpandCollapseButtons = ({ onExpandAll, onCollapseAll }: ExpandCollapseButtonsProps) => (
+	<div className="flex items-center gap-1">
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-6 w-6"
+					onClick={onExpandAll}
+					aria-label={GROUP_BY_CONTROLS_TEXT.EXPAND_ALL}
+				>
+					<ChevronsUpDown className="h-3.5 w-3.5" />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>{GROUP_BY_CONTROLS_TEXT.EXPAND_ALL}</TooltipContent>
+		</Tooltip>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-6 w-6"
+					onClick={onCollapseAll}
+					aria-label={GROUP_BY_CONTROLS_TEXT.COLLAPSE_ALL}
+				>
+					<ChevronsDownUp className="h-3.5 w-3.5" />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>{GROUP_BY_CONTROLS_TEXT.COLLAPSE_ALL}</TooltipContent>
+		</Tooltip>
+	</div>
+);
 
 export const GroupByControls = ({
 	groupByColumns,
@@ -52,7 +91,7 @@ export const GroupByControls = ({
 		onGroupByChange(groupByColumns.filter((c) => c !== col));
 	};
 
-	const handleDragStart = (e: React.DragEvent, index: number) => {
+	const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
 		setDraggedIndex(index);
 		e.dataTransfer.effectAllowed = 'move';
 		e.dataTransfer.setData('text/plain', index.toString());
@@ -68,14 +107,14 @@ export const GroupByControls = ({
 		setTimeout(() => document.body.removeChild(dragImage), 0);
 	};
 
-	const handleDragOver = (e: React.DragEvent, index: number) => {
+	const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
 		e.preventDefault();
 		e.dataTransfer.dropEffect = 'move';
 		if (draggedIndex === null) return;
 		setDragOverIndex(index);
 	};
 
-	const handleDrop = (e: React.DragEvent) => {
+	const handleDrop = (e: DragEvent<HTMLDivElement>) => {
 		e.preventDefault();
 		e.stopPropagation();
 		if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
@@ -138,34 +177,7 @@ export const GroupByControls = ({
 						<div className="flex items-center justify-between px-2 py-1.5">
 							<span className="text-sm font-semibold">{GROUP_BY_CONTROLS_TEXT.HEADLINE}</span>
 							{groupByColumns.length > 0 && onExpandAll && onCollapseAll && (
-								<div className="flex items-center gap-1">
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-6 w-6"
-												onClick={onExpandAll}
-											>
-												<ChevronsUpDown className="h-3.5 w-3.5" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>{GROUP_BY_CONTROLS_TEXT.EXPAND_ALL}</TooltipContent>
-									</Tooltip>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-6 w-6"
-												onClick={onCollapseAll}
-											>
-												<ChevronsDownUp className="h-3.5 w-3.5" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>{GROUP_BY_CONTROLS_TEXT.COLLAPSE_ALL}</TooltipContent>
-									</Tooltip>
-								</div>
+								<ExpandCollapseButtons onExpandAll={onExpandAll} onCollapseAll={onCollapseAll} />
 							)}
 						</div>
 						<CommandSeparator />

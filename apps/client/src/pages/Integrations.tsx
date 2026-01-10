@@ -124,7 +124,7 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 		],
 	},
-		{
+	{
 		id: 'datadog',
 		supported: true,
 		name: 'Datadog',
