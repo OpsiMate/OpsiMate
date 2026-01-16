@@ -101,6 +101,10 @@
 		@apply border-border;
 	}
 
+	html {
+		color: hsl(var(--foreground));
+	}
+
 	body {
 		@apply bg-background text-foreground;
 		font-family: 'Nunito Sans', sans-serif;
@@ -109,8 +113,68 @@
 			'calt' 1;
 	}
 
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	p,
+	span,
+	label,
+	a,
+	li,
+	td,
+	th,
+	dt,
+	dd,
+	figcaption,
+	blockquote,
+	cite,
+	em,
+	strong,
+	small,
+	sub,
+	sup,
+	mark,
+	del,
+	ins,
+	code,
+	pre,
+	kbd,
+	samp,
+	var,
+	output,
+	meter,
+	progress,
+	article,
+	section,
+	aside,
+	nav,
+	header,
+	footer,
+	main {
+		color: hsl(var(--foreground));
+	}
+
+	div {
+		color: hsl(var(--foreground));
+	}
+
+	button {
+		color: inherit;
+	}
+
+	button svg {
+		color: currentColor;
+	}
+
+	button svg path {
+		stroke: currentColor;
+	}
+
 	.dark {
-		color-scheme: dark;
+		color-scheme: dark !important;
 	}
 
 	*:focus-visible {

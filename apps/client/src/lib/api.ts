@@ -13,6 +13,7 @@ import {
 	Alert as SharedAlert,
 	Tag,
 } from '@OpsiMate/shared';
+import { isPlaygroundMode } from './playground';
 
 const logger = new Logger('api');
 const { protocol, hostname, port } = window.location;
@@ -74,12 +75,11 @@ async function apiRequest<T>(
 			logger.error(`API Error (${response.status}):`, errorText);
 			// Try to parse the error as JSON to handle validation errors properly
 
-			if (response.status === 401) {
+			if (response.status === 401 && !isPlaygroundMode()) {
 				localStorage.removeItem('jwt');
 
 				const authPages = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
 				if (!authPages.has(location.pathname)) {
-					// navigate to login /login
 					window.location.href = '/login?expired=true';
 				}
 			}

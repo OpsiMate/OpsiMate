@@ -24,7 +24,6 @@ export const useProfileData = (): UseProfileDataReturn => {
 			try {
 				const currentUser = getCurrentUser();
 				if (currentUser) {
-					// Fetch the full user profile from the server
 					const response = await apiRequest<User>('/users/profile', 'GET');
 					if (response.success && response.data) {
 						setProfile({
@@ -35,12 +34,11 @@ export const useProfileData = (): UseProfileDataReturn => {
 							createdAt: response.data.createdAt,
 						});
 					} else {
-						// Fallback to JWT data if server request fails
 						logger.warn('Failed to fetch user profile from server, using JWT data as fallback');
 						setProfile({
-							id: currentUser.id,
+							id: String(currentUser.id),
 							email: currentUser.email,
-							fullName: currentUser.email.split('@')[0], // Use email prefix as fallback
+							fullName: currentUser.email.split('@')[0],
 							role: currentUser.role,
 							createdAt: new Date().toISOString(),
 						});
@@ -58,7 +56,7 @@ export const useProfileData = (): UseProfileDataReturn => {
 
 		fetchProfile();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []); // Only run once on mount
+	}, []);
 
 	return {
 		profile,

@@ -27,7 +27,7 @@ export const AlertTagKeyColumn = ({ alert, tagKey, className }: AlertTagKeyColum
 					{value}
 				</Badge>
 			) : (
-				<span className="text-muted-foreground text-xs">-</span>
+				<span className="text-foreground text-xs">-</span>
 			)}
 		</TableCell>
 	);

@@ -11,7 +11,7 @@ export interface AlertStartsAtColumnProps {
 export const AlertStartsAtColumn = ({ alert, className }: AlertStartsAtColumnProps) => {
 	return (
 		<TableCell className={cn('py-1 px-2', className)}>
-			<span className="text-xs text-muted-foreground truncate block">{formatDate(alert.startsAt)}</span>
+			<span className="text-xs text-foreground truncate block">{formatDate(alert.startsAt)}</span>
 		</TableCell>
 	);
 };

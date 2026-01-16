@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	DropdownMenu,
@@ -12,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getTagKeyColumnId, TagKeyInfo } from '@/types';
 import { Columns3, Search, X } from 'lucide-react';
+import { useState } from 'react';
 import { ALERT_TAGS_LABEL, TOGGLE_COLUMNS_LABEL } from './ColumnSettingsDropdown.constants';
 
 export interface ColumnSettingsDropdownProps {
@@ -48,7 +48,11 @@ export const ColumnSettingsDropdown = ({
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" className="h-7 w-7 rounded-md">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-7 w-7 rounded-md hover:bg-muted hover:text-foreground"
+							>
 								<Columns3 className="h-4 w-4" />
 							</Button>
 						</DropdownMenuTrigger>

@@ -85,7 +85,7 @@ export const AlertDetailsDrawer = ({
 			)}
 		>
 			<div className="px-6 py-4 border-b flex-shrink-0 flex items-center justify-between">
-				<h2 className="text-lg font-semibold">Alert Details</h2>
+				<h2 className="text-lg font-semibold text-foreground">Alert Details</h2>
 				<Button
 					variant="ghost"
 					size="icon"

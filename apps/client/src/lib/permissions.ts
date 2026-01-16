@@ -1,4 +1,5 @@
 import { getUserRole } from './auth';
+import { isPlaygroundMode } from './playground';
 
 // Local role definitions for client-side use
 enum Role {
@@ -10,7 +11,14 @@ enum Role {
 
 export type Permission = 'create' | 'edit' | 'delete' | 'view' | 'operate';
 
+export function isReadOnlyMode(): boolean {
+	return isPlaygroundMode();
+}
+
 export function hasPermission(permission: Permission): boolean {
+	if (isReadOnlyMode() && permission !== 'view') {
+		return false;
+	}
 	const userRole = getUserRole();
 
 	switch (userRole) {
@@ -47,6 +55,9 @@ export function canOperate(): boolean {
 }
 // Specific permission checks for different features
 export function canManageUsers(): boolean {
+	if (isReadOnlyMode()) {
+		return false;
+	}
 	const userRole = getUserRole();
 
 	switch (userRole) {
@@ -98,6 +109,9 @@ export function canViewServices(): boolean {
 }
 
 export function canManageIntegrations(): boolean {
+	if (isReadOnlyMode()) {
+		return false;
+	}
 	return getUserRole() === Role.Admin;
 }
 

@@ -24,11 +24,11 @@ export const StickyGroupHeader = ({ item, onToggle, columnLabels = {} }: StickyG
 			}}
 			onClick={() => onToggle(item.key)}
 		>
-			<Button variant="ghost" size="icon" className="h-6 w-6 p-0 mr-2">
+			<Button variant="ghost" size="icon" className="h-6 w-6 p-0 mr-2 hover:bg-muted hover:text-foreground">
 				{item.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 			</Button>
-			<span className="font-medium text-sm mr-2 text-muted-foreground">{fieldLabel}:</span>
-			<span className="font-medium text-sm mr-2">{item.value}</span>
+			<span className="font-medium text-sm mr-2 text-foreground">{fieldLabel}:</span>
+			<span className="font-medium text-sm mr-2 text-foreground">{item.value}</span>
 			<Badge variant="secondary" className="h-5 px-1.5 text-xs rounded-sm">
 				{item.count}
 			</Badge>

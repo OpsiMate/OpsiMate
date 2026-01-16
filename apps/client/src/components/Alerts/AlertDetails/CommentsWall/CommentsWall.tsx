@@ -61,7 +61,7 @@ export const CommentsWall = ({ alertId }: CommentsWallProps) => {
 		<div className="flex flex-col h-full border-l bg-background">
 			<div className="flex items-center gap-2 px-4 py-3 border-b flex-shrink-0">
 				<MessageSquare className="h-4 w-4 text-muted-foreground" />
-				<h3 className="font-semibold text-sm">{COMMENTS_HEADER}</h3>
+				<h3 className="font-semibold text-sm text-foreground">{COMMENTS_HEADER}</h3>
 				{comments.length > 0 && (
 					<span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
 						{comments.length}

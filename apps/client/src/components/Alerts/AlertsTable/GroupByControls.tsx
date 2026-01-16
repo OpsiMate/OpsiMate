@@ -142,7 +142,7 @@ export const GroupByControls = ({
 								variant="ghost"
 								size="icon"
 								className={cn(
-									'h-7 w-7 rounded-md flex-shrink-0 border',
+									'h-7 w-7 rounded-md flex-shrink-0 border hover:bg-muted hover:text-foreground',
 									groupByColumns.length > 0 && 'text-primary border-primary'
 								)}
 							>
