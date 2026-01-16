@@ -312,7 +312,7 @@ export const FilterPanel = ({
 																		</span>
 																		<Badge
 																			variant="outline"
-																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] flex-shrink-0 flex items-center justify-center"
+																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] flex-shrink-0 flex items-center justify-center ml-auto"
 																		>
 																			{count}
 																		</Badge>

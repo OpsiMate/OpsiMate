@@ -39,6 +39,8 @@ export const AlertsFilterPanel = ({
 		return alert.type || 'Custom';
 	};
 
+	const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
 	const filterConfig: FilterPanelConfig = useMemo(() => {
 		const tagKeyFields = tagKeys.map((tk) => getTagKeyColumnId(tk.key));
 		const tagKeyLabels: Record<string, string> = {};
@@ -63,7 +65,7 @@ export const AlertsFilterPanel = ({
 
 		alerts.forEach((alert) => {
 			if (facetData.status) {
-				const status = alert.isDismissed ? 'Dismissed' : alert.status;
+				const status = alert.isDismissed ? 'Dismissed' : capitalizeFirst(alert.status);
 				facetData.status.set(status, (facetData.status.get(status) || 0) + 1);
 			}
 

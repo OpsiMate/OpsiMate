@@ -34,8 +34,8 @@ export const AlertDetailsPanel = ({
 	return (
 		<div className="w-[340px] flex-shrink-0 border-l bg-background flex flex-col h-full overflow-hidden">
 			<div className="px-4 py-3 border-b flex items-center justify-between flex-shrink-0">
-				<h2 className="text-lg font-semibold">Alert Details</h2>
-				<Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+				<h2 className="text-lg font-semibold text-foreground">Alert Details</h2>
+				<Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={onClose}>
 					<X className="h-4 w-4" />
 				</Button>
 			</div>

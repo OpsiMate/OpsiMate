@@ -9,6 +9,8 @@ const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
 };
 
+const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
 interface UseAlertsFilteringOptions {
 	filters: Record<string, string[]>;
 	timeRange?: TimeRange;
@@ -64,7 +66,7 @@ export const useAlertsFiltering = (
 				let fieldValue: string;
 				switch (field) {
 					case 'status':
-						fieldValue = alert.isDismissed ? 'Dismissed' : alert.status;
+						fieldValue = alert.isDismissed ? 'Dismissed' : capitalizeFirst(alert.status);
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);

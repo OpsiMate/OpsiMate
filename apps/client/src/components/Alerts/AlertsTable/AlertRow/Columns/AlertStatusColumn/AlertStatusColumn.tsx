@@ -8,21 +8,23 @@ export interface AlertStatusColumnProps {
 	className?: string;
 }
 
+const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
 const getStatusBadge = (alert: Alert) => {
 	if (alert.isDismissed) {
 		return (
-			<Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-				dismissed
+			<Badge variant="muted" className="text-xs px-1.5 py-0.5">
+				Dismissed
 			</Badge>
 		);
 	}
 
 	// Use AlertStatus enum to determine badge variant
-	const variant = alert.status === AlertStatus.FIRING ? 'destructive' : 'secondary';
+	const variant = alert.status === AlertStatus.FIRING ? 'destructive' : 'success';
 
 	return (
 		<Badge variant={variant} className="text-xs px-1.5 py-0.5">
-			{alert.status}
+			{capitalizeFirst(alert.status)}
 		</Badge>
 	);
 };

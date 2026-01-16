@@ -306,8 +306,8 @@ const Alerts = () => {
 								</ToggleGroup>
 								<span className="text-sm text-muted-foreground">
 									{activeTab === AlertTab.Active
-										? `${filteredAlerts.length} alert${filteredAlerts.length !== 1 ? 's' : ''}`
-										: `${filteredArchivedAlerts.length} alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
+										? `${filteredAlerts.length} Alert${filteredAlerts.length !== 1 ? 's' : ''}`
+										: `${filteredArchivedAlerts.length} Alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
 								</span>
 							</div>
 						</div>
