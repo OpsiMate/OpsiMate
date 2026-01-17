@@ -1,6 +1,7 @@
 import { Table, TableBody } from '@/components/ui/table';
 import { Alert } from '@OpsiMate/shared';
 import { Virtualizer } from '@tanstack/react-virtual';
+import { useEffect } from 'react';
 import { AlertRow } from '../AlertRow';
 import { FlatGroupItem } from '../AlertsTable.types';
 import { GroupHeader } from '../GroupHeader';
@@ -19,6 +20,10 @@ interface VirtualizedAlertListProps {
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	columnLabels?: Record<string, string>;
 	isArchived?: boolean;
+	isDragging?: boolean;
+	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
+	onDragEnter?: (alert: Alert) => void;
+	onDragEnd?: () => void;
 }
 
 export const VirtualizedAlertList = ({
@@ -35,8 +40,26 @@ export const VirtualizedAlertList = ({
 	onSelectAlerts,
 	columnLabels,
 	isArchived = false,
+	isDragging = false,
+	onDragStart,
+	onDragEnter,
+	onDragEnd,
 }: VirtualizedAlertListProps) => {
 	const virtualItems = virtualizer.getVirtualItems();
+
+	// Global mouseup listener to end drag selection when mouse is released anywhere
+	useEffect(() => {
+		if (!onDragEnd) return;
+
+		const handleGlobalMouseUp = () => {
+			onDragEnd();
+		};
+
+		window.addEventListener('mouseup', handleGlobalMouseUp);
+		return () => {
+			window.removeEventListener('mouseup', handleGlobalMouseUp);
+		};
+	}, [onDragEnd]);
 
 	return (
 		<div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
@@ -92,6 +115,10 @@ export const VirtualizedAlertList = ({
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
 									isArchived={isArchived}
+									isDragging={isDragging}
+									onDragStart={onDragStart}
+									onDragEnter={onDragEnter}
+									onDragEnd={onDragEnd}
 								/>
 							</div>
 						);

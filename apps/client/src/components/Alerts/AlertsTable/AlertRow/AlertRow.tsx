@@ -25,6 +25,10 @@ export interface AlertRowProps {
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	isArchived?: boolean;
+	isDragging?: boolean;
+	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
+	onDragEnter?: (alert: Alert) => void;
+	onDragEnd?: () => void;
 }
 
 export const AlertRow = ({
@@ -38,9 +42,25 @@ export const AlertRow = ({
 	onDeleteAlert,
 	onSelectAlerts,
 	isArchived = false,
+	isDragging = false,
+	onDragStart,
+	onDragEnter,
+	onDragEnd,
 }: AlertRowProps) => {
 	const handleRowClick = () => {
 		onAlertClick?.(alert);
+	};
+
+	const handleCheckboxMouseDown = (e: React.MouseEvent) => {
+		if (onDragStart) {
+			onDragStart(alert, e);
+		}
+	};
+
+	const handleCheckboxMouseEnter = () => {
+		if (onDragEnter) {
+			onDragEnter(alert);
+		}
 	};
 
 	return (
@@ -50,19 +70,16 @@ export const AlertRow = ({
 		>
 			{onSelectAlerts && (
 				<TableCell
-					className={cn(CELL_PADDING, 'cursor-pointer')}
+					className={cn(CELL_PADDING, 'cursor-pointer select-none')}
 					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
-					onClick={(e) => {
-						e.stopPropagation();
-						onSelectAlert(alert);
-					}}
+					onClick={(e) => e.stopPropagation()}
+					onMouseDown={handleCheckboxMouseDown}
+					onMouseEnter={handleCheckboxMouseEnter}
 				>
 					<div className="flex items-center justify-center">
 						<Checkbox
 							checked={isSelected}
-							onCheckedChange={() => onSelectAlert(alert)}
-							className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-							onClick={(e) => e.stopPropagation()}
+							className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
 						/>
 					</div>
 				</TableCell>

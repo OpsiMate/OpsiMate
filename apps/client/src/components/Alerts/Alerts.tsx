@@ -161,11 +161,16 @@ const Alerts = () => {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
-	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll } = useAlertActions();
+	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll, handleAssignOwnerAll } =
+		useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 
 	const handleDismissAllSelected = async () => {
 		await handleDismissAll(selectedAlerts, () => setSelectedAlerts([]));
+	};
+
+	const handleAssignOwnerAllSelected = async (ownerId: string | null) => {
+		await handleAssignOwnerAll(selectedAlerts, ownerId, () => setSelectedAlerts([]));
 	};
 
 	const handleDeleteArchivedAlert = async (alertId: string) => {
@@ -349,6 +354,7 @@ const Alerts = () => {
 										selectedAlerts={selectedAlerts}
 										onClearSelection={() => setSelectedAlerts([])}
 										onDismissAll={handleDismissAllSelected}
+										onAssignOwnerAll={handleAssignOwnerAllSelected}
 									/>
 								</div>
 							</>
