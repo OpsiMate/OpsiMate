@@ -16,6 +16,7 @@ backend:
     # -- Image tag (defaults to chart appVersion)
     tag: latest
     # -- Image pull policy
+    pullPolicy: IfNotPresent
 
   # -- Container port
   port: 3001
