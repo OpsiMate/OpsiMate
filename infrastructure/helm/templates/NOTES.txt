@@ -1,22 +1,11 @@
 OpsiMate has been deployed successfully!
 
-<<<<<<< Updated upstream
 To access the application
 
 Then open http://localhost:8080
 
 kubectl get svc -n opsimate
 
-
-=======
-To access the application run these commands
-
-  kubectl port-forward svc/{{ include "opsimate.frontend.serviceName" . }} 8080:{{ .Values.frontend.port }} -n {{ .Release.Namespace }}
-  kubectl port-forward svc/{{ include "opsimate.backend.serviceName" . }} 3001:{{ .Values.backend.port }} -n {{ .Release.Namespace }}
-
-Then open http://localhost:8080
-
->>>>>>> Stashed changes
 Check pod status
   kubectl get pods -n {{ .Release.Namespace }}
 

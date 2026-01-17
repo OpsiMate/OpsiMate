@@ -5,11 +5,8 @@ metadata:
   labels:
     {{- include "opsimate.frontend.labels" . | nindent 4 }}
 spec:
-<<<<<<< Updated upstream
   type: {{ .Values.service.frontend.type }}
-=======
-  type: {{ .Values.service.type }}
->>>>>>> Stashed changes
+
   ports:
     - port: {{ .Values.frontend.port }}
       targetPort: http

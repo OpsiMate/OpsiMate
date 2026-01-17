@@ -5,11 +5,8 @@ metadata:
   labels:
     {{- include "opsimate.backend.labels" . | nindent 4 }}
 spec:
-<<<<<<< Updated upstream
   type: {{ .Values.service.backend.type }}
-=======
-  type: {{ .Values.service.type }}
->>>>>>> Stashed changes
+
   ports:
     - port: {{ .Values.backend.port }}
       targetPort: http
