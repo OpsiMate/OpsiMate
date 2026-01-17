@@ -661,7 +661,9 @@ const Integrations = () => {
 											<div className="flex items-start gap-3">
 												<Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
 												<div>
-													<h4 className="font-medium text-sm">Integration Information</h4>
+													<h4 className="font-medium text-sm text-foreground">
+														Integration Information
+													</h4>
 													<p className="text-xs text-muted-foreground mt-1">
 														Configure your {selectedIntegration.name} integration by
 														providing the required credentials below.
@@ -798,7 +800,7 @@ const Integrations = () => {
 												<div key={field.name} className="space-y-2">
 													<label
 														htmlFor={`${selectedIntegration.id}-${field.name}`}
-														className="text-sm font-medium"
+														className="text-sm font-medium text-foreground"
 													>
 														{field.label}{' '}
 														{field.required && <span className="text-destructive">*</span>}
@@ -807,7 +809,7 @@ const Integrations = () => {
 														<select
 															id={`${selectedIntegration.id}-${field.name}`}
 															name={field.name}
-															className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+															className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 															required={field.required}
 															value={formData[field.name] || ''}
 															onChange={(e) =>
@@ -938,7 +940,7 @@ const Integrations = () => {
 									<TabsContent value="about" className="space-y-6 py-4">
 										<div className="space-y-5">
 											<div>
-												<h3 className="text-lg font-medium">
+												<h3 className="text-lg font-medium text-foreground">
 													About {selectedIntegration.name}
 												</h3>
 												<p className="text-muted-foreground mt-2">
@@ -949,7 +951,7 @@ const Integrations = () => {
 											<Separator />
 
 											<div>
-												<h4 className="text-sm font-medium mb-3">Features</h4>
+												<h4 className="text-sm font-medium mb-3 text-foreground">Features</h4>
 												<div className="grid grid-cols-2 gap-3">
 													{selectedIntegration.tags.map((tag) => (
 														<div
@@ -972,7 +974,9 @@ const Integrations = () => {
 											<Separator />
 
 											<div>
-												<h4 className="text-sm font-medium mb-3">Documentation</h4>
+												<h4 className="text-sm font-medium mb-3 text-foreground">
+													Documentation
+												</h4>
 												<Button
 													variant="outline"
 													className="w-full justify-start gap-2"

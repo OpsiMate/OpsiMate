@@ -299,7 +299,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 				<Button
 					variant="ghost"
 					className={cn(
-						'w-full justify-between p-2 h-auto transition-colors text-foreground hover:text-foreground hover:bg-transparent',
+						'w-full justify-between p-2 h-auto transition-colors text-foreground hover:text-foreground hover:bg-muted',
 						className
 					)}
 				>

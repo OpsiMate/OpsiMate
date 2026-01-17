@@ -1,11 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Bell, LayoutDashboard, Puzzle, Settings } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
-import { ProfileButton } from './ProfileButton';
 import { ALERTS_PATHS } from './LeftSidebar.constants';
+import { PreserveQueryLink } from './PreserveQueryLink';
+import { ProfileButton } from './ProfileButton';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -16,9 +17,11 @@ interface LeftSidebarProps {
 export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	const location = useLocation();
 	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as (typeof ALERTS_PATHS)[number]);
+	const showIntegrations = isEditor();
+	const showSettings = isAdmin();
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
-			<Link
+			<PreserveQueryLink
 				to="/"
 				className={cn(
 					'flex items-center h-20 px-5 border-b cursor-pointer transition-all duration-200',
@@ -34,7 +37,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						<p className="text-xs text-foreground">Operational Insights</p>
 					</div>
 				</div>
-			</Link>
+			</PreserveQueryLink>
 
 			<div
 				className={cn(
@@ -44,67 +47,57 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 			>
 				<Button
 					variant={isAlertsActive ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10 text-foreground',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						isAlertsActive && 'text-primary-foreground'
-					)}
+					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<Link to="/">
+					<PreserveQueryLink to="/">
 						<Bell className="h-5 w-5 flex-shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
-					</Link>
+					</PreserveQueryLink>
 				</Button>
 
 				<Button
 					variant={location.pathname === '/dashboards' ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10 text-foreground',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/dashboards' && 'text-primary-foreground'
-					)}
+					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<Link to="/dashboards">
+					<PreserveQueryLink to="/dashboards">
 						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
-					</Link>
+					</PreserveQueryLink>
 				</Button>
 			</div>
 
 			<div className={cn('p-4 mt-auto flex flex-col gap-3', collapsed && 'items-center')}>
 				<div className={cn('flex flex-col gap-2 items-center')}>
-					{isEditor() && (
+					{showIntegrations && (
 						<Button
 							variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
 							className={cn(
-								'gap-3 h-10 items-center text-foreground',
-								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-								location.pathname === '/integrations' && 'text-primary-foreground'
+								'gap-3 h-10 items-center',
+								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
-							<Link to="/integrations">
+							<PreserveQueryLink to="/integrations">
 								<Puzzle className="h-5 w-5 flex-shrink-0" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
-							</Link>
+							</PreserveQueryLink>
 						</Button>
 					)}
-					{isAdmin() && (
+					{showSettings && (
 						<Button
 							variant={location.pathname === '/settings' ? 'default' : 'ghost'}
 							className={cn(
-								'gap-3 h-10 items-center text-foreground',
-								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-								location.pathname === '/settings' && 'text-primary-foreground'
+								'gap-3 h-10 items-center',
+								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
-							<Link to="/settings">
+							<PreserveQueryLink to="/settings">
 								<Settings className="h-5 w-5 flex-shrink-0 items-center" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Settings</span>
-							</Link>
+							</PreserveQueryLink>
 						</Button>
 					)}
 					<ProfileButton collapsed={collapsed} />

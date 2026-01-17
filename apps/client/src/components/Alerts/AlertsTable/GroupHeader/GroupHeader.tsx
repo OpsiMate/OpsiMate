@@ -33,7 +33,7 @@ export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderPr
 			style={{ paddingLeft: `${item.level * 24 + 8}px` }}
 			onClick={() => onToggle(item.key)}
 		>
-			<Button variant="ghost" size="icon" className="h-6 w-6 p-0 mr-2 text-foreground">
+			<Button variant="ghost" size="icon" className="h-6 w-6 p-0 mr-2 text-foreground hover:bg-muted hover:text-foreground">
 				{item.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 			</Button>
 			<span className="font-semibold text-sm mr-2 text-foreground">{fieldLabel}:</span>

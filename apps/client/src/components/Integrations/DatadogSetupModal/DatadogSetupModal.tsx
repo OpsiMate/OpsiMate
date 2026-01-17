@@ -88,7 +88,7 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 					{/* Webhook URL Section */}
 					<div className="space-y-3">
 						<div>
-							<h3 className="text-lg font-semibold mb-2">1. Copy your webhook URL</h3>
+							<h3 className="text-lg font-semibold mb-2 text-foreground">1. Copy your webhook URL</h3>
 							<p className="text-sm text-muted-foreground mb-3">
 								Use this URL as the endpoint in your Datadog Webhook integration.
 							</p>
@@ -128,8 +128,10 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 					{/* Datadog configuration steps */}
 					<div className="space-y-4">
 						<div>
-							<h3 className="text-lg font-semibold mb-2">2. Configure the Datadog Webhook integration</h3>
-							<ol className="list-decimal list-inside space-y-3 text-sm">
+							<h3 className="text-lg font-semibold mb-2 text-foreground">
+								2. Configure the Datadog Webhook integration
+							</h3>
+							<ol className="list-decimal list-inside space-y-3 text-sm text-foreground">
 								<li className="space-y-2">
 									<span>Open Datadog Webhooks integration settings.</span>
 									<div className="ml-6">
@@ -171,7 +173,9 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 						</div>
 
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold mb-2">3. Set the payload (body) template</h3>
+							<h3 className="text-lg font-semibold mb-2 text-foreground">
+								3. Set the payload (body) template
+							</h3>
 							<p className="text-sm text-muted-foreground">
 								Use the following JSON as the <strong>Custom payload</strong> for your webhook. OpsiMate
 								will use this to map Datadog alerts into its internal alert model.
@@ -214,8 +218,10 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 						</div>
 
 						<div>
-							<h3 className="text-lg font-semibold mb-2">4. Attach the webhook to your monitors</h3>
-							<ol className="list-decimal list-inside space-y-3 text-sm">
+							<h3 className="text-lg font-semibold mb-2 text-foreground">
+								4. Attach the webhook to your monitors
+							</h3>
+							<ol className="list-decimal list-inside space-y-3 text-sm text-foreground">
 								<li>Create or edit a monitor in Datadog (for example, a CPU usage monitor).</li>
 								<li>
 									In the <strong>Notify</strong> section of the monitor, add your webhook by
@@ -226,7 +232,7 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 						</div>
 
 						<div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2 text-foreground">
 								<span className="text-blue-600 dark:text-blue-400">ℹ️</span>
 								Additional resources
 							</h4>
