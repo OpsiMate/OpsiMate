@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opsimate.frontend.serviceName" . }}
+  labels:
+    {{- include "opsimate.frontend.labels" . | nindent 4 }}
+spec:
+<<<<<<< Updated upstream
+  type: {{ .Values.service.frontend.type }}
+=======
+  type: {{ .Values.service.type }}
+>>>>>>> Stashed changes
+  ports:
+    - port: {{ .Values.frontend.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "opsimate.frontend.selectorLabels" . | nindent 4 }}

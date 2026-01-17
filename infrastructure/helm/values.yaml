@@ -1,0 +1,213 @@
+# Default values for opsimate
+# This is a YAML-formatted file.
+
+# -- Global settings
+global:
+  environment: test
+
+# -- Backend API configuration
+backend:
+  # -- Number of replicas
+  replicaCount: 1
+
+  image:
+    # -- Image repository
+    repository: opsimate/backend
+    # -- Image tag (defaults to chart appVersion)
+    tag: latest
+    # -- Image pull policy
+
+  # -- Container port
+  port: 3001
+
+  # -- Environment variables
+  env:
+    NODE_ENV: test
+    HOST: "0.0.0.0"
+    CONFIG_FILE: /app/config/config.yml
+
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# -- Worker configuration (uses same image as backend)
+worker:
+  # -- Number of replicas
+  replicaCount: 1
+
+  image:
+    # -- Image repository
+    repository: opsimate/backend
+    # -- Image tag (defaults to chart appVersion)
+
+    tag: latest
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+
+  # -- Command to run (overrides default)
+  command:
+    - node
+    - apps/server/dist/worker.js
+
+  # -- Environment variables
+  env:
+    NODE_ENV: test
+    CONFIG_FILE: /app/config/config.yml
+
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# -- Frontend configuration
+frontend:
+  # -- Number of replicas
+  replicaCount: 1
+
+  image:
+    # -- Image repository
+    repository: opsimate/frontend
+    # -- Image tag
+
+    tag: latest
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+
+  # -- Container port
+  port: 8080
+
+  # -- Environment variables
+  env:
+    NODE_ENV: test
+    HOST: "0.0.0.0"
+    # API_URL will be set dynamically to point to backend service
+
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 15
+    periodSeconds: 10
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# -- Persistence configuration
+persistence:
+  # -- Enable persistence
+  enabled: true
+
+  # -- Storage class ( -- Storage class (use "gp2" for AWS EKS, leave empty for local/default))
+  storageClass: ""
+
+  # -- Access mode
+  accessMode: ReadWriteOnce
+  # -- Storage size
+  size: 2Gi
+
+# -- Secret configuration
+secrets:
+  # -- API token for backend authentication
+  apiToken: "opsimate"
+  # -- Set to true to use existing secret instead of creating one
+  existingSecret: ""
+
+# -- ConfigMap configuration
+config:
+  # -- Configuration file content (config.yml)
+
+  configYml: |
+    server:
+      port: 3001
+      host: "0.0.0.0"
+    database:
+      path: "/app/data/database/opsimate.db"
+    security:
+      private_keys_path: "/app/data/private-keys"
+    vm:
+      try_with_sudo: false
+
+# -- Service configuration
+service:
+  frontend:
+    # -- Frontend service type (LoadBalancer for direct access, ClusterIP if using Ingress)
+    type: LoadBalancer
+  backend:
+    # -- Backend service type (LoadBalancer for local testing, ClusterIP for production with Ingress)
+    type: LoadBalancer
+
+# -- Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: ""
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: frontend
+
+  tls: []
+
+# -- Image pull secrets
+imagePullSecrets: []
+
+# -- Service account configuration
+serviceAccount:
+  # -- Create service account
+  create: true
+  # -- Service account name
+  name: ""
+  # -- Annotations for service account
+  annotations: {}
+
+# -- Pod annotations
+podAnnotations: {}
+
+# -- Node selector
+nodeSelector: {}
+
+# -- Tolerations
+tolerations: []
+
+# -- Affinity rules
+affinity: {}
