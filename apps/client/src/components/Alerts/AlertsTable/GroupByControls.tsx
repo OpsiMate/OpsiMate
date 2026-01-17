@@ -249,7 +249,7 @@ export const GroupByControls = ({
 										<CommandItem
 											key={col}
 											onSelect={() => handleAddColumn(col)}
-											className="cursor-pointer text-foreground"
+											className="cursor-pointer text-foreground hover:bg-muted/50"
 										>
 											{getLabel(col)}
 										</CommandItem>

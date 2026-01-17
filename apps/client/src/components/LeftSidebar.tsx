@@ -47,11 +47,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 			>
 				<Button
 					variant={isAlertsActive ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10 text-foreground hover:bg-muted hover:text-foreground',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						isAlertsActive && 'text-primary-foreground'
-					)}
+					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
 					<PreserveQueryLink to="/">
@@ -62,11 +58,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 
 				<Button
 					variant={location.pathname === '/dashboards' ? 'default' : 'ghost'}
-					className={cn(
-						'gap-3 h-10 text-foreground hover:bg-muted hover:text-foreground',
-						collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-						location.pathname === '/dashboards' && 'text-primary-foreground'
-					)}
+					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
 					<PreserveQueryLink to="/dashboards">
@@ -82,9 +74,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						<Button
 							variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
 							className={cn(
-								'gap-3 h-10 items-center text-foreground hover:bg-muted hover:text-foreground',
-								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-								location.pathname === '/integrations' && 'text-primary-foreground'
+								'gap-3 h-10 items-center',
+								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
@@ -98,9 +89,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						<Button
 							variant={location.pathname === '/settings' ? 'default' : 'ghost'}
 							className={cn(
-								'gap-3 h-10 items-center text-foreground hover:bg-muted hover:text-foreground',
-								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
-								location.pathname === '/settings' && 'text-primary-foreground'
+								'gap-3 h-10 items-center',
+								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
