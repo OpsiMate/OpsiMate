@@ -101,27 +101,24 @@ export const useDragSelection = ({ selectedAlerts, onSelectAlerts }: UseDragSele
 		[onSelectAlerts]
 	);
 
-	const handleDragEnd = useCallback(
-		(onSelectAlert?: (alert: Alert) => void) => {
-			// If mouse was down but didn't move, it's a click - toggle the start alert
-			if (dragStateRef.current.isMouseDown && !dragStateRef.current.hasMoved && dragStateRef.current.startAlert) {
-				if (onSelectAlert) {
-					onSelectAlert(dragStateRef.current.startAlert);
-				}
+	const handleDragEnd = useCallback((onSelectAlert?: (alert: Alert) => void) => {
+		// If mouse was down but didn't move, it's a click - toggle the start alert
+		if (dragStateRef.current.isMouseDown && !dragStateRef.current.hasMoved && dragStateRef.current.startAlert) {
+			if (onSelectAlert) {
+				onSelectAlert(dragStateRef.current.startAlert);
 			}
+		}
 
-			dragStateRef.current = {
-				isMouseDown: false,
-				hasMoved: false,
-				mode: null,
-				startAlertId: null,
-				startAlert: null,
-				touchedAlertIds: new Set(),
-			};
-			setIsDragging(false);
-		},
-		[]
-	);
+		dragStateRef.current = {
+			isMouseDown: false,
+			hasMoved: false,
+			mode: null,
+			startAlertId: null,
+			startAlert: null,
+			touchedAlertIds: new Set(),
+		};
+		setIsDragging(false);
+	}, []);
 
 	return {
 		isDragging,

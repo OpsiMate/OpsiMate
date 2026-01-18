@@ -56,7 +56,9 @@ export const useAlertActions = () => {
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
 				const alert = selectedAlerts[index];
-				console.warn(`Failed to dismiss alert ${alert.id}:`, result.reason);
+				// Silently handle failed dismissals
+				void alert;
+				void result;
 			}
 		});
 
