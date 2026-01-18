@@ -145,7 +145,7 @@ persistence:
 # -- Secret configuration
 secrets:
   # -- API token for backend authentication
-  apiToken: "opsimate"
+  apiToken: ""
   # -- Set to true to use existing secret instead of creating one
   existingSecret: ""
 
@@ -168,14 +168,14 @@ config:
 service:
   frontend:
     # -- Frontend service type (LoadBalancer for direct access, ClusterIP if using Ingress)
-    type: LoadBalancer
+    type: ClusterIP
   backend:
     # -- Backend service type (LoadBalancer for local testing, ClusterIP for production with Ingress)
-    type: LoadBalancer
+    type: ClusterIP
 
 # -- Ingress configuration
 ingress:
-  enabled: true
+  enabled: false #For production set to true
   className: nginx
   hosts:
     - host: ""
