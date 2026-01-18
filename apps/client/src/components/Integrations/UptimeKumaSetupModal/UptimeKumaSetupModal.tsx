@@ -51,7 +51,7 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 					{/* Webhook URL Section */}
 					<div className="space-y-3">
 						<div>
-							<h3 className="text-lg font-semibold mb-2">1. Copy Your Webhook URL</h3>
+							<h3 className="text-lg font-semibold mb-2 text-foreground">1. Copy Your Webhook URL</h3>
 							<p className="text-sm text-muted-foreground mb-3">
 								Use this URL in Uptime Kuma to send alerts to OpsiMate
 							</p>
@@ -87,8 +87,10 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 					{/* Instructions */}
 					<div className="space-y-4">
 						<div>
-							<h3 className="text-lg font-semibold mb-2">2. Configure Notification in Uptime Kuma</h3>
-							<ol className="list-decimal list-inside space-y-3 text-sm">
+							<h3 className="text-lg font-semibold mb-2 text-foreground">
+								2. Configure Notification in Uptime Kuma
+							</h3>
+							<ol className="list-decimal list-inside space-y-3 text-sm text-foreground">
 								<li className="space-y-2">
 									<span>Open your Uptime Kuma dashboard</span>
 								</li>
@@ -122,7 +124,7 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 						</div>
 
 						<div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2 text-foreground">
 								<span className="text-blue-600 dark:text-blue-400">ℹ️</span>
 								Important Notes
 							</h4>
@@ -137,7 +139,7 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 						</div>
 
 						<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
-							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+							<h4 className="font-semibold text-sm mb-2 flex items-center gap-2 text-foreground">
 								<span className="text-green-600 dark:text-green-400">💡</span>
 								Tip
 							</h4>

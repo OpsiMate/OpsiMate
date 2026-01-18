@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
-import { Check, Edit, FileText, KeyRound, Plus, Settings as SettingsIcon, Trash2, Users, X } from 'lucide-react';
+import { Check, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -250,7 +250,9 @@ const Settings: React.FC = () => {
 									<TabsContent value="users" className="space-y-6">
 										<div className="flex justify-between items-center gap-4">
 											<div className="flex-1">
-												<h2 className="text-2xl font-semibold">User Management</h2>
+												<h2 className="text-2xl font-semibold text-foreground">
+													User Management
+												</h2>
 												<p className="text-muted-foreground">
 													Manage user access and permissions for your Service instance.
 												</p>
@@ -431,6 +433,7 @@ const Settings: React.FC = () => {
 																							setShowEditModal(true);
 																						}}
 																						title="Edit user"
+																						className="hover:bg-muted hover:text-foreground"
 																					>
 																						<Edit className="h-4 w-4" />
 																					</Button>
@@ -446,6 +449,7 @@ const Settings: React.FC = () => {
 																							);
 																						}}
 																						title="Reset password"
+																						className="hover:bg-muted hover:text-foreground"
 																					>
 																						<KeyRound className="h-4 w-4" />
 																					</Button>
@@ -454,7 +458,7 @@ const Settings: React.FC = () => {
 																							<Button
 																								variant="ghost"
 																								size="icon"
-																								className="text-red-600 hover:bg-red-100 focus:bg-red-100 focus:ring-2 focus:ring-red-400"
+																								className="hover:bg-muted hover:text-destructive"
 																								title="Delete user"
 																								onClick={() =>
 																									setUserToDelete(
@@ -524,7 +528,7 @@ const Settings: React.FC = () => {
 
 									<TabsContent value="audit" className="space-y-6">
 										<div>
-											<h2 className="text-2xl font-semibold">Audit Log</h2>
+											<h2 className="text-2xl font-semibold text-foreground">Audit Log</h2>
 											<p className="text-muted-foreground">
 												View activity logs for all dashboard operations and user actions.
 											</p>

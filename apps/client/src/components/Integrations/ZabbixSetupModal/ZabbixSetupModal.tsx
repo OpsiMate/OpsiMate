@@ -113,7 +113,7 @@ fi`;
     var params = JSON.parse(value);
     var req = new HttpRequest();
     req.addHeader('Content-Type: application/json');
-    
+
     var payload = {
         event_id: params.event_id,
         event_name: params.event_name,
@@ -135,13 +135,13 @@ fi`;
         zabbix_url: params.zabbix_url,
         trigger_url: params.trigger_url
     };
-    
+
     var response = req.post(params.URL, JSON.stringify(payload));
-    
+
     if (req.getStatus() != 200) {
         throw 'HTTP error: ' + req.getStatus();
     }
-    
+
     return 'OK';
 } catch (error) {
     throw 'OpsiMate webhook error: ' + error;
@@ -192,7 +192,7 @@ fi`;
 
 					<TabsContent value="api" className="space-y-6 mt-4">
 						<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
-							<h4 className="font-semibold text-sm mb-2">🚀 Fastest Way to Set Up</h4>
+							<h4 className="font-semibold text-sm mb-2 text-foreground">🚀 Fastest Way to Set Up</h4>
 							<p className="text-sm text-muted-foreground">
 								Just update the URLs below and copy-paste the script. The script uses environment
 								variables for easy configuration!
@@ -202,7 +202,7 @@ fi`;
 						{/* URL Inputs */}
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<label className="text-sm font-medium">Media Type Name</label>
+								<label className="text-sm font-medium text-foreground">Media Type Name</label>
 								<Input
 									value={mediaTypeName}
 									onChange={(e) => setMediaTypeName(e.target.value)}
@@ -215,7 +215,7 @@ fi`;
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<label className="text-sm font-medium">Zabbix Server URL</label>
+									<label className="text-sm font-medium text-foreground">Zabbix Server URL</label>
 									<Input
 										value={zabbixUrlInput}
 										onChange={(e) => setZabbixUrlInput(e.target.value)}
@@ -225,7 +225,7 @@ fi`;
 									<p className="text-xs text-muted-foreground">Your Zabbix web interface URL</p>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium">OpsiMate Webhook URL</label>
+									<label className="text-sm font-medium text-foreground">OpsiMate Webhook URL</label>
 									<Input
 										value={opsimateUrlInput}
 										onChange={(e) => setOpsimateUrlInput(e.target.value)}
@@ -239,7 +239,7 @@ fi`;
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<label className="text-sm font-medium">Zabbix Username</label>
+									<label className="text-sm font-medium text-foreground">Zabbix Username</label>
 									<Input
 										value={zabbixUsername}
 										onChange={(e) => setZabbixUsername(e.target.value)}
@@ -249,7 +249,7 @@ fi`;
 									<p className="text-xs text-muted-foreground">Zabbix admin username</p>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium">Zabbix Password</label>
+									<label className="text-sm font-medium text-foreground">Zabbix Password</label>
 									<Input
 										type="password"
 										value={zabbixPassword}
@@ -264,7 +264,7 @@ fi`;
 
 						{/* Curl Command */}
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold">Run This Script</h3>
+							<h3 className="text-lg font-semibold text-foreground">Run This Script</h3>
 							<div className="relative">
 								<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto max-h-64 whitespace-pre-wrap">
 									{getCurlCommand({
@@ -300,7 +300,7 @@ fi`;
 						</div>
 
 						<div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-							<h4 className="font-semibold text-sm mb-2">⚠️ After Running the Script</h4>
+							<h4 className="font-semibold text-sm mb-2 text-foreground">⚠️ After Running the Script</h4>
 							<ol className="text-sm text-muted-foreground space-y-1 list-decimal ml-4">
 								<li>
 									Go to <strong>Users → Users</strong> in Zabbix and add the "OpsiMate" media to your
@@ -318,7 +318,7 @@ fi`;
 					<TabsContent value="quick" className="space-y-6 mt-4">
 						{/* Step 1: Webhook URL */}
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold flex items-center gap-2">
+							<h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
 								<span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
 									1
 								</span>
@@ -343,7 +343,7 @@ fi`;
 
 						{/* Step 2: Webhook Script */}
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold flex items-center gap-2">
+							<h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
 								<span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
 									2
 								</span>
@@ -370,7 +370,7 @@ fi`;
 
 						{/* Step 3: Parameters */}
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold flex items-center gap-2">
+							<h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
 								<span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
 									3
 								</span>
@@ -418,7 +418,7 @@ fi`;
 						</div>
 
 						<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
-							<h4 className="font-semibold text-sm mb-2">✨ Features</h4>
+							<h4 className="font-semibold text-sm mb-2 text-foreground">✨ Features</h4>
 							<ul className="text-sm text-muted-foreground space-y-1 list-disc ml-4">
 								<li>
 									<strong>Auto-resolve:</strong> Alerts are automatically archived when resolved in
@@ -436,11 +436,11 @@ fi`;
 
 					<TabsContent value="detailed" className="space-y-4 mt-4">
 						<div className="space-y-4">
-							<h3 className="text-lg font-semibold">Step-by-Step Configuration</h3>
+							<h3 className="text-lg font-semibold text-foreground">Step-by-Step Configuration</h3>
 
 							<div className="space-y-4 text-sm">
 								<div className="border rounded-lg p-4">
-									<h4 className="font-semibold mb-2">1. Create Media Type</h4>
+									<h4 className="font-semibold mb-2 text-foreground">1. Create Media Type</h4>
 									<ol className="list-decimal list-inside space-y-2 text-muted-foreground">
 										<li>
 											Go to <strong>Alerts → Media types</strong> in Zabbix
@@ -461,7 +461,7 @@ fi`;
 								</div>
 
 								<div className="border rounded-lg p-4">
-									<h4 className="font-semibold mb-2">2. Assign Media to User</h4>
+									<h4 className="font-semibold mb-2 text-foreground">2. Assign Media to User</h4>
 									<ol className="list-decimal list-inside space-y-2 text-muted-foreground">
 										<li>
 											Go to <strong>Users → Users</strong>
@@ -477,7 +477,7 @@ fi`;
 								</div>
 
 								<div className="border rounded-lg p-4">
-									<h4 className="font-semibold mb-2">3. Create Action</h4>
+									<h4 className="font-semibold mb-2 text-foreground">3. Create Action</h4>
 									<ol className="list-decimal list-inside space-y-2 text-muted-foreground">
 										<li>
 											Go to <strong>Alerts → Actions → Trigger actions</strong>
@@ -492,7 +492,7 @@ fi`;
 								</div>
 
 								<div className="border rounded-lg p-4">
-									<h4 className="font-semibold mb-2">4. Test the Integration</h4>
+									<h4 className="font-semibold mb-2 text-foreground">4. Test the Integration</h4>
 									<ol className="list-decimal list-inside space-y-2 text-muted-foreground">
 										<li>Trigger a test problem in Zabbix</li>
 										<li>Check OpsiMate Alerts page for the new alert</li>

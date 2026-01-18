@@ -23,13 +23,15 @@ export const AlertOwnerColumn = ({ alert, className, isArchived = false }: Alert
 	};
 
 	return (
-		<TableCell className={cn('py-1 px-2', className)} onClick={(e) => e.stopPropagation()}>
-			<PersonPicker
-				selectedUserId={alert.ownerId}
-				users={users}
-				onSelect={handleOwnerChange}
-				disabled={mutation.isPending}
-			/>
+		<TableCell className={cn('py-1 px-2', className)}>
+			<div onClick={(e) => e.stopPropagation()}>
+				<PersonPicker
+					selectedUserId={alert.ownerId}
+					users={users}
+					onSelect={handleOwnerChange}
+					disabled={mutation.isPending}
+				/>
+			</div>
 		</TableCell>
 	);
 };

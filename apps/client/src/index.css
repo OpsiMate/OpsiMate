@@ -110,7 +110,7 @@
 	}
 
 	.dark {
-		color-scheme: dark;
+		color-scheme: dark !important;
 	}
 
 	*:focus-visible {

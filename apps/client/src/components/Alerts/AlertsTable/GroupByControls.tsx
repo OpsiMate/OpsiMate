@@ -142,7 +142,7 @@ export const GroupByControls = ({
 								variant="ghost"
 								size="icon"
 								className={cn(
-									'h-7 w-7 rounded-md flex-shrink-0 border',
+									'h-7 w-7 rounded-md flex-shrink-0 border hover:bg-muted hover:text-foreground',
 									groupByColumns.length > 0 && 'text-primary border-primary'
 								)}
 							>
@@ -249,7 +249,7 @@ export const GroupByControls = ({
 										<CommandItem
 											key={col}
 											onSelect={() => handleAddColumn(col)}
-											className="cursor-pointer text-foreground"
+											className="cursor-pointer text-foreground hover:bg-muted/50"
 										>
 											{getLabel(col)}
 										</CommandItem>

@@ -108,7 +108,7 @@ export const DashboardHeader = ({
 						size="icon"
 						onClick={onSettingsClick}
 						title="Dashboard Settings"
-						className="rounded-full h-8 w-8 hover:bg-muted"
+						className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground"
 					>
 						<Settings className="h-4 w-4" />
 					</Button>
@@ -122,7 +122,7 @@ export const DashboardHeader = ({
 						title="Save Dashboard"
 						className="rounded-full h-8 w-8 hover:bg-muted"
 					>
-						<Save className="h-4 w-4 text-primary" />
+						<Save className="h-4 w-4 text-foreground" />
 					</Button>
 				)}
 			</div>
@@ -130,10 +130,10 @@ export const DashboardHeader = ({
 			<div className="flex items-center gap-2">
 				<div className="relative">
 					<div className="flex items-center h-8 w-64 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
-						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
 						<input
 							ref={searchInputRef}
-							className="flex h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+							className="flex h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
 							placeholder="Search dashboards..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
@@ -147,7 +147,7 @@ export const DashboardHeader = ({
 								{filteredDashboards.map((dashboard) => (
 									<li
 										key={dashboard.id}
-										className="px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm mx-1"
+										className="px-2 py-1.5 text-sm text-popover-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm mx-1"
 										onMouseDown={(e) => {
 											e.preventDefault();
 											onDashboardSelect?.(dashboard);
@@ -169,7 +169,7 @@ export const DashboardHeader = ({
 					size="icon"
 					onClick={onRefresh}
 					disabled={isRefreshing}
-					className="rounded-full h-8 w-8 hover:bg-muted"
+					className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground"
 					title="Refresh"
 				>
 					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
