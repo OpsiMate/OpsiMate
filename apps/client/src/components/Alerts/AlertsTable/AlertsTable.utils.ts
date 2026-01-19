@@ -186,6 +186,28 @@ export const groupAlerts = (
 	});
 };
 
+const getGroupStatus = (node: GroupNode): 'firing' | 'resolved' | 'dismissed' => {
+	if (node.type === 'leaf') {
+		if (node.alert.isDismissed) return 'dismissed';
+		return node.alert.status === 'firing' ? 'firing' : 'resolved';
+	}
+
+	let hasFiring = false;
+	let hasResolved = false;
+	let hasDismissed = false;
+
+	for (const child of node.children) {
+		const childStatus = getGroupStatus(child);
+		if (childStatus === 'firing') hasFiring = true;
+		else if (childStatus === 'resolved') hasResolved = true;
+		else if (childStatus === 'dismissed') hasDismissed = true;
+	}
+
+	if (hasFiring) return 'firing';
+	if (hasResolved) return 'resolved';
+	return 'dismissed';
+};
+
 export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): FlatGroupItem[] => {
 	const result: FlatGroupItem[] = [];
 
@@ -195,6 +217,7 @@ export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): Fl
 				result.push({ type: 'leaf', alert: node.alert });
 			} else {
 				const isExpanded = expandedKeys.has(node.key);
+				const groupStatus = getGroupStatus(node);
 				result.push({
 					type: 'group',
 					key: node.key,
@@ -203,6 +226,7 @@ export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): Fl
 					count: node.count,
 					level: node.level,
 					isExpanded,
+					groupStatus,
 				});
 
 				if (isExpanded) {

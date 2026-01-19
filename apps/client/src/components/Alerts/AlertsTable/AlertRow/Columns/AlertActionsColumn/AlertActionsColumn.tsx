@@ -21,7 +21,6 @@ export const AlertActionsColumn = ({
 		<TableCell
 			className={ACTIONS_COLUMN_PADDING}
 			style={{ width: ACTIONS_COLUMN_WIDTH, minWidth: ACTIONS_COLUMN_WIDTH, maxWidth: ACTIONS_COLUMN_WIDTH }}
-			onClick={(e) => e.stopPropagation()}
 		>
 			<RowActions
 				alert={alert}

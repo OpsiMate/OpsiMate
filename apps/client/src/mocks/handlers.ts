@@ -245,7 +245,7 @@ export const handlers = [
 		};
 
 		playgroundState.tags.push(newTag);
-		return HttpResponse.json({ success: true, data: { tag: newTag } });
+		return HttpResponse.json({ success: true, data: newTag });
 	}),
 
 	http.delete(`${API_BASE}/tags/:id`, ({ params }) => {
@@ -310,6 +310,76 @@ export const handlers = [
 		return HttpResponse.json({ success: true, message: 'dashboards deleted successfully' });
 	}),
 
+	// Dashboard Tags
+	http.get(`${API_BASE}/dashboards/tags`, () => {
+		const dashboardTags: Array<{ dashboardId: string; tags: typeof playgroundState.tags }> = [];
+		for (const dashboard of playgroundState.dashboards) {
+			const tagIds = playgroundState.dashboardTags[dashboard.id] || [];
+			const tags = playgroundState.tags.filter((t) => tagIds.includes(t.id));
+			dashboardTags.push({
+				dashboardId: dashboard.id,
+				tags,
+			});
+		}
+		return HttpResponse.json({
+			success: true,
+			data: dashboardTags,
+		});
+	}),
+
+	http.get(`${API_BASE}/dashboards/:dashboardId/tags`, ({ params }) => {
+		const dashboardId = params.dashboardId as string;
+		const dashboard = playgroundState.dashboards.find((d) => d.id === dashboardId);
+		if (!dashboard) {
+			return HttpResponse.json({ success: false, error: 'Dashboard not found' }, { status: 404 });
+		}
+		const tagIds = playgroundState.dashboardTags[dashboardId] || [];
+		const tags = playgroundState.tags.filter((t) => tagIds.includes(t.id));
+		return HttpResponse.json({
+			success: true,
+			data: tags,
+		});
+	}),
+
+	http.post(`${API_BASE}/dashboards/:dashboardId/tags`, async ({ params, request }) => {
+		const dashboardId = params.dashboardId as string;
+		const body = (await request.json()) as { tagId: number };
+		const dashboard = playgroundState.dashboards.find((d) => d.id === dashboardId);
+		if (!dashboard) {
+			return HttpResponse.json({ success: false, error: 'Dashboard not found' }, { status: 404 });
+		}
+		const tag = playgroundState.tags.find((t) => t.id === body.tagId);
+		if (!tag) {
+			return HttpResponse.json({ success: false, error: 'Tag not found' }, { status: 404 });
+		}
+		if (!playgroundState.dashboardTags[dashboardId]) {
+			playgroundState.dashboardTags[dashboardId] = [];
+		}
+		if (!playgroundState.dashboardTags[dashboardId].includes(body.tagId)) {
+			playgroundState.dashboardTags[dashboardId].push(body.tagId);
+		}
+		return HttpResponse.json({ success: true });
+	}),
+
+	http.delete(`${API_BASE}/dashboards/:dashboardId/tags/:tagId`, ({ params }) => {
+		const dashboardId = params.dashboardId as string;
+		const tagId = Number(params.tagId);
+		const dashboard = playgroundState.dashboards.find((d) => d.id === dashboardId);
+		if (!dashboard) {
+			return HttpResponse.json({ success: false, error: 'Dashboard not found' }, { status: 404 });
+		}
+		const tag = playgroundState.tags.find((t) => t.id === tagId);
+		if (!tag) {
+			return HttpResponse.json({ success: false, error: 'Tag not found' }, { status: 404 });
+		}
+		if (playgroundState.dashboardTags[dashboardId]) {
+			playgroundState.dashboardTags[dashboardId] = playgroundState.dashboardTags[dashboardId].filter(
+				(id) => id !== tagId
+			);
+		}
+		return HttpResponse.json({ success: true });
+	}),
+
 	// ==================== SAVED VIEWS ====================
 	http.get(`${API_BASE}/views`, () => {
 		return HttpResponse.json({
@@ -362,6 +432,13 @@ export const handlers = [
 	}),
 
 	http.get(`${API_BASE}/users/me`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: getPlaygroundUser(),
+		});
+	}),
+
+	http.get(`${API_BASE}/users/profile`, () => {
 		return HttpResponse.json({
 			success: true,
 			data: getPlaygroundUser(),

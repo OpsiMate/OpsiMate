@@ -1,5 +1,5 @@
 // src/App.tsx
-import { Actions, Alerts, AuthGuard, Dashboard, Profile, Providers, ThemeProvider } from '@/components';
+import { Alerts, AuthGuard, Profile, ThemeProvider } from '@/components';
 import { Dashboards } from '@/components/Dashboards';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { UnsavedChangesDialog } from '@/components/shared';
@@ -30,7 +30,14 @@ const queryClient = new QueryClient();
 const App: React.FC = () => {
 	return (
 		<ChakraProvider>
-			<ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme">
+			<ThemeProvider
+				attribute="class"
+				defaultTheme="system"
+				enableSystem
+				disableTransitionOnChange
+				enableColorScheme={false}
+				storageKey="theme"
+			>
 				<QueryClientProvider client={queryClient}>
 					<DashboardProvider>
 						<TooltipProvider>

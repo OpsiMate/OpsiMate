@@ -14,7 +14,7 @@ export const TypeAvatarStack = ({ alert }: TypeAvatarStackProps) => {
 			<div className="flex -space-x-1.5 flex-shrink-0" aria-label={`${integrationLabel} alert type`}>
 				<IntegrationAvatar integration={integration} size="sm" className="ring-2 ring-background shadow-sm" />
 			</div>
-			<span className="text-xs font-medium text-muted-foreground truncate" title={integrationLabel}>
+			<span className="text-xs font-medium text-foreground truncate" title={integrationLabel}>
 				{integrationLabel}
 			</span>
 		</div>

@@ -39,11 +39,7 @@ export const PersonPicker = ({
 					variant="ghost"
 					size="sm"
 					disabled={disabled}
-					className={cn(
-						'h-6 px-2 gap-1.5 text-xs font-normal justify-start',
-						!selectedUser && 'text-muted-foreground',
-						className
-					)}
+					className={cn('h-6 px-2 gap-1.5 text-xs font-normal justify-start text-foreground', className)}
 					onClick={(e) => e.stopPropagation()}
 				>
 					{selectedUser ? (
@@ -74,8 +70,8 @@ export const PersonPicker = ({
 									!selectedUserId && 'bg-muted'
 								)}
 							>
-								<UserX className="h-4 w-4 text-muted-foreground" />
-								<span className="text-muted-foreground flex-1">Unassigned</span>
+								<UserX className="h-4 w-4 text-foreground" />
+								<span className="text-foreground flex-1">Unassigned</span>
 								{!selectedUserId && <Check className="h-4 w-4 text-primary" />}
 							</CommandItem>
 							{users.map((user) => {
@@ -93,8 +89,8 @@ export const PersonPicker = ({
 											{getInitials(user.fullName)}
 										</div>
 										<div className="flex flex-col flex-1">
-											<span className="text-sm">{user.fullName}</span>
-											<span className="text-xs text-muted-foreground">{user.email}</span>
+											<span className="text-sm text-foreground">{user.fullName}</span>
+											<span className="text-xs text-foreground opacity-70">{user.email}</span>
 										</div>
 										{isSelected && <Check className="h-4 w-4 text-primary" />}
 									</CommandItem>

@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth';
+import { cn } from '@/lib/utils';
+import { useLocation } from 'react-router-dom';
+import { PreserveQueryLink } from './PreserveQueryLink';
 
 interface ProfileButtonProps {
 	collapsed: boolean;
@@ -26,13 +27,13 @@ export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 		<Button
 			variant={isActive ? 'default' : 'ghost'}
 			className={cn(
-				'gap-3 h-10 items-center group text-foreground',
+				'gap-3 h-10 items-center group text-foreground hover:bg-muted hover:text-foreground',
 				collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3',
 				isActive && 'text-primary-foreground'
 			)}
 			asChild
 		>
-			<Link to="/profile">
+			<PreserveQueryLink to="/profile">
 				<div
 					className={cn(
 						'flex items-center justify-center rounded-full border transition-colors duration-200',
@@ -51,7 +52,7 @@ export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 					</span>
 				</div>
 				<span className={cn('font-medium', collapsed && 'sr-only')}>Profile</span>
-			</Link>
+			</PreserveQueryLink>
 		</Button>
 	);
 };

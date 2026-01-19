@@ -289,7 +289,7 @@ const Alerts = () => {
 										value={AlertTab.Active}
 										aria-label="Active alerts"
 										size="sm"
-										className="gap-1.5 text-foreground hover:bg-primary/10 hover:text-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
 									>
 										<Bell className="h-4 w-4" />
 										<span>Active</span>
@@ -298,7 +298,7 @@ const Alerts = () => {
 										value={AlertTab.Archived}
 										aria-label="Archived alerts"
 										size="sm"
-										className="gap-1.5 text-foreground hover:bg-primary/10 hover:text-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
 									>
 										<Archive className="h-4 w-4" />
 										<span>Archived</span>
@@ -306,8 +306,8 @@ const Alerts = () => {
 								</ToggleGroup>
 								<span className="text-sm text-muted-foreground">
 									{activeTab === AlertTab.Active
-										? `${filteredAlerts.length} alert${filteredAlerts.length !== 1 ? 's' : ''}`
-										: `${filteredArchivedAlerts.length} alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
+										? `${filteredAlerts.length} Alert${filteredAlerts.length !== 1 ? 's' : ''}`
+										: `${filteredArchivedAlerts.length} Alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
 								</span>
 							</div>
 						</div>

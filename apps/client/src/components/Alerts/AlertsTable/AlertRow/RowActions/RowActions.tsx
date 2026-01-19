@@ -48,7 +48,7 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-6 w-6 rounded-full text-foreground"
+							className="h-6 w-6 rounded-full text-foreground hover:bg-muted hover:text-foreground"
 							onClick={(event) => event.stopPropagation()}
 							title="More actions"
 						>
