@@ -1,11 +1,12 @@
 import { Logger } from '@OpsiMate/shared';
 import nodemailer from 'nodemailer';
 import { getMailerConfig } from '../../config/config';
-import { passwordResetTemplate, welcomeTemplate } from '../../utils/mailTemplate';
+import { passwordResetTemplate, welcomeTemplate, playgroundDemoTemplate } from '../../utils/mailTemplate';
 
 export enum MailType {
 	PASSWORD_RESET = 'PASSWORD_RESET',
 	WELCOME = 'WELCOME',
+	PLAYGROUND_DEMO = 'PLAYGROUND_DEMO',
 }
 
 interface SendMailOptions {
@@ -16,6 +17,8 @@ interface SendMailOptions {
 	text?: string;
 	token?: string;
 	customTemplateBody?: string;
+	demo_user_email?: string;
+	demo_user_tracking_id?: string;
 }
 
 const logger = new Logger('service/mail.service');
@@ -116,6 +119,15 @@ export class MailClient {
 	}
 
 	/**
+	 * Gets the playground demo email template.
+	 * @param options
+	 * @returns string
+	 */
+	private getPlaygroundDemoTemplate(options: SendMailOptions): string {
+		return playgroundDemoTemplate(options.demo_user_email, options.demo_user_tracking_id);
+	}
+
+	/**
 	 * Gets the appropriate mail template based on the mail type.
 	 * @param options
 	 * @returns string
@@ -126,6 +138,8 @@ export class MailClient {
 				return this.getResetPasswordTemplate(options);
 			case MailType.WELCOME:
 				return this.getWelcomeTemplate(options);
+			case MailType.PLAYGROUND_DEMO:
+				return this.getPlaygroundDemoTemplate(options);
 			default:
 				throw new Error(`Unsupported mail type`);
 		}
@@ -143,6 +157,11 @@ export class MailClient {
 					return this.mailerConfig.templates.welcomeTemplate.subject;
 				}
 				return 'Welcome to OpsiMate!';
+			case MailType.PLAYGROUND_DEMO:
+				if (options.subject) {
+					return options.subject;
+				}
+				return 'OpsiMate - New Demo Request';
 			default:
 				return 'OpsiMate Notification';
 		}

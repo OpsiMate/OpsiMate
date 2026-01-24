@@ -11,7 +11,7 @@ import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { Tag } from '@OpsiMate/shared';
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardWithFavorite } from './Dashboards.types';
 import { filterDashboards, getFavoriteDashboards, toggleFavorite } from './Dashboards.utils';
 import { DashboardsFilter } from './DashboardsFilter';
@@ -19,6 +19,7 @@ import { DashboardsTable } from './DashboardsTable';
 
 export const Dashboards = () => {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { toast } = useToast();
 	const { data: dashboards = [], isLoading } = useGetDashboards();
 	const { data: dashboardTagsData = [] } = useGetAllDashboardTags();
@@ -90,9 +91,9 @@ export const Dashboards = () => {
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
 			});
-			navigate('/alerts');
+			navigate(`/alerts${location.search}`);
 		},
-		[navigate, setInitialState]
+		[navigate, setInitialState, location.search]
 	);
 
 	const handleDeleteDashboard = useCallback(
@@ -154,8 +155,8 @@ export const Dashboards = () => {
 
 	const handleCreateDashboard = useCallback(() => {
 		resetDashboard();
-		navigate('/alerts');
-	}, [navigate, resetDashboard]);
+		navigate(`/alerts${location.search}`);
+	}, [navigate, resetDashboard, location.search]);
 
 	return (
 		<DashboardLayout>

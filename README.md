@@ -31,6 +31,7 @@
 <p align="center">
   <a href="https://opsimate.vercel.app/docs/getting-started/deploy">Get Started</a> ·
   <a href="https://opsimate.vercel.app/">Docs</a> ·
+  <a href="https://demo.opsimate.com/?playground=true">Demo</a> ·
   <a href="https://www.opsimate.com/">Website</a> ·
   <a href="https://github.com/OpsiMate/OpsiMate/issues/new?labels=bug&template=bug_report.md">Report Bug</a>
 </p>

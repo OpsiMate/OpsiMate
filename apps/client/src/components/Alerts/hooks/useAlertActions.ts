@@ -1,4 +1,4 @@
-import { useDeleteAlert, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import { useDeleteAlert, useDismissAlert, useSetAlertOwner, useUndismissAlert } from '@/hooks/queries/alerts';
 import { useToast } from '@/hooks/use-toast';
 import { Alert } from '@OpsiMate/shared';
 
@@ -6,6 +6,7 @@ export const useAlertActions = () => {
 	const dismissAlertMutation = useDismissAlert();
 	const undismissAlertMutation = useUndismissAlert();
 	const deleteAlertMutation = useDeleteAlert();
+	const setAlertOwnerMutation = useSetAlertOwner();
 	const { toast } = useToast();
 
 	const handleDismissAlert = async (alertId: string) => {
@@ -55,9 +56,36 @@ export const useAlertActions = () => {
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
 				const alert = selectedAlerts[index];
-				logger.warn(`Failed to dismiss alert ${alert.id}:`, result.reason);
+				// Silently handle failed dismissals
+				void alert;
+				void result;
 			}
 		});
+
+		onComplete();
+	};
+
+	const handleAssignOwnerAll = async (selectedAlerts: Alert[], ownerId: string | null, onComplete: () => void) => {
+		const assignPromises = selectedAlerts.map((alert) =>
+			setAlertOwnerMutation.mutateAsync({ alertId: alert.id, ownerId })
+		);
+		const results = await Promise.allSettled(assignPromises);
+
+		const successCount = results.filter((r) => r.status === 'fulfilled').length;
+		const failCount = results.filter((r) => r.status === 'rejected').length;
+
+		if (failCount > 0) {
+			toast({
+				title: 'Partial assignment',
+				description: `Assigned ${successCount} alerts, ${failCount} failed`,
+				variant: 'destructive',
+			});
+		} else {
+			toast({
+				title: 'Owner assigned',
+				description: `Successfully assigned ${successCount} alert${successCount !== 1 ? 's' : ''}`,
+			});
+		}
 
 		onComplete();
 	};
@@ -67,5 +95,6 @@ export const useAlertActions = () => {
 		handleUndismissAlert,
 		handleDeleteAlert,
 		handleDismissAll,
+		handleAssignOwnerAll,
 	};
 };

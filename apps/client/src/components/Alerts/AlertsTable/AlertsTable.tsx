@@ -19,7 +19,7 @@ import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
-import { useAlertGrouping, useAlertSelection, useAlertSorting, useStickyHeaders } from './hooks';
+import { useAlertGrouping, useAlertSelection, useAlertSorting, useDragSelection, useStickyHeaders } from './hooks';
 import { SearchBar } from './SearchBar';
 import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
@@ -63,6 +63,10 @@ export const AlertsTable = ({
 		onGroupByChange
 	);
 	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
+	const { isDragging, handleDragStart, handleDragEnter, handleDragEnd } = useDragSelection({
+		selectedAlerts,
+		onSelectAlerts,
+	});
 
 	const virtualizer = useVirtualizer({
 		count: flatRows.length,
@@ -234,6 +238,10 @@ export const AlertsTable = ({
 									onSelectAlerts={onSelectAlerts}
 									columnLabels={allColumnLabels}
 									isArchived={isArchived}
+									isDragging={isDragging}
+									onDragStart={handleDragStart}
+									onDragEnter={handleDragEnter}
+									onDragEnd={() => handleDragEnd(handleSelectAlert)}
 								/>
 							)}
 						</div>

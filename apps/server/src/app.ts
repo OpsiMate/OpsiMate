@@ -140,7 +140,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionBL = new CustomActionBL(customActionRepo, providerBL, servicesBL, serviceCustomFieldBL);
 	const tagBL = new TagBL(tagRepo);
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
-	const playgroundBL = new PlaygroundBL(playgroundRepo);
+	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);

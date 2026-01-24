@@ -90,3 +90,27 @@ export function welcomeTemplate(customBody?: string, userName?: string) {
 
 	return buildEmailSkeleton(content);
 }
+
+/**
+ * Template for playground demo notification email
+ * @param email Optional email of the person who booked the demo
+ * @param trackingId Optional tracking ID for the demo request
+ * @returns string
+ */
+export function playgroundDemoTemplate(email?: string, trackingId?: string) {
+	const content = `
+    <p style="color: #4a5568; margin-bottom: 24px;">
+      A new demo has been requested through the playground!
+    </p>
+    <div style="background-color: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+      ${email ? `<p style="margin: 8px 0; color: #4a5568;"><strong>Contact Email:</strong> ${email}</p>` : ''}
+      ${trackingId ? `<p style="margin: 8px 0; color: #4a5568;"><strong>Tracking ID:</strong> ${trackingId}</p>` : ''}
+      <p style="margin: 8px 0; color: #4a5568;"><strong>Request Time:</strong> ${new Date().toLocaleString()}</p>
+    </div>
+    <p style="color: #4a5568; margin-bottom: 24px;">
+      Please follow up with the requester as soon as possible to schedule the demo.
+    </p>
+  `;
+
+	return buildEmailSkeleton(content, 'New Demo Request');
+}

@@ -79,7 +79,7 @@ async function apiRequest<T>(
 				localStorage.removeItem('jwt');
 
 				const authPages = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
-				if (!authPages.has(location.pathname)) {
+				if (!authPages.has(window.location.pathname)) {
 					window.location.href = '/login?expired=true';
 				}
 			}
