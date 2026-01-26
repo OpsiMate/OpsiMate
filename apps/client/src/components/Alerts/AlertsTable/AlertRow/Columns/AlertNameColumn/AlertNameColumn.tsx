@@ -9,7 +9,7 @@ export interface AlertNameColumnProps {
 
 export const AlertNameColumn = ({ alert, className }: AlertNameColumnProps) => {
 	return (
-		<TableCell className={cn('py-1 px-2', className)}>
+		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
 			<span className="text-sm font-medium truncate block text-foreground" title={alert.alertName}>
 				{alert.alertName}
 			</span>

@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { cn } from '@/lib/utils';
 import { Plus, RefreshCw, Save, Search, Settings, Tv } from 'lucide-react';
@@ -75,61 +76,88 @@ export const DashboardHeader = ({
 	};
 
 	return (
-		<div className="flex items-center justify-between mb-4">
-			<div className="flex-1 flex items-center gap-4">
-				{isEditingName ? (
-					<Input
-						ref={inputRef}
-						value={dashboardName}
-						onChange={(e) => onDashboardNameChange(e.target.value)}
-						onBlur={handleNameBlur}
-						onKeyDown={handleKeyDown}
-						className="text-2xl font-bold h-10 w-auto min-w-[200px] max-w-[400px]"
-					/>
-				) : (
-					<div className="flex items-center gap-2">
-						<div
-							onClick={handleNameClick}
-							className="text-2xl font-bold tracking-tight text-foreground cursor-pointer border border-transparent hover:border-input rounded px-2 py-1 -ml-2 transition-colors"
-						>
-							{dashboardName || 'New Dashboard'}
+		<div className="flex flex-col gap-3">
+			<div className="flex items-center justify-between">
+				<div className="flex-1 flex items-center gap-2 min-w-0">
+					{isEditingName ? (
+						<Input
+							ref={inputRef}
+							value={dashboardName}
+							onChange={(e) => onDashboardNameChange(e.target.value)}
+							onBlur={handleNameBlur}
+							onKeyDown={handleKeyDown}
+							className="text-xl font-bold h-9 w-auto min-w-[150px] max-w-[300px]"
+						/>
+					) : (
+						<div className="flex items-center gap-2 min-w-0">
+							<div
+								onClick={handleNameClick}
+								className="text-xl font-bold tracking-tight text-foreground cursor-pointer border border-transparent hover:border-input rounded px-2 py-1 -ml-2 transition-colors truncate"
+								title={dashboardName || 'New Dashboard'}
+							>
+								{dashboardName || 'New Dashboard'}
+							</div>
+							{isDraft && (
+								<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none flex-shrink-0">
+									Draft
+								</span>
+							)}
 						</div>
-						{isDraft && (
-							<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none">
-								Draft
-							</span>
-						)}
-					</div>
-				)}
+					)}
 
-				{onSettingsClick && (
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={onSettingsClick}
-						title="Dashboard Settings"
-						className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground"
-					>
-						<Settings className="h-4 w-4" />
-					</Button>
-				)}
+					{onSettingsClick && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onSettingsClick}
+							title="Dashboard Settings"
+							className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground flex-shrink-0"
+						>
+							<Settings className="h-4 w-4" />
+						</Button>
+					)}
 
-				{isDirty && (
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={onSave}
-						title="Save Dashboard"
-						className="rounded-full h-8 w-8 hover:bg-muted"
-					>
-						<Save className="h-4 w-4 text-foreground" />
-					</Button>
-				)}
+					{isDirty && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onSave}
+							title="Save Dashboard"
+							className="rounded-full h-8 w-8 hover:bg-muted flex-shrink-0"
+						>
+							<Save className="h-4 w-4 text-foreground" />
+						</Button>
+					)}
+				</div>
+
+				<div className="flex items-center gap-2 flex-shrink-0">
+					{onNewDashboard && (
+						<Button size="sm" onClick={onNewDashboard} className="gap-2">
+							<Plus className="h-4 w-4" />
+							<span className="hidden sm:inline">New Dashboard</span>
+						</Button>
+					)}
+
+					{showTvModeButton && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span>
+									<Button size="sm" disabled className="gap-2 opacity-50 cursor-not-allowed">
+										<Tv className="h-4 w-4" />
+									</Button>
+								</span>
+							</TooltipTrigger>
+							<TooltipContent side="bottom" className="max-w-[200px] text-center">
+								<p>This feature is not available in the playground. Book a demo to see it in action.</p>
+							</TooltipContent>
+						</Tooltip>
+					)}
+				</div>
 			</div>
 
 			<div className="flex items-center gap-2">
-				<div className="relative">
-					<div className="flex items-center h-8 w-64 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
+				<div className="relative flex-1 min-w-0">
+					<div className="flex items-center h-8 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
 						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
 						<input
 							ref={searchInputRef}
@@ -142,7 +170,7 @@ export const DashboardHeader = ({
 						/>
 					</div>
 					{isSearchFocused && filteredDashboards.length > 0 && (
-						<div className="absolute left-0 top-10 z-50 w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
+						<div className="absolute left-0 top-10 z-50 w-full max-w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
 							<ul className="max-h-[300px] overflow-y-auto py-1">
 								{filteredDashboards.map((dashboard) => (
 									<li
@@ -169,24 +197,11 @@ export const DashboardHeader = ({
 					size="icon"
 					onClick={onRefresh}
 					disabled={isRefreshing}
-					className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground"
+					className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground flex-shrink-0"
 					title="Refresh"
 				>
 					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
 				</Button>
-
-				{onNewDashboard && (
-					<Button size="sm" onClick={onNewDashboard} className="gap-2">
-						<Plus className="h-4 w-4" />
-						New Dashboard
-					</Button>
-				)}
-
-				{showTvModeButton && onLaunchTVMode && (
-					<Button size="sm" onClick={onLaunchTVMode} className="gap-2">
-						<Tv className="h-4 w-4" />
-					</Button>
-				)}
 			</div>
 		</div>
 	);

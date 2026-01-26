@@ -10,7 +10,7 @@ export interface AlertTypeColumnProps {
 
 export const AlertTypeColumn = ({ alert, className }: AlertTypeColumnProps) => {
 	return (
-		<TableCell className={cn('py-1 px-2', className)}>
+		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
 			<TypeAvatarStack alert={alert} />
 		</TableCell>
 	);
