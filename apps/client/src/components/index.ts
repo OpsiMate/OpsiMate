@@ -47,7 +47,7 @@ export { ThemeToggle } from './ThemeToggle';
 export { TVModeLauncher } from './TVModeLauncher';
 export { ValidationFeedback, validationRules } from './ValidationFeedback';
 
-export * from './shared';
 export * from './Actions';
 export * from './Dashboard';
 export * from './Profile';
+export * from './shared';
