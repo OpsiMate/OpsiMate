@@ -1,5 +1,5 @@
 // src/App.tsx
-import { Alerts, AuthGuard, Profile, ThemeProvider } from '@/components';
+import { Alerts, AuthGuard, MobileWebOverlay, Profile, ThemeProvider } from '@/components';
 import { Dashboards } from '@/components/Dashboards';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { UnsavedChangesDialog } from '@/components/shared';
@@ -66,6 +66,7 @@ const App: React.FC = () => {
 							</BrowserRouter>
 
 							<ScrollToTopButton />
+							<MobileWebOverlay />
 						</TooltipProvider>
 					</DashboardProvider>
 				</QueryClientProvider>
