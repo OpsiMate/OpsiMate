@@ -36,3 +36,9 @@ private-keys/*
 *.timestamp-*.mjs
 .turbo
 .cursor/mcp.json
+
+
+# terraform files
+infrastructure/terraform/*.tfvars
+infrastructure/terraform/.terraform/
+infrastructure/terraform/.terraform.lock.hcl
