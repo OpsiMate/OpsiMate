@@ -138,19 +138,10 @@ export const DashboardHeader = ({
 						</Button>
 					)}
 
-					{showTvModeButton && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<span>
-									<Button size="sm" disabled className="gap-2 opacity-50 cursor-not-allowed">
-										<Tv className="h-4 w-4" />
-									</Button>
-								</span>
-							</TooltipTrigger>
-							<TooltipContent side="bottom" className="max-w-[200px] text-center">
-								<p>This feature is not available in the playground. Book a demo to see it in action.</p>
-							</TooltipContent>
-						</Tooltip>
+					{showTvModeButton && onLaunchTVMode && (
+						<Button size="sm" onClick={onLaunchTVMode} className="gap-2">
+							<Tv className="h-4 w-4" />
+						</Button>
 					)}
 				</div>
 			</div>
