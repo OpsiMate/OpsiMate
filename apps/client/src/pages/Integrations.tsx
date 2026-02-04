@@ -9,6 +9,7 @@ import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
 import { DatadogSetupModal } from '@/components/Integrations/DatadogSetupModal';
 import { ZabbixSetupModal } from '@/components/Integrations/ZabbixSetupModal';
+import { CustomAlertsSetupModal } from '@/components/Integrations/CustomAlertsSetupModal';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -50,6 +51,7 @@ import {
 	Search,
 	Server,
 	Settings,
+	Webhook,
 	X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -101,7 +103,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Receive alerts from Uptime Kuma monitoring via webhook.',
 		logo: UptimeKumaIcon,
 		tags: ['Monitoring', 'Alerts', 'Uptime'],
-		documentationUrl: 'https://github.com/louislam/uptime-kuma/wiki/Notifications',
+		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/uptime-kuma',
 		configFields: [],
 		enabled: true, // integration is enabled by default
 	},
@@ -153,7 +155,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Enterprise-class open source monitoring solution for networks and applications.',
 		logo: ZabbixIcon,
 		tags: ['Monitoring', 'Alerts', 'Infrastructure'],
-		documentationUrl: 'https://www.zabbix.com/documentation/current/en/manual/config/notifications/media/webhook',
+		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/zabbix',
 		configFields: [],
 		enabled: true,
 	},
@@ -170,6 +172,17 @@ const INTEGRATIONS: Integration[] = [
 			{ name: 'applicationName', label: 'Application Name', type: 'text', required: true },
 			{ name: 'subsystemName', label: 'Subsystem Name', type: 'text', required: true },
 		],
+	},
+	{
+		id: 'custom-alerts',
+		supported: true,
+		name: 'Custom Webhook',
+		description: 'Send alerts from any source via HTTP POST requests. Perfect for custom scripts and tools.',
+		logo: ({ className }: { className?: string }) => <Webhook className={className} />,
+		tags: ['Alerts', 'Monitoring'],
+		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/custom-alerts',
+		configFields: [],
+		enabled: true,
 	},
 ];
 
@@ -250,6 +263,7 @@ const Integrations = () => {
 	const [showUptimeKumaSetupModal, setShowUptimeKumaSetupModal] = useState(false);
 	const [showDatadogSetupModal, setShowDatadogSetupModal] = useState(false);
 	const [showZabbixSetupModal, setShowZabbixSetupModal] = useState(false);
+	const [showCustomAlertsSetupModal, setShowCustomAlertsSetupModal] = useState(false);
 	const { toast } = useToast();
 
 	// Handle URL-based category filtering
@@ -516,6 +530,12 @@ const Integrations = () => {
 												// Special handling for Uptime Kuma - show webhook setup modal
 												if (integration.id === 'uptimekuma') {
 													setShowUptimeKumaSetupModal(true);
+													return;
+												}
+
+												// Special handling for Custom Alerts - show setup modal
+												if (integration.id === 'custom-alerts') {
+													setShowCustomAlertsSetupModal(true);
 													return;
 												}
 
@@ -1069,6 +1089,7 @@ const Integrations = () => {
 			<UptimeKumaSetupModal open={showUptimeKumaSetupModal} onOpenChange={setShowUptimeKumaSetupModal} />
 			<DatadogSetupModal open={showDatadogSetupModal} onOpenChange={setShowDatadogSetupModal} />
 			<ZabbixSetupModal open={showZabbixSetupModal} onOpenChange={setShowZabbixSetupModal} />
+			<CustomAlertsSetupModal open={showCustomAlertsSetupModal} onOpenChange={setShowCustomAlertsSetupModal} />
 		</>
 	);
 };

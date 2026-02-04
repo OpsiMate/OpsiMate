@@ -1,0 +1,1 @@
+export { CustomAlertsSetupModal } from './CustomAlertsSetupModal';
