@@ -69,9 +69,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 			<DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="text-2xl">Custom Alerts / Webhook Integration</DialogTitle>
-					<DialogDescription>
-						Send alerts to OpsiMate from any source using HTTP requests
-					</DialogDescription>
+					<DialogDescription>Send alerts to OpsiMate from any source using HTTP requests</DialogDescription>
 				</DialogHeader>
 
 				<Tabs defaultValue="create" className="w-full">
@@ -101,7 +99,11 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 							</div>
 							<div className="flex gap-2">
 								<Input value={webhookUrl} readOnly className="font-mono text-sm" />
-								<Button onClick={() => handleCopy(webhookUrl, 'url')} variant="outline" className="gap-2">
+								<Button
+									onClick={() => handleCopy(webhookUrl, 'url')}
+									variant="outline"
+									className="gap-2"
+								>
 									{copiedUrl ? (
 										<>
 											<Check className="h-4 w-4" />
@@ -178,7 +180,9 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											<td className="p-3">
 												<span className="text-red-600 dark:text-red-400 font-medium">Yes</span>
 											</td>
-											<td className="p-3 text-muted-foreground">Unique identifier for the alert</td>
+											<td className="p-3 text-muted-foreground">
+												Unique identifier for the alert
+											</td>
 										</tr>
 										<tr>
 											<td className="p-3 font-mono text-xs">alertName</td>
@@ -192,7 +196,9 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											<td className="p-3">
 												<span className="text-red-600 dark:text-red-400 font-medium">Yes</span>
 											</td>
-											<td className="p-3 text-muted-foreground">Key-value pairs for categorization</td>
+											<td className="p-3 text-muted-foreground">
+												Key-value pairs for categorization
+											</td>
 										</tr>
 										<tr>
 											<td className="p-3 font-mono text-xs">alertUrl</td>
@@ -206,21 +212,27 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											<td className="p-3">
 												<span className="text-muted-foreground">No</span>
 											</td>
-											<td className="p-3 text-muted-foreground">Brief description of the alert</td>
+											<td className="p-3 text-muted-foreground">
+												Brief description of the alert
+											</td>
 										</tr>
 										<tr>
 											<td className="p-3 font-mono text-xs">startsAt</td>
 											<td className="p-3">
 												<span className="text-muted-foreground">No</span>
 											</td>
-											<td className="p-3 text-muted-foreground">ISO date string (defaults to current time)</td>
+											<td className="p-3 text-muted-foreground">
+												ISO date string (defaults to current time)
+											</td>
 										</tr>
 										<tr>
 											<td className="p-3 font-mono text-xs">updatedAt</td>
 											<td className="p-3">
 												<span className="text-muted-foreground">No</span>
 											</td>
-											<td className="p-3 text-muted-foreground">ISO date string for last update</td>
+											<td className="p-3 text-muted-foreground">
+												ISO date string for last update
+											</td>
 										</tr>
 										<tr>
 											<td className="p-3 font-mono text-xs">runbookUrl</td>
@@ -238,7 +250,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<div className="space-y-3">
 							<h3 className="text-lg font-semibold text-foreground">4. Example cURL Request</h3>
 							<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto border whitespace-pre-wrap">
-{`curl -X POST "${API_HOST}/api/v1/alerts/custom?api_token=YOUR_TOKEN" \\
+								{`curl -X POST "${API_HOST}/api/v1/alerts/custom?api_token=YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
     "id": "alert-123",
@@ -256,12 +268,17 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 							<div>
 								<h3 className="text-lg font-semibold mb-2 text-foreground">1. Archive Endpoint</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Send a DELETE request to archive an active alert. The alert will be moved to the archived alerts table.
+									Send a DELETE request to archive an active alert. The alert will be moved to the
+									archived alerts table.
 								</p>
 							</div>
 							<div className="flex gap-2">
 								<Input value={archiveUrl} readOnly className="font-mono text-sm" />
-								<Button onClick={() => handleCopy(archiveUrl, 'archive')} variant="outline" className="gap-2">
+								<Button
+									onClick={() => handleCopy(archiveUrl, 'archive')}
+									variant="outline"
+									className="gap-2"
+								>
 									{copiedArchive ? (
 										<>
 											<Check className="h-4 w-4" />
@@ -307,7 +324,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<div className="space-y-3">
 							<h3 className="text-lg font-semibold text-foreground">3. Example cURL Request</h3>
 							<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto border">
-{`curl -X DELETE "${API_HOST}/api/v1/alerts/alert-123?api_token=YOUR_TOKEN"`}
+								{`curl -X DELETE "${API_HOST}/api/v1/alerts/alert-123?api_token=YOUR_TOKEN"`}
 							</pre>
 						</div>
 					</TabsContent>
@@ -316,14 +333,20 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						{/* Permanent Delete Endpoint */}
 						<div className="space-y-3">
 							<div>
-								<h3 className="text-lg font-semibold mb-2 text-foreground">1. Permanent Delete Endpoint</h3>
+								<h3 className="text-lg font-semibold mb-2 text-foreground">
+									1. Permanent Delete Endpoint
+								</h3>
 								<p className="text-sm text-muted-foreground mb-3">
 									Send a DELETE request to permanently remove an archived alert from the system.
 								</p>
 							</div>
 							<div className="flex gap-2">
 								<Input value={deleteUrl} readOnly className="font-mono text-sm" />
-								<Button onClick={() => handleCopy(deleteUrl, 'delete')} variant="outline" className="gap-2">
+								<Button
+									onClick={() => handleCopy(deleteUrl, 'delete')}
+									variant="outline"
+									className="gap-2"
+								>
 									{copiedDelete ? (
 										<>
 											<Check className="h-4 w-4" />
@@ -359,8 +382,8 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 								Warning: Permanent Action
 							</h4>
 							<p className="text-sm text-red-900 dark:text-red-100">
-								Permanently deleting an archived alert <strong>cannot be undone</strong>. The alert will be completely
-								removed from the system with no way to recover it.
+								Permanently deleting an archived alert <strong>cannot be undone</strong>. The alert will
+								be completely removed from the system with no way to recover it.
 							</p>
 						</div>
 
@@ -380,7 +403,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<div className="space-y-3">
 							<h3 className="text-lg font-semibold text-foreground">3. Example cURL Request</h3>
 							<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto border">
-{`curl -X DELETE "${API_HOST}/api/v1/alerts/archived/alert-123?api_token=YOUR_TOKEN"`}
+								{`curl -X DELETE "${API_HOST}/api/v1/alerts/archived/alert-123?api_token=YOUR_TOKEN"`}
 							</pre>
 						</div>
 					</TabsContent>
@@ -407,10 +430,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<Button
 							variant="outline"
 							onClick={() =>
-								window.open(
-									'https://opsimate.vercel.app/docs/integrations/custom-alerts',
-									'_blank'
-								)
+								window.open('https://opsimate.vercel.app/docs/integrations/custom-alerts', '_blank')
 							}
 							className="gap-2"
 						>
