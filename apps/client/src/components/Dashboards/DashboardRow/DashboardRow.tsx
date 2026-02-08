@@ -130,11 +130,20 @@ export const DashboardRow = ({
 					/>
 				</Button>
 			</TableCell>
-			<TableCell className={cn('py-2 px-3 font-medium truncate', COLUMN_WIDTHS.name)}>{dashboard.name}</TableCell>
-			<TableCell className={cn('py-2 px-3 text-muted-foreground truncate', COLUMN_WIDTHS.description)}>
-				{dashboard.description || '-'}
+			<TableCell className={cn('py-2 px-3 font-medium overflow-hidden', COLUMN_WIDTHS.name)}>
+				<span className="truncate block" title={dashboard.name}>
+					{dashboard.name}
+				</span>
 			</TableCell>
-			<TableCell className={cn('py-2 px-3', COLUMN_WIDTHS.tags)} onClick={(e) => e.stopPropagation()}>
+			<TableCell className={cn('py-2 px-3 text-muted-foreground overflow-hidden', COLUMN_WIDTHS.description)}>
+				<span className="truncate block" title={dashboard.description || undefined}>
+					{dashboard.description || '-'}
+				</span>
+			</TableCell>
+			<TableCell
+				className={cn('py-2 px-3 overflow-hidden', COLUMN_WIDTHS.tags)}
+				onClick={(e) => e.stopPropagation()}
+			>
 				<div className="flex items-center gap-1 flex-wrap">
 					{dashboardTags.map((tag) => (
 						<TagBadge
@@ -266,8 +275,10 @@ export const DashboardRow = ({
 					)}
 				</div>
 			</TableCell>
-			<TableCell className={cn('py-2 px-3 text-muted-foreground text-sm', COLUMN_WIDTHS.createdAt)}>
-				{formatDate(dashboard.createdAt)}
+			<TableCell
+				className={cn('py-2 px-3 text-muted-foreground text-sm overflow-hidden', COLUMN_WIDTHS.createdAt)}
+			>
+				<span className="truncate block">{formatDate(dashboard.createdAt)}</span>
 			</TableCell>
 			<TableCell className={cn('py-2 px-3 text-center', COLUMN_WIDTHS.actions)}>
 				<AlertDialog>

@@ -23,7 +23,7 @@ export const AlertOwnerColumn = ({ alert, className, isArchived = false }: Alert
 	};
 
 	return (
-		<TableCell className={cn('py-1 px-2', className)}>
+		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
 			<div onClick={(e) => e.stopPropagation()}>
 				<PersonPicker
 					selectedUserId={alert.ownerId}

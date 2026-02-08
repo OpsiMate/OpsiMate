@@ -27,6 +27,7 @@ export { default as ForgotPasswordSuccess } from './ForgotPasswordSuccess';
 export { IntegrationDashboardDropdown } from './IntegrationDashboardDropdown';
 export { LeftSidebar } from './LeftSidebar';
 export { LogoutButton } from './LogoutButton';
+export { MobileWebOverlay } from './MobileWebOverlay';
 export { ProfileButton } from './ProfileButton';
 export { ProviderSidebar } from './ProviderSidebar';
 export { default as ResetPasswordByEmailForm } from './ResetPasswordByEmailForm';
@@ -46,7 +47,7 @@ export { ThemeToggle } from './ThemeToggle';
 export { TVModeLauncher } from './TVModeLauncher';
 export { ValidationFeedback, validationRules } from './ValidationFeedback';
 
-export * from './shared';
 export * from './Actions';
 export * from './Dashboard';
 export * from './Profile';
+export * from './shared';

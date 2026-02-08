@@ -30,5 +30,5 @@ const getStatusBadge = (alert: Alert) => {
 };
 
 export const AlertStatusColumn = ({ alert, className }: AlertStatusColumnProps) => {
-	return <TableCell className={cn('py-1 px-2', className)}>{getStatusBadge(alert)}</TableCell>;
+	return <TableCell className={cn('py-1 px-2 overflow-hidden', className)}>{getStatusBadge(alert)}</TableCell>;
 };

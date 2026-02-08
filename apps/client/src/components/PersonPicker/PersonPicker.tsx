@@ -39,20 +39,24 @@ export const PersonPicker = ({
 					variant="ghost"
 					size="sm"
 					disabled={disabled}
-					className={cn('h-6 px-2 gap-1.5 text-xs font-normal justify-start text-foreground', className)}
+					className={cn(
+						'h-6 px-2 gap-1.5 text-xs font-normal justify-start text-foreground max-w-full overflow-hidden',
+						className
+					)}
 					onClick={(e) => e.stopPropagation()}
+					title={selectedUser?.fullName || placeholder}
 				>
 					{selectedUser ? (
 						<>
-							<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium">
+							<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium flex-shrink-0">
 								{getInitials(selectedUser.fullName)}
 							</div>
-							<span className="truncate max-w-[100px]">{selectedUser.fullName}</span>
+							<span className="truncate">{selectedUser.fullName}</span>
 						</>
 					) : (
 						<>
-							<User className="h-3.5 w-3.5" />
-							<span>{placeholder}</span>
+							<User className="h-3.5 w-3.5 flex-shrink-0" />
+							<span className="truncate">{placeholder}</span>
 						</>
 					)}
 				</Button>

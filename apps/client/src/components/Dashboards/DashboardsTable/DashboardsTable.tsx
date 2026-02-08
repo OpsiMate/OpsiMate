@@ -93,21 +93,32 @@ export const DashboardsTable = ({
 				<Table className="table-fixed w-full">
 					<TableHeader>
 						<TableRow className="h-10">
-							<TableHead className={cn('py-2 px-3 text-center', COLUMN_WIDTHS.favorite)}></TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.name)}>Name</TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.description)}>
+							<TableHead
+								className={cn('py-2 px-3 text-center overflow-hidden', COLUMN_WIDTHS.favorite)}
+							></TableHead>
+							<TableHead className={cn('py-2 px-3 font-medium overflow-hidden', COLUMN_WIDTHS.name)}>
+								Name
+							</TableHead>
+							<TableHead
+								className={cn('py-2 px-3 font-medium overflow-hidden', COLUMN_WIDTHS.description)}
+							>
 								Description
 							</TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.tags)}>
+							<TableHead className={cn('py-2 px-3 font-medium overflow-hidden', COLUMN_WIDTHS.tags)}>
 								<div className="flex items-center gap-1">
-									<Tags className="h-4 w-4" />
+									<Tags className="h-4 w-4 flex-shrink-0" />
 									Tags
 								</div>
 							</TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium', COLUMN_WIDTHS.createdAt)}>
+							<TableHead className={cn('py-2 px-3 font-medium overflow-hidden', COLUMN_WIDTHS.createdAt)}>
 								Created
 							</TableHead>
-							<TableHead className={cn('py-2 px-3 font-medium text-center', COLUMN_WIDTHS.actions)}>
+							<TableHead
+								className={cn(
+									'py-2 px-3 font-medium text-center overflow-hidden',
+									COLUMN_WIDTHS.actions
+								)}
+							>
 								Actions
 							</TableHead>
 						</TableRow>
