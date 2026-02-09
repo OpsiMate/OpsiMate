@@ -51,7 +51,8 @@ export class PullGrafanaAlertsJob {
 			}
 
 			const client = new GrafanaClient(grafana.externalUrl, token);
-			const grafanaAlerts = await client.getAlerts();
+			const allGrafanaAlerts = await client.getAlerts();
+			const grafanaAlerts = allGrafanaAlerts.filter(a => a.status.silencedBy.length == 0);
 			const activeAlertIds = new Set(grafanaAlerts.map((a) => a.fingerprint));
 			await this.alertBL.archiveNonActiveAlerts(activeAlertIds, 'Grafana');
 
