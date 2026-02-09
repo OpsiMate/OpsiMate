@@ -65,8 +65,8 @@ export class AlertRepository {
 					AFTER INSERT ON alerts
 					FOR EACH ROW
 				BEGIN
-					INSERT INTO alerts_history (alert_id, status)
-					VALUES (NEW.id, NEW.status);
+					INSERT INTO alerts_history (alert_id, status, archived_at)
+					VALUES (NEW.id, NEW.status, NEW.starts_at);
 				END;
         	`);
 

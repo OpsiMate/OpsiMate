@@ -35,7 +35,7 @@ export const HttpAlertWebhookSchema = z.object({
 	tags: z.record(z.string(), z.string()),
 	startsAt: isoDateString.optional(),
 	updatedAt: isoDateString.optional(),
-	alertUrl: z.string().url(),
+	alertUrl: z.string().url().optional(),
 	alertName: z.string(),
 	summary: z.string().optional(),
 	runbookUrl: z.string().url().optional(),

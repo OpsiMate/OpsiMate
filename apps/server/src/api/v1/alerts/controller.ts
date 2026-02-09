@@ -352,7 +352,7 @@ export class AlertController {
 				tags: alert.tags,
 				startsAt: alert.startsAt || new Date().toISOString(),
 				updatedAt: alert.updatedAt || new Date().toISOString(),
-				alertUrl: alert.alertUrl,
+				alertUrl: alert.alertUrl || '',
 				alertName: alert.alertName,
 				summary: alert.summary,
 				runbookUrl: alert.runbookUrl,
