@@ -1,0 +1,24 @@
+name: Helm Validator
+
+on:
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    helm-validation:
+        name: verify Helm format and lint
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Install Helm
+              run: |
+                  curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+            - name: Helm Lint
+              run: |
+                  cd infrastructure/helm/
+                  helm lint .
