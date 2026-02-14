@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "opsimate.fullname" . }}
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Gidiy/OpsiMate.git
+    targetRevision: HEAD
+    path: infrastructure/helm
+    helm:
+      releaseName: {{ include "opsimate.fullname" . }}
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: service.frontend.type
+          value: LoadBalancer
+        - name: service.backend.type
+          value: LoadBalancer
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ include "opsimate.fullname" . }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
