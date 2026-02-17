@@ -604,8 +604,29 @@ export const alertsApi = {
 };
 
 export const auditApi = {
-	getAuditLogs: async (page = 1, pageSize = 20) => {
-		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
+	getAuditLogs: async (
+		page = 1,
+		pageSize = 20,
+		filters: {
+			userName?: string;
+			actionType?: string;
+			resourceType?: string;
+			resourceName?: string;
+			startTime?: string;
+			endTime?: string;
+		}
+	) => {
+		const params = new URLSearchParams({
+			page: page.toString(),
+			pageSize: pageSize.toString(),
+		});
+
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value?.trim()) {
+            params.append(key, value.trim());
+        }
+    });
+		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?${params.toString()}`);
 	},
 };
 

@@ -657,6 +657,21 @@ function formatRelativeTime(dateString: string) {
 	return date.toLocaleDateString();
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+	const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delay);
+
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [value, delay]);
+
+	return debouncedValue;
+}
 const AuditLogTable: React.FC = () => {
 	const [logs, setLogs] = useState<AuditLog[]>([]);
 	const [total, setTotal] = useState(0);
@@ -664,42 +679,68 @@ const AuditLogTable: React.FC = () => {
 	const [pageSize, setPageSize] = useState(10);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [filter, setFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL');
+	const [searchQuery, setSearchQuery] = useState('');
+	const [actionType, setActionType] = useState('');
+	const [resourceType, setResourceType] = useState('');
+	const debouncedFilters = useDebounce(searchQuery, 350);
+
+	const filters = useMemo(
+		() => ({
+			search: debouncedFilters,
+			actionType,
+			resourceType,
+		}),
+		[debouncedFilters, actionType, resourceType]
+	);
+
+	useEffect(() => {
+		if (page !== 1) {
+			setPage(1);
+		}
+	}, [page, filters]);
 
 	useEffect(() => {
 		let mounted = true;
 		setLoading(true);
+		const activeFilters = {
+			userName: debouncedFilters || undefined,
+			resourceName: debouncedFilters || undefined,
+			actionType: actionType || undefined,
+			resourceType: resourceType || undefined,
+		};
 
-		auditApi.getAuditLogs(page, pageSize).then((res) => {
-			if (mounted) {
-				if (res && Array.isArray(res.logs)) {
-					setLogs(res.logs);
-					setTotal(res.total || 0);
+		auditApi
+			.getAuditLogs(page, pageSize, activeFilters)
+			.then((res) => {
+				if (!mounted) return;
+				if (res?.success && res.data) {
+					setLogs(Array.isArray(res.data.logs) ? res.data.logs : []);
+					setTotal(typeof res.data.total === 'number' ? res.data.total : 0);
 					setError(null);
 				} else {
 					setError(res?.error || 'Failed to fetch audit logs');
 				}
-				setLoading(false);
-			}
-		});
+			})
+			.catch(() => {
+				if (mounted) setError('Failed to fetch audit logs');
+			})
+			.finally(() => {
+				if (mounted) setLoading(false);
+			});
 
 		return () => {
 			mounted = false;
 		};
-	}, [page, pageSize]);
+	}, [page, pageSize, debouncedFilters, actionType, resourceType]);
 
 	const totalPages = Math.ceil(total / pageSize);
-	const filteredLogs = logs.filter((log) => (filter === 'ALL' ? true : log.actionType === filter));
 
 	const getActionBadgeProps = (action: string) => {
 		switch (action) {
 			case 'CREATE':
 				return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
 			case 'UPDATE':
-				return {
-					variant: 'secondary',
-					className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-				};
+				return { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
 			case 'DELETE':
 				return { variant: 'destructive', className: '' };
 			default:
@@ -715,6 +756,14 @@ const AuditLogTable: React.FC = () => {
 		setPageSize(newSize);
 		setPage(1);
 	};
+
+	const clearAllFilters = () => {
+		setSearchQuery('');
+		setActionType('');
+		setResourceType('');
+	};
+
+	const hasActiveFilters = searchQuery || actionType || resourceType;
 
 	const renderPageNumbers = () => {
 		return Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -745,7 +794,45 @@ const AuditLogTable: React.FC = () => {
 
 	return (
 		<div>
-			<div className="flex justify-end items-center mb-4">
+			<div className="flex justify-between items-center mb-4">
+				<div className="flex gap-2">
+					<Input
+						placeholder="Search Audit Logs..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="max-w-md"
+					/>
+
+					<select
+						value={actionType}
+						onChange={(e) => setActionType(e.target.value)}
+						className="border rounded px-3 py-2 text-sm min-w-[130px]"
+					>
+						<option value="">All Actions</option>
+						<option value="CREATE">Create</option>
+						<option value="UPDATE">Update</option>
+						<option value="DELETE">Delete</option>
+					</select>
+
+					<select
+						value={resourceType}
+						onChange={(e) => setResourceType(e.target.value)}
+						className="border rounded px-3 py-2 text-sm min-w-[140px]"
+					>
+						<option value="">All Resources</option>
+						<option value="PROVIDER">Provider</option>
+						<option value="SERVICE">Service</option>
+						<option value="USER">User</option>
+						<option value="VIEW">View</option>
+						<option value="SECRET">Secret</option>
+					</select>
+
+					{hasActiveFilters && (
+						<Button variant="ghost" size="sm" onClick={clearAllFilters}>
+							Clear
+						</Button>
+					)}
+				</div>
 				<div className="flex items-center gap-2">
 					<label className="text-sm text-muted-foreground">Items per page:</label>
 					<select
@@ -766,7 +853,7 @@ const AuditLogTable: React.FC = () => {
 				<div className="py-8 text-center">Loading audit logs...</div>
 			) : error ? (
 				<ErrorAlert message={error} className="mb-4" />
-			) : filteredLogs.length === 0 ? (
+			) : logs.length === 0 ? (
 				<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
 			) : (
 				<>
@@ -782,7 +869,7 @@ const AuditLogTable: React.FC = () => {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{filteredLogs.map((log) => {
+							{logs.map((log) => {
 								const actionProps = getActionBadgeProps(log.actionType);
 								return (
 									<TableRow key={log.id}>
