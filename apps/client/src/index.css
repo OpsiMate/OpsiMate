@@ -155,4 +155,8 @@
 	.dark .services-scrollbar::-webkit-scrollbar-thumb:hover {
 		background-color: rgb(107 114 128);
 	}
+
+	.no-external-links {
+		display: none !important;
+	}
 }
