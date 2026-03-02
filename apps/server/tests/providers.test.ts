@@ -182,6 +182,161 @@ describe('Providers API', () => {
 		expect(bulkProvider2).toBeDefined();
 	});
 
+	test('should handle partial failure in bulk creation', async () => {
+		const mixedProvidersData = [
+			{
+				name: 'Valid Provider 1',
+				providerIP: '10.0.0.1',
+				username: 'validuser1',
+				password: 'validpassword1',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+			{
+				name: '',
+				providerIP: '10.0.0.2',
+				username: 'user2',
+				password: 'password2',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: mixedProvidersData });
+
+		expect(bulkRes.status).toBe(400);
+    // TODO: Test fails on above line, other validations should be implemented after the bug is fixed
+    // expect(bulkRes.body.success).toBe(false);
+	});
+
+	test('should return 400 with validation errors for invalid bulk provider data', async () => {
+		const invalidProvidersData = [
+			{
+				name: '',
+				providerIP: '10.0.0.1',
+				username: 'user',
+				password: 'password',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: invalidProvidersData });
+
+		expect(bulkRes.status).toBe(400);
+    // TODO: Test fails on above line, other validations should be implemented after the bug is fixed
+		// expect(bulkRes.body.success).toBe(false);
+		// expect(bulkRes.body.error).toBe('Validation error');
+		// expect(bulkRes.body.details).toBeDefined();
+	});
+
+	test('should require authentication for bulk provider creation', async () => {
+		const providersData = [
+			{
+				name: 'Unauthorized Bulk Provider',
+				providerIP: '10.0.0.1',
+				username: 'user',
+				password: 'password',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app.post('/api/v1/providers/bulk').send({ providers: providersData });
+
+		expect(bulkRes.status).toBe(401);
+	});
+
+	test('should update database correctly with bulk providers', async () => {
+		const providersData = [
+			{
+				name: 'Bulk Provider 1',
+				providerIP: '10.0.0.1',
+				username: 'bulkuser1',
+				password: 'bulkpassword1',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+			{
+				name: 'Bulk Provider 2',
+				providerIP: '10.0.0.2',
+				username: 'bulkuser2',
+				password: 'bulkpassword2',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: providersData });
+
+		expect(bulkRes.status).toBe(201);
+
+		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
+
+		const dbProvider1 = getRes.body.data.providers.find((p: Provider) => p.name === 'Bulk Provider 1');
+		const dbProvider2 = getRes.body.data.providers.find((p: Provider) => p.name === 'Bulk Provider 2');
+
+		expect(dbProvider1).toBeDefined();
+		expect(dbProvider1.providerIP).toBe('10.0.0.1');
+		expect(dbProvider1.username).toBe('bulkuser1');
+		expect(dbProvider1.SSHPort).toBe(22);
+		expect(dbProvider1.providerType).toBe('VM');
+
+		expect(dbProvider2).toBeDefined();
+		expect(dbProvider2.providerIP).toBe('10.0.0.2');
+		expect(dbProvider2.username).toBe('bulkuser2');
+		expect(dbProvider2.SSHPort).toBe(22);
+		expect(dbProvider2.providerType).toBe('VM');
+	});
+
+	test('should create audit log entries for bulk provider creation', async () => {
+		const providersData = [
+			{
+				name: 'Audit Provider 1',
+				providerIP: '10.0.4.1',
+				username: 'audituser1',
+				password: 'auditpass1',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+			{
+				name: 'Audit Provider 2',
+				providerIP: '10.0.4.2',
+				username: 'audituser2',
+				password: 'auditpass2',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: providersData });
+
+		expect(bulkRes.status).toBe(201);
+
+		const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
+		expect(auditRes.status).toBe(200);
+		expect(Array.isArray(auditRes.body.logs)).toBe(true);
+
+		const providerCreateLogs = auditRes.body.logs.filter(
+			(log: { resourceName: string }) =>
+				log.resourceName === 'Audit Provider 1' || log.resourceName === 'Audit Provider 2'
+		);
+		expect(providerCreateLogs.length).toBe(2);
+	});
+
 	// todo: add tests to the following routes:
 	// router.post('/:providerId/refresh', controller.refreshProvider.bind(controller));
 	// router.post('/test-connection', controller.testConnection.bind(controller));
