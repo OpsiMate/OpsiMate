@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+coverage
 
 #Changes made for docker-compose to ignore data and config.yaml start here
 
