@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CreateProviderBulkSchema, CreateProviderSchema, Logger, Provider, User } from '@OpsiMate/shared';
 import { providerConnectorFactory } from '../../../bl/providers/provider-connector/providerConnectorFactory';
 import { ProviderNotFound } from '../../../bl/providers/ProviderNotFound';
+import { DuplicateProviderError } from '../../../bl/providers/DuplicateProviderError';
 import { ProviderBL } from '../../../bl/providers/provider.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { SecretsMetadataRepository } from '../../../dal/secretsMetadataRepository';
@@ -72,6 +73,11 @@ export class ProviderController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			} else if (error instanceof DuplicateProviderError) {
+				return res.status(409).json({ 
+					success: false, 
+					error: error.message 
+				});
 			} else {
 				logger.error('Error creating provider:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -152,6 +158,11 @@ export class ProviderController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			} else if (error instanceof DuplicateProviderError) {
+				return res.status(409).json({ 
+					success: false, 
+					error: error.message 
+				});
 			} else if (error instanceof ProviderNotFound) {
 				return res.status(404).json({ success: false, error: `Provider ${error.provider} not found` });
 			} else {

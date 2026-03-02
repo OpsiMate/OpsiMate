@@ -133,12 +133,13 @@ export class ProviderRepository {
                     password             TEXT,
                     ssh_port             INTEGER  DEFAULT 22,
                     created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    provider_type        TEXT NOT NULL
+                    provider_type        TEXT NOT NULL,
                     CHECK (
                         (private_key_filename IS NOT NULL AND TRIM(private_key_filename) <> '')
                             OR
                         (password IS NOT NULL AND TRIM(password) <> '')
-                        )
+                        ),
+                    UNIQUE(provider_name, provider_type)
                 )
             `
 				)
