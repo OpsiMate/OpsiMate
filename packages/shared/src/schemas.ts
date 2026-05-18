@@ -275,3 +275,92 @@ export const CreateCommentSchema = z.object({
 export const UpdateCommentSchema = z.object({
 	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
 });
+
+const labelMatcherSchema = z.object({
+	key: z.string().min(1, 'Label key is required').max(200),
+	value: z.string().min(1, 'Label value is required').max(500),
+});
+
+const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const silenceScheduleSchema = z
+	.object({
+		daysOfWeek: z
+			.array(z.number().int().min(0).max(6))
+			.min(1, 'Select at least one day of week')
+			.max(7),
+		startTime: z.string().regex(timeOfDayRegex, 'Start time must be HH:MM (24h)'),
+		endTime: z.string().regex(timeOfDayRegex, 'End time must be HH:MM (24h)'),
+	})
+	.refine((s) => s.endTime > s.startTime, {
+		message: 'End time must be after start time',
+		path: ['endTime'],
+	});
+
+const silenceTimeRefinement = (data: { startsAt?: string | null; endsAt?: string | null }) => {
+	if (data.startsAt && data.endsAt) {
+		return new Date(data.endsAt).getTime() > new Date(data.startsAt).getTime();
+	}
+	return true;
+};
+
+const silenceMatchersRefinement = (data: { nameContains?: string | null; labelMatchers?: unknown[] }) => {
+	const hasName = !!data.nameContains && data.nameContains.trim().length > 0;
+	const hasMatchers = Array.isArray(data.labelMatchers) && data.labelMatchers.length > 0;
+	return hasName || hasMatchers;
+};
+
+const silenceScheduleExclusivityRefinement = (data: {
+	startsAt?: string | null;
+	endsAt?: string | null;
+	schedule?: unknown;
+}) => {
+	if (!data.schedule) return true;
+	return !data.startsAt && !data.endsAt;
+};
+
+export const CreateAlertSilenceSchema = z
+	.object({
+		name: z.string().min(1, 'Name is required').max(200),
+		nameContains: z.string().max(500).optional().nullable(),
+		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+		startsAt: z.string().datetime({ offset: true }).optional().nullable(),
+		endsAt: z.string().datetime({ offset: true }).optional().nullable(),
+		schedule: silenceScheduleSchema.optional().nullable(),
+		reason: z.string().max(1000).optional().nullable(),
+	})
+	.refine(silenceTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
+	.refine(silenceMatchersRefinement, {
+		message: 'Provide at least a name match or one label matcher',
+		path: ['nameContains'],
+	})
+	.refine(silenceScheduleExclusivityRefinement, {
+		message: 'A recurring schedule cannot be combined with a one-time window',
+		path: ['schedule'],
+	});
+
+export const UpdateAlertSilenceSchema = z
+	.object({
+		name: z.string().min(1).max(200).optional(),
+		nameContains: z.string().max(500).optional().nullable(),
+		labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
+		startsAt: z.string().datetime({ offset: true }).optional().nullable(),
+		endsAt: z.string().datetime({ offset: true }).optional().nullable(),
+		schedule: silenceScheduleSchema.optional().nullable(),
+		reason: z.string().max(1000).optional().nullable(),
+	})
+	.refine(silenceTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
+	.refine(silenceScheduleExclusivityRefinement, {
+		message: 'A recurring schedule cannot be combined with a one-time window',
+		path: ['schedule'],
+	});
+
+export const AlertSilenceIdSchema = z.object({
+	silenceId: z.string().transform((val) => {
+		const parsed = parseInt(val);
+		if (isNaN(parsed)) {
+			throw new Error('Invalid silence ID');
+		}
+		return parsed;
+	}),
+});

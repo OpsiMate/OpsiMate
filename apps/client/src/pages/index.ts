@@ -7,4 +7,5 @@ export { default as NotFound } from './NotFound';
 export { Providers } from '../components/Providers';
 export { default as Register } from './Register';
 export { default as Settings } from './Settings';
+export { default as Silences } from './Silences';
 export { default as TVMode } from './TVMode';

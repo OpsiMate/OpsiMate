@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Bell, LayoutDashboard, Puzzle, Settings } from 'lucide-react';
+import { Bell, BellOff, LayoutDashboard, Puzzle, Settings } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
@@ -64,6 +64,17 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					<PreserveQueryLink to="/dashboards">
 						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
+					</PreserveQueryLink>
+				</Button>
+
+				<Button
+					variant={location.pathname === '/silences' ? 'default' : 'ghost'}
+					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
+					asChild
+				>
+					<PreserveQueryLink to="/silences">
+						<BellOff className="h-5 w-5 flex-shrink-0" />
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Silences</span>
 					</PreserveQueryLink>
 				</Button>
 			</div>

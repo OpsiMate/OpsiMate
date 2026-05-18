@@ -21,6 +21,8 @@ import { SecretsController } from './secrets/controller';
 import createSecretsRouter from './secrets/router';
 import { ServiceController } from './services/controller';
 import serviceRouter from './services/router';
+import { SilenceController } from './silences/controller';
+import createSilenceRouter from './silences/router';
 import { TagController } from './tags/controller';
 import tagRouter from './tags/router';
 import { UsersController } from './users/controller';
@@ -38,7 +40,8 @@ export default function createV1Router(
 	secretsController: SecretsController,
 	customFieldsController: CustomFieldsController,
 	customActionsController: CustomActionsController,
-	playgroundController: PlaygroundController
+	playgroundController: PlaygroundController,
+	silenceController: SilenceController
 ) {
 	const router = PromiseRouter();
 
@@ -64,6 +67,7 @@ export default function createV1Router(
 	router.use('/secrets', createSecretsRouter(secretsController));
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
 	router.use('/custom-actions', createCustomActionsRouter(customActionsController));
+	router.use('/silences', createSilenceRouter(silenceController));
 	// All other /users endpoints (except /register and /login) are protected
 	router.use('/users', usersRouter(usersController));
 	router.use('/audit', createAuditRouter(auditController));

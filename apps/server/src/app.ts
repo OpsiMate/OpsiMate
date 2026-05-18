@@ -12,6 +12,7 @@ import { PlaygroundController } from './api/v1/playground/controller';
 import { ProviderController } from './api/v1/providers/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { ServiceController } from './api/v1/services/controller';
+import { SilenceController } from './api/v1/silences/controller';
 import { TagController } from './api/v1/tags/controller';
 import { UsersController } from './api/v1/users/controller';
 import createV1Router from './api/v1/v1';
@@ -24,6 +25,7 @@ import { IntegrationBL } from './bl/integrations/integration.bl';
 import { ProviderBL } from './bl/providers/provider.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { ServicesBL } from './bl/services/services.bl';
+import { SilenceBL } from './bl/silences/silence.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
@@ -40,6 +42,7 @@ import { SecretsMetadataRepository } from './dal/secretsMetadataRepository';
 import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository';
 import { ServiceCustomFieldValueRepository } from './dal/serviceCustomFieldValueRepository';
 import { ServiceRepository } from './dal/serviceRepository';
+import { SilenceRepository } from './dal/silenceRepository';
 import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
@@ -115,6 +118,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const customActionRepo = new CustomActionRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
+	const silenceRepo = new SilenceRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -130,6 +134,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		passwordResetsRepo.initPasswordResetsTable(),
 		customActionRepo.initCustomActionsTable(),
 		playgroundRepo.initPlaygroundTable(),
+		silenceRepo.initSilencesTable(),
 	]);
 
 	// BL
@@ -141,6 +146,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const tagBL = new TagBL(tagRepo);
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
+	const silenceBL = new SilenceBL(silenceRepo);
+	alertBL.setSilenceBL(silenceBL);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -162,6 +169,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
 	const customActionsController = new CustomActionsController(customActionBL);
 	const playgroundController = new PlaygroundController(playgroundBL);
+	const silenceController = new SilenceController(silenceBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -179,7 +187,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			secretController,
 			customFieldsController,
 			customActionsController,
-			playgroundController
+			playgroundController,
+			silenceController
 		)
 	);
 

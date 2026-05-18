@@ -9,6 +9,7 @@ export * from './users';
 export * from './audit';
 export * from './custom-fields';
 export * from './custom-actions';
+export * from './silences';
 
 // Export query keys
 export { queryKeys } from './queryKeys';

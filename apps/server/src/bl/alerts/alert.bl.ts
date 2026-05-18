@@ -2,15 +2,22 @@ import { AlertRepository } from '../../dal/alertRepository';
 import { ArchivedAlertRepository } from '../../dal/archivedAlertRepository';
 import { Alert, AlertComment, AlertHistory, AlertType, Logger } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
+import { SilenceBL } from '../silences/silence.bl';
 
 const logger = new Logger('bl/alert.bl');
 
 export class AlertBL {
+	private silenceBL: SilenceBL | null = null;
+
 	constructor(
 		private alertRepo: AlertRepository,
 		private archivedAlertRepo: ArchivedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository
 	) {}
+
+	setSilenceBL(silenceBL: SilenceBL): void {
+		this.silenceBL = silenceBL;
+	}
 
 	// region active
 	async insertOrUpdateAlert(alert: Omit<Alert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
@@ -26,7 +33,11 @@ export class AlertBL {
 	async getAllAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all alerts');
-			return await this.alertRepo.getAllAlerts();
+			const alerts = await this.alertRepo.getAllAlerts();
+			if (this.silenceBL) {
+				return await this.silenceBL.filterActiveSilencedOut(alerts);
+			}
+			return alerts;
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
