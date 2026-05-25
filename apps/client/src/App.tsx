@@ -7,7 +7,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DashboardProvider, useDashboard } from '@/context/DashboardContext';
-import { AlertsTVMode, Integrations, Login, NotFound, Register, Settings, TVMode } from '@/pages';
+import { AlertsTVMode, Integrations, Login, NotFound, Register, Settings, Silences, TVMode } from '@/pages';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
@@ -57,6 +57,7 @@ const App: React.FC = () => {
 										<Route path="/login" element={<Login />} />
 										<Route path="/register" element={<Register />} />
 										<Route path="/alerts" element={<Alerts />} />
+										<Route path="/silences" element={<Silences />} />
 										<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />
 										<Route path="/forgot-password" element={<ForgotPassword />} />
 										<Route path="/reset-password" element={<ResetPasswordByEmail />} />

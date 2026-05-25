@@ -19,4 +19,5 @@ export const queryKeys = {
 	customAction: (id: number) => ['customAction', id] as const,
 	dashboards: ['dashboards'] as const,
 	dashboardTags: ['dashboardTags'] as const,
+	silences: ['silences'] as const,
 };

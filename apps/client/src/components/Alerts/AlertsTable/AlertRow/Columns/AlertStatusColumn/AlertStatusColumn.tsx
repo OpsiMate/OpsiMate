@@ -19,6 +19,18 @@ const getStatusBadge = (alert: Alert) => {
 		);
 	}
 
+	if (alert.isSilenced) {
+		return (
+			<Badge
+				variant="secondary"
+				className="text-xs px-1.5 py-0.5 bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+				data-testid="alert-status-silenced"
+			>
+				Silenced
+			</Badge>
+		);
+	}
+
 	// Use AlertStatus enum to determine badge variant
 	const variant = alert.status === AlertStatus.FIRING ? 'destructive' : 'success';
 

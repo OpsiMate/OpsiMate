@@ -134,6 +134,8 @@ export interface Alert {
 	runbookUrl?: string;
 	createdAt: string;
 	isDismissed: boolean;
+	// Transient: set at fetch time when an active silence rule matches this alert. Not persisted.
+	isSilenced?: boolean;
 	ownerId?: string | null;
 }
 
@@ -232,6 +234,34 @@ export interface AlertComment {
 	alertId: string;
 	userId: string;
 	comment: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface AlertSilenceLabelMatcher {
+	key: string;
+	value: string;
+}
+
+// Recurring weekly schedule, evaluated in server local time.
+// daysOfWeek: 0=Sunday … 6=Saturday (matches Date.prototype.getDay()).
+// startTime/endTime: "HH:MM" 24h. endTime must be strictly greater than startTime
+// (overnight windows must be split into two silences).
+export interface AlertSilenceSchedule {
+	daysOfWeek: number[];
+	startTime: string;
+	endTime: string;
+}
+
+export interface AlertSilence {
+	id: number;
+	name: string;
+	nameContains?: string | null;
+	labelMatchers: AlertSilenceLabelMatcher[];
+	startsAt?: string | null;
+	endsAt?: string | null;
+	schedule?: AlertSilenceSchedule | null;
+	reason?: string | null;
 	createdAt: string;
 	updatedAt: string;
 }

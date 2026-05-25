@@ -2,6 +2,7 @@ import { SavedView } from '@/types/SavedView';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	AlertHistory,
+	AlertSilence,
 	AuditLog,
 	DiscoveredService,
 	Integration,
@@ -601,6 +602,25 @@ export const alertsApi = {
 	async setArchivedAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/archived/${alertId}/owner`, 'PATCH', { ownerId });
 	},
+};
+
+export type SilencePayload = {
+	name: string;
+	nameContains?: string | null;
+	labelMatchers?: { key: string; value: string }[];
+	startsAt?: string | null;
+	endsAt?: string | null;
+	schedule?: { daysOfWeek: number[]; startTime: string; endTime: string } | null;
+	reason?: string | null;
+};
+
+export const silencesApi = {
+	listSilences: () => apiRequest<AlertSilence[]>('/silences'),
+	getSilence: (id: number) => apiRequest<AlertSilence>(`/silences/${id}`),
+	createSilence: (payload: SilencePayload) => apiRequest<AlertSilence>('/silences', 'POST', payload),
+	updateSilence: (id: number, payload: Partial<SilencePayload>) =>
+		apiRequest<AlertSilence>(`/silences/${id}`, 'PUT', payload),
+	deleteSilence: (id: number) => apiRequest<void>(`/silences/${id}`, 'DELETE'),
 };
 
 export const auditApi = {
