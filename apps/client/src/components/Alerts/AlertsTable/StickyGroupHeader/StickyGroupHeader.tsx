@@ -10,9 +10,7 @@ interface StickyGroupHeaderProps {
 	columnLabels?: Record<string, string>;
 }
 
-const getStatusBadgeVariant = (
-	status: GroupStatus
-): 'destructive' | 'success' | 'muted' | 'secondary' => {
+const getStatusBadgeVariant = (status: GroupStatus): 'destructive' | 'success' | 'muted' | 'secondary' => {
 	switch (status) {
 		case 'firing':
 			return 'destructive';
@@ -31,9 +29,7 @@ export const StickyGroupHeader = ({ item, onToggle, columnLabels = {} }: StickyG
 	const fieldLabel = columnLabels[item.field] || COLUMN_LABELS[item.field] || item.field;
 	const badgeVariant = getStatusBadgeVariant(item.groupStatus);
 	const silencedBadgeClass =
-		item.groupStatus === 'silenced'
-			? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
-			: '';
+		item.groupStatus === 'silenced' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : '';
 
 	return (
 		<div

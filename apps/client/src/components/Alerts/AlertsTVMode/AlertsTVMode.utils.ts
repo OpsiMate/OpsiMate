@@ -59,11 +59,7 @@ export const filterAlertsByFilters = (
 			let fieldValue: string;
 			switch (field) {
 				case 'status':
-					fieldValue = alert.isDismissed
-						? 'Dismissed'
-						: alert.isSilenced
-							? 'Silenced'
-							: alert.status;
+					fieldValue = alert.isDismissed ? 'Dismissed' : alert.isSilenced ? 'Silenced' : alert.status;
 					break;
 				case 'type':
 					fieldValue = alert.type || 'Custom';

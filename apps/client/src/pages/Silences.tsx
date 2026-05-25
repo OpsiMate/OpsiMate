@@ -14,39 +14,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteSilence, useSilences } from '@/hooks/queries/silences';
 import { AlertSilence } from '@OpsiMate/shared';
-import {
-	BellOff,
-	Calendar,
-	CheckCircle2,
-	Clock,
-	Hourglass,
-	Pencil,
-	Plus,
-	Repeat,
-	Search,
-	Trash2,
-} from 'lucide-react';
+import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type SilenceStatus = 'active' | 'scheduled' | 'expired';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const isScheduleActiveNow = (
-	schedule: NonNullable<AlertSilence['schedule']>,
-	now: Date = new Date()
-): boolean => {
+const isScheduleActiveNow = (schedule: NonNullable<AlertSilence['schedule']>, now: Date = new Date()): boolean => {
 	if (!schedule.daysOfWeek?.includes(now.getDay())) return false;
 	const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 	return current >= schedule.startTime && current < schedule.endTime;
@@ -65,11 +44,7 @@ const getStatus = (s: AlertSilence): SilenceStatus => {
 const formatDaysOfWeek = (days: number[]): string => {
 	const sorted = [...days].sort((a, b) => a - b);
 	if (sorted.length === 7) return 'Every day';
-	if (
-		sorted.length === 5 &&
-		[1, 2, 3, 4, 5].every((d) => sorted.includes(d))
-	)
-		return 'Weekdays';
+	if (sorted.length === 5 && [1, 2, 3, 4, 5].every((d) => sorted.includes(d))) return 'Weekdays';
 	if (sorted.length === 2 && sorted.includes(0) && sorted.includes(6)) return 'Weekends';
 	return sorted.map((d) => DAY_SHORT[d]).join(', ');
 };
@@ -180,9 +155,7 @@ const Silences: React.FC = () => {
 			if (s.name.toLowerCase().includes(q)) return true;
 			if (s.nameContains?.toLowerCase().includes(q)) return true;
 			if (s.reason?.toLowerCase().includes(q)) return true;
-			return s.labelMatchers?.some(
-				(m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q)
-			);
+			return s.labelMatchers?.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q));
 		});
 	}, [silences, search]);
 
@@ -211,8 +184,8 @@ const Silences: React.FC = () => {
 							<h1 className="text-2xl font-semibold tracking-tight">Silences</h1>
 						</div>
 						<p className="text-sm text-muted-foreground mt-1">
-							Suppress alerts during maintenance windows or known issues. Silenced alerts are
-							hidden from the alerts list while the silence is active.
+							Suppress alerts during maintenance windows or known issues. Silenced alerts are hidden from
+							the alerts list while the silence is active.
 						</p>
 					</div>
 					<Button onClick={() => setCreating(true)}>

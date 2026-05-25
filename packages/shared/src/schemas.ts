@@ -285,10 +285,7 @@ const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const silenceScheduleSchema = z
 	.object({
-		daysOfWeek: z
-			.array(z.number().int().min(0).max(6))
-			.min(1, 'Select at least one day of week')
-			.max(7),
+		daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, 'Select at least one day of week').max(7),
 		startTime: z.string().regex(timeOfDayRegex, 'Start time must be HH:MM (24h)'),
 		endTime: z.string().regex(timeOfDayRegex, 'End time must be HH:MM (24h)'),
 	})

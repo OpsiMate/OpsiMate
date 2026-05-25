@@ -143,7 +143,19 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 			if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) return false;
 		}
 		return true;
-	}, [name, nameContains, matchers, mode, hasStart, hasEnd, startsAt, endsAt, daysOfWeek, recurStartTime, recurEndTime]);
+	}, [
+		name,
+		nameContains,
+		matchers,
+		mode,
+		hasStart,
+		hasEnd,
+		startsAt,
+		endsAt,
+		daysOfWeek,
+		recurStartTime,
+		recurEndTime,
+	]);
 
 	const applyPreset = (minutes: number) => {
 		const start = new Date();
@@ -174,7 +186,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 							endTime: recurEndTime,
 						},
 						reason: reason.trim() || null,
-				  }
+					}
 				: {
 						name: name.trim(),
 						nameContains: nameContains.trim() || null,
@@ -183,7 +195,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 						endsAt: hasEnd ? fromLocalInputValue(endsAt) : null,
 						schedule: null,
 						reason: reason.trim() || null,
-				  };
+					};
 
 		try {
 			if (isEdit && silence) {
@@ -214,8 +226,8 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 						{isEdit ? 'Edit silence' : 'New silence'}
 					</DialogTitle>
 					<DialogDescription>
-						Suppress alerts that match the criteria below for the selected window. Leave the end time
-						unset for an indefinite silence.
+						Suppress alerts that match the criteria below for the selected window. Leave the end time unset
+						for an indefinite silence.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -303,9 +315,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 												variant="ghost"
 												size="icon"
 												className="h-9 w-9"
-												onClick={() =>
-													setMatchers((m) => m.filter((_, i) => i !== idx))
-												}
+												onClick={() => setMatchers((m) => m.filter((_, i) => i !== idx))}
 												aria-label="Remove matcher"
 											>
 												<Trash2 className="h-4 w-4" />
@@ -465,7 +475,9 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 											onChange={(e) => setRecurEndTime(e.target.value)}
 										/>
 										{recurEndTime && recurStartTime && recurEndTime <= recurStartTime && (
-											<p className="text-xs text-destructive">End time must be after start time.</p>
+											<p className="text-xs text-destructive">
+												End time must be after start time.
+											</p>
 										)}
 									</div>
 								</div>
