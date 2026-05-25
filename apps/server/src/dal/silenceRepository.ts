@@ -25,8 +25,8 @@ export class SilenceRepository {
 		let labelMatchers: AlertSilenceLabelMatcher[] = [];
 		if (row.label_matchers) {
 			try {
-				const parsed = JSON.parse(row.label_matchers);
-				if (Array.isArray(parsed)) labelMatchers = parsed;
+				const parsed: unknown = JSON.parse(row.label_matchers);
+				if (Array.isArray(parsed)) labelMatchers = parsed as AlertSilenceLabelMatcher[];
 			} catch {
 				labelMatchers = [];
 			}
@@ -34,8 +34,14 @@ export class SilenceRepository {
 		let schedule: AlertSilenceSchedule | null = null;
 		if (row.schedule) {
 			try {
-				const parsed = JSON.parse(row.schedule);
-				if (parsed && Array.isArray(parsed.daysOfWeek) && parsed.startTime && parsed.endTime) {
+				const parsed: unknown = JSON.parse(row.schedule);
+				if (
+					parsed &&
+					typeof parsed === 'object' &&
+					Array.isArray((parsed as { daysOfWeek?: unknown }).daysOfWeek) &&
+					typeof (parsed as { startTime?: unknown }).startTime === 'string' &&
+					typeof (parsed as { endTime?: unknown }).endTime === 'string'
+				) {
 					schedule = parsed as AlertSilenceSchedule;
 				}
 			} catch {
