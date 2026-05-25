@@ -77,9 +77,7 @@ export class SilenceBL {
 			const active = silences.filter((s) => SilenceBL.isSilenceActive(s));
 			if (active.length === 0) return alerts;
 			return alerts.map((alert) =>
-				active.some((s) => SilenceBL.silenceMatchesAlert(s, alert))
-					? { ...alert, isSilenced: true }
-					: alert
+				active.some((s) => SilenceBL.silenceMatchesAlert(s, alert)) ? { ...alert, isSilenced: true } : alert
 			);
 		} catch (err) {
 			logger.error('Failed to apply silence tagging, returning alerts unchanged', err);

@@ -83,9 +83,7 @@ export class SilenceRepository {
 				)
 				.run();
 
-			const columns = this.db
-				.prepare(`PRAGMA table_info(alert_silences)`)
-				.all() as { name: string }[];
+			const columns = this.db.prepare(`PRAGMA table_info(alert_silences)`).all() as { name: string }[];
 			if (!columns.some((c) => c.name === 'schedule')) {
 				this.db.prepare(`ALTER TABLE alert_silences ADD COLUMN schedule TEXT`).run();
 			}
@@ -113,18 +111,14 @@ export class SilenceRepository {
 
 	async getAllSilences(): Promise<AlertSilence[]> {
 		return runAsync(() => {
-			const rows = this.db
-				.prepare(`SELECT * FROM alert_silences ORDER BY created_at DESC`)
-				.all() as SilenceRow[];
+			const rows = this.db.prepare(`SELECT * FROM alert_silences ORDER BY created_at DESC`).all() as SilenceRow[];
 			return rows.map(this.toShared);
 		});
 	}
 
 	async getSilenceById(id: number): Promise<AlertSilence | undefined> {
 		return runAsync(() => {
-			const row = this.db.prepare(`SELECT * FROM alert_silences WHERE id = ?`).get(id) as
-				| SilenceRow
-				| undefined;
+			const row = this.db.prepare(`SELECT * FROM alert_silences WHERE id = ?`).get(id) as SilenceRow | undefined;
 			return row ? this.toShared(row) : undefined;
 		});
 	}
@@ -167,9 +161,7 @@ export class SilenceRepository {
 
 			updates.push('updated_at = CURRENT_TIMESTAMP');
 			values.push(id);
-			this.db
-				.prepare(`UPDATE alert_silences SET ${updates.join(', ')} WHERE id = ?`)
-				.run(...values);
+			this.db.prepare(`UPDATE alert_silences SET ${updates.join(', ')} WHERE id = ?`).run(...values);
 		});
 	}
 

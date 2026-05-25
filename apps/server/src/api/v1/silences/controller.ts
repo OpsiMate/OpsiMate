@@ -1,10 +1,5 @@
 import { Request, Response } from 'express';
-import {
-	AlertSilenceIdSchema,
-	CreateAlertSilenceSchema,
-	Logger,
-	UpdateAlertSilenceSchema,
-} from '@OpsiMate/shared';
+import { AlertSilenceIdSchema, CreateAlertSilenceSchema, Logger, UpdateAlertSilenceSchema } from '@OpsiMate/shared';
 import { SilenceBL } from '../../../bl/silences/silence.bl';
 import { isZodError } from '../../../utils/isZodError';
 
