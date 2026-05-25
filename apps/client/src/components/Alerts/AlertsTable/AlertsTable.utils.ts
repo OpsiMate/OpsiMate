@@ -5,7 +5,7 @@ import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvat
 import { createServiceNameLookup } from '../utils';
 import { getAlertTagsString } from '../utils/alertTags.utils';
 import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
-import { AlertSortField, FlatGroupItem, GroupNode, SortDirection } from './AlertsTable.types';
+import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
 
 export { createServiceNameLookup };
 
@@ -53,8 +53,8 @@ export const sortAlerts = (
 					bValue = b.alertName.toLowerCase();
 					break;
 				case 'status':
-					aValue = a.isDismissed ? 'dismissed' : 'firing';
-					bValue = b.isDismissed ? 'dismissed' : 'firing';
+					aValue = a.isDismissed ? 'dismissed' : a.isSilenced ? 'silenced' : 'firing';
+					bValue = b.isDismissed ? 'dismissed' : b.isSilenced ? 'silenced' : 'firing';
 					break;
 				case 'summary':
 					aValue = (a.summary || '').toLowerCase();
@@ -100,7 +100,7 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 		case 'alertName':
 			return alert.alertName;
 		case 'status':
-			return alert.isDismissed ? 'Dismissed' : 'Firing';
+			return alert.isDismissed ? 'Dismissed' : alert.isSilenced ? 'Silenced' : 'Firing';
 		case 'summary':
 			return alert.summary || 'Unknown';
 		case 'startsAt': {
@@ -186,24 +186,26 @@ export const groupAlerts = (
 	});
 };
 
-const getGroupStatus = (node: GroupNode): 'firing' | 'resolved' | 'dismissed' => {
+const getGroupStatus = (node: GroupNode): GroupStatus => {
 	if (node.type === 'leaf') {
 		if (node.alert.isDismissed) return 'dismissed';
+		if (node.alert.isSilenced) return 'silenced';
 		return node.alert.status === 'firing' ? 'firing' : 'resolved';
 	}
 
 	let hasFiring = false;
+	let hasSilenced = false;
 	let hasResolved = false;
-	let hasDismissed = false;
 
 	for (const child of node.children) {
 		const childStatus = getGroupStatus(child);
 		if (childStatus === 'firing') hasFiring = true;
+		else if (childStatus === 'silenced') hasSilenced = true;
 		else if (childStatus === 'resolved') hasResolved = true;
-		else if (childStatus === 'dismissed') hasDismissed = true;
 	}
 
 	if (hasFiring) return 'firing';
+	if (hasSilenced) return 'silenced';
 	if (hasResolved) return 'resolved';
 	return 'dismissed';
 };

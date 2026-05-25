@@ -35,7 +35,7 @@ export class AlertBL {
 			logger.info('Fetching all alerts');
 			const alerts = await this.alertRepo.getAllAlerts();
 			if (this.silenceBL) {
-				return await this.silenceBL.filterActiveSilencedOut(alerts);
+				return await this.silenceBL.markSilenced(alerts);
 			}
 			return alerts;
 		} catch (error) {

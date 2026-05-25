@@ -10,10 +10,14 @@ interface StickyGroupHeaderProps {
 	columnLabels?: Record<string, string>;
 }
 
-const getStatusBadgeVariant = (status: GroupStatus): 'destructive' | 'success' | 'muted' => {
+const getStatusBadgeVariant = (
+	status: GroupStatus
+): 'destructive' | 'success' | 'muted' | 'secondary' => {
 	switch (status) {
 		case 'firing':
 			return 'destructive';
+		case 'silenced':
+			return 'secondary';
 		case 'resolved':
 			return 'success';
 		case 'dismissed':
@@ -26,6 +30,10 @@ export const StickyGroupHeader = ({ item, onToggle, columnLabels = {} }: StickyG
 
 	const fieldLabel = columnLabels[item.field] || COLUMN_LABELS[item.field] || item.field;
 	const badgeVariant = getStatusBadgeVariant(item.groupStatus);
+	const silencedBadgeClass =
+		item.groupStatus === 'silenced'
+			? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
+			: '';
 
 	return (
 		<div
@@ -45,7 +53,7 @@ export const StickyGroupHeader = ({ item, onToggle, columnLabels = {} }: StickyG
 			</Button>
 			<span className="font-semibold text-sm mr-2 text-foreground">{fieldLabel}:</span>
 			<span className="text-sm mr-2 text-foreground/80">{item.value}</span>
-			<Badge variant={badgeVariant} className="h-5 px-1.5 text-xs rounded-sm">
+			<Badge variant={badgeVariant} className={`h-5 px-1.5 text-xs rounded-sm ${silencedBadgeClass}`}>
 				{item.count}
 			</Badge>
 		</div>

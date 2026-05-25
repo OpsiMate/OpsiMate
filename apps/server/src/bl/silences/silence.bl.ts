@@ -71,14 +71,18 @@ export class SilenceBL {
 		return true;
 	}
 
-	async filterActiveSilencedOut(alerts: Alert[]): Promise<Alert[]> {
+	async markSilenced(alerts: Alert[]): Promise<Alert[]> {
 		try {
 			const silences = await this.silenceRepo.getAllSilences();
 			const active = silences.filter((s) => SilenceBL.isSilenceActive(s));
 			if (active.length === 0) return alerts;
-			return alerts.filter((alert) => !active.some((s) => SilenceBL.silenceMatchesAlert(s, alert)));
+			return alerts.map((alert) =>
+				active.some((s) => SilenceBL.silenceMatchesAlert(s, alert))
+					? { ...alert, isSilenced: true }
+					: alert
+			);
 		} catch (err) {
-			logger.error('Failed to apply silence filter, returning unfiltered alerts', err);
+			logger.error('Failed to apply silence tagging, returning alerts unchanged', err);
 			return alerts;
 		}
 	}

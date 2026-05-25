@@ -66,7 +66,11 @@ export const useAlertsFiltering = (
 				let fieldValue: string;
 				switch (field) {
 					case 'status':
-						fieldValue = alert.isDismissed ? 'Dismissed' : capitalizeFirst(alert.status);
+						fieldValue = alert.isDismissed
+							? 'Dismissed'
+							: alert.isSilenced
+								? 'Silenced'
+								: capitalizeFirst(alert.status);
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);

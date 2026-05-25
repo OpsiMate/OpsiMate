@@ -65,7 +65,11 @@ export const AlertsFilterPanel = ({
 
 		alerts.forEach((alert) => {
 			if (facetData.status) {
-				const status = alert.isDismissed ? 'Dismissed' : capitalizeFirst(alert.status);
+				const status = alert.isDismissed
+					? 'Dismissed'
+					: alert.isSilenced
+						? 'Silenced'
+						: capitalizeFirst(alert.status);
 				facetData.status.set(status, (facetData.status.get(status) || 0) + 1);
 			}
 

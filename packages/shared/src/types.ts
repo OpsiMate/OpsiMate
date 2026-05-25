@@ -134,6 +134,8 @@ export interface Alert {
 	runbookUrl?: string;
 	createdAt: string;
 	isDismissed: boolean;
+	// Transient: set at fetch time when an active silence rule matches this alert. Not persisted.
+	isSilenced?: boolean;
 	ownerId?: string | null;
 }
 
