@@ -1,6 +1,12 @@
 import { SavedView } from '@/types/SavedView';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	Action,
+	ActionConfig,
+	ActionOverrides,
+	ActionPreview,
+	ActionTestResult,
+	ActionType,
 	AlertHistory,
 	AlertSilence,
 	AuditLog,
@@ -621,6 +627,25 @@ export const silencesApi = {
 	updateSilence: (id: number, payload: Partial<SilencePayload>) =>
 		apiRequest<AlertSilence>(`/silences/${id}`, 'PUT', payload),
 	deleteSilence: (id: number) => apiRequest<void>(`/silences/${id}`, 'DELETE'),
+};
+
+export type ActionPayload = {
+	name: string;
+	type: ActionType;
+	config: ActionConfig;
+};
+
+export const actionsApi = {
+	listActions: () => apiRequest<Action[]>('/actions'),
+	getAction: (id: number) => apiRequest<Action>(`/actions/${id}`),
+	createAction: (payload: ActionPayload) => apiRequest<Action>('/actions', 'POST', payload),
+	updateAction: (id: number, payload: ActionPayload) => apiRequest<Action>(`/actions/${id}`, 'PUT', payload),
+	deleteAction: (id: number) => apiRequest<void>(`/actions/${id}`, 'DELETE'),
+	testAction: (payload: ActionPayload) => apiRequest<ActionTestResult>('/actions/test', 'POST', payload),
+	previewAction: (id: number, alert: SharedAlert) =>
+		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert }),
+	runAction: (id: number, alert: SharedAlert, overrides?: ActionOverrides) =>
+		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides }),
 };
 
 export const auditApi = {
