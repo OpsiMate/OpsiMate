@@ -64,6 +64,32 @@ const TypeBadge = ({ type }: { type: ActionType }) => {
 	);
 };
 
+const AppliesTo = ({ action }: { action: Action }) => {
+	const hasName = !!action.nameContains && action.nameContains.trim().length > 0;
+	const matchers = action.labelMatchers ?? [];
+	if (!hasName && matchers.length === 0) {
+		return (
+			<Badge variant="secondary" className="text-xs">
+				All alerts
+			</Badge>
+		);
+	}
+	return (
+		<div className="flex flex-wrap gap-1">
+			{hasName && (
+				<Badge variant="outline" className="font-mono text-xs">
+					name ~ "{action.nameContains}"
+				</Badge>
+			)}
+			{matchers.map((m, idx) => (
+				<Badge key={idx} variant="outline" className="font-mono text-xs">
+					{m.key}={m.value}
+				</Badge>
+			))}
+		</div>
+	);
+};
+
 const summarize = (action: Action): string => {
 	switch (action.type) {
 		case 'slack': {
@@ -121,7 +147,10 @@ const Actions: React.FC = () => {
 		if (!search.trim()) return actions;
 		const q = search.toLowerCase();
 		return actions.filter(
-			(a) => a.name.toLowerCase().includes(q) || a.type.toLowerCase().includes(q) || summarize(a).toLowerCase().includes(q)
+			(a) =>
+				a.name.toLowerCase().includes(q) ||
+				a.type.toLowerCase().includes(q) ||
+				summarize(a).toLowerCase().includes(q)
 		);
 	}, [actions, search]);
 
@@ -182,19 +211,20 @@ const Actions: React.FC = () => {
 									<TableHead>Name</TableHead>
 									<TableHead>Type</TableHead>
 									<TableHead>Target</TableHead>
+									<TableHead>Applies to</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{isLoading ? (
 									<TableRow>
-										<TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+										<TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
 											Loading actions…
 										</TableCell>
 									</TableRow>
 								) : filtered.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={4} className="py-12">
+										<TableCell colSpan={5} className="py-12">
 											<div className="flex flex-col items-center gap-2 text-center">
 												<div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
 													<Zap className="h-6 w-6 text-muted-foreground" />
@@ -210,7 +240,11 @@ const Actions: React.FC = () => {
 														: 'Try a different search term.'}
 												</p>
 												{actions.length === 0 && (
-													<Button className="mt-2" onClick={() => setCreating(true)} size="sm">
+													<Button
+														className="mt-2"
+														onClick={() => setCreating(true)}
+														size="sm"
+													>
 														<Plus className="h-4 w-4 mr-1" /> New action
 													</Button>
 												)}
@@ -230,6 +264,9 @@ const Actions: React.FC = () => {
 												<span className="text-xs font-mono text-muted-foreground truncate block">
 													{summarize(a)}
 												</span>
+											</TableCell>
+											<TableCell className="max-w-[240px]">
+												<AppliesTo action={a} />
 											</TableCell>
 											<TableCell className="text-right">
 												<div className="flex items-center justify-end gap-1">

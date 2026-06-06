@@ -1,6 +1,6 @@
 import { ActiveFilters, FilterFacets, FilterPanel, FilterPanelConfig } from '@/components/shared';
 import { useUsers } from '@/hooks/queries/users';
-import { getTagKeyColumnId, TagKeyInfo } from '@/types';
+import { extractTagKeyFromColumnId, getTagKeyColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 import { getOwnerDisplayName } from './utils/owner.utils';
@@ -57,48 +57,52 @@ export const AlertsFilterPanel = ({
 	}, [tagKeys, isArchived]);
 
 	const facets: FilterFacets = useMemo(() => {
-		const facetData: Record<string, Map<string, number>> = {};
-
-		filterConfig.fields.forEach((field) => {
-			facetData[field] = new Map();
-		});
-
-		alerts.forEach((alert) => {
-			if (facetData.status) {
-				const status = alert.isDismissed
-					? 'Dismissed'
-					: alert.isSilenced
-						? 'Silenced'
-						: capitalizeFirst(alert.status);
-				facetData.status.set(status, (facetData.status.get(status) || 0) + 1);
+		// The value an alert presents for a given filter field, matching useAlertsFiltering's logic.
+		const getFieldValue = (alert: Alert, field: string): string => {
+			if (isTagKeyColumn(field)) {
+				const tagKey = extractTagKeyFromColumnId(field);
+				return tagKey ? alert.tags?.[tagKey] || '' : '';
 			}
-
-			const type = getAlertType(alert);
-			facetData.type.set(type, (facetData.type.get(type) || 0) + 1);
-
-			if (alert.alertName) {
-				facetData.alertName.set(alert.alertName, (facetData.alertName.get(alert.alertName) || 0) + 1);
+			switch (field) {
+				case 'status':
+					return alert.isDismissed
+						? 'Dismissed'
+						: alert.isSilenced
+							? 'Silenced'
+							: capitalizeFirst(alert.status);
+				case 'type':
+					return getAlertType(alert);
+				case 'alertName':
+					return alert.alertName ?? '';
+				case 'owner':
+					return getOwnerDisplayName(alert.ownerId, users);
+				default:
+					return '';
 			}
+		};
 
-			const ownerName = getOwnerDisplayName(alert.ownerId, users);
-			facetData.owner.set(ownerName, (facetData.owner.get(ownerName) || 0) + 1);
-
-			tagKeys.forEach((tagKeyInfo) => {
-				const colId = getTagKeyColumnId(tagKeyInfo.key);
-				const value = alert.tags?.[tagKeyInfo.key];
-				if (value) {
-					facetData[colId].set(value, (facetData[colId].get(value) || 0) + 1);
-				}
-			});
-		});
+		// Faceted filtering: an alert counts toward a field's facet only if it passes every OTHER
+		// active filter. A facet never constrains itself, so its own options stay fully visible.
+		const passesOtherFilters = (alert: Alert, exceptField: string): boolean => {
+			for (const [field, values] of Object.entries(filters)) {
+				if (!values || values.length === 0 || field === exceptField) continue;
+				if (!values.includes(getFieldValue(alert, field))) return false;
+			}
+			return true;
+		};
 
 		const result: FilterFacets = {};
-		Object.entries(facetData).forEach(([field, map]) => {
+		filterConfig.fields.forEach((field) => {
+			const map = new Map<string, number>();
+			alerts.forEach((alert) => {
+				if (!passesOtherFilters(alert, field)) return;
+				const value = getFieldValue(alert, field);
+				// alertName/type/status/owner with empty value shouldn't appear as an option.
+				if (!value) return;
+				map.set(value, (map.get(value) || 0) + 1);
+			});
 			result[field] = Array.from(map.entries())
-				.map(([value, count]) => ({
-					value,
-					count,
-				}))
+				.map(([value, count]) => ({ value, count }))
 				.sort((a, b) => {
 					if (b.count !== a.count) return b.count - a.count;
 					return a.value.localeCompare(b.value);
@@ -106,7 +110,7 @@ export const AlertsFilterPanel = ({
 		});
 
 		return result;
-	}, [alerts, filterConfig.fields, tagKeys, users]);
+	}, [alerts, filterConfig.fields, filters, users]);
 
 	return (
 		<FilterPanel

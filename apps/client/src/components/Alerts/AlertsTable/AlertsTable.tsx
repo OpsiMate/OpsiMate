@@ -48,6 +48,7 @@ export const AlertsTable = ({
 	timeRange,
 	onTimeRangeChange,
 	isArchived = false,
+	renderToolbar = true,
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
 
@@ -91,14 +92,16 @@ export const AlertsTable = ({
 
 	return (
 		<div className={cn('flex flex-col h-full', className)}>
-			<div className="mb-2 flex items-center gap-2">
-				<div className="flex-1">
-					<SearchBar searchTerm={searchTerm} onSearchChange={onSearchTermChange} />
+			{renderToolbar && (
+				<div className="mb-2 flex items-center gap-2">
+					<div className="flex-1">
+						<SearchBar searchTerm={searchTerm} onSearchChange={onSearchTermChange} />
+					</div>
+					{onTimeRangeChange && (
+						<TimeFilter value={timeRange ?? createEmptyTimeRange()} onChange={onTimeRangeChange} />
+					)}
 				</div>
-				{onTimeRangeChange && (
-					<TimeFilter value={timeRange ?? createEmptyTimeRange()} onChange={onTimeRangeChange} />
-				)}
-			</div>
+			)}
 
 			{!isLoading && alerts.length === 0 && !hasActiveTimeFilter && !searchTerm ? (
 				<AlertsEmptyState />

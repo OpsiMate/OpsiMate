@@ -49,6 +49,8 @@ export class ActionController {
 				name: data.name,
 				type: data.type,
 				config: data.config,
+				nameContains: data.nameContains ?? null,
+				labelMatchers: data.labelMatchers ?? [],
 			});
 			return res.status(201).json({ success: true, data: action, message: 'Action created' });
 		} catch (error) {
@@ -126,6 +128,8 @@ export class ActionController {
 				name: data.name,
 				type: data.type,
 				config: data.config,
+				nameContains: data.nameContains ?? null,
+				labelMatchers: data.labelMatchers ?? [],
 			});
 			return res.json({ success: true, data: updated, message: 'Action updated' });
 		} catch (error) {

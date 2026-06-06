@@ -397,11 +397,27 @@ const httpActionConfigSchema = z.object({
 	bodyTemplate: z.string().max(10000).optional().nullable(),
 });
 
+// Optional alert filter shared by every action type. Empty = applies to all alerts.
+const actionMatchFields = {
+	nameContains: z.string().max(500).optional().nullable(),
+	labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+};
+
 export const CreateActionSchema = z.discriminatedUnion('type', [
-	z.object({ name: actionNameSchema, type: z.literal('slack'), config: slackActionConfigSchema }),
-	z.object({ name: actionNameSchema, type: z.literal('teams'), config: teamsActionConfigSchema }),
-	z.object({ name: actionNameSchema, type: z.literal('jira'), config: jiraActionConfigSchema }),
-	z.object({ name: actionNameSchema, type: z.literal('http'), config: httpActionConfigSchema }),
+	z.object({
+		...actionMatchFields,
+		name: actionNameSchema,
+		type: z.literal('slack'),
+		config: slackActionConfigSchema,
+	}),
+	z.object({
+		...actionMatchFields,
+		name: actionNameSchema,
+		type: z.literal('teams'),
+		config: teamsActionConfigSchema,
+	}),
+	z.object({ ...actionMatchFields, name: actionNameSchema, type: z.literal('jira'), config: jiraActionConfigSchema }),
+	z.object({ ...actionMatchFields, name: actionNameSchema, type: z.literal('http'), config: httpActionConfigSchema }),
 ]);
 
 // Actions are replaced wholesale on edit, so update validates the same full shape as create.

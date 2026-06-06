@@ -633,6 +633,8 @@ export type ActionPayload = {
 	name: string;
 	type: ActionType;
 	config: ActionConfig;
+	nameContains?: string | null;
+	labelMatchers?: { key: string; value: string }[];
 };
 
 export const actionsApi = {

@@ -24,7 +24,7 @@ import {
 	SlackActionConfig,
 	TeamsActionConfig,
 } from '@OpsiMate/shared';
-import { Globe, Loader2, MessageSquare, Play, Plus, Send, Ticket, Trash2, Zap } from 'lucide-react';
+import { Filter, Globe, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 interface ActionFormDialogProps {
@@ -37,12 +37,24 @@ type HeaderRow = { key: string; value: string };
 
 const HTTP_METHODS: HttpActionMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
-const TYPE_OPTIONS: { value: ActionType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-	{ value: 'slack', label: 'Slack message', icon: MessageSquare },
-	{ value: 'teams', label: 'Microsoft Teams message', icon: MessageSquare },
-	{ value: 'jira', label: 'Jira ticket', icon: Ticket },
-	{ value: 'http', label: 'HTTP request', icon: Globe },
+const TYPE_OPTIONS: { value: ActionType; label: string }[] = [
+	{ value: 'slack', label: 'Slack message' },
+	{ value: 'teams', label: 'Microsoft Teams message' },
+	{ value: 'jira', label: 'Jira ticket' },
+	{ value: 'http', label: 'HTTP request' },
 ];
+
+const LOGO_SRC: Partial<Record<ActionType, string>> = {
+	slack: 'images/logos/slack.svg',
+	teams: 'images/logos/teams.svg',
+	jira: 'images/logos/jira.svg',
+};
+
+const TypeLogo = ({ type }: { type: ActionType }) => {
+	const src = LOGO_SRC[type];
+	if (src) return <img src={src} alt={type} className="h-4 w-4 object-contain flex-shrink-0" />;
+	return <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />;
+};
 
 const headersToRows = (headers?: Record<string, string> | null): HeaderRow[] =>
 	headers ? Object.entries(headers).map(([key, value]) => ({ key, value })) : [];
@@ -65,6 +77,10 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 
 	const [name, setName] = useState('');
 	const [type, setType] = useState<ActionType>('slack');
+
+	// Alert filter (empty = applies to all alerts)
+	const [nameContains, setNameContains] = useState('');
+	const [matchers, setMatchers] = useState<HeaderRow[]>([]);
 
 	// Slack
 	const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
@@ -117,6 +133,8 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		if (action) {
 			setName(action.name);
 			setType(action.type);
+			setNameContains(action.nameContains ?? '');
+			setMatchers((action.labelMatchers ?? []).map((m) => ({ ...m })));
 			if (action.type === 'slack') {
 				const cfg = action.config as SlackActionConfig;
 				setSlackWebhookUrl(cfg.webhookUrl ?? '');
@@ -146,6 +164,8 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		} else {
 			setName('');
 			setType('slack');
+			setNameContains('');
+			setMatchers([]);
 		}
 	}, [open, action]);
 
@@ -184,9 +204,16 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 
 	const buildPayload = (): ActionPayload => {
 		const trimmedName = name.trim();
+		const match = {
+			nameContains: nameContains.trim() || null,
+			labelMatchers: matchers
+				.map((m) => ({ key: m.key.trim(), value: m.value.trim() }))
+				.filter((m) => m.key && m.value),
+		};
 		switch (type) {
 			case 'slack':
 				return {
+					...match,
 					name: trimmedName,
 					type: 'slack',
 					config: {
@@ -197,6 +224,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 				};
 			case 'teams':
 				return {
+					...match,
 					name: trimmedName,
 					type: 'teams',
 					config: {
@@ -207,6 +235,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 				};
 			case 'jira':
 				return {
+					...match,
 					name: trimmedName,
 					type: 'jira',
 					config: {
@@ -222,6 +251,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 			case 'http':
 			default:
 				return {
+					...match,
 					name: trimmedName,
 					type: 'http',
 					config: {
@@ -306,17 +336,14 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									{TYPE_OPTIONS.map((opt) => {
-										const Icon = opt.icon;
-										return (
-											<SelectItem key={opt.value} value={opt.value}>
-												<span className="flex items-center gap-2">
-													<Icon className="h-4 w-4" />
-													{opt.label}
-												</span>
-											</SelectItem>
-										);
-									})}
+									{TYPE_OPTIONS.map((opt) => (
+										<SelectItem key={opt.value} value={opt.value}>
+											<span className="flex items-center gap-2">
+												<TypeLogo type={opt.value} />
+												{opt.label}
+											</span>
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
 						</div>
@@ -608,8 +635,93 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						)}
 
 						<Badge variant="outline" className="text-xs">
-							Secrets are stored as configured. Wiring actions to alerts comes next.
+							Secrets are stored as configured.
 						</Badge>
+					</div>
+
+					<div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+						<div className="flex items-center gap-2">
+							<Filter className="h-4 w-4 text-muted-foreground" />
+							<h4 className="text-sm font-semibold">Show on alerts</h4>
+						</div>
+						<p className="text-xs text-muted-foreground -mt-2">
+							Leave empty to show this action on every alert. Add criteria to show it only on matching
+							alerts (name contains AND all labels match).
+						</p>
+
+						<div className="space-y-2">
+							<Label htmlFor="action-nameContains" className="text-xs">
+								Alert name contains
+							</Label>
+							<Input
+								id="action-nameContains"
+								placeholder="e.g. HighCPU, prod-db, latency"
+								value={nameContains}
+								onChange={(e) => setNameContains(e.target.value)}
+							/>
+						</div>
+
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<Label className="text-xs">Label matchers (key = value)</Label>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => setMatchers((m) => [...m, { key: '', value: '' }])}
+								>
+									<Plus className="h-3.5 w-3.5 mr-1" /> Add
+								</Button>
+							</div>
+							{matchers.length === 0 ? (
+								<p className="text-xs text-muted-foreground italic">
+									No label matchers. Scope by environment, service, severity, etc.
+								</p>
+							) : (
+								<div className="space-y-2">
+									{matchers.map((matcher, idx) => (
+										<div
+											key={idx}
+											className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2"
+										>
+											<Input
+												placeholder="key (e.g. severity)"
+												value={matcher.key}
+												onChange={(e) =>
+													setMatchers((m) =>
+														m.map((row, i) =>
+															i === idx ? { ...row, key: e.target.value } : row
+														)
+													)
+												}
+											/>
+											<span className="text-muted-foreground text-sm">=</span>
+											<Input
+												placeholder="value (e.g. critical)"
+												value={matcher.value}
+												onChange={(e) =>
+													setMatchers((m) =>
+														m.map((row, i) =>
+															i === idx ? { ...row, value: e.target.value } : row
+														)
+													)
+												}
+											/>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-9 w-9"
+												onClick={() => setMatchers((m) => m.filter((_, i) => i !== idx))}
+												aria-label="Remove matcher"
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
 
