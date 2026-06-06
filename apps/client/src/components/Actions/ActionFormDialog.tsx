@@ -24,7 +24,8 @@ import {
 	SlackActionConfig,
 	TeamsActionConfig,
 } from '@OpsiMate/shared';
-import { Filter, Globe, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
+import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
+import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 interface ActionFormDialogProps {
@@ -43,18 +44,6 @@ const TYPE_OPTIONS: { value: ActionType; label: string }[] = [
 	{ value: 'jira', label: 'Jira ticket' },
 	{ value: 'http', label: 'HTTP request' },
 ];
-
-const LOGO_SRC: Partial<Record<ActionType, string>> = {
-	slack: 'images/logos/slack.svg',
-	teams: 'images/logos/teams.svg',
-	jira: 'images/logos/jira.svg',
-};
-
-const TypeLogo = ({ type }: { type: ActionType }) => {
-	const src = LOGO_SRC[type];
-	if (src) return <img src={src} alt={type} className="h-4 w-4 object-contain flex-shrink-0" />;
-	return <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />;
-};
 
 const headersToRows = (headers?: Record<string, string> | null): HeaderRow[] =>
 	headers ? Object.entries(headers).map(([key, value]) => ({ key, value })) : [];
@@ -339,7 +328,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									{TYPE_OPTIONS.map((opt) => (
 										<SelectItem key={opt.value} value={opt.value}>
 											<span className="flex items-center gap-2">
-												<TypeLogo type={opt.value} />
+												<ActionTypeIcon type={opt.value} />
 												{opt.label}
 											</span>
 										</SelectItem>

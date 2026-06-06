@@ -1,7 +1,8 @@
+import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Button } from '@/components/ui/button';
 import { useActions } from '@/hooks/queries/actions';
-import { Action, ActionType, Alert } from '@OpsiMate/shared';
-import { ChevronDown, ChevronRight, Globe, Zap } from 'lucide-react';
+import { Action, Alert } from '@OpsiMate/shared';
+import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ActionSendDialog } from './ActionSendDialog';
@@ -9,21 +10,6 @@ import { ActionSendDialog } from './ActionSendDialog';
 interface AlertActionsProps {
 	alert: Alert;
 }
-
-const LOGO_SRC: Partial<Record<ActionType, string>> = {
-	slack: 'images/logos/slack.svg',
-	teams: 'images/logos/teams.svg',
-	jira: 'images/logos/jira.svg',
-};
-
-const ActionIcon = ({ type }: { type: ActionType }) => {
-	const src = LOGO_SRC[type];
-	if (src) {
-		return <img src={src} alt={type} className="h-4 w-4 object-contain flex-shrink-0" />;
-	}
-	// HTTP / fallback
-	return <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />;
-};
 
 // An action shows on an alert when it has no filter, or when its filter matches:
 // the alert name contains nameContains (if set) AND every label matcher matches a tag.
@@ -95,7 +81,7 @@ export const AlertActions = ({ alert }: AlertActionsProps) => {
 								onClick={() => setSelected(action)}
 								title={`Preview and send "${action.name}" for this alert`}
 							>
-								<ActionIcon type={action.type} />
+								<ActionTypeIcon type={action.type} />
 								<span className="max-w-[140px] truncate">{action.name}</span>
 							</Button>
 						))}

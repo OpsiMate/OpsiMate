@@ -12,9 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { usePreviewAction, useRunAction } from '@/hooks/queries/actions';
-import { Action, ActionOverrides, ActionPreview, ActionType, Alert } from '@OpsiMate/shared';
-import { Globe, Loader2, Send } from 'lucide-react';
+import { Action, ActionOverrides, ActionPreview, Alert } from '@OpsiMate/shared';
+import { Loader2, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 
 interface ActionSendDialogProps {
 	open: boolean;
@@ -22,18 +23,6 @@ interface ActionSendDialogProps {
 	action: Action | null;
 	alert: Alert;
 }
-
-const LOGO_SRC: Partial<Record<ActionType, string>> = {
-	slack: 'images/logos/slack.svg',
-	teams: 'images/logos/teams.svg',
-	jira: 'images/logos/jira.svg',
-};
-
-const TypeLogo = ({ type, className }: { type: ActionType; className?: string }) => {
-	const src = LOGO_SRC[type];
-	if (src) return <img src={src} alt={type} className={className ?? 'h-5 w-5 object-contain'} />;
-	return <Globe className={className ?? 'h-5 w-5 text-muted-foreground'} />;
-};
 
 const hostOf = (url: string): string => {
 	try {
@@ -79,8 +68,9 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 				}
 			})
 			.catch((err) => setError(err instanceof Error ? err.message : 'Failed to build preview'));
+		// previewMutation is stable; re-run when the dialog opens or the target action/alert changes.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [open, action?.id]);
+	}, [open, action?.id, alert?.id]);
 
 	const buildOverrides = (): ActionOverrides => {
 		if (!preview) return {};
@@ -124,7 +114,7 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 			<DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						{action && <TypeLogo type={action.type} />}
+						{action && <ActionTypeIcon type={action.type} className="h-5 w-5" />}
 						{action?.name ?? 'Run action'}
 					</DialogTitle>
 					<DialogDescription>Review and edit the message below before sending.</DialogDescription>

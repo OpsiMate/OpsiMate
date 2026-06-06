@@ -291,7 +291,9 @@ export const executeAction = async (
 					? 'Request timed out after 10s.'
 					: error.message
 				: 'Unknown error';
-		logger.error(`Failed to execute action '${action.name}'`, error);
+		// Log only the message, not the raw error object, to avoid leaking config secrets
+		// (webhook URLs, Jira tokens) that may be embedded in the error/request context.
+		logger.error(`Failed to execute action '${action.name}': ${errMessage}`);
 		return { ok: false, message: errMessage };
 	}
 };
