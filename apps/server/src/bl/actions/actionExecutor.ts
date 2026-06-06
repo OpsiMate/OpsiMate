@@ -70,9 +70,7 @@ export const buildAlertContext = (alert: AlertContextInput): Record<string, stri
 
 const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
 	if (!template) return '';
-	return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) =>
-		key in ctx ? ctx[key] : `{{${key}}}`
-	);
+	return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => (key in ctx ? ctx[key] : `{{${key}}}`));
 };
 
 // The concrete, ready-to-send text fields after template resolution. Only some are used per type.
@@ -171,7 +169,9 @@ const sendSlack = async (cfg: SlackActionConfig, message: string): Promise<Actio
 	return {
 		ok: res.ok,
 		statusCode: res.status,
-		message: res.ok ? 'Slack message sent successfully.' : `Slack returned ${res.status}: ${respText || res.statusText}`,
+		message: res.ok
+			? 'Slack message sent successfully.'
+			: `Slack returned ${res.status}: ${respText || res.statusText}`,
 	};
 };
 
@@ -192,7 +192,9 @@ const sendTeams = async (cfg: TeamsActionConfig, title: string, message: string)
 	return {
 		ok: res.ok,
 		statusCode: res.status,
-		message: res.ok ? 'Teams message sent successfully.' : `Teams returned ${res.status}: ${respText || res.statusText}`,
+		message: res.ok
+			? 'Teams message sent successfully.'
+			: `Teams returned ${res.status}: ${respText || res.statusText}`,
 	};
 };
 
@@ -218,7 +220,11 @@ const sendJira = async (cfg: JiraActionConfig, summary: string, description: str
 	});
 	const respText = await res.text().catch(() => '');
 	if (!res.ok) {
-		return { ok: false, statusCode: res.status, message: `Jira returned ${res.status}: ${respText || res.statusText}` };
+		return {
+			ok: false,
+			statusCode: res.status,
+			message: `Jira returned ${res.status}: ${respText || res.statusText}`,
+		};
 	}
 	let key = '';
 	try {

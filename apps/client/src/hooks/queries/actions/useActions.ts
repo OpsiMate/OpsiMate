@@ -74,15 +74,7 @@ export const usePreviewAction = () => {
 
 export const useRunAction = () => {
 	return useMutation({
-		mutationFn: async ({
-			id,
-			alert,
-			overrides,
-		}: {
-			id: number;
-			alert: Alert;
-			overrides?: ActionOverrides;
-		}) => {
+		mutationFn: async ({ id, alert, overrides }: { id: number; alert: Alert; overrides?: ActionOverrides }) => {
 			const response = await actionsApi.runAction(id, alert, overrides);
 			if (!response.success) {
 				throw new Error(response.error || 'Failed to run action');

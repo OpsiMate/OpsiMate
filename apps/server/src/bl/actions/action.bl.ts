@@ -17,10 +17,7 @@ export class ActionBL {
 	}
 
 	previewForAlert(action: Action, alert: AlertContextInput): ActionPreview {
-		return previewAction(
-			{ name: action.name, type: action.type, config: action.config },
-			buildAlertContext(alert)
-		);
+		return previewAction({ name: action.name, type: action.type, config: action.config }, buildAlertContext(alert));
 	}
 
 	async runOnAlert(action: Action, alert: AlertContextInput, overrides?: ActionOverrides): Promise<ActionTestResult> {
