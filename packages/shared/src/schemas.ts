@@ -361,3 +361,108 @@ export const AlertSilenceIdSchema = z.object({
 		return parsed;
 	}),
 });
+
+// ---- Actions ----
+
+const actionNameSchema = z.string().min(1, 'Name is required').max(200);
+
+const httpMethodSchema = z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']);
+
+const slackActionConfigSchema = z.object({
+	webhookUrl: z.string().url('A valid Slack webhook URL is required'),
+	channel: z.string().max(200).optional().nullable(),
+	messageTemplate: z.string().max(5000).optional().nullable(),
+});
+
+const teamsActionConfigSchema = z.object({
+	webhookUrl: z.string().url('A valid Teams webhook URL is required'),
+	titleTemplate: z.string().max(500).optional().nullable(),
+	messageTemplate: z.string().max(5000).optional().nullable(),
+});
+
+const jiraActionConfigSchema = z.object({
+	baseUrl: z.string().url('A valid Jira base URL is required'),
+	email: z.string().email('A valid email is required'),
+	apiToken: z.string().min(1, 'API token is required').max(500),
+	projectKey: z.string().min(1, 'Project key is required').max(50),
+	issueType: z.string().min(1, 'Issue type is required').max(100),
+	summaryTemplate: z.string().max(1000).optional().nullable(),
+	descriptionTemplate: z.string().max(5000).optional().nullable(),
+});
+
+const httpActionConfigSchema = z.object({
+	url: z.string().url('A valid URL is required'),
+	method: httpMethodSchema,
+	headers: z.record(z.string()).optional().nullable(),
+	bodyTemplate: z.string().max(10000).optional().nullable(),
+});
+
+// Optional alert filter shared by every action type. Empty = applies to all alerts.
+const actionMatchFields = {
+	nameContains: z.string().max(500).optional().nullable(),
+	labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+};
+
+export const CreateActionSchema = z.discriminatedUnion('type', [
+	z.object({
+		...actionMatchFields,
+		name: actionNameSchema,
+		type: z.literal('slack'),
+		config: slackActionConfigSchema,
+	}),
+	z.object({
+		...actionMatchFields,
+		name: actionNameSchema,
+		type: z.literal('teams'),
+		config: teamsActionConfigSchema,
+	}),
+	z.object({ ...actionMatchFields, name: actionNameSchema, type: z.literal('jira'), config: jiraActionConfigSchema }),
+	z.object({ ...actionMatchFields, name: actionNameSchema, type: z.literal('http'), config: httpActionConfigSchema }),
+]);
+
+// Actions are replaced wholesale on edit, so update validates the same full shape as create.
+export const UpdateActionSchema = CreateActionSchema;
+
+export const ActionIdSchema = z.object({
+	actionId: z.string().transform((val) => {
+		const parsed = parseInt(val);
+		if (isNaN(parsed)) {
+			throw new Error('Invalid action ID');
+		}
+		return parsed;
+	}),
+});
+
+// Body for running an action against a specific alert. Lenient: extra alert fields are allowed.
+const alertContextSchema = z
+	.object({
+		id: z.string().optional(),
+		alertName: z.string().optional(),
+		status: z.string().optional(),
+		type: z.string().optional(),
+		summary: z.string().optional().nullable(),
+		startsAt: z.string().optional(),
+		updatedAt: z.string().optional(),
+		createdAt: z.string().optional(),
+		alertUrl: z.string().optional(),
+		runbookUrl: z.string().optional().nullable(),
+		tags: z.record(z.string()).optional(),
+	})
+	.passthrough();
+
+export const PreviewActionSchema = z.object({
+	alert: alertContextSchema,
+});
+
+const actionOverridesSchema = z.object({
+	message: z.string().max(10000).optional(),
+	title: z.string().max(1000).optional(),
+	summary: z.string().max(1000).optional(),
+	description: z.string().max(10000).optional(),
+	body: z.string().max(20000).optional(),
+});
+
+export const RunActionSchema = z.object({
+	alert: alertContextSchema,
+	overrides: actionOverridesSchema.optional(),
+});

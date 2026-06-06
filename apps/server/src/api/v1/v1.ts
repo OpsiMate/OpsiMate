@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import PromiseRouter from 'express-promise-router';
 import { authenticateJWT } from '../../middleware/auth';
+import { ActionController } from './actions/controller';
+import createActionRouter from './actions/router';
 import { AlertController } from './alerts/controller';
 import alertRouter from './alerts/router';
 import { AuditController } from './audit/controller';
@@ -41,7 +43,8 @@ export default function createV1Router(
 	customFieldsController: CustomFieldsController,
 	customActionsController: CustomActionsController,
 	playgroundController: PlaygroundController,
-	silenceController: SilenceController
+	silenceController: SilenceController,
+	actionController: ActionController
 ) {
 	const router = PromiseRouter();
 
@@ -68,6 +71,7 @@ export default function createV1Router(
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
 	router.use('/custom-actions', createCustomActionsRouter(customActionsController));
 	router.use('/silences', createSilenceRouter(silenceController));
+	router.use('/actions', createActionRouter(actionController));
 	// All other /users endpoints (except /register and /login) are protected
 	router.use('/users', usersRouter(usersController));
 	router.use('/audit', createAuditRouter(auditController));

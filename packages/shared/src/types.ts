@@ -265,3 +265,107 @@ export interface AlertSilence {
 	createdAt: string;
 	updatedAt: string;
 }
+
+// Actions are reusable, user-configured integrations that can be run against an alert
+// (e.g. notify a Slack/Teams channel, open a Jira ticket, or fire an arbitrary HTTP request).
+// This phase only covers configuring them; wiring them to alerts comes later.
+export type ActionType = 'slack' | 'teams' | 'jira' | 'http';
+
+export type HttpActionMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+export interface SlackActionConfig {
+	webhookUrl: string;
+	channel?: string | null;
+	messageTemplate?: string | null;
+}
+
+export interface TeamsActionConfig {
+	webhookUrl: string;
+	titleTemplate?: string | null;
+	messageTemplate?: string | null;
+}
+
+export interface JiraActionConfig {
+	baseUrl: string;
+	email: string;
+	apiToken: string;
+	projectKey: string;
+	issueType: string;
+	summaryTemplate?: string | null;
+	descriptionTemplate?: string | null;
+}
+
+export interface HttpActionConfig {
+	url: string;
+	method: HttpActionMethod;
+	headers?: Record<string, string> | null;
+	bodyTemplate?: string | null;
+}
+
+export type ActionConfig = SlackActionConfig | TeamsActionConfig | JiraActionConfig | HttpActionConfig;
+
+export interface ActionLabelMatcher {
+	key: string;
+	value: string;
+}
+
+export interface Action {
+	id: number;
+	name: string;
+	type: ActionType;
+	config: ActionConfig;
+	// Optional alert filter. When both nameContains and labelMatchers are empty, the action
+	// applies to all alerts. Otherwise it only shows on alerts whose name contains nameContains
+	// (when set) AND whose tags match every label matcher.
+	nameContains?: string | null;
+	labelMatchers: ActionLabelMatcher[];
+	createdAt: string;
+	updatedAt: string;
+}
+
+// Result of running ("testing") an action against sample data.
+export interface ActionTestResult {
+	ok: boolean;
+	statusCode?: number;
+	message: string;
+}
+
+// Preview of the exact content that would be sent for an action, with templates already
+// resolved against a specific alert. The editable text fields vary by action type; the
+// remaining fields are read-only destination context shown to the user.
+export interface SlackActionPreview {
+	type: 'slack';
+	message: string;
+	channel?: string | null;
+	webhookUrl: string;
+}
+export interface TeamsActionPreview {
+	type: 'teams';
+	title: string;
+	message: string;
+	webhookUrl: string;
+}
+export interface JiraActionPreview {
+	type: 'jira';
+	summary: string;
+	description: string;
+	baseUrl: string;
+	projectKey: string;
+	issueType: string;
+}
+export interface HttpActionPreview {
+	type: 'http';
+	method: HttpActionMethod;
+	url: string;
+	body: string;
+}
+export type ActionPreview = SlackActionPreview | TeamsActionPreview | JiraActionPreview | HttpActionPreview;
+
+// User-edited text fields sent back when running an action, overriding the rendered templates.
+export interface ActionOverrides {
+	message?: string;
+	title?: string;
+	summary?: string;
+	description?: string;
+	body?: string;
+}

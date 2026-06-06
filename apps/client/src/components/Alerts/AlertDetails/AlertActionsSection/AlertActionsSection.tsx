@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Alert } from '@OpsiMate/shared';
 import { Archive, Check, RotateCcw, Trash2 } from 'lucide-react';
+import { AlertActions } from './AlertActions';
 
 interface AlertActionsSectionProps {
 	alert: Alert;
@@ -20,6 +21,8 @@ export const AlertActionsSection = ({
 }: AlertActionsSectionProps) => {
 	return (
 		<>
+			<Separator />
+			<AlertActions alert={alert} />
 			<Separator />
 			{isActive ? (
 				<div className="space-y-2">

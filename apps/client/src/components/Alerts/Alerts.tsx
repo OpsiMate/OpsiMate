@@ -23,6 +23,8 @@ import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
+import { SearchBar } from './AlertsTable/SearchBar';
+import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import {
@@ -309,11 +311,23 @@ const Alerts = () => {
 										<span>Archived</span>
 									</ToggleGroupItem>
 								</ToggleGroup>
-								<span className="text-sm text-muted-foreground">
+								<span className="text-sm text-muted-foreground whitespace-nowrap">
 									{activeTab === AlertTab.Active
 										? `${filteredAlerts.length} Alert${filteredAlerts.length !== 1 ? 's' : ''}`
 										: `${filteredArchivedAlerts.length} Alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
 								</span>
+
+								<div className="flex-1 min-w-0">
+									<SearchBar
+										searchTerm={dashboardState.query}
+										onSearchChange={(term) => updateDashboardField('query', term)}
+									/>
+								</div>
+
+								<TimeFilter
+									value={dashboardState.timeRange ?? createEmptyTimeRange()}
+									onChange={(range) => updateDashboardField('timeRange', range)}
+								/>
 							</div>
 						</div>
 
@@ -346,6 +360,7 @@ const Alerts = () => {
 										onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
 										searchTerm={dashboardState.query}
 										onSearchTermChange={(term) => updateDashboardField('query', term)}
+										renderToolbar={false}
 									/>
 								</div>
 
@@ -389,6 +404,7 @@ const Alerts = () => {
 									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
 									searchTerm={dashboardState.query}
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
+									renderToolbar={false}
 								/>
 							</div>
 						)}

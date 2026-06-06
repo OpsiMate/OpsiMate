@@ -76,123 +76,122 @@ export const DashboardHeader = ({
 	};
 
 	return (
-		<div className="flex flex-col gap-3">
-			<div className="flex items-center justify-between">
-				<div className="flex-1 flex items-center gap-2 min-w-0">
-					{isEditingName ? (
-						<Input
-							ref={inputRef}
-							value={dashboardName}
-							onChange={(e) => onDashboardNameChange(e.target.value)}
-							onBlur={handleNameBlur}
-							onKeyDown={handleKeyDown}
-							className="text-xl font-bold h-9 w-auto min-w-[150px] max-w-[300px]"
-						/>
-					) : (
-						<div className="flex items-center gap-2 min-w-0">
-							<div
-								onClick={handleNameClick}
-								className="text-xl font-bold tracking-tight text-foreground cursor-pointer border border-transparent hover:border-input rounded px-2 py-1 -ml-2 transition-colors truncate"
-								title={dashboardName || 'New Dashboard'}
-							>
-								{dashboardName || 'New Dashboard'}
-							</div>
-							{isDraft && (
-								<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none flex-shrink-0">
-									Draft
-								</span>
-							)}
+		<div className="flex items-center gap-2">
+			{/* Dashboard name + settings + save */}
+			<div className="flex items-center gap-2 min-w-0 flex-shrink">
+				{isEditingName ? (
+					<Input
+						ref={inputRef}
+						value={dashboardName}
+						onChange={(e) => onDashboardNameChange(e.target.value)}
+						onBlur={handleNameBlur}
+						onKeyDown={handleKeyDown}
+						className="text-xl font-bold h-9 w-auto min-w-[150px] max-w-[300px]"
+					/>
+				) : (
+					<div className="flex items-center gap-2 min-w-0">
+						<div
+							onClick={handleNameClick}
+							className="text-xl font-bold tracking-tight text-foreground cursor-pointer border border-transparent hover:border-input rounded px-2 py-1 -ml-2 transition-colors truncate"
+							title={dashboardName || 'New Dashboard'}
+						>
+							{dashboardName || 'New Dashboard'}
 						</div>
-					)}
+						{isDraft && (
+							<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none flex-shrink-0">
+								Draft
+							</span>
+						)}
+					</div>
+				)}
 
-					{onSettingsClick && (
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onSettingsClick}
-							title="Dashboard Settings"
-							className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground flex-shrink-0"
-						>
-							<Settings className="h-4 w-4" />
-						</Button>
-					)}
+				{onSettingsClick && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onSettingsClick}
+						title="Dashboard Settings"
+						className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground flex-shrink-0"
+					>
+						<Settings className="h-4 w-4" />
+					</Button>
+				)}
 
-					{isDirty && (
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onSave}
-							title="Save Dashboard"
-							className="rounded-full h-8 w-8 hover:bg-muted flex-shrink-0"
-						>
-							<Save className="h-4 w-4 text-foreground" />
-						</Button>
-					)}
-				</div>
-
-				<div className="flex items-center gap-2 flex-shrink-0">
-					{onNewDashboard && (
-						<Button size="sm" onClick={onNewDashboard} className="gap-2">
-							<Plus className="h-4 w-4" />
-							<span className="hidden sm:inline">New Dashboard</span>
-						</Button>
-					)}
-
-					{showTvModeButton && onLaunchTVMode && (
-						<Button size="sm" onClick={onLaunchTVMode} className="gap-2">
-							<Tv className="h-4 w-4" />
-						</Button>
-					)}
-				</div>
+				{isDirty && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onSave}
+						title="Save Dashboard"
+						className="rounded-full h-8 w-8 hover:bg-muted flex-shrink-0"
+					>
+						<Save className="h-4 w-4 text-foreground" />
+					</Button>
+				)}
 			</div>
 
-			<div className="flex items-center gap-2">
-				<div className="relative flex-1 min-w-0">
-					<div className="flex items-center h-8 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
-						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
-						<input
-							ref={searchInputRef}
-							className="flex h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-							placeholder="Search dashboards..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							onFocus={() => setIsSearchFocused(true)}
-							onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-						/>
-					</div>
-					{isSearchFocused && filteredDashboards.length > 0 && (
-						<div className="absolute left-0 top-10 z-50 w-full max-w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
-							<ul className="max-h-[300px] overflow-y-auto py-1">
-								{filteredDashboards.map((dashboard) => (
-									<li
-										key={dashboard.id}
-										className="px-2 py-1.5 text-sm text-popover-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm mx-1"
-										onMouseDown={(e) => {
-											e.preventDefault();
-											onDashboardSelect?.(dashboard);
-											setSearchQuery('');
-											setIsSearchFocused(false);
-											searchInputRef.current?.blur();
-										}}
-									>
-										{dashboard.name}
-									</li>
-								))}
-							</ul>
-						</div>
-					)}
+			{/* Search (grows to fill the row) */}
+			<div className="relative flex-1 min-w-0">
+				<div className="flex items-center h-8 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
+					<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
+					<input
+						ref={searchInputRef}
+						className="flex h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+						placeholder="Search dashboards..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onFocus={() => setIsSearchFocused(true)}
+						onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+					/>
 				</div>
+				{isSearchFocused && filteredDashboards.length > 0 && (
+					<div className="absolute left-0 top-10 z-50 w-full max-w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
+						<ul className="max-h-[300px] overflow-y-auto py-1">
+							{filteredDashboards.map((dashboard) => (
+								<li
+									key={dashboard.id}
+									className="px-2 py-1.5 text-sm text-popover-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm mx-1"
+									onMouseDown={(e) => {
+										e.preventDefault();
+										onDashboardSelect?.(dashboard);
+										setSearchQuery('');
+										setIsSearchFocused(false);
+										searchInputRef.current?.blur();
+									}}
+								>
+									{dashboard.name}
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
+			</div>
 
+			{/* Actions (fixed, right-aligned) */}
+			<div className="flex items-center gap-2 flex-shrink-0">
 				<Button
 					variant="ghost"
 					size="icon"
 					onClick={onRefresh}
 					disabled={isRefreshing}
-					className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground flex-shrink-0"
+					className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground"
 					title="Refresh"
 				>
 					<RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
 				</Button>
+
+				{onNewDashboard && (
+					<Button size="sm" onClick={onNewDashboard} className="gap-2">
+						<Plus className="h-4 w-4" />
+						<span className="hidden sm:inline">New Dashboard</span>
+					</Button>
+				)}
+
+				{showTvModeButton && onLaunchTVMode && (
+					<Button size="sm" onClick={onLaunchTVMode} className="gap-2">
+						<Tv className="h-4 w-4" />
+					</Button>
+				)}
 			</div>
 		</div>
 	);

@@ -34,6 +34,7 @@ export interface AlertsTableProps {
 	onTimeRangeChange?: (range: TimeRange) => void;
 	searchTerm: string;
 	onSearchTermChange: (term: string) => void;
+	renderToolbar?: boolean;
 }
 
 export interface SortConfig {

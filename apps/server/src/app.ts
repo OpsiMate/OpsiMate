@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import cors from 'cors';
 import express from 'express';
 import healthRouter from './api/health';
+import { ActionController } from './api/v1/actions/controller';
 import { AlertController } from './api/v1/alerts/controller';
 import { AuditController } from './api/v1/audit/controller';
 import { CustomActionsController } from './api/v1/custom-actions/controller';
@@ -16,6 +17,7 @@ import { SilenceController } from './api/v1/silences/controller';
 import { TagController } from './api/v1/tags/controller';
 import { UsersController } from './api/v1/users/controller';
 import createV1Router from './api/v1/v1';
+import { ActionBL } from './bl/actions/action.bl';
 import { AlertBL } from './bl/alerts/alert.bl';
 import { AuditBL } from './bl/audit/audit.bl';
 import { CustomActionBL } from './bl/custom-actions/customAction.bl';
@@ -28,6 +30,7 @@ import { ServicesBL } from './bl/services/services.bl';
 import { SilenceBL } from './bl/silences/silence.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
+import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertRepository } from './dal/alertRepository';
 import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
@@ -119,6 +122,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionRepo = new CustomActionRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
 	const silenceRepo = new SilenceRepository(db);
+	const actionRepo = new ActionRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -135,6 +139,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		customActionRepo.initCustomActionsTable(),
 		playgroundRepo.initPlaygroundTable(),
 		silenceRepo.initSilencesTable(),
+		actionRepo.initActionsTable(),
 	]);
 
 	// BL
@@ -148,6 +153,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
 	const silenceBL = new SilenceBL(silenceRepo);
 	alertBL.setSilenceBL(silenceBL);
+	const actionBL = new ActionBL(actionRepo);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
@@ -170,6 +176,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionsController = new CustomActionsController(customActionBL);
 	const playgroundController = new PlaygroundController(playgroundBL);
 	const silenceController = new SilenceController(silenceBL);
+	const actionController = new ActionController(actionBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -188,7 +195,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			customFieldsController,
 			customActionsController,
 			playgroundController,
-			silenceController
+			silenceController,
+			actionController
 		)
 	);
 

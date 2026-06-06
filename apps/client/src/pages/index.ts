@@ -1,3 +1,4 @@
+export { default as Actions } from './Actions';
 export { Alerts } from '../components/Alerts';
 export { default as AlertsTVMode } from '../components/Alerts/AlertsTVMode';
 export { Dashboards } from '../components/Dashboards';
