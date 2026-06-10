@@ -49,6 +49,7 @@ export const AlertsTable = ({
 	onTimeRangeChange,
 	isArchived = false,
 	renderToolbar = true,
+	heading,
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +108,11 @@ export const AlertsTable = ({
 				<AlertsEmptyState />
 			) : (
 				<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
+					{heading && (
+						<div className="flex items-center gap-2 px-3 py-1.5 border-b flex-shrink-0 bg-muted/30">
+							{heading}
+						</div>
+					)}
 					<div className="border-b flex-shrink-0">
 						<Table className="table-fixed w-full">
 							<TableHeader>
