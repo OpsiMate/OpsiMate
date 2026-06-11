@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { FilterSidebar } from '@/components/shared';
+import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDashboard } from '@/context/DashboardContext';
 import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert } from '@/hooks/queries/alerts';
@@ -14,13 +15,15 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Bell } from 'lucide-react';
+import { Archive, Bell, Columns2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { AlertsTable } from './AlertsTable';
+import { AssignmentPane } from './AssignmentPane';
+import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
@@ -64,6 +67,7 @@ const Alerts = () => {
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+	const [splitByAssignment, setSplitByAssignment] = useState(false);
 
 	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -163,6 +167,10 @@ const Alerts = () => {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
+
+	// Split the active, filtered alerts by assignment for the side-by-side view.
+	const unassignedAlerts = useMemo(() => filteredAlerts.filter((a) => !a.ownerId), [filteredAlerts]);
+	const assignedAlerts = useMemo(() => filteredAlerts.filter((a) => !!a.ownerId), [filteredAlerts]);
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll, handleAssignOwnerAll } =
 		useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
@@ -178,6 +186,34 @@ const Alerts = () => {
 	const handleDeleteArchivedAlert = async (alertId: string) => {
 		await deleteArchivedAlertMutation.mutateAsync(alertId);
 	};
+
+	// Active-tab alerts table, parameterized by the alert list so it can render full-width
+	// or inside one of the split-by-assignment panes without duplicating the prop wiring.
+	const renderActiveAlertsTable = (list: Alert[]) => (
+		<AlertsTable
+			alerts={list}
+			services={services}
+			onDismissAlert={handleDismissAlert}
+			onUndismissAlert={handleUndismissAlert}
+			onDeleteAlert={handleDeleteAlert}
+			onSelectAlerts={setSelectedAlerts}
+			selectedAlerts={selectedAlerts}
+			isLoading={isLoading}
+			visibleColumns={visibleColumns}
+			columnOrder={columnOrder}
+			onAlertClick={handleAlertClick}
+			tagKeyColumnLabels={allColumnLabels}
+			groupByColumns={dashboardState.groupBy}
+			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
+			onColumnToggle={handleColumnToggle}
+			tagKeys={tagKeys}
+			timeRange={dashboardState.timeRange}
+			onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
+			searchTerm={dashboardState.query}
+			onSearchTermChange={(term) => updateDashboardField('query', term)}
+			renderToolbar={false}
+		/>
+	);
 
 	const handleLaunchTVMode = () => {
 		setSelectedAlert(null); // Close alert details panel before navigating
@@ -324,6 +360,19 @@ const Alerts = () => {
 									/>
 								</div>
 
+								{activeTab === AlertTab.Active && (
+									<Button
+										variant={splitByAssignment ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => setSplitByAssignment((v) => !v)}
+										className="gap-1.5 flex-shrink-0"
+										title="Split into Unassigned and Assigned"
+									>
+										<Columns2 className="h-4 w-4" />
+										<span className="hidden lg:inline">Split by owner</span>
+									</Button>
+								)}
+
 								<TimeFilter
 									value={dashboardState.timeRange ?? createEmptyTimeRange()}
 									onChange={(range) => updateDashboardField('timeRange', range)}
@@ -333,36 +382,42 @@ const Alerts = () => {
 
 						{activeTab === AlertTab.Active ? (
 							<>
-								<div
-									className={cn(
-										'flex-1 min-h-0',
-										alerts.length === 0 && !isLoading && 'flex items-center justify-center'
-									)}
-								>
-									<AlertsTable
-										alerts={filteredAlerts}
-										services={services}
-										onDismissAlert={handleDismissAlert}
-										onUndismissAlert={handleUndismissAlert}
-										onDeleteAlert={handleDeleteAlert}
-										onSelectAlerts={setSelectedAlerts}
-										selectedAlerts={selectedAlerts}
-										isLoading={isLoading}
-										visibleColumns={visibleColumns}
-										columnOrder={columnOrder}
-										onAlertClick={handleAlertClick}
-										tagKeyColumnLabels={allColumnLabels}
-										groupByColumns={dashboardState.groupBy}
-										onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
-										onColumnToggle={handleColumnToggle}
-										tagKeys={tagKeys}
-										timeRange={dashboardState.timeRange}
-										onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
-										searchTerm={dashboardState.query}
-										onSearchTermChange={(term) => updateDashboardField('query', term)}
-										renderToolbar={false}
+								{splitByAssignment ? (
+									<VerticalSplit
+										className="flex-1"
+										top={
+											<AssignmentPane
+												title="Unassigned"
+												count={unassignedAlerts.length}
+												tone="amber"
+												isEmpty={unassignedAlerts.length === 0 && !isLoading}
+												emptyText="Nothing waiting — all alerts are assigned."
+											>
+												{renderActiveAlertsTable(unassignedAlerts)}
+											</AssignmentPane>
+										}
+										bottom={
+											<AssignmentPane
+												title="Assigned"
+												count={assignedAlerts.length}
+												tone="emerald"
+												isEmpty={assignedAlerts.length === 0 && !isLoading}
+												emptyText="No alerts assigned yet."
+											>
+												{renderActiveAlertsTable(assignedAlerts)}
+											</AssignmentPane>
+										}
 									/>
-								</div>
+								) : (
+									<div
+										className={cn(
+											'flex-1 min-h-0',
+											alerts.length === 0 && !isLoading && 'flex items-center justify-center'
+										)}
+									>
+										{renderActiveAlertsTable(filteredAlerts)}
+									</div>
+								)}
 
 								<div className="flex-shrink-0">
 									<AlertsSelectionBar

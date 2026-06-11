@@ -1,6 +1,7 @@
 import { TimeRange } from '@/context/DashboardContext';
 import { TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
+import { ReactNode } from 'react';
 
 export enum AlertTab {
 	Active = 'active',
@@ -35,6 +36,9 @@ export interface AlertsTableProps {
 	searchTerm: string;
 	onSearchTermChange: (term: string) => void;
 	renderToolbar?: boolean;
+	// Optional caption rendered flush at the top of the table container (e.g. a section
+	// title + count), so callers don't need a separate header row above the table.
+	heading?: ReactNode;
 }
 
 export interface SortConfig {
