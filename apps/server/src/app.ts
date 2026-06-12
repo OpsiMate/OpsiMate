@@ -13,6 +13,7 @@ import { PlaygroundController } from './api/v1/playground/controller';
 import { ProviderController } from './api/v1/providers/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { ServiceController } from './api/v1/services/controller';
+import { EnrichmentController } from './api/v1/enrichments/controller';
 import { SilenceController } from './api/v1/silences/controller';
 import { TagController } from './api/v1/tags/controller';
 import { UsersController } from './api/v1/users/controller';
@@ -27,6 +28,7 @@ import { IntegrationBL } from './bl/integrations/integration.bl';
 import { ProviderBL } from './bl/providers/provider.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { ServicesBL } from './bl/services/services.bl';
+import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
 import { SilenceBL } from './bl/silences/silence.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
@@ -45,6 +47,7 @@ import { SecretsMetadataRepository } from './dal/secretsMetadataRepository';
 import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository';
 import { ServiceCustomFieldValueRepository } from './dal/serviceCustomFieldValueRepository';
 import { ServiceRepository } from './dal/serviceRepository';
+import { EnrichmentRepository } from './dal/enrichmentRepository';
 import { SilenceRepository } from './dal/silenceRepository';
 import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
@@ -122,6 +125,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionRepo = new CustomActionRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
 	const silenceRepo = new SilenceRepository(db);
+	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
 
 	// Initialize Mail Service
@@ -139,6 +143,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		customActionRepo.initCustomActionsTable(),
 		playgroundRepo.initPlaygroundTable(),
 		silenceRepo.initSilencesTable(),
+		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 	]);
 
@@ -153,6 +158,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
 	const silenceBL = new SilenceBL(silenceRepo);
 	alertBL.setSilenceBL(silenceBL);
+	const enrichmentBL = new EnrichmentBL(enrichmentRepo);
+	alertBL.setEnrichmentBL(enrichmentBL);
 	const actionBL = new ActionBL(actionRepo);
 
 	// Controllers (only for SERVER)
@@ -176,6 +183,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionsController = new CustomActionsController(customActionBL);
 	const playgroundController = new PlaygroundController(playgroundBL);
 	const silenceController = new SilenceController(silenceBL);
+	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 
 	// Routes (only for SERVER)
@@ -196,6 +204,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			customActionsController,
 			playgroundController,
 			silenceController,
+			enrichmentController,
 			actionController
 		)
 	);

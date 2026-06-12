@@ -2,12 +2,14 @@ import { AlertRepository } from '../../dal/alertRepository';
 import { ArchivedAlertRepository } from '../../dal/archivedAlertRepository';
 import { Alert, AlertComment, AlertHistory, AlertType, Logger } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
+import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { SilenceBL } from '../silences/silence.bl';
 
 const logger = new Logger('bl/alert.bl');
 
 export class AlertBL {
 	private silenceBL: SilenceBL | null = null;
+	private enrichmentBL: EnrichmentBL | null = null;
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -17,6 +19,10 @@ export class AlertBL {
 
 	setSilenceBL(silenceBL: SilenceBL): void {
 		this.silenceBL = silenceBL;
+	}
+
+	setEnrichmentBL(enrichmentBL: EnrichmentBL): void {
+		this.enrichmentBL = enrichmentBL;
 	}
 
 	// region active
@@ -33,7 +39,11 @@ export class AlertBL {
 	async getAllAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all alerts');
-			const alerts = await this.alertRepo.getAllAlerts();
+			let alerts = await this.alertRepo.getAllAlerts();
+			// Enrich before silencing so silence rules can match enrichment-added tags.
+			if (this.enrichmentBL) {
+				alerts = await this.enrichmentBL.applyEnrichments(alerts);
+			}
 			if (this.silenceBL) {
 				return await this.silenceBL.markSilenced(alerts);
 			}

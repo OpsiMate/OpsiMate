@@ -8,6 +8,7 @@ import {
 	ActionTestResult,
 	ActionType,
 	AlertHistory,
+	AlertEnrichment,
 	AlertSilence,
 	AuditLog,
 	DiscoveredService,
@@ -627,6 +628,24 @@ export const silencesApi = {
 	updateSilence: (id: number, payload: Partial<SilencePayload>) =>
 		apiRequest<AlertSilence>(`/silences/${id}`, 'PUT', payload),
 	deleteSilence: (id: number) => apiRequest<void>(`/silences/${id}`, 'DELETE'),
+};
+
+export type EnrichmentPayload = {
+	name: string;
+	nameContains?: string | null;
+	labelMatchers?: { key: string; value: string }[];
+	addFields?: { key: string; value: string }[];
+	summaryTemplate?: string | null;
+	priority?: number;
+};
+
+export const enrichmentsApi = {
+	listEnrichments: () => apiRequest<AlertEnrichment[]>('/enrichments'),
+	getEnrichment: (id: number) => apiRequest<AlertEnrichment>(`/enrichments/${id}`),
+	createEnrichment: (payload: EnrichmentPayload) => apiRequest<AlertEnrichment>('/enrichments', 'POST', payload),
+	updateEnrichment: (id: number, payload: Partial<EnrichmentPayload>) =>
+		apiRequest<AlertEnrichment>(`/enrichments/${id}`, 'PUT', payload),
+	deleteEnrichment: (id: number) => apiRequest<void>(`/enrichments/${id}`, 'DELETE'),
 };
 
 export type ActionPayload = {

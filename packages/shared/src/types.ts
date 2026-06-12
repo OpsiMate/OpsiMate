@@ -269,6 +269,29 @@ export interface AlertSilence {
 	updatedAt: string;
 }
 
+// Alert enrichment: a rule that matches alerts (like silences: name-contains + label matchers)
+// and decorates them at fetch time — adding/overriding tag fields and/or rewriting the summary.
+// The summary template may reference the current values via {{summary}}, {{name}}, {{status}}.
+// Applied transiently when alerts are fetched; nothing is persisted on the alert itself.
+export interface AlertEnrichmentField {
+	key: string;
+	value: string;
+}
+
+export interface AlertEnrichment {
+	id: number;
+	name: string;
+	nameContains?: string | null;
+	labelMatchers: AlertSilenceLabelMatcher[];
+	addFields: AlertEnrichmentField[];
+	summaryTemplate?: string | null;
+	// Rank: rules apply highest-priority first. When two rules set the same field the higher
+	// priority wins; summary templates chain in priority order. Ties break by creation order.
+	priority: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
 // Actions are reusable, user-configured integrations that can be run against an alert
 // (e.g. notify a Slack/Teams channel, open a Jira ticket, or fire an arbitrary HTTP request).
 // This phase only covers configuring them; wiring them to alerts comes later.

@@ -10,6 +10,7 @@ export * from './audit';
 export * from './custom-fields';
 export * from './custom-actions';
 export * from './silences';
+export * from './enrichments';
 export * from './actions';
 
 // Export query keys

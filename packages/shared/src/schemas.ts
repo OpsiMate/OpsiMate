@@ -362,6 +362,59 @@ export const AlertSilenceIdSchema = z.object({
 	}),
 });
 
+// ---- Alert enrichments ----
+
+const enrichmentFieldSchema = z.object({
+	key: z.string().min(1, 'Field key is required').max(200),
+	value: z.string().min(1, 'Field value is required').max(1000),
+});
+
+// At least one effect: a field to add/override or a summary template.
+const enrichmentEffectRefinement = (data: { addFields?: unknown[]; summaryTemplate?: string | null }) => {
+	const hasFields = Array.isArray(data.addFields) && data.addFields.length > 0;
+	const hasSummary = !!data.summaryTemplate && data.summaryTemplate.trim().length > 0;
+	return hasFields || hasSummary;
+};
+
+export const CreateAlertEnrichmentSchema = z
+	.object({
+		name: z.string().min(1, 'Name is required').max(200),
+		nameContains: z.string().max(500).optional().nullable(),
+		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+		addFields: z.array(enrichmentFieldSchema).max(20).optional().default([]),
+		summaryTemplate: z.string().max(5000).optional().nullable(),
+		priority: z.number().int().min(0).max(1000).optional().default(0),
+	})
+	.refine(silenceMatchersRefinement, {
+		message: 'Provide at least a name match or one label matcher',
+		path: ['nameContains'],
+	})
+	.refine(enrichmentEffectRefinement, {
+		message: 'Provide at least one field to add or a summary template',
+		path: ['addFields'],
+	});
+
+// Partial update: effect refinement is not enforced here because omitted fields mean
+// "leave unchanged" (the client form always submits the full validated shape anyway).
+export const UpdateAlertEnrichmentSchema = z.object({
+	name: z.string().min(1).max(200).optional(),
+	nameContains: z.string().max(500).optional().nullable(),
+	labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
+	addFields: z.array(enrichmentFieldSchema).max(20).optional(),
+	summaryTemplate: z.string().max(5000).optional().nullable(),
+	priority: z.number().int().min(0).max(1000).optional(),
+});
+
+export const AlertEnrichmentIdSchema = z.object({
+	enrichmentId: z.string().transform((val) => {
+		const parsed = parseInt(val);
+		if (isNaN(parsed)) {
+			throw new Error('Invalid enrichment ID');
+		}
+		return parsed;
+	}),
+});
+
 // ---- Actions ----
 
 const actionNameSchema = z.string().min(1, 'Name is required').max(200);
