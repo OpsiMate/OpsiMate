@@ -20,5 +20,6 @@ export const queryKeys = {
 	dashboards: ['dashboards'] as const,
 	dashboardTags: ['dashboardTags'] as const,
 	silences: ['silences'] as const,
+	enrichments: ['enrichments'] as const,
 	actions: ['actions'] as const,
 };

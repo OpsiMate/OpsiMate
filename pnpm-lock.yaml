@@ -149,6 +149,9 @@ importers:
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
+      dompurify:
+        specifier: ^3.4.10
+        version: 3.4.10
       embla-carousel-react:
         specifier: ^8.3.0
         version: 8.6.0(react@18.3.1)
@@ -2631,6 +2634,9 @@ packages:
   '@types/tinycolor2@1.4.6':
     resolution: {integrity: sha512-iEN8J0BoMnsWBqjVbWH/c0G0Hh7O21lpR2/+PrvAVgWdzL7eexIFm4JN/Wn10PTcmNdtS6U67r499mlWMXOxNw==}
 
+  '@types/trusted-types@2.0.7':
+    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
   '@types/uuid@11.0.0':
     resolution: {integrity: sha512-HVyk8nj2m+jcFRNazzqyVKiZezyhDKrGUA3jlEcg/nZ6Ms+qHwocba1Y/AaVaznJTAM9xpdFSh+ptbNrhOGvZA==}
     deprecated: This is a stub types definition. uuid provides its own type definitions, so you do not need this installed.
@@ -3600,6 +3606,9 @@ packages:
 
   dom-helpers@5.2.1:
     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
+
+  dompurify@3.4.10:
+    resolution: {integrity: sha512-0xzNv0e7oYC6yyuOGZIABPM4qtg3QxLFniDNPP4ZP90wR8Yq3zgwpRbrNiT4N3IKqDbbYFEJLV+JWEs19aZ//w==}
 
   dot-case@2.1.1:
     resolution: {integrity: sha512-HnM6ZlFqcajLsyudHq7LeeLDr2rFAVYtDv/hV5qchQEidSck8j9OPUsXY9KwJv/lHMtYlX4DjRQqwFYa+0r8Ug==}
@@ -8915,6 +8924,9 @@ snapshots:
 
   '@types/tinycolor2@1.4.6': {}
 
+  '@types/trusted-types@2.0.7':
+    optional: true
+
   '@types/uuid@11.0.0':
     dependencies:
       uuid: 13.0.0
@@ -10024,6 +10036,10 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.3
       csstype: 3.1.3
+
+  dompurify@3.4.10:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
 
   dot-case@2.1.1:
     dependencies:

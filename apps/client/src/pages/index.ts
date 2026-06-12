@@ -2,6 +2,7 @@ export { default as Actions } from './Actions';
 export { Alerts } from '../components/Alerts';
 export { default as AlertsTVMode } from '../components/Alerts/AlertsTVMode';
 export { Dashboards } from '../components/Dashboards';
+export { default as Enrichments } from './Enrichments';
 export { default as Integrations } from './Integrations';
 export { default as Login } from './Login';
 export { default as NotFound } from './NotFound';
