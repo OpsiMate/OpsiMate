@@ -6,6 +6,7 @@ import { ReactNode } from 'react';
 export enum AlertTab {
 	Active = 'active',
 	Archived = 'archived',
+	All = 'all',
 }
 
 export type AlertSortField = string;

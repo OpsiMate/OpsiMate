@@ -16,7 +16,9 @@ export const AlertOwnerColumn = ({ alert, className, isArchived = false }: Alert
 	const setOwnerMutation = useSetAlertOwner();
 	const setArchivedOwnerMutation = useSetArchivedAlertOwner();
 
-	const mutation = isArchived ? setArchivedOwnerMutation : setOwnerMutation;
+	// Prefer the per-row transient flag (set in the combined "All" view) over the table-level prop.
+	const rowIsArchived = isArchived || Boolean(alert.isArchived);
+	const mutation = rowIsArchived ? setArchivedOwnerMutation : setOwnerMutation;
 
 	const handleOwnerChange = (userId: string | null) => {
 		mutation.mutate({ alertId: alert.id, ownerId: userId });

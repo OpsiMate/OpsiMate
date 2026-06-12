@@ -136,6 +136,9 @@ export interface Alert {
 	isDismissed: boolean;
 	// Transient: set at fetch time when an active silence rule matches this alert. Not persisted.
 	isSilenced?: boolean;
+	// Transient: set client-side in the combined "All" view so a row knows it came from the
+	// archived list and can route its own actions. Not persisted.
+	isArchived?: boolean;
 	ownerId?: string | null;
 }
 

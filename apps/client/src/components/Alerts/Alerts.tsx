@@ -15,7 +15,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Bell, Columns2 } from 'lucide-react';
+import { Archive, Bell, Columns2, LayoutList } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
@@ -72,7 +72,8 @@ const Alerts = () => {
 	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
 
-	const currentAlertData = activeTab === AlertTab.Active ? alerts : archivedAlerts;
+	const currentAlertData =
+		activeTab === AlertTab.Active ? alerts : activeTab === AlertTab.Archived ? archivedAlerts : allAlerts;
 	const syncedSelectedAlert = useMemo(() => {
 		if (!selectedAlert) return null;
 		const updatedAlert = currentAlertData.find((alert) => alert.id === selectedAlert.id);
@@ -86,7 +87,7 @@ const Alerts = () => {
 		isRefreshing: isRefreshingActive,
 		handleManualRefresh: handleManualRefreshActive,
 	} = useAlertsRefresh(refetch, {
-		shouldPause: shouldPauseRefresh || activeTab !== AlertTab.Active,
+		shouldPause: shouldPauseRefresh || (activeTab !== AlertTab.Active && activeTab !== AlertTab.All),
 	});
 
 	const {
@@ -94,12 +95,25 @@ const Alerts = () => {
 		isRefreshing: isRefreshingArchived,
 		handleManualRefresh: handleManualRefreshArchived,
 	} = useAlertsRefresh(refetchArchived, {
-		shouldPause: shouldPauseRefresh || activeTab !== AlertTab.Archived,
+		shouldPause: shouldPauseRefresh || (activeTab !== AlertTab.Archived && activeTab !== AlertTab.All),
 	});
 
-	const lastRefresh = activeTab === AlertTab.Active ? lastRefreshActive : lastRefreshArchived;
-	const isRefreshing = activeTab === AlertTab.Active ? isRefreshingActive : isRefreshingArchived;
-	const handleManualRefresh = activeTab === AlertTab.Active ? handleManualRefreshActive : handleManualRefreshArchived;
+	const lastRefresh = activeTab === AlertTab.Archived ? lastRefreshArchived : lastRefreshActive;
+	const isRefreshing =
+		activeTab === AlertTab.Active
+			? isRefreshingActive
+			: activeTab === AlertTab.Archived
+				? isRefreshingArchived
+				: isRefreshingActive || isRefreshingArchived;
+	const handleManualRefresh =
+		activeTab === AlertTab.Active
+			? handleManualRefreshActive
+			: activeTab === AlertTab.Archived
+				? handleManualRefreshArchived
+				: () => {
+						handleManualRefreshActive();
+						handleManualRefreshArchived();
+					};
 
 	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
 		tagKeys,
@@ -171,6 +185,15 @@ const Alerts = () => {
 	// Split the active, filtered alerts by assignment for the side-by-side view.
 	const unassignedAlerts = useMemo(() => filteredAlerts.filter((a) => !a.ownerId), [filteredAlerts]);
 	const assignedAlerts = useMemo(() => filteredAlerts.filter((a) => !!a.ownerId), [filteredAlerts]);
+
+	// Combined "All" view: active alerts followed by archived ones tagged so each row can route
+	// its own actions. archivedIds lets shared callbacks tell which list an alert belongs to.
+	const archivedIds = useMemo(() => new Set(archivedAlerts.map((a) => a.id)), [archivedAlerts]);
+	const filteredAllAlerts = useMemo(
+		() => [...filteredAlerts, ...filteredArchivedAlerts.map((a) => ({ ...a, isArchived: true }))],
+		[filteredAlerts, filteredArchivedAlerts]
+	);
+
 	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll, handleAssignOwnerAll } =
 		useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
@@ -185,6 +208,15 @@ const Alerts = () => {
 
 	const handleDeleteArchivedAlert = async (alertId: string) => {
 		await deleteArchivedAlertMutation.mutateAsync(alertId);
+	};
+
+	// In the combined "All" view, route delete to the right mutation based on the alert's list.
+	const handleDeleteAnyAlert = (alertId: string) => {
+		if (archivedIds.has(alertId)) {
+			void handleDeleteArchivedAlert(alertId);
+		} else {
+			void handleDeleteAlert(alertId);
+		}
 	};
 
 	// Active-tab alerts table, parameterized by the alert list so it can render full-width
@@ -346,11 +378,26 @@ const Alerts = () => {
 										<Archive className="h-4 w-4" />
 										<span>Archived</span>
 									</ToggleGroupItem>
+									<ToggleGroupItem
+										value={AlertTab.All}
+										aria-label="All alerts"
+										size="sm"
+										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
+									>
+										<LayoutList className="h-4 w-4" />
+										<span>All</span>
+									</ToggleGroupItem>
 								</ToggleGroup>
 								<span className="text-sm text-muted-foreground whitespace-nowrap">
-									{activeTab === AlertTab.Active
-										? `${filteredAlerts.length} Alert${filteredAlerts.length !== 1 ? 's' : ''}`
-										: `${filteredArchivedAlerts.length} Alert${filteredArchivedAlerts.length !== 1 ? 's' : ''}`}
+									{(() => {
+										const count =
+											activeTab === AlertTab.Active
+												? filteredAlerts.length
+												: activeTab === AlertTab.Archived
+													? filteredArchivedAlerts.length
+													: filteredAllAlerts.length;
+										return `${count} Alert${count !== 1 ? 's' : ''}`;
+									})()}
 								</span>
 
 								<div className="flex-1 min-w-0">
@@ -428,7 +475,7 @@ const Alerts = () => {
 									/>
 								</div>
 							</>
-						) : (
+						) : activeTab === AlertTab.Archived ? (
 							<div
 								className={cn(
 									'flex-1 min-h-0',
@@ -462,19 +509,59 @@ const Alerts = () => {
 									renderToolbar={false}
 								/>
 							</div>
+						) : (
+							<div
+								className={cn(
+									'flex-1 min-h-0',
+									filteredAllAlerts.length === 0 &&
+										!isLoading &&
+										!isLoadingArchived &&
+										'flex items-center justify-center'
+								)}
+							>
+								<AlertsTable
+									alerts={filteredAllAlerts}
+									services={services}
+									onDismissAlert={handleDismissAlert}
+									onUndismissAlert={handleUndismissAlert}
+									onDeleteAlert={handleDeleteAnyAlert}
+									onSelectAlerts={undefined}
+									selectedAlerts={[]}
+									isLoading={isLoading || isLoadingArchived}
+									visibleColumns={visibleColumns}
+									columnOrder={columnOrder}
+									onAlertClick={handleAlertClick}
+									tagKeyColumnLabels={allColumnLabels}
+									groupByColumns={dashboardState.groupBy}
+									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
+									onColumnToggle={handleColumnToggle}
+									tagKeys={tagKeys}
+									timeRange={dashboardState.timeRange}
+									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
+									searchTerm={dashboardState.query}
+									onSearchTermChange={(term) => updateDashboardField('query', term)}
+									renderToolbar={false}
+								/>
+							</div>
 						)}
 					</div>
 
-					{syncedSelectedAlert && (
-						<AlertDetailsPanel
-							alert={syncedSelectedAlert}
-							isActive={activeTab === AlertTab.Active}
-							onClose={() => setSelectedAlert(null)}
-							onDismiss={handleDismissAlert}
-							onUndismiss={handleUndismissAlert}
-							onDelete={activeTab === AlertTab.Active ? handleDeleteAlert : handleDeleteArchivedAlert}
-						/>
-					)}
+					{syncedSelectedAlert &&
+						(() => {
+							const selectedIsArchived =
+								activeTab === AlertTab.Archived ||
+								(activeTab === AlertTab.All && archivedIds.has(syncedSelectedAlert.id));
+							return (
+								<AlertDetailsPanel
+									alert={syncedSelectedAlert}
+									isActive={!selectedIsArchived}
+									onClose={() => setSelectedAlert(null)}
+									onDismiss={handleDismissAlert}
+									onUndismiss={handleUndismissAlert}
+									onDelete={selectedIsArchived ? handleDeleteArchivedAlert : handleDeleteAlert}
+								/>
+							);
+						})()}
 				</div>
 			</div>
 

@@ -18,8 +18,13 @@ export interface RowActionsProps {
 
 export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAlert }: RowActionsProps) => {
 	const { alertUrl, runbookUrl, isDismissed } = alert;
-	const isActive = Boolean(onDismissAlert);
-	const canToggle = (!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert));
+	// In the combined "All" view a row carries a transient isArchived flag so it can present
+	// archived behaviour (permanent delete, no dismiss/archive) even though the table-level
+	// callbacks are shared across active and archived rows.
+	const isArchivedAlert = Boolean(alert.isArchived);
+	const isActive = !isArchivedAlert && Boolean(onDismissAlert);
+	const canToggle =
+		!isArchivedAlert && ((!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert)));
 	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert);
 
 	const handleToggle = (event: React.MouseEvent) => {
