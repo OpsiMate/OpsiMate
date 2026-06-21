@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useAlerts } from '@/hooks/queries/alerts';
 import { useCreateEnrichment, useUpdateEnrichment } from '@/hooks/queries/enrichments';
 import { EnrichmentPayload } from '@/lib/api';
 import { AlertEnrichment } from '@OpsiMate/shared';
@@ -19,10 +20,14 @@ import { useEffect, useMemo, useState } from 'react';
 
 type KeyValue = { key: string; value: string };
 
+const DEFAULT_SUMMARY_TEMPLATE = '{{summary}}';
+
 interface EnrichmentFormDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	enrichment?: AlertEnrichment | null;
+	// When set (and not editing), opens a new rule pre-filled from this one ("copy from existing").
+	duplicateFrom?: AlertEnrichment | null;
 }
 
 const KeyValueRows = ({
@@ -90,7 +95,7 @@ const KeyValueRows = ({
 	</div>
 );
 
-export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment }: EnrichmentFormDialogProps) => {
+export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicateFrom }: EnrichmentFormDialogProps) => {
 	const isEdit = !!enrichment;
 	const { toast } = useToast();
 	const createMutation = useCreateEnrichment();
@@ -103,24 +108,35 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment }: Enrichm
 	const [summaryTemplate, setSummaryTemplate] = useState('');
 	const [priority, setPriority] = useState('0');
 
+	// Label keys present on current alerts, offered as insertable placeholders.
+	const { data: alerts = [] } = useAlerts();
+	const labelKeys = useMemo(() => {
+		const keys = new Set<string>();
+		alerts.forEach((a) => Object.keys(a.tags ?? {}).forEach((k) => keys.add(k)));
+		return Array.from(keys).sort();
+	}, [alerts]);
+
 	useEffect(() => {
 		if (!open) return;
-		if (enrichment) {
-			setName(enrichment.name);
-			setNameContains(enrichment.nameContains ?? '');
-			setMatchers((enrichment.labelMatchers ?? []).map((m) => ({ ...m })));
-			setAddFields((enrichment.addFields ?? []).map((f) => ({ ...f })));
-			setSummaryTemplate(enrichment.summaryTemplate ?? '');
-			setPriority(String(enrichment.priority ?? 0));
+		// Editing loads the rule; "copy from existing" loads a source rule into a new draft.
+		const source = enrichment ?? duplicateFrom;
+		if (source) {
+			setName(enrichment ? source.name : `${source.name} (copy)`);
+			setNameContains(source.nameContains ?? '');
+			setMatchers((source.labelMatchers ?? []).map((m) => ({ ...m })));
+			setAddFields((source.addFields ?? []).map((f) => ({ ...f })));
+			setSummaryTemplate(source.summaryTemplate ?? '');
+			setPriority(String(source.priority ?? 0));
 		} else {
 			setName('');
 			setNameContains('');
 			setMatchers([]);
 			setAddFields([]);
-			setSummaryTemplate('');
+			// Pre-fill with {{summary}} so the user keeps the existing summary and appends to it.
+			setSummaryTemplate(DEFAULT_SUMMARY_TEMPLATE);
 			setPriority('0');
 		}
-	}, [open, enrichment]);
+	}, [open, enrichment, duplicateFrom]);
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
@@ -253,10 +269,14 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment }: Enrichm
 							rows={addFields}
 							onChange={setAddFields}
 							keyPlaceholder="field (e.g. disk_alert)"
-							valuePlaceholder="value (e.g. true)"
+							valuePlaceholder="value (e.g. true or {{label.host}})"
 							emptyText="No fields. Added as tags on the alert; existing keys are overridden."
 							addLabel="Fields to add / override"
 						/>
+						<p className="text-xs text-muted-foreground -mt-2">
+							A value can copy a label, e.g. <code className="text-[11px]">owner={'{{label.team}}'}</code>
+							.
+						</p>
 
 						<div className="space-y-2">
 							<Label htmlFor="enrichment-summary" className="text-xs">
@@ -271,10 +291,37 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment }: Enrichm
 							/>
 							<p className="text-xs text-muted-foreground">
 								Replaces the alert summary. Use {'{{summary}}'} for the current summary, plus{' '}
-								{'{{name}}'} and {'{{status}}'}. New lines and basic HTML ({'<b>'}, {'<a>'}, lists) are
-								rendered in the alert details.
+								{'{{name}}'}, {'{{status}}'}, and any label as {'{{label.<key>}}'}. New lines and basic
+								HTML ({'<b>'}, {'<a>'}, lists) are rendered in the alert details.
 							</p>
 						</div>
+
+						{labelKeys.length > 0 && (
+							<div className="space-y-1.5">
+								<p className="text-xs text-muted-foreground">
+									Available labels (click to copy a placeholder):
+								</p>
+								<div className="flex flex-wrap gap-1.5">
+									{labelKeys.map((key) => {
+										const placeholder = `{{label.${key}}}`;
+										return (
+											<button
+												key={key}
+												type="button"
+												onClick={() => {
+													void navigator.clipboard?.writeText(placeholder);
+													toast({ title: 'Copied', description: placeholder });
+												}}
+												className="px-2 py-0.5 rounded-full border bg-background hover:bg-muted text-[11px] font-mono"
+												title={`Copy ${placeholder}`}
+											>
+												{placeholder}
+											</button>
+										);
+									})}
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 

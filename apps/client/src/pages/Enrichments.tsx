@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
 import { AlertEnrichment } from '@OpsiMate/shared';
-import { FileText, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { Copy, FileText, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
@@ -70,6 +70,7 @@ const Enrichments: React.FC = () => {
 	const [search, setSearch] = useState('');
 	const [editing, setEditing] = useState<AlertEnrichment | null>(null);
 	const [creating, setCreating] = useState(false);
+	const [duplicating, setDuplicating] = useState<AlertEnrichment | null>(null);
 	const [deleting, setDeleting] = useState<AlertEnrichment | null>(null);
 
 	const filtered = useMemo(() => {
@@ -208,6 +209,16 @@ const Enrichments: React.FC = () => {
 														variant="ghost"
 														size="icon"
 														className="h-8 w-8"
+														onClick={() => setDuplicating(e)}
+														aria-label="Duplicate enrichment"
+														title="Copy to a new rule"
+													>
+														<Copy className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8"
 														onClick={() => setEditing(e)}
 														aria-label="Edit enrichment"
 													>
@@ -240,6 +251,13 @@ const Enrichments: React.FC = () => {
 					if (!open) setEditing(null);
 				}}
 				enrichment={editing}
+			/>
+			<EnrichmentFormDialog
+				open={!!duplicating}
+				onOpenChange={(open) => {
+					if (!open) setDuplicating(null);
+				}}
+				duplicateFrom={duplicating}
 			/>
 
 			<AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
