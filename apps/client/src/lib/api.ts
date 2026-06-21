@@ -556,6 +556,11 @@ export const alertsApi = {
 		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE');
 	},
 
+	// Mark alert as read (unread alerts render bold in the table)
+	async markAlertRead(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/read`, 'PATCH');
+	},
+
 	getAlertHistory: (alertId: string) => {
 		return apiRequest<AlertHistory>(`/alerts/${alertId}/history`, 'GET');
 	},

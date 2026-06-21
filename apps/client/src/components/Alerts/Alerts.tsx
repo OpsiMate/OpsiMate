@@ -3,7 +3,7 @@ import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDashboard } from '@/context/DashboardContext';
-import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert } from '@/hooks/queries/alerts';
+import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -194,9 +194,17 @@ const Alerts = () => {
 		[filteredAlerts, filteredArchivedAlerts]
 	);
 
-	const { handleDismissAlert, handleUndismissAlert, handleDeleteAlert, handleDismissAll, handleAssignOwnerAll } =
-		useAlertActions();
+	const {
+		handleDismissAlert,
+		handleUndismissAlert,
+		handleDeleteAlert,
+		handleDismissAll,
+		handleAssignOwnerAll,
+		handleArchiveAll,
+		handleDeleteForeverAll,
+	} = useAlertActions();
 	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
+	const markAlertReadMutation = useMarkAlertRead();
 
 	const handleDismissAllSelected = async () => {
 		await handleDismissAll(selectedAlerts, () => setSelectedAlerts([]));
@@ -204,6 +212,16 @@ const Alerts = () => {
 
 	const handleAssignOwnerAllSelected = async (ownerId: string | null) => {
 		await handleAssignOwnerAll(selectedAlerts, ownerId, () => setSelectedAlerts([]));
+	};
+
+	const handleArchiveAllSelected = async () => {
+		setSelectedAlert(null);
+		await handleArchiveAll(selectedAlerts, () => setSelectedAlerts([]));
+	};
+
+	const handleDeleteAllSelected = async () => {
+		setSelectedAlert(null);
+		await handleDeleteForeverAll(selectedAlerts, () => setSelectedAlerts([]));
 	};
 
 	const handleDeleteArchivedAlert = async (alertId: string) => {
@@ -234,6 +252,7 @@ const Alerts = () => {
 			visibleColumns={visibleColumns}
 			columnOrder={columnOrder}
 			onAlertClick={handleAlertClick}
+			activeAlertId={syncedSelectedAlert?.id ?? null}
 			tagKeyColumnLabels={allColumnLabels}
 			groupByColumns={dashboardState.groupBy}
 			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -302,6 +321,12 @@ const Alerts = () => {
 	};
 
 	const handleAlertClick = (alert: Alert) => {
+		// Opening an unread (active) alert marks it as read, un-bolding its row. The transient
+		// isArchived flag (set on archived rows in the All view) is the guard here — an id-based
+		// check would wrongly skip active alerts that were archived once and re-fired.
+		if (alert.isRead === false && !alert.isArchived) {
+			markAlertReadMutation.mutate(alert.id);
+		}
 		setSelectedAlert((prev) => (prev?.id === alert.id ? null : alert));
 	};
 
@@ -472,6 +497,8 @@ const Alerts = () => {
 										onClearSelection={() => setSelectedAlerts([])}
 										onDismissAll={handleDismissAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
+										onArchiveAll={handleArchiveAllSelected}
+										onDeleteAll={handleDeleteAllSelected}
 									/>
 								</div>
 							</>
@@ -497,6 +524,7 @@ const Alerts = () => {
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
 									onAlertClick={handleAlertClick}
+									activeAlertId={syncedSelectedAlert?.id ?? null}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -531,6 +559,7 @@ const Alerts = () => {
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
 									onAlertClick={handleAlertClick}
+									activeAlertId={syncedSelectedAlert?.id ?? null}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}

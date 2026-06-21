@@ -38,6 +38,7 @@ export const AlertsTable = ({
 	visibleColumns = DEFAULT_VISIBLE_COLUMNS,
 	columnOrder = DEFAULT_COLUMN_ORDER,
 	onAlertClick,
+	activeAlertId = null,
 	tagKeyColumnLabels = {},
 	groupByColumns: controlledGroupBy,
 	onGroupByChange,
@@ -241,6 +242,7 @@ export const AlertsTable = ({
 									onToggleGroup={toggleGroup}
 									onSelectAlert={handleSelectAlert}
 									onAlertClick={onAlertClick}
+									activeAlertId={activeAlertId}
 									onDismissAlert={onDismissAlert}
 									onUndismissAlert={onUndismissAlert}
 									onDeleteAlert={onDeleteAlert}

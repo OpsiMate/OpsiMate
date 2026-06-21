@@ -64,6 +64,16 @@ export class AlertBL {
 		}
 	}
 
+	async markAlertRead(id: string): Promise<Alert | null> {
+		try {
+			logger.info(`Marking alert as read: ${id}`);
+			return await this.alertRepo.markAlertRead(id);
+		} catch (error) {
+			logger.error('Error marking alert as read', error);
+			throw error;
+		}
+	}
+
 	async undismissAlert(id: string): Promise<Alert | null> {
 		try {
 			logger.info(`Undismissing alert with id: ${id}`);

@@ -134,6 +134,8 @@ export interface Alert {
 	runbookUrl?: string;
 	createdAt: string;
 	isDismissed: boolean;
+	// False until someone opens the alert; unread alerts render bold in the table.
+	isRead?: boolean;
 	// Transient: set at fetch time when an active silence rule matches this alert. Not persisted.
 	isSilenced?: boolean;
 	// Transient: set client-side in the combined "All" view so a row knows it came from the
