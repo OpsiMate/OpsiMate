@@ -72,6 +72,9 @@ export class AlertRepository {
 
 			// Backward compatibility: ensure tags column exists
 			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all() as TableInfoRow[];
+			if (!columns.some((col: TableInfoRow) => col.name === 'is_read')) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN is_read BOOLEAN DEFAULT 0`).run();
+			}
 			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
 
 			if (!hasTags) {
@@ -102,6 +105,7 @@ export class AlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isDismissed: row.is_dismissed ? true : false,
+			isRead: row.is_read ? true : false,
 			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
 	};
@@ -117,6 +121,14 @@ export class AlertRepository {
 	async dismissAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
 			this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?').run(id);
+			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
+			return row ? this.toSharedAlert(row) : null;
+		});
+	}
+
+	async markAlertRead(id: string): Promise<SharedAlert | null> {
+		return runAsync(() => {
+			this.db.prepare('UPDATE alerts SET is_read = 1 WHERE id = ?').run(id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});

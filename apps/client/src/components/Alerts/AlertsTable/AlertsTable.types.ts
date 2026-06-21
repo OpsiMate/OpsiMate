@@ -27,6 +27,8 @@ export interface AlertsTableProps {
 	visibleColumns?: string[];
 	columnOrder?: string[];
 	onAlertClick?: (alert: Alert) => void;
+	// Alert currently open in the details panel; its row is highlighted.
+	activeAlertId?: string | null;
 	tagKeyColumnLabels?: Record<string, string>;
 	groupByColumns?: string[];
 	onGroupByChange?: (cols: string[]) => void;

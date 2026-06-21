@@ -19,6 +19,7 @@ export default function createAlertRouter(controller: AlertController) {
 	// Dismiss Unsimiss an alert
 	router.patch('/:id/dismiss', controller.dismissAlert.bind(controller));
 	router.patch('/:id/undismiss', controller.undismissAlert.bind(controller));
+	router.patch('/:id/read', controller.markAlertRead.bind(controller));
 
 	// Set alert owner
 	router.patch('/:id/owner', controller.setAlertOwner.bind(controller));

@@ -20,6 +20,8 @@ export interface AlertRowProps {
 	orderedColumns: string[];
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
+	// True when this alert is the one open in the details panel.
+	isActiveRow?: boolean;
 	onDismissAlert?: (alertId: string) => void;
 	onUndismissAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
@@ -37,6 +39,7 @@ export const AlertRow = ({
 	orderedColumns,
 	onSelectAlert,
 	onAlertClick,
+	isActiveRow = false,
 	onDismissAlert,
 	onUndismissAlert,
 	onDeleteAlert,
@@ -65,7 +68,15 @@ export const AlertRow = ({
 
 	return (
 		<TableRow
-			className={cn('h-8 cursor-pointer hover:bg-muted/50', isSelected && 'bg-muted/50')}
+			className={cn(
+				'h-8 cursor-pointer hover:bg-muted/50',
+				isSelected && 'bg-muted/50',
+				// Unread alerts render bold until someone opens them.
+				alert.isRead === false && 'font-bold',
+				// The alert currently open in the details panel: tinted row + accent edge,
+				// inset shadow instead of a border so the columns don't shift.
+				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary'
+			)}
 			onClick={handleRowClick}
 		>
 			{onSelectAlerts && (

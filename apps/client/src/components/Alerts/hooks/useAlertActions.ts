@@ -1,4 +1,10 @@
-import { useDeleteAlert, useDismissAlert, useSetAlertOwner, useUndismissAlert } from '@/hooks/queries/alerts';
+import {
+	useDeleteAlert,
+	useDeleteArchivedAlert,
+	useDismissAlert,
+	useSetAlertOwner,
+	useUndismissAlert,
+} from '@/hooks/queries/alerts';
 import { useToast } from '@/hooks/use-toast';
 import { Alert } from '@OpsiMate/shared';
 
@@ -7,6 +13,7 @@ export const useAlertActions = () => {
 	const undismissAlertMutation = useUndismissAlert();
 	const deleteAlertMutation = useDeleteAlert();
 	const setAlertOwnerMutation = useSetAlertOwner();
+	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
 	const { toast } = useToast();
 
 	const handleDismissAlert = async (alertId: string) => {
@@ -90,11 +97,61 @@ export const useAlertActions = () => {
 		onComplete();
 	};
 
+	// Bulk-archive the selected active alerts (active "delete" == archive).
+	const handleArchiveAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
+		const results = await Promise.allSettled(
+			selectedAlerts.map((alert) => deleteAlertMutation.mutateAsync(alert.id))
+		);
+		const successCount = results.filter((r) => r.status === 'fulfilled').length;
+		const failCount = results.length - successCount;
+		toast(
+			failCount > 0
+				? {
+						title: 'Partial archive',
+						description: `Archived ${successCount} alerts, ${failCount} failed`,
+						variant: 'destructive',
+					}
+				: {
+						title: 'Alerts archived',
+						description: `Moved ${successCount} alert${successCount !== 1 ? 's' : ''} to archive`,
+					}
+		);
+		onComplete();
+	};
+
+	// Permanently delete the selected active alerts: archive each one, then remove it from
+	// the archive (permanent delete only exists for archived alerts).
+	const handleDeleteForeverAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
+		const results = await Promise.allSettled(
+			selectedAlerts.map(async (alert) => {
+				await deleteAlertMutation.mutateAsync(alert.id);
+				await deleteArchivedAlertMutation.mutateAsync(alert.id);
+			})
+		);
+		const successCount = results.filter((r) => r.status === 'fulfilled').length;
+		const failCount = results.length - successCount;
+		toast(
+			failCount > 0
+				? {
+						title: 'Partial delete',
+						description: `Deleted ${successCount} alerts, ${failCount} failed`,
+						variant: 'destructive',
+					}
+				: {
+						title: 'Alerts deleted',
+						description: `Permanently deleted ${successCount} alert${successCount !== 1 ? 's' : ''}`,
+					}
+		);
+		onComplete();
+	};
+
 	return {
 		handleDismissAlert,
 		handleUndismissAlert,
 		handleDeleteAlert,
 		handleDismissAll,
 		handleAssignOwnerAll,
+		handleArchiveAll,
+		handleDeleteForeverAll,
 	};
 };

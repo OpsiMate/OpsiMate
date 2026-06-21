@@ -368,6 +368,23 @@ export class AlertController {
 		}
 	}
 
+	async markAlertRead(req: Request, res: Response) {
+		try {
+			const alertId = req.params.id;
+			if (!alertId) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			const alert = await this.alertBL.markAlertRead(alertId);
+			if (!alert) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			return res.json({ success: true, data: { alert } });
+		} catch (error) {
+			logger.error('Error marking alert as read:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	async deleteAlert(req: Request, res: Response) {
 		try {
 			const alertId = req.params.alertId;

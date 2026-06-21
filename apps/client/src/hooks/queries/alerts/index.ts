@@ -3,6 +3,7 @@ export { useArchivedAlerts } from './useArchivedAlerts';
 export { useDeleteAlert } from './useDeleteAlert';
 export { useDeleteArchivedAlert } from './useDeleteArchivedAlert';
 export { useDismissAlert } from './useDismissAlert';
+export { useMarkAlertRead } from './useMarkAlertRead';
 export { useUndismissAlert } from './useUndismissAlert';
 export { useSetAlertOwner } from './useSetAlertOwner';
 export { useSetArchivedAlertOwner } from './useSetArchivedAlertOwner';

@@ -64,6 +64,7 @@ export type AlertRow = {
 	runbook_url?: string;
 	created_at: string;
 	is_dismissed: boolean;
+	is_read?: boolean | number | null;
 	owner_id?: number | null;
 };
 
