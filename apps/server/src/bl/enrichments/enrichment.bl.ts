@@ -55,13 +55,20 @@ export class EnrichmentBL {
 
 	// Templates may reference the alert's current values; enrichments chain in order, so a
 	// later rule's {{summary}} sees the previous rule's output.
+	// Templates can reference the alert's own values. Besides {{summary}}, {{name}} and
+	// {{status}}, any label/tag is available as {{label.<key>}} (alias {{tag.<key>}}), e.g.
+	// {{label.host}}. Unknown placeholders are left untouched.
 	private static resolveTemplate(template: string, alert: Alert): string {
 		const ctx: Record<string, string> = {
 			summary: alert.summary ?? '',
 			name: alert.alertName ?? '',
 			status: alert.status ?? '',
 		};
-		return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => (key in ctx ? ctx[key] : match));
+		for (const [key, value] of Object.entries(alert.tags ?? {})) {
+			ctx[`label.${key}`] = String(value);
+			ctx[`tag.${key}`] = String(value);
+		}
+		return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) => (key in ctx ? ctx[key] : match));
 	}
 
 	// claimedKeys tracks fields already set by a higher-priority rule in this pass, so the
@@ -71,7 +78,8 @@ export class EnrichmentBL {
 		const tags = { ...alert.tags };
 		for (const field of enrichment.addFields ?? []) {
 			if (claimedKeys.has(field.key)) continue;
-			tags[field.key] = field.value;
+			// Field values are templated too, so a field can copy a label, e.g. owner={{label.team}}.
+			tags[field.key] = EnrichmentBL.resolveTemplate(field.value, alert);
 			claimedKeys.add(field.key);
 		}
 		const summary =
