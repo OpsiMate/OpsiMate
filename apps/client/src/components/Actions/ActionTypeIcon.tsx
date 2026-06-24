@@ -5,9 +5,9 @@ import { Globe } from 'lucide-react';
 // Brand logos for action types, served from public/images/logos. HTTP has no brand logo
 // and falls back to a generic globe icon.
 export const ACTION_LOGO_SRC: Partial<Record<ActionType, string>> = {
-	slack: 'images/logos/slack.svg',
-	teams: 'images/logos/teams.svg',
-	jira: 'images/logos/jira.svg',
+	slack: '/images/logos/slack.svg',
+	teams: '/images/logos/teams.svg',
+	jira: '/images/logos/jira.svg',
 };
 
 interface ActionTypeIconProps {
