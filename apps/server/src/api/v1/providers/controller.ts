@@ -80,22 +80,31 @@ export class ProviderController {
 	}
 
 	async createProviderBulk(req: AuthenticatedRequest, res: Response) {
-		const providerToCreate = CreateProviderBulkSchema.parse(req.body);
+		try {
+			const providerToCreate = CreateProviderBulkSchema.parse(req.body);
 
-		const created = Date.now().toString();
+			const created = Date.now().toString();
 
-		const providesPromises = providerToCreate.providers.map((provider) => {
-			return this.providerBL.createProvider(
-				{
-					...provider,
-					createdAt: created,
-				},
-				req.user as User
-			);
-		});
-		const providers = await Promise.all(providesPromises);
-		const providerIds = providers.map((provider) => provider.id);
-		return res.status(201).json({ success: true, data: { providerIds } });
+			const providesPromises = providerToCreate.providers.map((provider) => {
+				return this.providerBL.createProvider(
+					{
+						...provider,
+						createdAt: created,
+					},
+					req.user as User
+				);
+			});
+			const providers = await Promise.all(providesPromises);
+			const providerIds = providers.map((provider) => provider.id);
+			return res.status(201).json({ success: true, data: { providerIds } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			} else {
+				logger.error('Error creating providers in bulk:', error);
+				return res.status(500).json({ success: false, error: 'Internal server error' });
+			}
+		}
 	}
 
 	async testConnection(req: Request, res: Response) {
