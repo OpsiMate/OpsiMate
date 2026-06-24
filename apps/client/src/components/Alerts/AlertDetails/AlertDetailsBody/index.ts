@@ -1,0 +1,1 @@
+export { AlertDetailsBody } from './AlertDetailsBody';

@@ -3,12 +3,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
 import { Info, MessageSquare, X } from 'lucide-react';
-import { AlertActionsSection } from '../AlertActionsSection';
-import { AlertHistorySection } from '../AlertHistorySection';
-import { AlertInfoSection } from '../AlertInfoSection';
-import { AlertLinksSection } from '../AlertLinksSection';
-import { AlertSummarySection } from '../AlertSummarySection';
-import { AlertTimestampsSection } from '../AlertTimestampsSection';
+import { useState } from 'react';
+import { AlertDetailsBody } from '../AlertDetailsBody';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
 
@@ -30,6 +26,7 @@ export const AlertDetailsPanel = ({
 	onDelete,
 }: AlertDetailsPanelProps) => {
 	const historyData = useAlertHistory(alert.id);
+	const [tab, setTab] = useState('details');
 
 	return (
 		<div className="w-[340px] flex-shrink-0 border-l bg-background flex flex-col h-full overflow-hidden">
@@ -40,7 +37,7 @@ export const AlertDetailsPanel = ({
 				</Button>
 			</div>
 
-			<Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
+			<Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
 				<TabsList className="mx-4 mt-3 grid w-auto grid-cols-2">
 					<TabsTrigger value="details" className="gap-1.5">
 						<Info className="h-4 w-4" />
@@ -54,25 +51,15 @@ export const AlertDetailsPanel = ({
 
 				<TabsContent value="details" className="flex-1 min-h-0 mt-0">
 					<ScrollArea className="h-full">
-						<div className="p-4 space-y-4">
-							<AlertInfoSection alert={alert} />
-
-							{alert.summary && <AlertSummarySection summary={alert.summary} />}
-
-							<AlertTimestampsSection alert={alert} />
-
-							{historyData && <AlertHistorySection historyData={historyData} />}
-
-							<AlertLinksSection alert={alert} />
-
-							<AlertActionsSection
-								alert={alert}
-								isActive={isActive}
-								onDismiss={onDismiss}
-								onUndismiss={onUndismiss}
-								onDelete={onDelete}
-							/>
-						</div>
+						<AlertDetailsBody
+							alert={alert}
+							isActive={isActive}
+							historyData={historyData}
+							onDismiss={onDismiss}
+							onUndismiss={onUndismiss}
+							onDelete={onDelete}
+							onViewAllComments={() => setTab('comments')}
+						/>
 					</ScrollArea>
 				</TabsContent>
 

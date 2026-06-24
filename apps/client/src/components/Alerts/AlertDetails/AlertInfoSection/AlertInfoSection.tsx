@@ -4,8 +4,6 @@ import { useSetAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
-import { getAlertTagEntries, hasAlertTags } from '../../utils/alertTags.utils';
-import { getTagKeyColor } from '../../utils/tagColors.utils';
 
 interface AlertInfoSectionProps {
 	alert: Alert;
@@ -54,25 +52,6 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 				<span className="text-sm text-muted-foreground">Owner:</span>
 				<PersonPicker selectedUserId={alert.ownerId} onSelect={handleOwnerChange} users={users} />
 			</div>
-			{hasAlertTags(alert) && (
-				<div className="flex items-center gap-1 flex-wrap">
-					{getAlertTagEntries(alert).map(({ key, value }) => {
-						const colors = getTagKeyColor(key);
-						return (
-							<Badge
-								key={key}
-								className="text-xs border-0"
-								style={{
-									backgroundColor: colors.background,
-									color: colors.text,
-								}}
-							>
-								{key}: {value}
-							</Badge>
-						);
-					})}
-				</div>
-			)}
 		</div>
 	);
 };

@@ -1,13 +1,8 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { AlertActionsSection } from './AlertActionsSection';
+import { AlertDetailsBody } from './AlertDetailsBody';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
-import { AlertHistorySection } from './AlertHistorySection';
-import { AlertInfoSection } from './AlertInfoSection';
-import { AlertLinksSection } from './AlertLinksSection';
-import { AlertSummarySection } from './AlertSummarySection';
-import { AlertTimestampsSection } from './AlertTimestampsSection';
 import { useAlertHistory } from './hooks';
 
 interface AlertDetailsProps {
@@ -38,25 +33,14 @@ export const AlertDetails = ({
 			<AlertDetailsHeader onClose={onClose} />
 
 			<ScrollArea className="flex-1">
-				<div className="p-4 space-y-4">
-					<AlertInfoSection alert={alert} />
-
-					{alert.summary && <AlertSummarySection summary={alert.summary} />}
-
-					<AlertTimestampsSection alert={alert} />
-
-					{historyData && <AlertHistorySection historyData={historyData} />}
-
-					<AlertLinksSection alert={alert} />
-
-					<AlertActionsSection
-						alert={alert}
-						isActive={isActive}
-						onDismiss={onDismiss}
-						onUndismiss={onUndismiss}
-						onDelete={onDelete}
-					/>
-				</div>
+				<AlertDetailsBody
+					alert={alert}
+					isActive={isActive}
+					historyData={historyData}
+					onDismiss={onDismiss}
+					onUndismiss={onUndismiss}
+					onDelete={onDelete}
+				/>
 			</ScrollArea>
 		</div>
 	);
