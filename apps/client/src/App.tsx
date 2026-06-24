@@ -19,6 +19,7 @@ import {
 	Silences,
 	TVMode,
 } from '@/pages';
+import { isPlaygroundMode } from '@/lib/playground';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
@@ -39,12 +40,14 @@ const UnsavedChangesDialogWrapper = () => {
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
+	// The playground/demo defaults to light mode for a consistent first impression.
+	const playground = isPlaygroundMode();
 	return (
 		<ChakraProvider>
 			<ThemeProvider
 				attribute="class"
-				defaultTheme="system"
-				enableSystem
+				defaultTheme={playground ? 'light' : 'system'}
+				enableSystem={!playground}
 				disableTransitionOnChange
 				enableColorScheme={false}
 				storageKey="theme"

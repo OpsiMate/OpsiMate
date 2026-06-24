@@ -13,7 +13,13 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<script>
 			(function () {
-				const theme = localStorage.getItem('theme') || 'system';
+				// The playground/demo defaults to light mode. Detect it from the build env
+				// (Vite replaces %VITE_PLAYGROUND_MODE% at build time) or the ?playground query
+				// so the pre-paint theme is correct and there is no dark flash.
+				const isPlayground =
+					'%VITE_PLAYGROUND_MODE%' === 'true' ||
+					new URLSearchParams(window.location.search).has('playground');
+				const theme = localStorage.getItem('theme') || (isPlayground ? 'light' : 'system');
 				const isDark =
 					theme === 'dark' ||
 					(theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

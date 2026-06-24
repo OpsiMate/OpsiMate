@@ -354,7 +354,7 @@ const createEnrichments = (): AlertEnrichment[] => [
 		name: 'Tag critical owner team',
 		nameContains: null,
 		labelMatchers: [{ key: 'severity', value: 'critical' }],
-		addFields: [{ key: 'escalation', value: 'pagerduty' }],
+		addFields: [{ key: 'escalation', value: 'required' }],
 		summaryTemplate: null,
 		priority: 5,
 		createdAt: nowIso(),
