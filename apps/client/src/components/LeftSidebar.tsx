@@ -150,7 +150,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											}
 										>
 											<img
-												src="images/slack.png"
+												src="/images/slack.png"
 												alt="Slack"
 												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
@@ -174,7 +174,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											}
 										>
 											<img
-												src="images/git.png"
+												src="/images/git.png"
 												alt="GitHub"
 												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>

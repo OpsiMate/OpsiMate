@@ -232,7 +232,8 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 			? new Date(startsAt.getTime() + rng.nextInt(60) * 60 * 1000)
 			: new Date(startsAt.getTime() + rng.nextInt(24) * 60 * 60 * 1000);
 
-	const hasSummary = rng.next() < 0.4;
+	// Every playground alert gets a summary so the detail view is never empty in the demo.
+	rng.next(); // keep the RNG sequence stable for the values generated below
 	const hasRunbook = rng.next() < 0.2;
 	const isDismissed = rng.next() < 0.15;
 
@@ -295,9 +296,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		updatedAt: updatedAt.toISOString(),
 		alertUrl: `${baseUrl}/alert/${index}`,
 		alertName,
-		summary: hasSummary
-			? `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}`
-			: undefined,
+		summary: `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}`,
 		runbookUrl: hasRunbook ? `https://runbook.example.com/alert-${index}` : undefined,
 		createdAt: startsAt.toISOString(),
 		isDismissed,
