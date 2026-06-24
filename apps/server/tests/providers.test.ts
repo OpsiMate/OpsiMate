@@ -182,6 +182,107 @@ describe('Providers API', () => {
 		expect(bulkProvider2).toBeDefined();
 	});
 
+	test('bulk creation should return a well-formed response structure', async () => {
+		const providersData = [
+			{
+				name: 'Structured Provider',
+				providerIP: '10.0.1.1',
+				username: 'structureduser',
+				password: 'structuredpassword',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: providersData });
+
+		expect(bulkRes.status).toBe(201);
+		expect(bulkRes.body).toMatchObject({ success: true });
+		expect(bulkRes.body.data).toBeDefined();
+		expect(Array.isArray(bulkRes.body.data.providerIds)).toBe(true);
+		expect(bulkRes.body.data.providerIds.length).toBe(providersData.length);
+		// every returned id should be a number
+		bulkRes.body.data.providerIds.forEach((id: unknown) => {
+			expect(typeof id).toBe('number');
+		});
+	});
+
+	test('bulk creation should require authentication', async () => {
+		const bulkRes = await app.post('/api/v1/providers/bulk').send({
+			providers: [
+				{
+					name: 'Unauthorized Bulk Provider',
+					providerIP: '10.0.2.1',
+					username: 'unauthuser',
+					password: 'unauthpassword',
+					SSHPort: 22,
+					providerType: 'VM',
+				},
+			],
+		});
+
+		expect(bulkRes.status).toBe(401);
+	});
+
+	test('bulk creation should reject an empty providers array with 400', async () => {
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: [] });
+
+		expect(bulkRes.status).toBe(400);
+		expect(bulkRes.body.success).toBe(false);
+		expect(bulkRes.body.error).toBe('Validation error');
+	});
+
+	test('bulk creation should reject a missing providers field with 400', async () => {
+		const bulkRes = await app.post('/api/v1/providers/bulk').set('Authorization', `Bearer ${jwtToken}`).send({});
+
+		expect(bulkRes.status).toBe(400);
+		expect(bulkRes.body.success).toBe(false);
+	});
+
+	test('bulk creation should reject the whole batch when one provider is invalid (partial failure)', async () => {
+		const providersData = [
+			{
+				name: 'Valid Provider',
+				providerIP: '10.0.3.1',
+				username: 'validuser',
+				password: 'validpassword',
+				SSHPort: 22,
+				providerType: 'VM',
+			},
+			{
+				// invalid: unknown providerType and no password/secret
+				name: 'Invalid Provider',
+				providerIP: '10.0.3.2',
+				username: 'invaliduser',
+				SSHPort: 22,
+				providerType: 'NOT_A_REAL_TYPE',
+			},
+		];
+
+		const bulkRes = await app
+			.post('/api/v1/providers/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ providers: providersData });
+
+		expect(bulkRes.status).toBe(400);
+		expect(bulkRes.body.success).toBe(false);
+		expect(bulkRes.body.error).toBe('Validation error');
+
+		// validation happens before any insert, so no provider from the batch should be persisted
+		const getRes = await app.get('/api/v1/providers').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
+		const validProvider = getRes.body.data.providers.find((p: Provider) => p.name === 'Valid Provider');
+		expect(validProvider).toBeUndefined();
+		// only the seeded provider should remain
+		expect(getRes.body.data.providers.length).toBe(1);
+	});
+
 	// todo: add tests to the following routes:
 	// router.post('/:providerId/refresh', controller.refreshProvider.bind(controller));
 	// router.post('/test-connection', controller.testConnection.bind(controller));
