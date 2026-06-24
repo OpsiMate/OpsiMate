@@ -58,6 +58,16 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
+	http.patch(`${API_BASE}/alerts/:alertId/read`, ({ params }) => {
+		const alertId = params.alertId as string;
+		const alert = playgroundState.alerts.find((a) => a.id === alertId);
+		if (!alert) {
+			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
+		}
+		alert.isRead = true;
+		return HttpResponse.json({ success: true, data: { alert } });
+	}),
+
 	http.patch(`${API_BASE}/alerts/:alertId/owner`, async ({ params, request }) => {
 		const alertId = params.alertId as string;
 		const body = (await request.json()) as { ownerId: string | null };
@@ -502,5 +512,162 @@ export const handlers = [
 	// ==================== CUSTOM FIELDS (stub) ====================
 	http.get(`${API_BASE}/custom-fields`, () => {
 		return HttpResponse.json({ success: true, data: { fields: [] } });
+	}),
+
+	// ==================== SILENCES ====================
+	http.get(`${API_BASE}/silences`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.silences });
+	}),
+
+	http.post(`${API_BASE}/silences`, async ({ request }) => {
+		const body = (await request.json()) as Partial<(typeof playgroundState.silences)[0]>;
+		const newSilence = {
+			labelMatchers: [],
+			...body,
+			id: randomId(),
+			createdAt: nowIso(),
+			updatedAt: nowIso(),
+		} as (typeof playgroundState.silences)[0];
+		playgroundState.silences.unshift(newSilence);
+		return HttpResponse.json({ success: true, data: newSilence });
+	}),
+
+	http.put(`${API_BASE}/silences/:id`, async ({ params, request }) => {
+		const id = Number(params.id);
+		const body = (await request.json()) as Partial<(typeof playgroundState.silences)[0]>;
+		const silence = playgroundState.silences.find((s) => s.id === id);
+		if (!silence) {
+			return HttpResponse.json({ success: false, error: 'Silence not found' }, { status: 404 });
+		}
+		Object.assign(silence, body, { updatedAt: nowIso() });
+		return HttpResponse.json({ success: true, data: silence });
+	}),
+
+	http.delete(`${API_BASE}/silences/:id`, ({ params }) => {
+		const id = Number(params.id);
+		playgroundState.silences = playgroundState.silences.filter((s) => s.id !== id);
+		return HttpResponse.json({ success: true, message: 'Silence deleted' });
+	}),
+
+	// ==================== ACTIONS ====================
+	http.get(`${API_BASE}/actions`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.actions });
+	}),
+
+	http.post(`${API_BASE}/actions/test`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { ok: true, message: 'Test sent (playground — no real call made).' },
+		});
+	}),
+
+	http.post(`${API_BASE}/actions/:id/preview`, ({ params }) => {
+		const id = Number(params.id);
+		const action = playgroundState.actions.find((a) => a.id === id);
+		if (!action) {
+			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
+		}
+		const cfg = action.config as Record<string, string>;
+		const preview =
+			action.type === 'slack'
+				? {
+						type: 'slack',
+						message: cfg.messageTemplate || 'Alert fired',
+						channel: cfg.channel,
+						webhookUrl: cfg.webhookUrl,
+					}
+				: action.type === 'teams'
+					? {
+							type: 'teams',
+							title: cfg.titleTemplate || 'Alert',
+							message: cfg.messageTemplate || 'Alert fired',
+							webhookUrl: cfg.webhookUrl,
+						}
+					: action.type === 'jira'
+						? {
+								type: 'jira',
+								summary: cfg.summaryTemplate || 'Alert',
+								description: cfg.descriptionTemplate || '',
+								baseUrl: cfg.baseUrl,
+								projectKey: cfg.projectKey,
+								issueType: cfg.issueType,
+							}
+						: { type: 'http', method: cfg.method || 'POST', url: cfg.url, body: cfg.bodyTemplate || '' };
+		return HttpResponse.json({ success: true, data: preview });
+	}),
+
+	http.post(`${API_BASE}/actions/:id/run`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { ok: true, message: 'Action sent (playground — no real call made).' },
+		});
+	}),
+
+	http.post(`${API_BASE}/actions`, async ({ request }) => {
+		const body = (await request.json()) as Partial<(typeof playgroundState.actions)[0]>;
+		const newAction = {
+			nameContains: null,
+			labelMatchers: [],
+			...body,
+			id: randomId(),
+			createdAt: nowIso(),
+			updatedAt: nowIso(),
+		} as (typeof playgroundState.actions)[0];
+		playgroundState.actions.unshift(newAction);
+		return HttpResponse.json({ success: true, data: newAction });
+	}),
+
+	http.put(`${API_BASE}/actions/:id`, async ({ params, request }) => {
+		const id = Number(params.id);
+		const body = (await request.json()) as Partial<(typeof playgroundState.actions)[0]>;
+		const action = playgroundState.actions.find((a) => a.id === id);
+		if (!action) {
+			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
+		}
+		Object.assign(action, body, { updatedAt: nowIso() });
+		return HttpResponse.json({ success: true, data: action });
+	}),
+
+	http.delete(`${API_BASE}/actions/:id`, ({ params }) => {
+		const id = Number(params.id);
+		playgroundState.actions = playgroundState.actions.filter((a) => a.id !== id);
+		return HttpResponse.json({ success: true, message: 'Action deleted' });
+	}),
+
+	// ==================== ENRICHMENTS ====================
+	http.get(`${API_BASE}/enrichments`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.enrichments });
+	}),
+
+	http.post(`${API_BASE}/enrichments`, async ({ request }) => {
+		const body = (await request.json()) as Partial<(typeof playgroundState.enrichments)[0]>;
+		const newEnrichment = {
+			labelMatchers: [],
+			addFields: [],
+			priority: 0,
+			...body,
+			id: randomId(),
+			createdAt: nowIso(),
+			updatedAt: nowIso(),
+		} as (typeof playgroundState.enrichments)[0];
+		playgroundState.enrichments.unshift(newEnrichment);
+		return HttpResponse.json({ success: true, data: newEnrichment });
+	}),
+
+	http.put(`${API_BASE}/enrichments/:id`, async ({ params, request }) => {
+		const id = Number(params.id);
+		const body = (await request.json()) as Partial<(typeof playgroundState.enrichments)[0]>;
+		const enrichment = playgroundState.enrichments.find((e) => e.id === id);
+		if (!enrichment) {
+			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
+		}
+		Object.assign(enrichment, body, { updatedAt: nowIso() });
+		return HttpResponse.json({ success: true, data: enrichment });
+	}),
+
+	http.delete(`${API_BASE}/enrichments/:id`, ({ params }) => {
+		const id = Number(params.id);
+		playgroundState.enrichments = playgroundState.enrichments.filter((e) => e.id !== id);
+		return HttpResponse.json({ success: true, message: 'Enrichment deleted' });
 	}),
 ];

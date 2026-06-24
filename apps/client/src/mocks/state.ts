@@ -1,9 +1,13 @@
 import { getPlaygroundUser } from '@/lib/playground';
+import { getTagKeyColumnId } from '@/types';
 import { SavedView } from '@/types/SavedView';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	Action,
 	Alert,
 	AlertComment,
+	AlertEnrichment,
+	AlertSilence,
 	AlertStatus,
 	AuditActionType,
 	AuditLog,
@@ -38,6 +42,9 @@ export interface PlaygroundState {
 	users: User[];
 	customActions: CustomAction[];
 	auditLogs: AuditLog[];
+	silences: AlertSilence[];
+	actions: Action[];
+	enrichments: AlertEnrichment[];
 }
 
 const nowIso = () => new Date().toISOString();
@@ -157,24 +164,26 @@ const createIntegrations = (): Integration[] => [
 const createDashboards = (): Dashboard[] => [
 	{
 		id: '101',
-		name: 'Critical Alerts',
+		name: 'Critical · Firing',
 		type: 'alerts',
-		description: 'Live view of high-priority alerts',
-		filters: { severity: ['critical'], status: ['firing'] },
-		visibleColumns: ['severity', 'status', 'owner', 'integration', 'startsAt'],
+		description: 'Critical-severity alerts that are currently firing',
+		// Filter keys must match the alert-table filter format: tag fields are prefixed, and
+		// the status facet uses the capitalized value ("Firing", not "firing").
+		filters: { [getTagKeyColumnId('severity')]: ['critical'], status: ['Firing'] },
+		visibleColumns: ['type', 'alertName', 'status', getTagKeyColumnId('severity'), 'owner', 'startsAt'],
 		query: '',
-		groupBy: ['integration'],
+		groupBy: [],
 		createdAt: nowIso(),
 	},
 	{
 		id: '102',
-		name: 'Production Services',
-		type: 'services',
-		description: 'Production fleet health',
-		filters: { environment: ['production'] },
-		visibleColumns: ['name', 'status', 'provider', 'tags'],
+		name: 'Production alerts',
+		type: 'alerts',
+		description: 'Everything firing in production',
+		filters: { [getTagKeyColumnId('environment')]: ['production'], status: ['Firing'] },
+		visibleColumns: ['type', 'alertName', 'status', getTagKeyColumnId('service'), 'owner', 'startsAt'],
 		query: '',
-		groupBy: ['provider'],
+		groupBy: [getTagKeyColumnId('service')],
 		createdAt: nowIso(),
 	},
 ];
@@ -242,6 +251,117 @@ const createCustomActions = (): CustomAction[] => [
 	},
 ];
 
+const createSilences = (): AlertSilence[] => [
+	{
+		id: 1,
+		name: 'Weekly DB maintenance',
+		nameContains: 'Disk',
+		labelMatchers: [{ key: 'service', value: 'postgres' }],
+		startsAt: null,
+		endsAt: null,
+		schedule: { daysOfWeek: [0], startTime: '02:00', endTime: '04:00' },
+		reason: 'Scheduled vacuum + reindex window',
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 2,
+		name: 'Mute staging noise',
+		nameContains: null,
+		labelMatchers: [{ key: 'environment', value: 'staging' }],
+		startsAt: nowIso(),
+		endsAt: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
+		schedule: null,
+		reason: 'Load testing in staging',
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+];
+
+const createActions = (): Action[] => [
+	{
+		id: 1,
+		name: 'Notify #oncall',
+		type: 'slack',
+		config: {
+			webhookUrl: 'https://hooks.slack.com/services/T000/B000/XXXX',
+			channel: '#oncall',
+			messageTemplate: ':rotating_light: {{alert.name}} is {{alert.status}}',
+		},
+		nameContains: null,
+		labelMatchers: [],
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 2,
+		name: 'Post to Teams',
+		type: 'teams',
+		config: { webhookUrl: 'https://outlook.office.com/webhook/demo', titleTemplate: 'Alert: {{alert.name}}' },
+		nameContains: null,
+		labelMatchers: [],
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 3,
+		name: 'Open Jira incident',
+		type: 'jira',
+		config: {
+			baseUrl: 'https://demo.atlassian.net',
+			email: 'bot@opsimate.local',
+			apiToken: 'demo-token',
+			projectKey: 'OPS',
+			issueType: 'Incident',
+			summaryTemplate: '{{alert.name}} on {{alert.service}}',
+		},
+		nameContains: 'CPU',
+		labelMatchers: [],
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 4,
+		name: 'Call webhook',
+		type: 'http',
+		config: {
+			url: 'https://api.example.com/hook',
+			method: 'POST',
+			headers: null,
+			bodyTemplate: '{"alert":"{{alert.name}}"}',
+		},
+		nameContains: null,
+		labelMatchers: [{ key: 'severity', value: 'critical' }],
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+];
+
+const createEnrichments = (): AlertEnrichment[] => [
+	{
+		id: 1,
+		name: 'Disk alerts → help desk',
+		nameContains: 'Disk',
+		labelMatchers: [],
+		addFields: [{ key: 'disk_alert', value: 'true' }],
+		summaryTemplate: '{{summary}}\n\n<b>What to do:</b> contact the help desk — the disk is full.',
+		priority: 10,
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 2,
+		name: 'Tag critical owner team',
+		nameContains: null,
+		labelMatchers: [{ key: 'severity', value: 'critical' }],
+		addFields: [{ key: 'escalation', value: 'pagerduty' }],
+		summaryTemplate: null,
+		priority: 5,
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+];
+
 const createAuditLogs = (): AuditLog[] => [
 	{
 		id: 1,
@@ -256,10 +376,24 @@ const createAuditLogs = (): AuditLog[] => [
 	},
 ];
 
+// The diverse-alerts generator doesn't attach labels, so we add realistic, deterministic
+// tags here. This powers the filter facets, the Labels section, tag-based dashboards, and
+// enrichment/action label matching in the playground.
+const TAG_SEVERITY = ['critical', 'warning', 'info'];
+const TAG_SERVICE = ['api-gateway', 'postgres', 'redis', 'elasticsearch', 'kafka', 'nginx'];
+const TAG_ENVIRONMENT = ['production', 'production', 'staging'];
+const TAG_TEAM = ['platform', 'data', 'frontend', 'sre'];
+
 const seedAlerts = () => {
 	const alerts = generateDiverseMockAlerts(500);
 	return alerts.map((alert, idx) => ({
 		...alert,
+		tags: {
+			severity: TAG_SEVERITY[idx % TAG_SEVERITY.length],
+			service: TAG_SERVICE[idx % TAG_SERVICE.length],
+			environment: TAG_ENVIRONMENT[idx % TAG_ENVIRONMENT.length],
+			team: TAG_TEAM[idx % TAG_TEAM.length],
+		},
 		ownerId: idx % 7 === 0 ? getPlaygroundUser().id : null,
 	}));
 };
@@ -302,6 +436,9 @@ export const playgroundState: PlaygroundState = {
 	users: createUsers(),
 	customActions: createCustomActions(),
 	auditLogs: createAuditLogs(),
+	silences: createSilences(),
+	actions: createActions(),
+	enrichments: createEnrichments(),
 };
 
 let idCounter = 10000;
