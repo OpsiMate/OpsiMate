@@ -1,0 +1,1 @@
+export { AlertLastCommentSection } from './AlertLastCommentSection';

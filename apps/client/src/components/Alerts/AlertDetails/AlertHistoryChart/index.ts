@@ -1,1 +1,0 @@
-export { AlertHistoryChart } from './AlertHistoryChart';

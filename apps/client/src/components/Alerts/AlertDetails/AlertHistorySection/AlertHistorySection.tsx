@@ -1,23 +1,26 @@
-import { Separator } from '@/components/ui/separator';
 import { AlertHistory } from '@OpsiMate/shared';
-import { AlertHistoryChart } from '../AlertHistoryChart';
+import { History } from 'lucide-react';
+import { AlertHistoryTimeline } from '../AlertHistoryTimeline';
+import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertHistorySectionProps {
 	historyData: AlertHistory;
 }
 
+// Self-contained collapsible History section, rendered as a timeline.
 export const AlertHistorySection = ({ historyData }: AlertHistorySectionProps) => {
 	if (!historyData.data.length) {
 		return null;
 	}
 
 	return (
-		<>
-			<Separator />
-			<div>
-				<div className="text-xs font-medium text-foreground mb-3">Alert History</div>
-				<AlertHistoryChart historyData={historyData} />
-			</div>
-		</>
+		<CollapsibleSection
+			title="History"
+			icon={<History className="h-3.5 w-3.5" />}
+			badge={historyData.data.length}
+			defaultOpen={false}
+		>
+			<AlertHistoryTimeline historyData={historyData} />
+		</CollapsibleSection>
 	);
 };
