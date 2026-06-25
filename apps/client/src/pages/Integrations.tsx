@@ -8,6 +8,7 @@ import { ZabbixIcon } from '@/components/icons/ZabbixIcon';
 import { GCPSetupModal } from '@/components/Integrations/GCPSetupModal';
 import { UptimeKumaSetupModal } from '@/components/Integrations/UptimeKumaSetupModal';
 import { DatadogSetupModal } from '@/components/Integrations/DatadogSetupModal';
+import { GrafanaSetupModal } from '@/components/Integrations/GrafanaSetupModal';
 import { ZabbixSetupModal } from '@/components/Integrations/ZabbixSetupModal';
 import { CustomAlertsSetupModal } from '@/components/Integrations/CustomAlertsSetupModal';
 import {
@@ -111,20 +112,12 @@ const INTEGRATIONS: Integration[] = [
 		id: 'grafana',
 		supported: true,
 		name: 'Grafana',
-		description: 'Open source analytics & monitoring solution for every database.',
+		description: 'Receive alerts from Grafana via a Webhook contact point (push).',
 		logo: GrafanaIcon,
 		tags: ['Monitoring', 'Visualization', 'Alerts'],
 		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/grafana',
-		configFields: [
-			{
-				name: 'url',
-				label: 'Grafana URL',
-				type: 'text',
-				placeholder: 'https://your-grafana-instance.com',
-				required: true,
-			},
-			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
-		],
+		configFields: [],
+		enabled: true, // Grafana alerts are received via webhook (no credentials stored)
 	},
 	{
 		id: 'datadog',
@@ -262,6 +255,7 @@ const Integrations = () => {
 	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
 	const [showUptimeKumaSetupModal, setShowUptimeKumaSetupModal] = useState(false);
 	const [showDatadogSetupModal, setShowDatadogSetupModal] = useState(false);
+	const [showGrafanaSetupModal, setShowGrafanaSetupModal] = useState(false);
 	const [showZabbixSetupModal, setShowZabbixSetupModal] = useState(false);
 	const [showCustomAlertsSetupModal, setShowCustomAlertsSetupModal] = useState(false);
 	const { toast } = useToast();
@@ -518,6 +512,12 @@ const Integrations = () => {
 												// Special handling for Datadog alert webhooks
 												if (integration.id === 'datadog') {
 													setShowDatadogSetupModal(true);
+													return;
+												}
+
+												// Grafana now ingests alerts via webhook (push) instead of polling
+												if (integration.id === 'grafana') {
+													setShowGrafanaSetupModal(true);
 													return;
 												}
 
@@ -1088,6 +1088,7 @@ const Integrations = () => {
 			<GCPSetupModal open={showGCPSetupModal} onOpenChange={setShowGCPSetupModal} />
 			<UptimeKumaSetupModal open={showUptimeKumaSetupModal} onOpenChange={setShowUptimeKumaSetupModal} />
 			<DatadogSetupModal open={showDatadogSetupModal} onOpenChange={setShowDatadogSetupModal} />
+			<GrafanaSetupModal open={showGrafanaSetupModal} onOpenChange={setShowGrafanaSetupModal} />
 			<ZabbixSetupModal open={showZabbixSetupModal} onOpenChange={setShowZabbixSetupModal} />
 			<CustomAlertsSetupModal open={showCustomAlertsSetupModal} onOpenChange={setShowCustomAlertsSetupModal} />
 		</>
