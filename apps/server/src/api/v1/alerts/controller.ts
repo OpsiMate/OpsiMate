@@ -12,6 +12,7 @@ import {
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { v4 } from 'uuid';
+import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('alerts.controller');
@@ -354,6 +355,25 @@ export class AlertController {
 		'rulename',
 	]);
 
+	// Stable, collision-resistant id derived from an alert's full label set. Used only as a
+	// fallback when Grafana omits the fingerprint, so distinct instances of the same rule (which
+	// share alertname/rulename but differ in their labels) never collapse onto one alert record.
+	private static idFromLabels(labels: Record<string, string>): string {
+		const normalized = Object.keys(labels)
+			.sort()
+			.map((k) => `${k}=${labels[k]}`)
+			.join('\n');
+		return `grafana-${createHash('sha1').update(normalized).digest('hex').slice(0, 16)}`;
+	}
+
+	// Parses a timestamp to ISO, falling back to "now" when it is missing or unparseable, so a
+	// malformed startsAt from Grafana can't throw and drop the whole batch.
+	private static toIsoOrNow(value?: string): string {
+		if (!value) return new Date().toISOString();
+		const parsed = new Date(value);
+		return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+	}
+
 	// Receives alerts pushed by a Grafana "Webhook" contact point. Replaces the old polling job:
 	// Grafana now POSTs firing/resolved transitions here. Each alert in the batch is upserted
 	// (firing) or archived (resolved), keyed by Grafana's per-alert fingerprint.
@@ -367,11 +387,13 @@ export class AlertController {
 
 			for (const alert of alerts) {
 				const labels = alert.labels || {};
-				// Grafana's fingerprint uniquely identifies an alert instance. Fall back to the
-				// alert name when a fingerprint is absent (rare), so we still get a stable id.
-				const alertId = alert.fingerprint || labels.alertname || labels.rulename;
+				// Grafana's fingerprint uniquely identifies an alert instance. When it is absent
+				// (rare), derive a per-instance id from the full label set rather than the rule
+				// name, so different instances of the same rule never collapse onto one record.
+				const alertId =
+					alert.fingerprint || (Object.keys(labels).length > 0 ? AlertController.idFromLabels(labels) : '');
 				if (!alertId) {
-					logger.warn('Skipping grafana alert without fingerprint or name');
+					logger.warn('Skipping grafana alert without fingerprint or labels');
 					continue;
 				}
 
@@ -390,7 +412,7 @@ export class AlertController {
 					type: 'Grafana',
 					status: AlertStatus.FIRING,
 					tags,
-					startsAt: alert.startsAt ? new Date(alert.startsAt).toISOString() : new Date().toISOString(),
+					startsAt: AlertController.toIsoOrNow(alert.startsAt),
 					updatedAt: new Date().toISOString(),
 					alertUrl: alert.generatorURL || alert.dashboardURL || alert.panelURL || '',
 					alertName: labels.rulename || labels.alertname || alert.annotations?.summary || 'Grafana alert',
