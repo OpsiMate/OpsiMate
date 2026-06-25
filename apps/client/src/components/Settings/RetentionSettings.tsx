@@ -27,6 +27,10 @@ const RESOURCE_META: Record<RetentionResource, { title: string; description: str
 		title: 'Alert status history',
 		description: 'Firing/resolved status transitions recorded for alerts.',
 	},
+	[RetentionResource.ActiveAlerts]: {
+		title: 'Active alerts',
+		description: 'Open alerts not updated for this long (clears stale alerts that never resolved).',
+	},
 	[RetentionResource.ArchivedAlerts]: {
 		title: 'Archived alerts',
 		description: 'Resolved/archived alerts kept for historical reference.',
@@ -38,11 +42,12 @@ const RESOURCE_META: Record<RetentionResource, { title: string; description: str
 };
 
 const RESOURCE_ORDER: RetentionResource[] = [
-	RetentionResource.AuditLogs,
-	RetentionResource.AlertHistoryEvents,
-	RetentionResource.AlertStatusHistory,
+	RetentionResource.ActiveAlerts,
 	RetentionResource.ArchivedAlerts,
+	RetentionResource.AlertStatusHistory,
+	RetentionResource.AlertHistoryEvents,
 	RetentionResource.AlertComments,
+	RetentionResource.AuditLogs,
 ];
 
 const PolicyRow = ({ policy }: { policy: RetentionPolicy }) => {

@@ -9,6 +9,7 @@ const RESOURCE_TABLE: Record<RetentionResource, { table: string; column: string 
 	[RetentionResource.AuditLogs]: { table: 'audit_logs', column: 'timestamp' },
 	[RetentionResource.AlertHistoryEvents]: { table: 'alert_history_events', column: 'created_at' },
 	[RetentionResource.AlertStatusHistory]: { table: 'alerts_history', column: 'archived_at' },
+	[RetentionResource.ActiveAlerts]: { table: 'alerts', column: 'updated_at' },
 	[RetentionResource.ArchivedAlerts]: { table: 'alerts_archived', column: 'archived_at' },
 	[RetentionResource.AlertComments]: { table: 'alert_comments', column: 'created_at' },
 };
@@ -19,6 +20,7 @@ const DEFAULT_POLICIES: { resource: RetentionResource; days: number }[] = [
 	{ resource: RetentionResource.AuditLogs, days: 90 },
 	{ resource: RetentionResource.AlertHistoryEvents, days: 90 },
 	{ resource: RetentionResource.AlertStatusHistory, days: 90 },
+	{ resource: RetentionResource.ActiveAlerts, days: 30 },
 	{ resource: RetentionResource.ArchivedAlerts, days: 180 },
 	{ resource: RetentionResource.AlertComments, days: 365 },
 ];
