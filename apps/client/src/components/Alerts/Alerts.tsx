@@ -584,6 +584,7 @@ const Alerts = () => {
 								<AlertDetailsPanel
 									alert={syncedSelectedAlert}
 									isActive={!selectedIsArchived}
+									timeRange={dashboardState.timeRange}
 									onClose={() => setSelectedAlert(null)}
 									onDismiss={handleDismissAlert}
 									onUndismiss={handleUndismissAlert}

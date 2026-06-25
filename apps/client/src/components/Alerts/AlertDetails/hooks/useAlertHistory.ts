@@ -4,7 +4,10 @@ import { AlertHistory, Logger } from '@OpsiMate/shared';
 
 const logger = new Logger('useAlertHistory');
 
-export const useAlertHistory = (alertId: string | undefined) => {
+// `version` is an opaque value that changes whenever the alert mutates (e.g. its updatedAt).
+// Passing it makes the history refetch after ownership/dismiss/comment actions so newly
+// recorded events appear without reopening the panel.
+export const useAlertHistory = (alertId: string | undefined, version?: string) => {
 	const [historyData, setHistoryData] = useState<AlertHistory | null>(null);
 
 	useEffect(() => {
@@ -25,7 +28,7 @@ export const useAlertHistory = (alertId: string | undefined) => {
 		};
 
 		fetchHistory();
-	}, [alertId]);
+	}, [alertId, version]);
 
 	return historyData;
 };

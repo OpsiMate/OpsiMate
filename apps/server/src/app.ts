@@ -34,6 +34,7 @@ import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
+import { AlertHistoryRepository } from './dal/alertHistoryRepository';
 import { AlertRepository } from './dal/alertRepository';
 import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
 import { AuditLogRepository } from './dal/auditLogRepository';
@@ -71,6 +72,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const auditLogRepo = new AuditLogRepository(db);
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
 	const archivedAlertRepo = new ArchivedAlertRepository(db);
+	const alertHistoryRepo = new AlertHistoryRepository(db);
+	// Needed by AlertBL (to resolve owner names for history); constructed here so it is also
+	// available in WORKER mode where AlertBL is used.
+	const userRepo = new UserRepository(db);
 
 	// Init tables (needed by both)
 	await Promise.all([
@@ -80,6 +85,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		archivedAlertRepo.initArchivedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
 		alertRepo.initAlertsTable(),
 		alertCommentsRepo.initAlertCommentsTable(),
+		alertHistoryRepo.initAlertHistoryEventsTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
 	]);
@@ -87,7 +93,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// BL (needed by both)
 	const auditBL = new AuditBL(auditLogRepo);
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo, archivedAlertRepo, alertCommentsRepo);
+	const alertBL = new AlertBL(alertRepo, archivedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 
 	if (mode === AppMode.WORKER) {
@@ -118,7 +124,6 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// Additional repositories (only needed for SERVER)
 	const dashboardRepository = new DashboardRepository(db);
 	const tagRepo = new TagRepository(db);
-	const userRepo = new UserRepository(db);
 	const serviceCustomFieldRepo = new ServiceCustomFieldRepository(db);
 	const serviceCustomFieldValueRepo = new ServiceCustomFieldValueRepository(db);
 	const passwordResetsRepo = new PasswordResetsRepository(db);
@@ -160,7 +165,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setSilenceBL(silenceBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo);
 	alertBL.setEnrichmentBL(enrichmentBL);
-	const actionBL = new ActionBL(actionRepo);
+	const actionBL = new ActionBL(actionRepo, alertHistoryRepo);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
