@@ -14,7 +14,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
-import { Check, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
+import { Check, DatabaseBackup, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
+import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -217,6 +218,7 @@ const Settings: React.FC = () => {
 								const h = (location.hash || '').replace('#', '');
 								if (h === 'Users') return 'users';
 								if (h === 'Audit_Log') return 'audit';
+								if (h === 'retention') return 'retention';
 								if (h === 'secrets') return 'secrets';
 								if (h === 'custom-fields') return 'custom-fields';
 								return 'users';
@@ -225,6 +227,7 @@ const Settings: React.FC = () => {
 								const map: Record<string, string> = {
 									users: 'Users',
 									audit: 'Audit_Log',
+									retention: 'retention',
 									secrets: 'secrets',
 									'custom-fields': 'custom-fields',
 								};
@@ -243,6 +246,10 @@ const Settings: React.FC = () => {
 										<TabsTrigger value="audit" className="justify-start gap-2">
 											<FileText className="h-4 w-4" />
 											Audit Log
+										</TabsTrigger>
+										<TabsTrigger value="retention" className="justify-start gap-2">
+											<DatabaseBackup className="h-4 w-4" />
+											Data Retention
 										</TabsTrigger>
 									</TabsList>
 								</div>
@@ -541,6 +548,10 @@ const Settings: React.FC = () => {
 												<AuditLogTable />
 											</CardContent>
 										</Card>
+									</TabsContent>
+
+									<TabsContent value="retention" className="space-y-6">
+										<RetentionSettings />
 									</TabsContent>
 
 									<TabsContent value="secrets" className="space-y-6">
