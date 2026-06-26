@@ -526,10 +526,15 @@ export const UpdateRetentionPolicySchema = z.object({
 	retentionDays: z.number().int().min(1).max(3650).optional(),
 });
 
-export const UpdateRetentionConfigSchema = z.object({
-	// 1 hour .. 30 days
-	cleanupIntervalHours: z.number().int().min(1).max(720),
-});
+export const UpdateRetentionConfigSchema = z
+	.object({
+		// 1 hour .. 30 days
+		cleanupIntervalHours: z.number().int().min(1).max(720).optional(),
+		vacuumAfterCleanup: z.boolean().optional(),
+	})
+	.refine((v) => v.cleanupIntervalHours !== undefined || v.vacuumAfterCleanup !== undefined, {
+		message: 'Provide cleanupIntervalHours and/or vacuumAfterCleanup',
+	});
 
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),

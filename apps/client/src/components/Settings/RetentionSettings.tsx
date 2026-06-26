@@ -141,9 +141,14 @@ export const RetentionSettings = () => {
 			return;
 		}
 		if (parsed === data.config.cleanupIntervalHours) return;
-		updateConfig(parsed, {
-			onSuccess: () => toast({ title: 'Saved', description: 'Cleanup interval updated' }),
-		});
+		updateConfig(
+			{ cleanupIntervalHours: parsed },
+			{ onSuccess: () => toast({ title: 'Saved', description: 'Cleanup interval updated' }) }
+		);
+	};
+
+	const toggleVacuum = (vacuumAfterCleanup: boolean) => {
+		updateConfig({ vacuumAfterCleanup });
 	};
 
 	const handleRunNow = () => {
@@ -152,7 +157,10 @@ export const RetentionSettings = () => {
 				const total = Object.values(result.deleted).reduce((a, b) => a + (b ?? 0), 0);
 				toast({
 					title: 'Cleanup complete',
-					description: total > 0 ? `Deleted ${total} row(s).` : 'Nothing to delete.',
+					description:
+						total > 0
+							? `Deleted ${total} row(s).${result.vacuumed ? ' Disk space reclaimed.' : ''}`
+							: 'Nothing to delete.',
 				});
 			},
 			onError: (e) =>
@@ -200,6 +208,23 @@ export const RetentionSettings = () => {
 					{running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
 					Run cleanup now
 				</Button>
+			</Card>
+
+			{/* Reclaim disk (VACUUM) toggle */}
+			<Card className="p-4 flex items-center justify-between gap-4">
+				<div className="min-w-0">
+					<div className="font-medium text-foreground">Reclaim disk space after cleanup</div>
+					<div className="text-sm text-muted-foreground">
+						Runs <code>VACUUM</code> to shrink the database file. Without it, deleting rows frees space
+						inside the file for reuse but the file never gets smaller on disk.
+					</div>
+				</div>
+				<Switch
+					checked={data.config.vacuumAfterCleanup}
+					disabled={savingConfig}
+					onCheckedChange={toggleVacuum}
+					aria-label="Reclaim disk space after cleanup"
+				/>
 			</Card>
 
 			<div className="space-y-3">

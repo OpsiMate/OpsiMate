@@ -37,8 +37,8 @@ export class RetentionController {
 	updateConfig = async (req: AuthenticatedRequest, res: Response) => {
 		if (!this.requireAdmin(req, res)) return;
 		try {
-			const { cleanupIntervalHours } = UpdateRetentionConfigSchema.parse(req.body);
-			const config = await this.retentionBL.updateConfig(cleanupIntervalHours);
+			const updates = UpdateRetentionConfigSchema.parse(req.body);
+			const config = await this.retentionBL.updateConfig(updates);
 			return res.json({ success: true, data: config });
 		} catch (error) {
 			if (isZodError(error)) {

@@ -690,8 +690,8 @@ export const auditApi = {
  */
 export const retentionApi = {
 	getSettings: () => apiRequest<RetentionSettings>('/retention'),
-	updateConfig: (cleanupIntervalHours: number) =>
-		apiRequest<RetentionConfig>('/retention/config', 'PUT', { cleanupIntervalHours }),
+	updateConfig: (updates: { cleanupIntervalHours?: number; vacuumAfterCleanup?: boolean }) =>
+		apiRequest<RetentionConfig>('/retention/config', 'PUT', updates),
 	updatePolicy: (resourceType: RetentionResource, updates: { enabled?: boolean; retentionDays?: number }) =>
 		apiRequest<RetentionPolicy>(`/retention/policies/${resourceType}`, 'PUT', updates),
 	runNow: () => apiRequest<RetentionRunResult>('/retention/run', 'POST'),

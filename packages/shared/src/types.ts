@@ -424,6 +424,9 @@ export interface RetentionPolicy {
 export interface RetentionConfig {
 	// How often the cleanup job runs.
 	cleanupIntervalHours: number;
+	// When true, run VACUUM after a cleanup that deleted rows, to return freed disk space to the
+	// OS (plain DELETE only frees pages inside the file for reuse — the file never shrinks).
+	vacuumAfterCleanup: boolean;
 	// ISO timestamp of the last completed cleanup run (null if never run).
 	lastRunAt: string | null;
 }
@@ -433,8 +436,10 @@ export interface RetentionSettings {
 	policies: RetentionPolicy[];
 }
 
-// Result of a cleanup run: how many rows were deleted per resource.
+// Result of a cleanup run: how many rows were deleted per resource, and whether the file was
+// compacted afterwards.
 export interface RetentionRunResult {
 	ranAt: string;
 	deleted: Partial<Record<RetentionResource, number>>;
+	vacuumed: boolean;
 }

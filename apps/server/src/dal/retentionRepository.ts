@@ -36,7 +36,12 @@ interface PolicyRow {
 
 interface ConfigRow {
 	cleanup_interval_hours: number;
+	vacuum_after_cleanup: number;
 	last_run_at: string | null;
+}
+
+interface ColumnInfo {
+	name: string;
 }
 
 export class RetentionRepository {
@@ -56,11 +61,18 @@ export class RetentionRepository {
 				CREATE TABLE IF NOT EXISTS retention_config (
 					id INTEGER PRIMARY KEY CHECK (id = 1),
 					cleanup_interval_hours INTEGER NOT NULL,
+					vacuum_after_cleanup INTEGER NOT NULL DEFAULT 1,
 					last_run_at TEXT,
 					updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 				);
 				`
 			);
+
+			// Migration: add vacuum_after_cleanup to retention_config tables created before it existed.
+			const cols = this.db.prepare(`PRAGMA table_info(retention_config)`).all() as ColumnInfo[];
+			if (!cols.some((c) => c.name === 'vacuum_after_cleanup')) {
+				this.db.exec(`ALTER TABLE retention_config ADD COLUMN vacuum_after_cleanup INTEGER NOT NULL DEFAULT 1`);
+			}
 
 			// Seed defaults (idempotent — only inserts missing rows).
 			const insertPolicy = this.db.prepare(
@@ -99,10 +111,13 @@ export class RetentionRepository {
 	async getConfig(): Promise<RetentionConfig> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare(`SELECT cleanup_interval_hours, last_run_at FROM retention_config WHERE id = 1`)
+				.prepare(
+					`SELECT cleanup_interval_hours, vacuum_after_cleanup, last_run_at FROM retention_config WHERE id = 1`
+				)
 				.get() as ConfigRow | undefined;
 			return {
 				cleanupIntervalHours: row?.cleanup_interval_hours ?? DEFAULT_CLEANUP_INTERVAL_HOURS,
+				vacuumAfterCleanup: row ? !!row.vacuum_after_cleanup : true,
 				lastRunAt: row?.last_run_at ?? null,
 			};
 		});
@@ -130,13 +145,31 @@ export class RetentionRepository {
 		});
 	}
 
-	async updateConfig(cleanupIntervalHours: number): Promise<void> {
+	async updateConfig(updates: { cleanupIntervalHours?: number; vacuumAfterCleanup?: boolean }): Promise<void> {
 		return runAsync(() => {
-			this.db
-				.prepare(
-					`UPDATE retention_config SET cleanup_interval_hours = ?, updated_at = datetime('now') WHERE id = 1`
-				)
-				.run(cleanupIntervalHours);
+			const sets: string[] = [];
+			const params: number[] = [];
+			if (updates.cleanupIntervalHours !== undefined) {
+				sets.push('cleanup_interval_hours = ?');
+				params.push(updates.cleanupIntervalHours);
+			}
+			if (updates.vacuumAfterCleanup !== undefined) {
+				sets.push('vacuum_after_cleanup = ?');
+				params.push(updates.vacuumAfterCleanup ? 1 : 0);
+			}
+			if (sets.length === 0) return;
+			sets.push("updated_at = datetime('now')");
+			this.db.prepare(`UPDATE retention_config SET ${sets.join(', ')} WHERE id = 1`).run(...params);
+		});
+	}
+
+	// Reclaims freed disk space: checkpoint the WAL into the main file, then VACUUM to compact it.
+	// VACUUM rewrites the whole database (needs a brief write lock + temporary disk), so it runs
+	// only after a cleanup that actually deleted rows.
+	async vacuum(): Promise<void> {
+		return runAsync(() => {
+			this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+			this.db.exec('VACUUM');
 		});
 	}
 

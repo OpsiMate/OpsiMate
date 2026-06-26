@@ -19,8 +19,8 @@ export const useRetentionSettings = () => {
 export const useUpdateRetentionConfig = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (cleanupIntervalHours: number) => {
-			const response = await retentionApi.updateConfig(cleanupIntervalHours);
+		mutationFn: async (updates: { cleanupIntervalHours?: number; vacuumAfterCleanup?: boolean }) => {
+			const response = await retentionApi.updateConfig(updates);
 			if (!response.success) throw new Error(response.error || 'Failed to update retention config');
 			return response.data;
 		},

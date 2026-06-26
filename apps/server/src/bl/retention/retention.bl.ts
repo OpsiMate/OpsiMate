@@ -34,15 +34,21 @@ export class RetentionBL {
 		return updated;
 	}
 
-	async updateConfig(cleanupIntervalHours: number): Promise<RetentionConfig> {
-		await this.retentionRepo.updateConfig(cleanupIntervalHours);
+	async updateConfig(updates: {
+		cleanupIntervalHours?: number;
+		vacuumAfterCleanup?: boolean;
+	}): Promise<RetentionConfig> {
+		await this.retentionRepo.updateConfig(updates);
 		return this.retentionRepo.getConfig();
 	}
 
 	// Runs every enabled policy: deletes rows older than its retention window. Resilient — a
 	// failure on one resource is logged and does not abort the others. Records last-run time.
 	async runCleanup(): Promise<RetentionRunResult> {
-		const policies = await this.retentionRepo.getPolicies();
+		const [policies, config] = await Promise.all([
+			this.retentionRepo.getPolicies(),
+			this.retentionRepo.getConfig(),
+		]);
 		const ranAt = new Date().toISOString();
 		const deleted: Partial<Record<RetentionResource, number>> = {};
 
@@ -62,8 +68,21 @@ export class RetentionBL {
 			}
 		}
 
+		// Reclaim disk only when something was actually deleted (VACUUM is expensive).
+		const totalDeleted = Object.values(deleted).reduce((a, b) => a + (b ?? 0), 0);
+		let vacuumed = false;
+		if (config.vacuumAfterCleanup && totalDeleted > 0) {
+			try {
+				await this.retentionRepo.vacuum();
+				vacuumed = true;
+				logger.info('Retention: VACUUM complete — reclaimed disk space');
+			} catch (error) {
+				logger.error('Retention: VACUUM failed', error);
+			}
+		}
+
 		await this.retentionRepo.setLastRunAt(ranAt);
-		return { ranAt, deleted };
+		return { ranAt, deleted, vacuumed };
 	}
 
 	// Whether a scheduled run is due, based on the configured interval and the last run time.
