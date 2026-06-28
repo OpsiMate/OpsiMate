@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
 import { Info, MessageSquare, X } from 'lucide-react';
 import { useState } from 'react';
+import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertDetailsBody } from '../AlertDetailsBody';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
@@ -12,6 +13,8 @@ interface AlertDetailsPanelProps {
 	alert: Alert;
 	isActive: boolean;
 	onClose: () => void;
+	// Active time-range filter (the "All time" button), used to filter the History timeline.
+	timeRange?: TimeRange | null;
 	onDismiss?: (alertId: string) => void;
 	onUndismiss?: (alertId: string) => void;
 	onDelete?: (alertId: string) => void;
@@ -21,6 +24,7 @@ export const AlertDetailsPanel = ({
 	alert,
 	isActive,
 	onClose,
+	timeRange,
 	onDismiss,
 	onUndismiss,
 	onDelete,
@@ -55,6 +59,7 @@ export const AlertDetailsPanel = ({
 							alert={alert}
 							isActive={isActive}
 							historyData={historyData}
+							timeRange={timeRange}
 							onDismiss={onDismiss}
 							onUndismiss={onUndismiss}
 							onDelete={onDelete}

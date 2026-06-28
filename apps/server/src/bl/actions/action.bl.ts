@@ -1,5 +1,6 @@
-import { Action, ActionOverrides, ActionPreview, ActionTestResult } from '@OpsiMate/shared';
+import { Action, AlertHistoryEventType, ActionOverrides, ActionPreview, ActionTestResult } from '@OpsiMate/shared';
 import { ActionRepository, CreateActionInput, UpdateActionInput } from '../../dal/actionRepository';
+import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import {
 	AlertContextInput,
 	buildAlertContext,
@@ -10,7 +11,10 @@ import {
 } from './actionExecutor';
 
 export class ActionBL {
-	constructor(private actionRepo: ActionRepository) {}
+	constructor(
+		private actionRepo: ActionRepository,
+		private alertHistoryRepo?: AlertHistoryRepository
+	) {}
 
 	async test(data: ExecutableAction): Promise<ActionTestResult> {
 		return executeAction(data, buildSampleContext());
@@ -20,12 +24,33 @@ export class ActionBL {
 		return previewAction({ name: action.name, type: action.type, config: action.config }, buildAlertContext(alert));
 	}
 
-	async runOnAlert(action: Action, alert: AlertContextInput, overrides?: ActionOverrides): Promise<ActionTestResult> {
-		return executeAction(
+	async runOnAlert(
+		action: Action,
+		alert: AlertContextInput,
+		overrides?: ActionOverrides,
+		actorName?: string | null
+	): Promise<ActionTestResult> {
+		const result = await executeAction(
 			{ name: action.name, type: action.type, config: action.config },
 			buildAlertContext(alert),
 			overrides
 		);
+
+		// Record the run on the alert's history timeline (best-effort; never block the action).
+		if (alert.id && this.alertHistoryRepo) {
+			try {
+				await this.alertHistoryRepo.recordEvent({
+					alertId: alert.id,
+					eventType: AlertHistoryEventType.ACTION_RUN,
+					actorName,
+					description: `Ran action "${action.name}"`,
+				});
+			} catch {
+				// Swallow: history logging must not affect the action result.
+			}
+		}
+
+		return result;
 	}
 
 	async create(data: CreateActionInput): Promise<Action> {

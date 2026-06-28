@@ -1,11 +1,31 @@
 import { AlertRepository } from '../../dal/alertRepository';
 import { ArchivedAlertRepository } from '../../dal/archivedAlertRepository';
-import { Alert, AlertComment, AlertHistory, AlertType, Logger } from '@OpsiMate/shared';
+import {
+	Alert,
+	AlertComment,
+	AlertHistory,
+	AlertHistoryData,
+	AlertHistoryEventType,
+	AlertStatus,
+	AlertType,
+	Logger,
+} from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
+import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
+import { UserRepository } from '../../dal/userRepository';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { SilenceBL } from '../silences/silence.bl';
 
 const logger = new Logger('bl/alert.bl');
+
+// Normalizes a timestamp to ISO-8601 UTC. SQLite CURRENT_TIMESTAMP values are
+// "YYYY-MM-DD HH:MM:SS" (UTC, but without a timezone marker); already-ISO values pass through.
+// Guarantees the client receives unambiguous UTC timestamps for display and time-range filtering.
+const toIsoUtc = (value: string): string => {
+	if (!value) return value;
+	const d = value.includes('T') ? new Date(value) : new Date(value.replace(' ', 'T') + 'Z');
+	return isNaN(d.getTime()) ? value : d.toISOString();
+};
 
 export class AlertBL {
 	private silenceBL: SilenceBL | null = null;
@@ -14,8 +34,36 @@ export class AlertBL {
 	constructor(
 		private alertRepo: AlertRepository,
 		private archivedAlertRepo: ArchivedAlertRepository,
-		private alertCommentsRepo: AlertCommentsRepository
+		private alertCommentsRepo: AlertCommentsRepository,
+		private alertHistoryRepo: AlertHistoryRepository,
+		private userRepo: UserRepository
 	) {}
+
+	// Best-effort history logging: never let a failed history write break the underlying
+	// mutation (the event is informational, not transactional).
+	private async recordHistoryEvent(
+		alertId: string,
+		eventType: AlertHistoryEventType,
+		description: string,
+		actorName?: string | null
+	): Promise<void> {
+		try {
+			await this.alertHistoryRepo.recordEvent({ alertId, eventType, actorName, description });
+		} catch (error) {
+			logger.error(`Failed to record alert history event (${eventType}) for ${alertId}`, error);
+		}
+	}
+
+	// Public hook so other modules (e.g. running an action against an alert) can append to the
+	// alert's history timeline without depending on the history repository directly.
+	async recordActionRun(alertId: string, actionName: string, actorName?: string | null): Promise<void> {
+		await this.recordHistoryEvent(
+			alertId,
+			AlertHistoryEventType.ACTION_RUN,
+			`Ran action "${actionName}"`,
+			actorName
+		);
+	}
 
 	setSilenceBL(silenceBL: SilenceBL): void {
 		this.silenceBL = silenceBL;
@@ -54,10 +102,14 @@ export class AlertBL {
 		}
 	}
 
-	async dismissAlert(id: string): Promise<Alert | null> {
+	async dismissAlert(id: string, actorName?: string | null): Promise<Alert | null> {
 		try {
 			logger.info(`Dismissing alert with id: ${id}`);
-			return await this.alertRepo.dismissAlert(id);
+			const alert = await this.alertRepo.dismissAlert(id);
+			if (alert) {
+				await this.recordHistoryEvent(id, AlertHistoryEventType.DISMISSED, 'Alert dismissed', actorName);
+			}
+			return alert;
 		} catch (error) {
 			logger.error('Error dismissing alert', error);
 			throw error;
@@ -74,10 +126,14 @@ export class AlertBL {
 		}
 	}
 
-	async undismissAlert(id: string): Promise<Alert | null> {
+	async undismissAlert(id: string, actorName?: string | null): Promise<Alert | null> {
 		try {
 			logger.info(`Undismissing alert with id: ${id}`);
-			return await this.alertRepo.undismissAlert(id);
+			const alert = await this.alertRepo.undismissAlert(id);
+			if (alert) {
+				await this.recordHistoryEvent(id, AlertHistoryEventType.UNDISMISSED, 'Alert restored', actorName);
+			}
+			return alert;
 		} catch (error) {
 			logger.error('Error undismissing alert', error);
 			throw error;
@@ -154,21 +210,70 @@ export class AlertBL {
 
 	// region history
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {
-		return await this.archivedAlertRepo.getAlertHistory(alertId);
+		// Merge two sources: automatic status transitions (trigger-populated) and user-driven
+		// events (ownership, dismissals, actions, comments), newest first.
+		const [statusHistory, events] = await Promise.all([
+			this.archivedAlertRepo.getAlertHistory(alertId),
+			this.alertHistoryRepo.getEvents(alertId),
+		]);
+
+		const statusEntries: AlertHistoryData[] = statusHistory.data.map((entry) => ({
+			...entry,
+			date: toIsoUtc(entry.date),
+			eventType: AlertHistoryEventType.STATUS_CHANGED,
+			description: entry.status === AlertStatus.FIRING ? 'Alert started firing' : 'Alert resolved',
+		}));
+
+		const eventEntries: AlertHistoryData[] = events.map((row) => ({
+			date: toIsoUtc(row.created_at),
+			eventType: row.event_type as AlertHistoryEventType,
+			actorName: row.actor_name ?? undefined,
+			description: row.description ?? undefined,
+		}));
+
+		const data = [...statusEntries, ...eventEntries].sort(
+			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+		);
+
+		return { alertId, data };
 	}
 	// endregion
 
 	// region owner
-	async setAlertOwner(alertId: string, ownerId: string | null, isArchived: boolean): Promise<Alert | null> {
+	async setAlertOwner(
+		alertId: string,
+		ownerId: string | null,
+		isArchived: boolean,
+		actorName?: string | null
+	): Promise<Alert | null> {
 		try {
 			logger.info(`Setting owner ${ownerId} for alert: ${alertId} is Archived ${isArchived}`);
 			// Convert string to number for database storage
 			const numericOwnerId = ownerId !== null ? parseInt(ownerId, 10) : null;
-			if (isArchived) {
-				return await this.archivedAlertRepo.updateArchivedAlertOwner(alertId, numericOwnerId);
-			} else {
-				return await this.alertRepo.updateAlertOwner(alertId, numericOwnerId);
+			const updated = isArchived
+				? await this.archivedAlertRepo.updateArchivedAlertOwner(alertId, numericOwnerId)
+				: await this.alertRepo.updateAlertOwner(alertId, numericOwnerId);
+
+			if (updated) {
+				if (numericOwnerId !== null) {
+					const owner = await this.userRepo.getUserById(numericOwnerId).catch(() => null);
+					const ownerName = owner?.fullName ?? `user #${numericOwnerId}`;
+					await this.recordHistoryEvent(
+						alertId,
+						AlertHistoryEventType.OWNER_ASSIGNED,
+						`Assigned to ${ownerName}`,
+						actorName
+					);
+				} else {
+					await this.recordHistoryEvent(
+						alertId,
+						AlertHistoryEventType.OWNER_UNASSIGNED,
+						'Owner removed',
+						actorName
+					);
+				}
 			}
+			return updated;
 		} catch (error) {
 			logger.error('Error setting alert owner', error);
 			throw error;
@@ -177,8 +282,10 @@ export class AlertBL {
 	// endregion
 
 	// region comments
+	// Comments are intentionally NOT recorded in the alert history timeline (they live in their
+	// own Comments tab), to keep the history focused on status/ownership/action events.
 	async createComment(comment: Omit<AlertComment, 'createdAt' | 'updatedAt' | 'id'>): Promise<AlertComment> {
-		return await this.alertCommentsRepo.createComment(comment);
+		return this.alertCommentsRepo.createComment(comment);
 	}
 
 	async updateComment(id: string, userId: string, comment: string): Promise<AlertComment | null> {

@@ -8,6 +8,7 @@ import {
 	UpdateActionSchema,
 } from '@OpsiMate/shared';
 import { ActionBL } from '../../../bl/actions/action.bl';
+import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/actions/controller');
@@ -95,7 +96,7 @@ export class ActionController {
 		}
 	};
 
-	runHandler = async (req: Request, res: Response) => {
+	runHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { actionId } = ActionIdSchema.parse({ actionId: req.params.actionId });
 			const { alert, overrides } = RunActionSchema.parse(req.body);
@@ -103,7 +104,7 @@ export class ActionController {
 			if (!action) {
 				return res.status(404).json({ success: false, error: 'Action not found' });
 			}
-			const result = await this.actionBL.runOnAlert(action, alert, overrides);
+			const result = await this.actionBL.runOnAlert(action, alert, overrides, req.user?.fullName);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {

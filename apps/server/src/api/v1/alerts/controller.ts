@@ -30,13 +30,13 @@ export class AlertController {
 		}
 	}
 
-	async dismissAlert(req: Request, res: Response) {
+	async dismissAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.dismissAlert(id);
+			const alert = await this.alertBL.dismissAlert(id, req.user?.fullName);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
@@ -47,13 +47,13 @@ export class AlertController {
 		}
 	}
 
-	async undismissAlert(req: Request, res: Response) {
+	async undismissAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.undismissAlert(id);
+			const alert = await this.alertBL.undismissAlert(id, req.user?.fullName);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
@@ -528,22 +528,22 @@ export class AlertController {
 		}
 	}
 
-	async setAlertOwner(req: Request, res: Response) {
+	async setAlertOwner(req: AuthenticatedRequest, res: Response) {
 		return this.setAlertOwnerWrapper(req, res, false);
 	}
 
-	async setArchivedAlertOwner(req: Request, res: Response) {
+	async setArchivedAlertOwner(req: AuthenticatedRequest, res: Response) {
 		return this.setAlertOwnerWrapper(req, res, true);
 	}
 
-	async setAlertOwnerWrapper(req: Request, res: Response, isArchived: boolean) {
+	async setAlertOwnerWrapper(req: AuthenticatedRequest, res: Response, isArchived: boolean) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId, isArchived);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isArchived, req.user?.fullName);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}

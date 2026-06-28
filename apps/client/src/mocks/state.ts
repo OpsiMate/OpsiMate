@@ -7,6 +7,7 @@ import {
 	Alert,
 	AlertComment,
 	AlertEnrichment,
+	AlertHistoryData,
 	AlertSilence,
 	AlertStatus,
 	AuditActionType,
@@ -45,6 +46,9 @@ export interface PlaygroundState {
 	silences: AlertSilence[];
 	actions: Action[];
 	enrichments: AlertEnrichment[];
+	// Per-alert history events appended live as the user acts in the sandbox (ownership,
+	// dismissals, actions, comments). Merged with generated base history by the history handler.
+	alertHistoryEvents: Record<string, AlertHistoryData[]>;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -439,6 +443,7 @@ export const playgroundState: PlaygroundState = {
 	silences: createSilences(),
 	actions: createActions(),
 	enrichments: createEnrichments(),
+	alertHistoryEvents: {},
 };
 
 let idCounter = 10000;

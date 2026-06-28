@@ -1,5 +1,6 @@
 import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
 import { Clock, FileText, Link2, Tag } from 'lucide-react';
+import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { hasAlertTags } from '../../utils/alertTags.utils';
 import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertHistorySection } from '../AlertHistorySection';
@@ -15,6 +16,8 @@ interface AlertDetailsBodyProps {
 	alert: SharedAlert;
 	isActive: boolean;
 	historyData: AlertHistory | null;
+	// Active time-range filter, passed through to the History section.
+	timeRange?: TimeRange | null;
 	onDismiss?: (alertId: string) => void;
 	onUndismiss?: (alertId: string) => void;
 	onDelete?: (alertId: string) => void;
@@ -29,6 +32,7 @@ export const AlertDetailsBody = ({
 	alert,
 	isActive,
 	historyData,
+	timeRange,
 	onDismiss,
 	onUndismiss,
 	onDelete,
@@ -46,7 +50,9 @@ export const AlertDetailsBody = ({
 
 			<AlertLastCommentSection alertId={alert.id} onViewAll={onViewAllComments} />
 
-			{historyData && historyData.data.length > 0 && <AlertHistorySection historyData={historyData} />}
+			{historyData && historyData.data.length > 0 && (
+				<AlertHistorySection historyData={historyData} timeRange={timeRange} />
+			)}
 
 			{hasAlertTags(alert) && (
 				<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>

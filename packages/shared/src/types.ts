@@ -149,9 +149,28 @@ export interface AlertHistory {
 	data: AlertHistoryData[];
 }
 
+// The kinds of events recorded in an alert's history timeline. STATUS_CHANGED covers the
+// firing/resolved transitions captured automatically; the rest are user-driven actions.
+export enum AlertHistoryEventType {
+	STATUS_CHANGED = 'status_changed',
+	OWNER_ASSIGNED = 'owner_assigned',
+	OWNER_UNASSIGNED = 'owner_unassigned',
+	DISMISSED = 'dismissed',
+	UNDISMISSED = 'undismissed',
+	ACTION_RUN = 'action_run',
+	COMMENT_ADDED = 'comment_added',
+}
+
 export interface AlertHistoryData {
 	date: string;
-	status: AlertStatus;
+	// Present for status transitions (kept for backward compatibility with status-only history).
+	status?: AlertStatus;
+	// What kind of event this entry records. Legacy status-only entries are treated as STATUS_CHANGED.
+	eventType?: AlertHistoryEventType;
+	// Display name of the user who performed the action (absent for automatic/system events).
+	actorName?: string;
+	// Human-readable description, e.g. "Assigned to Idan" or "Ran action 'Notify #oncall'".
+	description?: string;
 }
 
 export interface ApiResponse<T> {

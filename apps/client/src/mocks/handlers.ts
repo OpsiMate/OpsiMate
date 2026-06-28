@@ -1,9 +1,88 @@
-import { AlertStatus } from '@OpsiMate/shared';
+import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, playgroundState, randomId } from './state';
 
 const API_BASE = '*/api/v1';
 const nowIso = () => new Date().toISOString();
+
+const PLAYGROUND_ACTOR = getPlaygroundUser().fullName;
+const SECONDARY_ACTOR = 'Dana Cohen';
+
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+const hashAlertId = (id: string): number => {
+	let h = 0;
+	for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+	return h;
+};
+
+// Deterministic, time-spread base history per alert so the timeline is rich and the time
+// filter is demonstrable: events range from ~25 minutes ago to ~2 weeks ago.
+const generateBaseHistory = (alertId: string): AlertHistoryData[] => {
+	const now = Date.now();
+	const h = hashAlertId(alertId);
+	const actionName = ['Notify #oncall', 'Post to Teams', 'Open Jira incident'][h % 3];
+	return [
+		{
+			date: new Date(now - (25 + (h % 20)) * MINUTE).toISOString(),
+			eventType: AlertHistoryEventType.ACTION_RUN,
+			actorName: PLAYGROUND_ACTOR,
+			description: `Ran action "${actionName}"`,
+		},
+		{
+			date: new Date(now - 5 * HOUR).toISOString(),
+			eventType: AlertHistoryEventType.OWNER_ASSIGNED,
+			actorName: PLAYGROUND_ACTOR,
+			description: `Assigned to ${PLAYGROUND_ACTOR}`,
+		},
+		{
+			date: new Date(now - 26 * HOUR).toISOString(),
+			eventType: AlertHistoryEventType.STATUS_CHANGED,
+			status: AlertStatus.FIRING,
+			description: 'Alert started firing',
+		},
+		{
+			date: new Date(now - 3 * DAY).toISOString(),
+			eventType: AlertHistoryEventType.DISMISSED,
+			actorName: SECONDARY_ACTOR,
+			description: 'Alert dismissed',
+		},
+		{
+			date: new Date(now - 9 * DAY).toISOString(),
+			eventType: AlertHistoryEventType.OWNER_UNASSIGNED,
+			actorName: SECONDARY_ACTOR,
+			description: 'Owner removed',
+		},
+		{
+			date: new Date(now - 14 * DAY).toISOString(),
+			eventType: AlertHistoryEventType.STATUS_CHANGED,
+			status: AlertStatus.RESOLVED,
+			description: 'Alert resolved',
+		},
+	];
+};
+
+// Appends a live event to an alert's history (newest first).
+const pushAlertEvent = (alertId: string, event: AlertHistoryData): void => {
+	if (!playgroundState.alertHistoryEvents[alertId]) {
+		playgroundState.alertHistoryEvents[alertId] = [];
+	}
+	playgroundState.alertHistoryEvents[alertId].unshift(event);
+};
+
+const ownerNameById = (ownerId: string | null): string => {
+	if (!ownerId) return 'someone';
+	return playgroundState.users.find((u) => u.id === ownerId)?.fullName ?? `user #${ownerId}`;
+};
+
+const recordOwnerEvent = (ownerId: string | null): AlertHistoryData => ({
+	date: nowIso(),
+	eventType: ownerId ? AlertHistoryEventType.OWNER_ASSIGNED : AlertHistoryEventType.OWNER_UNASSIGNED,
+	actorName: PLAYGROUND_ACTOR,
+	description: ownerId ? `Assigned to ${ownerNameById(ownerId)}` : 'Owner removed',
+});
 
 const isPlaygroundModeFromEnv = (): boolean => {
 	if (typeof window === 'undefined') return false;
@@ -40,6 +119,12 @@ export const handlers = [
 
 		alert.isDismissed = true;
 		alert.updatedAt = nowIso();
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.DISMISSED,
+			actorName: PLAYGROUND_ACTOR,
+			description: 'Alert dismissed',
+		});
 
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
@@ -54,6 +139,12 @@ export const handlers = [
 
 		alert.isDismissed = false;
 		alert.updatedAt = nowIso();
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.UNDISMISSED,
+			actorName: PLAYGROUND_ACTOR,
+			description: 'Alert restored',
+		});
 
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
@@ -79,6 +170,7 @@ export const handlers = [
 
 		alert.ownerId = body.ownerId;
 		alert.updatedAt = nowIso();
+		pushAlertEvent(alertId, recordOwnerEvent(body.ownerId));
 
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
@@ -94,6 +186,7 @@ export const handlers = [
 
 		alert.ownerId = body.ownerId;
 		alert.updatedAt = nowIso();
+		pushAlertEvent(alertId, recordOwnerEvent(body.ownerId));
 
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
@@ -123,15 +216,11 @@ export const handlers = [
 
 	http.get(`${API_BASE}/alerts/:alertId/history`, ({ params }) => {
 		const alertId = params.alertId as string;
-		const now = Date.now();
-		const history = {
-			alertId,
-			data: Array.from({ length: 6 }).map((_, idx) => ({
-				date: new Date(now - idx * 60 * 60 * 1000).toISOString(),
-				status: idx % 2 === 0 ? AlertStatus.FIRING : AlertStatus.RESOLVED,
-			})),
-		};
-		return HttpResponse.json({ success: true, data: history });
+		const live = playgroundState.alertHistoryEvents[alertId] ?? [];
+		const data = [...live, ...generateBaseHistory(alertId)].sort(
+			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+		);
+		return HttpResponse.json({ success: true, data: { alertId, data } });
 	}),
 
 	// ==================== ALERT COMMENTS ====================
@@ -155,6 +244,7 @@ export const handlers = [
 		};
 
 		playgroundState.alertComments.push(newComment);
+		// Comments are not recorded in the alert history timeline.
 		return HttpResponse.json({ success: true, data: { comment: newComment } });
 	}),
 
@@ -596,7 +686,19 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: preview });
 	}),
 
-	http.post(`${API_BASE}/actions/:id/run`, () => {
+	http.post(`${API_BASE}/actions/:id/run`, async ({ params, request }) => {
+		const actionId = Number(params.id);
+		const body = (await request.json().catch(() => ({}))) as { alert?: { id?: string } };
+		const action = playgroundState.actions.find((a) => a.id === actionId);
+		const alertId = body.alert?.id;
+		if (alertId) {
+			pushAlertEvent(alertId, {
+				date: nowIso(),
+				eventType: AlertHistoryEventType.ACTION_RUN,
+				actorName: PLAYGROUND_ACTOR,
+				description: `Ran action "${action?.name ?? 'action'}"`,
+			});
+		}
 		return HttpResponse.json({
 			success: true,
 			data: { ok: true, message: 'Action sent (playground — no real call made).' },
