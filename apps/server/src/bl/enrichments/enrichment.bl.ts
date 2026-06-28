@@ -1,4 +1,4 @@
-import { Alert, AlertEnrichment, Logger } from '@OpsiMate/shared';
+import { Alert, AlertEnrichment, AppliedEnrichment, Logger } from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
 
 const logger = new Logger('bl/enrichment.bl');
@@ -6,8 +6,8 @@ const logger = new Logger('bl/enrichment.bl');
 export class EnrichmentBL {
 	constructor(private enrichmentRepo: EnrichmentRepository) {}
 
-	async create(data: CreateEnrichmentInput): Promise<AlertEnrichment> {
-		const { lastID } = await this.enrichmentRepo.createEnrichment(data);
+	async create(data: CreateEnrichmentInput, actor?: string | null): Promise<AlertEnrichment> {
+		const { lastID } = await this.enrichmentRepo.createEnrichment(data, actor);
 		const created = await this.enrichmentRepo.getEnrichmentById(lastID);
 		if (!created) {
 			throw new Error('Failed to retrieve created enrichment');
@@ -23,8 +23,8 @@ export class EnrichmentBL {
 		return this.enrichmentRepo.getEnrichmentById(id);
 	}
 
-	async update(id: number, data: UpdateEnrichmentInput): Promise<AlertEnrichment | undefined> {
-		await this.enrichmentRepo.updateEnrichment(id, data);
+	async update(id: number, data: UpdateEnrichmentInput, actor?: string | null): Promise<AlertEnrichment | undefined> {
+		await this.enrichmentRepo.updateEnrichment(id, data, actor);
 		return this.enrichmentRepo.getEnrichmentById(id);
 	}
 
@@ -106,12 +106,15 @@ export class EnrichmentBL {
 			return alerts.map((alert) => {
 				let enriched = alert;
 				const claimedKeys = new Set<string>();
+				const applied: AppliedEnrichment[] = [];
 				for (const enrichment of enrichments) {
 					if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
 						enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
+						applied.push({ id: enrichment.id, name: enrichment.name });
 					}
 				}
-				return enriched;
+				// Expose which rules decorated this alert so the UI can show it was enriched.
+				return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
 			});
 		} catch (err) {
 			logger.error('Failed to apply alert enrichments, returning alerts unchanged', err);

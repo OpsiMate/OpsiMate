@@ -6,6 +6,7 @@ import {
 	UpdateAlertEnrichmentSchema,
 } from '@OpsiMate/shared';
 import { EnrichmentBL } from '../../../bl/enrichments/enrichment.bl';
+import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/enrichments/controller');
@@ -40,17 +41,20 @@ export class EnrichmentController {
 		}
 	};
 
-	createHandler = async (req: Request, res: Response) => {
+	createHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const data = CreateAlertEnrichmentSchema.parse(req.body);
-			const enrichment = await this.enrichmentBL.create({
-				name: data.name,
-				nameContains: data.nameContains ?? null,
-				labelMatchers: data.labelMatchers ?? [],
-				addFields: data.addFields ?? [],
-				summaryTemplate: data.summaryTemplate ?? null,
-				priority: data.priority ?? 0,
-			});
+			const data = CreateAlertEnrichmentSchema.parse(req.body as unknown);
+			const enrichment = await this.enrichmentBL.create(
+				{
+					name: data.name,
+					nameContains: data.nameContains ?? null,
+					labelMatchers: data.labelMatchers ?? [],
+					addFields: data.addFields ?? [],
+					summaryTemplate: data.summaryTemplate ?? null,
+					priority: data.priority ?? 0,
+				},
+				req.user?.fullName
+			);
 			return res.status(201).json({ success: true, data: enrichment, message: 'Enrichment created' });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -61,17 +65,17 @@ export class EnrichmentController {
 		}
 	};
 
-	updateHandler = async (req: Request, res: Response) => {
+	updateHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { enrichmentId } = AlertEnrichmentIdSchema.parse({ enrichmentId: req.params.enrichmentId });
-			const data = UpdateAlertEnrichmentSchema.parse(req.body);
+			const data = UpdateAlertEnrichmentSchema.parse(req.body as unknown);
 
 			const existing = await this.enrichmentBL.get(enrichmentId);
 			if (!existing) {
 				return res.status(404).json({ success: false, error: 'Enrichment not found' });
 			}
 
-			const updated = await this.enrichmentBL.update(enrichmentId, data);
+			const updated = await this.enrichmentBL.update(enrichmentId, data, req.user?.fullName);
 			return res.json({ success: true, data: updated, message: 'Enrichment updated' });
 		} catch (error) {
 			if (isZodError(error)) {

@@ -191,6 +191,12 @@ const Enrichments: React.FC = () => {
 										<TableRow key={e.id} className="align-top">
 											<TableCell className="max-w-[220px]">
 												<div className="font-medium truncate">{e.name}</div>
+												<div className="text-xs text-muted-foreground truncate">
+													{e.lastModifiedBy ? `Edited by ${e.lastModifiedBy}` : 'Edited by —'}
+													{e.updatedAt
+														? ` · ${new Date(e.updatedAt).toLocaleDateString()}`
+														: ''}
+												</div>
 											</TableCell>
 											<TableCell>
 												<Badge variant="secondary" className="font-mono text-xs">
