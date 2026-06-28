@@ -23,11 +23,7 @@ export class EnrichmentBL {
 		return this.enrichmentRepo.getEnrichmentById(id);
 	}
 
-	async update(
-		id: number,
-		data: UpdateEnrichmentInput,
-		actor?: string | null
-	): Promise<AlertEnrichment | undefined> {
+	async update(id: number, data: UpdateEnrichmentInput, actor?: string | null): Promise<AlertEnrichment | undefined> {
 		await this.enrichmentRepo.updateEnrichment(id, data, actor);
 		return this.enrichmentRepo.getEnrichmentById(id);
 	}
