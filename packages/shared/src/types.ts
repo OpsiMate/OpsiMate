@@ -138,10 +138,19 @@ export interface Alert {
 	isRead?: boolean;
 	// Transient: set at fetch time when an active silence rule matches this alert. Not persisted.
 	isSilenced?: boolean;
+	// Transient: set at fetch time with the enrichment rules that matched/decorated this alert.
+	// Empty/undefined means the alert was not enriched. Not persisted.
+	appliedEnrichments?: AppliedEnrichment[];
 	// Transient: set client-side in the combined "All" view so a row knows it came from the
 	// archived list and can route its own actions. Not persisted.
 	isArchived?: boolean;
 	ownerId?: string | null;
+}
+
+// A reference to an enrichment rule that was applied to an alert (for display in the UI).
+export interface AppliedEnrichment {
+	id: number;
+	name: string;
 }
 
 export interface AlertHistory {
@@ -309,6 +318,9 @@ export interface AlertEnrichment {
 	// Rank: rules apply highest-priority first. When two rules set the same field the higher
 	// priority wins; summary templates chain in priority order. Ties break by creation order.
 	priority: number;
+	// Display name of the user who created the rule / last edited it (null for legacy rows).
+	createdBy?: string | null;
+	lastModifiedBy?: string | null;
 	createdAt: string;
 	updatedAt: string;
 }

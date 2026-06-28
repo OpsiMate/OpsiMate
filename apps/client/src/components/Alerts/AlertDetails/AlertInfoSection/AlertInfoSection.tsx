@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSetAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
+import { Sparkles } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 
 interface AlertInfoSectionProps {
@@ -45,6 +46,16 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 						>
 							{alert.isDismissed ? 'dismissed' : alert.status}
 						</Badge>
+						{alert.appliedEnrichments && alert.appliedEnrichments.length > 0 && (
+							<Badge
+								variant="secondary"
+								className="flex-shrink-0 gap-1 text-xs px-1.5 py-0.5 bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30"
+								title={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
+							>
+								<Sparkles className="h-3 w-3" />
+								Enriched
+							</Badge>
+						)}
 					</div>
 				</div>
 			</div>

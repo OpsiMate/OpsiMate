@@ -1,5 +1,6 @@
+import { Badge } from '@/components/ui/badge';
 import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
-import { Clock, FileText, Link2, Tag } from 'lucide-react';
+import { Clock, FileText, Link2, Sparkles, Tag } from 'lucide-react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { hasAlertTags } from '../../utils/alertTags.utils';
 import { AlertActionsSection } from '../AlertActionsSection';
@@ -45,6 +46,30 @@ export const AlertDetailsBody = ({
 			{alert.summary && (
 				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
 					<AlertSummarySection summary={alert.summary} />
+				</CollapsibleSection>
+			)}
+
+			{alert.appliedEnrichments && alert.appliedEnrichments.length > 0 && (
+				<CollapsibleSection
+					title="Enrichment"
+					icon={<Sparkles className="h-3.5 w-3.5" />}
+					badge={alert.appliedEnrichments.length}
+					defaultOpen={false}
+				>
+					<div className="space-y-2">
+						<p className="text-xs text-muted-foreground">
+							This alert was decorated by the following enrichment rule
+							{alert.appliedEnrichments.length > 1 ? 's' : ''}:
+						</p>
+						<div className="flex flex-wrap gap-1.5">
+							{alert.appliedEnrichments.map((e) => (
+								<Badge key={e.id} variant="secondary" className="gap-1 text-xs">
+									<Sparkles className="h-3 w-3" />
+									{e.name}
+								</Badge>
+							))}
+						</div>
+					</div>
 				</CollapsibleSection>
 			)}
 
