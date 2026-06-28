@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IntegrationType, ProviderType, ServiceType, Role, SecretType } from './types';
+import { IntegrationType, ProviderType, ServiceType, Role, SecretType, RetentionResource } from './types';
 
 const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 const hostnameRegex =
@@ -518,4 +518,28 @@ const actionOverridesSchema = z.object({
 export const RunActionSchema = z.object({
 	alert: alertContextSchema,
 	overrides: actionOverridesSchema.optional(),
+});
+
+export const UpdateRetentionPolicySchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		// 1 day .. 10 years
+		retentionDays: z.number().int().min(1).max(3650).optional(),
+	})
+	.refine((v) => v.enabled !== undefined || v.retentionDays !== undefined, {
+		message: 'Provide enabled and/or retentionDays',
+	});
+
+export const UpdateRetentionConfigSchema = z
+	.object({
+		// 1 hour .. 30 days
+		cleanupIntervalHours: z.number().int().min(1).max(720).optional(),
+		vacuumAfterCleanup: z.boolean().optional(),
+	})
+	.refine((v) => v.cleanupIntervalHours !== undefined || v.vacuumAfterCleanup !== undefined, {
+		message: 'Provide cleanupIntervalHours and/or vacuumAfterCleanup',
+	});
+
+export const RetentionResourceParamSchema = z.object({
+	resourceType: z.nativeEnum(RetentionResource),
 });

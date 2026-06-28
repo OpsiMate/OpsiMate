@@ -16,6 +16,11 @@ import {
 	IntegrationType,
 	Logger,
 	Provider,
+	RetentionConfig,
+	RetentionPolicy,
+	RetentionResource,
+	RetentionRunResult,
+	RetentionSettings,
 	Service,
 	ServiceWithProvider,
 	Alert as SharedAlert,
@@ -678,6 +683,18 @@ export const auditApi = {
 	getAuditLogs: async (page = 1, pageSize = 20) => {
 		return apiRequest<{ logs: AuditLog[]; total: number }>(`/audit?page=${page}&pageSize=${pageSize}`);
 	},
+};
+
+/**
+ * Data retention API endpoints (admin only)
+ */
+export const retentionApi = {
+	getSettings: () => apiRequest<RetentionSettings>('/retention'),
+	updateConfig: (updates: { cleanupIntervalHours?: number; vacuumAfterCleanup?: boolean }) =>
+		apiRequest<RetentionConfig>('/retention/config', 'PUT', updates),
+	updatePolicy: (resourceType: RetentionResource, updates: { enabled?: boolean; retentionDays?: number }) =>
+		apiRequest<RetentionPolicy>(`/retention/policies/${resourceType}`, 'PUT', updates),
+	runNow: () => apiRequest<RetentionRunResult>('/retention/run', 'POST'),
 };
 
 /**

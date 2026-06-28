@@ -5,6 +5,7 @@ import healthRouter from './api/health';
 import { ActionController } from './api/v1/actions/controller';
 import { AlertController } from './api/v1/alerts/controller';
 import { AuditController } from './api/v1/audit/controller';
+import { RetentionController } from './api/v1/retention/controller';
 import { CustomActionsController } from './api/v1/custom-actions/controller';
 import { CustomFieldsController } from './api/v1/custom-fields/controller';
 import { DashboardController } from './api/v1/dashboards/controller';
@@ -37,6 +38,7 @@ import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
 import { AlertRepository } from './dal/alertRepository';
 import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
+import { RetentionRepository } from './dal/retentionRepository';
 import { AuditLogRepository } from './dal/auditLogRepository';
 import { CustomActionRepository } from './dal/customActionRepository';
 import { DashboardRepository } from './dal/dashboardRepository.ts';
@@ -53,6 +55,8 @@ import { SilenceRepository } from './dal/silenceRepository';
 import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { RefreshJob } from './jobs/refresh-job';
+import { RetentionJob } from './jobs/retention-job';
+import { RetentionBL } from './bl/retention/retention.bl';
 import { PlaygroundRepository } from './dal/playgroundRepository.ts';
 import { PlaygroundBL } from './bl/playground/playground.bl.ts';
 
@@ -72,6 +76,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
 	const archivedAlertRepo = new ArchivedAlertRepository(db);
 	const alertHistoryRepo = new AlertHistoryRepository(db);
+	const retentionRepo = new RetentionRepository(db);
 	// Needed by AlertBL (to resolve owner names for history); constructed here so it is also
 	// available in WORKER mode where AlertBL is used.
 	const userRepo = new UserRepository(db);
@@ -87,6 +92,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		alertHistoryRepo.initAlertHistoryEventsTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
+		retentionRepo.initRetentionTables(),
 	]);
 
 	// BL (needed by both)
@@ -94,12 +100,14 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
 	const alertBL = new AlertBL(alertRepo, archivedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
+	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
 		// WORKER mode: Only start background jobs.
 		// Grafana alerts are now received via webhook (POST /alerts/custom/grafana) instead of
 		// being polled, so the PullGrafanaAlertsJob is no longer started here.
 		new RefreshJob(providerBL).startRefreshJob();
+		new RetentionJob(retentionBL).startRetentionJob();
 		return;
 	}
 
@@ -190,6 +198,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const silenceController = new SilenceController(silenceBL);
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
+	const retentionController = new RetentionController(retentionBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -210,7 +219,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			playgroundController,
 			silenceController,
 			enrichmentController,
-			actionController
+			actionController,
+			retentionController
 		)
 	);
 

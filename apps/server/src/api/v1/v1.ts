@@ -31,6 +31,8 @@ import { TagController } from './tags/controller';
 import tagRouter from './tags/router';
 import { UsersController } from './users/controller';
 import usersRouter from './users/router';
+import { RetentionController } from './retention/controller';
+import createRetentionRouter from './retention/router';
 
 export default function createV1Router(
 	providerController: ProviderController,
@@ -47,7 +49,8 @@ export default function createV1Router(
 	playgroundController: PlaygroundController,
 	silenceController: SilenceController,
 	enrichmentController: EnrichmentController,
-	actionController: ActionController
+	actionController: ActionController,
+	retentionController: RetentionController
 ) {
 	const router = PromiseRouter();
 
@@ -79,6 +82,7 @@ export default function createV1Router(
 	// All other /users endpoints (except /register and /login) are protected
 	router.use('/users', usersRouter(usersController));
 	router.use('/audit', createAuditRouter(auditController));
+	router.use('/retention', createRetentionRouter(retentionController));
 
 	return router;
 }
