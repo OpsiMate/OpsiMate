@@ -52,7 +52,6 @@ import { EnrichmentRepository } from './dal/enrichmentRepository';
 import { SilenceRepository } from './dal/silenceRepository';
 import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
-import { PullGrafanaAlertsJob } from './jobs/pull-grafana-alerts-job';
 import { RefreshJob } from './jobs/refresh-job';
 import { PlaygroundRepository } from './dal/playgroundRepository.ts';
 import { PlaygroundBL } from './bl/playground/playground.bl.ts';
@@ -97,9 +96,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 
 	if (mode === AppMode.WORKER) {
-		// WORKER mode: Only start background jobs
+		// WORKER mode: Only start background jobs.
+		// Grafana alerts are now received via webhook (POST /alerts/custom/grafana) instead of
+		// being polled, so the PullGrafanaAlertsJob is no longer started here.
 		new RefreshJob(providerBL).startRefreshJob();
-		new PullGrafanaAlertsJob(alertBL, integrationBL).startPullGrafanaAlertsJob();
 		return;
 	}
 

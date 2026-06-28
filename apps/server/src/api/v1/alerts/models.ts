@@ -89,6 +89,40 @@ export const DatadogAlertWebhookSchema = z
 
 export type DatadogAlertWebhook = z.infer<typeof DatadogAlertWebhookSchema>;
 
+// Payload sent by a Grafana "Webhook" contact point (unified alerting). It carries a batch of
+// alerts, each with its own firing/resolved status. This matches both real notifications and
+// the "Test" button payload from Grafana.
+export const GrafanaWebhookAlertSchema = z
+	.object({
+		status: z.string(), // 'firing' | 'resolved'
+		labels: z.record(z.string()).optional(),
+		annotations: z.record(z.string()).optional(),
+		startsAt: z.string().optional(),
+		endsAt: z.string().optional(),
+		generatorURL: z.string().optional(),
+		fingerprint: z.string().optional(),
+		dashboardURL: z.string().optional(),
+		panelURL: z.string().optional(),
+		valueString: z.string().optional(),
+	})
+	.passthrough();
+
+export const GrafanaWebhookSchema = z
+	.object({
+		// Group-level status; per-alert status is authoritative and used for firing/resolved.
+		status: z.string().optional(),
+		alerts: z.array(GrafanaWebhookAlertSchema).optional(),
+		commonLabels: z.record(z.string()).optional(),
+		commonAnnotations: z.record(z.string()).optional(),
+		externalURL: z.string().optional(),
+		title: z.string().optional(),
+		message: z.string().optional(),
+	})
+	.passthrough();
+
+export type GrafanaWebhook = z.infer<typeof GrafanaWebhookSchema>;
+export type GrafanaWebhookAlert = z.infer<typeof GrafanaWebhookAlertSchema>;
+
 export const SetAlertOwnerSchema = z.object({
 	ownerId: z.string().nullable(),
 });
