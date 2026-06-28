@@ -51,12 +51,22 @@ export class AlertHistoryRepository {
 
 	async recordEvent(input: RecordAlertEventInput): Promise<void> {
 		return runAsync(() => {
+			// Write an explicit ISO-8601 UTC timestamp rather than relying on SQLite's
+			// CURRENT_TIMESTAMP (which is "YYYY-MM-DD HH:MM:SS", no timezone). The client parses
+			// these with new Date(...); without the UTC marker that would be read as local time,
+			// breaking both display and the history time-range filter.
 			this.db
 				.prepare(
-					`INSERT INTO alert_history_events (alert_id, event_type, actor_name, description)
-					 VALUES (?, ?, ?, ?)`
+					`INSERT INTO alert_history_events (alert_id, event_type, actor_name, description, created_at)
+					 VALUES (?, ?, ?, ?, ?)`
 				)
-				.run(input.alertId, input.eventType, input.actorName ?? null, input.description ?? null);
+				.run(
+					input.alertId,
+					input.eventType,
+					input.actorName ?? null,
+					input.description ?? null,
+					new Date().toISOString()
+				);
 		});
 	}
 

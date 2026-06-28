@@ -18,6 +18,15 @@ import { SilenceBL } from '../silences/silence.bl';
 
 const logger = new Logger('bl/alert.bl');
 
+// Normalizes a timestamp to ISO-8601 UTC. SQLite CURRENT_TIMESTAMP values are
+// "YYYY-MM-DD HH:MM:SS" (UTC, but without a timezone marker); already-ISO values pass through.
+// Guarantees the client receives unambiguous UTC timestamps for display and time-range filtering.
+const toIsoUtc = (value: string): string => {
+	if (!value) return value;
+	const d = value.includes('T') ? new Date(value) : new Date(value.replace(' ', 'T') + 'Z');
+	return isNaN(d.getTime()) ? value : d.toISOString();
+};
+
 export class AlertBL {
 	private silenceBL: SilenceBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -210,12 +219,13 @@ export class AlertBL {
 
 		const statusEntries: AlertHistoryData[] = statusHistory.data.map((entry) => ({
 			...entry,
+			date: toIsoUtc(entry.date),
 			eventType: AlertHistoryEventType.STATUS_CHANGED,
 			description: entry.status === AlertStatus.FIRING ? 'Alert started firing' : 'Alert resolved',
 		}));
 
 		const eventEntries: AlertHistoryData[] = events.map((row) => ({
-			date: row.created_at,
+			date: toIsoUtc(row.created_at),
 			eventType: row.event_type as AlertHistoryEventType,
 			actorName: row.actor_name ?? undefined,
 			description: row.description ?? undefined,
