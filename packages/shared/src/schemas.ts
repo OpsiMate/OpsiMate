@@ -520,11 +520,15 @@ export const RunActionSchema = z.object({
 	overrides: actionOverridesSchema.optional(),
 });
 
-export const UpdateRetentionPolicySchema = z.object({
-	enabled: z.boolean().optional(),
-	// 1 day .. 10 years
-	retentionDays: z.number().int().min(1).max(3650).optional(),
-});
+export const UpdateRetentionPolicySchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		// 1 day .. 10 years
+		retentionDays: z.number().int().min(1).max(3650).optional(),
+	})
+	.refine((v) => v.enabled !== undefined || v.retentionDays !== undefined, {
+		message: 'Provide enabled and/or retentionDays',
+	});
 
 export const UpdateRetentionConfigSchema = z
 	.object({

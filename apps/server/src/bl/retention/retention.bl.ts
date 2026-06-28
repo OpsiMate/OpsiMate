@@ -49,7 +49,6 @@ export class RetentionBL {
 			this.retentionRepo.getPolicies(),
 			this.retentionRepo.getConfig(),
 		]);
-		const ranAt = new Date().toISOString();
 		const deleted: Partial<Record<RetentionResource, number>> = {};
 
 		for (const policy of policies) {
@@ -81,6 +80,9 @@ export class RetentionBL {
 			}
 		}
 
+		// Record the time the run actually finished (not when it started), so a long cleanup
+		// doesn't shorten the effective interval via isCleanupDue().
+		const ranAt = new Date().toISOString();
 		await this.retentionRepo.setLastRunAt(ranAt);
 		return { ranAt, deleted, vacuumed };
 	}

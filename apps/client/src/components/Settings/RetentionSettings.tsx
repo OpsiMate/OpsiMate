@@ -69,7 +69,19 @@ const PolicyRow = ({ policy }: { policy: RetentionPolicy }) => {
 			return;
 		}
 		if (parsed === policy.retentionDays) return;
-		updatePolicy({ resourceType: policy.resourceType, updates: { retentionDays: parsed } });
+		updatePolicy(
+			{ resourceType: policy.resourceType, updates: { retentionDays: parsed } },
+			{
+				onError: (e) => {
+					setDays(String(policy.retentionDays));
+					toast({
+						title: 'Failed to save',
+						description: (e as Error).message,
+						variant: 'destructive',
+					});
+				},
+			}
+		);
 	};
 
 	const toggleEnabled = (enabled: boolean) => {
@@ -143,7 +155,17 @@ export const RetentionSettings = () => {
 		if (parsed === data.config.cleanupIntervalHours) return;
 		updateConfig(
 			{ cleanupIntervalHours: parsed },
-			{ onSuccess: () => toast({ title: 'Saved', description: 'Cleanup interval updated' }) }
+			{
+				onSuccess: () => toast({ title: 'Saved', description: 'Cleanup interval updated' }),
+				onError: (e) => {
+					setIntervalHours(String(data.config.cleanupIntervalHours));
+					toast({
+						title: 'Failed to save',
+						description: (e as Error).message,
+						variant: 'destructive',
+					});
+				},
+			}
 		);
 	};
 

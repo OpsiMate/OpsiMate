@@ -180,11 +180,16 @@ export class RetentionRepository {
 	}
 
 	// Deletes rows of the given resource older than `beforeIso`. Returns the number deleted.
+	// Timestamp columns are a mix of ISO-8601 (e.g. alerts.updated_at) and SQLite's
+	// "YYYY-MM-DD HH:MM:SS" (CURRENT_TIMESTAMP columns), which are not comparable as raw text.
+	// Normalizing both sides with datetime() makes the age comparison correct regardless of format.
 	async purgeOlderThan(resourceType: RetentionResource, beforeIso: string): Promise<number> {
 		return runAsync(() => {
 			const mapping = RESOURCE_TABLE[resourceType];
 			if (!mapping) return 0;
-			const result = this.db.prepare(`DELETE FROM ${mapping.table} WHERE ${mapping.column} < ?`).run(beforeIso);
+			const result = this.db
+				.prepare(`DELETE FROM ${mapping.table} WHERE datetime(${mapping.column}) < datetime(?)`)
+				.run(beforeIso);
 			return result.changes;
 		});
 	}

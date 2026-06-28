@@ -37,7 +37,7 @@ export class RetentionController {
 	updateConfig = async (req: AuthenticatedRequest, res: Response) => {
 		if (!this.requireAdmin(req, res)) return;
 		try {
-			const updates = UpdateRetentionConfigSchema.parse(req.body);
+			const updates = UpdateRetentionConfigSchema.parse(req.body as unknown);
 			const config = await this.retentionBL.updateConfig(updates);
 			return res.json({ success: true, data: config });
 		} catch (error) {
@@ -53,7 +53,7 @@ export class RetentionController {
 		if (!this.requireAdmin(req, res)) return;
 		try {
 			const { resourceType } = RetentionResourceParamSchema.parse(req.params);
-			const updates = UpdateRetentionPolicySchema.parse(req.body);
+			const updates = UpdateRetentionPolicySchema.parse(req.body as unknown);
 			const policy = await this.retentionBL.updatePolicy(resourceType, updates);
 			return res.json({ success: true, data: policy });
 		} catch (error) {
