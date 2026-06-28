@@ -397,3 +397,49 @@ export interface ActionOverrides {
 	description?: string;
 	body?: string;
 }
+
+// ==================== Data Retention ====================
+
+// The data categories whose old rows can be auto-deleted by the retention job. The string
+// values are stable keys used by the API and persisted config (not raw table names).
+export enum RetentionResource {
+	AuditLogs = 'audit_logs',
+	AlertHistoryEvents = 'alert_history_events',
+	AlertStatusHistory = 'alert_status_history',
+	// Active (non-archived) alerts. Aged by last-updated time, so stale alerts that never resolve
+	// (e.g. a source that stopped sending) get cleaned while genuinely-active ones are spared.
+	ActiveAlerts = 'active_alerts',
+	ArchivedAlerts = 'archived_alerts',
+	AlertComments = 'alert_comments',
+}
+
+export interface RetentionPolicy {
+	resourceType: RetentionResource;
+	// When enabled, rows older than retentionDays are deleted by the cleanup job.
+	enabled: boolean;
+	retentionDays: number;
+	updatedAt: string;
+}
+
+export interface RetentionConfig {
+	// How often the cleanup job runs.
+	cleanupIntervalHours: number;
+	// When true, run VACUUM after a cleanup that deleted rows, to return freed disk space to the
+	// OS (plain DELETE only frees pages inside the file for reuse — the file never shrinks).
+	vacuumAfterCleanup: boolean;
+	// ISO timestamp of the last completed cleanup run (null if never run).
+	lastRunAt: string | null;
+}
+
+export interface RetentionSettings {
+	config: RetentionConfig;
+	policies: RetentionPolicy[];
+}
+
+// Result of a cleanup run: how many rows were deleted per resource, and whether the file was
+// compacted afterwards.
+export interface RetentionRunResult {
+	ranAt: string;
+	deleted: Partial<Record<RetentionResource, number>>;
+	vacuumed: boolean;
+}
