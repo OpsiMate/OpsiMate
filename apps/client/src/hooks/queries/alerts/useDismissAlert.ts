@@ -16,6 +16,8 @@ export const useDismissAlert = () => {
 		onSuccess: () => {
 			// Invalidate and refetch alerts
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
+			// Refresh any open alert-history panel (this records a history event server-side).
+			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
 		},
 	});
 };

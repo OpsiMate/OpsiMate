@@ -4,6 +4,7 @@ export const queryKeys = {
 	alerts: ['alerts'] as const,
 	archivedAlerts: ['archivedAlerts'] as const,
 	alertComments: ['alertComments'] as const,
+	alertHistory: (alertId: string) => ['alertHistory', alertId] as const,
 	providers: ['providers'] as const,
 	tags: ['tags'] as const,
 	integrations: ['integrations'] as const,

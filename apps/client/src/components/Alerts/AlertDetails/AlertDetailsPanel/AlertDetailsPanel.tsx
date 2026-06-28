@@ -29,7 +29,7 @@ export const AlertDetailsPanel = ({
 	onUndismiss,
 	onDelete,
 }: AlertDetailsPanelProps) => {
-	const historyData = useAlertHistory(alert.id, alert.updatedAt);
+	const historyData = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
 
 	return (

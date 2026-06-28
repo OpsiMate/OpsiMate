@@ -73,6 +73,7 @@ export const usePreviewAction = () => {
 };
 
 export const useRunAction = () => {
+	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async ({ id, alert, overrides }: { id: number; alert: Alert; overrides?: ActionOverrides }) => {
 			const response = await actionsApi.runAction(id, alert, overrides);
@@ -80,6 +81,10 @@ export const useRunAction = () => {
 				throw new Error(response.error || 'Failed to run action');
 			}
 			return response.data;
+		},
+		onSuccess: () => {
+			// Running an action records a history event server-side; refresh the open panel.
+			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
 		},
 	});
 };

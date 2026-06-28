@@ -272,18 +272,10 @@ export class AlertBL {
 	// endregion
 
 	// region comments
-	async createComment(
-		comment: Omit<AlertComment, 'createdAt' | 'updatedAt' | 'id'>,
-		actorName?: string | null
-	): Promise<AlertComment> {
-		const created = await this.alertCommentsRepo.createComment(comment);
-		await this.recordHistoryEvent(
-			comment.alertId,
-			AlertHistoryEventType.COMMENT_ADDED,
-			'Added a comment',
-			actorName
-		);
-		return created;
+	// Comments are intentionally NOT recorded in the alert history timeline (they live in their
+	// own Comments tab), to keep the history focused on status/ownership/action events.
+	async createComment(comment: Omit<AlertComment, 'createdAt' | 'updatedAt' | 'id'>): Promise<AlertComment> {
+		return this.alertCommentsRepo.createComment(comment);
 	}
 
 	async updateComment(id: string, userId: string, comment: string): Promise<AlertComment | null> {

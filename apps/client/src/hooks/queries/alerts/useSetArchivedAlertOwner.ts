@@ -44,6 +44,7 @@ export const useSetArchivedAlertOwner = () => {
 		onSettled: () => {
 			// Always refetch after error or success to ensure server state
 			queryClient.invalidateQueries({ queryKey: queryKeys.archivedAlerts });
+			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
 		},
 	});
 };

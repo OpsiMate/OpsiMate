@@ -16,6 +16,7 @@ export const useUndismissAlert = () => {
 		onSuccess: () => {
 			// Invalidate and refetch alerts
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
+			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
 		},
 	});
 };

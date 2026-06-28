@@ -608,14 +608,11 @@ export class AlertController {
 
 			const { comment } = CreateCommentSchema.parse(req.body);
 
-			const newComment = await this.alertBL.createComment(
-				{
-					alertId: alertId,
-					userId: req.user.id,
-					comment: comment,
-				},
-				req.user.fullName
-			);
+			const newComment = await this.alertBL.createComment({
+				alertId: alertId,
+				userId: req.user.id,
+				comment: comment,
+			});
 
 			return res.status(201).json({ success: true, data: { comment: newComment } });
 		} catch (error) {

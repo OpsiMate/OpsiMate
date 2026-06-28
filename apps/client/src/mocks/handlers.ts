@@ -32,12 +32,6 @@ const generateBaseHistory = (alertId: string): AlertHistoryData[] => {
 			description: `Ran action "${actionName}"`,
 		},
 		{
-			date: new Date(now - (2 * HOUR + (h % 60) * MINUTE)).toISOString(),
-			eventType: AlertHistoryEventType.COMMENT_ADDED,
-			actorName: PLAYGROUND_ACTOR,
-			description: 'Added a comment',
-		},
-		{
 			date: new Date(now - 5 * HOUR).toISOString(),
 			eventType: AlertHistoryEventType.OWNER_ASSIGNED,
 			actorName: PLAYGROUND_ACTOR,
@@ -250,12 +244,7 @@ export const handlers = [
 		};
 
 		playgroundState.alertComments.push(newComment);
-		pushAlertEvent(alertId, {
-			date: nowIso(),
-			eventType: AlertHistoryEventType.COMMENT_ADDED,
-			actorName: ownerNameById(body.userId),
-			description: 'Added a comment',
-		});
+		// Comments are not recorded in the alert history timeline.
 		return HttpResponse.json({ success: true, data: { comment: newComment } });
 	}),
 
