@@ -192,10 +192,13 @@ const Enrichments: React.FC = () => {
 											<TableCell className="max-w-[220px]">
 												<div className="font-medium truncate">{e.name}</div>
 												<div className="text-xs text-muted-foreground truncate">
-													{e.lastModifiedBy ? `Edited by ${e.lastModifiedBy}` : 'Edited by —'}
-													{e.updatedAt
-														? ` · ${new Date(e.updatedAt).toLocaleDateString()}`
-														: ''}
+													{e.lastModifiedBy
+														? `Edited by ${e.lastModifiedBy}${
+																e.updatedAt
+																	? ` · ${new Date(e.updatedAt).toLocaleDateString()}`
+																	: ''
+															}`
+														: '—'}
 												</div>
 											</TableCell>
 											<TableCell>

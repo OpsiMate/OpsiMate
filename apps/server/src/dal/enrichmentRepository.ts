@@ -151,11 +151,14 @@ export class EnrichmentRepository {
 				values.push(data.priority);
 			}
 
-			// Always stamp who last modified it, even if only other fields changed.
-			updates.push('last_modified_by = ?');
-			values.push(actor ?? null);
+			if (updates.length === 0) return; // nothing changed
 
-			if (updates.length === 1) return; // only the actor stamp, nothing else changed
+			// Stamp who last modified it, but never erase an existing value when the
+			// request has no user context (e.g. API-token auth).
+			if (actor != null) {
+				updates.push('last_modified_by = ?');
+				values.push(actor);
+			}
 
 			updates.push('updated_at = CURRENT_TIMESTAMP');
 			values.push(id);
