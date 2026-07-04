@@ -10,6 +10,8 @@ interface EnrichmentRow {
 	add_fields: string | null;
 	summary_template: string | null;
 	priority: number | null;
+	created_by: string | null;
+	last_modified_by: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -38,6 +40,8 @@ export class EnrichmentRepository {
 		addFields: parseJsonArray<AlertEnrichmentField>(row.add_fields),
 		summaryTemplate: row.summary_template,
 		priority: row.priority ?? 0,
+		createdBy: row.created_by,
+		lastModifiedBy: row.last_modified_by,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	});
@@ -55,6 +59,8 @@ export class EnrichmentRepository {
 						add_fields       TEXT,
 						summary_template TEXT,
 						priority         INTEGER DEFAULT 0,
+						created_by       TEXT,
+						last_modified_by TEXT,
 						created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
 						updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP
 					)
@@ -62,19 +68,26 @@ export class EnrichmentRepository {
 				)
 				.run();
 
-			// Migrate older installs that predate the priority column.
+			// Migrate older installs that predate later columns.
 			const columns = this.db.prepare(`PRAGMA table_info(alert_enrichments)`).all() as { name: string }[];
-			if (!columns.some((c) => c.name === 'priority')) {
+			const hasColumn = (name: string) => columns.some((c) => c.name === name);
+			if (!hasColumn('priority')) {
 				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN priority INTEGER DEFAULT 0`).run();
+			}
+			if (!hasColumn('created_by')) {
+				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN created_by TEXT`).run();
+			}
+			if (!hasColumn('last_modified_by')) {
+				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN last_modified_by TEXT`).run();
 			}
 		});
 	}
 
-	async createEnrichment(data: CreateEnrichmentInput): Promise<{ lastID: number }> {
+	async createEnrichment(data: CreateEnrichmentInput, actor?: string | null): Promise<{ lastID: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
-				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields, summary_template, priority)
-				 VALUES (?, ?, ?, ?, ?, ?)`
+				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields, summary_template, priority, created_by, last_modified_by)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 			);
 			const result = stmt.run(
 				data.name,
@@ -82,7 +95,9 @@ export class EnrichmentRepository {
 				JSON.stringify(data.labelMatchers ?? []),
 				JSON.stringify(data.addFields ?? []),
 				data.summaryTemplate ?? null,
-				data.priority ?? 0
+				data.priority ?? 0,
+				actor ?? null,
+				actor ?? null
 			);
 			return { lastID: result.lastInsertRowid as number };
 		});
@@ -106,7 +121,7 @@ export class EnrichmentRepository {
 		});
 	}
 
-	async updateEnrichment(id: number, data: UpdateEnrichmentInput): Promise<void> {
+	async updateEnrichment(id: number, data: UpdateEnrichmentInput, actor?: string | null): Promise<void> {
 		return runAsync(() => {
 			const updates: string[] = [];
 			const values: unknown[] = [];
@@ -136,7 +151,14 @@ export class EnrichmentRepository {
 				values.push(data.priority);
 			}
 
-			if (updates.length === 0) return;
+			if (updates.length === 0) return; // nothing changed
+
+			// Stamp who last modified it, but never erase an existing value when the
+			// request has no user context (e.g. API-token auth).
+			if (actor != null) {
+				updates.push('last_modified_by = ?');
+				values.push(actor);
+			}
 
 			updates.push('updated_at = CURRENT_TIMESTAMP');
 			values.push(id);
