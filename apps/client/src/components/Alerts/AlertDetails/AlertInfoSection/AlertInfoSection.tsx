@@ -1,9 +1,9 @@
 import { PersonPicker } from '@/components/PersonPicker';
-import { Badge } from '@/components/ui/badge';
 import { useSetAlertOwner } from '@/hooks/queries/alerts';
+import { cn } from '@/lib/utils';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
-import { Sparkles } from 'lucide-react';
+import { BellOff, CircleCheck, Flame, Sparkles } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 import { SeverityBadge } from '../../SeverityBadge';
 import { getAlertSeverity } from '../../utils/severity.utils';
@@ -12,10 +12,19 @@ interface AlertInfoSectionProps {
 	alert: Alert;
 }
 
+// Icon + color for the alert's lifecycle state, shown icon-only (tooltip carries the label)
+// to keep the owner row compact.
+const getStatusIndicator = (alert: Alert) => {
+	if (alert.isDismissed) return { Icon: BellOff, label: 'Dismissed', className: 'text-muted-foreground' };
+	if (alert.status === AlertStatus.FIRING) return { Icon: Flame, label: 'Firing', className: 'text-red-500' };
+	return { Icon: CircleCheck, label: 'Resolved', className: 'text-emerald-500' };
+};
+
 export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 	const integration = resolveAlertIntegration(alert);
 	const { data: users = [] } = useUsers();
 	const { mutate: setOwner } = useSetAlertOwner();
+	const status = getStatusIndicator(alert);
 
 	const handleOwnerChange = (userId: string | null) => {
 		setOwner({ alertId: alert.id, ownerId: userId });
@@ -38,29 +47,20 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 			<div className="flex items-center gap-2 flex-wrap">
 				<span className="text-sm text-muted-foreground">Owner:</span>
 				<PersonPicker selectedUserId={alert.ownerId} onSelect={handleOwnerChange} users={users} />
+				{/* Icon-only indicators (severity, status, enriched) — labels live in tooltips
+				    so the owner row stays compact even in a narrow panel. */}
 				<div className="ml-auto flex items-center gap-2">
-					<SeverityBadge severity={getAlertSeverity(alert)} showLabel />
-					<Badge
-						variant={
-							alert.isDismissed
-								? 'secondary'
-								: alert.status === AlertStatus.FIRING
-									? 'destructive'
-									: 'secondary'
-						}
-						className="flex-shrink-0 text-xs px-1.5 py-0.5"
-					>
-						{alert.isDismissed ? 'dismissed' : alert.status}
-					</Badge>
+					<SeverityBadge severity={getAlertSeverity(alert)} />
+					<span className={cn('flex-shrink-0', status.className)} title={`Status: ${status.label}`}>
+						<status.Icon className="h-3.5 w-3.5" aria-label={status.label} />
+					</span>
 					{alert.appliedEnrichments && alert.appliedEnrichments.length > 0 && (
-						<Badge
-							variant="secondary"
-							className="flex-shrink-0 gap-1 text-xs px-1.5 py-0.5 bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30"
+						<span
+							className="flex-shrink-0 text-violet-500"
 							title={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
 						>
-							<Sparkles className="h-3 w-3" />
-							Enriched
-						</Badge>
+							<Sparkles className="h-3.5 w-3.5" aria-label="Enriched" />
+						</span>
 					)}
 				</div>
 			</div>
