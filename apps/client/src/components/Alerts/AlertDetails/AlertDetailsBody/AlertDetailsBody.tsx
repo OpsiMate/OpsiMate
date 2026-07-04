@@ -1,5 +1,6 @@
 import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
 import { Clock, FileText, Link2, Tag } from 'lucide-react';
+import { useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { hasAlertTags } from '../../utils/alertTags.utils';
 import { AlertActionsSection } from '../AlertActionsSection';
@@ -10,7 +11,12 @@ import { AlertLinksSection } from '../AlertLinksSection';
 import { AlertSummarySection } from '../AlertSummarySection';
 import { AlertTagsSection } from '../AlertTagsSection';
 import { AlertTimestampsSection } from '../AlertTimestampsSection';
-import { CollapsibleSection } from '../CollapsibleSection';
+import {
+	CollapsibleSection,
+	SectionsExpandContext,
+	SectionsExpandControls,
+	SectionsExpandSignal,
+} from '../CollapsibleSection';
 
 interface AlertDetailsBodyProps {
 	alert: SharedAlert;
@@ -38,37 +44,44 @@ export const AlertDetailsBody = ({
 	onDelete,
 	onViewAllComments,
 }: AlertDetailsBodyProps) => {
+	const [expandSignal, setExpandSignal] = useState<SectionsExpandSignal | null>(null);
+	const broadcast = (open: boolean) => setExpandSignal((prev) => ({ open, token: (prev?.token ?? 0) + 1 }));
+
 	return (
 		<div className="p-4 space-y-2">
 			<AlertInfoSection alert={alert} />
 
-			{alert.summary && (
-				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
-					<AlertSummarySection summary={alert.summary} />
+			<SectionsExpandControls onBroadcast={broadcast} />
+
+			<SectionsExpandContext.Provider value={expandSignal}>
+				{alert.summary && (
+					<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
+						<AlertSummarySection summary={alert.summary} />
+					</CollapsibleSection>
+				)}
+
+				<AlertLastCommentSection alertId={alert.id} onViewAll={onViewAllComments} />
+
+				{historyData && historyData.data.length > 0 && (
+					<AlertHistorySection historyData={historyData} timeRange={timeRange} />
+				)}
+
+				{hasAlertTags(alert) && (
+					<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
+						<AlertTagsSection alert={alert} />
+					</CollapsibleSection>
+				)}
+
+				<CollapsibleSection title="Timestamps" icon={<Clock className="h-3.5 w-3.5" />} defaultOpen={false}>
+					<AlertTimestampsSection alert={alert} />
 				</CollapsibleSection>
-			)}
 
-			<AlertLastCommentSection alertId={alert.id} onViewAll={onViewAllComments} />
-
-			{historyData && historyData.data.length > 0 && (
-				<AlertHistorySection historyData={historyData} timeRange={timeRange} />
-			)}
-
-			{hasAlertTags(alert) && (
-				<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertTagsSection alert={alert} />
-				</CollapsibleSection>
-			)}
-
-			<CollapsibleSection title="Timestamps" icon={<Clock className="h-3.5 w-3.5" />} defaultOpen={false}>
-				<AlertTimestampsSection alert={alert} />
-			</CollapsibleSection>
-
-			{(alert.alertUrl || alert.runbookUrl) && (
-				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertLinksSection alert={alert} />
-				</CollapsibleSection>
-			)}
+				{(alert.alertUrl || alert.runbookUrl) && (
+					<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>
+						<AlertLinksSection alert={alert} />
+					</CollapsibleSection>
+				)}
+			</SectionsExpandContext.Provider>
 
 			<AlertActionsSection
 				alert={alert}
