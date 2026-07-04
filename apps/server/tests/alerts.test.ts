@@ -457,6 +457,70 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe(payload.alertName);
 		});
 
+		test('should store a normalized explicit severity', async () => {
+			const payload = {
+				id: 'severity-explicit',
+				tags: {},
+				alertName: 'Severity Test',
+				severity: 'CRITICAL',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
+			expect(row.severity).toBe('critical');
+		});
+
+		test('should default severity to warning when omitted', async () => {
+			const payload = {
+				id: 'severity-default',
+				tags: {},
+				alertName: 'Severity Default Test',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
+			expect(row.severity).toBe('warning');
+		});
+
+		test('should derive severity from a severity tag, mapping synonyms', async () => {
+			const payload = {
+				id: 'severity-from-tag',
+				tags: { severity: 'Disaster' },
+				alertName: 'Severity Tag Test',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
+			expect(row.severity).toBe('critical');
+		});
+
+		test('should expose severity on the alerts list API', async () => {
+			const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+
+			expect(response.status).toBe(200);
+			const alerts = response.body.data.alerts as Alert[];
+			expect(alerts.length).toBeGreaterThan(0);
+			// Every alert carries a normalized severity, including legacy seeded rows without one.
+			for (const alert of alerts) {
+				expect(['critical', 'warning', 'info']).toContain(alert.severity);
+			}
+		});
+
 		test('should return 400 for invalid payload (missing required fields)', async () => {
 			const payload = {
 				// Missing id, startsAt, etc.

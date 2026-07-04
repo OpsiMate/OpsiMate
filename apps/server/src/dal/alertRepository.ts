@@ -1,4 +1,4 @@
-import { AlertStatus, AlertType, Alert as SharedAlert } from '@OpsiMate/shared';
+import { AlertStatus, AlertType, normalizeAlertSeverity, Alert as SharedAlert } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AlertRow, TableInfoRow } from './models';
@@ -13,11 +13,12 @@ export class AlertRepository {
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-				INSERT INTO alerts (id, status, type, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				INSERT INTO alerts (id, status, type, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 											  status=excluded.status,
 											  type=excluded.type,
+											  severity=excluded.severity,
 											  tags=excluded.tags,
 											  starts_at=excluded.starts_at,
 											  updated_at=excluded.updated_at,
@@ -31,6 +32,7 @@ export class AlertRepository {
 				alert.id,
 				alert.status,
 				alert.type,
+				alert.severity,
 				JSON.stringify(alert.tags ?? {}),
 				alert.startsAt,
 				alert.updatedAt,
@@ -49,6 +51,7 @@ export class AlertRepository {
 				CREATE TABLE IF NOT EXISTS alerts (
 					id TEXT PRIMARY KEY,
 					status TEXT,
+					severity TEXT,
 					tags TEXT,
 					type TEXT,
 					starts_at TEXT,
@@ -86,6 +89,12 @@ export class AlertRepository {
 			if (!hasOwnerId) {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
 			}
+
+			// Backward compatibility: ensure severity column exists
+			const hasSeverity = columns.some((col: TableInfoRow) => col.name === 'severity');
+			if (!hasSeverity) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN severity TEXT`).run();
+			}
 		});
 	}
 
@@ -96,6 +105,8 @@ export class AlertRepository {
 			id: row.id,
 			status,
 			type: row.type,
+			// Legacy rows (pre-severity) fall back to the default via normalization.
+			severity: normalizeAlertSeverity(row.severity),
 			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,

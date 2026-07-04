@@ -15,7 +15,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Bell, Columns2, LayoutList } from 'lucide-react';
+import { Archive, Bell, Columns2, LayoutList, Palette } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
@@ -37,6 +37,7 @@ import {
 	useAlertTagKeys,
 	useArchivedTabStatusFilterReset,
 	useColumnManagement,
+	useSeverityColors,
 } from './hooks';
 
 const Alerts = () => {
@@ -68,6 +69,7 @@ const Alerts = () => {
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [splitByAssignment, setSplitByAssignment] = useState(false);
+	const { severityColors, toggleSeverityColors } = useSeverityColors();
 
 	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -263,6 +265,7 @@ const Alerts = () => {
 			searchTerm={dashboardState.query}
 			onSearchTermChange={(term) => updateDashboardField('query', term)}
 			renderToolbar={false}
+			severityColors={severityColors}
 		/>
 	);
 
@@ -445,6 +448,17 @@ const Alerts = () => {
 									</Button>
 								)}
 
+								<Button
+									variant={severityColors ? 'default' : 'outline'}
+									size="sm"
+									onClick={toggleSeverityColors}
+									className="gap-1.5 flex-shrink-0"
+									title="Color rows by severity"
+								>
+									<Palette className="h-4 w-4" />
+									<span className="hidden lg:inline">Severity colors</span>
+								</Button>
+
 								<TimeFilter
 									value={dashboardState.timeRange ?? createEmptyTimeRange()}
 									onChange={(range) => updateDashboardField('timeRange', range)}
@@ -535,6 +549,7 @@ const Alerts = () => {
 									searchTerm={dashboardState.query}
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
 									renderToolbar={false}
+									severityColors={severityColors}
 								/>
 							</div>
 						) : (
@@ -570,6 +585,7 @@ const Alerts = () => {
 									searchTerm={dashboardState.query}
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
 									renderToolbar={false}
+									severityColors={severityColors}
 								/>
 							</div>
 						)}

@@ -5,9 +5,11 @@ import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
+import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
 import { AlertOwnerColumn } from './Columns/AlertOwnerColumn';
+import { AlertSeverityColumn } from './Columns/AlertSeverityColumn';
 import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
 import { AlertStatusColumn } from './Columns/AlertStatusColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
@@ -28,6 +30,8 @@ export interface AlertRowProps {
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	isArchived?: boolean;
 	isDragging?: boolean;
+	// Tint the whole row by alert severity (the table's "severity colors" toggle).
+	severityColors?: boolean;
 	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
 	onDragEnter?: (alert: Alert) => void;
 	onDragEnd?: () => void;
@@ -46,6 +50,7 @@ export const AlertRow = ({
 	onSelectAlerts,
 	isArchived = false,
 	isDragging = false,
+	severityColors = false,
 	onDragStart,
 	onDragEnter,
 	onDragEnd,
@@ -70,6 +75,8 @@ export const AlertRow = ({
 		<TableRow
 			className={cn(
 				'h-8 cursor-pointer hover:bg-muted/50',
+				// Severity tint sits under selection/active highlights so those still win.
+				severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
 				isSelected && 'bg-muted/50',
 				// Unread alerts render bold until someone opens them.
 				alert.isRead === false && 'font-bold',
@@ -116,6 +123,8 @@ export const AlertRow = ({
 						return <AlertTypeColumn key={column} alert={alert} className={COLUMN_WIDTHS.type} />;
 					case 'alertName':
 						return <AlertNameColumn key={column} alert={alert} className={COLUMN_WIDTHS.alertName} />;
+					case 'severity':
+						return <AlertSeverityColumn key={column} alert={alert} className={COLUMN_WIDTHS.severity} />;
 					case 'status':
 						return <AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />;
 					case 'summary':

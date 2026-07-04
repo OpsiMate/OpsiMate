@@ -39,6 +39,8 @@ export interface AlertsTableProps {
 	searchTerm: string;
 	onSearchTermChange: (term: string) => void;
 	renderToolbar?: boolean;
+	// Tint rows by alert severity (the page-level "severity colors" toggle).
+	severityColors?: boolean;
 	// Optional caption rendered flush at the top of the table container (e.g. a section
 	// title + count), so callers don't need a separate header row above the table.
 	heading?: ReactNode;

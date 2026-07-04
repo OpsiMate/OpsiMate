@@ -5,6 +5,8 @@ import { useUsers } from '@/hooks/queries/users';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { Sparkles } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
+import { SeverityBadge } from '../../SeverityBadge';
+import { getAlertSeverity } from '../../utils/severity.utils';
 
 interface AlertInfoSectionProps {
 	alert: Alert;
@@ -37,6 +39,7 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 				<span className="text-sm text-muted-foreground">Owner:</span>
 				<PersonPicker selectedUserId={alert.ownerId} onSelect={handleOwnerChange} users={users} />
 				<div className="ml-auto flex items-center gap-2">
+					<SeverityBadge severity={getAlertSeverity(alert)} showLabel />
 					<Badge
 						variant={
 							alert.isDismissed

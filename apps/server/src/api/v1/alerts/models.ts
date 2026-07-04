@@ -40,6 +40,9 @@ export const HttpAlertWebhookSchema = z.object({
 	summary: z.string().optional(),
 	runbookUrl: z.string().url().optional(),
 	createdAt: isoDateString.optional(),
+	// Free-form; normalized onto the fixed critical/warning/info scale at ingestion
+	// (unknown or missing values default to warning).
+	severity: z.string().optional(),
 });
 
 /**

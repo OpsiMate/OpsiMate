@@ -50,6 +50,7 @@ export const AlertsTable = ({
 	onTimeRangeChange,
 	isArchived = false,
 	renderToolbar = true,
+	severityColors = false,
 	heading,
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
@@ -189,9 +190,15 @@ export const AlertsTable = ({
 											);
 										}
 										if (
-											['alertName', 'status', 'startsAt', 'summary', 'type', 'owner'].includes(
-												column
-											)
+											[
+												'alertName',
+												'severity',
+												'status',
+												'startsAt',
+												'summary',
+												'type',
+												'owner',
+											].includes(column)
 										) {
 											return (
 												<SortableHeader
@@ -249,6 +256,7 @@ export const AlertsTable = ({
 									onSelectAlerts={onSelectAlerts}
 									columnLabels={allColumnLabels}
 									isArchived={isArchived}
+									severityColors={severityColors}
 									isDragging={isDragging}
 									onDragStart={handleDragStart}
 									onDragEnter={handleDragEnter}

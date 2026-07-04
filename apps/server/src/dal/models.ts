@@ -55,6 +55,7 @@ export type AlertRow = {
 	id: string;
 	type: AlertType;
 	status: string;
+	severity?: string | null;
 	tags: string;
 	starts_at: string;
 	updated_at: string;
@@ -72,6 +73,7 @@ export type ArchivedAlertRow = {
 	id: string;
 	type: AlertType;
 	status: string;
+	severity?: string | null;
 	tags: string;
 	starts_at: string;
 	updated_at: string;
