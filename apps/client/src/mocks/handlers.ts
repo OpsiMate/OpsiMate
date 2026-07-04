@@ -93,12 +93,28 @@ const shouldBlockWriteOperation = (): boolean => {
 	return isPlaygroundModeFromEnv();
 };
 
+// Mirrors the server's enrichment matching so the demo can show which rules decorated an alert.
+const withAppliedEnrichments = <T extends { alertName?: string; tags?: Record<string, string> }>(alert: T): T => {
+	const applied = playgroundState.enrichments
+		.filter((e) => {
+			const hasName = !!e.nameContains && e.nameContains.trim().length > 0;
+			const matchers = e.labelMatchers ?? [];
+			if (!hasName && matchers.length === 0) return false;
+			if (hasName && !alert.alertName?.toLowerCase().includes(e.nameContains!.trim().toLowerCase())) {
+				return false;
+			}
+			return matchers.every((m) => alert.tags?.[m.key] === m.value);
+		})
+		.map((e) => ({ id: e.id, name: e.name }));
+	return applied.length > 0 ? { ...alert, appliedEnrichments: applied } : alert;
+};
+
 export const handlers = [
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, () => {
 		return HttpResponse.json({
 			success: true,
-			data: { alerts: playgroundState.alerts },
+			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments) },
 		});
 	}),
 
