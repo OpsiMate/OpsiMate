@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { SectionsExpandContext } from './SectionsExpandContext';
 
 interface CollapsibleSectionProps {
 	title: string;
@@ -27,6 +28,17 @@ export const CollapsibleSection = ({
 	className,
 }: CollapsibleSectionProps) => {
 	const [open, setOpen] = useState(defaultOpen);
+
+	// Follow "Expand all" / "Collapse all" broadcasts, but only ones fired after this
+	// section mounted — a late-mounting section keeps its defaultOpen.
+	const signal = useContext(SectionsExpandContext);
+	const lastToken = useRef(signal?.token);
+	useEffect(() => {
+		if (signal && signal.token !== lastToken.current) {
+			lastToken.current = signal.token;
+			setOpen(signal.open);
+		}
+	}, [signal]);
 
 	return (
 		<div className={cn('border-t border-border pt-2', className)}>
