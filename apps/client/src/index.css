@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&display=swap');
+/* Nunito Sans is self-hosted (bundled from @fontsource) so the app renders correctly in
+   air-gapped deployments — a remote Google Fonts import blocks first paint when the CDN
+   is unreachable. */
+@import '@fontsource/nunito-sans/400.css';
+@import '@fontsource/nunito-sans/600.css';
+@import '@fontsource/nunito-sans/700.css';
 
 @tailwind base;
 @tailwind components;
