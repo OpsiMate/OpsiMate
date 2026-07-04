@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 
 interface SectionsExpandControlsProps {
@@ -5,25 +6,30 @@ interface SectionsExpandControlsProps {
 	onBroadcast: (open: boolean) => void;
 }
 
-// The "Expand all" / "Collapse all" button pair for a stack of CollapsibleSections. The
-// parent owns the SectionsExpandSignal state and provides it via SectionsExpandContext.
+// Compact icon-only "Expand all" / "Collapse all" pair, sized to sit in a header bar next
+// to the close button. The parent owns the SectionsExpandSignal state and provides it via
+// SectionsExpandContext.
 export const SectionsExpandControls = ({ onBroadcast }: SectionsExpandControlsProps) => (
-	<div className="flex items-center justify-end gap-3">
-		<button
-			type="button"
+	<>
+		<Button
+			variant="ghost"
+			size="icon"
+			className="h-8 w-8 text-muted-foreground hover:text-foreground"
 			onClick={() => onBroadcast(true)}
-			className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+			aria-label="Expand all sections"
+			title="Expand all sections"
 		>
-			<ChevronsUpDown className="h-3 w-3" />
-			Expand all
-		</button>
-		<button
-			type="button"
+			<ChevronsUpDown className="h-4 w-4" />
+		</Button>
+		<Button
+			variant="ghost"
+			size="icon"
+			className="h-8 w-8 text-muted-foreground hover:text-foreground"
 			onClick={() => onBroadcast(false)}
-			className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+			aria-label="Collapse all sections"
+			title="Collapse all sections"
 		>
-			<ChevronsDownUp className="h-3 w-3" />
-			Collapse all
-		</button>
-	</div>
+			<ChevronsDownUp className="h-4 w-4" />
+		</Button>
+	</>
 );

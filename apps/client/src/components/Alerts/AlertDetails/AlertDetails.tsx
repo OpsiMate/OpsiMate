@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { AlertDetailsBody } from './AlertDetailsBody';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
+import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
 import { useAlertHistory } from './hooks';
 
 interface AlertDetailsProps {
@@ -25,22 +26,25 @@ export const AlertDetails = ({
 	className,
 }: AlertDetailsProps) => {
 	const historyData = useAlertHistory(alert?.id);
+	const { signal, broadcast } = useSectionsExpandBroadcast();
 
 	if (!alert) return null;
 
 	return (
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
-			<AlertDetailsHeader onClose={onClose} />
+			<AlertDetailsHeader onClose={onClose} actions={<SectionsExpandControls onBroadcast={broadcast} />} />
 
 			<ScrollArea className="flex-1">
-				<AlertDetailsBody
-					alert={alert}
-					isActive={isActive}
-					historyData={historyData}
-					onDismiss={onDismiss}
-					onUndismiss={onUndismiss}
-					onDelete={onDelete}
-				/>
+				<SectionsExpandContext.Provider value={signal}>
+					<AlertDetailsBody
+						alert={alert}
+						isActive={isActive}
+						historyData={historyData}
+						onDismiss={onDismiss}
+						onUndismiss={onUndismiss}
+						onDelete={onDelete}
+					/>
+				</SectionsExpandContext.Provider>
 			</ScrollArea>
 		</div>
 	);

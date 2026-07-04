@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertDetailsBody } from '../AlertDetailsBody';
 import { AlertDetailsHeader } from '../AlertDetailsHeader';
+import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
 import { PanelResizeHandle } from './PanelResizeHandle';
@@ -47,6 +48,7 @@ export const AlertDetailsPanel = ({
 	const historyData = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
 	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth();
+	const { signal, broadcast } = useSectionsExpandBroadcast();
 
 	return (
 		<div
@@ -56,23 +58,29 @@ export const AlertDetailsPanel = ({
 		>
 			<PanelResizeHandle onPointerDown={startResizing} onDoubleClick={resetWidth} />
 
-			<AlertDetailsHeader onClose={onClose} className="px-4 py-3 flex-shrink-0" />
+			<AlertDetailsHeader
+				onClose={onClose}
+				className="px-4 py-3 flex-shrink-0"
+				actions={tab === 'details' && <SectionsExpandControls onBroadcast={broadcast} />}
+			/>
 
 			<Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
 				<PanelTabsList />
 
 				<TabsContent value="details" className="flex-1 min-h-0 mt-0">
 					<ScrollArea className="h-full">
-						<AlertDetailsBody
-							alert={alert}
-							isActive={isActive}
-							historyData={historyData}
-							timeRange={timeRange}
-							onDismiss={onDismiss}
-							onUndismiss={onUndismiss}
-							onDelete={onDelete}
-							onViewAllComments={() => setTab('comments')}
-						/>
+						<SectionsExpandContext.Provider value={signal}>
+							<AlertDetailsBody
+								alert={alert}
+								isActive={isActive}
+								historyData={historyData}
+								timeRange={timeRange}
+								onDismiss={onDismiss}
+								onUndismiss={onUndismiss}
+								onDelete={onDelete}
+								onViewAllComments={() => setTab('comments')}
+							/>
+						</SectionsExpandContext.Provider>
 					</ScrollArea>
 				</TabsContent>
 
