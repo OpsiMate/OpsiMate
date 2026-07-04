@@ -1,4 +1,5 @@
 export { CollapsibleSection } from './CollapsibleSection';
+export type { SectionsExpandSignal } from './CollapsibleSection.types';
+export { SectionsExpandContext } from './SectionsExpandContext';
 export { SectionsExpandControls } from './SectionsExpandControls';
-export { SectionsExpandContext, useSectionsExpandBroadcast } from './expandSignal';
-export type { SectionsExpandSignal } from './expandSignal';
+export { useSectionsExpandBroadcast } from './useSectionsExpandBroadcast';

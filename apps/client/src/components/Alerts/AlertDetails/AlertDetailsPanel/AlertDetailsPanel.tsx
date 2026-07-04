@@ -1,7 +1,6 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
-import { Info, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertDetailsBody } from '../AlertDetailsBody';
@@ -10,20 +9,8 @@ import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadca
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
 import { PanelResizeHandle } from './PanelResizeHandle';
+import { PanelTabsList } from './PanelTabsList';
 import { useResizablePanelWidth } from './useResizablePanelWidth';
-
-const PanelTabsList = () => (
-	<TabsList className="mx-4 mt-3 grid w-auto grid-cols-2">
-		<TabsTrigger value="details" className="gap-1.5">
-			<Info className="h-4 w-4" />
-			Details
-		</TabsTrigger>
-		<TabsTrigger value="comments" className="gap-1.5">
-			<MessageSquare className="h-4 w-4" />
-			Comments
-		</TabsTrigger>
-	</TabsList>
-);
 
 interface AlertDetailsPanelProps {
 	alert: Alert;

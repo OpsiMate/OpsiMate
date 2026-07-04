@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { ReactNode, useContext, useEffect, useRef, useState } from 'react';
-import { SectionsExpandContext } from './expandSignal';
+import { SectionsExpandContext } from './SectionsExpandContext';
 
 interface CollapsibleSectionProps {
 	title: string;
