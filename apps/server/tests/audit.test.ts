@@ -58,6 +58,37 @@ describe('Audit Logs API', () => {
 		expect(log.resourceName).toBeDefined();
 	});
 
+	test('should log enrichment creation and retrieve audit logs', async () => {
+		const enrichmentData = {
+			name: 'Audit Enrichment Rule',
+			nameContains: 'CPU',
+			addFields: [{ key: 'owner', value: 'platform' }],
+			priority: 5,
+		};
+
+		const createRes = await app
+			.post('/api/v1/enrichments')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send(enrichmentData);
+
+		expect(createRes.status).toBe(201);
+		expect(createRes.body.success).toBe(true);
+
+		const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
+		expect(auditRes.status).toBe(200);
+		expect(Array.isArray(auditRes.body.logs)).toBe(true);
+		expect(auditRes.body.logs.length).toBe(1);
+
+		const log: AuditLog = auditRes.body.logs[0];
+		expect(log.actionType).toBe(AuditActionType.CREATE);
+		expect(log.resourceType).toBe(AuditResourceType.ENRICHMENT);
+		expect(log.resourceId).toBe(String(createRes.body.data.id));
+		expect(log.resourceName).toBe(enrichmentData.name);
+		expect(log.userName).toBe('Provider User');
+		expect(log.userId).toBeDefined();
+		expect(log.timestamp).toBeDefined();
+	});
+
 	test('should support pagination', async () => {
 		// Create multiple providers to generate audit logs
 		for (let i = 0; i < 5; i++) {
