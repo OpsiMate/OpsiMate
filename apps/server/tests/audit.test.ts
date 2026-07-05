@@ -16,9 +16,14 @@ beforeAll(async () => {
 	db = await setupDB();
 	app = await setupExpressApp(db);
 	jwtToken = await setupUserWithToken(app);
-	const testUser = db.prepare('SELECT id FROM users WHERE email = ?').get('provideruser@example.com') as {
-		id: number;
-	};
+	const testUser = db.prepare('SELECT id FROM users WHERE email = ?').get('provideruser@example.com') as
+		| {
+				id: number;
+		  }
+		| undefined;
+	if (!testUser) {
+		throw new Error('Expected test user provideruser@example.com to exist');
+	}
 	testUserId = testUser.id;
 });
 
@@ -92,6 +97,86 @@ describe('Audit Logs API', () => {
 		expect(log.userName).toBe('Provider User');
 		expect(log.userId).toBe(testUserId);
 		expect(log.timestamp).toBeDefined();
+	});
+
+	test('should log enrichment update and delete audit entries', async () => {
+		const createRes = await app
+			.post('/api/v1/enrichments')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				name: 'Audit Enrichment Lifecycle',
+				nameContains: 'Disk',
+				addFields: [{ key: 'team', value: 'storage' }],
+				priority: 1,
+			});
+
+		expect(createRes.status).toBe(201);
+		expect(createRes.body.success).toBe(true);
+
+		const resourceId = String(createRes.body.data.id);
+		const updateRes = await app
+			.put(`/api/v1/enrichments/${resourceId}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ name: 'Audit Enrichment Lifecycle Updated' });
+
+		expect(updateRes.status).toBe(200);
+		expect(updateRes.body.success).toBe(true);
+
+		const deleteRes = await app
+			.delete(`/api/v1/enrichments/${resourceId}`)
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(deleteRes.status).toBe(200);
+		expect(deleteRes.body.success).toBe(true);
+
+		const auditRes = await app.get('/api/v1/audit?page=1&pageSize=10').set('Authorization', `Bearer ${jwtToken}`);
+		expect(auditRes.status).toBe(200);
+
+		const logs = auditRes.body.logs as AuditLog[];
+		const enrichmentLogs = logs.filter(
+			(log) => log.resourceType === AuditResourceType.ENRICHMENT && log.resourceId === resourceId
+		);
+
+		expect(enrichmentLogs).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ actionType: AuditActionType.CREATE }),
+				expect.objectContaining({ actionType: AuditActionType.UPDATE }),
+				expect.objectContaining({ actionType: AuditActionType.DELETE }),
+			])
+		);
+		for (const log of enrichmentLogs) {
+			expect(log.userId).toBe(testUserId);
+			expect(log.userName).toBe('Provider User');
+		}
+	});
+
+	test('should not log enrichment update audit entry for empty payload', async () => {
+		const createRes = await app
+			.post('/api/v1/enrichments')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				name: 'Audit Enrichment No-op Update',
+				nameContains: 'Memory',
+				addFields: [{ key: 'team', value: 'platform' }],
+				priority: 1,
+			});
+
+		expect(createRes.status).toBe(201);
+		expect(createRes.body.success).toBe(true);
+
+		db.exec('DELETE FROM audit_logs');
+
+		const updateRes = await app
+			.put(`/api/v1/enrichments/${createRes.body.data.id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({});
+
+		expect(updateRes.status).toBe(200);
+		expect(updateRes.body.success).toBe(true);
+
+		const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
+		expect(auditRes.status).toBe(200);
+		expect(auditRes.body.logs).toHaveLength(0);
 	});
 
 	test('should support pagination', async () => {

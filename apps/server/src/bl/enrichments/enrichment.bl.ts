@@ -40,9 +40,10 @@ export class EnrichmentBL {
 	}
 
 	async update(id: number, data: UpdateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment | undefined> {
+		const shouldAudit = this.hasUpdateData(data);
 		await this.enrichmentRepo.updateEnrichment(id, data, actor?.fullName);
 		const updated = await this.enrichmentRepo.getEnrichmentById(id);
-		if (updated) {
+		if (updated && shouldAudit) {
 			await this.recordAuditAction(AuditActionType.UPDATE, updated, actor, JSON.stringify(data));
 		}
 		return updated;
@@ -62,6 +63,17 @@ export class EnrichmentBL {
 			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
 			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
 		};
+	}
+
+	private hasUpdateData(data: UpdateEnrichmentInput): boolean {
+		return (
+			data.name !== undefined ||
+			data.nameContains !== undefined ||
+			data.labelMatchers !== undefined ||
+			data.addFields !== undefined ||
+			data.summaryTemplate !== undefined ||
+			data.priority !== undefined
+		);
 	}
 
 	private async recordAuditAction(
