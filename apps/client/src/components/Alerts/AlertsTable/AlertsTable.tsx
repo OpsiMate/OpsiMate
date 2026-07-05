@@ -3,7 +3,8 @@ import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useMemo, useRef, useState } from 'react';
+import { Plug, TriangleAlert } from 'lucide-react';
+import { ReactNode, useMemo, useRef } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -25,6 +26,13 @@ import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
 import { TimeFilter, createEmptyTimeRange, isTimeRangeEmpty } from './TimeFilter';
 import { VirtualizedAlertList } from './VirtualizedAlertList';
+
+// Icon-only headers for the narrow icon-only columns; the column name stays in the
+// header tooltip.
+const HEADER_ICONS: Record<string, ReactNode> = {
+	type: <Plug className="h-3.5 w-3.5" />,
+	severity: <TriangleAlert className="h-3.5 w-3.5" />,
+};
 
 export const AlertsTable = ({
 	alerts,
@@ -205,6 +213,7 @@ export const AlertsTable = ({
 													key={column}
 													column={column as AlertSortField}
 													label={allColumnLabels[column]}
+													labelIcon={HEADER_ICONS[column]}
 													sortField={sortField}
 													sortDirection={sortDirection}
 													onSort={handleSort}

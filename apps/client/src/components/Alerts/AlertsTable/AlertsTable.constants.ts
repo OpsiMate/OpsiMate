@@ -20,10 +20,10 @@ export const COLUMN_LABELS: Record<string, string> = {
 
 export const COLUMN_WIDTHS: Record<string, string> = {
 	select: 'w-10 min-w-10 max-w-10',
-	// Type and severity are icon-only cells; the width just fits the header label.
-	type: 'w-16 min-w-16 max-w-16',
-	alertName: 'w-[22%]',
-	severity: 'w-20 min-w-20 max-w-20',
+	// Type and severity are icon-only columns (icon-only headers too, names in tooltips).
+	type: 'w-12 min-w-12 max-w-12',
+	alertName: 'w-[24%]',
+	severity: 'w-12 min-w-12 max-w-12',
 	status: 'w-[10%]',
 	summary: 'w-auto',
 	owner: 'w-[12%]',

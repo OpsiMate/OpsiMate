@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { isTagKeyColumn } from '@/types';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { ReactNode } from 'react';
 import { AlertSortField, SortDirection } from '../AlertsTable.types';
 import { BASE_SORT_FIELDS } from './SortableHeader.constants';
 
@@ -13,13 +14,24 @@ const isValidSortField = (value: string): boolean => {
 export interface SortableHeaderProps {
 	column: AlertSortField;
 	label: string;
+	// Rendered instead of the text label for icon-only narrow columns; the label still
+	// shows in the tooltip and stays available to screen readers.
+	labelIcon?: ReactNode;
 	sortField: AlertSortField;
 	sortDirection: SortDirection;
 	onSort: (field: AlertSortField) => void;
 	className?: string;
 }
 
-export const SortableHeader = ({ column, label, sortField, sortDirection, onSort, className }: SortableHeaderProps) => {
+export const SortableHeader = ({
+	column,
+	label,
+	labelIcon,
+	sortField,
+	sortDirection,
+	onSort,
+	className,
+}: SortableHeaderProps) => {
 	const getSortIcon = () => {
 		if (sortField !== column) {
 			return <ArrowUpDown className="h-3 w-3 text-foreground" />;
@@ -45,8 +57,12 @@ export const SortableHeader = ({ column, label, sortField, sortDirection, onSort
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<div className="flex items-center gap-1 min-w-0">
-							<span className="truncate">{label}</span>
+						<div className="flex items-center gap-1 min-w-0" aria-label={label}>
+							{labelIcon ? (
+								<span className="flex-shrink-0 text-muted-foreground">{labelIcon}</span>
+							) : (
+								<span className="truncate">{label}</span>
+							)}
 							<span className="flex-shrink-0">{getSortIcon()}</span>
 						</div>
 					</TooltipTrigger>
