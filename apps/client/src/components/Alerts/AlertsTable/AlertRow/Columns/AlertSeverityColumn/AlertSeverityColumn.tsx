@@ -12,7 +12,7 @@ export interface AlertSeverityColumnProps {
 export const AlertSeverityColumn = ({ alert, className }: AlertSeverityColumnProps) => {
 	return (
 		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
-			<SeverityBadge severity={getAlertSeverity(alert)} showLabel />
+			<SeverityBadge severity={getAlertSeverity(alert)} />
 		</TableCell>
 	);
 };
