@@ -6,6 +6,7 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup.ts';
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
+let testUserId: number;
 
 const seedProviders = () => {
 	db.exec('DELETE FROM audit_logs');
@@ -15,6 +16,10 @@ beforeAll(async () => {
 	db = await setupDB();
 	app = await setupExpressApp(db);
 	jwtToken = await setupUserWithToken(app);
+	const testUser = db.prepare('SELECT id FROM users WHERE email = ?').get('provideruser@example.com') as {
+		id: number;
+	};
+	testUserId = testUser.id;
 });
 
 beforeEach(() => {
@@ -85,7 +90,7 @@ describe('Audit Logs API', () => {
 		expect(log.resourceId).toBe(String(createRes.body.data.id));
 		expect(log.resourceName).toBe(enrichmentData.name);
 		expect(log.userName).toBe('Provider User');
-		expect(log.userId).toBeDefined();
+		expect(log.userId).toBe(testUserId);
 		expect(log.timestamp).toBeDefined();
 	});
 
