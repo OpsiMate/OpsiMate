@@ -475,7 +475,7 @@ describe('Alerts API', () => {
 			expect(row.severity).toBe('critical');
 		});
 
-		test('should default severity to warning when omitted', async () => {
+		test('should default severity to info when omitted, and mirror it into the tag', async () => {
 			const payload = {
 				id: 'severity-default',
 				tags: {},
@@ -489,7 +489,8 @@ describe('Alerts API', () => {
 
 			expect(response.status).toBe(200);
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
-			expect(row.severity).toBe('warning');
+			expect(row.severity).toBe('info');
+			expect(JSON.parse(row.tags as string).severity).toBe('info');
 		});
 
 		test('should default severity for prototype-key payloads instead of crashing', async () => {
@@ -506,7 +507,7 @@ describe('Alerts API', () => {
 
 				expect(response.status).toBe(200);
 				const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow;
-				expect(row.severity).toBe('warning');
+				expect(row.severity).toBe('info');
 			}
 		});
 
@@ -539,7 +540,7 @@ describe('Alerts API', () => {
 			expect(legacy?.severity).toBe('critical');
 		});
 
-		test('should derive severity from a severity tag, mapping synonyms', async () => {
+		test('should derive severity from a severity tag, mapping synonyms and normalizing the tag', async () => {
 			const payload = {
 				id: 'severity-from-tag',
 				tags: { severity: 'Disaster' },
@@ -554,6 +555,9 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
 			expect(row.severity).toBe('critical');
+			// The stored tag is rewritten to the normalized value so label matchers
+			// (silences/enrichments) see the same scale as the severity field.
+			expect(JSON.parse(row.tags as string).severity).toBe('critical');
 		});
 
 		test('should expose severity on the alerts list API', async () => {
@@ -661,9 +665,10 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe(payload.title);
 			expect(row.status).toBe('firing');
 
-			// Validate tags mapping – primary tag should be derived from alert_scope / tags
+			// Validate tags mapping – primary tag should be derived from alert_scope / tags.
+			// The ingestion funnel also mirrors the resolved severity into the tags.
 			const parsedTags = row.tags ? JSON.parse(row.tags as string) : {};
-			expect(parsedTags).toEqual({ service: 'web', env: 'prod' });
+			expect(parsedTags).toEqual({ service: 'web', env: 'prod', severity: 'info' });
 		});
 
 		test('should archive an existing Datadog alert when alert_transition is recovered', async () => {

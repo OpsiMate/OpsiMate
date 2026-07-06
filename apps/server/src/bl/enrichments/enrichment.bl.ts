@@ -152,7 +152,9 @@ export class EnrichmentBL {
 			tags[field.key] = EnrichmentBL.resolveTemplate(field.value, alert);
 			claimedKeys.add(field.key);
 			if (field.key === 'severity') {
+				// The severity tag always mirrors the normalized first-class value.
 				severity = normalizeAlertSeverity(tags[field.key]);
+				tags[field.key] = severity;
 			}
 		}
 		const summary =
