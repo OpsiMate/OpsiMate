@@ -5,6 +5,7 @@ import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvat
 import { createServiceNameLookup } from '../utils';
 import { getAlertTagsString } from '../utils/alertTags.utils';
 import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
+import { getAlertSeverity, SEVERITY_LABELS, SEVERITY_RANK } from '../utils/severity.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
 
 export { createServiceNameLookup };
@@ -33,6 +34,34 @@ const getTagKeyValue = (alert: Alert, columnId: string): string => {
 	return alert.tags?.[tagKey] || '';
 };
 
+// Comparable value for one alert under a sort field; null means "field not sortable".
+const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]): string | number | null => {
+	if (isTagKeyColumn(sortField)) {
+		return getTagKeyValue(alert, sortField).toLowerCase();
+	}
+	switch (sortField) {
+		case 'alertName':
+			return alert.alertName.toLowerCase();
+		case 'status':
+			return alert.isDismissed ? 'dismissed' : alert.isSilenced ? 'silenced' : 'firing';
+		case 'severity':
+			// Rank-based so desc = critical first, info last.
+			return SEVERITY_RANK[getAlertSeverity(alert)];
+		case 'summary':
+			return (alert.summary || '').toLowerCase();
+		case 'startsAt': {
+			const date = new Date(alert.startsAt);
+			return isNaN(date.getTime()) ? 0 : date.getTime();
+		}
+		case 'type':
+			return getIntegrationLabel(resolveAlertIntegration(alert)).toLowerCase();
+		case 'owner':
+			return getOwnerSortKey(alert.ownerId, users);
+		default:
+			return null;
+	}
+};
+
 export const sortAlerts = (
 	alerts: Alert[],
 	sortField: AlertSortField,
@@ -40,45 +69,9 @@ export const sortAlerts = (
 	users: UserInfo[] = []
 ): Alert[] => {
 	return [...alerts].sort((a, b) => {
-		let aValue: string | number;
-		let bValue: string | number;
-
-		if (isTagKeyColumn(sortField)) {
-			aValue = getTagKeyValue(a, sortField).toLowerCase();
-			bValue = getTagKeyValue(b, sortField).toLowerCase();
-		} else {
-			switch (sortField) {
-				case 'alertName':
-					aValue = a.alertName.toLowerCase();
-					bValue = b.alertName.toLowerCase();
-					break;
-				case 'status':
-					aValue = a.isDismissed ? 'dismissed' : a.isSilenced ? 'silenced' : 'firing';
-					bValue = b.isDismissed ? 'dismissed' : b.isSilenced ? 'silenced' : 'firing';
-					break;
-				case 'summary':
-					aValue = (a.summary || '').toLowerCase();
-					bValue = (b.summary || '').toLowerCase();
-					break;
-				case 'startsAt': {
-					const aDate = new Date(a.startsAt);
-					const bDate = new Date(b.startsAt);
-					aValue = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
-					bValue = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
-					break;
-				}
-				case 'type':
-					aValue = getIntegrationLabel(resolveAlertIntegration(a)).toLowerCase();
-					bValue = getIntegrationLabel(resolveAlertIntegration(b)).toLowerCase();
-					break;
-				case 'owner':
-					aValue = getOwnerSortKey(a.ownerId, users);
-					bValue = getOwnerSortKey(b.ownerId, users);
-					break;
-				default:
-					return 0;
-			}
-		}
+		const aValue = getSortValue(a, sortField, users);
+		const bValue = getSortValue(b, sortField, users);
+		if (aValue === null || bValue === null) return 0;
 
 		if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
 		if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
@@ -101,6 +94,8 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 			return alert.alertName;
 		case 'status':
 			return alert.isDismissed ? 'Dismissed' : alert.isSilenced ? 'Silenced' : 'Firing';
+		case 'severity':
+			return SEVERITY_LABELS[getAlertSeverity(alert)];
 		case 'summary':
 			return alert.summary || 'Unknown';
 		case 'startsAt': {

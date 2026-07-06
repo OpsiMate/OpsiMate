@@ -121,10 +121,59 @@ export enum AlertStatus {
 	RESOLVED = 'resolved',
 }
 
+// Fixed severity scale. Integrations send free-form values (Zabbix "Disaster", Datadog
+// "error", …) which are normalized onto this scale at ingestion time.
+export enum AlertSeverity {
+	CRITICAL = 'critical',
+	WARNING = 'warning',
+	INFO = 'info',
+}
+
+export const DEFAULT_ALERT_SEVERITY = AlertSeverity.WARNING;
+
+// Synonyms seen across integrations, mapped case-insensitively onto the fixed scale.
+const SEVERITY_SYNONYMS: Record<string, AlertSeverity> = {
+	critical: AlertSeverity.CRITICAL,
+	crit: AlertSeverity.CRITICAL,
+	disaster: AlertSeverity.CRITICAL,
+	emergency: AlertSeverity.CRITICAL,
+	fatal: AlertSeverity.CRITICAL,
+	error: AlertSeverity.CRITICAL,
+	high: AlertSeverity.CRITICAL,
+	p1: AlertSeverity.CRITICAL,
+	warning: AlertSeverity.WARNING,
+	warn: AlertSeverity.WARNING,
+	average: AlertSeverity.WARNING,
+	moderate: AlertSeverity.WARNING,
+	medium: AlertSeverity.WARNING,
+	p2: AlertSeverity.WARNING,
+	p3: AlertSeverity.WARNING,
+	info: AlertSeverity.INFO,
+	information: AlertSeverity.INFO,
+	informational: AlertSeverity.INFO,
+	notice: AlertSeverity.INFO,
+	low: AlertSeverity.INFO,
+	ok: AlertSeverity.INFO,
+	p4: AlertSeverity.INFO,
+	p5: AlertSeverity.INFO,
+};
+
+// Maps any free-form severity string onto the fixed scale; unknown or missing values
+// fall back to the default (warning) so every alert always has a severity. The hasOwn
+// guard keeps prototype keys in user-controlled input ('constructor', '__proto__', …)
+// from resolving to inherited object members instead of the default.
+export function normalizeAlertSeverity(value?: string | null): AlertSeverity {
+	if (!value) return DEFAULT_ALERT_SEVERITY;
+	const key = value.trim().toLowerCase();
+	return Object.hasOwn(SEVERITY_SYNONYMS, key) ? SEVERITY_SYNONYMS[key] : DEFAULT_ALERT_SEVERITY;
+}
+
 export interface Alert {
 	id: string;
 	type: AlertType;
 	status: AlertStatus;
+	// Always present on API responses; alerts sent without one default to warning.
+	severity: AlertSeverity;
 	tags: Record<string, string>;
 	startsAt: string;
 	updatedAt: string;

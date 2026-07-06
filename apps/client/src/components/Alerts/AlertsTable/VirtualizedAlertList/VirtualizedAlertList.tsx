@@ -21,6 +21,8 @@ interface VirtualizedAlertListProps {
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	columnLabels?: Record<string, string>;
 	isArchived?: boolean;
+	// Tint rows by alert severity (the "severity colors" toggle).
+	severityColors?: boolean;
 	isDragging?: boolean;
 	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
 	onDragEnter?: (alert: Alert) => void;
@@ -42,6 +44,7 @@ export const VirtualizedAlertList = ({
 	onSelectAlerts,
 	columnLabels,
 	isArchived = false,
+	severityColors = false,
 	isDragging = false,
 	onDragStart,
 	onDragEnter,
@@ -118,6 +121,7 @@ export const VirtualizedAlertList = ({
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
 									isArchived={isArchived}
+									severityColors={severityColors}
 									isDragging={isDragging}
 									onDragStart={onDragStart}
 									onDragEnter={onDragEnter}

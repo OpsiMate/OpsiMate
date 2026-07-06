@@ -457,6 +457,121 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe(payload.alertName);
 		});
 
+		test('should store a normalized explicit severity', async () => {
+			const payload = {
+				id: 'severity-explicit',
+				tags: {},
+				alertName: 'Severity Test',
+				severity: 'CRITICAL',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
+			expect(row.severity).toBe('critical');
+		});
+
+		test('should default severity to warning when omitted, and mirror it into the tag', async () => {
+			const payload = {
+				id: 'severity-default',
+				tags: {},
+				alertName: 'Severity Default Test',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
+			expect(row.severity).toBe('warning');
+			expect(JSON.parse(row.tags as string).severity).toBe('warning');
+		});
+
+		test('should default severity for prototype-key payloads instead of crashing', async () => {
+			// 'constructor' / '__proto__' survive lowercasing and would resolve to inherited
+			// object members without the hasOwn guard in normalizeAlertSeverity.
+			for (const [id, evil] of [
+				['severity-proto-1', 'constructor'],
+				['severity-proto-2', '__proto__'],
+			]) {
+				const response = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ id, tags: {}, alertName: 'Prototype Key Test', severity: evil });
+
+				expect(response.status).toBe(200);
+				const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow;
+				expect(row.severity).toBe('warning');
+			}
+		});
+
+		test('should fall back to the severity tag when the explicit field is blank', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'severity-blank-explicit',
+					tags: { severity: 'critical' },
+					alertName: 'Blank Severity Test',
+					severity: '',
+				});
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('severity-blank-explicit') as AlertRow;
+			expect(row.severity).toBe('critical');
+		});
+
+		test('should serve legacy rows (NULL severity column) from their severity tag', async () => {
+			// Simulates a row written before the severity column existed.
+			db.prepare(
+				`INSERT INTO alerts (id, status, type, tags, starts_at, updated_at, alert_url, alert_name)
+				 VALUES ('severity-legacy', 'firing', 'Zabbix', ?, ?, ?, '', 'Legacy Severity Test')`
+			).run(JSON.stringify({ severity: 'Disaster' }), new Date().toISOString(), new Date().toISOString());
+
+			const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			expect(response.status).toBe(200);
+			const legacy = (response.body.data.alerts as Alert[]).find((a) => a.id === 'severity-legacy');
+			expect(legacy?.severity).toBe('critical');
+		});
+
+		test('should derive severity from a severity tag, mapping synonyms and normalizing the tag', async () => {
+			const payload = {
+				id: 'severity-from-tag',
+				tags: { severity: 'Disaster' },
+				alertName: 'Severity Tag Test',
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
+			expect(row.severity).toBe('critical');
+			// The stored tag is rewritten to the normalized value so label matchers
+			// (silences/enrichments) see the same scale as the severity field.
+			expect(JSON.parse(row.tags as string).severity).toBe('critical');
+		});
+
+		test('should expose severity on the alerts list API', async () => {
+			const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+
+			expect(response.status).toBe(200);
+			const alerts = response.body.data.alerts as Alert[];
+			expect(alerts.length).toBeGreaterThan(0);
+			// Every alert carries a normalized severity, including legacy seeded rows without one.
+			for (const alert of alerts) {
+				expect(['critical', 'warning', 'info']).toContain(alert.severity);
+			}
+		});
+
 		test('should return 400 for invalid payload (missing required fields)', async () => {
 			const payload = {
 				// Missing id, startsAt, etc.
@@ -550,9 +665,10 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe(payload.title);
 			expect(row.status).toBe('firing');
 
-			// Validate tags mapping – primary tag should be derived from alert_scope / tags
+			// Validate tags mapping – primary tag should be derived from alert_scope / tags.
+			// The ingestion funnel also mirrors the resolved severity into the tags.
 			const parsedTags = row.tags ? JSON.parse(row.tags as string) : {};
-			expect(parsedTags).toEqual({ service: 'web', env: 'prod' });
+			expect(parsedTags).toEqual({ service: 'web', env: 'prod', severity: 'warning' });
 		});
 
 		test('should archive an existing Datadog alert when alert_transition is recovered', async () => {

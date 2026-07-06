@@ -4,6 +4,7 @@ import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { ChevronRight, Home, AlertTriangle, Flame, Clock } from 'lucide-react';
+import { getAlertSeverity, SEVERITY_RANK } from '../../utils/severity.utils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -44,14 +45,10 @@ const countActiveAlerts = (node: GroupNode): number => {
 	return node.children.reduce((sum, child) => sum + countActiveAlerts(child), 0);
 };
 
-// Get severity level for sorting/coloring
+// Severity rank for sorting/coloring, on the shared taxonomy (critical=3, warning=2, info=1).
 const getSeverityLevel = (node: GroupNode): number => {
 	if (node.type === 'leaf') {
-		const severity = (node.alert.tags?.severity || node.alert.tags?.priority || '').toLowerCase();
-		if (severity === 'critical' || severity === 'p1') return 3;
-		if (severity === 'high' || severity === 'p2') return 2;
-		if (severity === 'warning' || severity === 'medium' || severity === 'p3') return 1;
-		return 0;
+		return SEVERITY_RANK[getAlertSeverity(node.alert)];
 	}
 	// For groups, return max severity of children
 	return Math.max(0, ...node.children.map(getSeverityLevel));
@@ -99,13 +96,10 @@ const getColor = (node: GroupNode, depth: number): { bg: string; glow: string; t
 
 	const severity = getSeverityLevel(node);
 
-	// Active alerts - vibrant colors based on severity
+	// Active alerts - vibrant colors on the shared scale: critical red, warning amber, info blue.
 	if (severity >= 3) return { bg: 'from-red-600 to-red-500', glow: 'shadow-red-400/60', text: 'text-white' };
-	if (severity >= 2) return { bg: 'from-orange-500 to-orange-400', glow: 'shadow-orange-400/60', text: 'text-white' };
-	if (severity >= 1) return { bg: 'from-amber-500 to-amber-400', glow: 'shadow-amber-400/60', text: 'text-white' };
-
-	// Default for active alerts
-	return { bg: 'from-red-500 to-red-400', glow: 'shadow-red-400/50', text: 'text-white' };
+	if (severity >= 2) return { bg: 'from-amber-500 to-amber-400', glow: 'shadow-amber-400/60', text: 'text-white' };
+	return { bg: 'from-sky-500 to-sky-400', glow: 'shadow-sky-400/50', text: 'text-white' };
 };
 
 // Squarified treemap algorithm for better aspect ratios

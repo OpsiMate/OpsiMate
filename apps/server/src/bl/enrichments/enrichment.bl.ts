@@ -5,6 +5,7 @@ import {
 	AuditActionType,
 	AuditResourceType,
 	Logger,
+	normalizeAlertSeverity,
 	User,
 } from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
@@ -142,17 +143,25 @@ export class EnrichmentBL {
 	// alert's original tags).
 	private static applyToAlert(enrichment: AlertEnrichment, alert: Alert, claimedKeys: Set<string>): Alert {
 		const tags = { ...alert.tags };
+		// First-class severity was resolved at ingestion; a rule that sets a severity
+		// field overrides it, so enrichment stays able to reclassify alerts.
+		let severity = alert.severity;
 		for (const field of enrichment.addFields ?? []) {
 			if (claimedKeys.has(field.key)) continue;
 			// Field values are templated too, so a field can copy a label, e.g. owner={{label.team}}.
 			tags[field.key] = EnrichmentBL.resolveTemplate(field.value, alert);
 			claimedKeys.add(field.key);
+			if (field.key === 'severity') {
+				// The severity tag always mirrors the normalized first-class value.
+				severity = normalizeAlertSeverity(tags[field.key]);
+				tags[field.key] = severity;
+			}
 		}
 		const summary =
 			enrichment.summaryTemplate && enrichment.summaryTemplate.trim().length > 0
 				? EnrichmentBL.resolveTemplate(enrichment.summaryTemplate, alert)
 				: alert.summary;
-		return { ...alert, tags, summary };
+		return { ...alert, tags, summary, severity };
 	}
 
 	// Decorate alerts with all matching enrichment rules. Applied at fetch time only —

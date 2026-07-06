@@ -1,10 +1,13 @@
 import { PersonPicker } from '@/components/PersonPicker';
-import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSetAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
-import { Alert, AlertStatus } from '@OpsiMate/shared';
+import { Alert } from '@OpsiMate/shared';
 import { Sparkles } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
+import { SeverityBadge } from '../../SeverityBadge';
+import { StatusBadge } from '../../StatusBadge';
+import { getAlertSeverity } from '../../utils/severity.utils';
 
 interface AlertInfoSectionProps {
 	alert: Alert;
@@ -36,28 +39,25 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 			<div className="flex items-center gap-2 flex-wrap">
 				<span className="text-sm text-muted-foreground">Owner:</span>
 				<PersonPicker selectedUserId={alert.ownerId} onSelect={handleOwnerChange} users={users} />
+				{/* Icon-only indicators (severity, status, enriched) — labels live in tooltips
+				    so the owner row stays compact even in a narrow panel. */}
 				<div className="ml-auto flex items-center gap-2">
-					<Badge
-						variant={
-							alert.isDismissed
-								? 'secondary'
-								: alert.status === AlertStatus.FIRING
-									? 'destructive'
-									: 'secondary'
-						}
-						className="flex-shrink-0 text-xs px-1.5 py-0.5"
-					>
-						{alert.isDismissed ? 'dismissed' : alert.status}
-					</Badge>
+					<SeverityBadge severity={getAlertSeverity(alert)} />
+					<StatusBadge alert={alert} />
 					{alert.appliedEnrichments && alert.appliedEnrichments.length > 0 && (
-						<Badge
-							variant="secondary"
-							className="flex-shrink-0 gap-1 text-xs px-1.5 py-0.5 bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30"
-							title={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
-						>
-							<Sparkles className="h-3 w-3" />
-							Enriched
-						</Badge>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span
+									className="flex-shrink-0 text-violet-500"
+									aria-label={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
+								>
+									<Sparkles className="h-3.5 w-3.5" aria-hidden />
+								</span>
+							</TooltipTrigger>
+							<TooltipContent>
+								Enriched by: {alert.appliedEnrichments.map((e) => e.name).join(', ')}
+							</TooltipContent>
+						</Tooltip>
 					)}
 				</div>
 			</div>

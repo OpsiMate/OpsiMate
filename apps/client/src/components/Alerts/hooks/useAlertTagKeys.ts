@@ -1,6 +1,7 @@
 import { TagKeyInfo } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
+import { HIDDEN_TAG_KEYS } from '../utils/alertTags.utils';
 
 export { extractTagKeyFromColumnId, getTagKeyColumnId, isTagKeyColumn } from '@/types';
 export type { TagKeyInfo };
@@ -12,6 +13,9 @@ export const useAlertTagKeys = (alerts: Alert[]): TagKeyInfo[] => {
 		alerts.forEach((alert) => {
 			if (alert.tags && typeof alert.tags === 'object') {
 				Object.entries(alert.tags).forEach(([key, value]) => {
+					// The severity tag mirrors the first-class severity field; it never
+					// surfaces as a tag column, facet, or group-by option.
+					if (HIDDEN_TAG_KEYS.has(key)) return;
 					if (value) {
 						if (!tagKeyMap.has(key)) {
 							tagKeyMap.set(key, new Set());

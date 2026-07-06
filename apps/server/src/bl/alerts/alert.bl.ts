@@ -9,6 +9,7 @@ import {
 	AlertStatus,
 	AlertType,
 	Logger,
+	normalizeAlertSeverity,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
@@ -74,10 +75,21 @@ export class AlertBL {
 	}
 
 	// region active
-	async insertOrUpdateAlert(alert: Omit<Alert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
+	// Severity is resolved here — the single funnel for every ingestion endpoint: an explicit
+	// severity field wins, then a `severity` tag (Zabbix/Grafana/Datadog labels), then the
+	// default. Free-form values are normalized onto the fixed critical/warning/info scale,
+	// and the severity tag is rewritten to the normalized value so label matchers (silences,
+	// enrichments) always see the same three values the severity field uses. The tag is
+	// hidden from the UI — users only interact with the first-class severity.
+	async insertOrUpdateAlert(
+		alert: Omit<Alert, 'createdAt' | 'isDismissed' | 'severity'> & { severity?: string }
+	): Promise<{ changes: number }> {
 		try {
 			logger.info(`Inserting alert: ${alert.id}`);
-			return await this.alertRepo.insertOrUpdateAlert(alert);
+			// || (not ??) so a blank explicit severity falls through to the tag.
+			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
+			const tags = { ...(alert.tags ?? {}), severity };
+			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity });
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;

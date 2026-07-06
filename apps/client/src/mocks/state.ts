@@ -14,6 +14,7 @@ import {
 	AuditLog,
 	AuditResourceType,
 	Dashboard,
+	normalizeAlertSeverity,
 	Integration,
 	IntegrationType,
 	Provider,
@@ -396,6 +397,8 @@ const seedAlerts = () => {
 	const alerts = generateDiverseMockAlerts(500);
 	return alerts.map((alert, idx) => ({
 		...alert,
+		// First-class severity mirrors production ingestion (derived from the severity tag).
+		severity: normalizeAlertSeverity(TAG_SEVERITY[idx % TAG_SEVERITY.length]),
 		tags: {
 			severity: TAG_SEVERITY[idx % TAG_SEVERITY.length],
 			service: TAG_SERVICE[idx % TAG_SERVICE.length],

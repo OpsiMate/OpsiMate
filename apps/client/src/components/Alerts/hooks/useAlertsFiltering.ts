@@ -4,6 +4,7 @@ import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 import { getOwnerDisplayName } from '../utils/owner.utils';
+import { getAlertSeverity, SEVERITY_LABELS } from '../utils/severity.utils';
 
 const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
@@ -71,6 +72,9 @@ export const useAlertsFiltering = (
 							: alert.isSilenced
 								? 'Silenced'
 								: capitalizeFirst(alert.status);
+						break;
+					case 'severity':
+						fieldValue = SEVERITY_LABELS[getAlertSeverity(alert)];
 						break;
 					case 'type':
 						fieldValue = getAlertType(alert);

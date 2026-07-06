@@ -324,6 +324,9 @@ export class AlertController {
 				id: alertId,
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
+				// Datadog monitor priority (P1–P5); the ingestion funnel normalizes it
+				// (P1 → critical, …) unless an explicit severity tag is present.
+				severity: tags['severity'] ?? payload.priority,
 				tags,
 				startsAt: new Date(Number(startsAtSource)).toISOString(),
 				updatedAt: new Date(Number(updatedAtSource)).toISOString(),
@@ -440,6 +443,7 @@ export class AlertController {
 				id: alert.id,
 				type: 'Custom',
 				status: AlertStatus.FIRING,
+				severity: alert.severity,
 				tags: alert.tags,
 				startsAt: alert.startsAt || new Date().toISOString(),
 				updatedAt: alert.updatedAt || new Date().toISOString(),

@@ -1,46 +1,17 @@
-import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { Alert, AlertStatus } from '@OpsiMate/shared';
+import { Alert } from '@OpsiMate/shared';
+import { StatusBadge } from '../../../../StatusBadge';
 
 export interface AlertStatusColumnProps {
 	alert: Alert;
 	className?: string;
 }
 
-const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-
-const getStatusBadge = (alert: Alert) => {
-	if (alert.isDismissed) {
-		return (
-			<Badge variant="muted" className="text-xs px-1.5 py-0.5">
-				Dismissed
-			</Badge>
-		);
-	}
-
-	if (alert.isSilenced) {
-		return (
-			<Badge
-				variant="secondary"
-				className="text-xs px-1.5 py-0.5 bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
-				data-testid="alert-status-silenced"
-			>
-				Silenced
-			</Badge>
-		);
-	}
-
-	// Use AlertStatus enum to determine badge variant
-	const variant = alert.status === AlertStatus.FIRING ? 'destructive' : 'success';
-
-	return (
-		<Badge variant={variant} className="text-xs px-1.5 py-0.5">
-			{capitalizeFirst(alert.status)}
-		</Badge>
-	);
-};
-
 export const AlertStatusColumn = ({ alert, className }: AlertStatusColumnProps) => {
-	return <TableCell className={cn('py-1 px-2 overflow-hidden', className)}>{getStatusBadge(alert)}</TableCell>;
+	return (
+		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+			<StatusBadge alert={alert} />
+		</TableCell>
+	);
 };

@@ -4,3 +4,4 @@ export { useAlertsRefresh } from './useAlertsRefresh';
 export { useAlertTagKeys } from './useAlertTagKeys';
 export { useArchivedTabStatusFilterReset } from './useArchivedTabStatusFilterReset';
 export { useColumnManagement } from './useColumnManagement';
+export { useSeverityColors } from './useSeverityColors';

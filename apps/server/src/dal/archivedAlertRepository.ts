@@ -1,4 +1,4 @@
-import { AlertStatus, Alert as SharedAlert, AlertHistory } from '@OpsiMate/shared';
+import { AlertStatus, Alert as SharedAlert, AlertHistory, normalizeAlertSeverity } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ArchivedAlertRow, TableInfoRow } from './models';
@@ -17,6 +17,7 @@ export class ArchivedAlertRepository {
 						CREATE TABLE IF NOT EXISTS alerts_archived (
 																	   id TEXT PRIMARY KEY,
 																	   status TEXT NOT NULL,
+																	   severity TEXT,
 																	   tags TEXT,
 																	   type TEXT,
 																	   starts_at TEXT,
@@ -68,6 +69,12 @@ export class ArchivedAlertRepository {
 			if (!hasOwnerId) {
 				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
 			}
+
+			// Backward compatibility: ensure severity column exists
+			const hasSeverity = columns.some((col: TableInfoRow) => col.name === 'severity');
+			if (!hasSeverity) {
+				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN severity TEXT`).run();
+			}
 		});
 	}
 
@@ -75,10 +82,11 @@ export class ArchivedAlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts_archived
-                    (id, status, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, status, severity, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status = excluded.status,
+                    severity = excluded.severity,
                     tags = excluded.tags,
                     type = excluded.type,
                     starts_at = excluded.starts_at,
@@ -96,6 +104,7 @@ export class ArchivedAlertRepository {
 			const result = stmt.run(
 				alert.id,
 				AlertStatus.RESOLVED,
+				alert.severity,
 				JSON.stringify(alert.tags),
 				alert.type,
 				alert.startsAt,
@@ -114,10 +123,13 @@ export class ArchivedAlertRepository {
 	}
 
 	private toSharedAlert = (row: ArchivedAlertRow): SharedAlert => {
+		const tags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 		return {
 			id: row.id,
 			status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
-			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
+			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
+			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
+			tags,
 			type: row.type,
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,

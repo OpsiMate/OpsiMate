@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AlertSeverity } from '@OpsiMate/shared';
 import { AlertCircle, BellOff, Clock, Server } from 'lucide-react';
 import { getAlertTagEntries, hasAlertTags } from '../../utils/alertTags.utils';
+import { getAlertSeverity } from '../../utils/severity.utils';
 import { getTagKeyColor } from '../../utils/tagColors.utils';
 import { CardSize } from '../AlertsTVMode.constants';
 
@@ -38,15 +39,11 @@ const getSeverityConfig = (alert: Alert) => {
 		};
 	}
 
-	// Check tags for severity, fall back to status-based determination
-	const severity = (
-		alert.tags?.severity ||
-		alert.tags?.priority ||
-		(alert.status === 'firing' ? 'warning' : 'info')
-	).toLowerCase();
+	// Shared severity taxonomy, so TV mode agrees with the alerts table.
+	const severity = getAlertSeverity(alert);
 
 	switch (severity) {
-		case 'critical':
+		case AlertSeverity.CRITICAL:
 			return {
 				bg: 'bg-gradient-to-br from-red-500/20 to-red-600/10',
 				border: 'border-red-500/50',
@@ -55,7 +52,7 @@ const getSeverityConfig = (alert: Alert) => {
 				iconColor: 'text-white',
 				pulse: true,
 			};
-		case 'warning':
+		case AlertSeverity.WARNING:
 			return {
 				bg: 'bg-gradient-to-br from-amber-500/20 to-orange-500/10',
 				border: 'border-amber-500/50',
@@ -64,7 +61,7 @@ const getSeverityConfig = (alert: Alert) => {
 				iconColor: 'text-white',
 				pulse: false,
 			};
-		case 'info':
+		default:
 			return {
 				bg: 'bg-gradient-to-br from-blue-500/20 to-blue-600/10',
 				border: 'border-blue-500/50',
@@ -72,15 +69,6 @@ const getSeverityConfig = (alert: Alert) => {
 				iconBg: 'bg-blue-500',
 				iconColor: 'text-white',
 				pulse: false,
-			};
-		default:
-			return {
-				bg: 'bg-gradient-to-br from-destructive/20 to-destructive/10',
-				border: 'border-destructive/50',
-				glow: 'shadow-[0_0_15px_rgba(239,68,68,0.2)]',
-				iconBg: 'bg-destructive',
-				iconColor: 'text-white',
-				pulse: true,
 			};
 	}
 };
