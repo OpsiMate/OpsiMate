@@ -53,7 +53,7 @@ export class EnrichmentController {
 					summaryTemplate: data.summaryTemplate ?? null,
 					priority: data.priority ?? 0,
 				},
-				req.user?.fullName
+				req.user
 			);
 			return res.status(201).json({ success: true, data: enrichment, message: 'Enrichment created' });
 		} catch (error) {
@@ -75,7 +75,7 @@ export class EnrichmentController {
 				return res.status(404).json({ success: false, error: 'Enrichment not found' });
 			}
 
-			const updated = await this.enrichmentBL.update(enrichmentId, data, req.user?.fullName);
+			const updated = await this.enrichmentBL.update(enrichmentId, data, req.user);
 			return res.json({ success: true, data: updated, message: 'Enrichment updated' });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -86,14 +86,14 @@ export class EnrichmentController {
 		}
 	};
 
-	deleteHandler = async (req: Request, res: Response) => {
+	deleteHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { enrichmentId } = AlertEnrichmentIdSchema.parse({ enrichmentId: req.params.enrichmentId });
 			const existing = await this.enrichmentBL.get(enrichmentId);
 			if (!existing) {
 				return res.status(404).json({ success: false, error: 'Enrichment not found' });
 			}
-			await this.enrichmentBL.delete(enrichmentId);
+			await this.enrichmentBL.delete(enrichmentId, req.user);
 			return res.json({ success: true, message: 'Enrichment deleted' });
 		} catch (error) {
 			if (isZodError(error)) {
