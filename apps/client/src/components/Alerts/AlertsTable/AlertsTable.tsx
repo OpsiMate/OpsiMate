@@ -3,7 +3,7 @@ import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plug, TriangleAlert } from 'lucide-react';
+import { Activity, Plug, TriangleAlert } from 'lucide-react';
 import { ReactNode, useMemo, useRef } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
@@ -32,6 +32,7 @@ import { VirtualizedAlertList } from './VirtualizedAlertList';
 const HEADER_ICONS: Record<string, ReactNode> = {
 	type: <Plug className="h-3.5 w-3.5" />,
 	severity: <TriangleAlert className="h-3.5 w-3.5" />,
+	status: <Activity className="h-3.5 w-3.5" />,
 };
 
 export const AlertsTable = ({
