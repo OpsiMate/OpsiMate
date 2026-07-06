@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
+import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface GCPSetupModalProps {
 	open: boolean;
@@ -199,6 +200,13 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 							</p>
 						</div>
 					</div>
+
+					<SeveritySetupNote>
+						<p>
+							Add a user label named <code>severity</code> to your alerting policy (
+							<strong>Policy &rarr; User labels</strong>), e.g. <code>severity: critical</code>.
+						</p>
+					</SeveritySetupNote>
 
 					<div className="pt-4 flex justify-between">
 						<Button

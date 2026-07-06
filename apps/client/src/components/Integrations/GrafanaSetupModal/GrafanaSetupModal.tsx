@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/api';
 import { Check, Copy, ExternalLink, Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface GrafanaSetupModalProps {
 	open: boolean;
@@ -165,6 +166,14 @@ export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps
 							</div>
 						</div>
 					</div>
+
+					<SeveritySetupNote>
+						<p>
+							Add a <code>severity</code> label to your Grafana alert rule (edit the rule &rarr;{' '}
+							<strong>Labels</strong>), e.g. <code>severity=critical</code>. The label is delivered with
+							the alert and sets its severity in OpsiMate.
+						</p>
+					</SeveritySetupNote>
 
 					<div className="pt-4 flex justify-end">
 						<Button onClick={() => onOpenChange(false)}>Done</Button>

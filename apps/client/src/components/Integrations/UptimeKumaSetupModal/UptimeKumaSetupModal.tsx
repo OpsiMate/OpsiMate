@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
+import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface UptimeKumaSetupModalProps {
 	open: boolean;
@@ -154,6 +155,14 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 							</p>
 						</div>
 					</div>
+
+					<SeveritySetupNote>
+						<p>
+							Add a tag named <code>severity</code> to the monitor (
+							<strong>Edit monitor &rarr; Tags</strong>) with the value <code>critical</code>,{' '}
+							<code>warning</code> or <code>info</code>.
+						</p>
+					</SeveritySetupNote>
 
 					<div className="pt-4 flex justify-between">
 						<Button

@@ -129,7 +129,7 @@ export enum AlertSeverity {
 	INFO = 'info',
 }
 
-export const DEFAULT_ALERT_SEVERITY = AlertSeverity.INFO;
+export const DEFAULT_ALERT_SEVERITY = AlertSeverity.WARNING;
 
 // Synonyms seen across integrations, mapped case-insensitively onto the fixed scale.
 const SEVERITY_SYNONYMS: Record<string, AlertSeverity> = {
@@ -159,7 +159,7 @@ const SEVERITY_SYNONYMS: Record<string, AlertSeverity> = {
 };
 
 // Maps any free-form severity string onto the fixed scale; unknown or missing values
-// fall back to the default (info) so every alert always has a severity. The hasOwn
+// fall back to the default (warning) so every alert always has a severity. The hasOwn
 // guard keeps prototype keys in user-controlled input ('constructor', '__proto__', …)
 // from resolving to inherited object members instead of the default.
 export function normalizeAlertSeverity(value?: string | null): AlertSeverity {
@@ -172,7 +172,7 @@ export interface Alert {
 	id: string;
 	type: AlertType;
 	status: AlertStatus;
-	// Always present on API responses; alerts sent without one default to info.
+	// Always present on API responses; alerts sent without one default to warning.
 	severity: AlertSeverity;
 	tags: Record<string, string>;
 	startsAt: string;

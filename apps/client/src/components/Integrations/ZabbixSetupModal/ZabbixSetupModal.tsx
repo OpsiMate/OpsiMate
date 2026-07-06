@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
+import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface ZabbixSetupModalProps {
 	open: boolean;
@@ -504,6 +505,14 @@ fi`;
 						</div>
 					</TabsContent>
 				</Tabs>
+
+				<SeveritySetupNote>
+					<p>
+						Nothing extra to configure &mdash; the trigger&apos;s severity (
+						<code>{'{TRIGGER.SEVERITY}'}</code>) is sent automatically: Disaster/High &rarr; critical,
+						Average/Warning &rarr; warning, Information &rarr; info.
+					</p>
+				</SeveritySetupNote>
 
 				<div className="pt-4 flex justify-between border-t mt-4">
 					<Button

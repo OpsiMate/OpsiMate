@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { API_HOST } from '@/lib/api';
 import { Archive, Check, Copy, ExternalLink, Send, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface CustomAlertsSetupModalProps {
 	open: boolean;
@@ -425,6 +426,14 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 							file.
 						</p>
 					</div>
+
+					<SeveritySetupNote>
+						<p>
+							Include a <code>severity</code> field in the JSON payload (e.g.{' '}
+							<code>{'"severity": "critical"'}</code>), or a <code>severity</code> key inside{' '}
+							<code>tags</code>. The explicit field wins when both are present.
+						</p>
+					</SeveritySetupNote>
 
 					<div className="flex justify-between">
 						<Button

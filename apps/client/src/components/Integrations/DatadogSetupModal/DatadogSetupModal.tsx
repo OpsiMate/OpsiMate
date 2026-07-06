@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/api';
 import { Check, Copy, ExternalLink, Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface DatadogSetupModalProps {
 	open: boolean;
@@ -252,6 +253,15 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 							</div>
 						</div>
 					</div>
+
+					<SeveritySetupNote>
+						<p>
+							Add a <code>severity:critical</code> tag to the monitor (
+							<strong>Edit monitor &rarr; Tags</strong>). If no severity tag is present, the
+							monitor&apos;s <strong>priority</strong> (P1&ndash;P5) is used instead: P1 &rarr; critical,
+							P2/P3 &rarr; warning, P4/P5 &rarr; info.
+						</p>
+					</SeveritySetupNote>
 
 					<div className="pt-4 flex justify-end">
 						<Button onClick={() => onOpenChange(false)}>Done</Button>
