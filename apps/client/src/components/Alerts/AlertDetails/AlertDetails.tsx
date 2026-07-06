@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { AlertDetailsBody } from './AlertDetailsBody';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
+import { AlertFooterActions } from './AlertFooterActions';
 import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
 import { useAlertHistory } from './hooks';
 
@@ -36,16 +37,20 @@ export const AlertDetails = ({
 
 			<ScrollArea className="flex-1">
 				<SectionsExpandContext.Provider value={signal}>
-					<AlertDetailsBody
-						alert={alert}
-						isActive={isActive}
-						historyData={historyData}
-						onDismiss={onDismiss}
-						onUndismiss={onUndismiss}
-						onDelete={onDelete}
-					/>
+					<AlertDetailsBody alert={alert} historyData={historyData} />
 				</SectionsExpandContext.Provider>
 			</ScrollArea>
+
+			{/* Primary actions pinned at the bottom, outside the scroll area. */}
+			<div className="border-t p-3 flex-shrink-0">
+				<AlertFooterActions
+					alert={alert}
+					isActive={isActive}
+					onDismiss={onDismiss}
+					onUndismiss={onUndismiss}
+					onDelete={onDelete}
+				/>
+			</div>
 		</div>
 	);
 };
