@@ -28,6 +28,7 @@ export const SEVERITY_TEXT_CLASSES: Record<AlertSeverity, string> = {
 };
 
 // The server always sets severity, but data from older deployments or playground fixtures
-// may miss it — fall back to a `severity` tag, then the default, like the server does.
+// may miss it — fall back to a `severity` tag, then a `priority` tag (P1–P5, the signal
+// TV mode has historically used), then the default, like the server does.
 export const getAlertSeverity = (alert: Alert): AlertSeverity =>
-	normalizeAlertSeverity(alert.severity ?? alert.tags?.['severity']);
+	normalizeAlertSeverity(alert.severity ?? alert.tags?.['severity'] ?? alert.tags?.['priority']);

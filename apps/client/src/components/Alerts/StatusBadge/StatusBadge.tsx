@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { BellOff, CircleCheck, Flame, VolumeX } from 'lucide-react';
@@ -24,18 +25,24 @@ interface StatusBadgeProps {
 	className?: string;
 }
 
-// Icon-only alert status (firing / resolved / silenced / dismissed) with the label in a
-// tooltip, matching SeverityBadge so the two can sit side by side in narrow columns.
+// Icon-only alert status (firing / resolved / silenced / dismissed); the label lives in a
+// styled tooltip (same Radix tooltip the table headers use) and in an aria-label.
 export const StatusBadge = ({ alert, className }: StatusBadgeProps) => {
 	const { Icon, label, className: colorClass, testId } = getStatusIndicator(alert);
+	const fullLabel = `Status: ${label}`;
 
 	return (
-		<span
-			className={cn('inline-flex items-center flex-shrink-0', colorClass, className)}
-			title={`Status: ${label}`}
-			data-testid={testId}
-		>
-			<Icon className="h-3.5 w-3.5" aria-label={label} />
-		</span>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span
+					className={cn('inline-flex items-center flex-shrink-0', colorClass, className)}
+					aria-label={fullLabel}
+					data-testid={testId}
+				>
+					<Icon className="h-3.5 w-3.5" aria-hidden />
+				</span>
+			</TooltipTrigger>
+			<TooltipContent>{fullLabel}</TooltipContent>
+		</Tooltip>
 	);
 };

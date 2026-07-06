@@ -4,6 +4,7 @@ import { extractTagKeyFromColumnId, getTagKeyColumnId, isTagKeyColumn, TagKeyInf
 import { Alert } from '@OpsiMate/shared';
 import { useMemo } from 'react';
 import { getOwnerDisplayName } from './utils/owner.utils';
+import { getAlertSeverity, SEVERITY_LABELS } from './utils/severity.utils';
 
 interface AlertsFilterPanelProps {
 	alerts: Alert[];
@@ -15,10 +16,11 @@ interface AlertsFilterPanelProps {
 	isArchived?: boolean;
 }
 
-const BASE_FILTER_FIELDS = ['status', 'type', 'alertName', 'owner'];
+const BASE_FILTER_FIELDS = ['status', 'severity', 'type', 'alertName', 'owner'];
 
 const BASE_FIELD_LABELS: Record<string, string> = {
 	status: 'Status',
+	severity: 'Severity',
 	type: 'Type',
 	alertName: 'Alert Name',
 	owner: 'Owner',
@@ -70,6 +72,8 @@ export const AlertsFilterPanel = ({
 						: alert.isSilenced
 							? 'Silenced'
 							: capitalizeFirst(alert.status);
+				case 'severity':
+					return SEVERITY_LABELS[getAlertSeverity(alert)];
 				case 'type':
 					return getAlertType(alert);
 				case 'alertName':

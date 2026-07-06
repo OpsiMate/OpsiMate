@@ -492,6 +492,53 @@ describe('Alerts API', () => {
 			expect(row.severity).toBe('warning');
 		});
 
+		test('should default severity for prototype-key payloads instead of crashing', async () => {
+			// 'constructor' / '__proto__' survive lowercasing and would resolve to inherited
+			// object members without the hasOwn guard in normalizeAlertSeverity.
+			for (const [id, evil] of [
+				['severity-proto-1', 'constructor'],
+				['severity-proto-2', '__proto__'],
+			]) {
+				const response = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ id, tags: {}, alertName: 'Prototype Key Test', severity: evil });
+
+				expect(response.status).toBe(200);
+				const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow;
+				expect(row.severity).toBe('warning');
+			}
+		});
+
+		test('should fall back to the severity tag when the explicit field is blank', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'severity-blank-explicit',
+					tags: { severity: 'critical' },
+					alertName: 'Blank Severity Test',
+					severity: '',
+				});
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('severity-blank-explicit') as AlertRow;
+			expect(row.severity).toBe('critical');
+		});
+
+		test('should serve legacy rows (NULL severity column) from their severity tag', async () => {
+			// Simulates a row written before the severity column existed.
+			db.prepare(
+				`INSERT INTO alerts (id, status, type, tags, starts_at, updated_at, alert_url, alert_name)
+				 VALUES ('severity-legacy', 'firing', 'Zabbix', ?, ?, ?, '', 'Legacy Severity Test')`
+			).run(JSON.stringify({ severity: 'Disaster' }), new Date().toISOString(), new Date().toISOString());
+
+			const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			expect(response.status).toBe(200);
+			const legacy = (response.body.data.alerts as Alert[]).find((a) => a.id === 'severity-legacy');
+			expect(legacy?.severity).toBe('critical');
+		});
+
 		test('should derive severity from a severity tag, mapping synonyms', async () => {
 			const payload = {
 				id: 'severity-from-tag',

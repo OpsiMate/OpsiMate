@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, IntegrationAvatar, resolveAlertIntegration } from '../../../IntegrationAvatar';
 
@@ -11,12 +12,17 @@ export const TypeAvatarStack = ({ alert }: TypeAvatarStackProps) => {
 	const integrationLabel = getIntegrationLabel(integration);
 
 	return (
-		<div
-			className="flex -space-x-1.5 flex-shrink-0"
-			aria-label={`${integrationLabel} alert type`}
-			title={integrationLabel}
-		>
-			<IntegrationAvatar integration={integration} size="sm" className="ring-2 ring-background shadow-sm" />
-		</div>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="flex -space-x-1.5 flex-shrink-0" aria-label={`${integrationLabel} alert type`}>
+					<IntegrationAvatar
+						integration={integration}
+						size="sm"
+						className="ring-2 ring-background shadow-sm"
+					/>
+				</div>
+			</TooltipTrigger>
+			<TooltipContent>{integrationLabel}</TooltipContent>
+		</Tooltip>
 	);
 };

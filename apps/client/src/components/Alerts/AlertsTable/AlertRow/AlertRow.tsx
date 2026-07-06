@@ -77,7 +77,9 @@ export const AlertRow = ({
 				'h-8 cursor-pointer hover:bg-muted/50',
 				// Severity tint sits under selection/active highlights so those still win.
 				severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
-				isSelected && 'bg-muted/50',
+				// Selection carries its own hover class so the severity hover tint can't
+				// override the selection cue while the pointer is over the row.
+				isSelected && 'bg-muted/50 hover:bg-muted/50',
 				// Unread alerts render bold until someone opens them.
 				alert.isRead === false && 'font-bold',
 				// The alert currently open in the details panel: tinted row + accent edge,

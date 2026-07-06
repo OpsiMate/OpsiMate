@@ -83,7 +83,8 @@ export class AlertBL {
 	): Promise<{ changes: number }> {
 		try {
 			logger.info(`Inserting alert: ${alert.id}`);
-			const severity = normalizeAlertSeverity(alert.severity ?? alert.tags?.['severity']);
+			// || (not ??) so a blank explicit severity falls through to the tag.
+			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
 			return await this.alertRepo.insertOrUpdateAlert({ ...alert, severity });
 		} catch (error) {
 			logger.error('Error inserting alert', error);

@@ -123,12 +123,13 @@ export class ArchivedAlertRepository {
 	}
 
 	private toSharedAlert = (row: ArchivedAlertRow): SharedAlert => {
+		const tags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 		return {
 			id: row.id,
 			status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
-			// Legacy rows (pre-severity) fall back to the default via normalization.
-			severity: normalizeAlertSeverity(row.severity),
-			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
+			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
+			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
+			tags,
 			type: row.type,
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,

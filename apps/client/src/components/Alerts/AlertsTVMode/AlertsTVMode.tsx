@@ -4,6 +4,7 @@ import { getAlertValue } from '@/components/Alerts/AlertsTable/AlertsTable.utils
 import { DashboardHeader } from '@/components/Alerts/DashboardHeader';
 import { DashboardSettingsDrawer } from '@/components/Alerts/DashboardSettingsDrawer';
 import { useAlertTagKeys, useColumnManagement } from '@/components/Alerts/hooks';
+import { getAlertSeverity } from '@/components/Alerts/utils/severity.utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useDashboard } from '@/context/DashboardContext';
@@ -19,7 +20,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useUsers } from '@/hooks/queries/users';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AlertSeverity } from '@OpsiMate/shared';
 import { AlertTriangle, ArrowLeft, CheckCircle, Layers, LayoutGrid, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -282,7 +283,7 @@ const AlertsTVMode = () => {
 
 	const activeAlertsCount = filteredAlerts.filter((a) => !a.isDismissed).length;
 	const criticalCount = filteredAlerts.filter(
-		(a) => !a.isDismissed && (a.tags?.severity || a.tags?.priority || '').toLowerCase() === 'critical'
+		(a) => !a.isDismissed && getAlertSeverity(a) === AlertSeverity.CRITICAL
 	).length;
 
 	return (

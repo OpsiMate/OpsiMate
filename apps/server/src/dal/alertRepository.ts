@@ -100,14 +100,15 @@ export class AlertRepository {
 
 	private toSharedAlert = (row: AlertRow): SharedAlert => {
 		const status = row.status === 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED;
+		const tags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 
 		return {
 			id: row.id,
 			status,
 			type: row.type,
-			// Legacy rows (pre-severity) fall back to the default via normalization.
-			severity: normalizeAlertSeverity(row.severity),
-			tags: row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {},
+			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
+			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
+			tags,
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,
 			alertUrl: row.alert_url,

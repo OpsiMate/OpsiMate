@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { AlertSeverity } from '@OpsiMate/shared';
 import { Info, OctagonAlert, TriangleAlert } from 'lucide-react';
@@ -11,24 +12,26 @@ const SEVERITY_ICONS: Record<AlertSeverity, typeof Info> = {
 
 interface SeverityBadgeProps {
 	severity: AlertSeverity;
-	// Icon-only (table cells) vs icon + label (details panel).
-	showLabel?: boolean;
 	className?: string;
 }
 
-// Colored severity indicator: an icon per level, with an optional text label. The icon
-// always carries a tooltip so the icon-only variant stays self-explanatory.
-export const SeverityBadge = ({ severity, showLabel = false, className }: SeverityBadgeProps) => {
+// Icon-only colored severity indicator; the label lives in a styled tooltip (same Radix
+// tooltip the table headers use) and in an aria-label for assistive tech.
+export const SeverityBadge = ({ severity, className }: SeverityBadgeProps) => {
 	const Icon = SEVERITY_ICONS[severity];
-	const label = SEVERITY_LABELS[severity];
+	const label = `Severity: ${SEVERITY_LABELS[severity]}`;
 
 	return (
-		<span
-			className={cn('inline-flex items-center gap-1 min-w-0', SEVERITY_TEXT_CLASSES[severity], className)}
-			title={`Severity: ${label}`}
-		>
-			<Icon className="h-3.5 w-3.5 flex-shrink-0" aria-label={label} />
-			{showLabel && <span className="text-xs font-medium truncate">{label}</span>}
-		</span>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span
+					className={cn('inline-flex items-center flex-shrink-0', SEVERITY_TEXT_CLASSES[severity], className)}
+					aria-label={label}
+				>
+					<Icon className="h-3.5 w-3.5" aria-hidden />
+				</span>
+			</TooltipTrigger>
+			<TooltipContent>{label}</TooltipContent>
+		</Tooltip>
 	);
 };

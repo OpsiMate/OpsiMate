@@ -1,4 +1,5 @@
 import { PersonPicker } from '@/components/PersonPicker';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSetAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
@@ -44,12 +45,19 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 					<SeverityBadge severity={getAlertSeverity(alert)} />
 					<StatusBadge alert={alert} />
 					{alert.appliedEnrichments && alert.appliedEnrichments.length > 0 && (
-						<span
-							className="flex-shrink-0 text-violet-500"
-							title={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
-						>
-							<Sparkles className="h-3.5 w-3.5" aria-label="Enriched" />
-						</span>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span
+									className="flex-shrink-0 text-violet-500"
+									aria-label={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
+								>
+									<Sparkles className="h-3.5 w-3.5" aria-hidden />
+								</span>
+							</TooltipTrigger>
+							<TooltipContent>
+								Enriched by: {alert.appliedEnrichments.map((e) => e.name).join(', ')}
+							</TooltipContent>
+						</Tooltip>
 					)}
 				</div>
 			</div>

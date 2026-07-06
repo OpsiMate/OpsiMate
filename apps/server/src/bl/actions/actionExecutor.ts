@@ -27,6 +27,7 @@ export interface AlertContextInput {
 	alertName?: string;
 	status?: string;
 	type?: string;
+	severity?: string;
 	summary?: string | null;
 	startsAt?: string;
 	updatedAt?: string;
@@ -59,7 +60,8 @@ export const buildAlertContext = (alert: AlertContextInput): Record<string, stri
 		'alert.createdAt': alert.createdAt ?? '',
 		'alert.url': alert.alertUrl ?? '',
 		'alert.runbookUrl': alert.runbookUrl ?? '',
-		'alert.severity': alert.tags?.severity ?? '',
+		// First-class severity wins; the tag is kept as a fallback for older callers.
+		'alert.severity': alert.severity ?? alert.tags?.severity ?? '',
 		'alert.service': alert.tags?.service ?? '',
 	};
 	for (const [key, value] of Object.entries(alert.tags ?? {})) {

@@ -53,11 +53,12 @@ export const SortableHeader = ({
 		<TableHead
 			className={cn('h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground', className)}
 			onClick={handleClick}
+			aria-label={label}
 		>
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<div className="flex items-center gap-1 min-w-0" aria-label={label}>
+						<div className="flex items-center gap-1 min-w-0">
 							{labelIcon ? (
 								<span className="flex-shrink-0 text-muted-foreground">{labelIcon}</span>
 							) : (

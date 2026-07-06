@@ -159,10 +159,13 @@ const SEVERITY_SYNONYMS: Record<string, AlertSeverity> = {
 };
 
 // Maps any free-form severity string onto the fixed scale; unknown or missing values
-// fall back to the default (warning) so every alert always has a severity.
+// fall back to the default (warning) so every alert always has a severity. The hasOwn
+// guard keeps prototype keys in user-controlled input ('constructor', '__proto__', …)
+// from resolving to inherited object members instead of the default.
 export function normalizeAlertSeverity(value?: string | null): AlertSeverity {
 	if (!value) return DEFAULT_ALERT_SEVERITY;
-	return SEVERITY_SYNONYMS[value.trim().toLowerCase()] ?? DEFAULT_ALERT_SEVERITY;
+	const key = value.trim().toLowerCase();
+	return Object.hasOwn(SEVERITY_SYNONYMS, key) ? SEVERITY_SYNONYMS[key] : DEFAULT_ALERT_SEVERITY;
 }
 
 export interface Alert {
