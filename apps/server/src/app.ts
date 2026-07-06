@@ -171,7 +171,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
 	const silenceBL = new SilenceBL(silenceRepo);
 	alertBL.setSilenceBL(silenceBL);
-	const enrichmentBL = new EnrichmentBL(enrichmentRepo);
+	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
 	const actionBL = new ActionBL(actionRepo, alertHistoryRepo);
 
