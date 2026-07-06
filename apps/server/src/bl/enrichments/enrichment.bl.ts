@@ -1,17 +1,33 @@
-import { Alert, AlertEnrichment, AppliedEnrichment, Logger } from '@OpsiMate/shared';
+import {
+	Alert,
+	AlertEnrichment,
+	AppliedEnrichment,
+	AuditActionType,
+	AuditResourceType,
+	Logger,
+	User,
+} from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
+import { AuditBL } from '../audit/audit.bl';
 
 const logger = new Logger('bl/enrichment.bl');
 
-export class EnrichmentBL {
-	constructor(private enrichmentRepo: EnrichmentRepository) {}
+const API_TOKEN_ACTOR_ID = 0;
+const API_TOKEN_ACTOR_NAME = 'API Token';
 
-	async create(data: CreateEnrichmentInput, actor?: string | null): Promise<AlertEnrichment> {
-		const { lastID } = await this.enrichmentRepo.createEnrichment(data, actor);
+export class EnrichmentBL {
+	constructor(
+		private enrichmentRepo: EnrichmentRepository,
+		private auditBL: AuditBL
+	) {}
+
+	async create(data: CreateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment> {
+		const { lastID } = await this.enrichmentRepo.createEnrichment(data, actor?.fullName);
 		const created = await this.enrichmentRepo.getEnrichmentById(lastID);
 		if (!created) {
 			throw new Error('Failed to retrieve created enrichment');
 		}
+		await this.recordAuditAction(AuditActionType.CREATE, created, actor);
 		return created;
 	}
 
@@ -23,13 +39,63 @@ export class EnrichmentBL {
 		return this.enrichmentRepo.getEnrichmentById(id);
 	}
 
-	async update(id: number, data: UpdateEnrichmentInput, actor?: string | null): Promise<AlertEnrichment | undefined> {
-		await this.enrichmentRepo.updateEnrichment(id, data, actor);
-		return this.enrichmentRepo.getEnrichmentById(id);
+	async update(id: number, data: UpdateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment | undefined> {
+		const shouldAudit = this.hasUpdateData(data);
+		await this.enrichmentRepo.updateEnrichment(id, data, actor?.fullName);
+		const updated = await this.enrichmentRepo.getEnrichmentById(id);
+		if (updated && shouldAudit) {
+			await this.recordAuditAction(AuditActionType.UPDATE, updated, actor, JSON.stringify(data));
+		}
+		return updated;
 	}
 
-	async delete(id: number): Promise<void> {
+	async delete(id: number, actor?: User | null): Promise<void> {
+		const existing = await this.enrichmentRepo.getEnrichmentById(id);
 		await this.enrichmentRepo.deleteEnrichment(id);
+		if (existing) {
+			await this.recordAuditAction(AuditActionType.DELETE, existing, actor);
+		}
+	}
+
+	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
+		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
+		return {
+			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
+			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
+		};
+	}
+
+	private hasUpdateData(data: UpdateEnrichmentInput): boolean {
+		return (
+			data.name !== undefined ||
+			data.nameContains !== undefined ||
+			data.labelMatchers !== undefined ||
+			data.addFields !== undefined ||
+			data.summaryTemplate !== undefined ||
+			data.priority !== undefined
+		);
+	}
+
+	private async recordAuditAction(
+		actionType: AuditActionType,
+		enrichment: AlertEnrichment,
+		actor?: User | null,
+		details?: string
+	): Promise<void> {
+		try {
+			const auditActor = this.getAuditActor(actor);
+			await this.auditBL.logAction({
+				actionType,
+				resourceType: AuditResourceType.ENRICHMENT,
+				resourceId: String(enrichment.id),
+				userId: auditActor.userId,
+				userName: auditActor.userName,
+				resourceName: enrichment.name,
+				details,
+			});
+		} catch (error) {
+			logger.error(`Failed to record enrichment audit event (${actionType}) for ${enrichment.id}`, error);
+		}
 	}
 
 	// Same matching semantics as silences: nameContains is a case-insensitive substring match
