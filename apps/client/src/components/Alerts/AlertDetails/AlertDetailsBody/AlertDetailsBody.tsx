@@ -14,30 +14,18 @@ import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertDetailsBodyProps {
 	alert: SharedAlert;
-	isActive: boolean;
 	historyData: AlertHistory | null;
 	// Active time-range filter, passed through to the History section.
 	timeRange?: TimeRange | null;
-	onDismiss?: (alertId: string) => void;
-	onUndismiss?: (alertId: string) => void;
-	onDelete?: (alertId: string) => void;
 	// Switches to the Comments tab (containers with tabs only).
 	onViewAllComments?: () => void;
 }
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
 // top; everything else lives in collapsible sections (summary, latest comment, history,
-// labels, links) followed by the actions section.
-export const AlertDetailsBody = ({
-	alert,
-	isActive,
-	historyData,
-	timeRange,
-	onDismiss,
-	onUndismiss,
-	onDelete,
-	onViewAllComments,
-}: AlertDetailsBodyProps) => {
+// labels, links) followed by the custom-actions section. The dismiss/archive buttons are
+// NOT part of the body — containers pin them at the bottom via AlertFooterActions.
+export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComments }: AlertDetailsBodyProps) => {
 	return (
 		<div className="p-4 space-y-2">
 			<AlertInfoSection alert={alert} />
@@ -70,13 +58,7 @@ export const AlertDetailsBody = ({
 				</CollapsibleSection>
 			)}
 
-			<AlertActionsSection
-				alert={alert}
-				isActive={isActive}
-				onDismiss={onDismiss}
-				onUndismiss={onUndismiss}
-				onDelete={onDelete}
-			/>
+			<AlertActionsSection alert={alert} />
 		</div>
 	);
 };

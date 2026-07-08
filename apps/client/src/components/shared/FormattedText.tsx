@@ -59,13 +59,15 @@ interface FormattedTextProps {
 // subset of HTML (bold, links, lists, ...) is rendered after sanitization.
 export const FormattedText = ({ text, className }: FormattedTextProps) => {
 	if (!containsHtml(text)) {
-		return <div className={cn('whitespace-pre-line break-words', className)}>{text}</div>;
+		// overflow-wrap:anywhere (not just break-words) so a single very long token with no
+		// spaces — e.g. an asset id — wraps instead of overflowing the panel width.
+		return <div className={cn('whitespace-pre-line [overflow-wrap:anywhere]', className)}>{text}</div>;
 	}
 	const safe = DOMPurify.sanitize(text, SANITIZE_CONFIG);
 	return (
 		<div
 			className={cn(
-				'whitespace-pre-line break-words',
+				'whitespace-pre-line [overflow-wrap:anywhere]',
 				'[&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5',
 				'[&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs',
 				'[&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:text-sm [&_h4]:font-semibold',

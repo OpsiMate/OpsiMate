@@ -6,6 +6,7 @@ import { Alert } from '@OpsiMate/shared';
 import { Info, MessageSquare, X } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { AlertActionsSection } from '../AlertActionsSection';
+import { AlertFooterActions } from '../AlertFooterActions';
 import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLinksSection } from '../AlertLinksSection';
@@ -122,15 +123,7 @@ export const AlertDetailsDrawer = ({
 
 							{renderedAlert && <AlertLinksSection alert={renderedAlert} />}
 
-							{renderedAlert && (
-								<AlertActionsSection
-									alert={renderedAlert}
-									isActive={isActive}
-									onDismiss={onDismiss}
-									onUndismiss={onUndismiss}
-									onDelete={onDelete}
-								/>
-							)}
+							{renderedAlert && <AlertActionsSection alert={renderedAlert} />}
 						</div>
 					</ScrollArea>
 				</TabsContent>
@@ -139,6 +132,19 @@ export const AlertDetailsDrawer = ({
 					{renderedAlert && <CommentsWall alertId={renderedAlert.id} />}
 				</TabsContent>
 			</Tabs>
+
+			{/* Primary actions pinned at the drawer's bottom, outside the scroll area. */}
+			{renderedAlert && (
+				<div className="border-t p-3 flex-shrink-0">
+					<AlertFooterActions
+						alert={renderedAlert}
+						isActive={isActive}
+						onDismiss={onDismiss}
+						onUndismiss={onUndismiss}
+						onDelete={onDelete}
+					/>
+				</div>
+			)}
 		</div>
 	);
 };

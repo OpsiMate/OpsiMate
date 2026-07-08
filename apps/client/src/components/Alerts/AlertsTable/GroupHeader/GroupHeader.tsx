@@ -44,11 +44,16 @@ export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderPr
 			>
 				{item.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 			</Button>
-			<span className="font-semibold text-sm mr-2 text-foreground">{fieldLabel}:</span>
-			<span className="text-sm mr-2 text-foreground/80">{item.value}</span>
-			<Badge variant={badgeVariant} className={`h-5 px-1.5 text-xs rounded-sm ${silencedBadgeClass}`}>
+			{/* Fixed-width count right after the chevron so the numbers align vertically
+			    across groups regardless of how long each group's label is. */}
+			<Badge
+				variant={badgeVariant}
+				className={`h-5 min-w-10 justify-center px-1.5 mr-2 text-xs rounded-sm ${silencedBadgeClass}`}
+			>
 				{item.count}
 			</Badge>
+			<span className="font-semibold text-sm mr-2 text-foreground">{fieldLabel}:</span>
+			<span className="text-sm text-foreground/80">{item.value}</span>
 		</div>
 	);
 };
