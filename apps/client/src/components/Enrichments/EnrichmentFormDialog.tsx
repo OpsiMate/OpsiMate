@@ -119,11 +119,13 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const summaryRef = useRef<HTMLTextAreaElement>(null);
 
 	// Insert a placeholder into the summary template at the cursor (replacing any selection),
-	// then restore focus with the caret placed after the inserted text.
+	// then restore focus with the caret placed after the inserted text. When the textarea
+	// isn't focused its selection is 0, so append at the end instead of the start.
 	const insertIntoSummary = (placeholder: string) => {
 		const el = summaryRef.current;
-		const start = el?.selectionStart ?? summaryTemplate.length;
-		const end = el?.selectionEnd ?? summaryTemplate.length;
+		const isFocused = el != null && document.activeElement === el;
+		const start = isFocused ? el.selectionStart : summaryTemplate.length;
+		const end = isFocused ? el.selectionEnd : summaryTemplate.length;
 		const next = summaryTemplate.slice(0, start) + placeholder + summaryTemplate.slice(end);
 		setSummaryTemplate(next);
 		requestAnimationFrame(() => {
@@ -327,6 +329,9 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 											<button
 												key={key}
 												type="button"
+												// Keep focus in the textarea so the caret position is preserved
+												// and the placeholder inserts where the user was typing.
+												onMouseDown={(e) => e.preventDefault()}
 												onClick={() => insertIntoSummary(placeholder)}
 												className="px-2 py-0.5 rounded-full border bg-background hover:bg-muted text-[11px] font-mono"
 												title={`Insert ${placeholder}`}
