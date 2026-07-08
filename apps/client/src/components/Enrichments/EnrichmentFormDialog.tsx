@@ -16,7 +16,7 @@ import { useCreateEnrichment, useUpdateEnrichment } from '@/hooks/queries/enrich
 import { EnrichmentPayload } from '@/lib/api';
 import { AlertEnrichment } from '@OpsiMate/shared';
 import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type KeyValue = { key: string; value: string };
 
@@ -115,6 +115,24 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		alerts.forEach((a) => Object.keys(a.tags ?? {}).forEach((k) => keys.add(k)));
 		return Array.from(keys).sort();
 	}, [alerts]);
+
+	const summaryRef = useRef<HTMLTextAreaElement>(null);
+
+	// Insert a placeholder into the summary template at the cursor (replacing any selection),
+	// then restore focus with the caret placed after the inserted text.
+	const insertIntoSummary = (placeholder: string) => {
+		const el = summaryRef.current;
+		const start = el?.selectionStart ?? summaryTemplate.length;
+		const end = el?.selectionEnd ?? summaryTemplate.length;
+		const next = summaryTemplate.slice(0, start) + placeholder + summaryTemplate.slice(end);
+		setSummaryTemplate(next);
+		requestAnimationFrame(() => {
+			if (!el) return;
+			el.focus();
+			const caret = start + placeholder.length;
+			el.setSelectionRange(caret, caret);
+		});
+	};
 
 	useEffect(() => {
 		if (!open) return;
@@ -283,6 +301,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 								Summary template (optional)
 							</Label>
 							<Textarea
+								ref={summaryRef}
 								id="enrichment-summary"
 								placeholder="e.g. {{summary}} — contact the help desk, the disk is full"
 								value={summaryTemplate}
@@ -299,7 +318,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 						{labelKeys.length > 0 && (
 							<div className="space-y-1.5">
 								<p className="text-xs text-muted-foreground">
-									Available labels (click to copy a placeholder):
+									Available labels (click to insert a placeholder):
 								</p>
 								<div className="flex flex-wrap gap-1.5">
 									{labelKeys.map((key) => {
@@ -308,12 +327,9 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 											<button
 												key={key}
 												type="button"
-												onClick={() => {
-													void navigator.clipboard?.writeText(placeholder);
-													toast({ title: 'Copied', description: placeholder });
-												}}
+												onClick={() => insertIntoSummary(placeholder)}
 												className="px-2 py-0.5 rounded-full border bg-background hover:bg-muted text-[11px] font-mono"
-												title={`Copy ${placeholder}`}
+												title={`Insert ${placeholder}`}
 											>
 												{placeholder}
 											</button>
