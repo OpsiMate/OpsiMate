@@ -185,8 +185,8 @@ export interface Alert {
 	isDismissed: boolean;
 	// False until someone opens the alert; unread alerts render bold in the table.
 	isRead?: boolean;
-	// Transient: set at fetch time when an active silence rule matches this alert. Not persisted.
-	isSilenced?: boolean;
+	// Transient: set at fetch time when an active mute policy rule matches this alert. Not persisted.
+	isMuted?: boolean;
 	// Transient: set at fetch time with the enrichment rules that matched/decorated this alert.
 	// Empty/undefined means the alert was not enriched. Not persisted.
 	appliedEnrichments?: AppliedEnrichment[];
@@ -321,7 +321,7 @@ export interface AlertComment {
 	updatedAt: string;
 }
 
-export interface AlertSilenceLabelMatcher {
+export interface MutePolicyLabelMatcher {
 	key: string;
 	value: string;
 }
@@ -329,27 +329,27 @@ export interface AlertSilenceLabelMatcher {
 // Recurring weekly schedule, evaluated in server local time.
 // daysOfWeek: 0=Sunday … 6=Saturday (matches Date.prototype.getDay()).
 // startTime/endTime: "HH:MM" 24h. endTime must be strictly greater than startTime
-// (overnight windows must be split into two silences).
-export interface AlertSilenceSchedule {
+// (overnight windows must be split into two mute policies).
+export interface MutePolicySchedule {
 	daysOfWeek: number[];
 	startTime: string;
 	endTime: string;
 }
 
-export interface AlertSilence {
+export interface MutePolicy {
 	id: number;
 	name: string;
 	nameContains?: string | null;
-	labelMatchers: AlertSilenceLabelMatcher[];
+	labelMatchers: MutePolicyLabelMatcher[];
 	startsAt?: string | null;
 	endsAt?: string | null;
-	schedule?: AlertSilenceSchedule | null;
+	schedule?: MutePolicySchedule | null;
 	reason?: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
 
-// Alert enrichment: a rule that matches alerts (like silences: name-contains + label matchers)
+// Alert enrichment: a rule that matches alerts (like mute policies: name-contains + label matchers)
 // and decorates them at fetch time — adding/overriding tag fields and/or rewriting the summary.
 // The summary template may reference the current values via {{summary}}, {{name}}, {{status}}.
 // Applied transiently when alerts are fetched; nothing is persisted on the alert itself.
@@ -362,7 +362,7 @@ export interface AlertEnrichment {
 	id: number;
 	name: string;
 	nameContains?: string | null;
-	labelMatchers: AlertSilenceLabelMatcher[];
+	labelMatchers: MutePolicyLabelMatcher[];
 	addFields: AlertEnrichmentField[];
 	summaryTemplate?: string | null;
 	// Rank: rules apply highest-priority first. When two rules set the same field the higher

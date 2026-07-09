@@ -9,7 +9,7 @@ import {
 	ActionType,
 	AlertHistory,
 	AlertEnrichment,
-	AlertSilence,
+	MutePolicy,
 	AuditLog,
 	DiscoveredService,
 	Integration,
@@ -621,7 +621,7 @@ export const alertsApi = {
 	},
 };
 
-export type SilencePayload = {
+export type MutePolicyPayload = {
 	name: string;
 	nameContains?: string | null;
 	labelMatchers?: { key: string; value: string }[];
@@ -631,13 +631,13 @@ export type SilencePayload = {
 	reason?: string | null;
 };
 
-export const silencesApi = {
-	listSilences: () => apiRequest<AlertSilence[]>('/silences'),
-	getSilence: (id: number) => apiRequest<AlertSilence>(`/silences/${id}`),
-	createSilence: (payload: SilencePayload) => apiRequest<AlertSilence>('/silences', 'POST', payload),
-	updateSilence: (id: number, payload: Partial<SilencePayload>) =>
-		apiRequest<AlertSilence>(`/silences/${id}`, 'PUT', payload),
-	deleteSilence: (id: number) => apiRequest<void>(`/silences/${id}`, 'DELETE'),
+export const mutePoliciesApi = {
+	listMutePolicies: () => apiRequest<MutePolicy[]>('/mute-policies'),
+	getMutePolicy: (id: number) => apiRequest<MutePolicy>(`/mute-policies/${id}`),
+	createMutePolicy: (payload: MutePolicyPayload) => apiRequest<MutePolicy>('/mute-policies', 'POST', payload),
+	updateMutePolicy: (id: number, payload: Partial<MutePolicyPayload>) =>
+		apiRequest<MutePolicy>(`/mute-policies/${id}`, 'PUT', payload),
+	deleteMutePolicy: (id: number) => apiRequest<void>(`/mute-policies/${id}`, 'DELETE'),
 };
 
 export type EnrichmentPayload = {

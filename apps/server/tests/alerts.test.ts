@@ -556,7 +556,7 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
 			expect(row.severity).toBe('critical');
 			// The stored tag is rewritten to the normalized value so label matchers
-			// (silences/enrichments) see the same scale as the severity field.
+			// (mute policies/enrichments) see the same scale as the severity field.
 			expect(JSON.parse(row.tags as string).severity).toBe('critical');
 		});
 

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { AlertEnrichment, AlertEnrichmentField, AlertSilenceLabelMatcher } from '@OpsiMate/shared';
+import { AlertEnrichment, AlertEnrichmentField, MutePolicyLabelMatcher } from '@OpsiMate/shared';
 import { runAsync } from './db';
 
 interface EnrichmentRow {
@@ -36,7 +36,7 @@ export class EnrichmentRepository {
 		id: row.id,
 		name: row.name,
 		nameContains: row.name_contains,
-		labelMatchers: parseJsonArray<AlertSilenceLabelMatcher>(row.label_matchers),
+		labelMatchers: parseJsonArray<MutePolicyLabelMatcher>(row.label_matchers),
 		addFields: parseJsonArray<AlertEnrichmentField>(row.add_fields),
 		summaryTemplate: row.summary_template,
 		priority: row.priority ?? 0,

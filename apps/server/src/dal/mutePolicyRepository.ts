@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
-import { AlertSilence, AlertSilenceLabelMatcher, AlertSilenceSchedule } from '@OpsiMate/shared';
+import { MutePolicy, MutePolicyLabelMatcher, MutePolicySchedule } from '@OpsiMate/shared';
 import { runAsync } from './db';
 
-interface SilenceRow {
+interface MutePolicyRow {
 	id: number;
 	name: string;
 	name_contains: string | null;
@@ -15,23 +15,23 @@ interface SilenceRow {
 	updated_at: string;
 }
 
-export type CreateSilenceInput = Omit<AlertSilence, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateSilenceInput = Partial<Omit<AlertSilence, 'id' | 'createdAt' | 'updatedAt'>>;
+export type CreateMutePolicyInput = Omit<MutePolicy, 'id' | 'createdAt' | 'updatedAt'>;
+export type UpdateMutePolicyInput = Partial<Omit<MutePolicy, 'id' | 'createdAt' | 'updatedAt'>>;
 
-export class SilenceRepository {
+export class MutePolicyRepository {
 	constructor(private db: Database.Database) {}
 
-	private toShared = (row: SilenceRow): AlertSilence => {
-		let labelMatchers: AlertSilenceLabelMatcher[] = [];
+	private toShared = (row: MutePolicyRow): MutePolicy => {
+		let labelMatchers: MutePolicyLabelMatcher[] = [];
 		if (row.label_matchers) {
 			try {
 				const parsed: unknown = JSON.parse(row.label_matchers);
-				if (Array.isArray(parsed)) labelMatchers = parsed as AlertSilenceLabelMatcher[];
+				if (Array.isArray(parsed)) labelMatchers = parsed as MutePolicyLabelMatcher[];
 			} catch {
 				labelMatchers = [];
 			}
 		}
-		let schedule: AlertSilenceSchedule | null = null;
+		let schedule: MutePolicySchedule | null = null;
 		if (row.schedule) {
 			try {
 				const parsed: unknown = JSON.parse(row.schedule);
@@ -42,7 +42,7 @@ export class SilenceRepository {
 					typeof (parsed as { startTime?: unknown }).startTime === 'string' &&
 					typeof (parsed as { endTime?: unknown }).endTime === 'string'
 				) {
-					schedule = parsed as AlertSilenceSchedule;
+					schedule = parsed as MutePolicySchedule;
 				}
 			} catch {
 				schedule = null;
@@ -62,12 +62,21 @@ export class SilenceRepository {
 		};
 	};
 
-	async initSilencesTable(): Promise<void> {
+	async initMutePoliciesTable(): Promise<void> {
 		return runAsync(() => {
+			// Migration: the feature used to be called "silences"; carry existing rows over.
+			// Only rename when the legacy table exists AND the new one does not yet — a
+			// rollback then re-upgrade can leave both present, and RENAME would throw.
+			const tableExists = (name: string): boolean =>
+				!!this.db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
+			if (tableExists('alert_silences') && !tableExists('alert_mute_policies')) {
+				this.db.prepare(`ALTER TABLE alert_silences RENAME TO alert_mute_policies`).run();
+			}
+
 			this.db
 				.prepare(
 					`
-					CREATE TABLE IF NOT EXISTS alert_silences (
+					CREATE TABLE IF NOT EXISTS alert_mute_policies (
 						id              INTEGER PRIMARY KEY AUTOINCREMENT,
 						name            TEXT NOT NULL,
 						name_contains   TEXT,
@@ -83,17 +92,17 @@ export class SilenceRepository {
 				)
 				.run();
 
-			const columns = this.db.prepare(`PRAGMA table_info(alert_silences)`).all() as { name: string }[];
+			const columns = this.db.prepare(`PRAGMA table_info(alert_mute_policies)`).all() as { name: string }[];
 			if (!columns.some((c) => c.name === 'schedule')) {
-				this.db.prepare(`ALTER TABLE alert_silences ADD COLUMN schedule TEXT`).run();
+				this.db.prepare(`ALTER TABLE alert_mute_policies ADD COLUMN schedule TEXT`).run();
 			}
 		});
 	}
 
-	async createSilence(data: CreateSilenceInput): Promise<{ lastID: number }> {
+	async createMutePolicy(data: CreateMutePolicyInput): Promise<{ lastID: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
-				`INSERT INTO alert_silences (name, name_contains, label_matchers, starts_at, ends_at, schedule, reason)
+				`INSERT INTO alert_mute_policies (name, name_contains, label_matchers, starts_at, ends_at, schedule, reason)
 				 VALUES (?, ?, ?, ?, ?, ?, ?)`
 			);
 			const result = stmt.run(
@@ -109,21 +118,25 @@ export class SilenceRepository {
 		});
 	}
 
-	async getAllSilences(): Promise<AlertSilence[]> {
+	async getAllMutePolicies(): Promise<MutePolicy[]> {
 		return runAsync(() => {
-			const rows = this.db.prepare(`SELECT * FROM alert_silences ORDER BY created_at DESC`).all() as SilenceRow[];
+			const rows = this.db
+				.prepare(`SELECT * FROM alert_mute_policies ORDER BY created_at DESC`)
+				.all() as MutePolicyRow[];
 			return rows.map(this.toShared);
 		});
 	}
 
-	async getSilenceById(id: number): Promise<AlertSilence | undefined> {
+	async getMutePolicyById(id: number): Promise<MutePolicy | undefined> {
 		return runAsync(() => {
-			const row = this.db.prepare(`SELECT * FROM alert_silences WHERE id = ?`).get(id) as SilenceRow | undefined;
+			const row = this.db.prepare(`SELECT * FROM alert_mute_policies WHERE id = ?`).get(id) as
+				| MutePolicyRow
+				| undefined;
 			return row ? this.toShared(row) : undefined;
 		});
 	}
 
-	async updateSilence(id: number, data: UpdateSilenceInput): Promise<void> {
+	async updateMutePolicy(id: number, data: UpdateMutePolicyInput): Promise<void> {
 		return runAsync(() => {
 			const updates: string[] = [];
 			const values: unknown[] = [];
@@ -161,13 +174,13 @@ export class SilenceRepository {
 
 			updates.push('updated_at = CURRENT_TIMESTAMP');
 			values.push(id);
-			this.db.prepare(`UPDATE alert_silences SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+			this.db.prepare(`UPDATE alert_mute_policies SET ${updates.join(', ')} WHERE id = ?`).run(...values);
 		});
 	}
 
-	async deleteSilence(id: number): Promise<void> {
+	async deleteMutePolicy(id: number): Promise<void> {
 		return runAsync(() => {
-			this.db.prepare(`DELETE FROM alert_silences WHERE id = ?`).run(id);
+			this.db.prepare(`DELETE FROM alert_mute_policies WHERE id = ?`).run(id);
 		});
 	}
 }

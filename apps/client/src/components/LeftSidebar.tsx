@@ -68,13 +68,13 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				</Button>
 
 				<Button
-					variant={location.pathname === '/silences' ? 'default' : 'ghost'}
+					variant={location.pathname === '/mute-policies' ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/silences">
+					<PreserveQueryLink to="/mute-policies">
 						<BellOff className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>Silences</span>
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Mute Policies</span>
 					</PreserveQueryLink>
 				</Button>
 

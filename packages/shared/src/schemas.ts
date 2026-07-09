@@ -283,7 +283,7 @@ const labelMatcherSchema = z.object({
 
 const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-const silenceScheduleSchema = z
+const mutePolicyScheduleSchema = z
 	.object({
 		daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, 'Select at least one day of week').max(7),
 		startTime: z.string().regex(timeOfDayRegex, 'Start time must be HH:MM (24h)'),
@@ -294,20 +294,20 @@ const silenceScheduleSchema = z
 		path: ['endTime'],
 	});
 
-const silenceTimeRefinement = (data: { startsAt?: string | null; endsAt?: string | null }) => {
+const mutePolicyTimeRefinement = (data: { startsAt?: string | null; endsAt?: string | null }) => {
 	if (data.startsAt && data.endsAt) {
 		return new Date(data.endsAt).getTime() > new Date(data.startsAt).getTime();
 	}
 	return true;
 };
 
-const silenceMatchersRefinement = (data: { nameContains?: string | null; labelMatchers?: unknown[] }) => {
+const mutePolicyMatchersRefinement = (data: { nameContains?: string | null; labelMatchers?: unknown[] }) => {
 	const hasName = !!data.nameContains && data.nameContains.trim().length > 0;
 	const hasMatchers = Array.isArray(data.labelMatchers) && data.labelMatchers.length > 0;
 	return hasName || hasMatchers;
 };
 
-const silenceScheduleExclusivityRefinement = (data: {
+const mutePolicyScheduleExclusivityRefinement = (data: {
 	startsAt?: string | null;
 	endsAt?: string | null;
 	schedule?: unknown;
@@ -316,47 +316,47 @@ const silenceScheduleExclusivityRefinement = (data: {
 	return !data.startsAt && !data.endsAt;
 };
 
-export const CreateAlertSilenceSchema = z
+export const CreateMutePolicySchema = z
 	.object({
 		name: z.string().min(1, 'Name is required').max(200),
 		nameContains: z.string().max(500).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
 		startsAt: z.string().datetime({ offset: true }).optional().nullable(),
 		endsAt: z.string().datetime({ offset: true }).optional().nullable(),
-		schedule: silenceScheduleSchema.optional().nullable(),
+		schedule: mutePolicyScheduleSchema.optional().nullable(),
 		reason: z.string().max(1000).optional().nullable(),
 	})
-	.refine(silenceTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
-	.refine(silenceMatchersRefinement, {
+	.refine(mutePolicyTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
+	.refine(mutePolicyMatchersRefinement, {
 		message: 'Provide at least a name match or one label matcher',
 		path: ['nameContains'],
 	})
-	.refine(silenceScheduleExclusivityRefinement, {
+	.refine(mutePolicyScheduleExclusivityRefinement, {
 		message: 'A recurring schedule cannot be combined with a one-time window',
 		path: ['schedule'],
 	});
 
-export const UpdateAlertSilenceSchema = z
+export const UpdateMutePolicySchema = z
 	.object({
 		name: z.string().min(1).max(200).optional(),
 		nameContains: z.string().max(500).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
 		startsAt: z.string().datetime({ offset: true }).optional().nullable(),
 		endsAt: z.string().datetime({ offset: true }).optional().nullable(),
-		schedule: silenceScheduleSchema.optional().nullable(),
+		schedule: mutePolicyScheduleSchema.optional().nullable(),
 		reason: z.string().max(1000).optional().nullable(),
 	})
-	.refine(silenceTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
-	.refine(silenceScheduleExclusivityRefinement, {
+	.refine(mutePolicyTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
+	.refine(mutePolicyScheduleExclusivityRefinement, {
 		message: 'A recurring schedule cannot be combined with a one-time window',
 		path: ['schedule'],
 	});
 
-export const AlertSilenceIdSchema = z.object({
-	silenceId: z.string().transform((val) => {
+export const MutePolicyIdSchema = z.object({
+	mutePolicyId: z.string().transform((val) => {
 		const parsed = parseInt(val);
 		if (isNaN(parsed)) {
-			throw new Error('Invalid silence ID');
+			throw new Error('Invalid mute policy ID');
 		}
 		return parsed;
 	}),
@@ -385,7 +385,7 @@ export const CreateAlertEnrichmentSchema = z
 		summaryTemplate: z.string().max(5000).optional().nullable(),
 		priority: z.number().int().min(0).max(1000).optional().default(0),
 	})
-	.refine(silenceMatchersRefinement, {
+	.refine(mutePolicyMatchersRefinement, {
 		message: 'Provide at least a name match or one label matcher',
 		path: ['nameContains'],
 	})

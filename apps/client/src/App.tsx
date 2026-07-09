@@ -16,13 +16,13 @@ import {
 	NotFound,
 	Register,
 	Settings,
-	Silences,
+	MutePolicies,
 	TVMode,
 } from '@/pages';
 import { isPlaygroundMode } from '@/lib/playground';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';
 
@@ -38,6 +38,13 @@ const UnsavedChangesDialogWrapper = () => {
 };
 
 const queryClient = new QueryClient();
+
+// Old bookmarks: the page used to live at /silences. Preserves the query string
+// (e.g. ?playground) across the redirect.
+const SilencesRedirect: React.FC = () => {
+	const location = useLocation();
+	return <Navigate to={{ pathname: '/mute-policies', search: location.search }} replace />;
+};
 
 const App: React.FC = () => {
 	// The playground/demo defaults to light mode for a consistent first impression.
@@ -71,7 +78,8 @@ const App: React.FC = () => {
 										<Route path="/login" element={<Login />} />
 										<Route path="/register" element={<Register />} />
 										<Route path="/alerts" element={<Alerts />} />
-										<Route path="/silences" element={<Silences />} />
+										<Route path="/mute-policies" element={<MutePolicies />} />
+										<Route path="/silences" element={<SilencesRedirect />} />
 										<Route path="/actions" element={<Actions />} />
 										<Route path="/enrichments" element={<Enrichments />} />
 										<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />

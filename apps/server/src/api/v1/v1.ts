@@ -25,8 +25,8 @@ import { ServiceController } from './services/controller';
 import serviceRouter from './services/router';
 import { EnrichmentController } from './enrichments/controller';
 import createEnrichmentRouter from './enrichments/router';
-import { SilenceController } from './silences/controller';
-import createSilenceRouter from './silences/router';
+import { MutePolicyController } from './mute-policies/controller';
+import createMutePolicyRouter from './mute-policies/router';
 import { TagController } from './tags/controller';
 import tagRouter from './tags/router';
 import { UsersController } from './users/controller';
@@ -47,7 +47,7 @@ export default function createV1Router(
 	customFieldsController: CustomFieldsController,
 	customActionsController: CustomActionsController,
 	playgroundController: PlaygroundController,
-	silenceController: SilenceController,
+	mutePolicyController: MutePolicyController,
 	enrichmentController: EnrichmentController,
 	actionController: ActionController,
 	retentionController: RetentionController
@@ -76,7 +76,10 @@ export default function createV1Router(
 	router.use('/secrets', createSecretsRouter(secretsController));
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
 	router.use('/custom-actions', createCustomActionsRouter(customActionsController));
-	router.use('/silences', createSilenceRouter(silenceController));
+	router.use('/mute-policies', createMutePolicyRouter(mutePolicyController));
+	// Deprecated alias: the feature used to be called "silences"; kept for a release so
+	// existing API consumers don't break.
+	router.use('/silences', createMutePolicyRouter(mutePolicyController));
 	router.use('/enrichments', createEnrichmentRouter(enrichmentController));
 	router.use('/actions', createActionRouter(actionController));
 	// All other /users endpoints (except /register and /login) are protected

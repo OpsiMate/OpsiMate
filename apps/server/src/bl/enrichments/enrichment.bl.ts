@@ -99,7 +99,7 @@ export class EnrichmentBL {
 		}
 	}
 
-	// Same matching semantics as silences: nameContains is a case-insensitive substring match
+	// Same matching semantics as mute policies: nameContains is a case-insensitive substring match
 	// on the alert name, and every label matcher must equal the alert's tag value.
 	static enrichmentMatchesAlert(enrichment: AlertEnrichment, alert: Alert): boolean {
 		const hasName = !!enrichment.nameContains && enrichment.nameContains.trim().length > 0;

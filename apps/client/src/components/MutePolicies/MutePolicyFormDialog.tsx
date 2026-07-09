@@ -13,14 +13,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useCreateSilence, useUpdateSilence } from '@/hooks/queries/silences';
-import { SilencePayload } from '@/lib/api';
-import { AlertSilence } from '@OpsiMate/shared';
+import { useCreateMutePolicy, useUpdateMutePolicy } from '@/hooks/queries/mute-policies';
+import { MutePolicyPayload } from '@/lib/api';
+import { MutePolicy } from '@OpsiMate/shared';
 import { BellOff, Plus, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 type Matcher = { key: string; value: string };
-type SilenceMode = 'one-time' | 'recurring';
+type MutePolicyMode = 'one-time' | 'recurring';
 
 const DAY_CHIPS: { label: string; value: number }[] = [
 	{ label: 'Sun', value: 0 },
@@ -32,10 +32,10 @@ const DAY_CHIPS: { label: string; value: number }[] = [
 	{ label: 'Sat', value: 6 },
 ];
 
-interface SilenceFormDialogProps {
+interface MutePolicyFormDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	silence?: AlertSilence | null;
+	mutePolicy?: MutePolicy | null;
 }
 
 const toLocalInputValue = (iso?: string | null): string => {
@@ -60,17 +60,17 @@ const PRESETS: { label: string; minutes: number }[] = [
 	{ label: '7d', minutes: 10080 },
 ];
 
-export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDialogProps) => {
-	const isEdit = !!silence;
+export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePolicyFormDialogProps) => {
+	const isEdit = !!mutePolicy;
 	const { toast } = useToast();
-	const createMutation = useCreateSilence();
-	const updateMutation = useUpdateSilence();
+	const createMutation = useCreateMutePolicy();
+	const updateMutation = useUpdateMutePolicy();
 
 	const [name, setName] = useState('');
 	const [nameContains, setNameContains] = useState('');
 	const [matchers, setMatchers] = useState<Matcher[]>([]);
 	const [reason, setReason] = useState('');
-	const [mode, setMode] = useState<SilenceMode>('one-time');
+	const [mode, setMode] = useState<MutePolicyMode>('one-time');
 	const [hasStart, setHasStart] = useState(false);
 	const [hasEnd, setHasEnd] = useState(true);
 	const [startsAt, setStartsAt] = useState('');
@@ -81,26 +81,26 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 
 	useEffect(() => {
 		if (!open) return;
-		if (silence) {
-			setName(silence.name);
-			setNameContains(silence.nameContains ?? '');
-			setMatchers((silence.labelMatchers ?? []).map((m) => ({ ...m })));
-			setReason(silence.reason ?? '');
-			if (silence.schedule) {
+		if (mutePolicy) {
+			setName(mutePolicy.name);
+			setNameContains(mutePolicy.nameContains ?? '');
+			setMatchers((mutePolicy.labelMatchers ?? []).map((m) => ({ ...m })));
+			setReason(mutePolicy.reason ?? '');
+			if (mutePolicy.schedule) {
 				setMode('recurring');
-				setDaysOfWeek([...silence.schedule.daysOfWeek].sort((a, b) => a - b));
-				setRecurStartTime(silence.schedule.startTime);
-				setRecurEndTime(silence.schedule.endTime);
+				setDaysOfWeek([...mutePolicy.schedule.daysOfWeek].sort((a, b) => a - b));
+				setRecurStartTime(mutePolicy.schedule.startTime);
+				setRecurEndTime(mutePolicy.schedule.endTime);
 				setHasStart(false);
 				setStartsAt('');
 				setHasEnd(true);
 				setEndsAt('');
 			} else {
 				setMode('one-time');
-				setHasStart(!!silence.startsAt);
-				setStartsAt(toLocalInputValue(silence.startsAt));
-				setHasEnd(!!silence.endsAt);
-				setEndsAt(toLocalInputValue(silence.endsAt));
+				setHasStart(!!mutePolicy.startsAt);
+				setStartsAt(toLocalInputValue(mutePolicy.startsAt));
+				setHasEnd(!!mutePolicy.endsAt);
+				setEndsAt(toLocalInputValue(mutePolicy.endsAt));
 				setDaysOfWeek([]);
 				setRecurStartTime('09:00');
 				setRecurEndTime('17:00');
@@ -120,7 +120,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 			setRecurStartTime('09:00');
 			setRecurEndTime('17:00');
 		}
-	}, [open, silence]);
+	}, [open, mutePolicy]);
 
 	const toggleDay = (day: number) => {
 		setDaysOfWeek((prev) =>
@@ -172,7 +172,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 			.map((m) => ({ key: m.key.trim(), value: m.value.trim() }))
 			.filter((m) => m.key && m.value);
 
-		const payload: SilencePayload =
+		const payload: MutePolicyPayload =
 			mode === 'recurring'
 				? {
 						name: name.trim(),
@@ -198,17 +198,17 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 					};
 
 		try {
-			if (isEdit && silence) {
-				await updateMutation.mutateAsync({ id: silence.id, payload });
-				toast({ title: 'Silence updated', description: payload.name });
+			if (isEdit && mutePolicy) {
+				await updateMutation.mutateAsync({ id: mutePolicy.id, payload });
+				toast({ title: 'Mute policy updated', description: payload.name });
 			} else {
 				await createMutation.mutateAsync(payload);
-				toast({ title: 'Silence created', description: payload.name });
+				toast({ title: 'Mute policy created', description: payload.name });
 			}
 			onOpenChange(false);
 		} catch (err) {
 			toast({
-				title: isEdit ? 'Failed to update silence' : 'Failed to create silence',
+				title: isEdit ? 'Failed to update mute policy' : 'Failed to create mute policy',
 				description: err instanceof Error ? err.message : 'Unknown error',
 				variant: 'destructive',
 			});
@@ -223,19 +223,19 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<BellOff className="h-5 w-5 text-muted-foreground" />
-						{isEdit ? 'Edit silence' : 'New silence'}
+						{isEdit ? 'Edit mute policy' : 'New mute policy'}
 					</DialogTitle>
 					<DialogDescription>
 						Suppress alerts that match the criteria below for the selected window. Leave the end time unset
-						for an indefinite silence.
+						for an indefinite mute policy.
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-5 py-2">
 					<div className="space-y-2">
-						<Label htmlFor="silence-name">Name</Label>
+						<Label htmlFor="mute-policy-name">Name</Label>
 						<Input
-							id="silence-name"
+							id="mute-policy-name"
 							placeholder="e.g. Weekly DB maintenance"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
@@ -248,16 +248,16 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 							<h4 className="text-sm font-semibold">Match criteria</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							An alert is silenced when its name matches and ALL labels match. At least one criterion is
+							An alert is muted when its name matches and ALL labels match. At least one criterion is
 							required.
 						</p>
 
 						<div className="space-y-2">
-							<Label htmlFor="silence-nameContains" className="text-xs">
+							<Label htmlFor="mute-policy-nameContains" className="text-xs">
 								Alert name contains
 							</Label>
 							<Input
-								id="silence-nameContains"
+								id="mute-policy-nameContains"
 								placeholder="e.g. HighCPU, prod-db, latency"
 								value={nameContains}
 								onChange={(e) => setNameContains(e.target.value)}
@@ -378,7 +378,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 									<div className="space-y-2">
 										<div className="flex items-center justify-between">
-											<Label htmlFor="silence-startsAt" className="text-xs">
+											<Label htmlFor="mute-policy-startsAt" className="text-xs">
 												Starts at
 											</Label>
 											<div className="flex items-center gap-2">
@@ -387,7 +387,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 											</div>
 										</div>
 										<Input
-											id="silence-startsAt"
+											id="mute-policy-startsAt"
 											type="datetime-local"
 											value={startsAt}
 											onChange={(e) => setStartsAt(e.target.value)}
@@ -400,7 +400,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 
 									<div className="space-y-2">
 										<div className="flex items-center justify-between">
-											<Label htmlFor="silence-endsAt" className="text-xs">
+											<Label htmlFor="mute-policy-endsAt" className="text-xs">
 												Ends at
 											</Label>
 											<div className="flex items-center gap-2">
@@ -409,7 +409,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 											</div>
 										</div>
 										<Input
-											id="silence-endsAt"
+											id="mute-policy-endsAt"
 											type="datetime-local"
 											value={endsAt}
 											onChange={(e) => setEndsAt(e.target.value)}
@@ -417,7 +417,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 										/>
 										{!hasEnd && (
 											<p className="text-xs text-muted-foreground">
-												Indefinite — silence until removed.
+												Indefinite — mute policy until removed.
 											</p>
 										)}
 									</div>
@@ -454,22 +454,22 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 									<div className="space-y-2">
-										<Label htmlFor="silence-recur-start" className="text-xs">
+										<Label htmlFor="mute-policy-recur-start" className="text-xs">
 											Start time
 										</Label>
 										<Input
-											id="silence-recur-start"
+											id="mute-policy-recur-start"
 											type="time"
 											value={recurStartTime}
 											onChange={(e) => setRecurStartTime(e.target.value)}
 										/>
 									</div>
 									<div className="space-y-2">
-										<Label htmlFor="silence-recur-end" className="text-xs">
+										<Label htmlFor="mute-policy-recur-end" className="text-xs">
 											End time
 										</Label>
 										<Input
-											id="silence-recur-end"
+											id="mute-policy-recur-end"
 											type="time"
 											value={recurEndTime}
 											onChange={(e) => setRecurEndTime(e.target.value)}
@@ -482,17 +482,17 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 									</div>
 								</div>
 								<p className="text-xs text-muted-foreground">
-									Silence is active on the selected days between start and end time. For overnight
-									windows, create two silences.
+									Mute policy is active on the selected days between start and end time. For overnight
+									windows, create two mute policies.
 								</p>
 							</>
 						)}
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="silence-reason">Reason / notes</Label>
+						<Label htmlFor="mute-policy-reason">Reason / notes</Label>
 						<Textarea
-							id="silence-reason"
+							id="mute-policy-reason"
 							placeholder="Optional context, ticket link, or comment for teammates."
 							value={reason}
 							onChange={(e) => setReason(e.target.value)}
@@ -506,7 +506,7 @@ export const SilenceFormDialog = ({ open, onOpenChange, silence }: SilenceFormDi
 						Cancel
 					</Button>
 					<Button onClick={submit} disabled={!isValid || isPending}>
-						{isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create silence'}
+						{isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create mute policy'}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

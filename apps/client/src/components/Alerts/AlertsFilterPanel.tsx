@@ -67,11 +67,7 @@ export const AlertsFilterPanel = ({
 			}
 			switch (field) {
 				case 'status':
-					return alert.isDismissed
-						? 'Dismissed'
-						: alert.isSilenced
-							? 'Silenced'
-							: capitalizeFirst(alert.status);
+					return alert.isDismissed ? 'Dismissed' : alert.isMuted ? 'Muted' : capitalizeFirst(alert.status);
 				case 'severity':
 					return SEVERITY_LABELS[getAlertSeverity(alert)];
 				case 'type':
@@ -90,7 +86,11 @@ export const AlertsFilterPanel = ({
 		const passesOtherFilters = (alert: Alert, exceptField: string): boolean => {
 			for (const [field, values] of Object.entries(filters)) {
 				if (!values || values.length === 0 || field === exceptField) continue;
-				if (!values.includes(getFieldValue(alert, field))) return false;
+				const fieldValue = getFieldValue(alert, field);
+				// Saved dashboards from before the rename may still filter on 'Silenced';
+				// keep facet counts consistent with useAlertsFiltering's main list.
+				if (field === 'status' && values.includes('Silenced') && fieldValue === 'Muted') continue;
+				if (!values.includes(fieldValue)) return false;
 			}
 			return true;
 		};
