@@ -1,9 +1,9 @@
 export { useAlerts } from './useAlerts';
-export { useArchivedAlerts } from './useArchivedAlerts';
+export { useResolvedAlerts } from './useResolvedAlerts';
 export { useDeleteAlert } from './useDeleteAlert';
-export { useDeleteArchivedAlert } from './useDeleteArchivedAlert';
+export { useDeleteResolvedAlert } from './useDeleteResolvedAlert';
 export { useDismissAlert } from './useDismissAlert';
 export { useMarkAlertRead } from './useMarkAlertRead';
 export { useUndismissAlert } from './useUndismissAlert';
 export { useSetAlertOwner } from './useSetAlertOwner';
-export { useSetArchivedAlertOwner } from './useSetArchivedAlertOwner';
+export { useSetResolvedAlertOwner } from './useSetResolvedAlertOwner';

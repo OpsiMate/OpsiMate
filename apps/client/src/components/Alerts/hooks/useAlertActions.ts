@@ -1,6 +1,6 @@
 import {
 	useDeleteAlert,
-	useDeleteArchivedAlert,
+	useDeleteResolvedAlert,
 	useDismissAlert,
 	useSetAlertOwner,
 	useUndismissAlert,
@@ -13,7 +13,7 @@ export const useAlertActions = () => {
 	const undismissAlertMutation = useUndismissAlert();
 	const deleteAlertMutation = useDeleteAlert();
 	const setAlertOwnerMutation = useSetAlertOwner();
-	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
+	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const { toast } = useToast();
 
 	const handleDismissAlert = async (alertId: string) => {
@@ -97,8 +97,8 @@ export const useAlertActions = () => {
 		onComplete();
 	};
 
-	// Bulk-archive the selected active alerts (active "delete" == archive).
-	const handleArchiveAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
+	// Bulk-resolve the selected active alerts (active "delete" == resolve).
+	const handleResolveAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
 		const results = await Promise.allSettled(
 			selectedAlerts.map((alert) => deleteAlertMutation.mutateAsync(alert.id))
 		);
@@ -107,25 +107,25 @@ export const useAlertActions = () => {
 		toast(
 			failCount > 0
 				? {
-						title: 'Partial archive',
-						description: `Archived ${successCount} alerts, ${failCount} failed`,
+						title: 'Partial resolve',
+						description: `Resolved ${successCount} alerts, ${failCount} failed`,
 						variant: 'destructive',
 					}
 				: {
-						title: 'Alerts archived',
-						description: `Moved ${successCount} alert${successCount !== 1 ? 's' : ''} to archive`,
+						title: 'Alerts resolved',
+						description: `Moved ${successCount} alert${successCount !== 1 ? 's' : ''} to Resolved`,
 					}
 		);
 		onComplete();
 	};
 
-	// Permanently delete the selected active alerts: archive each one, then remove it from
-	// the archive (permanent delete only exists for archived alerts).
+	// Permanently delete the selected active alerts: resolve each one, then remove it from
+	// the resolve (permanent delete only exists for resolved alerts).
 	const handleDeleteForeverAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
 		const results = await Promise.allSettled(
 			selectedAlerts.map(async (alert) => {
 				await deleteAlertMutation.mutateAsync(alert.id);
-				await deleteArchivedAlertMutation.mutateAsync(alert.id);
+				await deleteResolvedAlertMutation.mutateAsync(alert.id);
 			})
 		);
 		const successCount = results.filter((r) => r.status === 'fulfilled').length;
@@ -151,7 +151,7 @@ export const useAlertActions = () => {
 		handleDeleteAlert,
 		handleDismissAll,
 		handleAssignOwnerAll,
-		handleArchiveAll,
+		handleResolveAll,
 		handleDeleteForeverAll,
 	};
 };

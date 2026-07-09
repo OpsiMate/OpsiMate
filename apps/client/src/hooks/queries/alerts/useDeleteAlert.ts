@@ -39,7 +39,7 @@ export const useDeleteAlert = () => {
 		onSettled: () => {
 			// Always refetch after error or success to ensure server state
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
-			queryClient.invalidateQueries({ queryKey: queryKeys.archivedAlerts });
+			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
 		},
 	});
 };

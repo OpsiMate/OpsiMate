@@ -3,7 +3,7 @@ import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDashboard } from '@/context/DashboardContext';
-import { useAlerts, useArchivedAlerts, useDeleteArchivedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
+import { useAlerts, useResolvedAlerts, useDeleteResolvedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -15,7 +15,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Bell, Columns2, LayoutList, Palette } from 'lucide-react';
+import { Bell, CheckCircle2, Columns2, LayoutList, Palette } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
@@ -35,7 +35,7 @@ import {
 	useAlertsFiltering,
 	useAlertsRefresh,
 	useAlertTagKeys,
-	useArchivedTabStatusFilterReset,
+	useResolvedTabStatusFilterReset,
 	useColumnManagement,
 	useSeverityColors,
 } from './hooks';
@@ -44,7 +44,7 @@ const Alerts = () => {
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
-	const { data: archivedAlerts = [], isLoading: isLoadingArchived, refetch: refetchArchived } = useArchivedAlerts();
+	const { data: resolvedAlerts = [], isLoading: isLoadingResolved, refetch: refetchResolved } = useResolvedAlerts();
 	const { data: services = [] } = useServices();
 	const { data: dashboards = [] } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
@@ -71,11 +71,11 @@ const Alerts = () => {
 	const [splitByAssignment, setSplitByAssignment] = useState(false);
 	const { severityColors, toggleSeverityColors } = useSeverityColors();
 
-	const allAlerts = useMemo(() => [...alerts, ...archivedAlerts], [alerts, archivedAlerts]);
+	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
 
 	const currentAlertData =
-		activeTab === AlertTab.Active ? alerts : activeTab === AlertTab.Archived ? archivedAlerts : allAlerts;
+		activeTab === AlertTab.Active ? alerts : activeTab === AlertTab.Resolved ? resolvedAlerts : allAlerts;
 	const syncedSelectedAlert = useMemo(() => {
 		if (!selectedAlert) return null;
 		const updatedAlert = currentAlertData.find((alert) => alert.id === selectedAlert.id);
@@ -93,28 +93,28 @@ const Alerts = () => {
 	});
 
 	const {
-		lastRefresh: lastRefreshArchived,
-		isRefreshing: isRefreshingArchived,
-		handleManualRefresh: handleManualRefreshArchived,
-	} = useAlertsRefresh(refetchArchived, {
-		shouldPause: shouldPauseRefresh || (activeTab !== AlertTab.Archived && activeTab !== AlertTab.All),
+		lastRefresh: lastRefreshResolved,
+		isRefreshing: isRefreshingResolved,
+		handleManualRefresh: handleManualRefreshResolved,
+	} = useAlertsRefresh(refetchResolved, {
+		shouldPause: shouldPauseRefresh || (activeTab !== AlertTab.Resolved && activeTab !== AlertTab.All),
 	});
 
-	const lastRefresh = activeTab === AlertTab.Archived ? lastRefreshArchived : lastRefreshActive;
+	const lastRefresh = activeTab === AlertTab.Resolved ? lastRefreshResolved : lastRefreshActive;
 	const isRefreshing =
 		activeTab === AlertTab.Active
 			? isRefreshingActive
-			: activeTab === AlertTab.Archived
-				? isRefreshingArchived
-				: isRefreshingActive || isRefreshingArchived;
+			: activeTab === AlertTab.Resolved
+				? isRefreshingResolved
+				: isRefreshingActive || isRefreshingResolved;
 	const handleManualRefresh =
 		activeTab === AlertTab.Active
 			? handleManualRefreshActive
-			: activeTab === AlertTab.Archived
-				? handleManualRefreshArchived
+			: activeTab === AlertTab.Resolved
+				? handleManualRefreshResolved
 				: () => {
 						handleManualRefreshActive();
-						handleManualRefreshArchived();
+						handleManualRefreshResolved();
 					};
 
 	const { visibleColumns, columnOrder, handleColumnToggle, allColumnLabels, enabledTagKeys } = useColumnManagement({
@@ -169,7 +169,7 @@ const Alerts = () => {
 		updateDashboardField('filters', newFilters);
 	};
 
-	useArchivedTabStatusFilterReset({
+	useResolvedTabStatusFilterReset({
 		activeTab,
 		filters: dashboardState.filters,
 		onFilterChange: handleFilterChange,
@@ -179,7 +179,7 @@ const Alerts = () => {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
-	const filteredArchivedAlerts = useAlertsFiltering(archivedAlerts, {
+	const filteredResolvedAlerts = useAlertsFiltering(resolvedAlerts, {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
@@ -188,12 +188,12 @@ const Alerts = () => {
 	const unassignedAlerts = useMemo(() => filteredAlerts.filter((a) => !a.ownerId), [filteredAlerts]);
 	const assignedAlerts = useMemo(() => filteredAlerts.filter((a) => !!a.ownerId), [filteredAlerts]);
 
-	// Combined "All" view: active alerts followed by archived ones tagged so each row can route
-	// its own actions. archivedIds lets shared callbacks tell which list an alert belongs to.
-	const archivedIds = useMemo(() => new Set(archivedAlerts.map((a) => a.id)), [archivedAlerts]);
+	// Combined "All" view: active alerts followed by resolved ones tagged so each row can route
+	// its own actions. resolvedIds lets shared callbacks tell which list an alert belongs to.
+	const resolvedIds = useMemo(() => new Set(resolvedAlerts.map((a) => a.id)), [resolvedAlerts]);
 	const filteredAllAlerts = useMemo(
-		() => [...filteredAlerts, ...filteredArchivedAlerts.map((a) => ({ ...a, isArchived: true }))],
-		[filteredAlerts, filteredArchivedAlerts]
+		() => [...filteredAlerts, ...filteredResolvedAlerts.map((a) => ({ ...a, isResolved: true }))],
+		[filteredAlerts, filteredResolvedAlerts]
 	);
 
 	const {
@@ -202,10 +202,10 @@ const Alerts = () => {
 		handleDeleteAlert,
 		handleDismissAll,
 		handleAssignOwnerAll,
-		handleArchiveAll,
+		handleResolveAll,
 		handleDeleteForeverAll,
 	} = useAlertActions();
-	const deleteArchivedAlertMutation = useDeleteArchivedAlert();
+	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
 
 	const handleDismissAllSelected = async () => {
@@ -216,9 +216,9 @@ const Alerts = () => {
 		await handleAssignOwnerAll(selectedAlerts, ownerId, () => setSelectedAlerts([]));
 	};
 
-	const handleArchiveAllSelected = async () => {
+	const handleResolveAllSelected = async () => {
 		setSelectedAlert(null);
-		await handleArchiveAll(selectedAlerts, () => setSelectedAlerts([]));
+		await handleResolveAll(selectedAlerts, () => setSelectedAlerts([]));
 	};
 
 	const handleDeleteAllSelected = async () => {
@@ -226,14 +226,23 @@ const Alerts = () => {
 		await handleDeleteForeverAll(selectedAlerts, () => setSelectedAlerts([]));
 	};
 
-	const handleDeleteArchivedAlert = async (alertId: string) => {
-		await deleteArchivedAlertMutation.mutateAsync(alertId);
+	const handleDeleteResolvedAlert = async (alertId: string) => {
+		try {
+			await deleteResolvedAlertMutation.mutateAsync(alertId);
+			toast({ title: 'Alert deleted', description: 'The alert was permanently removed.' });
+		} catch (err) {
+			toast({
+				title: 'Failed to delete alert',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
 	};
 
 	// In the combined "All" view, route delete to the right mutation based on the alert's list.
 	const handleDeleteAnyAlert = (alertId: string) => {
-		if (archivedIds.has(alertId)) {
-			void handleDeleteArchivedAlert(alertId);
+		if (resolvedIds.has(alertId)) {
+			void handleDeleteResolvedAlert(alertId);
 		} else {
 			void handleDeleteAlert(alertId);
 		}
@@ -325,9 +334,9 @@ const Alerts = () => {
 
 	const handleAlertClick = (alert: Alert) => {
 		// Opening an unread (active) alert marks it as read, un-bolding its row. The transient
-		// isArchived flag (set on archived rows in the All view) is the guard here — an id-based
-		// check would wrongly skip active alerts that were archived once and re-fired.
-		if (alert.isRead === false && !alert.isArchived) {
+		// isResolved flag (set on resolved rows in the All view) is the guard here — an id-based
+		// check would wrongly skip active alerts that were resolved once and re-fired.
+		if (alert.isRead === false && !alert.isResolved) {
 			markAlertReadMutation.mutate(alert.id);
 		}
 		setSelectedAlert((prev) => (prev?.id === alert.id ? null : alert));
@@ -346,7 +355,7 @@ const Alerts = () => {
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
 						tagKeys={tagKeys}
-						isArchived={activeTab === AlertTab.Archived}
+						isResolved={activeTab === AlertTab.Resolved}
 					/>
 				</FilterSidebar>
 
@@ -398,13 +407,13 @@ const Alerts = () => {
 										<span>Active</span>
 									</ToggleGroupItem>
 									<ToggleGroupItem
-										value={AlertTab.Archived}
-										aria-label="Archived alerts"
+										value={AlertTab.Resolved}
+										aria-label="Resolved alerts"
 										size="sm"
 										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
 									>
-										<Archive className="h-4 w-4" />
-										<span>Archived</span>
+										<CheckCircle2 className="h-4 w-4" />
+										<span>Resolved</span>
 									</ToggleGroupItem>
 									<ToggleGroupItem
 										value={AlertTab.All}
@@ -421,8 +430,8 @@ const Alerts = () => {
 										const count =
 											activeTab === AlertTab.Active
 												? filteredAlerts.length
-												: activeTab === AlertTab.Archived
-													? filteredArchivedAlerts.length
+												: activeTab === AlertTab.Resolved
+													? filteredResolvedAlerts.length
 													: filteredAllAlerts.length;
 										return `${count} Alert${count !== 1 ? 's' : ''}`;
 									})()}
@@ -511,30 +520,30 @@ const Alerts = () => {
 										onClearSelection={() => setSelectedAlerts([])}
 										onDismissAll={handleDismissAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
-										onArchiveAll={handleArchiveAllSelected}
+										onResolveAll={handleResolveAllSelected}
 										onDeleteAll={handleDeleteAllSelected}
 									/>
 								</div>
 							</>
-						) : activeTab === AlertTab.Archived ? (
+						) : activeTab === AlertTab.Resolved ? (
 							<div
 								className={cn(
 									'flex-1 min-h-0',
-									archivedAlerts.length === 0 &&
-										!isLoadingArchived &&
+									resolvedAlerts.length === 0 &&
+										!isLoadingResolved &&
 										'flex items-center justify-center'
 								)}
 							>
 								<AlertsTable
-									alerts={filteredArchivedAlerts}
+									alerts={filteredResolvedAlerts}
 									services={services}
 									onDismissAlert={undefined}
 									onUndismissAlert={undefined}
-									onDeleteAlert={handleDeleteArchivedAlert}
+									onDeleteAlert={handleDeleteResolvedAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
-									isLoading={isLoadingArchived}
-									isArchived={true}
+									isLoading={isLoadingResolved}
+									isResolved={true}
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
 									onAlertClick={handleAlertClick}
@@ -558,7 +567,7 @@ const Alerts = () => {
 									'flex-1 min-h-0',
 									filteredAllAlerts.length === 0 &&
 										!isLoading &&
-										!isLoadingArchived &&
+										!isLoadingResolved &&
 										'flex items-center justify-center'
 								)}
 							>
@@ -570,7 +579,7 @@ const Alerts = () => {
 									onDeleteAlert={handleDeleteAnyAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
-									isLoading={isLoading || isLoadingArchived}
+									isLoading={isLoading || isLoadingResolved}
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
 									onAlertClick={handleAlertClick}
@@ -593,18 +602,18 @@ const Alerts = () => {
 
 					{syncedSelectedAlert &&
 						(() => {
-							const selectedIsArchived =
-								activeTab === AlertTab.Archived ||
-								(activeTab === AlertTab.All && archivedIds.has(syncedSelectedAlert.id));
+							const selectedIsResolved =
+								activeTab === AlertTab.Resolved ||
+								(activeTab === AlertTab.All && resolvedIds.has(syncedSelectedAlert.id));
 							return (
 								<AlertDetailsPanel
 									alert={syncedSelectedAlert}
-									isActive={!selectedIsArchived}
+									isActive={!selectedIsResolved}
 									timeRange={dashboardState.timeRange}
 									onClose={() => setSelectedAlert(null)}
 									onDismiss={handleDismissAlert}
 									onUndismiss={handleUndismissAlert}
-									onDelete={selectedIsArchived ? handleDeleteArchivedAlert : handleDeleteAlert}
+									onDelete={selectedIsResolved ? handleDeleteResolvedAlert : handleDeleteAlert}
 								/>
 							);
 						})()}

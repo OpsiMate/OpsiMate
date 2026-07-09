@@ -191,8 +191,8 @@ export interface Alert {
 	// Empty/undefined means the alert was not enriched. Not persisted.
 	appliedEnrichments?: AppliedEnrichment[];
 	// Transient: set client-side in the combined "All" view so a row knows it came from the
-	// archived list and can route its own actions. Not persisted.
-	isArchived?: boolean;
+	// resolved list and can route its own actions. Not persisted.
+	isResolved?: boolean;
 	ownerId?: string | null;
 }
 
@@ -487,10 +487,10 @@ export enum RetentionResource {
 	AuditLogs = 'audit_logs',
 	AlertHistoryEvents = 'alert_history_events',
 	AlertStatusHistory = 'alert_status_history',
-	// Active (non-archived) alerts. Aged by last-updated time, so stale alerts that never resolve
+	// Active (non-resolved) alerts. Aged by last-updated time, so stale alerts that never resolve
 	// (e.g. a source that stopped sending) get cleaned while genuinely-active ones are spared.
 	ActiveAlerts = 'active_alerts',
-	ArchivedAlerts = 'archived_alerts',
+	ResolvedAlerts = 'archived_alerts',
 	AlertComments = 'alert_comments',
 }
 

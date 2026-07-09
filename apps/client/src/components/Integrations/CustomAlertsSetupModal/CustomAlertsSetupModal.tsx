@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { API_HOST } from '@/lib/api';
-import { Archive, Check, Copy, ExternalLink, Send, Trash2 } from 'lucide-react';
+import { Check, CheckCircle2, Copy, ExternalLink, Send, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
@@ -16,13 +16,13 @@ export interface CustomAlertsSetupModalProps {
 export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetupModalProps) => {
 	const [copiedUrl, setCopiedUrl] = useState(false);
 	const [copiedPayload, setCopiedPayload] = useState(false);
-	const [copiedArchive, setCopiedArchive] = useState(false);
+	const [copiedResolve, setCopiedResolve] = useState(false);
 	const [copiedDelete, setCopiedDelete] = useState(false);
 	const { toast } = useToast();
 
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom?api_token={your_api_token}`;
-	const archiveUrl = `${API_HOST}/api/v1/alerts/{alertId}?api_token={your_api_token}`;
-	const deleteUrl = `${API_HOST}/api/v1/alerts/archived/{alertId}?api_token={your_api_token}`;
+	const resolveUrl = `${API_HOST}/api/v1/alerts/{alertId}?api_token={your_api_token}`;
+	const deleteUrl = `${API_HOST}/api/v1/alerts/resolved/{alertId}?api_token={your_api_token}`;
 
 	const examplePayload = `{
   "id": "unique-alert-id",
@@ -34,7 +34,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
   "runbookUrl": "https://docs.example.com/runbooks/cpu-alert"
 }`;
 
-	const handleCopy = async (text: string, type: 'url' | 'payload' | 'archive' | 'delete') => {
+	const handleCopy = async (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
 		try {
 			await navigator.clipboard.writeText(text);
 			if (type === 'url') {
@@ -43,9 +43,9 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 			} else if (type === 'payload') {
 				setCopiedPayload(true);
 				setTimeout(() => setCopiedPayload(false), 2000);
-			} else if (type === 'archive') {
-				setCopiedArchive(true);
-				setTimeout(() => setCopiedArchive(false), 2000);
+			} else if (type === 'resolve') {
+				setCopiedResolve(true);
+				setTimeout(() => setCopiedResolve(false), 2000);
 			} else {
 				setCopiedDelete(true);
 				setTimeout(() => setCopiedDelete(false), 2000);
@@ -79,9 +79,9 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 							<Send className="h-4 w-4" />
 							Create
 						</TabsTrigger>
-						<TabsTrigger value="archive" className="flex items-center gap-2">
-							<Archive className="h-4 w-4" />
-							Archive
+						<TabsTrigger value="resolve" className="flex items-center gap-2">
+							<CheckCircle2 className="h-4 w-4" />
+							Resolve
 						</TabsTrigger>
 						<TabsTrigger value="delete" className="flex items-center gap-2">
 							<Trash2 className="h-4 w-4" />
@@ -263,24 +263,24 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						</div>
 					</TabsContent>
 
-					<TabsContent value="archive" className="space-y-6">
-						{/* Archive Alert Endpoint */}
+					<TabsContent value="resolve" className="space-y-6">
+						{/* Resolve Alert Endpoint */}
 						<div className="space-y-3">
 							<div>
-								<h3 className="text-lg font-semibold mb-2 text-foreground">1. Archive Endpoint</h3>
+								<h3 className="text-lg font-semibold mb-2 text-foreground">1. Resolve Endpoint</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Send a DELETE request to archive an active alert. The alert will be moved to the
-									archived alerts table.
+									Send a DELETE request to resolve an active alert. The alert will be moved to the
+									resolved alerts table.
 								</p>
 							</div>
 							<div className="flex gap-2">
-								<Input value={archiveUrl} readOnly className="font-mono text-sm" />
+								<Input value={resolveUrl} readOnly className="font-mono text-sm" />
 								<Button
-									onClick={() => handleCopy(archiveUrl, 'archive')}
+									onClick={() => handleCopy(resolveUrl, 'resolve')}
 									variant="outline"
 									className="gap-2"
 								>
-									{copiedArchive ? (
+									{copiedResolve ? (
 										<>
 											<Check className="h-4 w-4" />
 											Copied
@@ -308,15 +308,15 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 							</div>
 						</div>
 
-						{/* What happens when archived */}
+						{/* What happens when resolved */}
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold text-foreground">2. What Happens When Archived</h3>
+							<h3 className="text-lg font-semibold text-foreground">2. What Happens When Resolved</h3>
 							<div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
 								<ul className="text-sm text-blue-900 dark:text-blue-100 space-y-2 list-disc list-inside">
 									<li>Alert is removed from the active alerts list</li>
-									<li>Alert is moved to the archived alerts table</li>
-									<li>Alert data is preserved and can be viewed in archives</li>
-									<li>Archived alerts can be permanently deleted later</li>
+									<li>Alert is moved to the resolved alerts table</li>
+									<li>Alert data is preserved and can be viewed in the Resolved tab</li>
+									<li>Resolved alerts can be permanently deleted later</li>
 								</ul>
 							</div>
 						</div>
@@ -338,7 +338,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 									1. Permanent Delete Endpoint
 								</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Send a DELETE request to permanently remove an archived alert from the system.
+									Send a DELETE request to permanently remove a resolved alert from the system.
 								</p>
 							</div>
 							<div className="flex gap-2">
@@ -367,7 +367,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 									<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
 										{'{alertId}'}
 									</code>{' '}
-									with the archived alert ID and{' '}
+									with the resolved alert ID and{' '}
 									<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
 										{'{your_api_token}'}
 									</code>{' '}
@@ -383,7 +383,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 								Warning: Permanent Action
 							</h4>
 							<p className="text-sm text-red-900 dark:text-red-100">
-								Permanently deleting an archived alert <strong>cannot be undone</strong>. The alert will
+								Permanently deleting a resolved alert <strong>cannot be undone</strong>. The alert will
 								be completely removed from the system with no way to recover it.
 							</p>
 						</div>
@@ -393,9 +393,9 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 							<h3 className="text-lg font-semibold text-foreground">2. Prerequisites</h3>
 							<div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
 								<ul className="text-sm text-blue-900 dark:text-blue-100 space-y-2 list-disc list-inside">
-									<li>The alert must first be archived before it can be permanently deleted</li>
-									<li>Use the Archive endpoint to move active alerts to the archive first</li>
-									<li>Only archived alerts can be permanently deleted</li>
+									<li>The alert must first be resolved before it can be permanently deleted</li>
+									<li>Use the Resolve endpoint to move active alerts to the resolved list first</li>
+									<li>Only resolved alerts can be permanently deleted</li>
 								</ul>
 							</div>
 						</div>
@@ -404,7 +404,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<div className="space-y-3">
 							<h3 className="text-lg font-semibold text-foreground">3. Example cURL Request</h3>
 							<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto border">
-								{`curl -X DELETE "${API_HOST}/api/v1/alerts/archived/alert-123?api_token=YOUR_TOKEN"`}
+								{`curl -X DELETE "${API_HOST}/api/v1/alerts/resolved/alert-123?api_token=YOUR_TOKEN"`}
 							</pre>
 						</div>
 					</TabsContent>

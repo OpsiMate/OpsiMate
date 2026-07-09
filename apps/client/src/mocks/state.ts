@@ -31,7 +31,7 @@ export { getPlaygroundUser };
 
 export interface PlaygroundState {
 	alerts: Alert[];
-	archivedAlerts: Alert[];
+	resolvedAlerts: Alert[];
 	alertComments: AlertComment[];
 	providers: Provider[];
 	services: ServiceWithProvider[];
@@ -409,10 +409,10 @@ const seedAlerts = () => {
 	}));
 };
 
-const createArchivedAlerts = (alerts: Alert[]) =>
+const createResolvedAlerts = (alerts: Alert[]) =>
 	alerts.slice(0, 20).map((alert, index) => ({
 		...alert,
-		id: `archived-${alert.id}-${index}`,
+		id: `resolved-${alert.id}-${index}`,
 		isDismissed: true,
 		status: AlertStatus.RESOLVED,
 		updatedAt: new Date(Date.now() - 1000 * 60 * 60 * (index + 1)).toISOString(),
@@ -425,7 +425,7 @@ const initialAlerts = seedAlerts();
 
 export const playgroundState: PlaygroundState = {
 	alerts: initialAlerts,
-	archivedAlerts: createArchivedAlerts(initialAlerts),
+	resolvedAlerts: createResolvedAlerts(initialAlerts),
 	alertComments: [
 		{
 			id: 'c-1',

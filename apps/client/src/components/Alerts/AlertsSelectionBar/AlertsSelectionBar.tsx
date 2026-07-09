@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Trash2 } from 'lucide-react';
+import { CheckCircle2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
@@ -20,7 +20,7 @@ export interface AlertsSelectionBarProps {
 	onClearSelection: () => void;
 	onDismissAll: () => void;
 	onAssignOwnerAll?: (ownerId: string | null) => void;
-	onArchiveAll?: () => void;
+	onResolveAll?: () => void;
 	onDeleteAll?: () => void;
 }
 
@@ -29,7 +29,7 @@ export const AlertsSelectionBar = ({
 	onClearSelection,
 	onDismissAll,
 	onAssignOwnerAll,
-	onArchiveAll,
+	onResolveAll,
 	onDeleteAll,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
@@ -67,10 +67,10 @@ export const AlertsSelectionBar = ({
 						Dismiss all
 					</Button>
 				)}
-				{onArchiveAll && (
-					<Button variant="outline" size="sm" onClick={onArchiveAll} className="gap-1.5">
-						<Archive className="h-3.5 w-3.5" />
-						Archive
+				{onResolveAll && (
+					<Button variant="outline" size="sm" onClick={onResolveAll} className="gap-1.5">
+						<CheckCircle2 className="h-3.5 w-3.5" />
+						Resolve
 					</Button>
 				)}
 				{onDeleteAll && (
@@ -97,7 +97,7 @@ export const AlertsSelectionBar = ({
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							This permanently deletes the selected alert{selectedAlerts.length !== 1 ? 's' : ''} — they
-							will not appear in the archive. This cannot be undone.
+							will not appear in the resolved list. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

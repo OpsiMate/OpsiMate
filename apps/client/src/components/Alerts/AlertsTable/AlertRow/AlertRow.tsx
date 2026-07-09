@@ -28,7 +28,7 @@ export interface AlertRowProps {
 	onUndismissAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
-	isArchived?: boolean;
+	isResolved?: boolean;
 	isDragging?: boolean;
 	// Tint the whole row by alert severity (the table's "severity colors" toggle).
 	severityColors?: boolean;
@@ -48,7 +48,7 @@ export const AlertRow = ({
 	onUndismissAlert,
 	onDeleteAlert,
 	onSelectAlerts,
-	isArchived = false,
+	isResolved = false,
 	isDragging = false,
 	severityColors = false,
 	onDragStart,
@@ -137,7 +137,7 @@ export const AlertRow = ({
 								key={column}
 								alert={alert}
 								className={COLUMN_WIDTHS.owner}
-								isArchived={isArchived}
+								isResolved={isResolved}
 							/>
 						);
 					case 'startsAt':

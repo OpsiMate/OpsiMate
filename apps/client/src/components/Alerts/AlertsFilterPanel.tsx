@@ -13,7 +13,7 @@ interface AlertsFilterPanelProps {
 	collapsed?: boolean;
 	className?: string;
 	tagKeys?: TagKeyInfo[];
-	isArchived?: boolean;
+	isResolved?: boolean;
 }
 
 const BASE_FILTER_FIELDS = ['status', 'severity', 'type', 'alertName', 'owner'];
@@ -33,7 +33,7 @@ export const AlertsFilterPanel = ({
 	collapsed = false,
 	className,
 	tagKeys = [],
-	isArchived = false,
+	isResolved = false,
 }: AlertsFilterPanelProps) => {
 	const { data: users = [] } = useUsers();
 
@@ -50,13 +50,13 @@ export const AlertsFilterPanel = ({
 			tagKeyLabels[getTagKeyColumnId(tk.key)] = tk.label;
 		});
 
-		const baseFields = isArchived ? BASE_FILTER_FIELDS.filter((f) => f !== 'status') : BASE_FILTER_FIELDS;
+		const baseFields = isResolved ? BASE_FILTER_FIELDS.filter((f) => f !== 'status') : BASE_FILTER_FIELDS;
 
 		return {
 			fields: [...baseFields, ...tagKeyFields],
 			fieldLabels: { ...BASE_FIELD_LABELS, ...tagKeyLabels },
 		};
-	}, [tagKeys, isArchived]);
+	}, [tagKeys, isResolved]);
 
 	const facets: FilterFacets = useMemo(() => {
 		// The value an alert presents for a given filter field, matching useAlertsFiltering's logic.

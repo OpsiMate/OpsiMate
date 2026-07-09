@@ -5,7 +5,7 @@ import { ReactNode } from 'react';
 
 export enum AlertTab {
 	Active = 'active',
-	Archived = 'archived',
+	Resolved = 'resolved',
 	All = 'all',
 }
 
@@ -22,7 +22,7 @@ export interface AlertsTableProps {
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	selectedAlerts?: Alert[];
 	isLoading?: boolean;
-	isArchived?: boolean;
+	isResolved?: boolean;
 	className?: string;
 	visibleColumns?: string[];
 	columnOrder?: string[];

@@ -422,8 +422,8 @@ fi`;
 							<h4 className="font-semibold text-sm mb-2 text-foreground">✨ Features</h4>
 							<ul className="text-sm text-muted-foreground space-y-1 list-disc ml-4">
 								<li>
-									<strong>Auto-resolve:</strong> Alerts are automatically archived when resolved in
-									Zabbix
+									<strong>Auto-resolve:</strong> Alerts are automatically resolved in OpsiMate when
+									resolved in Zabbix
 								</li>
 								<li>
 									<strong>Deep links:</strong> Click alerts in OpsiMate to jump directly to Zabbix
@@ -498,7 +498,7 @@ fi`;
 										<li>Trigger a test problem in Zabbix</li>
 										<li>Check OpsiMate Alerts page for the new alert</li>
 										<li>Resolve the problem in Zabbix</li>
-										<li>Verify the alert is archived in OpsiMate</li>
+										<li>Verify the alert is resolved in OpsiMate</li>
 									</ol>
 								</div>
 							</div>
