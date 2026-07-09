@@ -93,11 +93,11 @@ export class AlertController {
 			logger.info(`Received Uptime Kuma alert: ${JSON.stringify(payload)}`);
 
 			if (kumaStatus === 1) {
-				await this.alertBL.archiveAlert(monitorId);
+				await this.alertBL.resolveAlert(monitorId);
 
 				return res.status(200).json({
 					success: true,
-					data: { alertId: monitorId, archived: true },
+					data: { alertId: monitorId, resolved: true },
 				});
 			}
 
@@ -178,10 +178,10 @@ export class AlertController {
 				(hasValidRecoveryDate && hasValidRecoveryTime);
 
 			if (isResolved) {
-				await this.alertBL.archiveAlert(alertId);
+				await this.alertBL.resolveAlert(alertId);
 				return res.status(200).json({
 					success: true,
-					data: { alertId, archived: true },
+					data: { alertId, resolved: true },
 				});
 			}
 
@@ -269,7 +269,7 @@ export class AlertController {
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
 			if (incident.state.toLowerCase() === 'closed') {
-				await this.alertBL.archiveAlert(incident.incident_id);
+				await this.alertBL.resolveAlert(incident.incident_id);
 			} else {
 				await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
@@ -304,7 +304,7 @@ export class AlertController {
 			logger.info(`got datadog alert: ${JSON.stringify(payload)}`);
 
 			if (isRecovered) {
-				await this.alertBL.archiveAlert(alertId);
+				await this.alertBL.resolveAlert(alertId);
 				return res.status(200).json({ success: true, data: { alertId } });
 			}
 
@@ -379,7 +379,7 @@ export class AlertController {
 
 	// Receives alerts pushed by a Grafana "Webhook" contact point. Replaces the old polling job:
 	// Grafana now POSTs firing/resolved transitions here. Each alert in the batch is upserted
-	// (firing) or archived (resolved), keyed by Grafana's per-alert fingerprint.
+	// (firing) or resolved (resolved), keyed by Grafana's per-alert fingerprint.
 	async createCustomGrafanaAlert(req: Request, res: Response) {
 		try {
 			const payload = GrafanaWebhookSchema.parse(req.body);
@@ -401,7 +401,7 @@ export class AlertController {
 				}
 
 				if (alert.status?.toLowerCase() === 'resolved') {
-					await this.alertBL.archiveAlert(alertId);
+					await this.alertBL.resolveAlert(alertId);
 					processedIds.push(alertId);
 					continue;
 				}
@@ -486,7 +486,7 @@ export class AlertController {
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.archiveAlert(alertId);
+			await this.alertBL.resolveAlert(alertId);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting alert:', error);
@@ -494,26 +494,26 @@ export class AlertController {
 		}
 	}
 
-	async getArchivedAlerts(req: Request, res: Response) {
+	async getResolvedAlerts(req: Request, res: Response) {
 		try {
-			const alerts = await this.alertBL.getAllArchivedAlerts();
+			const alerts = await this.alertBL.getAllResolvedAlerts();
 			return res.json({ success: true, data: { alerts } });
 		} catch (error) {
-			logger.error('Error getting archived alerts:', error);
+			logger.error('Error getting resolved alerts:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
 
-	async deleteArchivedAlert(req: Request, res: Response) {
+	async deleteResolvedAlert(req: Request, res: Response) {
 		try {
 			const alertId = req.params.alertId;
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteArchivedAlert(alertId);
-			return res.json({ success: true, message: 'Archived alert deleted permanently' });
+			await this.alertBL.deleteResolvedAlert(alertId);
+			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
-			logger.error('Error deleting archived alert:', error);
+			logger.error('Error deleting resolved alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -527,7 +527,7 @@ export class AlertController {
 			const alertHistory: AlertHistory = await this.alertBL.getAlertHistory(alertId);
 			return res.json({ success: true, data: { ...alertHistory } });
 		} catch (error) {
-			logger.error('Error deleting archived alert:', error);
+			logger.error('Error deleting resolved alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -536,18 +536,18 @@ export class AlertController {
 		return this.setAlertOwnerWrapper(req, res, false);
 	}
 
-	async setArchivedAlertOwner(req: AuthenticatedRequest, res: Response) {
+	async setResolvedAlertOwner(req: AuthenticatedRequest, res: Response) {
 		return this.setAlertOwnerWrapper(req, res, true);
 	}
 
-	async setAlertOwnerWrapper(req: AuthenticatedRequest, res: Response, isArchived: boolean) {
+	async setAlertOwnerWrapper(req: AuthenticatedRequest, res: Response, isResolved: boolean) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId, isArchived, req.user?.fullName);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}

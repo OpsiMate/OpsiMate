@@ -1,20 +1,29 @@
 import { AlertStatus, Alert as SharedAlert, AlertHistory, normalizeAlertSeverity } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { ArchivedAlertRow, TableInfoRow } from './models';
+import { ResolvedAlertRow, TableInfoRow } from './models';
 
-export class ArchivedAlertRepository {
+export class ResolvedAlertRepository {
 	private db: Database.Database;
 
 	constructor(db: Database.Database) {
 		this.db = db;
 	}
 
-	async initArchivedAlertsTable(): Promise<void> {
+	async initResolvedAlertsTable(): Promise<void> {
 		return runAsync(() => {
+			// Migration: this store used to be called "archived"; carry existing rows over.
+			// Only rename when the legacy table exists AND the new one does not yet, so a
+			// rollback then re-upgrade (both present) can't crash on the RENAME.
+			const tableExists = (name: string): boolean =>
+				!!this.db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
+			if (tableExists('alerts_archived') && !tableExists('alerts_resolved')) {
+				this.db.prepare(`ALTER TABLE alerts_archived RENAME TO alerts_resolved`).run();
+			}
+
 			this.db.exec(
 				`
-						CREATE TABLE IF NOT EXISTS alerts_archived (
+						CREATE TABLE IF NOT EXISTS alerts_resolved (
 																	   id TEXT PRIMARY KEY,
 																	   status TEXT NOT NULL,
 																	   severity TEXT,
@@ -39,7 +48,7 @@ export class ArchivedAlertRepository {
 						);
 
 						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_update
-							BEFORE UPDATE ON alerts_archived
+							BEFORE UPDATE ON alerts_resolved
 							FOR EACH ROW
 						BEGIN
 							INSERT INTO alerts_history (alert_id, status)
@@ -47,7 +56,7 @@ export class ArchivedAlertRepository {
 						END;
 
 						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_insert
-							AFTER INSERT ON alerts_archived
+							AFTER INSERT ON alerts_resolved
 							FOR EACH ROW
 						BEGIN
 							INSERT INTO alerts_history (alert_id, status)
@@ -57,31 +66,31 @@ export class ArchivedAlertRepository {
 			);
 
 			// Backward compatibility: ensure tags column exists
-			const columns = this.db.prepare(`PRAGMA table_info(alerts_archived)`).all() as TableInfoRow[];
+			const columns = this.db.prepare(`PRAGMA table_info(alerts_resolved)`).all() as TableInfoRow[];
 			const hasTags = columns.some((col: TableInfoRow) => col.name === 'tags');
 
 			if (!hasTags) {
-				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN tags TEXT`).run();
+				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN tags TEXT`).run();
 			}
 
 			// Backward compatibility: ensure owner_id column exists
 			const hasOwnerId = columns.some((col: TableInfoRow) => col.name === 'owner_id');
 			if (!hasOwnerId) {
-				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
+				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
 			}
 
 			// Backward compatibility: ensure severity column exists
 			const hasSeverity = columns.some((col: TableInfoRow) => col.name === 'severity');
 			if (!hasSeverity) {
-				this.db.prepare(`ALTER TABLE alerts_archived ADD COLUMN severity TEXT`).run();
+				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN severity TEXT`).run();
 			}
 		});
 	}
 
-	async insertArchivedAlert(alert: SharedAlert): Promise<{ changes: number }> {
+	async insertResolvedAlert(alert: SharedAlert): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO alerts_archived
+                INSERT INTO alerts_resolved
                     (id, status, severity, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
@@ -122,7 +131,7 @@ export class ArchivedAlertRepository {
 		});
 	}
 
-	private toSharedAlert = (row: ArchivedAlertRow): SharedAlert => {
+	private toSharedAlert = (row: ResolvedAlertRow): SharedAlert => {
 		const tags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 		return {
 			id: row.id,
@@ -143,26 +152,26 @@ export class ArchivedAlertRepository {
 		};
 	};
 
-	async getAllArchivedAlerts(): Promise<SharedAlert[]> {
+	async getAllResolvedAlerts(): Promise<SharedAlert[]> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('SELECT * FROM alerts_archived ORDER BY archived_at DESC');
-			const rows = stmt.all() as ArchivedAlertRow[];
+			const stmt = this.db.prepare('SELECT * FROM alerts_resolved ORDER BY archived_at DESC');
+			const rows = stmt.all() as ResolvedAlertRow[];
 			return rows.map(this.toSharedAlert);
 		});
 	}
 
-	async deleteArchivedAlert(alertId: string): Promise<void> {
+	async deleteResolvedAlert(alertId: string): Promise<void> {
 		return runAsync(() => {
-			const stmt = this.db.prepare(`DELETE FROM alerts_archived WHERE id = ?`);
+			const stmt = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
 			stmt.run(alertId);
 		});
 	}
 
-	async updateArchivedAlertOwner(alertId: string, ownerId: number | null): Promise<SharedAlert | null> {
+	async updateResolvedAlertOwner(alertId: string, ownerId: number | null): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			this.db.prepare('UPDATE alerts_archived SET owner_id = ? WHERE id = ?').run(ownerId, alertId);
-			const row = this.db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(alertId) as
-				| ArchivedAlertRow
+			this.db.prepare('UPDATE alerts_resolved SET owner_id = ? WHERE id = ?').run(ownerId, alertId);
+			const row = this.db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertId) as
+				| ResolvedAlertRow
 				| undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});

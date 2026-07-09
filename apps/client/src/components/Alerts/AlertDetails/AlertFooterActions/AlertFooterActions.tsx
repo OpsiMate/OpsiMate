@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Check, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, CheckCircle2, RotateCcw, Trash2 } from 'lucide-react';
 
 interface AlertFooterActionsProps {
 	alert: Alert;
@@ -36,8 +36,8 @@ export const AlertFooterActions = ({ alert, isActive, onDismiss, onUndismiss, on
 				</Button>
 			)}
 			<Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete?.(alert.id)}>
-				<Archive className="h-3 w-3" />
-				Archive
+				<CheckCircle2 className="h-3 w-3" />
+				Resolve
 			</Button>
 		</div>
 	);

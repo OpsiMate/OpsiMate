@@ -37,7 +37,7 @@ import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
 import { AlertRepository } from './dal/alertRepository';
-import { ArchivedAlertRepository } from './dal/archivedAlertRepository';
+import { ResolvedAlertRepository } from './dal/resolvedAlertRepository';
 import { RetentionRepository } from './dal/retentionRepository';
 import { AuditLogRepository } from './dal/auditLogRepository';
 import { CustomActionRepository } from './dal/customActionRepository';
@@ -74,7 +74,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const alertCommentsRepo = new AlertCommentsRepository(db);
 	const auditLogRepo = new AuditLogRepository(db);
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
-	const archivedAlertRepo = new ArchivedAlertRepository(db);
+	const resolvedAlertRepo = new ResolvedAlertRepository(db);
 	const alertHistoryRepo = new AlertHistoryRepository(db);
 	const retentionRepo = new RetentionRepository(db);
 	// Needed by AlertBL (to resolve owner names for history); constructed here so it is also
@@ -86,7 +86,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		providerRepo.initProvidersTable(),
 		serviceRepo.initServicesTable(),
 		integrationRepo.initIntegrationsTable(),
-		archivedAlertRepo.initArchivedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
+		resolvedAlertRepo.initResolvedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
 		alertRepo.initAlertsTable(),
 		alertCommentsRepo.initAlertCommentsTable(),
 		alertHistoryRepo.initAlertHistoryEventsTable(),
@@ -98,7 +98,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// BL (needed by both)
 	const auditBL = new AuditBL(auditLogRepo);
 	const providerBL = new ProviderBL(providerRepo, serviceRepo, secretsMetadataRepo, auditBL);
-	const alertBL = new AlertBL(alertRepo, archivedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
+	const alertBL = new AlertBL(alertRepo, resolvedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	const retentionBL = new RetentionBL(retentionRepo);
 

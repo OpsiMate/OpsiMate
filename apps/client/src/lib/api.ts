@@ -600,14 +600,14 @@ export const alertsApi = {
 		return response;
 	},
 
-	// Get all archived alerts
-	async getAllArchivedAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
-		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts/archived');
+	// Get all resolved alerts
+	async getAllResolvedAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
+		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts/resolved');
 	},
 
-	// Delete an archived alert permanently
-	async deleteArchivedAlert(alertId: string): Promise<ApiResponse<void>> {
-		return await apiRequest<void>(`/alerts/archived/${alertId}`, 'DELETE');
+	// Delete an resolved alert permanently
+	async deleteResolvedAlert(alertId: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/resolved/${alertId}`, 'DELETE');
 	},
 
 	// Set alert owner
@@ -615,9 +615,9 @@ export const alertsApi = {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/owner`, 'PATCH', { ownerId });
 	},
 
-	// Set archived alert owner
-	async setArchivedAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/archived/${alertId}/owner`, 'PATCH', { ownerId });
+	// Set resolved alert owner
+	async setResolvedAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/resolved/${alertId}/owner`, 'PATCH', { ownerId });
 	},
 };
 

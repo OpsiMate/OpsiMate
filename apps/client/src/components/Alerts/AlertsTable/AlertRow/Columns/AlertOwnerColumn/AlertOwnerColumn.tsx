@@ -1,6 +1,6 @@
 import { PersonPicker } from '@/components/PersonPicker';
 import { TableCell } from '@/components/ui/table';
-import { useSetAlertOwner, useSetArchivedAlertOwner } from '@/hooks/queries/alerts';
+import { useSetAlertOwner, useSetResolvedAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
@@ -8,17 +8,17 @@ import { Alert } from '@OpsiMate/shared';
 export interface AlertOwnerColumnProps {
 	alert: Alert;
 	className?: string;
-	isArchived?: boolean;
+	isResolved?: boolean;
 }
 
-export const AlertOwnerColumn = ({ alert, className, isArchived = false }: AlertOwnerColumnProps) => {
+export const AlertOwnerColumn = ({ alert, className, isResolved = false }: AlertOwnerColumnProps) => {
 	const { data: users = [] } = useUsers();
 	const setOwnerMutation = useSetAlertOwner();
-	const setArchivedOwnerMutation = useSetArchivedAlertOwner();
+	const setResolvedOwnerMutation = useSetResolvedAlertOwner();
 
 	// Prefer the per-row transient flag (set in the combined "All" view) over the table-level prop.
-	const rowIsArchived = isArchived || Boolean(alert.isArchived);
-	const mutation = rowIsArchived ? setArchivedOwnerMutation : setOwnerMutation;
+	const rowIsResolved = isResolved || Boolean(alert.isResolved);
+	const mutation = rowIsResolved ? setResolvedOwnerMutation : setOwnerMutation;
 
 	const handleOwnerChange = (userId: string | null) => {
 		mutation.mutate({ alertId: alert.id, ownerId: userId });

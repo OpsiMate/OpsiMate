@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { Archive, Book, Check, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
+import { Book, Check, CheckCircle2, ExternalLink, MoreVertical, RotateCcw, Trash2, X } from 'lucide-react';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -18,13 +18,13 @@ export interface RowActionsProps {
 
 export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAlert }: RowActionsProps) => {
 	const { alertUrl, runbookUrl, isDismissed } = alert;
-	// In the combined "All" view a row carries a transient isArchived flag so it can present
-	// archived behaviour (permanent delete, no dismiss/archive) even though the table-level
-	// callbacks are shared across active and archived rows.
-	const isArchivedAlert = Boolean(alert.isArchived);
-	const isActive = !isArchivedAlert && Boolean(onDismissAlert);
+	// In the combined "All" view a row carries a transient isResolved flag so it can present
+	// resolved behaviour (permanent delete, no dismiss/resolve) even though the table-level
+	// callbacks are shared across active and resolved rows.
+	const isResolvedAlert = Boolean(alert.isResolved);
+	const isActive = !isResolvedAlert && Boolean(onDismissAlert);
 	const canToggle =
-		!isArchivedAlert && ((!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert)));
+		!isResolvedAlert && ((!isDismissed && Boolean(onDismissAlert)) || (isDismissed && Boolean(onUndismissAlert)));
 	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert);
 
 	const handleToggle = (event: React.MouseEvent) => {
@@ -91,8 +91,8 @@ export const RowActions = ({ alert, onDismissAlert, onUndismissAlert, onDeleteAl
 							>
 								{isActive ? (
 									<>
-										<Archive className="mr-2 h-3 w-3" />
-										Archive
+										<CheckCircle2 className="mr-2 h-3 w-3" />
+										Resolve
 									</>
 								) : (
 									<>

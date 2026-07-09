@@ -69,7 +69,7 @@ export type AlertRow = {
 	owner_id?: number | null;
 };
 
-export type ArchivedAlertRow = {
+export type ResolvedAlertRow = {
 	id: string;
 	type: AlertType;
 	status: string;

@@ -118,10 +118,10 @@ export const handlers = [
 		});
 	}),
 
-	http.get(`${API_BASE}/alerts/archived`, () => {
+	http.get(`${API_BASE}/alerts/resolved`, () => {
 		return HttpResponse.json({
 			success: true,
-			data: { alerts: playgroundState.archivedAlerts },
+			data: { alerts: playgroundState.resolvedAlerts },
 		});
 	}),
 
@@ -191,10 +191,10 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
-	http.patch(`${API_BASE}/alerts/archived/:alertId/owner`, async ({ params, request }) => {
+	http.patch(`${API_BASE}/alerts/resolved/:alertId/owner`, async ({ params, request }) => {
 		const alertId = params.alertId as string;
 		const body = (await request.json()) as { ownerId: string | null };
-		const alert = playgroundState.archivedAlerts.find((a) => a.id === alertId);
+		const alert = playgroundState.resolvedAlerts.find((a) => a.id === alertId);
 
 		if (!alert) {
 			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
@@ -212,22 +212,22 @@ export const handlers = [
 		const alertIndex = playgroundState.alerts.findIndex((a) => a.id === alertId);
 
 		if (alertIndex === -1) {
-			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to archive' });
+			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
 
 		const alert = { ...playgroundState.alerts[alertIndex] };
 		alert.updatedAt = nowIso();
 
 		playgroundState.alerts.splice(alertIndex, 1);
-		playgroundState.archivedAlerts.unshift(alert);
+		playgroundState.resolvedAlerts.unshift(alert);
 
 		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
 	}),
 
-	http.delete(`${API_BASE}/alerts/archived/:alertId`, ({ params }) => {
+	http.delete(`${API_BASE}/alerts/resolved/:alertId`, ({ params }) => {
 		const alertId = params.alertId as string;
-		playgroundState.archivedAlerts = playgroundState.archivedAlerts.filter((a) => a.id !== alertId);
-		return HttpResponse.json({ success: true, message: 'Archived alert deleted permanently' });
+		playgroundState.resolvedAlerts = playgroundState.resolvedAlerts.filter((a) => a.id !== alertId);
+		return HttpResponse.json({ success: true, message: 'Resolved alert deleted permanently' });
 	}),
 
 	http.get(`${API_BASE}/alerts/:alertId/history`, ({ params }) => {

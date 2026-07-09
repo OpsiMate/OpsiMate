@@ -57,7 +57,7 @@ export const AlertsTable = ({
 	onSearchTermChange,
 	timeRange,
 	onTimeRangeChange,
-	isArchived = false,
+	isResolved = false,
 	renderToolbar = true,
 	severityColors = false,
 	heading,
@@ -265,7 +265,7 @@ export const AlertsTable = ({
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
 									columnLabels={allColumnLabels}
-									isArchived={isArchived}
+									isResolved={isResolved}
 									severityColors={severityColors}
 									isDragging={isDragging}
 									onDragStart={handleDragStart}

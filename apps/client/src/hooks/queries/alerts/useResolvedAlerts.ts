@@ -2,13 +2,13 @@ import { alertsApi } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
-export const useArchivedAlerts = () => {
+export const useResolvedAlerts = () => {
 	return useQuery({
-		queryKey: queryKeys.archivedAlerts,
+		queryKey: queryKeys.resolvedAlerts,
 		queryFn: async () => {
-			const response = await alertsApi.getAllArchivedAlerts();
+			const response = await alertsApi.getAllResolvedAlerts();
 			if (!response.success) {
-				throw new Error(response.error || 'Failed to fetch archived alerts');
+				throw new Error(response.error || 'Failed to fetch resolved alerts');
 			}
 			return response.data?.alerts || [];
 		},

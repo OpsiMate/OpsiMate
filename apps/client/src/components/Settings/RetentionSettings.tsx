@@ -31,9 +31,9 @@ const RESOURCE_META: Record<RetentionResource, { title: string; description: str
 		title: 'Active alerts',
 		description: 'Open alerts not updated for this long (clears stale alerts that never resolved).',
 	},
-	[RetentionResource.ArchivedAlerts]: {
-		title: 'Archived alerts',
-		description: 'Resolved/archived alerts kept for historical reference.',
+	[RetentionResource.ResolvedAlerts]: {
+		title: 'Resolved alerts',
+		description: 'Resolved/resolved alerts kept for historical reference.',
 	},
 	[RetentionResource.AlertComments]: {
 		title: 'Alert comments',
@@ -43,7 +43,7 @@ const RESOURCE_META: Record<RetentionResource, { title: string; description: str
 
 const RESOURCE_ORDER: RetentionResource[] = [
 	RetentionResource.ActiveAlerts,
-	RetentionResource.ArchivedAlerts,
+	RetentionResource.ResolvedAlerts,
 	RetentionResource.AlertStatusHistory,
 	RetentionResource.AlertHistoryEvents,
 	RetentionResource.AlertComments,

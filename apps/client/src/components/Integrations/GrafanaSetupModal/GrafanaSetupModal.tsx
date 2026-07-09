@@ -130,7 +130,7 @@ export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps
 								</li>
 								<li>
 									Make sure your alert rules send <strong>resolved</strong> notifications too —
-									OpsiMate uses them to automatically archive alerts when they clear.
+									OpsiMate uses them to automatically resolve alerts when they clear.
 								</li>
 							</ol>
 						</div>
@@ -141,7 +141,7 @@ export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps
 								OpsiMate reads each alert&apos;s <code>fingerprint</code> as the identifier,{' '}
 								<code>alertname</code> as the name, the <code>summary</code> annotation as the summary,
 								and the alert labels as tags. A <code>firing</code> status creates/updates the alert; a{' '}
-								<code>resolved</code> status archives it.
+								<code>resolved</code> status resolves it.
 							</p>
 						</div>
 

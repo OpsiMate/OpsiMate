@@ -9,13 +9,13 @@ const logger = new Logger('test-alerts');
 let app: SuperTest<Test>;
 let db: Database.Database;
 let testAlerts: Alert[] = [];
-let testAlertsArchived: Alert[] = [];
+let testResolvedAlerts: Alert[] = [];
 let jwtToken: string;
 
 const seedAlerts = () => {
 	// Clear existing alerts
 	db.exec('DELETE FROM alerts');
-	db.exec('DELETE FROM alerts_archived');
+	db.exec('DELETE FROM alerts_resolved');
 
 	// Create sample active alerts
 	const sampleAlerts: Omit<AlertRow, 'created_at'>[] = [
@@ -83,35 +83,35 @@ const seedAlerts = () => {
 	});
 
 	// -------------------------
-	// Add sample archived alert
+	// Add sample resolved alert
 	// -------------------------
 
-	const sampleArchivedAlerts = [
+	const sampleResolvedAlerts = [
 		{
-			id: 'archived-1',
+			id: 'resolved-1',
 			type: 'Grafana',
 			status: 'resolved',
 			tags: { tag: 'system' },
 			starts_at: new Date(Date.now() - 5 * 3600000).toISOString(), // 5 hours ago
 			updated_at: new Date().toISOString(),
-			alert_url: 'https://example.com/archived/1',
-			alert_name: 'Archived Test Alert',
-			summary: 'Archived Summary',
-			runbook_url: 'https://runbook.com/archived1',
+			alert_url: 'https://example.com/resolved/1',
+			alert_name: 'Resolved Test Alert',
+			summary: 'Resolved Summary',
+			runbook_url: 'https://runbook.com/resolved1',
 			archived_at: new Date().toISOString(),
 			is_dismissed: false,
 		},
 	];
 
-	const insertArchivedStmt = db.prepare(`
-        INSERT INTO alerts_archived
+	const insertResolvedStmt = db.prepare(`
+        INSERT INTO alerts_resolved
         (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at,
          is_dismissed)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-	sampleArchivedAlerts.forEach((alert) => {
-		insertArchivedStmt.run(
+	sampleResolvedAlerts.forEach((alert) => {
+		insertResolvedStmt.run(
 			alert.id,
 			alert.status,
 			JSON.stringify(alert.tags ?? {}),
@@ -140,8 +140,8 @@ const seedAlerts = () => {
 		isDismissed: row.is_dismissed,
 	}));
 
-	// Optionally export archived alerts to tests
-	testAlertsArchived = sampleArchivedAlerts.map((row) => ({
+	// Optionally export resolved alerts to tests
+	testResolvedAlerts = sampleResolvedAlerts.map((row) => ({
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
@@ -154,7 +154,7 @@ const seedAlerts = () => {
 		isDismissed: row.is_dismissed,
 	}));
 
-	logger.info(`Seeded ${sampleAlerts.length} active alerts + ${sampleArchivedAlerts.length} archived alerts`);
+	logger.info(`Seeded ${sampleAlerts.length} active alerts + ${sampleResolvedAlerts.length} resolved alerts`);
 };
 
 beforeAll(async () => {
@@ -671,10 +671,10 @@ describe('Alerts API', () => {
 			expect(parsedTags).toEqual({ service: 'web', env: 'prod', severity: 'warning' });
 		});
 
-		test('should archive an existing Datadog alert when alert_transition is recovered', async () => {
+		test('should resolve an existing Datadog alert when alert_transition is recovered', async () => {
 			const now = '1765302826000';
-			const alertId = 'datadog-alert-archive';
-			const alertInstanceId = 'datadog-alert-archive-1';
+			const alertId = 'datadog-alert-resolve';
+			const alertInstanceId = 'datadog-alert-resolve-1';
 
 			const firingPayload = {
 				id: alertInstanceId,
@@ -726,9 +726,9 @@ describe('Alerts API', () => {
 			const rowAfter = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
 			expect(rowAfter).toBeUndefined();
 
-			const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(alertInstanceId);
-			expect(archivedRow).toBeDefined();
-			expect(archivedRow.id).toBe(alertInstanceId);
+			const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertInstanceId);
+			expect(resolvedRow).toBeDefined();
+			expect(resolvedRow.id).toBe(alertInstanceId);
 		});
 
 		test('should return 400 for invalid Datadog payload', async () => {
@@ -875,9 +875,9 @@ describe('Alerts API', () => {
 		});
 
 		// --------------------------------------------------------
-		// TEST 2: Should archive an existing alert on UP (status 1)
+		// TEST 2: Should resolve an existing alert on UP (status 1)
 		// --------------------------------------------------------
-		test('should archive alert on UP status', async () => {
+		test('should resolve alert on UP status', async () => {
 			// First create alert
 			db.prepare(
 				`
@@ -909,8 +909,8 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body.data.alertId).toBe('UPTIMEKUMA_4');
 
-			const archived = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get('UPTIMEKUMA_4');
-			expect(archived).toBeDefined();
+			const resolvedAlert = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get('UPTIMEKUMA_4');
+			expect(resolvedAlert).toBeDefined();
 
 			const active = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4');
 			expect(active).toBeUndefined();
@@ -1036,10 +1036,10 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
 			expect(row).toBeUndefined();
 
-			const archivedRow = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get(existingId);
+			const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(existingId);
 
-			expect(archivedRow).toBeDefined();
-			expect(archivedRow.id).toBe(existingId);
+			expect(resolvedRow).toBeDefined();
+			expect(resolvedRow.id).toBe(existingId);
 		});
 
 		test('should return 400 for missing incident field', async () => {
@@ -1156,10 +1156,10 @@ describe('Alerts API', () => {
 		});
 	});
 
-	describe('Archived Alerts API', () => {
-		describe('GET /api/v1/alerts/archived', () => {
-			test('should fetch all archived alerts successfully', async () => {
-				const response = await app.get('/api/v1/alerts/archived').set('Authorization', `Bearer ${jwtToken}`);
+	describe('Resolved Alerts API', () => {
+		describe('GET /api/v1/alerts/resolved', () => {
+			test('should fetch all resolved alerts successfully', async () => {
+				const response = await app.get('/api/v1/alerts/resolved').set('Authorization', `Bearer ${jwtToken}`);
 
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
@@ -1167,14 +1167,14 @@ describe('Alerts API', () => {
 				expect(response.body.data.alerts.length).toBe(1);
 
 				const alert = response.body.data.alerts[0];
-				expect(alert.id).toBe(testAlertsArchived[0].id);
-				expect(alert.alertName).toBe(testAlertsArchived[0].alertName);
+				expect(alert.id).toBe(testResolvedAlerts[0].id);
+				expect(alert.alertName).toBe(testResolvedAlerts[0].alertName);
 			});
 
-			test('should return empty array when no archived alerts exist', async () => {
-				db.exec('DELETE FROM alerts_archived');
+			test('should return empty array when no resolved alerts exist', async () => {
+				db.exec('DELETE FROM alerts_resolved');
 
-				const response = await app.get('/api/v1/alerts/archived').set('Authorization', `Bearer ${jwtToken}`);
+				const response = await app.get('/api/v1/alerts/resolved').set('Authorization', `Bearer ${jwtToken}`);
 
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
@@ -1182,15 +1182,15 @@ describe('Alerts API', () => {
 			});
 
 			test('should return 401 when no auth token is provided', async () => {
-				const response = await app.get('/api/v1/alerts/archived');
+				const response = await app.get('/api/v1/alerts/resolved');
 
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);
 			});
 		});
 
-		describe('Active to Archived transition', () => {
-			test('should archive alert with resolved status when deleted', async () => {
+		describe('Active to Resolved transition', () => {
+			test('should resolve alert with resolved status when deleted', async () => {
 				// Create a new alert
 				const newAlertPayload = {
 					id: 'alert-to-delete',
@@ -1217,7 +1217,7 @@ describe('Alerts API', () => {
 				const activeRow = db.prepare('SELECT * FROM alerts WHERE id = ?').get(newAlertPayload.id);
 				expect(activeRow).toBeDefined();
 
-				// Delete the alert (this should archive it)
+				// Delete the alert (this should resolve it)
 				const deleteResponse = await app
 					.delete(`/api/v1/alerts/${newAlertPayload.id}`)
 					.set('Authorization', `Bearer ${jwtToken}`);
@@ -1229,34 +1229,34 @@ describe('Alerts API', () => {
 				const activeRowAfterDelete = db.prepare('SELECT * FROM alerts WHERE id = ?').get(newAlertPayload.id);
 				expect(activeRowAfterDelete).toBeUndefined();
 
-				// Verify alert is in archived alerts table with resolved status
-				const archivedRow = db
-					.prepare('SELECT * FROM alerts_archived WHERE id = ?')
+				// Verify alert is in resolved alerts table with resolved status
+				const resolvedRow = db
+					.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
 					.get(newAlertPayload.id) as any;
-				expect(archivedRow).toBeDefined();
-				expect(archivedRow.id).toBe(newAlertPayload.id);
-				expect(archivedRow.status).toBe('resolved');
-				expect(archivedRow.alert_name).toBe(newAlertPayload.alertName);
-				expect(archivedRow.archived_at).toBeDefined();
+				expect(resolvedRow).toBeDefined();
+				expect(resolvedRow.id).toBe(newAlertPayload.id);
+				expect(resolvedRow.status).toBe('resolved');
+				expect(resolvedRow.alert_name).toBe(newAlertPayload.alertName);
+				expect(resolvedRow.archived_at).toBeDefined();
 			});
 		});
 
-		describe('DELETE /api/v1/alerts/archived/:id', () => {
-			test('should delete an archived alert successfully', async () => {
+		describe('DELETE /api/v1/alerts/resolved/:id', () => {
+			test('should delete a resolved alert successfully', async () => {
 				const response = await app
-					.delete(`/api/v1/alerts/archived/${testAlertsArchived[0].id}`)
+					.delete(`/api/v1/alerts/resolved/${testResolvedAlerts[0].id}`)
 					.set('Authorization', `Bearer ${jwtToken}`);
 
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
 
-				const row = db.prepare('SELECT * FROM alerts_archived WHERE id = ?').get('archived-del-1');
+				const row = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get('resolved-del-1');
 
 				expect(row).toBeUndefined();
 			});
 
 			test('should return 401 when no auth token is provided', async () => {
-				const response = await app.delete('/api/v1/alerts/archived/some-id');
+				const response = await app.delete('/api/v1/alerts/resolved/some-id');
 
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);

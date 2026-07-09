@@ -15,7 +15,7 @@ import { ServiceCustomFieldRepository } from '../src/dal/serviceCustomFieldRepos
 import { ServiceCustomFieldValueRepository } from '../src/dal/serviceCustomFieldValueRepository.ts';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository.ts';
 import { CustomActionRepository } from '../src/dal/customActionRepository.ts';
-import { ArchivedAlertRepository } from '../src/dal/archivedAlertRepository.ts';
+import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository.ts';
 
 // Mock the Kubernetes client to avoid ES module issues
 vi.mock('@kubernetes/client-node', () => ({
@@ -63,7 +63,7 @@ export async function setupDB(): Promise<Database.Database> {
 	const tagRepo = new TagRepository(db);
 	const integrationRepo = new IntegrationRepository(db);
 	const alertRepo = new AlertRepository(db);
-	const archivedAlertRepo = new ArchivedAlertRepository(db);
+	const resolvedAlertRepo = new ResolvedAlertRepository(db);
 	const userRepo = new UserRepository(db);
 	const auditLogRepo = new AuditLogRepository(db);
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
@@ -79,7 +79,7 @@ export async function setupDB(): Promise<Database.Database> {
 		dashboardRepo.initDashboardTable(),
 		tagRepo.initTagsTables(),
 		integrationRepo.initIntegrationsTable(),
-		archivedAlertRepo.initArchivedAlertsTable(), // should be prior to alertRepo.initAlertsTable()
+		resolvedAlertRepo.initResolvedAlertsTable(), // should be prior to alertRepo.initAlertsTable()
 		alertRepo.initAlertsTable(),
 		userRepo.initUsersTable(),
 		auditLogRepo.initAuditLogsTable(),

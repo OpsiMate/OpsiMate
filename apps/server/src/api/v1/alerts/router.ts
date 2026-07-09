@@ -8,10 +8,10 @@ export default function createAlertRouter(controller: AlertController) {
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
 
-	// Archived alerts (must be before /:alertId to avoid route conflicts)
-	router.get('/archived', controller.getArchivedAlerts.bind(controller));
-	router.delete('/archived/:alertId', controller.deleteArchivedAlert.bind(controller));
-	router.patch('/archived/:id/owner', controller.setArchivedAlertOwner.bind(controller));
+	// Resolved alerts (must be before /:alertId to avoid route conflicts)
+	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
+	router.delete('/resolved/:alertId', controller.deleteResolvedAlert.bind(controller));
+	router.patch('/resolved/:id/owner', controller.setResolvedAlertOwner.bind(controller));
 
 	// Delete alert (parameterized route must come after specific routes)
 	router.delete('/:alertId', controller.deleteAlert.bind(controller));

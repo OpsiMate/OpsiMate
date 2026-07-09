@@ -16,7 +16,7 @@ export class GrafanaIntegrationConnector implements IntegrationConnector {
 	}
 
 	async deleteData(_: Integration, alertBL: AlertBL): Promise<void> {
-		await alertBL.archiveNonActiveAlerts(new Set(), 'Grafana');
+		await alertBL.resolveNonActiveAlerts(new Set(), 'Grafana');
 	}
 
 	async testConnection(integration: Integration): Promise<{ success: boolean; error?: string }> {

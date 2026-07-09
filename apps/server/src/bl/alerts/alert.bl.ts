@@ -1,5 +1,5 @@
 import { AlertRepository } from '../../dal/alertRepository';
-import { ArchivedAlertRepository } from '../../dal/archivedAlertRepository';
+import { ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
 	AlertComment,
@@ -34,7 +34,7 @@ export class AlertBL {
 
 	constructor(
 		private alertRepo: AlertRepository,
-		private archivedAlertRepo: ArchivedAlertRepository,
+		private resolvedAlertRepo: ResolvedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
@@ -153,68 +153,68 @@ export class AlertBL {
 	}
 	// endregion
 
-	// region archived
-	async getAllArchivedAlerts(): Promise<Alert[]> {
+	// region resolved
+	async getAllResolvedAlerts(): Promise<Alert[]> {
 		try {
-			logger.info('Fetching all archived alerts');
-			return await this.archivedAlertRepo.getAllArchivedAlerts();
+			logger.info('Fetching all resolved alerts');
+			return await this.resolvedAlertRepo.getAllResolvedAlerts();
 		} catch (error) {
-			logger.error('Error fetching archived alerts', error);
+			logger.error('Error fetching resolved alerts', error);
 			throw error;
 		}
 	}
 
-	async archiveAlert(activeAlertId: string): Promise<void> {
+	async resolveAlert(activeAlertId: string): Promise<void> {
 		try {
 			logger.info(`Archiving alert with id: ${activeAlertId}`);
 
 			// Get the active alert
 			const alert = await this.alertRepo.getAlert(activeAlertId);
 			if (!alert) {
-				logger.warn(`Alert with id ${activeAlertId} not found, nothing to archive`);
+				logger.warn(`Alert with id ${activeAlertId} not found, nothing to resolve`);
 				return;
 			}
 
-			// Insert into archived table
-			await this.archivedAlertRepo.insertArchivedAlert(alert);
+			// Insert into resolved table
+			await this.resolvedAlertRepo.insertResolvedAlert(alert);
 
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
 
-			logger.info(`Archived alert ${activeAlertId}`);
+			logger.info(`Resolved alert ${activeAlertId}`);
 		} catch (error) {
 			logger.error(`Error archiving alert ${activeAlertId}`, error);
 			throw error;
 		}
 	}
 
-	async archiveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
+	async resolveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
 		try {
 			logger.info(`Archiving alerts not in ids for type: ${alertType}`);
-			// Get alerts that need to be archived
-			const alertsToArchive = await this.alertRepo.getAlertsNotInIds(activeAlertIds, alertType);
+			// Get alerts that need to be resolved
+			const alertsToResolve = await this.alertRepo.getAlertsNotInIds(activeAlertIds, alertType);
 
-			// Archive each alert
-			for (const alert of alertsToArchive) {
-				await this.archivedAlertRepo.insertArchivedAlert(alert);
+			// Resolve each alert
+			for (const alert of alertsToResolve) {
+				await this.resolvedAlertRepo.insertResolvedAlert(alert);
 			}
 
 			// Delete alerts from active table
 			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
 
-			logger.info(`Archived ${alertsToArchive.length} alerts`);
+			logger.info(`Resolved ${alertsToResolve.length} alerts`);
 		} catch (error) {
 			logger.error('Error archiving alerts', error);
 			throw error;
 		}
 	}
 
-	async deleteArchivedAlert(alertId: string): Promise<void> {
+	async deleteResolvedAlert(alertId: string): Promise<void> {
 		try {
-			logger.info(`Permanently deleting archived alert with id: ${alertId}`);
-			await this.archivedAlertRepo.deleteArchivedAlert(alertId);
+			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
+			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 		} catch (error) {
-			logger.error('Error deleting archived alert', error);
+			logger.error('Error deleting resolved alert', error);
 			throw error;
 		}
 	}
@@ -225,7 +225,7 @@ export class AlertBL {
 		// Merge two sources: automatic status transitions (trigger-populated) and user-driven
 		// events (ownership, dismissals, actions, comments), newest first.
 		const [statusHistory, events] = await Promise.all([
-			this.archivedAlertRepo.getAlertHistory(alertId),
+			this.resolvedAlertRepo.getAlertHistory(alertId),
 			this.alertHistoryRepo.getEvents(alertId),
 		]);
 
@@ -255,15 +255,15 @@ export class AlertBL {
 	async setAlertOwner(
 		alertId: string,
 		ownerId: string | null,
-		isArchived: boolean,
+		isResolved: boolean,
 		actorName?: string | null
 	): Promise<Alert | null> {
 		try {
-			logger.info(`Setting owner ${ownerId} for alert: ${alertId} is Archived ${isArchived}`);
+			logger.info(`Setting owner ${ownerId} for alert: ${alertId} is Resolved ${isResolved}`);
 			// Convert string to number for database storage
 			const numericOwnerId = ownerId !== null ? parseInt(ownerId, 10) : null;
-			const updated = isArchived
-				? await this.archivedAlertRepo.updateArchivedAlertOwner(alertId, numericOwnerId)
+			const updated = isResolved
+				? await this.resolvedAlertRepo.updateResolvedAlertOwner(alertId, numericOwnerId)
 				: await this.alertRepo.updateAlertOwner(alertId, numericOwnerId);
 
 			if (updated) {

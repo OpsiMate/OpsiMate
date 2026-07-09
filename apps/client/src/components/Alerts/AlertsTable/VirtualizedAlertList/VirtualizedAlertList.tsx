@@ -20,7 +20,7 @@ interface VirtualizedAlertListProps {
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	columnLabels?: Record<string, string>;
-	isArchived?: boolean;
+	isResolved?: boolean;
 	// Tint rows by alert severity (the "severity colors" toggle).
 	severityColors?: boolean;
 	isDragging?: boolean;
@@ -43,7 +43,7 @@ export const VirtualizedAlertList = ({
 	onDeleteAlert,
 	onSelectAlerts,
 	columnLabels,
-	isArchived = false,
+	isResolved = false,
 	severityColors = false,
 	isDragging = false,
 	onDragStart,
@@ -120,7 +120,7 @@ export const VirtualizedAlertList = ({
 									onUndismissAlert={onUndismissAlert}
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
-									isArchived={isArchived}
+									isResolved={isResolved}
 									severityColors={severityColors}
 									isDragging={isDragging}
 									onDragStart={onDragStart}
