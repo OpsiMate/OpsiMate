@@ -11,7 +11,7 @@ vi.mock('@/hooks/queries', () => ({
 	useCustomFields: vi.fn(),
 	useStartService: vi.fn(),
 	useStopService: vi.fn(),
-	useDismissAlert: vi.fn(),
+	useSilenceAlert: vi.fn(),
 	useSaveView: vi.fn(),
 	useDeleteView: vi.fn(),
 }));
@@ -78,7 +78,7 @@ describe('Dashboard', () => {
 			status: 'idle',
 		} as unknown as ReturnType<typeof queries.useStopService>);
 
-		vi.mocked(queries.useDismissAlert).mockReturnValue({
+		vi.mocked(queries.useSilenceAlert).mockReturnValue({
 			mutateAsync: vi.fn(),
 			mutate: vi.fn(),
 			data: undefined,
@@ -92,7 +92,7 @@ describe('Dashboard', () => {
 			failureCount: 0,
 			failureReason: null,
 			status: 'idle',
-		} as unknown as ReturnType<typeof queries.useDismissAlert>);
+		} as unknown as ReturnType<typeof queries.useSilenceAlert>);
 
 		vi.mocked(queries.useSaveView).mockReturnValue({
 			mutateAsync: vi.fn(),

@@ -2,7 +2,7 @@ export const STATUS_HUES = {
 	FIRING: 0,
 	PENDING: 45,
 	ACKNOWLEDGED: 45,
-	DISMISSED: 120,
+	SILENCED: 120,
 	RESOLVED: 120,
 	SUPPRESSED: 120,
 	UNKNOWN: 0,
@@ -12,7 +12,7 @@ export const STATUS_SATURATION = {
 	FIRING: 85,
 	PENDING: 90,
 	ACKNOWLEDGED: 90,
-	DISMISSED: 60,
+	SILENCED: 60,
 	RESOLVED: 60,
 	SUPPRESSED: 60,
 	UNKNOWN: 0,
@@ -34,7 +34,7 @@ export const LIGHTNESS_RANGE = {
 export const STATUS_LEGEND_COLORS = {
 	FIRING: 'hsl(0, 85%, 60%)',
 	PENDING_ACK: 'hsl(45, 90%, 60%)',
-	DISMISSED: 'hsl(120, 60%, 60%)',
+	SILENCED: 'hsl(120, 60%, 60%)',
 	UNKNOWN: 'hsl(0, 0%, 60%)',
 } as const;
 

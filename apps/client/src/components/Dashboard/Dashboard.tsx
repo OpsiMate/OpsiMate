@@ -3,7 +3,7 @@ import { RightSidebarWithLogs as RightSidebar } from '@/components/RightSidebarW
 import { Service, ServiceTable } from '@/components/ServiceTable';
 import { FilterSidebar } from '@/components/shared';
 import { TableSettingsModal } from '@/components/TableSettingsModal';
-import { useActiveView, useAlerts, useCustomFields, useDismissAlert, useServices, useViews } from '@/hooks/queries';
+import { useActiveView, useAlerts, useCustomFields, useSilenceAlert, useServices, useViews } from '@/hooks/queries';
 import { useToast } from '@/hooks/use-toast';
 import { SavedView } from '@/types/SavedView';
 import { Logger } from '@OpsiMate/shared';
@@ -34,7 +34,7 @@ export const Dashboard = () => {
 	const { activeViewId, setActiveView } = useActiveView();
 	const { data: customFields = [] } = useCustomFields();
 
-	const dismissAlertMutation = useDismissAlert();
+	const silenceAlertMutation = useSilenceAlert();
 
 	const [selectedService, setSelectedService] = useState<ServiceWithAlerts | null>(null);
 	const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -109,14 +109,14 @@ export const Dashboard = () => {
 		}
 	};
 
-	const handleAlertDismiss = async (alertId: string) => {
+	const handleAlertSilence = async (alertId: string) => {
 		try {
-			await dismissAlertMutation.mutateAsync(alertId);
+			await silenceAlertMutation.mutateAsync(alertId);
 		} catch (error) {
-			logger.error('Error dismissing alert:', error);
+			logger.error('Error silencing alert:', error);
 			toast({
 				title: 'Error',
-				description: 'Failed to dismiss alert',
+				description: 'Failed to silence alert',
 				variant: 'destructive',
 			});
 		}
@@ -195,7 +195,7 @@ export const Dashboard = () => {
 									collapsed={rightSidebarCollapsed}
 									onServiceUpdate={handleServiceUpdate}
 									alerts={alerts}
-									onAlertDismiss={handleAlertDismiss}
+									onAlertSilence={handleAlertSilence}
 								/>
 							</div>
 						)}

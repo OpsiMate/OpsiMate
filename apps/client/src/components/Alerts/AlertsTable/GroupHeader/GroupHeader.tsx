@@ -18,7 +18,7 @@ const getStatusBadgeVariant = (status: GroupStatus): 'destructive' | 'success' |
 			return 'secondary';
 		case 'resolved':
 			return 'success';
-		case 'dismissed':
+		case 'silenced':
 			return 'muted';
 	}
 };

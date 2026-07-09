@@ -82,7 +82,7 @@ export class AlertBL {
 	// enrichments) always see the same three values the severity field uses. The tag is
 	// hidden from the UI — users only interact with the first-class severity.
 	async insertOrUpdateAlert(
-		alert: Omit<Alert, 'createdAt' | 'isDismissed' | 'severity'> & { severity?: string }
+		alert: Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string }
 	): Promise<{ changes: number }> {
 		try {
 			logger.info(`Inserting alert: ${alert.id}`);
@@ -114,16 +114,16 @@ export class AlertBL {
 		}
 	}
 
-	async dismissAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	async silenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
 		try {
-			logger.info(`Dismissing alert with id: ${id}`);
-			const alert = await this.alertRepo.dismissAlert(id);
+			logger.info(`Silencing alert with id: ${id}`);
+			const alert = await this.alertRepo.silenceAlert(id);
 			if (alert) {
-				await this.recordHistoryEvent(id, AlertHistoryEventType.DISMISSED, 'Alert dismissed', actorName);
+				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, 'Alert silenced', actorName);
 			}
 			return alert;
 		} catch (error) {
-			logger.error('Error dismissing alert', error);
+			logger.error('Error silencing alert', error);
 			throw error;
 		}
 	}
@@ -138,16 +138,16 @@ export class AlertBL {
 		}
 	}
 
-	async undismissAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	async unsilenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
 		try {
-			logger.info(`Undismissing alert with id: ${id}`);
-			const alert = await this.alertRepo.undismissAlert(id);
+			logger.info(`Unsilenceing alert with id: ${id}`);
+			const alert = await this.alertRepo.unsilenceAlert(id);
 			if (alert) {
-				await this.recordHistoryEvent(id, AlertHistoryEventType.UNDISMISSED, 'Alert restored', actorName);
+				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert restored', actorName);
 			}
 			return alert;
 		} catch (error) {
-			logger.error('Error undismissing alert', error);
+			logger.error('Error unsilenceing alert', error);
 			throw error;
 		}
 	}
@@ -223,7 +223,7 @@ export class AlertBL {
 	// region history
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {
 		// Merge two sources: automatic status transitions (trigger-populated) and user-driven
-		// events (ownership, dismissals, actions, comments), newest first.
+		// events (ownership, silencings, actions, comments), newest first.
 		const [statusHistory, events] = await Promise.all([
 			this.resolvedAlertRepo.getAlertHistory(alertId),
 			this.alertHistoryRepo.getEvents(alertId),

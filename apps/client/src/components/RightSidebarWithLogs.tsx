@@ -34,7 +34,7 @@ interface RightSidebarProps {
 	collapsed: boolean;
 	onServiceUpdate?: (updatedService: Service) => void;
 	alerts?: Alert[];
-	onAlertDismiss?: (alertId: string) => void;
+	onAlertSilence?: (alertId: string) => void;
 }
 
 export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
@@ -43,7 +43,7 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 	collapsed,
 	onServiceUpdate,
 	alerts = [],
-	onAlertDismiss,
+	onAlertSilence,
 }: RightSidebarProps) {
 	const { toast } = useToast();
 	const [logs, setLogs] = useState<string[]>([]);
@@ -417,10 +417,10 @@ export const RightSidebarWithLogs = memo(function RightSidebarWithLogs({
 							icon={AlertTriangle}
 							isOpen={sectionsOpen.alerts}
 							onToggle={() => toggleSection('alerts')}
-							badge={service?.serviceAlerts?.filter((a) => !a.isDismissed).length || 0}
+							badge={service?.serviceAlerts?.filter((a) => !a.isSilenced).length || 0}
 							className="text-orange-600"
 						>
-							<AlertsSection alerts={service?.serviceAlerts || []} onAlertDismiss={onAlertDismiss} />
+							<AlertsSection alerts={service?.serviceAlerts || []} onAlertSilence={onAlertSilence} />
 						</CollapsibleSection>
 					)}
 

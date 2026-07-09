@@ -139,7 +139,7 @@ const TVMode = ({
 
 			const uniqueAlerts = serviceAlerts.filter((a, i, self) => i === self.findIndex((b) => b.id === a.id));
 
-			const activeAlerts = uniqueAlerts.filter((a) => !a.isDismissed);
+			const activeAlerts = uniqueAlerts.filter((a) => !a.isSilenced);
 
 			if (activeAlerts.length > 0) {
 				logger.info(`TV Mode - Service ${service.name} has ${activeAlerts.length} alerts:`, {

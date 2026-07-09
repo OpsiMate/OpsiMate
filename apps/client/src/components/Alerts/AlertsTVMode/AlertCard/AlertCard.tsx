@@ -28,7 +28,7 @@ const formatTimeAgo = (date: Date): string => {
 };
 
 const getSeverityConfig = (alert: Alert) => {
-	if (alert.isDismissed) {
+	if (alert.isSilenced) {
 		return {
 			bg: 'bg-muted/40',
 			border: 'border-muted-foreground/20',
@@ -108,7 +108,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 						cardSize === 'extra-small' ? 'h-6 w-6' : cardSize === 'small' ? 'h-8 w-8' : 'h-10 w-10'
 					)}
 				>
-					{alert.isDismissed ? (
+					{alert.isSilenced ? (
 						<BellOff className={cn(config.iconColor, cardSize === 'extra-small' ? 'h-3 w-3' : 'h-5 w-5')} />
 					) : (
 						<AlertCircle

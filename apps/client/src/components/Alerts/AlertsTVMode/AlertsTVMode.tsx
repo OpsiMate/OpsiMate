@@ -8,7 +8,7 @@ import { getAlertSeverity } from '@/components/Alerts/utils/severity.utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useDashboard } from '@/context/DashboardContext';
-import { useAlerts, useDismissAlert, useUndismissAlert } from '@/hooks/queries/alerts';
+import { useAlerts, useSilenceAlert, useUnsilenceAlert } from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -53,8 +53,8 @@ const AlertsTVMode = () => {
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
 	const deleteDashboardMutation = useDeleteDashboard();
-	const dismissAlertMutation = useDismissAlert();
-	const undismissAlertMutation = useUndismissAlert();
+	const silenceAlertMutation = useSilenceAlert();
+	const unsilenceAlertMutation = useUnsilenceAlert();
 
 	const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 	const [isRefreshing, setIsRefreshing] = useState(false);
@@ -231,33 +231,33 @@ const AlertsTVMode = () => {
 		}
 	}, [dashboardState.id, deleteDashboardMutation, resetDashboard, toast]);
 
-	const handleDismissAlert = async (alertId: string) => {
+	const handleSilenceAlert = async (alertId: string) => {
 		try {
-			await dismissAlertMutation.mutateAsync(alertId);
+			await silenceAlertMutation.mutateAsync(alertId);
 			toast({
-				title: 'Alert dismissed',
-				description: 'The alert has been marked as dismissed.',
+				title: 'Alert silenced',
+				description: 'The alert has been marked as silenced.',
 			});
 		} catch (error) {
 			toast({
-				title: 'Error dismissing alert',
-				description: 'Failed to dismiss alert',
+				title: 'Error silencing alert',
+				description: 'Failed to silence alert',
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const handleUndismissAlert = async (alertId: string) => {
+	const handleUnsilenceAlert = async (alertId: string) => {
 		try {
-			await undismissAlertMutation.mutateAsync(alertId);
+			await unsilenceAlertMutation.mutateAsync(alertId);
 			toast({
-				title: 'Alert undismissed',
+				title: 'Alert unsilenced',
 				description: 'The alert has been reactivated.',
 			});
 		} catch (error) {
 			toast({
-				title: 'Error undismissing alert',
-				description: 'Failed to undismiss alert',
+				title: 'Error unsilenceing alert',
+				description: 'Failed to unsilence alert',
 				variant: 'destructive',
 			});
 		}
@@ -281,9 +281,9 @@ const AlertsTVMode = () => {
 
 	const cardSize = getCardSize(filteredAlerts.length);
 
-	const activeAlertsCount = filteredAlerts.filter((a) => !a.isDismissed).length;
+	const activeAlertsCount = filteredAlerts.filter((a) => !a.isSilenced).length;
 	const criticalCount = filteredAlerts.filter(
-		(a) => !a.isDismissed && getAlertSeverity(a) === AlertSeverity.CRITICAL
+		(a) => !a.isSilenced && getAlertSeverity(a) === AlertSeverity.CRITICAL
 	).length;
 
 	return (
@@ -449,8 +449,8 @@ const AlertsTVMode = () => {
 						isActive={true}
 						alert={selectedAlert}
 						onClose={() => setSelectedAlert(null)}
-						onDismiss={handleDismissAlert}
-						onUndismiss={handleUndismissAlert}
+						onSilence={handleSilenceAlert}
+						onUnsilence={handleUnsilenceAlert}
 					/>
 				</DialogContent>
 			</Dialog>

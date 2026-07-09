@@ -145,7 +145,7 @@ describe('notification system - integration', () => {
 		await waitFor(() => expect(screen.getByText('B destructive')).toBeTruthy());
 	});
 
-	it('toast queue respects limit and dismiss works', async () => {
+	it('toast queue respects limit and silence works', async () => {
 		render(
 			<>
 				<Toaster />
@@ -169,7 +169,7 @@ describe('notification system - integration', () => {
 		}
 	});
 
-	it('alert notifications persist until dismissed and show toast on dismiss', async () => {
+	it('alert notifications persist until silenced and show toast on silence', async () => {
 		const AlertsWrapper = () => {
 			const [alerts, setAlerts] = useState([
 				{
@@ -183,18 +183,18 @@ describe('notification system - integration', () => {
 					summary: 'cpu > 95%',
 					runbookUrl: '',
 					createdAt: new Date().toISOString(),
-					isDismissed: false,
+					isSilenced: false,
 				},
 			]);
-			const handleDismiss = async (id: string) => {
+			const handleSilence = async (id: string) => {
 				await Promise.resolve();
-				setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, isDismissed: true } : a)));
+				setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, isSilenced: true } : a)));
 			};
 
 			return (
 				<>
 					<Toaster />
-					<AlertsSection alerts={alerts} onAlertDismiss={handleDismiss} />
+					<AlertsSection alerts={alerts} onAlertSilence={handleSilence} />
 				</>
 			);
 		};
@@ -203,9 +203,9 @@ describe('notification system - integration', () => {
 
 		// initial alert should be visible
 		expect(screen.getByText('High CPU')).toBeInTheDocument();
-		const dismissButton = screen.getByTitle('Dismiss Alert') as HTMLElement;
-		fireEvent.click(dismissButton);
-		await waitFor(() => expect(screen.getByText('Alert dismissed')).toBeInTheDocument());
+		const silenceButton = screen.getByTitle('Silence Alert') as HTMLElement;
+		fireEvent.click(silenceButton);
+		await waitFor(() => expect(screen.getByText('Alert silenced')).toBeInTheDocument());
 		await waitFor(() => expect(screen.queryByText('High CPU')).toBeNull());
 	});
 

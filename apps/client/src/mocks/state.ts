@@ -48,7 +48,7 @@ export interface PlaygroundState {
 	actions: Action[];
 	enrichments: AlertEnrichment[];
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
-	// dismissals, actions, comments). Merged with generated base history by the history handler.
+	// silencings, actions, comments). Merged with generated base history by the history handler.
 	alertHistoryEvents: Record<string, AlertHistoryData[]>;
 }
 
@@ -413,7 +413,7 @@ const createResolvedAlerts = (alerts: Alert[]) =>
 	alerts.slice(0, 20).map((alert, index) => ({
 		...alert,
 		id: `resolved-${alert.id}-${index}`,
-		isDismissed: true,
+		isSilenced: true,
 		status: AlertStatus.RESOLVED,
 		updatedAt: new Date(Date.now() - 1000 * 60 * 60 * (index + 1)).toISOString(),
 	}));

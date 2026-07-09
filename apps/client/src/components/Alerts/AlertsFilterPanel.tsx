@@ -67,7 +67,7 @@ export const AlertsFilterPanel = ({
 			}
 			switch (field) {
 				case 'status':
-					return alert.isDismissed ? 'Dismissed' : alert.isMuted ? 'Muted' : capitalizeFirst(alert.status);
+					return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : capitalizeFirst(alert.status);
 				case 'severity':
 					return SEVERITY_LABELS[getAlertSeverity(alert)];
 				case 'type':

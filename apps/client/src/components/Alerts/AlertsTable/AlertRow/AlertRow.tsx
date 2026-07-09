@@ -24,8 +24,8 @@ export interface AlertRowProps {
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
 	isActiveRow?: boolean;
-	onDismissAlert?: (alertId: string) => void;
-	onUndismissAlert?: (alertId: string) => void;
+	onSilenceAlert?: (alertId: string) => void;
+	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	isResolved?: boolean;
@@ -44,8 +44,8 @@ export const AlertRow = ({
 	onSelectAlert,
 	onAlertClick,
 	isActiveRow = false,
-	onDismissAlert,
-	onUndismissAlert,
+	onSilenceAlert,
+	onUnsilenceAlert,
 	onDeleteAlert,
 	onSelectAlerts,
 	isResolved = false,
@@ -147,8 +147,8 @@ export const AlertRow = ({
 							<AlertActionsColumn
 								key={column}
 								alert={alert}
-								onDismissAlert={onDismissAlert}
-								onUndismissAlert={onUndismissAlert}
+								onSilenceAlert={onSilenceAlert}
+								onUnsilenceAlert={onUnsilenceAlert}
 								onDeleteAlert={onDeleteAlert}
 							/>
 						);

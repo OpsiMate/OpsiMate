@@ -197,10 +197,10 @@ const Alerts = () => {
 	);
 
 	const {
-		handleDismissAlert,
-		handleUndismissAlert,
+		handleSilenceAlert,
+		handleUnsilenceAlert,
 		handleDeleteAlert,
-		handleDismissAll,
+		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
 		handleDeleteForeverAll,
@@ -208,8 +208,8 @@ const Alerts = () => {
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
 
-	const handleDismissAllSelected = async () => {
-		await handleDismissAll(selectedAlerts, () => setSelectedAlerts([]));
+	const handleSilenceAllSelected = async () => {
+		await handleSilenceAll(selectedAlerts, () => setSelectedAlerts([]));
 	};
 
 	const handleAssignOwnerAllSelected = async (ownerId: string | null) => {
@@ -254,8 +254,8 @@ const Alerts = () => {
 		<AlertsTable
 			alerts={list}
 			services={services}
-			onDismissAlert={handleDismissAlert}
-			onUndismissAlert={handleUndismissAlert}
+			onSilenceAlert={handleSilenceAlert}
+			onUnsilenceAlert={handleUnsilenceAlert}
 			onDeleteAlert={handleDeleteAlert}
 			onSelectAlerts={setSelectedAlerts}
 			selectedAlerts={selectedAlerts}
@@ -518,7 +518,7 @@ const Alerts = () => {
 									<AlertsSelectionBar
 										selectedAlerts={selectedAlerts}
 										onClearSelection={() => setSelectedAlerts([])}
-										onDismissAll={handleDismissAllSelected}
+										onSilenceAll={handleSilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
 										onResolveAll={handleResolveAllSelected}
 										onDeleteAll={handleDeleteAllSelected}
@@ -537,8 +537,8 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={filteredResolvedAlerts}
 									services={services}
-									onDismissAlert={undefined}
-									onUndismissAlert={undefined}
+									onSilenceAlert={undefined}
+									onUnsilenceAlert={undefined}
 									onDeleteAlert={handleDeleteResolvedAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -574,8 +574,8 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={filteredAllAlerts}
 									services={services}
-									onDismissAlert={handleDismissAlert}
-									onUndismissAlert={handleUndismissAlert}
+									onSilenceAlert={handleSilenceAlert}
+									onUnsilenceAlert={handleUnsilenceAlert}
 									onDeleteAlert={handleDeleteAnyAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -611,8 +611,8 @@ const Alerts = () => {
 									isActive={!selectedIsResolved}
 									timeRange={dashboardState.timeRange}
 									onClose={() => setSelectedAlert(null)}
-									onDismiss={handleDismissAlert}
-									onUndismiss={handleUndismissAlert}
+									onSilence={handleSilenceAlert}
+									onUnsilence={handleUnsilenceAlert}
 									onDelete={selectedIsResolved ? handleDeleteResolvedAlert : handleDeleteAlert}
 								/>
 							);

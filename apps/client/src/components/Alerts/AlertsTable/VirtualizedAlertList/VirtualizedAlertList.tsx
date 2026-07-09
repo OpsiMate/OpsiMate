@@ -15,8 +15,8 @@ interface VirtualizedAlertListProps {
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	activeAlertId?: string | null;
-	onDismissAlert?: (alertId: string) => void;
-	onUndismissAlert?: (alertId: string) => void;
+	onSilenceAlert?: (alertId: string) => void;
+	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	columnLabels?: Record<string, string>;
@@ -38,8 +38,8 @@ export const VirtualizedAlertList = ({
 	onSelectAlert,
 	onAlertClick,
 	activeAlertId = null,
-	onDismissAlert,
-	onUndismissAlert,
+	onSilenceAlert,
+	onUnsilenceAlert,
 	onDeleteAlert,
 	onSelectAlerts,
 	columnLabels,
@@ -116,8 +116,8 @@ export const VirtualizedAlertList = ({
 									onSelectAlert={onSelectAlert}
 									onAlertClick={onAlertClick}
 									isActiveRow={alert.id === activeAlertId}
-									onDismissAlert={onDismissAlert}
-									onUndismissAlert={onUndismissAlert}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
 									isResolved={isResolved}

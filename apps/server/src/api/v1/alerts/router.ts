@@ -16,9 +16,9 @@ export default function createAlertRouter(controller: AlertController) {
 	// Delete alert (parameterized route must come after specific routes)
 	router.delete('/:alertId', controller.deleteAlert.bind(controller));
 
-	// Dismiss Unsimiss an alert
-	router.patch('/:id/dismiss', controller.dismissAlert.bind(controller));
-	router.patch('/:id/undismiss', controller.undismissAlert.bind(controller));
+	// Silence Unsimiss an alert
+	router.patch('/:id/silence', controller.silenceAlert.bind(controller));
+	router.patch('/:id/unsilence', controller.unsilenceAlert.bind(controller));
 	router.patch('/:id/read', controller.markAlertRead.bind(controller));
 
 	// Set alert owner

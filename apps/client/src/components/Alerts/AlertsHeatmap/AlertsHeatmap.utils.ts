@@ -4,7 +4,7 @@ import { FALLBACK_COLOR, SEVERITY_COLORS } from './AlertsHeatmap.constants';
 import { TreemapNode } from './AlertsHeatmap.types';
 
 export const getSeverityColor = (name: string, alert?: Alert): string => {
-	if (alert?.isDismissed) return SEVERITY_COLORS.Dismissed;
+	if (alert?.isSilenced) return SEVERITY_COLORS.Silenced;
 	if (SEVERITY_COLORS[name]) return SEVERITY_COLORS[name];
 	return FALLBACK_COLOR;
 };

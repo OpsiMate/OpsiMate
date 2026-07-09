@@ -10,10 +10,10 @@ interface StatusIndicator {
 	testId?: string;
 }
 
-// Precedence mirrors the old status badge: dismissed wins over muted, which wins over
+// Precedence mirrors the old status badge: silenced wins over muted, which wins over
 // the firing/resolved lifecycle state.
 const getStatusIndicator = (alert: Alert): StatusIndicator => {
-	if (alert.isDismissed) return { Icon: BellOff, label: 'Dismissed', className: 'text-muted-foreground' };
+	if (alert.isSilenced) return { Icon: BellOff, label: 'Silenced', className: 'text-muted-foreground' };
 	if (alert.isMuted)
 		return { Icon: VolumeX, label: 'Muted', className: 'text-amber-500', testId: 'alert-status-muted' };
 	if (alert.status === AlertStatus.FIRING) return { Icon: Flame, label: 'Firing', className: 'text-red-500' };
@@ -25,7 +25,7 @@ interface StatusBadgeProps {
 	className?: string;
 }
 
-// Icon-only alert status (firing / resolved / muted / dismissed); the label lives in a
+// Icon-only alert status (firing / resolved / muted / silenced); the label lives in a
 // styled tooltip (same Radix tooltip the table headers use) and in an aria-label.
 export const StatusBadge = ({ alert, className }: StatusBadgeProps) => {
 	const { Icon, label, className: colorClass, testId } = getStatusIndicator(alert);

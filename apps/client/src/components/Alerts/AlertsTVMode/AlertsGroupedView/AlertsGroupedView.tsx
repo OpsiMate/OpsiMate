@@ -40,7 +40,7 @@ const countAlerts = (node: GroupNode): number => {
 // Count active (firing) alerts only
 const countActiveAlerts = (node: GroupNode): number => {
 	if (node.type === 'leaf') {
-		return !node.alert.isDismissed && node.alert.status === 'firing' ? 1 : 0;
+		return !node.alert.isSilenced && node.alert.status === 'firing' ? 1 : 0;
 	}
 	return node.children.reduce((sum, child) => sum + countActiveAlerts(child), 0);
 };
@@ -60,7 +60,7 @@ const filterActiveOnly = (nodes: GroupNode[]): GroupNode[] => {
 
 	for (const node of nodes) {
 		if (node.type === 'leaf') {
-			if (!node.alert.isDismissed && node.alert.status === 'firing') {
+			if (!node.alert.isSilenced && node.alert.status === 'firing') {
 				filtered.push(node);
 			}
 		} else {
@@ -78,19 +78,19 @@ const filterActiveOnly = (nodes: GroupNode[]): GroupNode[] => {
 	return filtered;
 };
 
-// Check if alert is dismissed
-const isDismissed = (node: GroupNode): boolean => {
+// Check if alert is silenced
+const isSilenced = (node: GroupNode): boolean => {
 	if (node.type === 'leaf') {
-		return node.alert.isDismissed || node.alert.status !== 'firing';
+		return node.alert.isSilenced || node.alert.status !== 'firing';
 	}
-	// For groups, check if all children are dismissed
-	return node.children.every(isDismissed);
+	// For groups, check if all children are silenced
+	return node.children.every(isSilenced);
 };
 
 // Color palette based on severity and status
 const getColor = (node: GroupNode, depth: number): { bg: string; glow: string; text: string } => {
-	// Dismissed alerts get gray color
-	if (isDismissed(node)) {
+	// Silenced alerts get gray color
+	if (isSilenced(node)) {
 		return { bg: 'from-slate-500 to-slate-400', glow: 'shadow-slate-400/40', text: 'text-white' };
 	}
 
@@ -331,7 +331,7 @@ export const AlertsGroupedView = ({
 		[customValueGetter]
 	);
 
-	// Group alerts (show all including dismissed)
+	// Group alerts (show all including silenced)
 	const groupedData = useMemo(() => {
 		return groupAlerts(alerts, effectiveGroupBy, valueGetter);
 	}, [alerts, effectiveGroupBy, valueGetter]);
