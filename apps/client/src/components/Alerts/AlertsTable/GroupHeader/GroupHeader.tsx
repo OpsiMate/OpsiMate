@@ -14,7 +14,7 @@ const getStatusBadgeVariant = (status: GroupStatus): 'destructive' | 'success' |
 	switch (status) {
 		case 'firing':
 			return 'destructive';
-		case 'silenced':
+		case 'muted':
 			return 'secondary';
 		case 'resolved':
 			return 'success';
@@ -28,8 +28,8 @@ export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderPr
 
 	const fieldLabel = columnLabels[item.field] || COLUMN_LABELS[item.field] || item.field;
 	const badgeVariant = getStatusBadgeVariant(item.groupStatus);
-	const silencedBadgeClass =
-		item.groupStatus === 'silenced' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : '';
+	const mutedBadgeClass =
+		item.groupStatus === 'muted' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : '';
 
 	return (
 		<div
@@ -48,7 +48,7 @@ export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderPr
 			    across groups regardless of how long each group's label is. */}
 			<Badge
 				variant={badgeVariant}
-				className={`h-5 min-w-10 justify-center px-1.5 mr-2 text-xs rounded-sm ${silencedBadgeClass}`}
+				className={`h-5 min-w-10 justify-center px-1.5 mr-2 text-xs rounded-sm ${mutedBadgeClass}`}
 			>
 				{item.count}
 			</Badge>

@@ -43,7 +43,7 @@ const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]
 		case 'alertName':
 			return alert.alertName.toLowerCase();
 		case 'status':
-			return alert.isDismissed ? 'dismissed' : alert.isSilenced ? 'silenced' : 'firing';
+			return alert.isDismissed ? 'dismissed' : alert.isMuted ? 'muted' : 'firing';
 		case 'severity':
 			// Rank-based so desc = critical first, info last.
 			return SEVERITY_RANK[getAlertSeverity(alert)];
@@ -93,7 +93,7 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 		case 'alertName':
 			return alert.alertName;
 		case 'status':
-			return alert.isDismissed ? 'Dismissed' : alert.isSilenced ? 'Silenced' : 'Firing';
+			return alert.isDismissed ? 'Dismissed' : alert.isMuted ? 'Muted' : 'Firing';
 		case 'severity':
 			return SEVERITY_LABELS[getAlertSeverity(alert)];
 		case 'summary':
@@ -184,23 +184,23 @@ export const groupAlerts = (
 const getGroupStatus = (node: GroupNode): GroupStatus => {
 	if (node.type === 'leaf') {
 		if (node.alert.isDismissed) return 'dismissed';
-		if (node.alert.isSilenced) return 'silenced';
+		if (node.alert.isMuted) return 'muted';
 		return node.alert.status === 'firing' ? 'firing' : 'resolved';
 	}
 
 	let hasFiring = false;
-	let hasSilenced = false;
+	let hasMuted = false;
 	let hasResolved = false;
 
 	for (const child of node.children) {
 		const childStatus = getGroupStatus(child);
 		if (childStatus === 'firing') hasFiring = true;
-		else if (childStatus === 'silenced') hasSilenced = true;
+		else if (childStatus === 'muted') hasMuted = true;
 		else if (childStatus === 'resolved') hasResolved = true;
 	}
 
 	if (hasFiring) return 'firing';
-	if (hasSilenced) return 'silenced';
+	if (hasMuted) return 'muted';
 	if (hasResolved) return 'resolved';
 	return 'dismissed';
 };

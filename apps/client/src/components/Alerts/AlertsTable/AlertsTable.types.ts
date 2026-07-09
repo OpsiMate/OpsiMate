@@ -63,7 +63,7 @@ export type GroupNode =
 	  }
 	| { type: 'leaf'; alert: Alert };
 
-export type GroupStatus = 'firing' | 'silenced' | 'resolved' | 'dismissed';
+export type GroupStatus = 'firing' | 'muted' | 'resolved' | 'dismissed';
 
 export type FlatGroupItem =
 	| {

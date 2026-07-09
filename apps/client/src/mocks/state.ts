@@ -8,7 +8,7 @@ import {
 	AlertComment,
 	AlertEnrichment,
 	AlertHistoryData,
-	AlertSilence,
+	MutePolicy,
 	AlertStatus,
 	AuditActionType,
 	AuditLog,
@@ -44,7 +44,7 @@ export interface PlaygroundState {
 	users: User[];
 	customActions: CustomAction[];
 	auditLogs: AuditLog[];
-	silences: AlertSilence[];
+	mutePolicies: MutePolicy[];
 	actions: Action[];
 	enrichments: AlertEnrichment[];
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
@@ -256,7 +256,7 @@ const createCustomActions = (): CustomAction[] => [
 	},
 ];
 
-const createSilences = (): AlertSilence[] => [
+const createMutePolicies = (): MutePolicy[] => [
 	{
 		id: 1,
 		name: 'Weekly DB maintenance',
@@ -447,7 +447,7 @@ export const playgroundState: PlaygroundState = {
 	users: createUsers(),
 	customActions: createCustomActions(),
 	auditLogs: createAuditLogs(),
-	silences: createSilences(),
+	mutePolicies: createMutePolicies(),
 	actions: createActions(),
 	enrichments: createEnrichments(),
 	alertHistoryEvents: {},

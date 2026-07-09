@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { SilenceFormDialog } from '@/components/Silences/SilenceFormDialog';
+import { MutePolicyFormDialog } from '@/components/MutePolicies/MutePolicyFormDialog';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,22 +16,22 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { useDeleteSilence, useSilences } from '@/hooks/queries/silences';
-import { AlertSilence } from '@OpsiMate/shared';
+import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
+import { MutePolicy } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-type SilenceStatus = 'active' | 'scheduled' | 'expired';
+type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const isScheduleActiveNow = (schedule: NonNullable<AlertSilence['schedule']>, now: Date = new Date()): boolean => {
+const isScheduleActiveNow = (schedule: NonNullable<MutePolicy['schedule']>, now: Date = new Date()): boolean => {
 	if (!schedule.daysOfWeek?.includes(now.getDay())) return false;
 	const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 	return current >= schedule.startTime && current < schedule.endTime;
 };
 
-const getStatus = (s: AlertSilence): SilenceStatus => {
+const getStatus = (s: MutePolicy): MutePolicyStatus => {
 	if (s.schedule) {
 		return isScheduleActiveNow(s.schedule) ? 'active' : 'scheduled';
 	}
@@ -77,7 +77,7 @@ const relativeFromNow = (iso?: string | null): string => {
 	return future ? `in ${days}d` : `${days}d ago`;
 };
 
-const StatusBadge = ({ status }: { status: SilenceStatus }) => {
+const StatusBadge = ({ status }: { status: MutePolicyStatus }) => {
 	if (status === 'active') {
 		return (
 			<Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20">
@@ -131,43 +131,43 @@ const StatCard = ({
 	);
 };
 
-const Silences: React.FC = () => {
-	const { data: silences = [], isLoading } = useSilences();
-	const deleteMutation = useDeleteSilence();
+const MutePolicies: React.FC = () => {
+	const { data: mutePolicies = [], isLoading } = useMutePolicies();
+	const deleteMutation = useDeleteMutePolicy();
 	const { toast } = useToast();
 
 	const [search, setSearch] = useState('');
-	const [editing, setEditing] = useState<AlertSilence | null>(null);
+	const [editing, setEditing] = useState<MutePolicy | null>(null);
 	const [creating, setCreating] = useState(false);
-	const [deleting, setDeleting] = useState<AlertSilence | null>(null);
+	const [deleting, setDeleting] = useState<MutePolicy | null>(null);
 
 	const stats = useMemo(() => {
-		const active = silences.filter((s) => getStatus(s) === 'active').length;
-		const scheduled = silences.filter((s) => getStatus(s) === 'scheduled').length;
-		const expired = silences.filter((s) => getStatus(s) === 'expired').length;
+		const active = mutePolicies.filter((s) => getStatus(s) === 'active').length;
+		const scheduled = mutePolicies.filter((s) => getStatus(s) === 'scheduled').length;
+		const expired = mutePolicies.filter((s) => getStatus(s) === 'expired').length;
 		return { active, scheduled, expired };
-	}, [silences]);
+	}, [mutePolicies]);
 
 	const filtered = useMemo(() => {
-		if (!search.trim()) return silences;
+		if (!search.trim()) return mutePolicies;
 		const q = search.toLowerCase();
-		return silences.filter((s) => {
+		return mutePolicies.filter((s) => {
 			if (s.name.toLowerCase().includes(q)) return true;
 			if (s.nameContains?.toLowerCase().includes(q)) return true;
 			if (s.reason?.toLowerCase().includes(q)) return true;
 			return s.labelMatchers?.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q));
 		});
-	}, [silences, search]);
+	}, [mutePolicies, search]);
 
 	const handleDelete = async () => {
 		if (!deleting) return;
 		try {
 			await deleteMutation.mutateAsync(deleting.id);
-			toast({ title: 'Silence deleted', description: deleting.name });
+			toast({ title: 'Mute policy deleted', description: deleting.name });
 			setDeleting(null);
 		} catch (err) {
 			toast({
-				title: 'Failed to delete silence',
+				title: 'Failed to delete mute policy',
 				description: err instanceof Error ? err.message : 'Unknown error',
 				variant: 'destructive',
 			});
@@ -181,15 +181,15 @@ const Silences: React.FC = () => {
 					<div>
 						<div className="flex items-center gap-2">
 							<BellOff className="h-6 w-6 text-muted-foreground" />
-							<h1 className="text-2xl font-semibold tracking-tight">Silences</h1>
+							<h1 className="text-2xl font-semibold tracking-tight">Mute Policies</h1>
 						</div>
 						<p className="text-sm text-muted-foreground mt-1">
-							Suppress alerts during maintenance windows or known issues. Silenced alerts are hidden from
-							the alerts list while the silence is active.
+							Suppress alerts during maintenance windows or known issues. Muted alerts are hidden from the
+							alerts list while the mute policy is active.
 						</p>
 					</div>
 					<Button onClick={() => setCreating(true)}>
-						<Plus className="h-4 w-4 mr-1" /> New silence
+						<Plus className="h-4 w-4 mr-1" /> New mute policy
 					</Button>
 				</div>
 
@@ -212,7 +212,7 @@ const Silences: React.FC = () => {
 								/>
 							</div>
 							<div className="ml-auto text-xs text-muted-foreground">
-								{filtered.length} of {silences.length}
+								{filtered.length} of {mutePolicies.length}
 							</div>
 						</div>
 
@@ -230,7 +230,7 @@ const Silences: React.FC = () => {
 								{isLoading ? (
 									<TableRow>
 										<TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-											Loading silences…
+											Loading mute policies…
 										</TableCell>
 									</TableRow>
 								) : filtered.length === 0 ? (
@@ -241,22 +241,22 @@ const Silences: React.FC = () => {
 													<BellOff className="h-6 w-6 text-muted-foreground" />
 												</div>
 												<p className="font-medium">
-													{silences.length === 0
-														? 'No silences yet'
-														: 'No silences match your search'}
+													{mutePolicies.length === 0
+														? 'No mute policies yet'
+														: 'No mute policies match your search'}
 												</p>
 												<p className="text-sm text-muted-foreground max-w-sm">
-													{silences.length === 0
-														? 'Create a silence to suppress alerts during maintenance or known incidents.'
+													{mutePolicies.length === 0
+														? 'Create a mutePolicy to suppress alerts during maintenance or known incidents.'
 														: 'Try a different search term.'}
 												</p>
-												{silences.length === 0 && (
+												{mutePolicies.length === 0 && (
 													<Button
 														className="mt-2"
 														onClick={() => setCreating(true)}
 														size="sm"
 													>
-														<Plus className="h-4 w-4 mr-1" /> New silence
+														<Plus className="h-4 w-4 mr-1" /> New mute policy
 													</Button>
 												)}
 											</div>
@@ -360,7 +360,7 @@ const Silences: React.FC = () => {
 															size="icon"
 															className="h-8 w-8"
 															onClick={() => setEditing(s)}
-															aria-label="Edit silence"
+															aria-label="Edit mute policy"
 														>
 															<Pencil className="h-4 w-4" />
 														</Button>
@@ -369,7 +369,7 @@ const Silences: React.FC = () => {
 															size="icon"
 															className="h-8 w-8 text-destructive hover:text-destructive"
 															onClick={() => setDeleting(s)}
-															aria-label="Delete silence"
+															aria-label="Delete mute policy"
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -385,21 +385,21 @@ const Silences: React.FC = () => {
 				</Card>
 			</div>
 
-			<SilenceFormDialog open={creating} onOpenChange={setCreating} />
-			<SilenceFormDialog
+			<MutePolicyFormDialog open={creating} onOpenChange={setCreating} />
+			<MutePolicyFormDialog
 				open={!!editing}
 				onOpenChange={(open) => {
 					if (!open) setEditing(null);
 				}}
-				silence={editing}
+				mutePolicy={editing}
 			/>
 
 			<AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete silence?</AlertDialogTitle>
+						<AlertDialogTitle>Delete mute policy?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will remove "{deleting?.name}" and any silenced alerts will become visible again
+							This will remove "{deleting?.name}" and any muted alerts will become visible again
 							immediately. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
@@ -422,4 +422,4 @@ const Silences: React.FC = () => {
 	);
 };
 
-export default Silences;
+export default MutePolicies;

@@ -20,7 +20,7 @@ export const queryKeys = {
 	customAction: (id: number) => ['customAction', id] as const,
 	dashboards: ['dashboards'] as const,
 	dashboardTags: ['dashboardTags'] as const,
-	silences: ['silences'] as const,
+	mutePolicies: ['mutePolicies'] as const,
 	enrichments: ['enrichments'] as const,
 	actions: ['actions'] as const,
 	retention: ['retention'] as const,

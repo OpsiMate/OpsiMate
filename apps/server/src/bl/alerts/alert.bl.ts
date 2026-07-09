@@ -15,7 +15,7 @@ import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { UserRepository } from '../../dal/userRepository';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
-import { SilenceBL } from '../silences/silence.bl';
+import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 
 const logger = new Logger('bl/alert.bl');
 
@@ -29,7 +29,7 @@ const toIsoUtc = (value: string): string => {
 };
 
 export class AlertBL {
-	private silenceBL: SilenceBL | null = null;
+	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
 
 	constructor(
@@ -66,8 +66,8 @@ export class AlertBL {
 		);
 	}
 
-	setSilenceBL(silenceBL: SilenceBL): void {
-		this.silenceBL = silenceBL;
+	setMutePolicyBL(mutePolicyBL: MutePolicyBL): void {
+		this.mutePolicyBL = mutePolicyBL;
 	}
 
 	setEnrichmentBL(enrichmentBL: EnrichmentBL): void {
@@ -78,7 +78,7 @@ export class AlertBL {
 	// Severity is resolved here — the single funnel for every ingestion endpoint: an explicit
 	// severity field wins, then a `severity` tag (Zabbix/Grafana/Datadog labels), then the
 	// default. Free-form values are normalized onto the fixed critical/warning/info scale,
-	// and the severity tag is rewritten to the normalized value so label matchers (silences,
+	// and the severity tag is rewritten to the normalized value so label matchers (mute policies,
 	// enrichments) always see the same three values the severity field uses. The tag is
 	// hidden from the UI — users only interact with the first-class severity.
 	async insertOrUpdateAlert(
@@ -100,12 +100,12 @@ export class AlertBL {
 		try {
 			logger.info('Fetching all alerts');
 			let alerts = await this.alertRepo.getAllAlerts();
-			// Enrich before silencing so silence rules can match enrichment-added tags.
+			// Enrich before muting so mute policy rules can match enrichment-added tags.
 			if (this.enrichmentBL) {
 				alerts = await this.enrichmentBL.applyEnrichments(alerts);
 			}
-			if (this.silenceBL) {
-				return await this.silenceBL.markSilenced(alerts);
+			if (this.mutePolicyBL) {
+				return await this.mutePolicyBL.markMuted(alerts);
 			}
 			return alerts;
 		} catch (error) {

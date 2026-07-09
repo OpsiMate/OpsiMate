@@ -15,7 +15,7 @@ import { ProviderController } from './api/v1/providers/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { ServiceController } from './api/v1/services/controller';
 import { EnrichmentController } from './api/v1/enrichments/controller';
-import { SilenceController } from './api/v1/silences/controller';
+import { MutePolicyController } from './api/v1/mute-policies/controller';
 import { TagController } from './api/v1/tags/controller';
 import { UsersController } from './api/v1/users/controller';
 import createV1Router from './api/v1/v1';
@@ -30,7 +30,7 @@ import { ProviderBL } from './bl/providers/provider.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { ServicesBL } from './bl/services/services.bl';
 import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
-import { SilenceBL } from './bl/silences/silence.bl';
+import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
 import { ActionRepository } from './dal/actionRepository';
@@ -51,7 +51,7 @@ import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository
 import { ServiceCustomFieldValueRepository } from './dal/serviceCustomFieldValueRepository';
 import { ServiceRepository } from './dal/serviceRepository';
 import { EnrichmentRepository } from './dal/enrichmentRepository';
-import { SilenceRepository } from './dal/silenceRepository';
+import { MutePolicyRepository } from './dal/mutePolicyRepository';
 import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { RefreshJob } from './jobs/refresh-job';
@@ -137,7 +137,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const customActionRepo = new CustomActionRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
-	const silenceRepo = new SilenceRepository(db);
+	const mutePolicyRepo = new MutePolicyRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
 
@@ -155,7 +155,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		passwordResetsRepo.initPasswordResetsTable(),
 		customActionRepo.initCustomActionsTable(),
 		playgroundRepo.initPlaygroundTable(),
-		silenceRepo.initSilencesTable(),
+		mutePolicyRepo.initMutePoliciesTable(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 	]);
@@ -169,8 +169,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const tagBL = new TagBL(tagRepo);
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
-	const silenceBL = new SilenceBL(silenceRepo);
-	alertBL.setSilenceBL(silenceBL);
+	const mutePolicyBL = new MutePolicyBL(mutePolicyRepo);
+	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
 	const actionBL = new ActionBL(actionRepo, alertHistoryRepo);
@@ -195,7 +195,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customFieldsController = new CustomFieldsController(serviceCustomFieldBL);
 	const customActionsController = new CustomActionsController(customActionBL);
 	const playgroundController = new PlaygroundController(playgroundBL);
-	const silenceController = new SilenceController(silenceBL);
+	const mutePolicyController = new MutePolicyController(mutePolicyBL);
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
@@ -217,7 +217,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			customFieldsController,
 			customActionsController,
 			playgroundController,
-			silenceController,
+			mutePolicyController,
 			enrichmentController,
 			actionController,
 			retentionController

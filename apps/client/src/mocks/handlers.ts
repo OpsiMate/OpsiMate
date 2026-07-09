@@ -620,39 +620,39 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: { fields: [] } });
 	}),
 
-	// ==================== SILENCES ====================
-	http.get(`${API_BASE}/silences`, () => {
-		return HttpResponse.json({ success: true, data: playgroundState.silences });
+	// ==================== MUTE POLICIES ====================
+	http.get(`${API_BASE}/mute-policies`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.mutePolicies });
 	}),
 
-	http.post(`${API_BASE}/silences`, async ({ request }) => {
-		const body = (await request.json()) as Partial<(typeof playgroundState.silences)[0]>;
-		const newSilence = {
+	http.post(`${API_BASE}/mute-policies`, async ({ request }) => {
+		const body = (await request.json()) as Partial<(typeof playgroundState.mutePolicies)[0]>;
+		const newMutePolicy = {
 			labelMatchers: [],
 			...body,
 			id: randomId(),
 			createdAt: nowIso(),
 			updatedAt: nowIso(),
-		} as (typeof playgroundState.silences)[0];
-		playgroundState.silences.unshift(newSilence);
-		return HttpResponse.json({ success: true, data: newSilence });
+		} as (typeof playgroundState.mutePolicies)[0];
+		playgroundState.mutePolicies.unshift(newMutePolicy);
+		return HttpResponse.json({ success: true, data: newMutePolicy });
 	}),
 
-	http.put(`${API_BASE}/silences/:id`, async ({ params, request }) => {
+	http.put(`${API_BASE}/mute-policies/:id`, async ({ params, request }) => {
 		const id = Number(params.id);
-		const body = (await request.json()) as Partial<(typeof playgroundState.silences)[0]>;
-		const silence = playgroundState.silences.find((s) => s.id === id);
-		if (!silence) {
-			return HttpResponse.json({ success: false, error: 'Silence not found' }, { status: 404 });
+		const body = (await request.json()) as Partial<(typeof playgroundState.mutePolicies)[0]>;
+		const mutePolicy = playgroundState.mutePolicies.find((s) => s.id === id);
+		if (!mutePolicy) {
+			return HttpResponse.json({ success: false, error: 'Mute policy not found' }, { status: 404 });
 		}
-		Object.assign(silence, body, { updatedAt: nowIso() });
-		return HttpResponse.json({ success: true, data: silence });
+		Object.assign(mutePolicy, body, { updatedAt: nowIso() });
+		return HttpResponse.json({ success: true, data: mutePolicy });
 	}),
 
-	http.delete(`${API_BASE}/silences/:id`, ({ params }) => {
+	http.delete(`${API_BASE}/mute-policies/:id`, ({ params }) => {
 		const id = Number(params.id);
-		playgroundState.silences = playgroundState.silences.filter((s) => s.id !== id);
-		return HttpResponse.json({ success: true, message: 'Silence deleted' });
+		playgroundState.mutePolicies = playgroundState.mutePolicies.filter((s) => s.id !== id);
+		return HttpResponse.json({ success: true, message: 'Mute policy deleted' });
 	}),
 
 	// ==================== ACTIONS ====================
