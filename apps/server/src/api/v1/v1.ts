@@ -77,9 +77,6 @@ export default function createV1Router(
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
 	router.use('/custom-actions', createCustomActionsRouter(customActionsController));
 	router.use('/mute-policies', createMutePolicyRouter(mutePolicyController));
-	// Deprecated alias: the feature used to be called "silences"; kept for a release so
-	// existing API consumers don't break.
-	router.use('/silences', createMutePolicyRouter(mutePolicyController));
 	router.use('/enrichments', createEnrichmentRouter(enrichmentController));
 	router.use('/actions', createActionRouter(actionController));
 	// All other /users endpoints (except /register and /login) are protected
