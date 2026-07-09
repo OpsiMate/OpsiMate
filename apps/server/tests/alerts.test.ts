@@ -1250,7 +1250,7 @@ describe('Alerts API', () => {
 				expect(response.status).toBe(200);
 				expect(response.body.success).toBe(true);
 
-				const row = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get('resolved-del-1');
+				const row = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(testResolvedAlerts[0].id);
 
 				expect(row).toBeUndefined();
 			});

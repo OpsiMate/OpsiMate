@@ -166,7 +166,7 @@ export class AlertBL {
 
 	async resolveAlert(activeAlertId: string): Promise<void> {
 		try {
-			logger.info(`Archiving alert with id: ${activeAlertId}`);
+			logger.info(`Resolving alert with id: ${activeAlertId}`);
 
 			// Get the active alert
 			const alert = await this.alertRepo.getAlert(activeAlertId);
@@ -183,14 +183,14 @@ export class AlertBL {
 
 			logger.info(`Resolved alert ${activeAlertId}`);
 		} catch (error) {
-			logger.error(`Error archiving alert ${activeAlertId}`, error);
+			logger.error(`Error resolving alert ${activeAlertId}`, error);
 			throw error;
 		}
 	}
 
 	async resolveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
 		try {
-			logger.info(`Archiving alerts not in ids for type: ${alertType}`);
+			logger.info(`Resolving alerts not in ids for type: ${alertType}`);
 			// Get alerts that need to be resolved
 			const alertsToResolve = await this.alertRepo.getAlertsNotInIds(activeAlertIds, alertType);
 
@@ -204,7 +204,7 @@ export class AlertBL {
 
 			logger.info(`Resolved ${alertsToResolve.length} alerts`);
 		} catch (error) {
-			logger.error('Error archiving alerts', error);
+			logger.error('Error resolving alerts', error);
 			throw error;
 		}
 	}

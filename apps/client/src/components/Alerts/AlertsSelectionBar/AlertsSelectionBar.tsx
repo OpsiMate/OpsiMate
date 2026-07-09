@@ -97,7 +97,7 @@ export const AlertsSelectionBar = ({
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							This permanently deletes the selected alert{selectedAlerts.length !== 1 ? 's' : ''} — they
-							will move to the resolved list. This cannot be undone.
+							will not appear in the resolved list. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

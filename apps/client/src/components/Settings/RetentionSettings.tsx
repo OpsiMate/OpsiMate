@@ -33,7 +33,7 @@ const RESOURCE_META: Record<RetentionResource, { title: string; description: str
 	},
 	[RetentionResource.ResolvedAlerts]: {
 		title: 'Resolved alerts',
-		description: 'Resolved/resolved alerts kept for historical reference.',
+		description: 'Resolved alerts kept for historical reference.',
 	},
 	[RetentionResource.AlertComments]: {
 		title: 'Alert comments',

@@ -227,7 +227,16 @@ const Alerts = () => {
 	};
 
 	const handleDeleteResolvedAlert = async (alertId: string) => {
-		await deleteResolvedAlertMutation.mutateAsync(alertId);
+		try {
+			await deleteResolvedAlertMutation.mutateAsync(alertId);
+			toast({ title: 'Alert deleted', description: 'The alert was permanently removed.' });
+		} catch (err) {
+			toast({
+				title: 'Failed to delete alert',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
 	};
 
 	// In the combined "All" view, route delete to the right mutation based on the alert's list.

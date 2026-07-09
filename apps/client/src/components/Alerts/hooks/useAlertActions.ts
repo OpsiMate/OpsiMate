@@ -113,7 +113,7 @@ export const useAlertActions = () => {
 					}
 				: {
 						title: 'Alerts resolved',
-						description: `Moved ${successCount} alert${successCount !== 1 ? 's' : ''} to resolve`,
+						description: `Moved ${successCount} alert${successCount !== 1 ? 's' : ''} to Resolved`,
 					}
 		);
 		onComplete();
