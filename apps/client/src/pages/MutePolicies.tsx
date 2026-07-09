@@ -247,7 +247,7 @@ const MutePolicies: React.FC = () => {
 												</p>
 												<p className="text-sm text-muted-foreground max-w-sm">
 													{mutePolicies.length === 0
-														? 'Create a mutePolicy to suppress alerts during maintenance or known incidents.'
+														? 'Create a mute policy to suppress alerts during maintenance or known incidents.'
 														: 'Try a different search term.'}
 												</p>
 												{mutePolicies.length === 0 && (

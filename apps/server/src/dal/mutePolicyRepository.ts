@@ -65,10 +65,11 @@ export class MutePolicyRepository {
 	async initMutePoliciesTable(): Promise<void> {
 		return runAsync(() => {
 			// Migration: the feature used to be called "silences"; carry existing rows over.
-			const legacy = this.db
-				.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'alert_silences'`)
-				.get();
-			if (legacy) {
+			// Only rename when the legacy table exists AND the new one does not yet — a
+			// rollback then re-upgrade can leave both present, and RENAME would throw.
+			const tableExists = (name: string): boolean =>
+				!!this.db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
+			if (tableExists('alert_silences') && !tableExists('alert_mute_policies')) {
 				this.db.prepare(`ALTER TABLE alert_silences RENAME TO alert_mute_policies`).run();
 			}
 

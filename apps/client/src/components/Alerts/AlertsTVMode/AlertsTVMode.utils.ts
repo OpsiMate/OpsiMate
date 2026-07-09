@@ -60,6 +60,10 @@ export const filterAlertsByFilters = (
 			switch (field) {
 				case 'status':
 					fieldValue = alert.isDismissed ? 'Dismissed' : alert.isMuted ? 'Muted' : alert.status;
+					// Saved dashboards from before the rename may still filter on 'Silenced'.
+					if (values.includes('Silenced') && fieldValue === 'Muted') {
+						continue;
+					}
 					break;
 				case 'type':
 					fieldValue = alert.type || 'Custom';
