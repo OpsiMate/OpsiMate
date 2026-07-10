@@ -42,17 +42,19 @@ export const useAlertActions = () => {
 		}
 	};
 
+	// Deleting an active alert IS resolving it (permanent delete only exists for resolved
+	// alerts), so the feedback speaks in resolve terms.
 	const handleDeleteAlert = async (alertId: string) => {
 		try {
 			await deleteAlertMutation.mutateAsync(alertId);
 			toast({
-				title: 'Alert deleted',
-				description: 'The alert has been permanently removed.',
+				title: 'Alert resolved',
+				description: 'The alert was moved to Resolved.',
 			});
 		} catch (error) {
 			toast({
-				title: 'Error deleting alert',
-				description: 'Failed to delete alert',
+				title: 'Error resolving alert',
+				description: 'Failed to resolve alert',
 				variant: 'destructive',
 			});
 		}
