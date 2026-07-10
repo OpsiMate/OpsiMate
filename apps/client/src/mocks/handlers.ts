@@ -216,6 +216,10 @@ export const handlers = [
 		}
 
 		const alert = { ...playgroundState.alerts[alertIndex] };
+		// Resolving pins the status and clears silence — an alert is either silenced or
+		// resolved, never both.
+		alert.status = AlertStatus.RESOLVED;
+		alert.isSilenced = false;
 		alert.updatedAt = nowIso();
 
 		playgroundState.alerts.splice(alertIndex, 1);
@@ -234,6 +238,7 @@ export const handlers = [
 
 		const alert = { ...playgroundState.resolvedAlerts[alertIndex] };
 		alert.status = AlertStatus.FIRING;
+		alert.isSilenced = false;
 		alert.isRead = false;
 		alert.updatedAt = nowIso();
 

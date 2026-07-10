@@ -120,7 +120,8 @@ export class ResolvedAlertRepository {
 				alert.updatedAt,
 				alert.alertUrl,
 				alert.alertName,
-				alert.isSilenced ? 1 : 0,
+				// Resolving clears silence: an alert is either silenced or resolved, never both.
+				0,
 				alert.summary || null,
 				alert.runbookUrl || null,
 				alert.createdAt,
@@ -135,7 +136,9 @@ export class ResolvedAlertRepository {
 		const tags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 		return {
 			id: row.id,
-			status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
+			// Everything in this table is resolved by definition, whatever status the row
+			// carried when it was written.
+			status: AlertStatus.RESOLVED,
 			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
 			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
 			tags,
@@ -147,7 +150,9 @@ export class ResolvedAlertRepository {
 			summary: row.summary,
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
-			isSilenced: row.is_dismissed ? true : false,
+			// Resolved alerts are never silenced (legacy rows may still carry is_dismissed=1
+			// from before resolving cleared the flag).
+			isSilenced: false,
 			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
 	};

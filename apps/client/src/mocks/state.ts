@@ -409,11 +409,12 @@ const seedAlerts = () => {
 	}));
 };
 
+// An alert is either silenced or resolved, never both — resolved seeds are always unsilenced.
 const createResolvedAlerts = (alerts: Alert[]) =>
 	alerts.slice(0, 20).map((alert, index) => ({
 		...alert,
 		id: `resolved-${alert.id}-${index}`,
-		isSilenced: true,
+		isSilenced: false,
 		status: AlertStatus.RESOLVED,
 		updatedAt: new Date(Date.now() - 1000 * 60 * 60 * (index + 1)).toISOString(),
 	}));

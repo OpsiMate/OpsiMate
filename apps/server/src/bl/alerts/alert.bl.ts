@@ -223,6 +223,8 @@ export class AlertBL {
 			const alert: Alert = {
 				...resolved,
 				status: AlertStatus.FIRING,
+				// Resolving cleared any silence, so the alert always comes back audible.
+				isSilenced: false,
 				updatedAt: new Date().toISOString(),
 			};
 
