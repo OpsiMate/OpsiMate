@@ -159,7 +159,7 @@ export const handlers = [
 			date: nowIso(),
 			eventType: AlertHistoryEventType.UNSILENCED,
 			actorName: PLAYGROUND_ACTOR,
-			description: 'Alert restored',
+			description: 'Alert unsilenced',
 		});
 
 		return HttpResponse.json({ success: true, data: { alert } });

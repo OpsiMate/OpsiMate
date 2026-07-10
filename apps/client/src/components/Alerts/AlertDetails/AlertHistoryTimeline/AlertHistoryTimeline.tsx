@@ -45,9 +45,9 @@ const EVENT_STYLES: Record<Exclude<AlertHistoryEventType, AlertHistoryEventType.
 		Icon: BellOff,
 	},
 	[AlertHistoryEventType.UNSILENCED]: {
-		label: 'Restored',
-		dotClass: 'bg-emerald-500',
-		textClass: 'text-emerald-600 dark:text-emerald-400',
+		label: 'Unsilenced',
+		dotClass: 'bg-rose-500',
+		textClass: 'text-rose-600 dark:text-rose-400',
 		Icon: Bell,
 	},
 	[AlertHistoryEventType.ACTION_RUN]: {

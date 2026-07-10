@@ -143,7 +143,7 @@ export class AlertBL {
 			logger.info(`Unsilenceing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
 			if (alert) {
-				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert restored', actorName);
+				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
 			}
 			return alert;
 		} catch (error) {
