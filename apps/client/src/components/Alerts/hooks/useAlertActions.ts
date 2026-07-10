@@ -51,7 +51,7 @@ export const useAlertActions = () => {
 				title: 'Alert resolved',
 				description: 'The alert was moved to Resolved.',
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error resolving alert',
 				description: 'Failed to resolve alert',
@@ -67,7 +67,7 @@ export const useAlertActions = () => {
 				title: 'Alert unresolved',
 				description: 'The alert was moved back to firing.',
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error unresolving alert',
 				description: 'Failed to move the alert back to firing',
