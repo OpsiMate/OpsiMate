@@ -238,6 +238,9 @@ export class AlertBL {
 				status: AlertStatus.FIRING,
 				// Resolving cleared any silence, so the alert always comes back audible.
 				isSilenced: false,
+				// Restored as unread (matches the is_read = 0 the repository writes) so the
+				// returned alert renders with the unread treatment without waiting for a refetch.
+				isRead: false,
 				updatedAt: new Date().toISOString(),
 			};
 

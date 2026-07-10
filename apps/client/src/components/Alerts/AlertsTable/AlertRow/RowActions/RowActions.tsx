@@ -18,7 +18,13 @@ export interface RowActionsProps {
 }
 
 // All row actions live in the three-dots menu — no standalone quick buttons.
-export const RowActions = ({ alert, onSilenceAlert, onUnsilenceAlert, onDeleteAlert, onUnresolveAlert }: RowActionsProps) => {
+export const RowActions = ({
+	alert,
+	onSilenceAlert,
+	onUnsilenceAlert,
+	onDeleteAlert,
+	onUnresolveAlert,
+}: RowActionsProps) => {
 	const { alertUrl, runbookUrl, isSilenced } = alert;
 	// In the combined "All" view a row carries a transient isResolved flag so it can present
 	// resolved behaviour (permanent delete, no silence/resolve) even though the table-level
@@ -94,7 +100,9 @@ export const RowActions = ({ alert, onSilenceAlert, onUnsilenceAlert, onDeleteAl
 							Source
 						</DropdownMenuItem>
 					)}
-					{(runbookUrl || alertUrl) && (onDeleteAlert || canToggleSilence || canUnresolve) && <DropdownMenuSeparator />}
+					{(runbookUrl || alertUrl) && (onDeleteAlert || canToggleSilence || canUnresolve) && (
+						<DropdownMenuSeparator />
+					)}
 					{canUnresolve && (
 						<DropdownMenuItem onClick={handleUnresolve}>
 							<Flame className="mr-2 h-3 w-3" />
