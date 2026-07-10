@@ -3,6 +3,7 @@ import {
 	useDeleteResolvedAlert,
 	useSilenceAlert,
 	useSetAlertOwner,
+	useUnresolveAlert,
 	useUnsilenceAlert,
 } from '@/hooks/queries/alerts';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ export const useAlertActions = () => {
 	const deleteAlertMutation = useDeleteAlert();
 	const setAlertOwnerMutation = useSetAlertOwner();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
+	const unresolveAlertMutation = useUnresolveAlert();
 	const { toast } = useToast();
 
 	const handleSilenceAlert = async (alertId: string) => {
@@ -40,17 +42,35 @@ export const useAlertActions = () => {
 		}
 	};
 
+	// Deleting an active alert IS resolving it (permanent delete only exists for resolved
+	// alerts), so the feedback speaks in resolve terms.
 	const handleDeleteAlert = async (alertId: string) => {
 		try {
 			await deleteAlertMutation.mutateAsync(alertId);
 			toast({
-				title: 'Alert deleted',
-				description: 'The alert has been permanently removed.',
+				title: 'Alert resolved',
+				description: 'The alert was moved to Resolved.',
 			});
-		} catch (error) {
+		} catch {
 			toast({
-				title: 'Error deleting alert',
-				description: 'Failed to delete alert',
+				title: 'Error resolving alert',
+				description: 'Failed to resolve alert',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleUnresolveAlert = async (alertId: string) => {
+		try {
+			await unresolveAlertMutation.mutateAsync(alertId);
+			toast({
+				title: 'Alert unresolved',
+				description: 'The alert was moved back to firing.',
+			});
+		} catch {
+			toast({
+				title: 'Error unresolving alert',
+				description: 'Failed to move the alert back to firing',
 				variant: 'destructive',
 			});
 		}
@@ -149,6 +169,7 @@ export const useAlertActions = () => {
 		handleSilenceAlert,
 		handleUnsilenceAlert,
 		handleDeleteAlert,
+		handleUnresolveAlert,
 		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,

@@ -480,13 +480,15 @@ export class AlertController {
 		}
 	}
 
-	async deleteAlert(req: Request, res: Response) {
+	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = req.params.alertId;
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.resolveAlert(alertId);
+			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
+			// the acting user (unlike the integration webhooks, which resolve without one).
+			await this.alertBL.resolveAlert(alertId, req.user?.fullName ?? null);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting alert:', error);
@@ -500,6 +502,23 @@ export class AlertController {
 			return res.json({ success: true, data: { alerts } });
 		} catch (error) {
 			logger.error('Error getting resolved alerts:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async unresolveAlert(req: AuthenticatedRequest, res: Response) {
+		try {
+			const alertId = req.params.id;
+			if (!alertId) {
+				return res.status(400).json({ success: false, error: 'Alert id is required' });
+			}
+			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName);
+			if (!alert) {
+				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
+			}
+			return res.json({ success: true, data: { alert } });
+		} catch (error) {
+			logger.error('Error unresolving alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

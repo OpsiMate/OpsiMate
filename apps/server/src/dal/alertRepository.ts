@@ -45,6 +45,54 @@ export class AlertRepository {
 		});
 	}
 
+	// Puts a previously-resolved alert back in the active table, keeping its identity
+	// (owner, silence state, created_at) and marking it unread so it surfaces as new.
+	async restoreAlert(alert: SharedAlert): Promise<void> {
+		return runAsync(() => {
+			const restore = this.db.transaction(() => {
+				// The alerts insert trigger records a "firing" status entry for every insert.
+				// The alert's original firing was already recorded, and unresolve logs its own
+				// UNRESOLVED event — so whatever the trigger writes for this re-insert is
+				// noise. Snapshot the history high-water mark and delete past it afterwards
+				// (timestamp matching won't do: legacy trigger versions stamp CURRENT_TIMESTAMP
+				// while newer ones stamp starts_at).
+				const { maxRowId } = this.db
+					.prepare(`SELECT COALESCE(MAX(rowid), 0) AS maxRowId FROM alerts_history WHERE alert_id = ?`)
+					.get(alert.id) as { maxRowId: number };
+
+				this.db
+					.prepare(
+						`
+						INSERT INTO alerts (id, status, type, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed, is_read, created_at, owner_id)
+						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+						ON CONFLICT(id) DO UPDATE SET
+													  status=excluded.status,
+													  updated_at=excluded.updated_at
+					`
+					)
+					.run(
+						alert.id,
+						alert.status,
+						alert.type,
+						alert.severity,
+						JSON.stringify(alert.tags ?? {}),
+						alert.startsAt,
+						alert.updatedAt,
+						alert.alertUrl,
+						alert.alertName,
+						alert.summary || null,
+						alert.runbookUrl || null,
+						alert.isSilenced ? 1 : 0,
+						alert.createdAt,
+						alert.ownerId != null ? Number(alert.ownerId) : null
+					);
+
+				this.db.prepare(`DELETE FROM alerts_history WHERE alert_id = ? AND rowid > ?`).run(alert.id, maxRowId);
+			});
+			restore();
+		});
+	}
+
 	async initAlertsTable(): Promise<void> {
 		return runAsync(() => {
 			this.db.exec(`

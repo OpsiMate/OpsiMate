@@ -76,11 +76,13 @@ const Alerts = () => {
 
 	const currentAlertData =
 		activeTab === AlertTab.Active ? alerts : activeTab === AlertTab.Resolved ? resolvedAlerts : allAlerts;
+	// Sync against both lists (not just the active tab's) so the details panel follows the
+	// alert through resolve/unresolve transitions instead of freezing on its pre-action state.
 	const syncedSelectedAlert = useMemo(() => {
 		if (!selectedAlert) return null;
-		const updatedAlert = currentAlertData.find((alert) => alert.id === selectedAlert.id);
+		const updatedAlert = allAlerts.find((alert) => alert.id === selectedAlert.id);
 		return updatedAlert || selectedAlert;
-	}, [selectedAlert, currentAlertData]);
+	}, [selectedAlert, allAlerts]);
 
 	const shouldPauseRefresh = showDashboardSettings;
 
@@ -200,6 +202,7 @@ const Alerts = () => {
 		handleSilenceAlert,
 		handleUnsilenceAlert,
 		handleDeleteAlert,
+		handleUnresolveAlert,
 		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
@@ -540,6 +543,7 @@ const Alerts = () => {
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
 									onDeleteAlert={handleDeleteResolvedAlert}
+									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
 									isLoading={isLoadingResolved}
@@ -577,6 +581,7 @@ const Alerts = () => {
 									onSilenceAlert={handleSilenceAlert}
 									onUnsilenceAlert={handleUnsilenceAlert}
 									onDeleteAlert={handleDeleteAnyAlert}
+									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
 									isLoading={isLoading || isLoadingResolved}
@@ -602,9 +607,10 @@ const Alerts = () => {
 
 					{syncedSelectedAlert &&
 						(() => {
-							const selectedIsResolved =
-								activeTab === AlertTab.Resolved ||
-								(activeTab === AlertTab.All && resolvedIds.has(syncedSelectedAlert.id));
+							// Data-driven (not tab-driven): resolving an alert while its panel is
+							// open flips the panel to resolved mode in place, and unresolving
+							// flips it back.
+							const selectedIsResolved = resolvedIds.has(syncedSelectedAlert.id);
 							return (
 								<AlertDetailsPanel
 									alert={syncedSelectedAlert}
@@ -614,6 +620,7 @@ const Alerts = () => {
 									onSilence={handleSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
 									onDelete={selectedIsResolved ? handleDeleteResolvedAlert : handleDeleteAlert}
+									onUnresolve={handleUnresolveAlert}
 								/>
 							);
 						})()}

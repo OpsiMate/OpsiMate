@@ -7,17 +7,24 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { BellOff, Book, CheckCircle2, ExternalLink, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
+import { BellOff, Book, CheckCircle2, ExternalLink, Flame, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
 
 export interface RowActionsProps {
 	alert: Alert;
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
+	onUnresolveAlert?: (alertId: string) => void;
 }
 
 // All row actions live in the three-dots menu — no standalone quick buttons.
-export const RowActions = ({ alert, onSilenceAlert, onUnsilenceAlert, onDeleteAlert }: RowActionsProps) => {
+export const RowActions = ({
+	alert,
+	onSilenceAlert,
+	onUnsilenceAlert,
+	onDeleteAlert,
+	onUnresolveAlert,
+}: RowActionsProps) => {
 	const { alertUrl, runbookUrl, isSilenced } = alert;
 	// In the combined "All" view a row carries a transient isResolved flag so it can present
 	// resolved behaviour (permanent delete, no silence/resolve) even though the table-level
@@ -26,7 +33,10 @@ export const RowActions = ({ alert, onSilenceAlert, onUnsilenceAlert, onDeleteAl
 	const isActive = !isResolvedAlert && Boolean(onSilenceAlert);
 	const canToggleSilence =
 		!isResolvedAlert && ((!isSilenced && Boolean(onSilenceAlert)) || (isSilenced && Boolean(onUnsilenceAlert)));
-	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert || canToggleSilence);
+	// Only resolved rows can be moved back to firing (isActive is false on the Resolved tab
+	// and on resolved rows in the All view).
+	const canUnresolve = !isActive && Boolean(onUnresolveAlert);
+	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert || canToggleSilence || canUnresolve);
 
 	const handleToggleSilence = (event: React.MouseEvent) => {
 		event.stopPropagation();
@@ -44,6 +54,11 @@ export const RowActions = ({ alert, onSilenceAlert, onUnsilenceAlert, onDeleteAl
 	const handleDelete = (event: React.MouseEvent) => {
 		event.stopPropagation();
 		onDeleteAlert?.(alert.id);
+	};
+
+	const handleUnresolve = (event: React.MouseEvent) => {
+		event.stopPropagation();
+		onUnresolveAlert?.(alert.id);
 	};
 
 	if (!hasActions) return null;
@@ -85,7 +100,15 @@ export const RowActions = ({ alert, onSilenceAlert, onUnsilenceAlert, onDeleteAl
 							Source
 						</DropdownMenuItem>
 					)}
-					{(runbookUrl || alertUrl) && (onDeleteAlert || canToggleSilence) && <DropdownMenuSeparator />}
+					{(runbookUrl || alertUrl) && (onDeleteAlert || canToggleSilence || canUnresolve) && (
+						<DropdownMenuSeparator />
+					)}
+					{canUnresolve && (
+						<DropdownMenuItem onClick={handleUnresolve}>
+							<Flame className="mr-2 h-3 w-3" />
+							Unresolve
+						</DropdownMenuItem>
+					)}
 					{onDeleteAlert && (
 						<DropdownMenuItem
 							onClick={handleDelete}

@@ -216,12 +216,49 @@ export const handlers = [
 		}
 
 		const alert = { ...playgroundState.alerts[alertIndex] };
+		// Resolving pins the status and clears silence — an alert is either silenced or
+		// resolved, never both.
+		alert.status = AlertStatus.RESOLVED;
+		alert.isSilenced = false;
 		alert.updatedAt = nowIso();
 
 		playgroundState.alerts.splice(alertIndex, 1);
 		playgroundState.resolvedAlerts.unshift(alert);
+		// The playground "Resolve" action is always a manual resolve by the playground user.
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.RESOLVED,
+			actorName: PLAYGROUND_ACTOR,
+			description: 'Alert resolved manually',
+		});
 
 		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
+	}),
+
+	http.patch(`${API_BASE}/alerts/resolved/:alertId/unresolve`, ({ params }) => {
+		const alertId = params.alertId as string;
+		const alertIndex = playgroundState.resolvedAlerts.findIndex((a) => a.id === alertId);
+
+		if (alertIndex === -1) {
+			return HttpResponse.json({ success: false, error: 'Resolved alert not found' }, { status: 404 });
+		}
+
+		const alert = { ...playgroundState.resolvedAlerts[alertIndex] };
+		alert.status = AlertStatus.FIRING;
+		alert.isSilenced = false;
+		alert.isRead = false;
+		alert.updatedAt = nowIso();
+
+		playgroundState.resolvedAlerts.splice(alertIndex, 1);
+		playgroundState.alerts.unshift(alert);
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.UNRESOLVED,
+			actorName: PLAYGROUND_ACTOR,
+			description: 'Alert moved back to firing',
+		});
+
+		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
 	http.delete(`${API_BASE}/alerts/resolved/:alertId`, ({ params }) => {

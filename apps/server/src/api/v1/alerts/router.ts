@@ -12,6 +12,7 @@ export default function createAlertRouter(controller: AlertController) {
 	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
 	router.delete('/resolved/:alertId', controller.deleteResolvedAlert.bind(controller));
 	router.patch('/resolved/:id/owner', controller.setResolvedAlertOwner.bind(controller));
+	router.patch('/resolved/:id/unresolve', controller.unresolveAlert.bind(controller));
 
 	// Delete alert (parameterized route must come after specific routes)
 	router.delete('/:alertId', controller.deleteAlert.bind(controller));

@@ -21,6 +21,17 @@ export class ResolvedAlertRepository {
 				this.db.prepare(`ALTER TABLE alerts_archived RENAME TO alerts_resolved`).run();
 			}
 
+			// The rename can leave the status-history triggers attached to the old table name,
+			// where they never fire (and CREATE TRIGGER IF NOT EXISTS below won't replace them,
+			// because the trigger *names* still exist). Drop the stale ones so they're recreated
+			// on alerts_resolved.
+			const staleTriggers = this.db
+				.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'alerts_archived'`)
+				.all() as { name: string }[];
+			for (const trigger of staleTriggers) {
+				this.db.prepare(`DROP TRIGGER IF EXISTS "${trigger.name}"`).run();
+			}
+
 			this.db.exec(
 				`
 						CREATE TABLE IF NOT EXISTS alerts_resolved (
@@ -64,6 +75,21 @@ export class ResolvedAlertRepository {
 						END;
 						`
 			);
+
+			// Backfill: rows resolved while the triggers were stale never got their 'resolved'
+			// status-history entry. Add one (stamped with the resolve time) where it's missing.
+			this.db
+				.prepare(
+					`
+					INSERT INTO alerts_history (alert_id, status, archived_at)
+					SELECT r.id, 'resolved', r.archived_at
+					FROM alerts_resolved r
+					WHERE NOT EXISTS (
+						SELECT 1 FROM alerts_history h WHERE h.alert_id = r.id AND h.status = 'resolved'
+					)
+				`
+				)
+				.run();
 
 			// Backward compatibility: ensure tags column exists
 			const columns = this.db.prepare(`PRAGMA table_info(alerts_resolved)`).all() as TableInfoRow[];
@@ -120,7 +146,8 @@ export class ResolvedAlertRepository {
 				alert.updatedAt,
 				alert.alertUrl,
 				alert.alertName,
-				alert.isSilenced ? 1 : 0,
+				// Resolving clears silence: an alert is either silenced or resolved, never both.
+				0,
 				alert.summary || null,
 				alert.runbookUrl || null,
 				alert.createdAt,
@@ -135,7 +162,9 @@ export class ResolvedAlertRepository {
 		const tags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 		return {
 			id: row.id,
-			status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
+			// Everything in this table is resolved by definition, whatever status the row
+			// carried when it was written.
+			status: AlertStatus.RESOLVED,
 			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
 			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
 			tags,
@@ -147,10 +176,21 @@ export class ResolvedAlertRepository {
 			summary: row.summary,
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
-			isSilenced: row.is_dismissed ? true : false,
+			// Resolved alerts are never silenced (legacy rows may still carry is_dismissed=1
+			// from before resolving cleared the flag).
+			isSilenced: false,
 			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
 	};
+
+	async getResolvedAlert(alertId: string): Promise<SharedAlert | null> {
+		return runAsync(() => {
+			const row = this.db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertId) as
+				| ResolvedAlertRow
+				| undefined;
+			return row ? this.toSharedAlert(row) : null;
+		});
+	}
 
 	async getAllResolvedAlerts(): Promise<SharedAlert[]> {
 		return runAsync(() => {
