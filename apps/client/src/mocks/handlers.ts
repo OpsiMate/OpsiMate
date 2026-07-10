@@ -224,6 +224,13 @@ export const handlers = [
 
 		playgroundState.alerts.splice(alertIndex, 1);
 		playgroundState.resolvedAlerts.unshift(alert);
+		// The playground "Resolve" action is always a manual resolve by the playground user.
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.RESOLVED,
+			actorName: PLAYGROUND_ACTOR,
+			description: 'Alert resolved manually',
+		});
 
 		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
 	}),

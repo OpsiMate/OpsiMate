@@ -1,5 +1,5 @@
 import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/shared';
-import { Bell, BellOff, Flame, MessageSquare, RefreshCw, UserMinus, UserPlus, Zap } from 'lucide-react';
+import { Bell, BellOff, CheckCircle2, Flame, MessageSquare, RefreshCw, UserMinus, UserPlus, Zap } from 'lucide-react';
 import { ComponentType } from 'react';
 
 interface AlertHistoryTimelineProps {
@@ -49,6 +49,14 @@ const EVENT_STYLES: Record<Exclude<AlertHistoryEventType, AlertHistoryEventType.
 		dotClass: 'bg-rose-500',
 		textClass: 'text-rose-600 dark:text-rose-400',
 		Icon: Bell,
+	},
+	// A user manually resolved the alert (API/source-driven resolution renders as a
+	// STATUS_CHANGED "Resolved" entry instead, without an actor).
+	[AlertHistoryEventType.RESOLVED]: {
+		label: 'Resolved',
+		dotClass: 'bg-green-500',
+		textClass: 'text-green-600 dark:text-green-400',
+		Icon: CheckCircle2,
 	},
 	[AlertHistoryEventType.UNRESOLVED]: {
 		label: 'Unresolved',

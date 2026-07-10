@@ -164,7 +164,11 @@ export class AlertBL {
 		}
 	}
 
-	async resolveAlert(activeAlertId: string): Promise<void> {
+	// manualActorName differentiates the two resolve flows: pass it (even as null) when a user
+	// resolved the alert from the UI — a RESOLVED history event is recorded with their name.
+	// Leave it undefined for API-driven resolution (a source reporting the alert as recovered),
+	// which only gets the automatic status-transition entry.
+	async resolveAlert(activeAlertId: string, manualActorName?: string | null): Promise<void> {
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
 
@@ -180,6 +184,15 @@ export class AlertBL {
 
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
+
+			if (manualActorName !== undefined) {
+				await this.recordHistoryEvent(
+					activeAlertId,
+					AlertHistoryEventType.RESOLVED,
+					'Alert resolved manually',
+					manualActorName
+				);
+			}
 
 			logger.info(`Resolved alert ${activeAlertId}`);
 		} catch (error) {
@@ -265,19 +278,32 @@ export class AlertBL {
 			this.alertHistoryRepo.getEvents(alertId),
 		]);
 
-		const statusEntries: AlertHistoryData[] = statusHistory.data.map((entry) => ({
-			...entry,
-			date: toIsoUtc(entry.date),
-			eventType: AlertHistoryEventType.STATUS_CHANGED,
-			description: entry.status === AlertStatus.FIRING ? 'Alert started firing' : 'Alert resolved',
-		}));
-
 		const eventEntries: AlertHistoryData[] = events.map((row) => ({
 			date: toIsoUtc(row.created_at),
 			eventType: row.event_type as AlertHistoryEventType,
 			actorName: row.actor_name ?? undefined,
 			description: row.description ?? undefined,
 		}));
+
+		// A manual resolve records a RESOLVED event (with the acting user) AND fires the
+		// automatic status trigger. Suppress the trigger's entry when a manual-resolve event
+		// sits right next to it, so the timeline shows one entry per resolve — with the actor
+		// for manual resolves, without one for API/source-driven resolution.
+		const manualResolveTimes = eventEntries
+			.filter((e) => e.eventType === AlertHistoryEventType.RESOLVED)
+			.map((e) => new Date(e.date).getTime());
+		const coveredByManualResolve = (entry: { date: string; status?: AlertStatus }): boolean =>
+			entry.status !== AlertStatus.FIRING &&
+			manualResolveTimes.some((t) => Math.abs(t - new Date(toIsoUtc(entry.date)).getTime()) < 10_000);
+
+		const statusEntries: AlertHistoryData[] = statusHistory.data
+			.filter((entry) => !coveredByManualResolve(entry))
+			.map((entry) => ({
+				...entry,
+				date: toIsoUtc(entry.date),
+				eventType: AlertHistoryEventType.STATUS_CHANGED,
+				description: entry.status === AlertStatus.FIRING ? 'Alert started firing' : 'Alert resolved',
+			}));
 
 		const data = [...statusEntries, ...eventEntries].sort(
 			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()

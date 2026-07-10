@@ -480,13 +480,15 @@ export class AlertController {
 		}
 	}
 
-	async deleteAlert(req: Request, res: Response) {
+	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = req.params.alertId;
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.resolveAlert(alertId);
+			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
+			// the acting user (unlike the integration webhooks, which resolve without one).
+			await this.alertBL.resolveAlert(alertId, req.user?.fullName ?? null);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting alert:', error);

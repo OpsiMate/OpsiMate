@@ -217,6 +217,9 @@ export enum AlertHistoryEventType {
 	// existing history rows keep resolving to these events.
 	SILENCED = 'dismissed',
 	UNSILENCED = 'undismissed',
+	// A user manually resolved the alert. API-driven resolution (the source reporting the
+	// alert as recovered) shows up as an automatic STATUS_CHANGED entry instead.
+	RESOLVED = 'resolved',
 	UNRESOLVED = 'unresolved',
 	ACTION_RUN = 'action_run',
 	COMMENT_ADDED = 'comment_added',
