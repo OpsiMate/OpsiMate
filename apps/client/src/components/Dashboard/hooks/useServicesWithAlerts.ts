@@ -20,7 +20,7 @@ export const useServicesWithAlerts = (services: Service[], alerts: Alert[]): Ser
 			});
 
 			const uniqueAlerts = serviceAlerts.filter((a, i, self) => i === self.findIndex((b) => b.id === a.id));
-			const activeAlerts = uniqueAlerts.filter((a) => !a.isDismissed);
+			const activeAlerts = uniqueAlerts.filter((a) => !a.isSilenced);
 
 			return {
 				...service,

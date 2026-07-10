@@ -23,7 +23,7 @@ interface AlertDetailsBodyProps {
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
 // top; everything else lives in collapsible sections (summary, latest comment, history,
-// labels, links) followed by the custom-actions section. The dismiss/resolve buttons are
+// labels, links) followed by the custom-actions section. The silence/resolve buttons are
 // NOT part of the body — containers pin them at the bottom via AlertFooterActions.
 export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComments }: AlertDetailsBodyProps) => {
 	return (

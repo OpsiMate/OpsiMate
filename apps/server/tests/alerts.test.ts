@@ -137,7 +137,7 @@ const seedAlerts = () => {
 		alertUrl: row.alert_url,
 		alertName: row.alert_name,
 		createdAt: Date.now().toString(),
-		isDismissed: row.is_dismissed,
+		isSilenced: row.is_dismissed,
 	}));
 
 	// Optionally export resolved alerts to tests
@@ -151,7 +151,7 @@ const seedAlerts = () => {
 		alertUrl: row.alert_url,
 		alertName: row.alert_name,
 		archivedAt: row.archived_at,
-		isDismissed: row.is_dismissed,
+		isSilenced: row.is_dismissed,
 	}));
 
 	logger.info(`Seeded ${sampleAlerts.length} active alerts + ${sampleResolvedAlerts.length} resolved alerts`);
@@ -195,7 +195,7 @@ describe('Alerts API', () => {
 			expect(alerts[0]).toHaveProperty('updatedAt');
 			expect(alerts[0]).toHaveProperty('alertUrl');
 			expect(alerts[0]).toHaveProperty('alertName');
-			expect(alerts[0]).toHaveProperty('isDismissed');
+			expect(alerts[0]).toHaveProperty('isSilenced');
 			expect(alerts[0]).toHaveProperty('summary');
 			expect(alerts[0]).toHaveProperty('runbookUrl');
 		});
@@ -212,37 +212,37 @@ describe('Alerts API', () => {
 		});
 	});
 
-	describe('PATCH /api/v1/alerts/:id/dismiss', () => {
-		test('should dismiss an active alert successfully', async () => {
+	describe('PATCH /api/v1/alerts/:id/silence', () => {
+		test('should silence an active alert successfully', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1'
-			expect(testAlerts[0].isDismissed).toBe(false);
+			expect(testAlerts[0].isSilenced).toBe(false);
 
 			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/dismiss`)
+				.patch(`/api/v1/alerts/${alertId}/silence`)
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.isDismissed).toBe(true);
+			expect(response.body.data?.alert.isSilenced).toBe(true);
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should handle dismissing an already dismissed alert', async () => {
-			const alertId = testAlerts[2].id; // 'alert-3' (already dismissed)
-			expect(testAlerts[2].isDismissed).toBe(true);
+		test('should handle silencing an already silenced alert', async () => {
+			const alertId = testAlerts[2].id; // 'alert-3' (already silenced)
+			expect(testAlerts[2].isSilenced).toBe(true);
 
 			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/dismiss`)
+				.patch(`/api/v1/alerts/${alertId}/silence`)
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.isDismissed).toBe(true);
+			expect(response.body.data?.alert.isSilenced).toBe(true);
 		});
 
 		test('should return 404 for non-existent alert', async () => {
 			const response = await app
-				.patch('/api/v1/alerts/nonexistent-id-123/dismiss')
+				.patch('/api/v1/alerts/nonexistent-id-123/silence')
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(404);
@@ -252,7 +252,7 @@ describe('Alerts API', () => {
 		test('should return 401 for request without authentication', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1'
 
-			const response = await app.patch(`/api/v1/alerts/${alertId}/dismiss`);
+			const response = await app.patch(`/api/v1/alerts/${alertId}/silence`);
 			// No Authorization header set
 
 			expect(response.status).toBe(401);
@@ -260,37 +260,37 @@ describe('Alerts API', () => {
 		});
 	});
 
-	describe('PATCH /api/v1/alerts/:id/undismiss', () => {
-		test('should undismiss a dismissed alert successfully', async () => {
-			const alertId = testAlerts[2].id; // 'alert-3' (already dismissed)
-			expect(testAlerts[2].isDismissed).toBe(true);
+	describe('PATCH /api/v1/alerts/:id/unsilence', () => {
+		test('should unsilence a silenced alert successfully', async () => {
+			const alertId = testAlerts[2].id; // 'alert-3' (already silenced)
+			expect(testAlerts[2].isSilenced).toBe(true);
 
 			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/undismiss`)
+				.patch(`/api/v1/alerts/${alertId}/unsilence`)
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.isDismissed).toBe(false);
+			expect(response.body.data?.alert.isSilenced).toBe(false);
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should handle undismissing an already active alert', async () => {
-			const alertId = testAlerts[0].id; // 'alert-1' (not dismissed)
-			expect(testAlerts[0].isDismissed).toBe(false);
+		test('should handle unsilenceing an already active alert', async () => {
+			const alertId = testAlerts[0].id; // 'alert-1' (not silenced)
+			expect(testAlerts[0].isSilenced).toBe(false);
 
 			const response = await app
-				.patch(`/api/v1/alerts/${alertId}/undismiss`)
+				.patch(`/api/v1/alerts/${alertId}/unsilence`)
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data?.alert.isDismissed).toBe(false);
+			expect(response.body.data?.alert.isSilenced).toBe(false);
 		});
 
 		test('should return 404 for non-existent alert', async () => {
 			const response = await app
-				.patch('/api/v1/alerts/nonexistent-id-123/undismiss')
+				.patch('/api/v1/alerts/nonexistent-id-123/unsilence')
 				.set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(response.status).toBe(404);
@@ -300,29 +300,29 @@ describe('Alerts API', () => {
 		test('should return 401 for request without authentication', async () => {
 			const alertId = testAlerts[2].id; // 'alert-3'
 
-			const response = await app.patch(`/api/v1/alerts/${alertId}/undismiss`);
+			const response = await app.patch(`/api/v1/alerts/${alertId}/unsilence`);
 			// No Authorization header set
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
 		});
 
-		test('should handle dismiss and undismiss cycle correctly', async () => {
+		test('should handle silence and unsilence cycle correctly', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1'
 
-			// First dismiss the alert
-			const dismissResponse = await app
-				.patch(`/api/v1/alerts/${alertId}/dismiss`)
+			// First silence the alert
+			const silenceResponse = await app
+				.patch(`/api/v1/alerts/${alertId}/silence`)
 				.set('Authorization', `Bearer ${jwtToken}`);
-			expect(dismissResponse.status).toBe(200);
-			expect(dismissResponse.body.data?.alert.isDismissed).toBe(true);
+			expect(silenceResponse.status).toBe(200);
+			expect(silenceResponse.body.data?.alert.isSilenced).toBe(true);
 
-			// Then undismiss the alert
-			const undismissResponse = await app
-				.patch(`/api/v1/alerts/${alertId}/undismiss`)
+			// Then unsilence the alert
+			const unsilenceResponse = await app
+				.patch(`/api/v1/alerts/${alertId}/unsilence`)
 				.set('Authorization', `Bearer ${jwtToken}`);
-			expect(undismissResponse.status).toBe(200);
-			expect(undismissResponse.body.data?.alert.isDismissed).toBe(false);
+			expect(unsilenceResponse.status).toBe(200);
+			expect(unsilenceResponse.body.data?.alert.isSilenced).toBe(false);
 
 			// Verify final state in database
 			const finalStmt = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?');

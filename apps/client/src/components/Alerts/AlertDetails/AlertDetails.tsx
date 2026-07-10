@@ -11,8 +11,8 @@ interface AlertDetailsProps {
 	isActive: boolean;
 	alert: Alert | null;
 	onClose: () => void;
-	onDismiss?: (alertId: string) => void;
-	onUndismiss?: (alertId: string) => void;
+	onSilence?: (alertId: string) => void;
+	onUnsilence?: (alertId: string) => void;
 	onDelete?: (alertId: string) => void;
 	className?: string;
 }
@@ -21,8 +21,8 @@ export const AlertDetails = ({
 	isActive,
 	alert,
 	onClose,
-	onDismiss,
-	onUndismiss,
+	onSilence,
+	onUnsilence,
 	onDelete,
 	className,
 }: AlertDetailsProps) => {
@@ -46,8 +46,8 @@ export const AlertDetails = ({
 				<AlertFooterActions
 					alert={alert}
 					isActive={isActive}
-					onDismiss={onDismiss}
-					onUndismiss={onUndismiss}
+					onSilence={onSilence}
+					onUnsilence={onUnsilence}
 					onDelete={onDelete}
 				/>
 			</div>

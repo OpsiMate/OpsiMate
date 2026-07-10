@@ -21,7 +21,7 @@ export const getNormalizedAlertValue = (alert: Alert, field: string): string => 
 
 	switch (field) {
 		case 'status': {
-			return alert.isDismissed ? 'Dismissed' : 'Firing';
+			return alert.isSilenced ? 'Silenced' : 'Firing';
 		}
 		case 'alertName': {
 			return alert.alertName || 'Unknown';
@@ -42,7 +42,7 @@ export const getNormalizedAlertValue = (alert: Alert, field: string): string => 
 };
 
 const getStatusKey = (alert: Alert): keyof typeof STATUS_HUES => {
-	if (alert.isDismissed) return 'DISMISSED';
+	if (alert.isSilenced) return 'SILENCED';
 
 	const status = alert.status.toUpperCase();
 	if (status.includes('FIRING') || status.includes('ACTIVE')) return 'FIRING';

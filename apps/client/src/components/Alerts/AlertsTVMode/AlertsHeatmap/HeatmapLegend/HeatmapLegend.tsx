@@ -9,7 +9,7 @@ export const HeatmapLegend = () => {
 					<span className="text-sm font-bold mr-2 text-foreground">Status:</span>
 					<StatusChip color={STATUS_LEGEND_COLORS.FIRING} label="Firing" />
 					<StatusChip color={STATUS_LEGEND_COLORS.PENDING_ACK} label="Pending/Ack" />
-					<StatusChip color={STATUS_LEGEND_COLORS.DISMISSED} label="Dismissed" />
+					<StatusChip color={STATUS_LEGEND_COLORS.SILENCED} label="Silenced" />
 					<StatusChip color={STATUS_LEGEND_COLORS.UNKNOWN} label="Unknown" />
 				</div>
 

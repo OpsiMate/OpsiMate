@@ -38,16 +38,16 @@ const EVENT_STYLES: Record<Exclude<AlertHistoryEventType, AlertHistoryEventType.
 		textClass: 'text-slate-600 dark:text-slate-300',
 		Icon: UserMinus,
 	},
-	[AlertHistoryEventType.DISMISSED]: {
-		label: 'Dismissed',
+	[AlertHistoryEventType.SILENCED]: {
+		label: 'Silenced',
 		dotClass: 'bg-amber-500',
 		textClass: 'text-amber-600 dark:text-amber-400',
 		Icon: BellOff,
 	},
-	[AlertHistoryEventType.UNDISMISSED]: {
-		label: 'Restored',
-		dotClass: 'bg-emerald-500',
-		textClass: 'text-emerald-600 dark:text-emerald-400',
+	[AlertHistoryEventType.UNSILENCED]: {
+		label: 'Unsilenced',
+		dotClass: 'bg-rose-500',
+		textClass: 'text-rose-600 dark:text-rose-400',
 		Icon: Bell,
 	},
 	[AlertHistoryEventType.ACTION_RUN]: {
@@ -81,7 +81,7 @@ const resolveStyle = (item: AlertHistoryData): EventStyle => {
 };
 
 // Vertical timeline of an alert's history: status transitions plus user-driven events
-// (ownership, dismissals, actions, comments). Most recent first.
+// (ownership, silencings, actions, comments). Most recent first.
 export const AlertHistoryTimeline = ({ data, isFiltered }: AlertHistoryTimelineProps) => {
 	if (!data.length) {
 		return (

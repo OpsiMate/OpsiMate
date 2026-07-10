@@ -18,7 +18,7 @@ import { useState } from 'react';
 export interface AlertsSelectionBarProps {
 	selectedAlerts: Alert[];
 	onClearSelection: () => void;
-	onDismissAll: () => void;
+	onSilenceAll: () => void;
 	onAssignOwnerAll?: (ownerId: string | null) => void;
 	onResolveAll?: () => void;
 	onDeleteAll?: () => void;
@@ -27,7 +27,7 @@ export interface AlertsSelectionBarProps {
 export const AlertsSelectionBar = ({
 	selectedAlerts,
 	onClearSelection,
-	onDismissAll,
+	onSilenceAll,
 	onAssignOwnerAll,
 	onResolveAll,
 	onDeleteAll,
@@ -39,7 +39,7 @@ export const AlertsSelectionBar = ({
 		return null;
 	}
 
-	const allNotDismissed = selectedAlerts.every((alert) => !alert.isDismissed);
+	const allNotSilenced = selectedAlerts.every((alert) => !alert.isSilenced);
 
 	const handleAssignOwner = (ownerId: string | null) => {
 		if (onAssignOwnerAll) {
@@ -62,9 +62,9 @@ export const AlertsSelectionBar = ({
 						className="h-8 px-3 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
 					/>
 				)}
-				{allNotDismissed && (
-					<Button variant="outline" size="sm" onClick={onDismissAll}>
-						Dismiss all
+				{allNotSilenced && (
+					<Button variant="outline" size="sm" onClick={onSilenceAll}>
+						Silence all
 					</Button>
 				)}
 				{onResolveAll && (

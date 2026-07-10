@@ -10,7 +10,7 @@ export class AlertRepository {
 		this.db = db;
 	}
 
-	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isDismissed'>): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
 				INSERT INTO alerts (id, status, type, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
@@ -116,7 +116,7 @@ export class AlertRepository {
 			summary: row.summary,
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
-			isDismissed: row.is_dismissed ? true : false,
+			isSilenced: row.is_dismissed ? true : false,
 			isRead: row.is_read ? true : false,
 			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
@@ -130,7 +130,7 @@ export class AlertRepository {
 		});
 	}
 
-	async dismissAlert(id: string): Promise<SharedAlert | null> {
+	async silenceAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
 			this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?').run(id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
@@ -146,7 +146,7 @@ export class AlertRepository {
 		});
 	}
 
-	async undismissAlert(id: string): Promise<SharedAlert | null> {
+	async unsilenceAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
 			this.db.prepare('UPDATE alerts SET is_dismissed = 0 WHERE id = ?').run(id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;

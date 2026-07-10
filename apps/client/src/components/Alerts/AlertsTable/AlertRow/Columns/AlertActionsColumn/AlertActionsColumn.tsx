@@ -6,15 +6,15 @@ import { RowActions } from '../../RowActions';
 
 export interface AlertActionsColumnProps {
 	alert: Alert;
-	onDismissAlert?: (alertId: string) => void;
-	onUndismissAlert?: (alertId: string) => void;
+	onSilenceAlert?: (alertId: string) => void;
+	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 }
 
 export const AlertActionsColumn = ({
 	alert,
-	onDismissAlert,
-	onUndismissAlert,
+	onSilenceAlert,
+	onUnsilenceAlert,
 	onDeleteAlert,
 }: AlertActionsColumnProps) => {
 	return (
@@ -24,8 +24,8 @@ export const AlertActionsColumn = ({
 		>
 			<RowActions
 				alert={alert}
-				onDismissAlert={onDismissAlert}
-				onUndismissAlert={onUndismissAlert}
+				onSilenceAlert={onSilenceAlert}
+				onUnsilenceAlert={onUnsilenceAlert}
 				onDeleteAlert={onDeleteAlert}
 			/>
 		</TableCell>

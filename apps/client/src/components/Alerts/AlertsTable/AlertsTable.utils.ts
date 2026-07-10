@@ -43,7 +43,7 @@ const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]
 		case 'alertName':
 			return alert.alertName.toLowerCase();
 		case 'status':
-			return alert.isDismissed ? 'dismissed' : alert.isMuted ? 'muted' : 'firing';
+			return alert.isSilenced ? 'silenced' : alert.isMuted ? 'muted' : 'firing';
 		case 'severity':
 			// Rank-based so desc = critical first, info last.
 			return SEVERITY_RANK[getAlertSeverity(alert)];
@@ -93,7 +93,7 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 		case 'alertName':
 			return alert.alertName;
 		case 'status':
-			return alert.isDismissed ? 'Dismissed' : alert.isMuted ? 'Muted' : 'Firing';
+			return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : 'Firing';
 		case 'severity':
 			return SEVERITY_LABELS[getAlertSeverity(alert)];
 		case 'summary':
@@ -183,7 +183,7 @@ export const groupAlerts = (
 
 const getGroupStatus = (node: GroupNode): GroupStatus => {
 	if (node.type === 'leaf') {
-		if (node.alert.isDismissed) return 'dismissed';
+		if (node.alert.isSilenced) return 'silenced';
 		if (node.alert.isMuted) return 'muted';
 		return node.alert.status === 'firing' ? 'firing' : 'resolved';
 	}
@@ -202,7 +202,7 @@ const getGroupStatus = (node: GroupNode): GroupStatus => {
 	if (hasFiring) return 'firing';
 	if (hasMuted) return 'muted';
 	if (hasResolved) return 'resolved';
-	return 'dismissed';
+	return 'silenced';
 };
 
 export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): FlatGroupItem[] => {

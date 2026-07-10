@@ -21,8 +21,8 @@ interface AlertDetailsDrawerProps {
 	alert: Alert | null;
 	isActive: boolean;
 	onClose: () => void;
-	onDismiss?: (alertId: string) => void;
-	onUndismiss?: (alertId: string) => void;
+	onSilence?: (alertId: string) => void;
+	onUnsilence?: (alertId: string) => void;
 	onDelete?: (alertId: string) => void;
 }
 
@@ -31,8 +31,8 @@ export const AlertDetailsDrawer = ({
 	alert,
 	isActive,
 	onClose,
-	onDismiss,
-	onUndismiss,
+	onSilence,
+	onUnsilence,
 	onDelete,
 }: AlertDetailsDrawerProps) => {
 	const [renderedAlert, setRenderedAlert] = useState<Alert | null>(alert);
@@ -139,8 +139,8 @@ export const AlertDetailsDrawer = ({
 					<AlertFooterActions
 						alert={renderedAlert}
 						isActive={isActive}
-						onDismiss={onDismiss}
-						onUndismiss={onUndismiss}
+						onSilence={onSilence}
+						onUnsilence={onUnsilence}
 						onDelete={onDelete}
 					/>
 				</div>

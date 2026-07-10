@@ -37,8 +37,8 @@ const HEADER_ICONS: Record<string, ReactNode> = {
 
 export const AlertsTable = ({
 	alerts,
-	onDismissAlert,
-	onUndismissAlert,
+	onSilenceAlert,
+	onUnsilenceAlert,
 	onDeleteAlert,
 	onSelectAlerts,
 	selectedAlerts = [],
@@ -260,8 +260,8 @@ export const AlertsTable = ({
 									onSelectAlert={handleSelectAlert}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}
-									onDismissAlert={onDismissAlert}
-									onUndismissAlert={onUndismissAlert}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
 									onDeleteAlert={onDeleteAlert}
 									onSelectAlerts={onSelectAlerts}
 									columnLabels={allColumnLabels}

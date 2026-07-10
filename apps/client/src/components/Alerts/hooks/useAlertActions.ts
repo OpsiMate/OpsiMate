@@ -1,40 +1,40 @@
 import {
 	useDeleteAlert,
 	useDeleteResolvedAlert,
-	useDismissAlert,
+	useSilenceAlert,
 	useSetAlertOwner,
-	useUndismissAlert,
+	useUnsilenceAlert,
 } from '@/hooks/queries/alerts';
 import { useToast } from '@/hooks/use-toast';
 import { Alert } from '@OpsiMate/shared';
 
 export const useAlertActions = () => {
-	const dismissAlertMutation = useDismissAlert();
-	const undismissAlertMutation = useUndismissAlert();
+	const silenceAlertMutation = useSilenceAlert();
+	const unsilenceAlertMutation = useUnsilenceAlert();
 	const deleteAlertMutation = useDeleteAlert();
 	const setAlertOwnerMutation = useSetAlertOwner();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const { toast } = useToast();
 
-	const handleDismissAlert = async (alertId: string) => {
+	const handleSilenceAlert = async (alertId: string) => {
 		try {
-			await dismissAlertMutation.mutateAsync(alertId);
+			await silenceAlertMutation.mutateAsync(alertId);
 		} catch (error) {
 			toast({
-				title: 'Error dismissing alert',
-				description: 'Failed to dismiss alert',
+				title: 'Error silencing alert',
+				description: 'Failed to silence alert',
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const handleUndismissAlert = async (alertId: string) => {
+	const handleUnsilenceAlert = async (alertId: string) => {
 		try {
-			await undismissAlertMutation.mutateAsync(alertId);
+			await unsilenceAlertMutation.mutateAsync(alertId);
 		} catch (error) {
 			toast({
-				title: 'Error undismissing alert',
-				description: 'Failed to undismiss alert',
+				title: 'Error unsilenceing alert',
+				description: 'Failed to unsilence alert',
 				variant: 'destructive',
 			});
 		}
@@ -56,14 +56,14 @@ export const useAlertActions = () => {
 		}
 	};
 
-	const handleDismissAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
-		const dismissPromises = selectedAlerts.map((alert) => handleDismissAlert(alert.id));
-		const results = await Promise.allSettled(dismissPromises);
+	const handleSilenceAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
+		const silencePromises = selectedAlerts.map((alert) => handleSilenceAlert(alert.id));
+		const results = await Promise.allSettled(silencePromises);
 
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
 				const alert = selectedAlerts[index];
-				// Silently handle failed dismissals
+				// Silently handle failed silencings
 				void alert;
 				void result;
 			}
@@ -146,10 +146,10 @@ export const useAlertActions = () => {
 	};
 
 	return {
-		handleDismissAlert,
-		handleUndismissAlert,
+		handleSilenceAlert,
+		handleUnsilenceAlert,
 		handleDeleteAlert,
-		handleDismissAll,
+		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
 		handleDeleteForeverAll,

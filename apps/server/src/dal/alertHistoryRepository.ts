@@ -18,7 +18,7 @@ export interface RecordAlertEventInput {
 	description?: string | null;
 }
 
-// Stores user-driven events in an alert's life (ownership changes, dismissals, actions run,
+// Stores user-driven events in an alert's life (ownership changes, silencings, actions run,
 // comments). Status transitions stay in the trigger-populated `alerts_history` table; the
 // history endpoint merges both sources. Rows are small and written only on explicit mutations,
 // so this table grows slowly relative to alert ingestion.

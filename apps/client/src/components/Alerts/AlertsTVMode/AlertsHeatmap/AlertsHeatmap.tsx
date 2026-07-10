@@ -10,8 +10,8 @@ import { HeatmapLegend } from './HeatmapLegend';
 export interface AlertsHeatmapProps {
 	alerts: Alert[];
 	groupBy: string[];
-	onDismiss?: (alertId: string) => void;
-	onUndismiss?: (alertId: string) => void;
+	onSilence?: (alertId: string) => void;
+	onUnsilence?: (alertId: string) => void;
 	customValueGetter?: (alert: Alert, field: string) => string;
 	groupByColumns: string[];
 	onGroupByChange: (columns: string[]) => void;
@@ -21,8 +21,8 @@ export interface AlertsHeatmapProps {
 export const AlertsHeatmap = ({
 	alerts,
 	groupBy,
-	onDismiss,
-	onUndismiss,
+	onSilence,
+	onUnsilence,
 	customValueGetter,
 	groupByColumns,
 	onGroupByChange,
@@ -115,8 +115,8 @@ export const AlertsHeatmap = ({
 				alert={selectedAlert}
 				open={!!selectedAlert}
 				onClose={handleCloseModal}
-				onDismiss={onDismiss}
-				onUndismiss={onUndismiss}
+				onSilence={onSilence}
+				onUnsilence={onUnsilence}
 			/>
 		</div>
 	);

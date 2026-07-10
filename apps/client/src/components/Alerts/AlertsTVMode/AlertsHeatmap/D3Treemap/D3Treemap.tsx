@@ -188,7 +188,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					const overflowCount = (node.data as TreemapNode).overflowAlerts?.length || 0;
 					tooltipContent = `+${overflowCount} more alerts\nClick to view all`;
 				} else if (isLeaf && alert) {
-					tooltipContent = `${alert.alertName}\nStatus: ${alert.isDismissed ? 'Dismissed' : alert.status}\nStarted: ${new Date(alert.startsAt).toLocaleString()}\nPercentage: ${percentage}%`;
+					tooltipContent = `${alert.alertName}\nStatus: ${alert.isSilenced ? 'Silenced' : alert.status}\nStarted: ${new Date(alert.startsAt).toLocaleString()}\nPercentage: ${percentage}%`;
 				} else {
 					tooltipContent = `${node.data.name}\n${node.data.children?.length || 0} items\nPercentage: ${percentage}%\nClick to zoom in`;
 				}
@@ -453,7 +453,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 												{alert.alertName}
 											</div>
 											<div className="text-xs text-foreground group-hover:text-primary/90 mt-1 transition-colors">
-												Status: {alert.isDismissed ? 'Dismissed' : alert.status}
+												Status: {alert.isSilenced ? 'Silenced' : alert.status}
 											</div>
 											{alert.summary && (
 												<div className="text-xs text-foreground group-hover:text-primary/80 mt-1 line-clamp-2 transition-colors">

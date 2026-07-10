@@ -45,9 +45,9 @@ const generateBaseHistory = (alertId: string): AlertHistoryData[] => {
 		},
 		{
 			date: new Date(now - 3 * DAY).toISOString(),
-			eventType: AlertHistoryEventType.DISMISSED,
+			eventType: AlertHistoryEventType.SILENCED,
 			actorName: SECONDARY_ACTOR,
-			description: 'Alert dismissed',
+			description: 'Alert silenced',
 		},
 		{
 			date: new Date(now - 9 * DAY).toISOString(),
@@ -125,7 +125,7 @@ export const handlers = [
 		});
 	}),
 
-	http.patch(`${API_BASE}/alerts/:alertId/dismiss`, ({ params }) => {
+	http.patch(`${API_BASE}/alerts/:alertId/silence`, ({ params }) => {
 		const alertId = params.alertId as string;
 		const alert = playgroundState.alerts.find((a) => a.id === alertId);
 
@@ -133,19 +133,19 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
 		}
 
-		alert.isDismissed = true;
+		alert.isSilenced = true;
 		alert.updatedAt = nowIso();
 		pushAlertEvent(alertId, {
 			date: nowIso(),
-			eventType: AlertHistoryEventType.DISMISSED,
+			eventType: AlertHistoryEventType.SILENCED,
 			actorName: PLAYGROUND_ACTOR,
-			description: 'Alert dismissed',
+			description: 'Alert silenced',
 		});
 
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
-	http.patch(`${API_BASE}/alerts/:alertId/undismiss`, ({ params }) => {
+	http.patch(`${API_BASE}/alerts/:alertId/unsilence`, ({ params }) => {
 		const alertId = params.alertId as string;
 		const alert = playgroundState.alerts.find((a) => a.id === alertId);
 
@@ -153,13 +153,13 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
 		}
 
-		alert.isDismissed = false;
+		alert.isSilenced = false;
 		alert.updatedAt = nowIso();
 		pushAlertEvent(alertId, {
 			date: nowIso(),
-			eventType: AlertHistoryEventType.UNDISMISSED,
+			eventType: AlertHistoryEventType.UNSILENCED,
 			actorName: PLAYGROUND_ACTOR,
-			description: 'Alert restored',
+			description: 'Alert unsilenced',
 		});
 
 		return HttpResponse.json({ success: true, data: { alert } });

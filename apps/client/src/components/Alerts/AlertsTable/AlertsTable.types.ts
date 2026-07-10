@@ -16,8 +16,8 @@ export type SortDirection = 'asc' | 'desc';
 export interface AlertsTableProps {
 	alerts: Alert[];
 	services: Array<{ id: string | number; name: string }>;
-	onDismissAlert?: (alertId: string) => void;
-	onUndismissAlert?: (alertId: string) => void;
+	onSilenceAlert?: (alertId: string) => void;
+	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	selectedAlerts?: Alert[];
@@ -63,7 +63,7 @@ export type GroupNode =
 	  }
 	| { type: 'leaf'; alert: Alert };
 
-export type GroupStatus = 'firing' | 'muted' | 'resolved' | 'dismissed';
+export type GroupStatus = 'firing' | 'muted' | 'resolved' | 'silenced';
 
 export type FlatGroupItem =
 	| {

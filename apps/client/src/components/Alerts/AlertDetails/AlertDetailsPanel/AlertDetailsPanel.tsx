@@ -19,8 +19,8 @@ interface AlertDetailsPanelProps {
 	onClose: () => void;
 	// Active time-range filter (the "All time" button), used to filter the History timeline.
 	timeRange?: TimeRange | null;
-	onDismiss?: (alertId: string) => void;
-	onUndismiss?: (alertId: string) => void;
+	onSilence?: (alertId: string) => void;
+	onUnsilence?: (alertId: string) => void;
 	onDelete?: (alertId: string) => void;
 }
 
@@ -29,8 +29,8 @@ export const AlertDetailsPanel = ({
 	isActive,
 	onClose,
 	timeRange,
-	onDismiss,
-	onUndismiss,
+	onSilence,
+	onUnsilence,
 	onDelete,
 }: AlertDetailsPanelProps) => {
 	const historyData = useAlertHistory(alert.id);
@@ -78,8 +78,8 @@ export const AlertDetailsPanel = ({
 				<AlertFooterActions
 					alert={alert}
 					isActive={isActive}
-					onDismiss={onDismiss}
-					onUndismiss={onUndismiss}
+					onSilence={onSilence}
+					onUnsilence={onUnsilence}
 					onDelete={onDelete}
 				/>
 			</div>

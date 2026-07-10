@@ -4,7 +4,7 @@ export const SEVERITY_COLORS: Record<string, string> = {
 	Warning: '#eab308',
 	Info: '#3b82f6',
 	Low: '#22c55e',
-	Dismissed: '#9ca3af',
+	Silenced: '#9ca3af',
 	Unknown: '#6b7280',
 	Firing: '#ef4444',
 };

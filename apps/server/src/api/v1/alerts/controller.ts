@@ -30,36 +30,36 @@ export class AlertController {
 		}
 	}
 
-	async dismissAlert(req: AuthenticatedRequest, res: Response) {
+	async silenceAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.dismissAlert(id, req.user?.fullName);
+			const alert = await this.alertBL.silenceAlert(id, req.user?.fullName);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
-			logger.error('Error dismissing alert:', error);
+			logger.error('Error silencing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
 
-	async undismissAlert(req: AuthenticatedRequest, res: Response) {
+	async unsilenceAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const { id } = req.params;
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.undismissAlert(id, req.user?.fullName);
+			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
-			logger.error('Error undismissing alert:', error);
+			logger.error('Error unsilenceing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

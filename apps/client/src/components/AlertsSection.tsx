@@ -10,37 +10,37 @@ const logger = new Logger('AlertsSection');
 
 interface AlertsSectionProps {
 	alerts: SharedAlert[];
-	onAlertDismiss?: (alertId: string) => void;
+	onAlertSilence?: (alertId: string) => void;
 	className?: string;
 }
 
-export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSectionProps) => {
+export const AlertsSection = ({ alerts, onAlertSilence, className }: AlertsSectionProps) => {
 	const { toast } = useToast();
-	const [dismissingAlerts, setDismissingAlerts] = useState<Set<string>>(new Set());
+	const [silencingAlerts, setSilencingAlerts] = useState<Set<string>>(new Set());
 	const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
 
-	const activeAlerts = alerts.filter((alert) => !alert.isDismissed);
+	const activeAlerts = alerts.filter((alert) => !alert.isSilenced);
 
-	const handleDismissAlert = async (alertId: string) => {
+	const handleSilenceAlert = async (alertId: string) => {
 		try {
-			setDismissingAlerts((prev) => new Set(prev).add(alertId));
+			setSilencingAlerts((prev) => new Set(prev).add(alertId));
 
-			if (onAlertDismiss) {
-				await onAlertDismiss(alertId);
+			if (onAlertSilence) {
+				await onAlertSilence(alertId);
 				toast({
-					title: 'Alert dismissed',
-					description: 'The alert has been marked as dismissed.',
+					title: 'Alert silenced',
+					description: 'The alert has been marked as silenced.',
 				});
 			}
 		} catch (error) {
-			logger.error('Error dismissing alert:', error);
+			logger.error('Error silencing alert:', error);
 			toast({
-				title: 'Error dismissing alert',
+				title: 'Error silencing alert',
 				description: 'An unexpected error occurred',
 				variant: 'destructive',
 			});
 		} finally {
-			setDismissingAlerts((prev) => {
+			setSilencingAlerts((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(alertId);
 				return newSet;
@@ -108,16 +108,16 @@ export const AlertsSection = ({ alerts, onAlertDismiss, className }: AlertsSecti
 										<ExternalLink className="h-4 w-4" />
 									</Button>
 								)}
-								{onAlertDismiss && (
+								{onAlertSilence && (
 									<Button
 										variant="ghost"
 										size="icon"
 										className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
-										title="Dismiss Alert"
-										onClick={() => handleDismissAlert(alert.id)}
-										disabled={dismissingAlerts.has(alert.id)}
+										title="Silence Alert"
+										onClick={() => handleSilenceAlert(alert.id)}
+										disabled={silencingAlerts.has(alert.id)}
 									>
-										{dismissingAlerts.has(alert.id) ? (
+										{silencingAlerts.has(alert.id) ? (
 											<div className="h-3 w-3 rounded-full border-2 border-t-transparent animate-spin" />
 										) : (
 											<X className="h-4 w-4" />

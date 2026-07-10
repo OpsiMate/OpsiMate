@@ -182,7 +182,7 @@ export interface Alert {
 	summary?: string;
 	runbookUrl?: string;
 	createdAt: string;
-	isDismissed: boolean;
+	isSilenced: boolean;
 	// False until someone opens the alert; unread alerts render bold in the table.
 	isRead?: boolean;
 	// Transient: set at fetch time when an active mute policy rule matches this alert. Not persisted.
@@ -213,8 +213,10 @@ export enum AlertHistoryEventType {
 	STATUS_CHANGED = 'status_changed',
 	OWNER_ASSIGNED = 'owner_assigned',
 	OWNER_UNASSIGNED = 'owner_unassigned',
-	DISMISSED = 'dismissed',
-	UNDISMISSED = 'undismissed',
+	// The persisted values stay 'dismissed'/'undismissed' (the feature's old name) so
+	// existing history rows keep resolving to these events.
+	SILENCED = 'dismissed',
+	UNSILENCED = 'undismissed',
 	ACTION_RUN = 'action_run',
 	COMMENT_ADDED = 'comment_added',
 }

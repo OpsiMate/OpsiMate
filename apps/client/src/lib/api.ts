@@ -546,14 +546,14 @@ export const alertsApi = {
 		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts');
 	},
 
-	// Dismiss an alert
-	async dismissAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/dismiss`, 'PATCH');
+	// Silence an alert
+	async silenceAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/silence`, 'PATCH');
 	},
 
-	// Undismiss an alert
-	async undismissAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/undismiss`, 'PATCH');
+	// Unsilence an alert
+	async unsilenceAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/unsilence`, 'PATCH');
 	},
 
 	// Delete an alert

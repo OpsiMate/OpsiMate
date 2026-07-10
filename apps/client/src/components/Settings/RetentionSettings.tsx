@@ -21,7 +21,7 @@ const RESOURCE_META: Record<RetentionResource, { title: string; description: str
 	},
 	[RetentionResource.AlertHistoryEvents]: {
 		title: 'Alert history events',
-		description: 'Per-alert activity: ownership, dismissals, actions run, comments.',
+		description: 'Per-alert activity: ownership, silencings, actions run, comments.',
 	},
 	[RetentionResource.AlertStatusHistory]: {
 		title: 'Alert status history',

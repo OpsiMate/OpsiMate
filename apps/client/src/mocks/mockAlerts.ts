@@ -235,7 +235,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 	// Every playground alert gets a summary so the detail view is never empty in the demo.
 	rng.next(); // keep the RNG sequence stable for the values generated below
 	const hasRunbook = rng.next() < 0.2;
-	const isDismissed = rng.next() < 0.15;
+	const isSilenced = rng.next() < 0.15;
 
 	const baseUrl =
 		type === 'Grafana'
@@ -299,7 +299,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		summary: `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}`,
 		runbookUrl: hasRunbook ? `https://runbook.example.com/alert-${index}` : undefined,
 		createdAt: startsAt.toISOString(),
-		isDismissed,
+		isSilenced,
 	};
 };
 

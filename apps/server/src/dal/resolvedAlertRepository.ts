@@ -120,7 +120,7 @@ export class ResolvedAlertRepository {
 				alert.updatedAt,
 				alert.alertUrl,
 				alert.alertName,
-				alert.isDismissed ? 1 : 0,
+				alert.isSilenced ? 1 : 0,
 				alert.summary || null,
 				alert.runbookUrl || null,
 				alert.createdAt,
@@ -147,7 +147,7 @@ export class ResolvedAlertRepository {
 			summary: row.summary,
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
-			isDismissed: row.is_dismissed ? true : false,
+			isSilenced: row.is_dismissed ? true : false,
 			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
 	};

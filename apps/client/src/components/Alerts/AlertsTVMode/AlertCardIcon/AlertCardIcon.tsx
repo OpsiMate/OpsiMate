@@ -7,7 +7,7 @@ interface AlertCardIconProps {
 }
 
 export const AlertCardIcon = ({ alert }: AlertCardIconProps) => {
-	if (alert.isDismissed) {
+	if (alert.isSilenced) {
 		return <BellOff className="h-4 w-4 text-foreground" />;
 	}
 	return <AlertCircle className="h-4 w-4 text-destructive" />;
