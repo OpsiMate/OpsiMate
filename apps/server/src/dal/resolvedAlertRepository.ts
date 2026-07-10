@@ -21,6 +21,17 @@ export class ResolvedAlertRepository {
 				this.db.prepare(`ALTER TABLE alerts_archived RENAME TO alerts_resolved`).run();
 			}
 
+			// The rename can leave the status-history triggers attached to the old table name,
+			// where they never fire (and CREATE TRIGGER IF NOT EXISTS below won't replace them,
+			// because the trigger *names* still exist). Drop the stale ones so they're recreated
+			// on alerts_resolved.
+			const staleTriggers = this.db
+				.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'alerts_archived'`)
+				.all() as { name: string }[];
+			for (const trigger of staleTriggers) {
+				this.db.prepare(`DROP TRIGGER IF EXISTS "${trigger.name}"`).run();
+			}
+
 			this.db.exec(
 				`
 						CREATE TABLE IF NOT EXISTS alerts_resolved (
@@ -64,6 +75,21 @@ export class ResolvedAlertRepository {
 						END;
 						`
 			);
+
+			// Backfill: rows resolved while the triggers were stale never got their 'resolved'
+			// status-history entry. Add one (stamped with the resolve time) where it's missing.
+			this.db
+				.prepare(
+					`
+					INSERT INTO alerts_history (alert_id, status, archived_at)
+					SELECT r.id, 'resolved', r.archived_at
+					FROM alerts_resolved r
+					WHERE NOT EXISTS (
+						SELECT 1 FROM alerts_history h WHERE h.alert_id = r.id AND h.status = 'resolved'
+					)
+				`
+				)
+				.run();
 
 			// Backward compatibility: ensure tags column exists
 			const columns = this.db.prepare(`PRAGMA table_info(alerts_resolved)`).all() as TableInfoRow[];
