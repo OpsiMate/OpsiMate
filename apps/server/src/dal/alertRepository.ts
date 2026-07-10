@@ -57,9 +57,7 @@ export class AlertRepository {
 				// (timestamp matching won't do: legacy trigger versions stamp CURRENT_TIMESTAMP
 				// while newer ones stamp starts_at).
 				const { maxRowId } = this.db
-					.prepare(
-						`SELECT COALESCE(MAX(rowid), 0) AS maxRowId FROM alerts_history WHERE alert_id = ?`
-					)
+					.prepare(`SELECT COALESCE(MAX(rowid), 0) AS maxRowId FROM alerts_history WHERE alert_id = ?`)
 					.get(alert.id) as { maxRowId: number };
 
 				this.db
@@ -89,9 +87,7 @@ export class AlertRepository {
 						alert.ownerId != null ? Number(alert.ownerId) : null
 					);
 
-				this.db
-					.prepare(`DELETE FROM alerts_history WHERE alert_id = ? AND rowid > ?`)
-					.run(alert.id, maxRowId);
+				this.db.prepare(`DELETE FROM alerts_history WHERE alert_id = ? AND rowid > ?`).run(alert.id, maxRowId);
 			});
 			restore();
 		});
