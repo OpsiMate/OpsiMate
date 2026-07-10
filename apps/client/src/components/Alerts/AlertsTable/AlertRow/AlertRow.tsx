@@ -27,6 +27,7 @@ export interface AlertRowProps {
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
+	onUnresolveAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	isResolved?: boolean;
 	isDragging?: boolean;
@@ -47,6 +48,7 @@ export const AlertRow = ({
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
+	onUnresolveAlert,
 	onSelectAlerts,
 	isResolved = false,
 	isDragging = false,
@@ -150,6 +152,7 @@ export const AlertRow = ({
 								onSilenceAlert={onSilenceAlert}
 								onUnsilenceAlert={onUnsilenceAlert}
 								onDeleteAlert={onDeleteAlert}
+								onUnresolveAlert={onUnresolveAlert}
 							/>
 						);
 					default:

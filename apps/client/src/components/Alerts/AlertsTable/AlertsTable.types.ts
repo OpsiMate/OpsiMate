@@ -19,6 +19,7 @@ export interface AlertsTableProps {
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
+	onUnresolveAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	selectedAlerts?: Alert[];
 	isLoading?: boolean;

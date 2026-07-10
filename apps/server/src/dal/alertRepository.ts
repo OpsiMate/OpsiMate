@@ -45,6 +45,53 @@ export class AlertRepository {
 		});
 	}
 
+	// Puts a previously-resolved alert back in the active table, keeping its identity
+	// (owner, silence state, created_at) and marking it unread so it surfaces as new.
+	async restoreAlert(alert: SharedAlert): Promise<void> {
+		return runAsync(() => {
+			this.db
+				.prepare(
+					`
+					INSERT INTO alerts (id, status, type, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed, is_read, created_at, owner_id)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+					ON CONFLICT(id) DO UPDATE SET
+												  status=excluded.status,
+												  updated_at=excluded.updated_at
+				`
+				)
+				.run(
+					alert.id,
+					alert.status,
+					alert.type,
+					alert.severity,
+					JSON.stringify(alert.tags ?? {}),
+					alert.startsAt,
+					alert.updatedAt,
+					alert.alertUrl,
+					alert.alertName,
+					alert.summary || null,
+					alert.runbookUrl || null,
+					alert.isSilenced ? 1 : 0,
+					alert.createdAt,
+					alert.ownerId != null ? Number(alert.ownerId) : null
+				);
+			// The insert trigger re-records "firing @ starts_at", which the alert's original
+			// insert already recorded — drop exact status-history duplicates so the timeline
+			// doesn't show the same transition twice.
+			this.db
+				.prepare(
+					`
+					DELETE FROM alerts_history
+					WHERE alert_id = ?
+					  AND rowid NOT IN (
+						SELECT MIN(rowid) FROM alerts_history WHERE alert_id = ? GROUP BY status, archived_at
+					  )
+				`
+				)
+				.run(alert.id, alert.id);
+		});
+	}
+
 	async initAlertsTable(): Promise<void> {
 		return runAsync(() => {
 			this.db.exec(`

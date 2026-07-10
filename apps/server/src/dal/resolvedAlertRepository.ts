@@ -152,6 +152,15 @@ export class ResolvedAlertRepository {
 		};
 	};
 
+	async getResolvedAlert(alertId: string): Promise<SharedAlert | null> {
+		return runAsync(() => {
+			const row = this.db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertId) as
+				| ResolvedAlertRow
+				| undefined;
+			return row ? this.toSharedAlert(row) : null;
+		});
+	}
+
 	async getAllResolvedAlerts(): Promise<SharedAlert[]> {
 		return runAsync(() => {
 			const stmt = this.db.prepare('SELECT * FROM alerts_resolved ORDER BY archived_at DESC');

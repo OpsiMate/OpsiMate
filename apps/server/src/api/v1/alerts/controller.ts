@@ -504,6 +504,23 @@ export class AlertController {
 		}
 	}
 
+	async unresolveAlert(req: AuthenticatedRequest, res: Response) {
+		try {
+			const alertId = req.params.id;
+			if (!alertId) {
+				return res.status(400).json({ success: false, error: 'Alert id is required' });
+			}
+			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName);
+			if (!alert) {
+				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
+			}
+			return res.json({ success: true, data: { alert } });
+		} catch (error) {
+			logger.error('Error unresolving alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	async deleteResolvedAlert(req: Request, res: Response) {
 		try {
 			const alertId = req.params.alertId;

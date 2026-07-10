@@ -209,6 +209,40 @@ export class AlertBL {
 		}
 	}
 
+	// Moves a resolved alert back to the active table as firing — the reverse of resolveAlert.
+	async unresolveAlert(alertId: string, actorName?: string | null): Promise<Alert | null> {
+		try {
+			logger.info(`Unresolving alert with id: ${alertId}`);
+
+			const resolved = await this.resolvedAlertRepo.getResolvedAlert(alertId);
+			if (!resolved) {
+				logger.warn(`Resolved alert with id ${alertId} not found, nothing to unresolve`);
+				return null;
+			}
+
+			const alert: Alert = {
+				...resolved,
+				status: AlertStatus.FIRING,
+				updatedAt: new Date().toISOString(),
+			};
+
+			await this.alertRepo.restoreAlert(alert);
+			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			await this.recordHistoryEvent(
+				alertId,
+				AlertHistoryEventType.UNRESOLVED,
+				'Alert moved back to firing',
+				actorName
+			);
+
+			logger.info(`Unresolved alert ${alertId}`);
+			return alert;
+		} catch (error) {
+			logger.error(`Error unresolving alert ${alertId}`, error);
+			throw error;
+		}
+	}
+
 	async deleteResolvedAlert(alertId: string): Promise<void> {
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);

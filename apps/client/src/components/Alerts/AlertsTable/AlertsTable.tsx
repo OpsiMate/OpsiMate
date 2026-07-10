@@ -40,6 +40,7 @@ export const AlertsTable = ({
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
+	onUnresolveAlert,
 	onSelectAlerts,
 	selectedAlerts = [],
 	isLoading = false,
@@ -263,6 +264,7 @@ export const AlertsTable = ({
 									onSilenceAlert={onSilenceAlert}
 									onUnsilenceAlert={onUnsilenceAlert}
 									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
 									onSelectAlerts={onSelectAlerts}
 									columnLabels={allColumnLabels}
 									isResolved={isResolved}

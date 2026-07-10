@@ -224,6 +224,31 @@ export const handlers = [
 		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
 	}),
 
+	http.patch(`${API_BASE}/alerts/resolved/:alertId/unresolve`, ({ params }) => {
+		const alertId = params.alertId as string;
+		const alertIndex = playgroundState.resolvedAlerts.findIndex((a) => a.id === alertId);
+
+		if (alertIndex === -1) {
+			return HttpResponse.json({ success: false, error: 'Resolved alert not found' }, { status: 404 });
+		}
+
+		const alert = { ...playgroundState.resolvedAlerts[alertIndex] };
+		alert.status = AlertStatus.FIRING;
+		alert.isRead = false;
+		alert.updatedAt = nowIso();
+
+		playgroundState.resolvedAlerts.splice(alertIndex, 1);
+		playgroundState.alerts.unshift(alert);
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.UNRESOLVED,
+			actorName: PLAYGROUND_ACTOR,
+			description: 'Alert moved back to firing',
+		});
+
+		return HttpResponse.json({ success: true, data: { alert } });
+	}),
+
 	http.delete(`${API_BASE}/alerts/resolved/:alertId`, ({ params }) => {
 		const alertId = params.alertId as string;
 		playgroundState.resolvedAlerts = playgroundState.resolvedAlerts.filter((a) => a.id !== alertId);

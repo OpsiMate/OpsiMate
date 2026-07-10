@@ -2,6 +2,7 @@ export { useAlerts } from './useAlerts';
 export { useResolvedAlerts } from './useResolvedAlerts';
 export { useDeleteAlert } from './useDeleteAlert';
 export { useDeleteResolvedAlert } from './useDeleteResolvedAlert';
+export { useUnresolveAlert } from './useUnresolveAlert';
 export { useSilenceAlert } from './useSilenceAlert';
 export { useMarkAlertRead } from './useMarkAlertRead';
 export { useUnsilenceAlert } from './useUnsilenceAlert';

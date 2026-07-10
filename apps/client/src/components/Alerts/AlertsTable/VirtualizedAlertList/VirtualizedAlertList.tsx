@@ -18,6 +18,7 @@ interface VirtualizedAlertListProps {
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
+	onUnresolveAlert?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	columnLabels?: Record<string, string>;
 	isResolved?: boolean;
@@ -41,6 +42,7 @@ export const VirtualizedAlertList = ({
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
+	onUnresolveAlert,
 	onSelectAlerts,
 	columnLabels,
 	isResolved = false,
@@ -119,6 +121,7 @@ export const VirtualizedAlertList = ({
 									onSilenceAlert={onSilenceAlert}
 									onUnsilenceAlert={onUnsilenceAlert}
 									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
 									onSelectAlerts={onSelectAlerts}
 									isResolved={isResolved}
 									severityColors={severityColors}

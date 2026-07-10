@@ -217,6 +217,7 @@ export enum AlertHistoryEventType {
 	// existing history rows keep resolving to these events.
 	SILENCED = 'dismissed',
 	UNSILENCED = 'undismissed',
+	UNRESOLVED = 'unresolved',
 	ACTION_RUN = 'action_run',
 	COMMENT_ADDED = 'comment_added',
 }

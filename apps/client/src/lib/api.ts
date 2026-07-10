@@ -610,6 +610,11 @@ export const alertsApi = {
 		return await apiRequest<void>(`/alerts/resolved/${alertId}`, 'DELETE');
 	},
 
+	// Move a resolved alert back to the active (firing) list
+	async unresolveAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/resolved/${alertId}/unresolve`, 'PATCH');
+	},
+
 	// Set alert owner
 	async setAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/owner`, 'PATCH', { ownerId });

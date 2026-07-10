@@ -9,6 +9,7 @@ export interface AlertActionsColumnProps {
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
+	onUnresolveAlert?: (alertId: string) => void;
 }
 
 export const AlertActionsColumn = ({
@@ -16,6 +17,7 @@ export const AlertActionsColumn = ({
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
+	onUnresolveAlert,
 }: AlertActionsColumnProps) => {
 	return (
 		<TableCell
@@ -27,6 +29,7 @@ export const AlertActionsColumn = ({
 				onSilenceAlert={onSilenceAlert}
 				onUnsilenceAlert={onUnsilenceAlert}
 				onDeleteAlert={onDeleteAlert}
+				onUnresolveAlert={onUnresolveAlert}
 			/>
 		</TableCell>
 	);

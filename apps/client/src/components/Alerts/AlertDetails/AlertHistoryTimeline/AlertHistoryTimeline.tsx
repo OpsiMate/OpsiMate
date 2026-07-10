@@ -1,5 +1,5 @@
 import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/shared';
-import { Bell, BellOff, MessageSquare, RefreshCw, UserMinus, UserPlus, Zap } from 'lucide-react';
+import { Bell, BellOff, Flame, MessageSquare, RefreshCw, UserMinus, UserPlus, Zap } from 'lucide-react';
 import { ComponentType } from 'react';
 
 interface AlertHistoryTimelineProps {
@@ -49,6 +49,12 @@ const EVENT_STYLES: Record<Exclude<AlertHistoryEventType, AlertHistoryEventType.
 		dotClass: 'bg-rose-500',
 		textClass: 'text-rose-600 dark:text-rose-400',
 		Icon: Bell,
+	},
+	[AlertHistoryEventType.UNRESOLVED]: {
+		label: 'Unresolved',
+		dotClass: 'bg-red-500',
+		textClass: 'text-red-600 dark:text-red-400',
+		Icon: Flame,
 	},
 	[AlertHistoryEventType.ACTION_RUN]: {
 		label: 'Action run',

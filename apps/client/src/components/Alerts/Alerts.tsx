@@ -200,6 +200,7 @@ const Alerts = () => {
 		handleSilenceAlert,
 		handleUnsilenceAlert,
 		handleDeleteAlert,
+		handleUnresolveAlert,
 		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
@@ -540,6 +541,7 @@ const Alerts = () => {
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
 									onDeleteAlert={handleDeleteResolvedAlert}
+									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
 									isLoading={isLoadingResolved}
@@ -577,6 +579,7 @@ const Alerts = () => {
 									onSilenceAlert={handleSilenceAlert}
 									onUnsilenceAlert={handleUnsilenceAlert}
 									onDeleteAlert={handleDeleteAnyAlert}
+									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
 									isLoading={isLoading || isLoadingResolved}
@@ -614,6 +617,7 @@ const Alerts = () => {
 									onSilence={handleSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
 									onDelete={selectedIsResolved ? handleDeleteResolvedAlert : handleDeleteAlert}
+									onUnresolve={handleUnresolveAlert}
 								/>
 							);
 						})()}

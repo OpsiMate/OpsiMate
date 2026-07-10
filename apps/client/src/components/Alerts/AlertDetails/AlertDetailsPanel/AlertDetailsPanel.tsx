@@ -22,6 +22,7 @@ interface AlertDetailsPanelProps {
 	onSilence?: (alertId: string) => void;
 	onUnsilence?: (alertId: string) => void;
 	onDelete?: (alertId: string) => void;
+	onUnresolve?: (alertId: string) => void;
 }
 
 export const AlertDetailsPanel = ({
@@ -32,6 +33,7 @@ export const AlertDetailsPanel = ({
 	onSilence,
 	onUnsilence,
 	onDelete,
+	onUnresolve,
 }: AlertDetailsPanelProps) => {
 	const historyData = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
@@ -81,6 +83,7 @@ export const AlertDetailsPanel = ({
 					onSilence={onSilence}
 					onUnsilence={onUnsilence}
 					onDelete={onDelete}
+					onUnresolve={onUnresolve}
 				/>
 			</div>
 		</div>
