@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
+import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActionDialog';
 import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
@@ -68,6 +69,7 @@ const Alerts = () => {
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	const [splitByAssignment, setSplitByAssignment] = useState(false);
 	const { severityColors, toggleSeverityColors } = useSeverityColors();
 
@@ -242,14 +244,59 @@ const Alerts = () => {
 		}
 	};
 
-	// In the combined "All" view, route delete to the right mutation based on the alert's list.
-	const handleDeleteAnyAlert = (alertId: string) => {
+	// Silence, resolve, and delete change alert state in one click from several places, so
+	// each one funnels through a confirmation dialog before running.
+	const confirmSilenceAlert = (alertId: string) =>
+		setPendingAction({
+			title: 'Silence this alert?',
+			description: 'The alert stays in the list but stops notifying. You can unsilence it at any time.',
+			confirmLabel: 'Silence',
+			run: () => void handleSilenceAlert(alertId),
+		});
+
+	const confirmResolveAlert = (alertId: string) =>
+		setPendingAction({
+			title: 'Resolve this alert?',
+			description: 'The alert moves to the Resolved list. You can unresolve it later if it is still an issue.',
+			confirmLabel: 'Resolve',
+			run: () => void handleDeleteAlert(alertId),
+		});
+
+	const confirmDeleteResolvedAlert = (alertId: string) =>
+		setPendingAction({
+			title: 'Delete this alert permanently?',
+			description:
+				'The alert will be removed for good and will no longer appear in the Resolved list. This cannot be undone.',
+			confirmLabel: 'Delete',
+			destructive: true,
+			run: () => void handleDeleteResolvedAlert(alertId),
+		});
+
+	// Combined "All" view: route to the delete confirmation for resolved rows, the resolve
+	// confirmation for active ones.
+	const confirmDeleteAnyAlert = (alertId: string) => {
 		if (resolvedIds.has(alertId)) {
-			void handleDeleteResolvedAlert(alertId);
+			confirmDeleteResolvedAlert(alertId);
 		} else {
-			void handleDeleteAlert(alertId);
+			confirmResolveAlert(alertId);
 		}
 	};
+
+	const confirmSilenceAllSelected = () =>
+		setPendingAction({
+			title: `Silence ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
+			description: 'The selected alerts stay in the list but stop notifying. You can unsilence them at any time.',
+			confirmLabel: 'Silence all',
+			run: () => void handleSilenceAllSelected(),
+		});
+
+	const confirmResolveAllSelected = () =>
+		setPendingAction({
+			title: `Resolve ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
+			description: 'The selected alerts move to the Resolved list. You can unresolve them later if needed.',
+			confirmLabel: 'Resolve',
+			run: () => void handleResolveAllSelected(),
+		});
 
 	// Active-tab alerts table, parameterized by the alert list so it can render full-width
 	// or inside one of the split-by-assignment panes without duplicating the prop wiring.
@@ -257,9 +304,9 @@ const Alerts = () => {
 		<AlertsTable
 			alerts={list}
 			services={services}
-			onSilenceAlert={handleSilenceAlert}
+			onSilenceAlert={confirmSilenceAlert}
 			onUnsilenceAlert={handleUnsilenceAlert}
-			onDeleteAlert={handleDeleteAlert}
+			onDeleteAlert={confirmResolveAlert}
 			onSelectAlerts={setSelectedAlerts}
 			selectedAlerts={selectedAlerts}
 			isLoading={isLoading}
@@ -521,9 +568,9 @@ const Alerts = () => {
 									<AlertsSelectionBar
 										selectedAlerts={selectedAlerts}
 										onClearSelection={() => setSelectedAlerts([])}
-										onSilenceAll={handleSilenceAllSelected}
+										onSilenceAll={confirmSilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
-										onResolveAll={handleResolveAllSelected}
+										onResolveAll={confirmResolveAllSelected}
 										onDeleteAll={handleDeleteAllSelected}
 									/>
 								</div>
@@ -542,7 +589,7 @@ const Alerts = () => {
 									services={services}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
-									onDeleteAlert={handleDeleteResolvedAlert}
+									onDeleteAlert={confirmDeleteResolvedAlert}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -578,9 +625,9 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={filteredAllAlerts}
 									services={services}
-									onSilenceAlert={handleSilenceAlert}
+									onSilenceAlert={confirmSilenceAlert}
 									onUnsilenceAlert={handleUnsilenceAlert}
-									onDeleteAlert={handleDeleteAnyAlert}
+									onDeleteAlert={confirmDeleteAnyAlert}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -617,15 +664,17 @@ const Alerts = () => {
 									isActive={!selectedIsResolved}
 									timeRange={dashboardState.timeRange}
 									onClose={() => setSelectedAlert(null)}
-									onSilence={handleSilenceAlert}
+									onSilence={confirmSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
-									onDelete={selectedIsResolved ? handleDeleteResolvedAlert : handleDeleteAlert}
+									onDelete={selectedIsResolved ? confirmDeleteResolvedAlert : confirmResolveAlert}
 									onUnresolve={handleUnresolveAlert}
 								/>
 							);
 						})()}
 				</div>
 			</div>
+
+			<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}
