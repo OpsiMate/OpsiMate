@@ -13,14 +13,15 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOncallTeamMutations, useOncallTeams } from '@/hooks/queries/oncall';
 import { useUsers } from '@/hooks/queries/users';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/auth';
 import { OncallTeam } from '@OpsiMate/shared';
-import { Pencil, Phone, PhoneCall, Plus, Repeat, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Pencil, Phone, PhoneCall, Plus, Repeat, Search, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 const formatDateTime = (iso: string | null): string => {
 	if (!iso) return '—';
@@ -38,10 +39,24 @@ const Oncall = () => {
 	const { data: users = [] } = useUsers();
 	const { createTeam, updateTeam, deleteTeam, setTeamMembers } = useOncallTeamMutations();
 
+	const [searchTerm, setSearchTerm] = useState('');
 	const [formOpen, setFormOpen] = useState(false);
 	const [editingTeam, setEditingTeam] = useState<OncallTeam | null>(null);
 	const [teamToDelete, setTeamToDelete] = useState<OncallTeam | null>(null);
 	const [saving, setSaving] = useState(false);
+
+	// Match on team name or any member's name/email.
+	const filteredTeams = useMemo(() => {
+		const term = searchTerm.trim().toLowerCase();
+		if (!term) return teams;
+		return teams.filter(
+			(team) =>
+				team.name.toLowerCase().includes(term) ||
+				team.members.some(
+					(m) => m.fullName.toLowerCase().includes(term) || m.email.toLowerCase().includes(term)
+				)
+		);
+	}, [teams, searchTerm]);
 
 	const openCreate = () => {
 		setEditingTeam(null);
@@ -114,6 +129,16 @@ const Oncall = () => {
 					)}
 				</div>
 
+				<div className="relative max-w-sm">
+					<Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						placeholder="Search teams or members..."
+						className="pl-8"
+					/>
+				</div>
+
 				<Card>
 					<CardContent className="p-0">
 						<Table>
@@ -136,17 +161,19 @@ const Oncall = () => {
 											Loading on-call teams...
 										</TableCell>
 									</TableRow>
-								) : teams.length === 0 ? (
+								) : filteredTeams.length === 0 ? (
 									<TableRow>
 										<TableCell
 											colSpan={admin ? 5 : 4}
 											className="h-24 text-center text-muted-foreground"
 										>
-											No on-call teams yet{admin ? ' — add the first one.' : '.'}
+											{searchTerm
+												? 'No teams match your search.'
+												: `No on-call teams yet${admin ? ' — add the first one.' : '.'}`}
 										</TableCell>
 									</TableRow>
 								) : (
-									teams.map((team) => (
+									filteredTeams.map((team) => (
 										<TableRow key={team.id}>
 											<TableCell className="font-medium">{team.name}</TableCell>
 											<TableCell>

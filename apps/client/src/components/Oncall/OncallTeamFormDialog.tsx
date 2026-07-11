@@ -12,7 +12,24 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserInfo } from '@/hooks/queries/users/useUsers';
 import { OncallTeam } from '@OpsiMate/shared';
-import { ArrowDown, ArrowUp, Phone, Plus, X } from 'lucide-react';
+import {
+	closestCenter,
+	DndContext,
+	DragEndEvent,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from '@dnd-kit/core';
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Phone, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 export interface OncallTeamDraft {
@@ -32,8 +49,68 @@ interface OncallTeamFormDialogProps {
 	onSave: (draft: OncallTeamDraft) => void;
 }
 
+interface SortableMemberRowProps {
+	userId: string;
+	index: number;
+	user: UserInfo | undefined;
+	disabled: boolean;
+	onRemove: () => void;
+}
+
+// One member row in the call-order list, reorderable by dragging its grip (or the row itself).
+const SortableMemberRow = ({ userId, index, user, disabled, onRemove }: SortableMemberRowProps) => {
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+		id: userId,
+		disabled,
+	});
+
+	return (
+		<li
+			ref={setNodeRef}
+			style={{ transform: CSS.Transform.toString(transform), transition }}
+			className={
+				'flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5' +
+				(isDragging ? ' z-10 opacity-80 shadow-md' : '')
+			}
+		>
+			<span
+				{...attributes}
+				{...listeners}
+				className={
+					disabled ? 'text-muted-foreground/40' : 'cursor-grab text-muted-foreground hover:text-foreground'
+				}
+				title="Drag to reorder"
+			>
+				<GripVertical className="h-4 w-4" />
+			</span>
+			<Badge variant={index === 0 ? 'default' : 'secondary'} className="w-7 justify-center">
+				{index + 1}
+			</Badge>
+			<span className="flex-1 truncate text-sm">
+				{user?.fullName ?? `user #${userId}`}
+				{user?.phoneNumber && (
+					<span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+						<Phone className="h-3 w-3" />
+						{user.phoneNumber}
+					</span>
+				)}
+			</span>
+			<Button
+				variant="ghost"
+				size="icon"
+				className="h-6 w-6 text-destructive hover:text-destructive"
+				disabled={disabled}
+				onClick={onRemove}
+				title="Remove"
+			>
+				<X className="h-3.5 w-3.5" />
+			</Button>
+		</li>
+	);
+};
+
 // Create/edit an on-call team: name, rotation cadence, and the ordered member list
-// (the order is the call order — first member is on call first).
+// (the order is the call order — first member is on call first; drag rows to reorder).
 export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSave }: OncallTeamFormDialogProps) => {
 	const [name, setName] = useState('');
 	const [rotationDays, setRotationDays] = useState('');
@@ -51,12 +128,14 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 	const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 	const availableUsers = useMemo(() => users.filter((u) => !userIds.includes(u.id)), [users, userIds]);
 
-	const move = (index: number, delta: number) => {
-		const target = index + delta;
-		if (target < 0 || target >= userIds.length) return;
-		const next = [...userIds];
-		[next[index], next[target]] = [next[target], next[index]];
-		setUserIds(next);
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+		useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+	);
+
+	const handleDragEnd = ({ active, over }: DragEndEvent) => {
+		if (!over || active.id === over.id) return;
+		setUserIds((ids) => arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))));
 	};
 
 	const canSave = name.trim().length > 0 && userIds.length > 0 && !saving;
@@ -103,60 +182,22 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 
 					<div>
 						<label className="text-sm font-semibold text-muted-foreground">Members (call order)</label>
-						<ul className="mt-2 space-y-1.5">
-							{userIds.map((userId, index) => {
-								const user = usersById.get(userId);
-								return (
-									<li
-										key={userId}
-										className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5"
-									>
-										<Badge variant={index === 0 ? 'default' : 'secondary'} className="w-7 justify-center">
-											{index + 1}
-										</Badge>
-										<span className="flex-1 truncate text-sm">
-											{user?.fullName ?? `user #${userId}`}
-											{user?.phoneNumber && (
-												<span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
-													<Phone className="h-3 w-3" />
-													{user.phoneNumber}
-												</span>
-											)}
-										</span>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-6 w-6"
-											disabled={saving || index === 0}
-											onClick={() => move(index, -1)}
-											title="Move up"
-										>
-											<ArrowUp className="h-3.5 w-3.5" />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-6 w-6"
-											disabled={saving || index === userIds.length - 1}
-											onClick={() => move(index, 1)}
-											title="Move down"
-										>
-											<ArrowDown className="h-3.5 w-3.5" />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-6 w-6 text-destructive hover:text-destructive"
+						<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+							<SortableContext items={userIds} strategy={verticalListSortingStrategy}>
+								<ul className="mt-2 space-y-1.5">
+									{userIds.map((userId, index) => (
+										<SortableMemberRow
+											key={userId}
+											userId={userId}
+											index={index}
+											user={usersById.get(userId)}
 											disabled={saving}
-											onClick={() => setUserIds(userIds.filter((id) => id !== userId))}
-											title="Remove"
-										>
-											<X className="h-3.5 w-3.5" />
-										</Button>
-									</li>
-								);
-							})}
-						</ul>
+											onRemove={() => setUserIds(userIds.filter((id) => id !== userId))}
+										/>
+									))}
+								</ul>
+							</SortableContext>
+						</DndContext>
 
 						{availableUsers.length > 0 ? (
 							<Select value="" onValueChange={(userId) => setUserIds([...userIds, userId])}>

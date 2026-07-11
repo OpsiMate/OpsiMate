@@ -79,17 +79,6 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				</Button>
 
 				<Button
-					variant={location.pathname === '/oncall' ? 'default' : 'ghost'}
-					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
-					asChild
-				>
-					<PreserveQueryLink to="/oncall">
-						<PhoneCall className="h-5 w-5 flex-shrink-0" />
-						<span className={cn('font-medium', collapsed && 'sr-only')}>On-Call</span>
-					</PreserveQueryLink>
-				</Button>
-
-				<Button
 					variant={location.pathname === '/actions' ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
@@ -144,6 +133,19 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							</PreserveQueryLink>
 						</Button>
 					)}
+					<Button
+						variant={location.pathname === '/oncall' ? 'default' : 'ghost'}
+						className={cn(
+							'gap-3 h-10 items-center',
+							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
+						)}
+						asChild
+					>
+						<PreserveQueryLink to="/oncall">
+							<PhoneCall className="h-5 w-5 flex-shrink-0" />
+							<span className={cn('font-medium', collapsed && 'sr-only')}>On-Call</span>
+						</PreserveQueryLink>
+					</Button>
 					<ProfileButton collapsed={collapsed} />
 
 					<TooltipProvider>
