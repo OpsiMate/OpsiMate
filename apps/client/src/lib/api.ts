@@ -24,6 +24,7 @@ import {
 	Service,
 	ServiceWithProvider,
 	Alert as SharedAlert,
+	OncallTeam,
 	Tag,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
@@ -645,6 +646,22 @@ export const mutePoliciesApi = {
 	deleteMutePolicy: (id: number) => apiRequest<void>(`/mute-policies/${id}`, 'DELETE'),
 };
 
+export type OncallTeamPayload = {
+	name: string;
+	rotationIntervalDays: number | null;
+};
+
+export const oncallApi = {
+	getTeams: () => apiRequest<{ teams: OncallTeam[] }>('/oncall/teams'),
+	createTeam: (payload: OncallTeamPayload) => apiRequest<{ team: OncallTeam }>('/oncall/teams', 'POST', payload),
+	updateTeam: (teamId: number, payload: Partial<OncallTeamPayload>) =>
+		apiRequest<{ team: OncallTeam }>(`/oncall/teams/${teamId}`, 'PATCH', payload),
+	deleteTeam: (teamId: number) => apiRequest<void>(`/oncall/teams/${teamId}`, 'DELETE'),
+	// Ordered list — index 0 becomes call priority 1; saving restarts the rotation clock.
+	setTeamMembers: (teamId: number, userIds: string[]) =>
+		apiRequest<{ team: OncallTeam }>(`/oncall/teams/${teamId}/members`, 'PUT', { userIds }),
+};
+
 export type EnrichmentPayload = {
 	name: string;
 	nameContains?: string | null;
@@ -831,7 +848,9 @@ export const customActionsApi = {
 export const usersApi = {
 	// Get all users
 	getAllUsers: () => {
-		return apiRequest<{ id: string; email: string; fullName: string; role: string }[]>('/users');
+		return apiRequest<{ id: string; email: string; fullName: string; role: string; phoneNumber?: string | null }[]>(
+			'/users'
+		);
 	},
 };
 

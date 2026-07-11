@@ -43,7 +43,12 @@ export const ProfileContent = ({
 					<CardContent className="space-y-6">
 						{generalError && <ErrorAlert message={generalError} />}
 
-						<ProfileInformation email={profile.email} role={profile.role} createdAt={profile.createdAt} />
+						<ProfileInformation
+							email={profile.email}
+							role={profile.role}
+							createdAt={profile.createdAt}
+							phoneNumber={profile.phoneNumber}
+						/>
 
 						<ThemePreferences />
 

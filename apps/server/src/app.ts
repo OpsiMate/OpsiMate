@@ -16,6 +16,7 @@ import { SecretsController } from './api/v1/secrets/controller';
 import { ServiceController } from './api/v1/services/controller';
 import { EnrichmentController } from './api/v1/enrichments/controller';
 import { MutePolicyController } from './api/v1/mute-policies/controller';
+import { OncallController } from './api/v1/oncall/controller';
 import { TagController } from './api/v1/tags/controller';
 import { UsersController } from './api/v1/users/controller';
 import createV1Router from './api/v1/v1';
@@ -31,6 +32,7 @@ import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { ServicesBL } from './bl/services/services.bl';
 import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
 import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
+import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
 import { ActionRepository } from './dal/actionRepository';
@@ -52,6 +54,7 @@ import { ServiceCustomFieldValueRepository } from './dal/serviceCustomFieldValue
 import { ServiceRepository } from './dal/serviceRepository';
 import { EnrichmentRepository } from './dal/enrichmentRepository';
 import { MutePolicyRepository } from './dal/mutePolicyRepository';
+import { OncallRepository } from './dal/oncallRepository';
 import { TagRepository } from './dal/tagRepository';
 import { UserRepository } from './dal/userRepository';
 import { RefreshJob } from './jobs/refresh-job';
@@ -138,6 +141,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionRepo = new CustomActionRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
 	const mutePolicyRepo = new MutePolicyRepository(db);
+	const oncallRepo = new OncallRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
 
@@ -156,6 +160,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		customActionRepo.initCustomActionsTable(),
 		playgroundRepo.initPlaygroundTable(),
 		mutePolicyRepo.initMutePoliciesTable(),
+		oncallRepo.initOncallTables(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 	]);
@@ -170,6 +175,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
 	const mutePolicyBL = new MutePolicyBL(mutePolicyRepo);
+	const oncallBL = new OncallBL(oncallRepo);
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
@@ -196,6 +202,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const customActionsController = new CustomActionsController(customActionBL);
 	const playgroundController = new PlaygroundController(playgroundBL);
 	const mutePolicyController = new MutePolicyController(mutePolicyBL);
+	const oncallController = new OncallController(oncallBL);
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
@@ -220,7 +227,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			mutePolicyController,
 			enrichmentController,
 			actionController,
-			retentionController
+			retentionController,
+			oncallController
 		)
 	);
 

@@ -50,6 +50,17 @@ export interface PlaygroundState {
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
 	// silencings, actions, comments). Merged with generated base history by the history handler.
 	alertHistoryEvents: Record<string, AlertHistoryData[]>;
+	// Raw on-call teams; the handler derives the rotated call order the same way the server does.
+	oncallTeams: OncallTeamState[];
+}
+
+export interface OncallTeamState {
+	id: number;
+	name: string;
+	rotationIntervalDays: number | null;
+	rotationAnchor: string;
+	// Ordered — index 0 is base call priority 1.
+	userIds: string[];
 }
 
 const nowIso = () => new Date().toISOString();
@@ -217,13 +228,14 @@ const createViews = (): SavedView[] => [
 ];
 
 const createUsers = (): User[] => [
-	getPlaygroundUser(),
+	{ ...getPlaygroundUser(), phoneNumber: '+972 50 111 2233' },
 	{
 		id: '1',
 		email: 'editor@opsimate.local',
 		fullName: 'Demo Editor',
 		role: Role.Editor,
 		createdAt: nowIso(),
+		phoneNumber: '+972 52 444 5566',
 	},
 	{
 		id: '2',
@@ -231,6 +243,25 @@ const createUsers = (): User[] => [
 		fullName: 'Demo Viewer',
 		role: Role.Viewer,
 		createdAt: nowIso(),
+	},
+];
+
+// Anchored 4 days back with a 3-day interval, so the demo team is already one shift in —
+// the second member is on call when the playground loads.
+const createOncallTeams = (): OncallTeamState[] => [
+	{
+		id: 1,
+		name: 'backend',
+		rotationIntervalDays: 3,
+		rotationAnchor: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+		userIds: [getPlaygroundUser().id, '1', '2'],
+	},
+	{
+		id: 2,
+		name: 'frontend',
+		rotationIntervalDays: null,
+		rotationAnchor: nowIso(),
+		userIds: ['1', '2'],
 	},
 ];
 
@@ -452,6 +483,7 @@ export const playgroundState: PlaygroundState = {
 	actions: createActions(),
 	enrichments: createEnrichments(),
 	alertHistoryEvents: {},
+	oncallTeams: createOncallTeams(),
 };
 
 let idCounter = 10000;

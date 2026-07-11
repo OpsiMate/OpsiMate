@@ -27,6 +27,8 @@ import { EnrichmentController } from './enrichments/controller';
 import createEnrichmentRouter from './enrichments/router';
 import { MutePolicyController } from './mute-policies/controller';
 import createMutePolicyRouter from './mute-policies/router';
+import { OncallController } from './oncall/controller';
+import createOncallRouter from './oncall/router';
 import { TagController } from './tags/controller';
 import tagRouter from './tags/router';
 import { UsersController } from './users/controller';
@@ -50,7 +52,8 @@ export default function createV1Router(
 	mutePolicyController: MutePolicyController,
 	enrichmentController: EnrichmentController,
 	actionController: ActionController,
-	retentionController: RetentionController
+	retentionController: RetentionController,
+	oncallController: OncallController
 ) {
 	const router = PromiseRouter();
 
@@ -77,6 +80,7 @@ export default function createV1Router(
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
 	router.use('/custom-actions', createCustomActionsRouter(customActionsController));
 	router.use('/mute-policies', createMutePolicyRouter(mutePolicyController));
+	router.use('/oncall', createOncallRouter(oncallController));
 	router.use('/enrichments', createEnrichmentRouter(enrichmentController));
 	router.use('/actions', createActionRouter(actionController));
 	// All other /users endpoints (except /register and /login) are protected

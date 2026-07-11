@@ -59,6 +59,22 @@ export const EditProfileForm = ({
 					{errors.fullName && <ErrorAlert message={errors.fullName} className="mt-2" />}
 				</div>
 
+				<div className="max-w-md">
+					<label htmlFor="phoneNumber" className="text-sm font-semibold text-muted-foreground">
+						Phone Number (Optional)
+					</label>
+					<Input
+						id="phoneNumber"
+						type="tel"
+						value={formData.phoneNumber}
+						onChange={(e) => onFormDataChange({ ...formData, phoneNumber: e.target.value })}
+						className="mt-1"
+						disabled={saving}
+						placeholder="+972 50 123 4567"
+					/>
+					{errors.phoneNumber && <ErrorAlert message={errors.phoneNumber} className="mt-2" />}
+				</div>
+
 				<div className="space-y-3">
 					<h4 className="text-sm font-semibold text-muted-foreground">Change Password (Optional)</h4>
 

@@ -175,8 +175,8 @@ export class UsersController {
 		}
 
 		try {
-			const { fullName, newPassword } = UpdateProfileSchema.parse(req.body);
-			const updatedUser = await this.userBL.updateProfile(numericUserId, fullName, newPassword);
+			const { fullName, newPassword, phoneNumber } = UpdateProfileSchema.parse(req.body);
+			const updatedUser = await this.userBL.updateProfile(numericUserId, fullName, newPassword, phoneNumber);
 
 			const responseData: { user: User; token?: string | undefined } = { user: updatedUser };
 

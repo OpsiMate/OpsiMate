@@ -94,13 +94,18 @@ export class UserBL {
 		return count > 0;
 	}
 
-	async updateProfile(id: number, fullName: string, newPassword?: string): Promise<User> {
+	async updateProfile(
+		id: number,
+		fullName: string,
+		newPassword?: string,
+		phoneNumber?: string | null
+	): Promise<User> {
 		let passwordHash: string | undefined;
 		if (newPassword) {
 			passwordHash = await bcrypt.hash(newPassword, 10);
 		}
 
-		await this.userRepo.updateUserProfile(id, fullName, passwordHash);
+		await this.userRepo.updateUserProfile(id, fullName, passwordHash, phoneNumber);
 		const updatedUser = await this.userRepo.getUserById(id);
 		if (!updatedUser) {
 			throw new Error('User not found');

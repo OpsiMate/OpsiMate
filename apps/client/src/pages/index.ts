@@ -10,4 +10,5 @@ export { Providers } from '../components/Providers';
 export { default as Register } from './Register';
 export { default as Settings } from './Settings';
 export { default as MutePolicies } from './MutePolicies';
+export { default as Oncall } from './Oncall';
 export { default as TVMode } from './TVMode';

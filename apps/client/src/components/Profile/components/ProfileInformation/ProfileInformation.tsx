@@ -5,9 +5,10 @@ interface ProfileInformationProps {
 	email: string;
 	role: string;
 	createdAt: string;
+	phoneNumber?: string | null;
 }
 
-export const ProfileInformation = ({ email, role, createdAt }: ProfileInformationProps) => {
+export const ProfileInformation = ({ email, role, createdAt, phoneNumber }: ProfileInformationProps) => {
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center gap-3">
@@ -27,6 +28,10 @@ export const ProfileInformation = ({ email, role, createdAt }: ProfileInformatio
 				<div>
 					<label className="text-sm font-semibold text-muted-foreground">Member Since</label>
 					<div className="mt-1 text-sm text-foreground">{formatDate(createdAt)}</div>
+				</div>
+				<div>
+					<label className="text-sm font-semibold text-muted-foreground">Phone Number</label>
+					<div className="mt-1 text-sm text-foreground">{phoneNumber || '—'}</div>
 				</div>
 			</div>
 		</div>

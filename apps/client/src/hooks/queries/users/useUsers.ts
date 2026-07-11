@@ -7,6 +7,7 @@ export interface UserInfo {
 	email: string;
 	fullName: string;
 	role: string;
+	phoneNumber?: string | null;
 }
 
 export const useUsers = () => {

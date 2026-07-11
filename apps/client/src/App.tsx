@@ -17,6 +17,7 @@ import {
 	Register,
 	Settings,
 	MutePolicies,
+	Oncall,
 	TVMode,
 } from '@/pages';
 import { isPlaygroundMode } from '@/lib/playground';
@@ -72,6 +73,7 @@ const App: React.FC = () => {
 										<Route path="/register" element={<Register />} />
 										<Route path="/alerts" element={<Alerts />} />
 										<Route path="/mute-policies" element={<MutePolicies />} />
+										<Route path="/oncall" element={<Oncall />} />
 										<Route path="/actions" element={<Actions />} />
 										<Route path="/enrichments" element={<Enrichments />} />
 										<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />

@@ -94,6 +94,25 @@ export type UserRow = {
 	full_name: string;
 	role: Role;
 	created_at: string;
+	phone_number: string | null;
+};
+
+export type OncallTeamRow = {
+	id: number;
+	name: string;
+	rotation_interval_days: number | null;
+	rotation_anchor: string;
+	created_at: string;
+};
+
+export type OncallTeamMemberRow = {
+	id: number;
+	team_id: number;
+	user_id: number;
+	position: number;
+	full_name: string;
+	email: string;
+	phone_number: string | null;
 };
 
 export type AuditLogRow = {

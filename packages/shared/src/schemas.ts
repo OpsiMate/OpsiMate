@@ -206,6 +206,14 @@ export const LoginSchema = z.object({
 
 export const UpdateProfileSchema = z.object({
 	fullName: z.string().min(1, 'Full name is required'),
+	// Optional contact number; an empty string clears it.
+	phoneNumber: z
+		.string()
+		.trim()
+		.max(30, 'Phone number is too long')
+		.regex(/^[+\d][\d\s()-]*$/, 'Invalid phone number')
+		.or(z.literal(''))
+		.optional(),
 	newPassword: z
 		.string()
 		.min(6, 'Password must be at least 6 characters')
@@ -542,4 +550,15 @@ export const UpdateRetentionConfigSchema = z
 
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
+});
+
+export const OncallTeamSchema = z.object({
+	name: z.string().trim().min(1, 'Team name is required').max(100),
+	// Days between rotation shifts; 0 or null keeps the order fixed.
+	rotationIntervalDays: z.number().int().min(0).max(365).nullable().optional(),
+});
+
+export const OncallTeamMembersSchema = z.object({
+	// Ordered list — the base call priority (before rotation) follows this order.
+	userIds: z.array(z.coerce.number().int().positive()).max(50),
 });

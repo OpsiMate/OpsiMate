@@ -21,6 +21,7 @@ export const queryKeys = {
 	dashboards: ['dashboards'] as const,
 	dashboardTags: ['dashboardTags'] as const,
 	mutePolicies: ['mutePolicies'] as const,
+	oncallTeams: ['oncallTeams'] as const,
 	enrichments: ['enrichments'] as const,
 	actions: ['actions'] as const,
 	retention: ['retention'] as const,
