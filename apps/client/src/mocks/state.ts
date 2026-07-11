@@ -251,7 +251,7 @@ const createUsers = (): User[] => [
 const createOncallTeams = (): OncallTeamState[] => [
 	{
 		id: 1,
-		name: 'backend',
+		name: 'platform',
 		rotationIntervalDays: 3,
 		rotationAnchor: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
 		userIds: [getPlaygroundUser().id, '1', '2'],
@@ -426,18 +426,24 @@ const TAG_TEAM = ['platform', 'data', 'frontend', 'sre'];
 
 const seedAlerts = () => {
 	const alerts = generateDiverseMockAlerts(500);
-	return alerts.map((alert, idx) => ({
-		...alert,
-		// First-class severity mirrors production ingestion (derived from the severity tag).
-		severity: normalizeAlertSeverity(TAG_SEVERITY[idx % TAG_SEVERITY.length]),
-		tags: {
-			severity: TAG_SEVERITY[idx % TAG_SEVERITY.length],
-			service: TAG_SERVICE[idx % TAG_SERVICE.length],
-			environment: TAG_ENVIRONMENT[idx % TAG_ENVIRONMENT.length],
-			team: TAG_TEAM[idx % TAG_TEAM.length],
-		},
-		ownerId: idx % 7 === 0 ? getPlaygroundUser().id : null,
-	}));
+	return alerts.map((alert, idx) => {
+		// Every fifth alert has no owning team — the field defaults to none.
+		const team = idx % 5 === 0 ? null : TAG_TEAM[idx % TAG_TEAM.length];
+		return {
+			...alert,
+			// First-class severity mirrors production ingestion (derived from the severity tag).
+			severity: normalizeAlertSeverity(TAG_SEVERITY[idx % TAG_SEVERITY.length]),
+			// First-class team mirrors production ingestion (derived from the team tag).
+			team,
+			tags: {
+				severity: TAG_SEVERITY[idx % TAG_SEVERITY.length],
+				service: TAG_SERVICE[idx % TAG_SERVICE.length],
+				environment: TAG_ENVIRONMENT[idx % TAG_ENVIRONMENT.length],
+				...(team ? { team } : {}),
+			},
+			ownerId: idx % 7 === 0 ? getPlaygroundUser().id : null,
+		};
+	});
 };
 
 // An alert is either silenced or resolved, never both — resolved seeds are always unsilenced.

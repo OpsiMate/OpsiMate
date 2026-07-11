@@ -200,6 +200,9 @@ export interface Alert {
 	status: AlertStatus;
 	// Always present on API responses; alerts sent without one default to warning.
 	severity: AlertSeverity;
+	// Owning team, resolved at ingestion from an explicit field or a `team` tag; null when
+	// the alert has no team. Links the alert to the on-call schedule in the details panel.
+	team?: string | null;
 	tags: Record<string, string>;
 	startsAt: string;
 	updatedAt: string;

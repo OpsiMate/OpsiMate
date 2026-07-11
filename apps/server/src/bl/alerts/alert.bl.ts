@@ -88,8 +88,11 @@ export class AlertBL {
 			logger.info(`Inserting alert: ${alert.id}`);
 			// || (not ??) so a blank explicit severity falls through to the tag.
 			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
+			// Same funnel for the owning team: explicit field wins, then a `team` tag,
+			// otherwise none. Unlike severity there is no fixed scale — any name is kept.
+			const team = alert.team?.trim() || alert.tags?.['team'] || null;
 			const tags = { ...(alert.tags ?? {}), severity };
-			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity });
+			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;

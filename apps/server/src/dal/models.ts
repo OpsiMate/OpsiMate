@@ -56,6 +56,7 @@ export type AlertRow = {
 	type: AlertType;
 	status: string;
 	severity?: string | null;
+	team?: string | null;
 	tags: string;
 	starts_at: string;
 	updated_at: string;
@@ -74,6 +75,7 @@ export type ResolvedAlertRow = {
 	type: AlertType;
 	status: string;
 	severity?: string | null;
+	team?: string | null;
 	tags: string;
 	starts_at: string;
 	updated_at: string;

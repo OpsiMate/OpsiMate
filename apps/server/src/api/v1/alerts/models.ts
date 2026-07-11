@@ -43,6 +43,8 @@ export const HttpAlertWebhookSchema = z.object({
 	// Free-form; normalized onto the fixed critical/warning/info scale at ingestion
 	// (unknown or missing values default to warning).
 	severity: z.string().optional(),
+	// Owning team; falls back to a `team` tag at ingestion, null when neither is present.
+	team: z.string().optional(),
 });
 
 /**

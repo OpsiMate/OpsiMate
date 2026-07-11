@@ -13,12 +13,13 @@ export class AlertRepository {
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-				INSERT INTO alerts (id, status, type, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 											  status=excluded.status,
 											  type=excluded.type,
 											  severity=excluded.severity,
+											  team=excluded.team,
 											  tags=excluded.tags,
 											  starts_at=excluded.starts_at,
 											  updated_at=excluded.updated_at,
@@ -33,6 +34,7 @@ export class AlertRepository {
 				alert.status,
 				alert.type,
 				alert.severity,
+				alert.team ?? null,
 				JSON.stringify(alert.tags ?? {}),
 				alert.startsAt,
 				alert.updatedAt,
@@ -63,8 +65,8 @@ export class AlertRepository {
 				this.db
 					.prepare(
 						`
-						INSERT INTO alerts (id, status, type, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed, is_read, created_at, owner_id)
-						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+						INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed, is_read, created_at, owner_id)
+						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 						ON CONFLICT(id) DO UPDATE SET
 													  status=excluded.status,
 													  updated_at=excluded.updated_at
@@ -75,6 +77,7 @@ export class AlertRepository {
 						alert.status,
 						alert.type,
 						alert.severity,
+						alert.team ?? null,
 						JSON.stringify(alert.tags ?? {}),
 						alert.startsAt,
 						alert.updatedAt,
@@ -143,6 +146,12 @@ export class AlertRepository {
 			if (!hasSeverity) {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN severity TEXT`).run();
 			}
+
+			// Backward compatibility: ensure team column exists
+			const hasTeam = columns.some((col: TableInfoRow) => col.name === 'team');
+			if (!hasTeam) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN team TEXT`).run();
+			}
 		});
 	}
 
@@ -156,6 +165,8 @@ export class AlertRepository {
 			type: row.type,
 			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
 			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
+			// Legacy rows (pre-team column) fall back to their team tag.
+			team: row.team ?? tags['team'] ?? null,
 			tags,
 			startsAt: row.starts_at,
 			updatedAt: row.updated_at,
