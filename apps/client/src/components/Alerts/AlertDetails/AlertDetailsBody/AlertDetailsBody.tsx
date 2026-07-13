@@ -38,7 +38,7 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 			)}
 
 			{alert.team && (
-				<CollapsibleSection title="Team" icon={<PhoneCall className="h-3.5 w-3.5" />} defaultOpen>
+				<CollapsibleSection title="Team" icon={<PhoneCall className="h-3.5 w-3.5" />} defaultOpen={false}>
 					<AlertTeamSection team={alert.team} />
 				</CollapsibleSection>
 			)}

@@ -8,8 +8,8 @@ interface AlertTeamSectionProps {
 	team: string;
 }
 
-// Shows the alert's owning team and who is on call for it right now (priority 1 of the
-// matching on-call team), with their phone number so the NOC can reach them directly.
+// One compact line: the alert's owning team and who is on call for it right now
+// (priority 1 of the matching on-call team), with a tel: link so the NOC can dial.
 export const AlertTeamSection = ({ team }: AlertTeamSectionProps) => {
 	const { data: teams = [] } = useOncallTeams();
 
@@ -20,39 +20,33 @@ export const AlertTeamSection = ({ team }: AlertTeamSectionProps) => {
 	const onCallNow = oncallTeam?.members.find((m) => m.priority === 1) ?? null;
 
 	return (
-		<div className="space-y-2 text-sm">
-			<div className="flex items-center gap-2">
-				<span className="text-muted-foreground">Team</span>
-				<span className="font-medium">{team}</span>
-			</div>
+		<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+			<span className="font-medium">{team}</span>
 			{onCallNow ? (
-				<div className="flex flex-wrap items-center gap-2">
-					<span className="text-muted-foreground">On call now</span>
-					<span
-						data-testid="alert-team-oncall"
-						className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-2.5 py-0.5 text-xs font-semibold"
-					>
-						<Badge variant="default" className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px]">
-							1
-						</Badge>
-						{onCallNow.fullName}
-						{onCallNow.phoneNumber && (
-							<a
-								href={`tel:${onCallNow.phoneNumber.replace(/[^+\d]/g, '')}`}
-								onClick={(e) => e.stopPropagation()}
-								className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-							>
-								<Phone className="h-3 w-3" />
-								{onCallNow.phoneNumber}
-							</a>
-						)}
-					</span>
-					{onCallNow && !onCallNow.phoneNumber && (
-						<span className="text-xs text-muted-foreground">(no phone number set)</span>
+				<span
+					data-testid="alert-team-oncall"
+					title="On call now"
+					className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-2.5 py-0.5 text-xs font-semibold"
+				>
+					<Badge variant="default" className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px]">
+						1
+					</Badge>
+					{onCallNow.fullName}
+					{onCallNow.phoneNumber ? (
+						<a
+							href={`tel:${onCallNow.phoneNumber.replace(/[^+\d]/g, '')}`}
+							onClick={(e) => e.stopPropagation()}
+							className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+						>
+							<Phone className="h-3 w-3" />
+							{onCallNow.phoneNumber}
+						</a>
+					) : (
+						<span className="font-normal text-muted-foreground">(no phone)</span>
 					)}
-				</div>
+				</span>
 			) : (
-				<div className="text-xs text-muted-foreground">No on-call schedule configured for this team.</div>
+				<span className="text-xs text-muted-foreground">no on-call schedule</span>
 			)}
 		</div>
 	);
