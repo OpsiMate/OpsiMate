@@ -89,6 +89,8 @@ export class AlertBL {
 			// || (not ??) so a blank explicit severity falls through to the tag.
 			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
 			const tags = { ...(alert.tags ?? {}), severity };
+			// The repository atomically drops any resolved copy of this id — a re-firing
+			// alert must never show as both firing and resolved.
 			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity });
 		} catch (error) {
 			logger.error('Error inserting alert', error);

@@ -1239,6 +1239,44 @@ describe('Alerts API', () => {
 				expect(resolvedRow.alert_name).toBe(newAlertPayload.alertName);
 				expect(resolvedRow.archived_at).toBeDefined();
 			});
+
+			test('should drop the resolved copy when a resolved alert fires again', async () => {
+				const alertPayload = {
+					id: 'alert-refire',
+					status: 'active',
+					tags: { tag: 'testing' },
+					startsAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					alertUrl: 'https://example.com/refire-test',
+					alertName: 'Alert that fires again',
+					summary: 'Resolved manually, then reported firing by the source',
+					runbookUrl: 'https://runbook.com/refire',
+				};
+
+				// Fire, then resolve manually (delete moves it to the resolved table)
+				const createResponse = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(alertPayload);
+				expect(createResponse.status).toBe(200);
+
+				const deleteResponse = await app
+					.delete(`/api/v1/alerts/${alertPayload.id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(deleteResponse.status).toBe(200);
+				expect(db.prepare('SELECT 1 FROM alerts_resolved WHERE id = ?').get(alertPayload.id)).toBeDefined();
+
+				// The same alert fires again: it must exist as active ONLY — a lingering
+				// resolved copy showed the alert twice in the UI (firing + resolved).
+				const refireResponse = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(alertPayload);
+				expect(refireResponse.status).toBe(200);
+
+				expect(db.prepare('SELECT 1 FROM alerts WHERE id = ?').get(alertPayload.id)).toBeDefined();
+				expect(db.prepare('SELECT 1 FROM alerts_resolved WHERE id = ?').get(alertPayload.id)).toBeUndefined();
+			});
 		});
 
 		describe('DELETE /api/v1/alerts/resolved/:id', () => {
