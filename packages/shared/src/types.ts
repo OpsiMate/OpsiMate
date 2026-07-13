@@ -285,6 +285,7 @@ export enum AuditResourceType {
 	DASHBOARD = 'DASHBOARD',
 	SECRET = 'SECRET',
 	ENRICHMENT = 'ENRICHMENT',
+	ACTION = 'ACTION',
 	// Add more as needed
 }
 

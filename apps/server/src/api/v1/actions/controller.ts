@@ -43,16 +43,19 @@ export class ActionController {
 		}
 	};
 
-	createHandler = async (req: Request, res: Response) => {
+	createHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const data = CreateActionSchema.parse(req.body);
-			const action = await this.actionBL.create({
-				name: data.name,
-				type: data.type,
-				config: data.config,
-				nameContains: data.nameContains ?? null,
-				labelMatchers: data.labelMatchers ?? [],
-			});
+			const action = await this.actionBL.create(
+				{
+					name: data.name,
+					type: data.type,
+					config: data.config,
+					nameContains: data.nameContains ?? null,
+					labelMatchers: data.labelMatchers ?? [],
+				},
+				req.user
+			);
 			return res.status(201).json({ success: true, data: action, message: 'Action created' });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -115,7 +118,7 @@ export class ActionController {
 		}
 	};
 
-	updateHandler = async (req: Request, res: Response) => {
+	updateHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { actionId } = ActionIdSchema.parse({ actionId: req.params.actionId });
 			const data = UpdateActionSchema.parse(req.body);
@@ -125,13 +128,17 @@ export class ActionController {
 				return res.status(404).json({ success: false, error: 'Action not found' });
 			}
 
-			const updated = await this.actionBL.update(actionId, {
-				name: data.name,
-				type: data.type,
-				config: data.config,
-				nameContains: data.nameContains ?? null,
-				labelMatchers: data.labelMatchers ?? [],
-			});
+			const updated = await this.actionBL.update(
+				actionId,
+				{
+					name: data.name,
+					type: data.type,
+					config: data.config,
+					nameContains: data.nameContains ?? null,
+					labelMatchers: data.labelMatchers ?? [],
+				},
+				req.user
+			);
 			return res.json({ success: true, data: updated, message: 'Action updated' });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -142,14 +149,14 @@ export class ActionController {
 		}
 	};
 
-	deleteHandler = async (req: Request, res: Response) => {
+	deleteHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { actionId } = ActionIdSchema.parse({ actionId: req.params.actionId });
 			const existing = await this.actionBL.get(actionId);
 			if (!existing) {
 				return res.status(404).json({ success: false, error: 'Action not found' });
 			}
-			await this.actionBL.delete(actionId);
+			await this.actionBL.delete(actionId, req.user);
 			return res.json({ success: true, message: 'Action deleted' });
 		} catch (error) {
 			if (isZodError(error)) {
