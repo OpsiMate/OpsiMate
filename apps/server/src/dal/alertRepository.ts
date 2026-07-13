@@ -148,8 +148,16 @@ export class AlertRepository {
 			// to re-insert a previously-resolved alert into the active table without dropping
 			// its resolved copy, so it showed up twice in the UI. The active row wins — the
 			// alert is firing again. Runs after initResolvedAlertsTable (see app.ts), so
-			// alerts_resolved is guaranteed to exist.
-			this.db.prepare(`DELETE FROM alerts_resolved WHERE id IN (SELECT id FROM alerts)`).run();
+			// alerts_resolved is guaranteed to exist. The users guard is for brand-new
+			// databases: initUsersTable runs after this, and until the users table exists the
+			// dangling owner_id FK on alerts_resolved makes any write to it fail to compile
+			// ("no such table: main.users"). A fresh database has nothing to repair anyway.
+			const usersTableExists = !!this.db
+				.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'`)
+				.get();
+			if (usersTableExists) {
+				this.db.prepare(`DELETE FROM alerts_resolved WHERE id IN (SELECT id FROM alerts)`).run();
+			}
 		});
 	}
 
