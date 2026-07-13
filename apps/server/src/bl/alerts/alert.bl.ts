@@ -89,6 +89,10 @@ export class AlertBL {
 			// || (not ??) so a blank explicit severity falls through to the tag.
 			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
 			const tags = { ...(alert.tags ?? {}), severity };
+			// An alert id must never live in both tables: if this alert was previously resolved
+			// (manually or by a source) and is now firing again, drop the resolved copy — the
+			// active row is the truth. Delete first so no poll ever sees the alert twice.
+			await this.resolvedAlertRepo.deleteResolvedAlert(alert.id);
 			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity });
 		} catch (error) {
 			logger.error('Error inserting alert', error);

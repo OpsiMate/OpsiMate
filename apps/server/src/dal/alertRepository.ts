@@ -143,6 +143,13 @@ export class AlertRepository {
 			if (!hasSeverity) {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN severity TEXT`).run();
 			}
+
+			// Repair: an alert id must never exist as both active and resolved. Ingestion used
+			// to re-insert a previously-resolved alert into the active table without dropping
+			// its resolved copy, so it showed up twice in the UI. The active row wins — the
+			// alert is firing again. Runs after initResolvedAlertsTable (see app.ts), so
+			// alerts_resolved is guaranteed to exist.
+			this.db.prepare(`DELETE FROM alerts_resolved WHERE id IN (SELECT id FROM alerts)`).run();
 		});
 	}
 
