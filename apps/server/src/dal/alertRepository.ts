@@ -28,20 +28,27 @@ export class AlertRepository {
 											  runbook_url=excluded.runbook_url
 			`);
 
-			const result = stmt.run(
-				alert.id,
-				alert.status,
-				alert.type,
-				alert.severity,
-				JSON.stringify(alert.tags ?? {}),
-				alert.startsAt,
-				alert.updatedAt,
-				alert.alertUrl,
-				alert.alertName,
-				alert.summary || null,
-				alert.runbookUrl || null
-			);
-			return { changes: result.changes };
+			// An alert id must never live in both tables: if this alert was previously
+			// resolved (manually or by a source) and is now firing again, drop the resolved
+			// copy — the active row is the truth. Same transaction as the upsert so a
+			// failure between the two can't leave the alert in neither table.
+			const upsert = this.db.transaction(() => {
+				this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`).run(alert.id);
+				return stmt.run(
+					alert.id,
+					alert.status,
+					alert.type,
+					alert.severity,
+					JSON.stringify(alert.tags ?? {}),
+					alert.startsAt,
+					alert.updatedAt,
+					alert.alertUrl,
+					alert.alertName,
+					alert.summary || null,
+					alert.runbookUrl || null
+				);
+			});
+			return { changes: upsert().changes };
 		});
 	}
 
