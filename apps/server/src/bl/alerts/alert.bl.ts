@@ -92,6 +92,8 @@ export class AlertBL {
 			// otherwise none. Unlike severity there is no fixed scale — any name is kept.
 			const team = alert.team?.trim() || alert.tags?.['team'] || null;
 			const tags = { ...(alert.tags ?? {}), severity };
+			// The repository atomically drops any resolved copy of this id — a re-firing
+			// alert must never show as both firing and resolved.
 			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
 		} catch (error) {
 			logger.error('Error inserting alert', error);
