@@ -70,11 +70,18 @@ const Oncall = () => {
 
 	const handleSave = async (draft: OncallTeamDraft) => {
 		setSaving(true);
+		// Tracked so a failed member save can roll back a just-created team — otherwise
+		// retrying the dialog would leave an empty duplicate behind.
+		let createdTeamId: number | null = null;
 		try {
 			const payload = { name: draft.name, rotationIntervalDays: draft.rotationIntervalDays };
-			const teamId = editingTeam
-				? (await updateTeam.mutateAsync({ teamId: editingTeam.id, payload })).id
-				: (await createTeam.mutateAsync(payload)).id;
+			let teamId: number;
+			if (editingTeam) {
+				teamId = (await updateTeam.mutateAsync({ teamId: editingTeam.id, payload })).id;
+			} else {
+				teamId = (await createTeam.mutateAsync(payload)).id;
+				createdTeamId = teamId;
+			}
 			await setTeamMembers.mutateAsync({ teamId, userIds: draft.userIds });
 			setFormOpen(false);
 			toast({
@@ -82,6 +89,9 @@ const Oncall = () => {
 				description: `"${draft.name}" now has ${draft.userIds.length} member${draft.userIds.length !== 1 ? 's' : ''}.`,
 			});
 		} catch (err) {
+			if (createdTeamId !== null) {
+				await deleteTeam.mutateAsync(createdTeamId).catch(() => undefined);
+			}
 			toast({
 				title: 'Failed to save team',
 				description: err instanceof Error ? err.message : 'Unknown error',

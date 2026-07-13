@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { OncallTeamMemberRow, OncallTeamRow } from './models';
+import { ForeignKeyInfoRow, OncallTeamMemberRow, OncallTeamRow } from './models';
 
 export class OncallRepository {
 	private db: Database.Database;
@@ -23,11 +23,35 @@ export class OncallRepository {
 				CREATE TABLE IF NOT EXISTS oncall_team_members (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
 					team_id INTEGER NOT NULL REFERENCES oncall_teams(id) ON DELETE CASCADE,
-					user_id INTEGER NOT NULL REFERENCES users(id),
+					user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 					position INTEGER NOT NULL,
 					UNIQUE(team_id, user_id)
 				);
 			`);
+
+			// Migration: early versions created the user_id FK without ON DELETE CASCADE, so
+			// deleting a user who was on a team threw an FK error. SQLite can't alter an FK
+			// in place — rebuild the table when the old shape is detected.
+			const fks = this.db.prepare(`PRAGMA foreign_key_list(oncall_team_members)`).all() as ForeignKeyInfoRow[];
+			const userFk = fks.find((fk) => fk.from === 'user_id');
+			if (userFk && userFk.on_delete !== 'CASCADE') {
+				const rebuild = this.db.transaction(() => {
+					this.db.exec(`
+						CREATE TABLE oncall_team_members_new (
+							id INTEGER PRIMARY KEY AUTOINCREMENT,
+							team_id INTEGER NOT NULL REFERENCES oncall_teams(id) ON DELETE CASCADE,
+							user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+							position INTEGER NOT NULL,
+							UNIQUE(team_id, user_id)
+						);
+						INSERT INTO oncall_team_members_new (id, team_id, user_id, position)
+							SELECT id, team_id, user_id, position FROM oncall_team_members;
+						DROP TABLE oncall_team_members;
+						ALTER TABLE oncall_team_members_new RENAME TO oncall_team_members;
+					`);
+				});
+				rebuild();
+			}
 		});
 	}
 

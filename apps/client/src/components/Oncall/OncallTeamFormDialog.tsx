@@ -229,7 +229,10 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 						onClick={() =>
 							onSave({
 								name: name.trim(),
-								rotationIntervalDays: rotationDays ? parseInt(rotationDays, 10) || null : null,
+								// Clamp: the number input hints min 0 but doesn't stop manual "-3".
+								rotationIntervalDays: rotationDays
+									? Math.max(0, parseInt(rotationDays, 10)) || null
+									: null,
 								userIds,
 							})
 						}

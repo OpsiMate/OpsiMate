@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { UserRow } from './models';
+import { TableInfoRow, UserRow } from './models';
 import { User } from '@OpsiMate/shared';
 
 export class UserRepository {
@@ -28,7 +28,7 @@ export class UserRepository {
 				.run();
 
 			// Backward compatibility: ensure phone_number column exists
-			const columns = this.db.prepare(`PRAGMA table_info(users)`).all() as { name: string }[];
+			const columns = this.db.prepare(`PRAGMA table_info(users)`).all() as TableInfoRow[];
 			if (!columns.some((col) => col.name === 'phone_number')) {
 				this.db.prepare(`ALTER TABLE users ADD COLUMN phone_number TEXT`).run();
 			}

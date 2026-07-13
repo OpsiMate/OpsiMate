@@ -206,12 +206,17 @@ export const LoginSchema = z.object({
 
 export const UpdateProfileSchema = z.object({
 	fullName: z.string().min(1, 'Full name is required'),
-	// Optional contact number; an empty string clears it.
+	// Optional contact number; an empty string clears it. Formatting characters are
+	// allowed, but the number must contain 7-15 digits (E.164 range) to be callable.
 	phoneNumber: z
 		.string()
 		.trim()
 		.max(30, 'Phone number is too long')
-		.regex(/^[+\d][\d\s()-]*$/, 'Invalid phone number')
+		.regex(/^\+?[\d\s()-]+$/, 'Invalid phone number')
+		.refine((val) => {
+			const digits = val.replace(/\D/g, '');
+			return digits.length >= 7 && digits.length <= 15;
+		}, 'Invalid phone number')
 		.or(z.literal(''))
 		.optional(),
 	newPassword: z
@@ -560,5 +565,8 @@ export const OncallTeamSchema = z.object({
 
 export const OncallTeamMembersSchema = z.object({
 	// Ordered list — the base call priority (before rotation) follows this order.
-	userIds: z.array(z.coerce.number().int().positive()).max(50),
+	userIds: z
+		.array(z.coerce.number().int().positive())
+		.max(50)
+		.refine((ids) => new Set(ids).size === ids.length, 'Each user may appear only once'),
 });

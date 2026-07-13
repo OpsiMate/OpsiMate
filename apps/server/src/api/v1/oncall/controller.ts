@@ -91,10 +91,8 @@ export class OncallController {
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
+			// The schema also rejects duplicate userIds.
 			const { userIds } = OncallTeamMembersSchema.parse(req.body);
-			if (new Set(userIds).size !== userIds.length) {
-				return res.status(400).json({ success: false, error: 'Duplicate users in member list' });
-			}
 			const team = await this.oncallBL.setTeamMembers(teamId, userIds);
 			if (!team) {
 				return res.status(404).json({ success: false, error: 'Team not found' });

@@ -157,6 +157,18 @@ export type TableInfoRow = {
 	pk: number;
 };
 
+// Row shape of PRAGMA foreign_key_list(<table>).
+export type ForeignKeyInfoRow = {
+	id: number;
+	seq: number;
+	table: string;
+	from: string;
+	to: string;
+	on_update: string;
+	on_delete: string;
+	match: string;
+};
+
 export type AlertCommentRow = {
 	id: string;
 	alert_id: string;
