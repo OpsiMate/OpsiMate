@@ -173,7 +173,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
-	const actionBL = new ActionBL(actionRepo, alertHistoryRepo);
+	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
 
 	// Controllers (only for SERVER)
 	const providerController = new ProviderController(providerBL, secretsMetadataRepo);
