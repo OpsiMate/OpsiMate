@@ -75,9 +75,7 @@ describe('Action Audit Logs', () => {
 			.send({ ...slackAction, name: 'Audit Slack Action Updated' });
 		expect(updateRes.status).toBe(200);
 
-		const deleteRes = await app
-			.delete(`/api/v1/actions/${resourceId}`)
-			.set('Authorization', `Bearer ${jwtToken}`);
+		const deleteRes = await app.delete(`/api/v1/actions/${resourceId}`).set('Authorization', `Bearer ${jwtToken}`);
 		expect(deleteRes.status).toBe(200);
 
 		const auditRes = await app.get('/api/v1/audit?page=1&pageSize=10').set('Authorization', `Bearer ${jwtToken}`);
