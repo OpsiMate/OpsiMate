@@ -136,7 +136,7 @@ export const AlertsTable = ({
 					{/* Header and body share this horizontal scroller: when the pane is narrower
 					    than the table's minimum width they scroll sideways together, instead of the
 					    auto-width summary column silently collapsing to zero. */}
-					<div className="flex-1 min-h-0 overflow-x-auto">
+					<div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
 						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
 							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
 							    scrollbar gutter (see below) so header and body columns stay aligned on
@@ -265,7 +265,7 @@ export const AlertsTable = ({
 							    to the header, drifting the auto-width columns by the scrollbar width. */}
 								<div
 									ref={parentRef}
-									className="overflow-y-auto h-full w-full relative"
+									className="overflow-y-auto overflow-x-hidden h-full w-full relative"
 									style={{ scrollbarGutter: 'stable' }}
 								>
 									{isLoading ? (

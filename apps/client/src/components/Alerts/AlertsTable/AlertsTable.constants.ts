@@ -45,8 +45,10 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	type: 48,
 	severity: 48,
 	status: 48,
-	alertName: 180,
-	summary: 160,
+	// The two flexible (w-auto) columns split leftover space equally, so they share
+	// one minimum — declaring different ones would be unenforceable.
+	alertName: 170,
+	summary: 170,
 	owner: 120,
 	startsAt: 150,
 	// Rendered at ACTIONS_COLUMN_WIDTH (inline style), not COLUMN_WIDTHS.
