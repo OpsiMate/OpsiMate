@@ -138,7 +138,13 @@ export const AlertsTable = ({
 					    auto-width summary column silently collapsing to zero. */}
 					<div className="flex-1 min-h-0 overflow-x-auto">
 						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
-							<div className="border-b flex-shrink-0">
+							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
+							    scrollbar gutter (see below) so header and body columns stay aligned on
+							    classic-scrollbar systems. */}
+							<div
+								className="border-b flex-shrink-0 overflow-hidden"
+								style={{ scrollbarGutter: 'stable' }}
+							>
 								<Table className="table-fixed w-full">
 									<TableHeader>
 										<TableRow className="h-8">
@@ -255,7 +261,13 @@ export const AlertsTable = ({
 									))}
 								</div>
 
-								<div ref={parentRef} className="overflow-y-auto h-full w-full relative">
+								{/* Stable gutter: non-overlay scrollbars otherwise shrink the rows relative
+							    to the header, drifting the auto-width columns by the scrollbar width. */}
+								<div
+									ref={parentRef}
+									className="overflow-y-auto h-full w-full relative"
+									style={{ scrollbarGutter: 'stable' }}
+								>
 									{isLoading ? (
 										<div className="flex items-center justify-center py-8 text-sm text-foreground">
 											Loading alerts...
