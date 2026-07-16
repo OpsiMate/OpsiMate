@@ -28,14 +28,17 @@ export class OncallBL {
 			nextRotationAt = new Date(anchorMs + (periods + 1) * interval * DAY_MS).toISOString();
 		}
 
-		const members: OncallTeamMember[] = memberRows.map((row) => ({
+		const members: OncallTeamMember[] = memberRows.map((row, index) => ({
 			userId: String(row.user_id),
 			fullName: row.full_name,
 			email: row.email,
 			phoneNumber: row.phone_number ?? null,
 			// Rotate the base order by `shift`: the member at base position `shift` becomes
-			// priority 1, the one before them wraps to the end.
-			priority: ((row.position - shift + count) % count) + 1,
+			// priority 1, the one before them wraps to the end. The dense index is used
+			// (rows are position-ordered) rather than the stored position, which can have
+			// gaps after a member's user is deleted (FK cascade) — gaps would make the
+			// modulo assign duplicate priorities.
+			priority: ((index - shift + count) % count) + 1,
 		}));
 		members.sort((a, b) => a.priority - b.priority);
 
