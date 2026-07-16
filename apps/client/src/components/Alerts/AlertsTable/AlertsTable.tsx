@@ -10,6 +10,7 @@ import {
 	ACTIONS_COLUMN,
 	ACTIONS_COLUMN_WIDTH,
 	COLUMN_LABELS,
+	COLUMN_MIN_WIDTHS,
 	COLUMN_WIDTHS,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
@@ -101,6 +102,13 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
+	// Floor width for the table: the sum of the visible columns' minimums. Narrower
+	// panes get a horizontal scrollbar instead of columns crushing each other.
+	const tableMinWidth = useMemo(() => {
+		const columns = onSelectAlerts ? ['select', ...orderedColumns] : orderedColumns;
+		return columns.reduce((sum, col) => sum + (COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default), 0);
+	}, [orderedColumns, onSelectAlerts]);
+
 	const hasActiveTimeFilter = timeRange && !isTimeRangeEmpty(timeRange);
 
 	return (
@@ -125,156 +133,163 @@ export const AlertsTable = ({
 							{heading}
 						</div>
 					)}
-					<div className="border-b flex-shrink-0">
-						<Table className="table-fixed w-full">
-							<TableHeader>
-								<TableRow className="h-8">
-									{onSelectAlerts && (
-										<TableHead
-											className={TABLE_HEAD_CLASSES}
-											style={{
-												width: SELECT_COLUMN_WIDTH,
-												minWidth: SELECT_COLUMN_WIDTH,
-												maxWidth: SELECT_COLUMN_WIDTH,
-											}}
-										>
-											<div className="flex items-center justify-center">
-												<Checkbox
-													checked={
-														sortedAlerts.length > 0 &&
-														selectedAlerts.length === sortedAlerts.length
-													}
-													onCheckedChange={handleSelectAll}
-													className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-												/>
-											</div>
-										</TableHead>
-									)}
-									{orderedColumns.map((column) => {
-										if (column === ACTIONS_COLUMN) {
-											return (
+					{/* Header and body share this horizontal scroller: when the pane is narrower
+					    than the table's minimum width they scroll sideways together, instead of the
+					    auto-width summary column silently collapsing to zero. */}
+					<div className="flex-1 min-h-0 overflow-x-auto">
+						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
+							<div className="border-b flex-shrink-0">
+								<Table className="table-fixed w-full">
+									<TableHeader>
+										<TableRow className="h-8">
+											{onSelectAlerts && (
 												<TableHead
-													key={column}
-													className={`${TABLE_HEAD_CLASSES} text-xs`}
+													className={TABLE_HEAD_CLASSES}
 													style={{
-														width: ACTIONS_COLUMN_WIDTH,
-														minWidth: ACTIONS_COLUMN_WIDTH,
-														maxWidth: ACTIONS_COLUMN_WIDTH,
+														width: SELECT_COLUMN_WIDTH,
+														minWidth: SELECT_COLUMN_WIDTH,
+														maxWidth: SELECT_COLUMN_WIDTH,
 													}}
 												>
-													<div className="flex items-center justify-end gap-2 min-w-0">
-														<GroupByControls
-															groupByColumns={groupByColumns}
-															onGroupByChange={setGroupByColumns}
-															availableColumns={visibleColumns}
-															columnLabels={allColumnLabels}
-															onExpandAll={expandAll}
-															onCollapseAll={collapseAll}
+													<div className="flex items-center justify-center">
+														<Checkbox
+															checked={
+																sortedAlerts.length > 0 &&
+																selectedAlerts.length === sortedAlerts.length
+															}
+															onCheckedChange={handleSelectAll}
+															className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
 														/>
-														{onColumnToggle && (
-															<ColumnSettingsDropdown
-																visibleColumns={visibleColumns}
-																onColumnToggle={onColumnToggle}
-																columnLabels={COLUMN_LABELS}
-																excludeColumns={[ACTIONS_COLUMN]}
-																tagKeys={tagKeys}
-															/>
-														)}
 													</div>
 												</TableHead>
-											);
-										}
-										if (isTagKeyColumn(column)) {
-											const tagKey = extractTagKeyFromColumnId(column);
-											const label = allColumnLabels[column] || tagKey || column;
-											return (
-												<SortableHeader
-													key={column}
-													column={column as AlertSortField}
-													label={label}
-													sortField={sortField}
-													sortDirection={sortDirection}
-													onSort={handleSort}
-													className={COLUMN_WIDTHS.default}
-												/>
-											);
-										}
-										if (
-											[
-												'alertName',
-												'severity',
-												'status',
-												'startsAt',
-												'summary',
-												'type',
-												'owner',
-											].includes(column)
-										) {
-											return (
-												<SortableHeader
-													key={column}
-													column={column as AlertSortField}
-													label={allColumnLabels[column]}
-													labelIcon={HEADER_ICONS[column]}
-													sortField={sortField}
-													sortDirection={sortDirection}
-													onSort={handleSort}
-													className={COLUMN_WIDTHS[column]}
-												/>
-											);
-										}
-										return null;
-									})}
-								</TableRow>
-							</TableHeader>
-						</Table>
-					</div>
+											)}
+											{orderedColumns.map((column) => {
+												if (column === ACTIONS_COLUMN) {
+													return (
+														<TableHead
+															key={column}
+															className={`${TABLE_HEAD_CLASSES} text-xs`}
+															style={{
+																width: ACTIONS_COLUMN_WIDTH,
+																minWidth: ACTIONS_COLUMN_WIDTH,
+																maxWidth: ACTIONS_COLUMN_WIDTH,
+															}}
+														>
+															<div className="flex items-center justify-end gap-2 min-w-0">
+																<GroupByControls
+																	groupByColumns={groupByColumns}
+																	onGroupByChange={setGroupByColumns}
+																	availableColumns={visibleColumns}
+																	columnLabels={allColumnLabels}
+																	onExpandAll={expandAll}
+																	onCollapseAll={collapseAll}
+																/>
+																{onColumnToggle && (
+																	<ColumnSettingsDropdown
+																		visibleColumns={visibleColumns}
+																		onColumnToggle={onColumnToggle}
+																		columnLabels={COLUMN_LABELS}
+																		excludeColumns={[ACTIONS_COLUMN]}
+																		tagKeys={tagKeys}
+																	/>
+																)}
+															</div>
+														</TableHead>
+													);
+												}
+												if (isTagKeyColumn(column)) {
+													const tagKey = extractTagKeyFromColumnId(column);
+													const label = allColumnLabels[column] || tagKey || column;
+													return (
+														<SortableHeader
+															key={column}
+															column={column as AlertSortField}
+															label={label}
+															sortField={sortField}
+															sortDirection={sortDirection}
+															onSort={handleSort}
+															className={COLUMN_WIDTHS.default}
+														/>
+													);
+												}
+												if (
+													[
+														'alertName',
+														'severity',
+														'status',
+														'startsAt',
+														'summary',
+														'type',
+														'owner',
+													].includes(column)
+												) {
+													return (
+														<SortableHeader
+															key={column}
+															column={column as AlertSortField}
+															label={allColumnLabels[column]}
+															labelIcon={HEADER_ICONS[column]}
+															sortField={sortField}
+															sortDirection={sortDirection}
+															onSort={handleSort}
+															className={COLUMN_WIDTHS[column]}
+														/>
+													);
+												}
+												return null;
+											})}
+										</TableRow>
+									</TableHeader>
+								</Table>
+							</div>
 
-					<div className="flex-1 min-h-0 relative">
-						<div className="absolute top-0 left-0 right-0 z-20">
-							{activeStickyHeaders.map((item) => (
-								<StickyGroupHeader
-									key={`sticky-${item.type === 'group' ? item.key : ''}`}
-									item={item}
-									onToggle={toggleGroup}
-									columnLabels={allColumnLabels}
-								/>
-							))}
-						</div>
+							<div className="flex-1 min-h-0 relative">
+								<div className="absolute top-0 left-0 right-0 z-20">
+									{activeStickyHeaders.map((item) => (
+										<StickyGroupHeader
+											key={`sticky-${item.type === 'group' ? item.key : ''}`}
+											item={item}
+											onToggle={toggleGroup}
+											columnLabels={allColumnLabels}
+										/>
+									))}
+								</div>
 
-						<div ref={parentRef} className="overflow-auto h-full w-full relative">
-							{isLoading ? (
-								<div className="flex items-center justify-center py-8 text-sm text-foreground">
-									Loading alerts...
+								<div ref={parentRef} className="overflow-y-auto h-full w-full relative">
+									{isLoading ? (
+										<div className="flex items-center justify-center py-8 text-sm text-foreground">
+											Loading alerts...
+										</div>
+									) : flatRows.length === 0 ? (
+										<div className="flex items-center justify-center py-8 text-sm text-foreground">
+											{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
+										</div>
+									) : (
+										<VirtualizedAlertList
+											virtualizer={virtualizer}
+											flatRows={flatRows}
+											selectedAlerts={selectedAlerts}
+											orderedColumns={orderedColumns}
+											onToggleGroup={toggleGroup}
+											onSelectAlert={handleSelectAlert}
+											onAlertClick={onAlertClick}
+											activeAlertId={activeAlertId}
+											onSilenceAlert={onSilenceAlert}
+											onUnsilenceAlert={onUnsilenceAlert}
+											onDeleteAlert={onDeleteAlert}
+											onUnresolveAlert={onUnresolveAlert}
+											onSelectAlerts={onSelectAlerts}
+											columnLabels={allColumnLabels}
+											isResolved={isResolved}
+											severityColors={severityColors}
+											isDragging={isDragging}
+											onDragStart={handleDragStart}
+											onDragEnter={handleDragEnter}
+											onDragEnd={() => handleDragEnd(handleSelectAlert)}
+										/>
+									)}
 								</div>
-							) : flatRows.length === 0 ? (
-								<div className="flex items-center justify-center py-8 text-sm text-foreground">
-									{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
-								</div>
-							) : (
-								<VirtualizedAlertList
-									virtualizer={virtualizer}
-									flatRows={flatRows}
-									selectedAlerts={selectedAlerts}
-									orderedColumns={orderedColumns}
-									onToggleGroup={toggleGroup}
-									onSelectAlert={handleSelectAlert}
-									onAlertClick={onAlertClick}
-									activeAlertId={activeAlertId}
-									onSilenceAlert={onSilenceAlert}
-									onUnsilenceAlert={onUnsilenceAlert}
-									onDeleteAlert={onDeleteAlert}
-									onUnresolveAlert={onUnresolveAlert}
-									onSelectAlerts={onSelectAlerts}
-									columnLabels={allColumnLabels}
-									isResolved={isResolved}
-									severityColors={severityColors}
-									isDragging={isDragging}
-									onDragStart={handleDragStart}
-									onDragEnter={handleDragEnter}
-									onDragEnd={() => handleDragEnd(handleSelectAlert)}
-								/>
-							)}
+							</div>
 						</div>
 					</div>
 				</div>
