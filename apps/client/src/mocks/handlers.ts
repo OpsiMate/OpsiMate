@@ -658,6 +658,12 @@ export const handlers = [
 
 	http.post(`${API_BASE}/oncall/teams`, async ({ request }) => {
 		const body = (await request.json()) as { name: string; rotationIntervalDays?: number | null };
+		if (playgroundState.oncallTeams.some((t) => t.name.toLowerCase() === body.name.toLowerCase())) {
+			return HttpResponse.json(
+				{ success: false, error: `A team named "${body.name}" already exists` },
+				{ status: 409 }
+			);
+		}
 		const team = {
 			id: randomId(),
 			name: body.name,
@@ -675,6 +681,17 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Team not found' }, { status: 404 });
 		}
 		const body = (await request.json()) as { name?: string; rotationIntervalDays?: number | null };
+		if (
+			body.name !== undefined &&
+			playgroundState.oncallTeams.some(
+				(t) => t.id !== team.id && t.name.toLowerCase() === body.name!.toLowerCase()
+			)
+		) {
+			return HttpResponse.json(
+				{ success: false, error: `A team named "${body.name}" already exists` },
+				{ status: 409 }
+			);
+		}
 		if (body.name !== undefined) team.name = body.name;
 		if (body.rotationIntervalDays !== undefined) {
 			team.rotationIntervalDays = body.rotationIntervalDays || null;

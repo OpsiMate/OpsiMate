@@ -52,6 +52,34 @@ export class OncallRepository {
 				});
 				rebuild();
 			}
+
+			// A team's name is its identity (alerts reference teams by name), so enforce
+			// uniqueness case-insensitively. Duplicates created before the index existed
+			// are renamed (suffixed with their id) rather than dropped.
+			const dupes = this.db
+				.prepare(
+					`SELECT id, name FROM oncall_teams
+					 WHERE id NOT IN (SELECT MIN(id) FROM oncall_teams GROUP BY name COLLATE NOCASE)`
+				)
+				.all() as { id: number; name: string }[];
+			for (const dupe of dupes) {
+				this.db
+					.prepare(`UPDATE oncall_teams SET name = ? WHERE id = ?`)
+					.run(`${dupe.name} (${dupe.id})`, dupe.id);
+			}
+			this.db.exec(
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_oncall_teams_name ON oncall_teams (name COLLATE NOCASE)`
+			);
+		});
+	}
+
+	// Case-insensitive name lookup, used to reject duplicate team names with a clear error.
+	async getTeamByName(name: string): Promise<OncallTeamRow | null> {
+		return runAsync(() => {
+			const row = this.db.prepare('SELECT * FROM oncall_teams WHERE name = ? COLLATE NOCASE').get(name) as
+				| OncallTeamRow
+				| undefined;
+			return row ?? null;
 		});
 	}
 

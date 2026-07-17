@@ -6,6 +6,14 @@ const logger = new Logger('bl/oncall.bl');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Thrown when a create/rename would collide with an existing team's name (the API
+// maps it to 409). Names identify teams — alerts reference them by name.
+export class DuplicateTeamNameError extends Error {
+	constructor(name: string) {
+		super(`A team named "${name}" already exists`);
+	}
+}
+
 export class OncallBL {
 	constructor(private oncallRepo: OncallRepository) {}
 
@@ -74,6 +82,9 @@ export class OncallBL {
 	async createTeam(name: string, rotationIntervalDays: number | null): Promise<OncallTeam> {
 		try {
 			logger.info(`Creating on-call team: ${name}`);
+			if (await this.oncallRepo.getTeamByName(name)) {
+				throw new DuplicateTeamNameError(name);
+			}
 			const teamId = await this.oncallRepo.createTeam(name, rotationIntervalDays || null);
 			return (await this.getTeam(teamId)) as OncallTeam;
 		} catch (error) {
@@ -90,6 +101,12 @@ export class OncallBL {
 			logger.info(`Updating on-call team ${teamId}`);
 			const existing = await this.oncallRepo.getTeam(teamId);
 			if (!existing) return null;
+			if (updates.name !== undefined) {
+				const clash = await this.oncallRepo.getTeamByName(updates.name);
+				if (clash && clash.id !== teamId) {
+					throw new DuplicateTeamNameError(updates.name);
+				}
+			}
 			await this.oncallRepo.updateTeam(teamId, {
 				...updates,
 				...(updates.rotationIntervalDays !== undefined && {

@@ -72,6 +72,18 @@ const Oncall = () => {
 	};
 
 	const handleSave = async (draft: OncallTeamDraft) => {
+		// Instant feedback for the common case; the server enforces this too (409).
+		const duplicate = teams.some(
+			(t) => t.id !== editingTeam?.id && t.name.toLowerCase() === draft.name.toLowerCase()
+		);
+		if (duplicate) {
+			toast({
+				title: 'Team name already exists',
+				description: `"${draft.name}" is already an on-call team — pick a different name.`,
+				variant: 'destructive',
+			});
+			return;
+		}
 		setSaving(true);
 		// Tracked so a failed member save can roll back a just-created team — otherwise
 		// retrying the dialog would leave an empty duplicate behind.
