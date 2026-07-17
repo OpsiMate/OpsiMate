@@ -2,6 +2,12 @@ import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ForeignKeyInfoRow, OncallTeamMemberRow, OncallTeamRow } from './models';
 
+// Partial team fields accepted by updateTeam (and the BL's update flow).
+export interface OncallTeamUpdate {
+	name?: string;
+	rotationIntervalDays?: number | null;
+}
+
 export class OncallRepository {
 	private db: Database.Database;
 
@@ -126,7 +132,7 @@ export class OncallRepository {
 
 	// Changing the rotation interval resets the anchor: the current order stays put and the
 	// new cadence counts from now.
-	async updateTeam(teamId: number, updates: { name?: string; rotationIntervalDays?: number | null }): Promise<void> {
+	async updateTeam(teamId: number, updates: OncallTeamUpdate): Promise<void> {
 		return runAsync(() => {
 			const setClauses: string[] = [];
 			const values: (string | number | null)[] = [];

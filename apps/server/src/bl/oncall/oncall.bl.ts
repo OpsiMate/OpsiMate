@@ -1,5 +1,5 @@
 import { Logger, OncallTeam, OncallTeamMember } from '@OpsiMate/shared';
-import { OncallRepository } from '../../dal/oncallRepository';
+import { OncallRepository, OncallTeamUpdate } from '../../dal/oncallRepository';
 import { OncallTeamMemberRow, OncallTeamRow } from './../../dal/models';
 
 const logger = new Logger('bl/oncall.bl');
@@ -93,10 +93,7 @@ export class OncallBL {
 		}
 	}
 
-	async updateTeam(
-		teamId: number,
-		updates: { name?: string; rotationIntervalDays?: number | null }
-	): Promise<OncallTeam | null> {
+	async updateTeam(teamId: number, updates: OncallTeamUpdate): Promise<OncallTeam | null> {
 		try {
 			logger.info(`Updating on-call team ${teamId}`);
 			const existing = await this.oncallRepo.getTeam(teamId);
