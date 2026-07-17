@@ -23,6 +23,9 @@ import { OncallTeam } from '@OpsiMate/shared';
 import { Pencil, Phone, PhoneCall, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+// Big teams: the table shows the first chips in call order and folds the rest into "+X".
+const MAX_VISIBLE_MEMBERS = 5;
+
 const formatDateTime = (iso: string | null): string => {
 	if (!iso) return '—';
 	const d = new Date(iso);
@@ -193,7 +196,7 @@ const Oncall = () => {
 															No members
 														</span>
 													)}
-													{team.members.map((member) => (
+													{team.members.slice(0, MAX_VISIBLE_MEMBERS).map((member) => (
 														<span
 															key={member.userId}
 															data-testid={
@@ -223,6 +226,17 @@ const Oncall = () => {
 															)}
 														</span>
 													))}
+													{team.members.length > MAX_VISIBLE_MEMBERS && (
+														<span
+															title={team.members
+																.slice(MAX_VISIBLE_MEMBERS)
+																.map((m) => `${m.priority}. ${m.fullName}`)
+																.join('\n')}
+															className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground"
+														>
+															+{team.members.length - MAX_VISIBLE_MEMBERS} more
+														</span>
+													)}
 												</div>
 											</TableCell>
 											<TableCell>

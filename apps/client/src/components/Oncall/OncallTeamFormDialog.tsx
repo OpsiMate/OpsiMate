@@ -8,8 +8,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserInfo } from '@/hooks/queries/users/useUsers';
 import { OncallTeam } from '@OpsiMate/shared';
 import {
@@ -115,6 +116,7 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 	const [name, setName] = useState('');
 	const [rotationDays, setRotationDays] = useState('');
 	const [userIds, setUserIds] = useState<string[]>([]);
+	const [addOpen, setAddOpen] = useState(false);
 
 	// Reset the draft each time the dialog opens; editing starts from the team's CURRENT
 	// call order (priority), so what the admin sees is what saving will keep.
@@ -184,7 +186,9 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 						<label className="text-sm font-semibold text-muted-foreground">Members (call order)</label>
 						<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
 							<SortableContext items={userIds} strategy={verticalListSortingStrategy}>
-								<ul className="mt-2 space-y-1.5">
+								{/* Capped height: big teams scroll here instead of growing the dialog
+								    past the viewport (which pushed the Save button off-screen). */}
+								<ul className="mt-2 max-h-60 space-y-1.5 overflow-y-auto pr-1">
 									{userIds.map((userId, index) => (
 										<SortableMemberRow
 											key={userId}
@@ -200,21 +204,43 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 						</DndContext>
 
 						{availableUsers.length > 0 ? (
-							<Select value="" onValueChange={(userId) => setUserIds([...userIds, userId])}>
-								<SelectTrigger className="mt-2" disabled={saving}>
-									<span className="flex items-center gap-2 text-muted-foreground">
+							<Popover open={addOpen} onOpenChange={setAddOpen}>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										className="mt-2 w-full justify-start gap-2 font-normal text-muted-foreground"
+										disabled={saving}
+									>
 										<Plus className="h-3.5 w-3.5" />
-										<SelectValue placeholder="Add a member" />
-									</span>
-								</SelectTrigger>
-								<SelectContent>
-									{availableUsers.map((user) => (
-										<SelectItem key={user.id} value={user.id}>
-											{user.fullName} ({user.email})
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+										Add a member
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+									<Command>
+										<CommandInput placeholder="Search users..." />
+										<CommandList>
+											<CommandEmpty>No users found</CommandEmpty>
+											<CommandGroup>
+												{availableUsers.map((user) => (
+													<CommandItem
+														key={user.id}
+														value={`${user.fullName} ${user.email}`}
+														onSelect={() => {
+															setUserIds((ids) => [...ids, user.id]);
+															setAddOpen(false);
+														}}
+													>
+														{user.fullName}
+														<span className="ml-1.5 truncate text-xs text-muted-foreground">
+															{user.email}
+														</span>
+													</CommandItem>
+												))}
+											</CommandGroup>
+										</CommandList>
+									</Command>
+								</PopoverContent>
+							</Popover>
 						) : (
 							<p className="mt-2 text-xs text-muted-foreground">All users are already in this team.</p>
 						)}
