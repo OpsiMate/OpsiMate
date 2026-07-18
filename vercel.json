@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @OpsiMate/shared build && VITE_PLAYGROUND_MODE=true pnpm --filter @OpsiMate/client build",
+  "outputDirectory": "apps/client/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
