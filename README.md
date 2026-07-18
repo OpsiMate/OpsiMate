@@ -29,10 +29,10 @@
 </p>
 
 <p align="center">
-  <a href="https://opsimate.vercel.app/docs/getting-started/deploy">Get Started</a> ·
-  <a href="https://opsimate.vercel.app/">Docs</a> ·
+  <a href="https://docs.opsimate.dev/docs/getting-started/deploy">Get Started</a> ·
+  <a href="https://docs.opsimate.dev/">Docs</a> ·
   <a href="https://opsimate.goprosite.net">Demo</a> ·
-  <a href="https://www.opsimate.com/">Website</a> ·
+  <a href="https://www.opsimate.dev/">Website</a> ·
   <a href="https://github.com/OpsiMate/OpsiMate/issues/new?labels=bug&template=bug_report.md">Report Bug</a>
 </p>
 
@@ -176,10 +176,10 @@ We welcome contributions to OpsiMate! Here's how you can help:
 
 ## Support
 
-- **[Documentation](https://opsimate.vercel.app/)** - Comprehensive guides and API reference
+- **[Documentation](https://docs.opsimate.dev/)** - Comprehensive guides and API reference
 - **[GitHub Issues](https://github.com/opsimate/opsimate/issues)** - Bug reports and feature requests
 - **[Slack Community](https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA)** - Join our discussions and get help
-- **[Website](https://www.opsimate.com/)** - Learn more about OpsiMate
+- **[Website](https://www.opsimate.dev/)** - Learn more about OpsiMate
 
 ---
 

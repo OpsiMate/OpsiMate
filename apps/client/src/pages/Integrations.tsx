@@ -93,7 +93,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Receive monitoring alerts from Google Cloud Platform via webhook.',
 		logo: GCPIcon,
 		tags: ['Monitoring', 'Alerts', 'Cloud'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/gcp',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/gcp',
 		configFields: [],
 		enabled: true, // GCP integration is enabled by default
 	},
@@ -104,7 +104,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Receive alerts from Uptime Kuma monitoring via webhook.',
 		logo: UptimeKumaIcon,
 		tags: ['Monitoring', 'Alerts', 'Uptime'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/uptime-kuma',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/uptime-kuma',
 		configFields: [],
 		enabled: true, // integration is enabled by default
 	},
@@ -115,7 +115,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Receive alerts from Grafana via a Webhook contact point (push).',
 		logo: GrafanaIcon,
 		tags: ['Monitoring', 'Visualization', 'Alerts'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/grafana',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/grafana',
 		configFields: [],
 		enabled: true, // Grafana alerts are received via webhook (no credentials stored)
 	},
@@ -126,7 +126,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Cloud monitoring and analytics platform for infrastructure, applications, and logs.',
 		logo: DatadogIcon,
 		tags: ['Monitoring', 'APM', 'Logs', 'Metrics', 'Alerts'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/datadog',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/datadog',
 		// Datadog alert webhooks are supported by default (via /alerts/custom/datadog)
 		enabled: true,
 		configFields: [
@@ -148,7 +148,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Enterprise-class open source monitoring solution for networks and applications.',
 		logo: ZabbixIcon,
 		tags: ['Monitoring', 'Alerts', 'Infrastructure'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/zabbix',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/zabbix',
 		configFields: [],
 		enabled: true,
 	},
@@ -159,7 +159,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Log analytics platform powered by machine learning.',
 		logo: CoralogixIcon,
 		tags: ['Logging', 'Analytics', 'Monitoring'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/overview',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/overview',
 		configFields: [
 			{ name: 'apiKey', label: 'API Key', type: 'password', required: true },
 			{ name: 'applicationName', label: 'Application Name', type: 'text', required: true },
@@ -173,7 +173,7 @@ const INTEGRATIONS: Integration[] = [
 		description: 'Send alerts from any source via HTTP POST requests. Perfect for custom scripts and tools.',
 		logo: ({ className }: { className?: string }) => <Webhook className={className} />,
 		tags: ['Alerts', 'Monitoring'],
-		documentationUrl: 'https://opsimate.vercel.app/docs/integrations/custom-alerts',
+		documentationUrl: 'https://docs.opsimate.dev/docs/integrations/custom-alerts',
 		configFields: [],
 		enabled: true,
 	},

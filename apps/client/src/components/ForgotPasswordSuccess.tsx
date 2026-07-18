@@ -13,7 +13,7 @@ const ForgotPasswordSuccess: React.FC = () => {
 					<br />
 					See{' '}
 					<a
-						href="https://opsimate.vercel.app/docs/getting-started/configuration"
+						href="https://docs.opsimate.dev/docs/getting-started/configuration"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="text-primary underline"

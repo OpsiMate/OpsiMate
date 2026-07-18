@@ -185,7 +185,7 @@ export class MailClient {
 			}
 
 			await this.transporter.sendMail({
-				from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.com>',
+				from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.dev>',
 				to: options.to,
 				subject: this.getMailSubject(options),
 				html,

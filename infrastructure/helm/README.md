@@ -21,7 +21,7 @@ The frontend is a browser app (JavaScript). When you open `localhost:8080`, the 
 
 **Why is backend private in production?**
 
-In production, Ingress acts as a single entry point. All traffic goes through one URL (e.g., `opsimate.com`), and Ingress routes `/api/*` to the backend internally. The backend is never exposed to the internet.
+In production, Ingress acts as a single entry point. All traffic goes through one URL (e.g., `opsimate.dev`), and Ingress routes `/api/*` to the backend internally. The backend is never exposed to the internet.
 
 ## Architecture
 
@@ -49,7 +49,7 @@ Internet
     ▼
 ┌─────────────────┐
 │     Ingress     │  ← Single public entry point
-│ opsimate.com    │
+│ opsimate.dev    │
 └────────┬────────┘
          │
     ┌────┴────┐
