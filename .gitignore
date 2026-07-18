@@ -44,3 +44,5 @@ infrastructure/terraform/.terraform/
 infrastructure/terraform/.terraform.lock.hcl
 # Local server config (contains api_token, secrets) — never commit
 apps/server/local-config.yml
+.vercel
+.env*
