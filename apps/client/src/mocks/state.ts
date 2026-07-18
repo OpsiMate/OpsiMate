@@ -50,6 +50,17 @@ export interface PlaygroundState {
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
 	// silencings, actions, comments). Merged with generated base history by the history handler.
 	alertHistoryEvents: Record<string, AlertHistoryData[]>;
+	// Raw on-call teams; the handler derives the rotated call order the same way the server does.
+	oncallTeams: OncallTeamState[];
+}
+
+export interface OncallTeamState {
+	id: number;
+	name: string;
+	rotationIntervalDays: number | null;
+	rotationAnchor: string;
+	// Ordered — index 0 is base call priority 1.
+	userIds: string[];
 }
 
 const nowIso = () => new Date().toISOString();
@@ -217,13 +228,14 @@ const createViews = (): SavedView[] => [
 ];
 
 const createUsers = (): User[] => [
-	getPlaygroundUser(),
+	{ ...getPlaygroundUser(), phoneNumber: '+972 50 111 2233' },
 	{
 		id: '1',
 		email: 'editor@opsimate.local',
 		fullName: 'Demo Editor',
 		role: Role.Editor,
 		createdAt: nowIso(),
+		phoneNumber: '+972 52 444 5566',
 	},
 	{
 		id: '2',
@@ -231,6 +243,25 @@ const createUsers = (): User[] => [
 		fullName: 'Demo Viewer',
 		role: Role.Viewer,
 		createdAt: nowIso(),
+	},
+];
+
+// Anchored 4 days back with a 3-day interval, so the demo team is already one shift in —
+// the second member is on call when the playground loads.
+const createOncallTeams = (): OncallTeamState[] => [
+	{
+		id: 1,
+		name: 'platform',
+		rotationIntervalDays: 3,
+		rotationAnchor: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+		userIds: [getPlaygroundUser().id, '1', '2'],
+	},
+	{
+		id: 2,
+		name: 'frontend',
+		rotationIntervalDays: null,
+		rotationAnchor: nowIso(),
+		userIds: ['1', '2'],
 	},
 ];
 
@@ -395,18 +426,24 @@ const TAG_TEAM = ['platform', 'data', 'frontend', 'sre'];
 
 const seedAlerts = () => {
 	const alerts = generateDiverseMockAlerts(500);
-	return alerts.map((alert, idx) => ({
-		...alert,
-		// First-class severity mirrors production ingestion (derived from the severity tag).
-		severity: normalizeAlertSeverity(TAG_SEVERITY[idx % TAG_SEVERITY.length]),
-		tags: {
-			severity: TAG_SEVERITY[idx % TAG_SEVERITY.length],
-			service: TAG_SERVICE[idx % TAG_SERVICE.length],
-			environment: TAG_ENVIRONMENT[idx % TAG_ENVIRONMENT.length],
-			team: TAG_TEAM[idx % TAG_TEAM.length],
-		},
-		ownerId: idx % 7 === 0 ? getPlaygroundUser().id : null,
-	}));
+	return alerts.map((alert, idx) => {
+		// Every fifth alert has no owning team — the field defaults to none.
+		const team = idx % 5 === 0 ? null : TAG_TEAM[idx % TAG_TEAM.length];
+		return {
+			...alert,
+			// First-class severity mirrors production ingestion (derived from the severity tag).
+			severity: normalizeAlertSeverity(TAG_SEVERITY[idx % TAG_SEVERITY.length]),
+			// First-class team mirrors production ingestion (derived from the team tag).
+			team,
+			tags: {
+				severity: TAG_SEVERITY[idx % TAG_SEVERITY.length],
+				service: TAG_SERVICE[idx % TAG_SERVICE.length],
+				environment: TAG_ENVIRONMENT[idx % TAG_ENVIRONMENT.length],
+				...(team ? { team } : {}),
+			},
+			ownerId: idx % 7 === 0 ? getPlaygroundUser().id : null,
+		};
+	});
 };
 
 // An alert is either silenced or resolved, never both — resolved seeds are always unsilenced.
@@ -452,6 +489,7 @@ export const playgroundState: PlaygroundState = {
 	actions: createActions(),
 	enrichments: createEnrichments(),
 	alertHistoryEvents: {},
+	oncallTeams: createOncallTeams(),
 };
 
 let idCounter = 10000;

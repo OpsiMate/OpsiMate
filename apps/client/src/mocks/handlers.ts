@@ -1,6 +1,6 @@
-import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/shared';
+import { AlertHistoryData, AlertHistoryEventType, AlertStatus, OncallTeam } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
-import { getPlaygroundUser, playgroundState, randomId } from './state';
+import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
 
 const API_BASE = '*/api/v1';
 const nowIso = () => new Date().toISOString();
@@ -107,6 +107,41 @@ const withAppliedEnrichments = <T extends { alertName?: string; tags?: Record<st
 		})
 		.map((e) => ({ id: e.id, name: e.name }));
 	return applied.length > 0 ? { ...alert, appliedEnrichments: applied } : alert;
+};
+
+// Mirrors the server's rotation arithmetic: every rotationIntervalDays since the anchor,
+// the on-call duty shifts one place down the member list, wrapping around.
+const toOncallTeam = (team: OncallTeamState): OncallTeam => {
+	const interval = team.rotationIntervalDays ?? 0;
+	const count = team.userIds.length;
+	let shift = 0;
+	let nextRotationAt: string | null = null;
+	if (interval > 0 && count > 0) {
+		const anchorMs = new Date(team.rotationAnchor).getTime();
+		const elapsed = Math.max(0, Date.now() - anchorMs);
+		const periods = Math.floor(elapsed / (interval * DAY));
+		shift = periods % count;
+		nextRotationAt = new Date(anchorMs + (periods + 1) * interval * DAY).toISOString();
+	}
+	const members = team.userIds.map((userId, position) => {
+		const user = playgroundState.users.find((u) => u.id === userId);
+		return {
+			userId,
+			fullName: user?.fullName ?? `user #${userId}`,
+			email: user?.email ?? '',
+			phoneNumber: user?.phoneNumber ?? null,
+			priority: ((position - shift + count) % count) + 1,
+		};
+	});
+	members.sort((a, b) => a.priority - b.priority);
+	return {
+		id: team.id,
+		name: team.name,
+		rotationIntervalDays: team.rotationIntervalDays,
+		rotationAnchor: team.rotationAnchor,
+		members,
+		nextRotationAt,
+	};
 };
 
 export const handlers = [
@@ -592,10 +627,93 @@ export const handlers = [
 	}),
 
 	http.get(`${API_BASE}/users/profile`, () => {
+		// Serve from state so seeded/edited fields (e.g. phone number) show up.
+		const user = playgroundState.users.find((u) => u.id === getPlaygroundUser().id) ?? getPlaygroundUser();
 		return HttpResponse.json({
 			success: true,
-			data: getPlaygroundUser(),
+			data: user,
 		});
+	}),
+
+	http.patch(`${API_BASE}/users/profile`, async ({ request }) => {
+		const body = (await request.json()) as { fullName: string; phoneNumber?: string; newPassword?: string };
+		const user = playgroundState.users.find((u) => u.id === getPlaygroundUser().id);
+		if (user) {
+			user.fullName = body.fullName;
+			user.phoneNumber = body.phoneNumber || null;
+		}
+		return HttpResponse.json({
+			success: true,
+			data: { user: { ...getPlaygroundUser(), fullName: body.fullName, phoneNumber: body.phoneNumber || null } },
+		});
+	}),
+
+	// ==================== ON-CALL ====================
+	http.get(`${API_BASE}/oncall/teams`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { teams: playgroundState.oncallTeams.map(toOncallTeam) },
+		});
+	}),
+
+	http.post(`${API_BASE}/oncall/teams`, async ({ request }) => {
+		const body = (await request.json()) as { name: string; rotationIntervalDays?: number | null };
+		if (playgroundState.oncallTeams.some((t) => t.name.toLowerCase() === body.name.toLowerCase())) {
+			return HttpResponse.json(
+				{ success: false, error: `A team named "${body.name}" already exists` },
+				{ status: 409 }
+			);
+		}
+		const team = {
+			id: randomId(),
+			name: body.name,
+			rotationIntervalDays: body.rotationIntervalDays || null,
+			rotationAnchor: nowIso(),
+			userIds: [],
+		};
+		playgroundState.oncallTeams.push(team);
+		return HttpResponse.json({ success: true, data: { team: toOncallTeam(team) } }, { status: 201 });
+	}),
+
+	http.patch(`${API_BASE}/oncall/teams/:teamId`, async ({ params, request }) => {
+		const team = playgroundState.oncallTeams.find((t) => t.id === Number(params.teamId));
+		if (!team) {
+			return HttpResponse.json({ success: false, error: 'Team not found' }, { status: 404 });
+		}
+		const body = (await request.json()) as { name?: string; rotationIntervalDays?: number | null };
+		if (
+			body.name !== undefined &&
+			playgroundState.oncallTeams.some(
+				(t) => t.id !== team.id && t.name.toLowerCase() === body.name!.toLowerCase()
+			)
+		) {
+			return HttpResponse.json(
+				{ success: false, error: `A team named "${body.name}" already exists` },
+				{ status: 409 }
+			);
+		}
+		if (body.name !== undefined) team.name = body.name;
+		if (body.rotationIntervalDays !== undefined) {
+			team.rotationIntervalDays = body.rotationIntervalDays || null;
+			team.rotationAnchor = nowIso();
+		}
+		return HttpResponse.json({ success: true, data: { team: toOncallTeam(team) } });
+	}),
+
+	http.delete(`${API_BASE}/oncall/teams/:teamId`, ({ params }) => {
+		playgroundState.oncallTeams = playgroundState.oncallTeams.filter((t) => t.id !== Number(params.teamId));
+		return HttpResponse.json({ success: true, message: 'Team deleted' });
+	}),
+
+	http.put(`${API_BASE}/oncall/teams/:teamId/members`, async ({ params, request }) => {
+		const team = playgroundState.oncallTeams.find((t) => t.id === Number(params.teamId));
+		if (!team) {
+			return HttpResponse.json({ success: false, error: 'Team not found' }, { status: 404 });
+		}
+		const body = (await request.json()) as { userIds: (string | number)[] };
+		team.userIds = body.userIds.map(String);
+		team.rotationAnchor = nowIso();
+		return HttpResponse.json({ success: true, data: { team: toOncallTeam(team) } });
 	}),
 
 	// ==================== AUDIT ====================

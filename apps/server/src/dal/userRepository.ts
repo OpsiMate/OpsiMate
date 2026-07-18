@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { UserRow } from './models';
+import { TableInfoRow, UserRow } from './models';
 import { User } from '@OpsiMate/shared';
 
 export class UserRepository {
@@ -26,6 +26,12 @@ export class UserRepository {
             `
 				)
 				.run();
+
+			// Backward compatibility: ensure phone_number column exists
+			const columns = this.db.prepare(`PRAGMA table_info(users)`).all() as TableInfoRow[];
+			if (!columns.some((col) => col.name === 'phone_number')) {
+				this.db.prepare(`ALTER TABLE users ADD COLUMN phone_number TEXT`).run();
+			}
 		});
 	}
 
@@ -69,7 +75,7 @@ export class UserRepository {
 
 	async getAllUsers(): Promise<User[]> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('SELECT id, email, full_name, role, created_at FROM users');
+			const stmt = this.db.prepare('SELECT id, email, full_name, role, created_at, phone_number FROM users');
 			const userRows = stmt.all() as UserRow[];
 			return userRows.map(this.toSharedUser);
 		});
@@ -78,7 +84,7 @@ export class UserRepository {
 	async getUserById(id: number): Promise<User | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ?')
+				.prepare('SELECT id, email, full_name, role, created_at, phone_number FROM users WHERE id = ?')
 				.get(id) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
 		});
@@ -90,15 +96,26 @@ export class UserRepository {
 		});
 	}
 
-	async updateUserProfile(id: number, fullName: string, passwordHash?: string): Promise<void> {
+	async updateUserProfile(
+		id: number,
+		fullName: string,
+		passwordHash?: string,
+		phoneNumber?: string | null
+	): Promise<void> {
 		return runAsync(() => {
+			const setClauses = ['full_name = ?'];
+			const values: (string | number | null)[] = [fullName];
 			if (passwordHash) {
-				const stmt = this.db.prepare('UPDATE users SET full_name = ?, password_hash = ? WHERE id = ?');
-				stmt.run(fullName, passwordHash, id);
-			} else {
-				const stmt = this.db.prepare('UPDATE users SET full_name = ? WHERE id = ?');
-				stmt.run(fullName, id);
+				setClauses.push('password_hash = ?');
+				values.push(passwordHash);
 			}
+			// undefined = leave unchanged; null/'' = clear.
+			if (phoneNumber !== undefined) {
+				setClauses.push('phone_number = ?');
+				values.push(phoneNumber || null);
+			}
+			values.push(id);
+			this.db.prepare(`UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`).run(...values);
 		});
 	}
 
@@ -147,13 +164,14 @@ export class UserRepository {
 			fullName: row.full_name,
 			role: row.role,
 			createdAt: row.created_at,
+			phoneNumber: row.phone_number ?? null,
 		};
 	};
 
 	async getUserByEmail(email: string): Promise<User | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, email, full_name, role, created_at FROM users WHERE email = ?')
+				.prepare('SELECT id, email, full_name, role, created_at, phone_number FROM users WHERE email = ?')
 				.get(email) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
 		});

@@ -1,0 +1,1 @@
+export { AlertTeamSection } from './AlertTeamSection';

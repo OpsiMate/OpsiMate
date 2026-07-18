@@ -39,6 +39,7 @@ export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): Us
 	const [saving, setSaving] = useState(false);
 	const [formData, setFormData] = useState<ProfileFormData>({
 		fullName: profile?.fullName || '',
+		phoneNumber: profile?.phoneNumber || '',
 		newPassword: '',
 		confirmPassword: '',
 	});
@@ -47,7 +48,7 @@ export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): Us
 	// Update formData when profile changes
 	useEffect(() => {
 		if (profile) {
-			setFormData((prev) => ({ ...prev, fullName: profile.fullName }));
+			setFormData((prev) => ({ ...prev, fullName: profile.fullName, phoneNumber: profile.phoneNumber || '' }));
 		}
 	}, [profile]);
 
@@ -60,6 +61,7 @@ export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): Us
 		setIsEditing(false);
 		setFormData({
 			fullName: profile?.fullName || '',
+			phoneNumber: profile?.phoneNumber || '',
 			newPassword: '',
 			confirmPassword: '',
 		});
@@ -93,8 +95,9 @@ export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): Us
 		}
 
 		try {
-			const updateData: { fullName: string; newPassword?: string } = {
+			const updateData: { fullName: string; phoneNumber: string; newPassword?: string } = {
 				fullName: formData.fullName,
+				phoneNumber: formData.phoneNumber.trim(),
 			};
 
 			if (formData.newPassword) {
@@ -110,7 +113,11 @@ export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): Us
 				}
 
 				// update local profile state to reflect changes in UI
-				setProfile((prev) => (prev ? { ...prev, fullName: updateData.fullName } : prev));
+				setProfile((prev) =>
+					prev
+						? { ...prev, fullName: updateData.fullName, phoneNumber: updateData.phoneNumber || null }
+						: prev
+				);
 
 				setIsEditing(false);
 				setFormData((prev) => ({

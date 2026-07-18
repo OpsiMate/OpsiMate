@@ -32,6 +32,7 @@ export const useProfileData = (): UseProfileDataReturn => {
 							fullName: response.data.fullName,
 							role: response.data.role,
 							createdAt: response.data.createdAt,
+							phoneNumber: response.data.phoneNumber ?? null,
 						});
 					} else {
 						logger.warn('Failed to fetch user profile from server, using JWT data as fallback');

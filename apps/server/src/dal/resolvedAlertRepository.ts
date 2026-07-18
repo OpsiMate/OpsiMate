@@ -110,6 +110,12 @@ export class ResolvedAlertRepository {
 			if (!hasSeverity) {
 				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN severity TEXT`).run();
 			}
+
+			// Backward compatibility: ensure team column exists
+			const hasTeam = columns.some((col: TableInfoRow) => col.name === 'team');
+			if (!hasTeam) {
+				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN team TEXT`).run();
+			}
 		});
 	}
 
@@ -117,11 +123,12 @@ export class ResolvedAlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts_resolved
-                    (id, status, severity, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, status, severity, team, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status = excluded.status,
                     severity = excluded.severity,
+                    team = excluded.team,
                     tags = excluded.tags,
                     type = excluded.type,
                     starts_at = excluded.starts_at,
@@ -140,6 +147,7 @@ export class ResolvedAlertRepository {
 				alert.id,
 				AlertStatus.RESOLVED,
 				alert.severity,
+				alert.team ?? null,
 				JSON.stringify(alert.tags),
 				alert.type,
 				alert.startsAt,
@@ -167,6 +175,8 @@ export class ResolvedAlertRepository {
 			status: AlertStatus.RESOLVED,
 			// Legacy rows (pre-severity column) fall back to their severity tag, then the default.
 			severity: normalizeAlertSeverity(row.severity ?? tags['severity']),
+			// Legacy rows (pre-team column) fall back to their team tag.
+			team: row.team ?? tags['team'] ?? null,
 			tags,
 			type: row.type,
 			startsAt: row.starts_at,

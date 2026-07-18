@@ -444,6 +444,7 @@ export class AlertController {
 				type: 'Custom',
 				status: AlertStatus.FIRING,
 				severity: alert.severity,
+				team: alert.team,
 				tags: alert.tags,
 				startsAt: alert.startsAt || new Date().toISOString(),
 				updatedAt: alert.updatedAt || new Date().toISOString(),

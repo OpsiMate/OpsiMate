@@ -44,6 +44,32 @@ export interface User {
 	fullName: string;
 	role: Role;
 	createdAt: string;
+	// Optional contact number, shown on the on-call page so responders can be phoned.
+	phoneNumber?: string | null;
+}
+
+// On-call scheduling: a team is an ordered group of users where the order defines call
+// priority (1 = called first). With a rotation interval set, the order shifts by one
+// place every interval — computed from the anchor date, so no background job is needed.
+export interface OncallTeamMember {
+	userId: string;
+	fullName: string;
+	email: string;
+	phoneNumber?: string | null;
+	// 1-based call priority after applying the rotation shift (1 = on call now).
+	priority: number;
+}
+
+export interface OncallTeam {
+	id: number;
+	name: string;
+	// Days between rotation shifts; null (or 0) keeps the order fixed.
+	rotationIntervalDays: number | null;
+	// When the current base order took effect; rotation shifts are computed from here.
+	rotationAnchor: string;
+	members: OncallTeamMember[];
+	// When the next shift happens (null when rotation is off or the team is empty).
+	nextRotationAt: string | null;
 }
 
 export interface IntegrationUrls {
@@ -174,6 +200,9 @@ export interface Alert {
 	status: AlertStatus;
 	// Always present on API responses; alerts sent without one default to warning.
 	severity: AlertSeverity;
+	// Owning team, resolved at ingestion from an explicit field or a `team` tag; null when
+	// the alert has no team. Links the alert to the on-call schedule in the details panel.
+	team?: string | null;
 	tags: Record<string, string>;
 	startsAt: string;
 	updatedAt: string;
