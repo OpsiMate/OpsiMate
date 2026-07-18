@@ -439,7 +439,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<Button
 							variant="outline"
 							onClick={() =>
-								window.open('https://opsimate.vercel.app/docs/integrations/custom-alerts', '_blank')
+								window.open('https://docs.opsimate.dev/docs/integrations/custom-alerts', '_blank')
 							}
 							className="gap-2"
 						>

@@ -66,7 +66,7 @@ export function welcomeTemplate(customBody?: string, userName?: string) {
       <div style="display: block;">
         <div style="margin-bottom: 20px; text-align: left;">
             <div style="font-weight: bold; color: #2563eb; margin-bottom: 2px;">Documentation</div>
-            <a href="https://opsimate.vercel.app/" style="color:#2563eb;font-weight:bold;text-decoration:underline;font-size:16px;">Explore Docs</a>
+            <a href="https://docs.opsimate.dev/" style="color:#2563eb;font-weight:bold;text-decoration:underline;font-size:16px;">Explore Docs</a>
             <div style="font-size: 13px; color: #4a5568; margin-top: 4px;">You can start exploring here: get started, find guides, and explore features.</div>
         </div>
         <div style="margin-bottom: 20px; text-align: left;">
@@ -81,7 +81,7 @@ export function welcomeTemplate(customBody?: string, userName?: string) {
         </div>
         <div style="margin-bottom: 20px; text-align: left;">
           <div style="font-weight: bold; color: #2563eb; margin-bottom: 2px;">OpsiMate Website</div>
-          <a href="https://www.opsimate.com/" style="color:#2563eb;font-weight:bold;text-decoration:underline;font-size:16px;">Visit Website</a>
+          <a href="https://www.opsimate.dev/" style="color:#2563eb;font-weight:bold;text-decoration:underline;font-size:16px;">Visit Website</a>
           <div style="font-size: 13px; color: #4a5568; margin-top: 4px;">Learn more about us.</div>
         </div>
       </div>
