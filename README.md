@@ -31,7 +31,7 @@
 <p align="center">
   <a href="https://docs.opsimate.dev/docs/getting-started/deploy">Get Started</a> ·
   <a href="https://docs.opsimate.dev/">Docs</a> ·
-  <a href="https://opsimate.goprosite.net">Demo</a> ·
+  <a href="https://demo.opsimate.dev/">Demo</a> ·
   <a href="https://www.opsimate.dev/">Website</a> ·
   <a href="https://github.com/OpsiMate/OpsiMate/issues/new?labels=bug&template=bug_report.md">Report Bug</a>
 </p>
