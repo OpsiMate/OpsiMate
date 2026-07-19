@@ -198,6 +198,14 @@ export const handlers = [
 			actorName: PLAYGROUND_ACTOR,
 			description: alert.silencedUntil ? `Alert silenced until ${alert.silencedUntil}` : 'Alert silenced',
 		});
+		// The silencer takes ownership of the alert (mirrors the server).
+		alert.ownerId = getPlaygroundUser().id;
+		pushAlertEvent(alertId, {
+			date: nowIso(),
+			eventType: AlertHistoryEventType.OWNER_ASSIGNED,
+			actorName: PLAYGROUND_ACTOR,
+			description: `Assigned to ${PLAYGROUND_ACTOR}`,
+		});
 		if (silenceComment) {
 			playgroundState.alertComments.push({
 				id: `comment-${randomId()}`,

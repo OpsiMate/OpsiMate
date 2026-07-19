@@ -130,7 +130,8 @@ export class AlertBL {
 	}
 
 	// silencedUntil (ISO) bounds the silence; null means until manually unsilenced. An
-	// optional note is stored as a regular comment by the acting user, mirroring resolve.
+	// optional note is stored as a regular comment by the acting user, and — mirroring
+	// resolve — whoever silences the alert takes ownership of it.
 	async silenceAlert(
 		id: string,
 		actor: { id: string | null; name: string | null },
@@ -139,12 +140,16 @@ export class AlertBL {
 	): Promise<Alert | null> {
 		try {
 			logger.info(`Silencing alert with id: ${id}`);
-			const alert = await this.alertRepo.silenceAlert(id, silencedUntil);
+			let alert = await this.alertRepo.silenceAlert(id, silencedUntil);
 			if (alert) {
 				const description = silencedUntil
 					? `Alert silenced until ${toIsoUtc(silencedUntil)}`
 					: 'Alert silenced';
 				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
+				if (actor.id != null && Number.isFinite(Number(actor.id))) {
+					// setAlertOwner also records the "Assigned to …" history event.
+					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
+				}
 				if (comment && actor.id != null) {
 					await this.createComment({ alertId: id, userId: actor.id, comment });
 				}
