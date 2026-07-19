@@ -3,18 +3,23 @@ import { Alert } from '@OpsiMate/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
+interface DeleteAlertVariables {
+	alertId: string;
+	comment?: string;
+}
+
 export const useDeleteAlert = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async ({ alertId, comment }: { alertId: string; comment?: string }) => {
+		mutationFn: async ({ alertId, comment }: DeleteAlertVariables) => {
 			const response = await alertsApi.deleteAlert(alertId, comment);
 			if (!response.success) {
 				throw new Error(response.error || 'Failed to delete alert');
 			}
 			return response.data;
 		},
-		onMutate: async ({ alertId }: { alertId: string; comment?: string }) => {
+		onMutate: async ({ alertId }: DeleteAlertVariables) => {
 			// Cancel any outgoing refetches to avoid overwriting our optimistic update
 			await queryClient.cancelQueries({ queryKey: queryKeys.alerts });
 
@@ -36,10 +41,14 @@ export const useDeleteAlert = () => {
 				queryClient.setQueryData(queryKeys.alerts, context.previousAlerts);
 			}
 		},
-		onSettled: () => {
+		onSettled: (_data, _error, { alertId }) => {
 			// Always refetch after error or success to ensure server state
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
+			// A manual resolve also writes a history event and possibly a resolve comment,
+			// so refresh the detail queries in case the details panel is open on this alert.
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistory(alertId) });
+			queryClient.invalidateQueries({ queryKey: [...queryKeys.alertComments, alertId] });
 		},
 	});
 };
