@@ -155,8 +155,13 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 					{getAlertTagEntries(alert)
 						.slice(0, 3)
 						.map(({ key, value }) => (
-							<Badge key={key} variant="outline" className="text-[10px] px-1.5 py-0.5 font-medium">
-								{value}
+							<Badge
+								key={key}
+								variant="outline"
+								className="max-w-full text-[10px] px-1.5 py-0.5 font-medium"
+								title={`${key}: ${value}`}
+							>
+								<span className="truncate">{value}</span>
 							</Badge>
 						))}
 					{getAlertTagEntries(alert).length > 3 && (
