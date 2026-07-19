@@ -12,8 +12,17 @@ interface StatusIndicator {
 
 // Precedence mirrors the old status badge: silenced wins over muted, which wins over
 // the firing/resolved lifecycle state.
+// "Jul 19, 14:30" in the viewer's locale/timezone — enough to know when the silence lifts.
+const formatSilencedUntil = (iso: string): string =>
+	new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 const getStatusIndicator = (alert: Alert): StatusIndicator => {
-	if (alert.isSilenced) return { Icon: BellOff, label: 'Silenced', className: 'text-muted-foreground' };
+	if (alert.isSilenced)
+		return {
+			Icon: BellOff,
+			label: alert.silencedUntil ? `Silenced until ${formatSilencedUntil(alert.silencedUntil)}` : 'Silenced',
+			className: 'text-muted-foreground',
+		};
 	if (alert.isMuted)
 		return { Icon: VolumeX, label: 'Muted', className: 'text-amber-500', testId: 'alert-status-muted' };
 	if (alert.status === AlertStatus.FIRING) return { Icon: Flame, label: 'Firing', className: 'text-red-500' };

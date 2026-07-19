@@ -18,9 +18,9 @@ export const useAlertActions = () => {
 	const unresolveAlertMutation = useUnresolveAlert();
 	const { toast } = useToast();
 
-	const handleSilenceAlert = async (alertId: string) => {
+	const handleSilenceAlert = async (alertId: string, silencedUntil?: string | null, comment?: string) => {
 		try {
-			await silenceAlertMutation.mutateAsync(alertId);
+			await silenceAlertMutation.mutateAsync({ alertId, silencedUntil, comment });
 		} catch (error) {
 			toast({
 				title: 'Error silencing alert',
@@ -76,8 +76,13 @@ export const useAlertActions = () => {
 		}
 	};
 
-	const handleSilenceAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
-		const silencePromises = selectedAlerts.map((alert) => handleSilenceAlert(alert.id));
+	const handleSilenceAll = async (
+		selectedAlerts: Alert[],
+		onComplete: () => void,
+		silencedUntil?: string | null,
+		comment?: string
+	) => {
+		const silencePromises = selectedAlerts.map((alert) => handleSilenceAlert(alert.id, silencedUntil, comment));
 		const results = await Promise.allSettled(silencePromises);
 
 		results.forEach((result, index) => {

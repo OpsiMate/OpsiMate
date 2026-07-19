@@ -212,6 +212,9 @@ export interface Alert {
 	runbookUrl?: string;
 	createdAt: string;
 	isSilenced: boolean;
+	// When the silence auto-expires (ISO); null while silenced means silenced forever.
+	// Re-silencing always overwrites this, so the timer restarts on every silence.
+	silencedUntil?: string | null;
 	// False until someone opens the alert; unread alerts render bold in the table.
 	isRead?: boolean;
 	// Transient: set at fetch time when an active mute policy rule matches this alert. Not persisted.

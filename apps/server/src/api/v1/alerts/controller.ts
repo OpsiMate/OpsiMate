@@ -8,6 +8,7 @@ import {
 	HttpAlertWebhookSchema,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
+	SilenceAlertBodySchema,
 	UptimeKumaWebhookPayload,
 	ZabbixWebhookPayload,
 } from './models';
@@ -37,12 +38,22 @@ export class AlertController {
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.silenceAlert(id, req.user?.fullName);
+			const { silencedUntil, comment } = SilenceAlertBodySchema.parse(req.body ?? {});
+			const alert = await this.alertBL.silenceAlert(
+				id,
+				// String() — the JWT carries the id as a number; comments store it as TEXT.
+				{ id: req.user != null ? String(req.user.id) : null, name: req.user?.fullName ?? null },
+				silencedUntil ?? null,
+				comment
+			);
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
 			logger.error('Error silencing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}

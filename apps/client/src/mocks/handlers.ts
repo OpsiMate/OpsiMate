@@ -147,6 +147,19 @@ const toOncallTeam = (team: OncallTeamState): OncallTeam => {
 export const handlers = [
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, () => {
+		// Timed silences expire lazily on read (mirrors the server sweep).
+		const now = nowIso();
+		for (const alert of playgroundState.alerts) {
+			if (alert.isSilenced && alert.silencedUntil && alert.silencedUntil <= now) {
+				alert.isSilenced = false;
+				alert.silencedUntil = null;
+				pushAlertEvent(alert.id, {
+					date: now,
+					eventType: AlertHistoryEventType.UNSILENCED,
+					description: 'Silence expired',
+				});
+			}
+		}
 		return HttpResponse.json({
 			success: true,
 			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments) },
@@ -160,7 +173,7 @@ export const handlers = [
 		});
 	}),
 
-	http.patch(`${API_BASE}/alerts/:alertId/silence`, ({ params }) => {
+	http.patch(`${API_BASE}/alerts/:alertId/silence`, async ({ params, request }) => {
 		const alertId = params.alertId as string;
 		const alert = playgroundState.alerts.find((a) => a.id === alertId);
 
@@ -168,14 +181,33 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
 		}
 
+		// Optional duration + note in the body (mirrors the server): silencedUntil is
+		// always overwritten so re-silencing restarts the timer; the note becomes a comment.
+		const body = (await request.json().catch(() => null)) as {
+			silencedUntil?: string | null;
+			comment?: string;
+		} | null;
+		const silenceComment = typeof body?.comment === 'string' ? body.comment.trim() : '';
+
 		alert.isSilenced = true;
+		alert.silencedUntil = body?.silencedUntil ?? null;
 		alert.updatedAt = nowIso();
 		pushAlertEvent(alertId, {
 			date: nowIso(),
 			eventType: AlertHistoryEventType.SILENCED,
 			actorName: PLAYGROUND_ACTOR,
-			description: 'Alert silenced',
+			description: alert.silencedUntil ? `Alert silenced until ${alert.silencedUntil}` : 'Alert silenced',
 		});
+		if (silenceComment) {
+			playgroundState.alertComments.push({
+				id: `comment-${randomId()}`,
+				alertId,
+				userId: getPlaygroundUser().id,
+				comment: silenceComment,
+				createdAt: nowIso(),
+				updatedAt: nowIso(),
+			});
+		}
 
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
@@ -189,6 +221,7 @@ export const handlers = [
 		}
 
 		alert.isSilenced = false;
+		alert.silencedUntil = null;
 		alert.updatedAt = nowIso();
 		pushAlertEvent(alertId, {
 			date: nowIso(),
@@ -259,6 +292,7 @@ export const handlers = [
 		// resolved, never both.
 		alert.status = AlertStatus.RESOLVED;
 		alert.isSilenced = false;
+		alert.silencedUntil = null;
 		alert.updatedAt = nowIso();
 		// The resolver takes ownership of the alert (mirrors the server).
 		alert.ownerId = getPlaygroundUser().id;
@@ -297,6 +331,7 @@ export const handlers = [
 		const alert = { ...playgroundState.resolvedAlerts[alertIndex] };
 		alert.status = AlertStatus.FIRING;
 		alert.isSilenced = false;
+		alert.silencedUntil = null;
 		alert.isRead = false;
 		alert.updatedAt = nowIso();
 

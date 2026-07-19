@@ -101,9 +101,19 @@ export class AlertBL {
 		}
 	}
 
+	// Timed silences expire lazily: every listing first sweeps alerts whose silence window
+	// has passed back to unsilenced, with a history entry so the timeline explains the flip.
+	private async expireSilences(): Promise<void> {
+		const expiredIds = await this.alertRepo.clearExpiredSilences(new Date().toISOString());
+		for (const id of expiredIds) {
+			await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null);
+		}
+	}
+
 	async getAllAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all alerts');
+			await this.expireSilences();
 			let alerts = await this.alertRepo.getAllAlerts();
 			// Enrich before muting so mute policy rules can match enrichment-added tags.
 			if (this.enrichmentBL) {
@@ -119,12 +129,25 @@ export class AlertBL {
 		}
 	}
 
-	async silenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	// silencedUntil (ISO) bounds the silence; null means until manually unsilenced. An
+	// optional note is stored as a regular comment by the acting user, mirroring resolve.
+	async silenceAlert(
+		id: string,
+		actor: { id: string | null; name: string | null },
+		silencedUntil: string | null,
+		comment?: string
+	): Promise<Alert | null> {
 		try {
 			logger.info(`Silencing alert with id: ${id}`);
-			const alert = await this.alertRepo.silenceAlert(id);
+			const alert = await this.alertRepo.silenceAlert(id, silencedUntil);
 			if (alert) {
-				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, 'Alert silenced', actorName);
+				const description = silencedUntil
+					? `Alert silenced until ${toIsoUtc(silencedUntil)}`
+					: 'Alert silenced';
+				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
+				if (comment && actor.id != null) {
+					await this.createComment({ alertId: id, userId: actor.id, comment });
+				}
 			}
 			return alert;
 		} catch (error) {

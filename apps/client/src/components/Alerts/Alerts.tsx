@@ -213,8 +213,8 @@ const Alerts = () => {
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
 
-	const handleSilenceAllSelected = async () => {
-		await handleSilenceAll(selectedAlerts, () => setSelectedAlerts([]));
+	const handleSilenceAllSelected = async (silencedUntil?: string | null, comment?: string) => {
+		await handleSilenceAll(selectedAlerts, () => setSelectedAlerts([]), silencedUntil, comment);
 	};
 
 	const handleAssignOwnerAllSelected = async (ownerId: string | null) => {
@@ -249,9 +249,14 @@ const Alerts = () => {
 	const confirmSilenceAlert = (alertId: string) =>
 		setPendingAction({
 			title: 'Silence this alert?',
-			description: 'The alert stays in the list but stops notifying. You can unsilence it at any time.',
+			description:
+				'The alert stays in the list but stops notifying for the chosen duration. You can unsilence it at any time, and silencing again restarts the timer.',
 			confirmLabel: 'Silence',
-			run: () => void handleSilenceAlert(alertId),
+			withSilenceDuration: true,
+			withComment: true,
+			commentLabel: 'Silence comment',
+			commentPlaceholder: 'Why is this silenced?',
+			run: (comment, silencedUntil) => void handleSilenceAlert(alertId, silencedUntil, comment),
 		});
 
 	const confirmResolveAlert = (alertId: string) =>
@@ -260,6 +265,8 @@ const Alerts = () => {
 			description: 'The alert moves to the Resolved list. You can unresolve it later if it is still an issue.',
 			confirmLabel: 'Resolve',
 			withComment: true,
+			commentLabel: 'Resolve comment',
+			commentPlaceholder: 'What fixed it / why is this resolved?',
 			run: (comment) => void handleDeleteAlert(alertId, comment),
 		});
 
@@ -286,9 +293,14 @@ const Alerts = () => {
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
 			title: `Silence ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
-			description: 'The selected alerts stay in the list but stop notifying. You can unsilence them at any time.',
+			description:
+				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer.',
 			confirmLabel: 'Silence all',
-			run: () => void handleSilenceAllSelected(),
+			withSilenceDuration: true,
+			withComment: true,
+			commentLabel: 'Silence comment',
+			commentPlaceholder: 'Why are these silenced?',
+			run: (comment, silencedUntil) => void handleSilenceAllSelected(silencedUntil, comment),
 		});
 
 	const confirmResolveAllSelected = () =>
@@ -298,6 +310,8 @@ const Alerts = () => {
 				'The selected alerts move to the Resolved list. You can unresolve them later if needed. An optional comment will be added to every resolved alert.',
 			confirmLabel: 'Resolve',
 			withComment: true,
+			commentLabel: 'Resolve comment',
+			commentPlaceholder: 'What fixed it / why is this resolved?',
 			run: (comment) => void handleResolveAllSelected(comment),
 		});
 

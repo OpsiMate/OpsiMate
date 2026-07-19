@@ -547,9 +547,16 @@ export const alertsApi = {
 		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts');
 	},
 
-	// Silence an alert
-	async silenceAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/silence`, 'PATCH');
+	// Silence an alert until `silencedUntil` (ISO; null = forever). Re-silencing overwrites
+	// the expiry, restarting the timer. An optional note is stored as a comment.
+	async silenceAlert(
+		alertId: string,
+		options?: { silencedUntil?: string | null; comment?: string }
+	): Promise<ApiResponse<{ alert: SharedAlert }>> {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/silence`, 'PATCH', {
+			silencedUntil: options?.silencedUntil ?? null,
+			comment: options?.comment,
+		});
 	},
 
 	// Unsilence an alert

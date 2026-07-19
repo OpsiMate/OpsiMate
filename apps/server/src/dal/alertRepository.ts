@@ -160,6 +160,13 @@ export class AlertRepository {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN team TEXT`).run();
 			}
 
+			// Backward compatibility: ensure silenced_until column exists (ISO expiry of a
+			// timed silence; NULL while silenced means silenced forever)
+			const hasSilencedUntil = columns.some((col: TableInfoRow) => col.name === 'silenced_until');
+			if (!hasSilencedUntil) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN silenced_until TEXT`).run();
+			}
+
 			// Repair: an alert id must never exist as both active and resolved. Ingestion used
 			// to re-insert a previously-resolved alert into the active table without dropping
 			// its resolved copy, so it showed up twice in the UI. The active row wins — the
@@ -198,6 +205,7 @@ export class AlertRepository {
 			runbookUrl: row.runbook_url,
 			createdAt: row.created_at,
 			isSilenced: row.is_dismissed ? true : false,
+			silencedUntil: row.is_dismissed ? (row.silenced_until ?? null) : null,
 			isRead: row.is_read ? true : false,
 			ownerId: row.owner_id != null ? String(row.owner_id) : null,
 		};
@@ -211,11 +219,40 @@ export class AlertRepository {
 		});
 	}
 
-	async silenceAlert(id: string): Promise<SharedAlert | null> {
+	// silencedUntil is written unconditionally — re-silencing an already-silenced alert
+	// restarts the timer with the newly chosen duration (null = forever).
+	async silenceAlert(id: string, silencedUntil: string | null): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			this.db.prepare('UPDATE alerts SET is_dismissed = 1 WHERE id = ?').run(id);
+			this.db
+				.prepare('UPDATE alerts SET is_dismissed = 1, silenced_until = ? WHERE id = ?')
+				.run(silencedUntil, id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
+		});
+	}
+
+	// Un-silences every alert whose timed silence has passed and returns their ids so the
+	// caller can record history events. ISO-8601 strings compare lexicographically, so plain
+	// string comparison against "now" is correct.
+	async clearExpiredSilences(nowIso: string): Promise<string[]> {
+		return runAsync(() => {
+			const sweep = this.db.transaction(() => {
+				const rows = this.db
+					.prepare(
+						`SELECT id FROM alerts WHERE is_dismissed = 1 AND silenced_until IS NOT NULL AND silenced_until <= ?`
+					)
+					.all(nowIso) as { id: string }[];
+				if (rows.length > 0) {
+					this.db
+						.prepare(
+							`UPDATE alerts SET is_dismissed = 0, silenced_until = NULL
+							 WHERE is_dismissed = 1 AND silenced_until IS NOT NULL AND silenced_until <= ?`
+						)
+						.run(nowIso);
+				}
+				return rows.map((r) => r.id);
+			});
+			return sweep();
 		});
 	}
 
@@ -229,7 +266,7 @@ export class AlertRepository {
 
 	async unsilenceAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			this.db.prepare('UPDATE alerts SET is_dismissed = 0 WHERE id = ?').run(id);
+			this.db.prepare('UPDATE alerts SET is_dismissed = 0, silenced_until = NULL WHERE id = ?').run(id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
