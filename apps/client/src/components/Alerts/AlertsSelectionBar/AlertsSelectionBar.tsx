@@ -48,11 +48,13 @@ export const AlertsSelectionBar = ({
 	};
 
 	return (
-		<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between">
-			<span className="text-sm font-medium">
+		// Everything left-aligned: the checkboxes are the leftmost column, so the cursor is
+		// already there when selecting — actions next to the count keep the travel short.
+		<div className="mt-4 p-3 bg-muted rounded-lg flex items-center gap-4">
+			<span className="text-sm font-medium whitespace-nowrap">
 				{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
 			</span>
-			<div className="flex items-center gap-2">
+			<div className="flex flex-wrap items-center gap-2">
 				{onAssignOwnerAll && (
 					<PersonPicker
 						selectedUserId={null}
