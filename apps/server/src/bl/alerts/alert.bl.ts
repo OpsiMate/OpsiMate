@@ -105,9 +105,11 @@ export class AlertBL {
 	// has passed back to unsilenced, with a history entry so the timeline explains the flip.
 	private async expireSilences(): Promise<void> {
 		const expiredIds = await this.alertRepo.clearExpiredSilences(new Date().toISOString());
-		for (const id of expiredIds) {
-			await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null);
-		}
+		await Promise.all(
+			expiredIds.map((id) =>
+				this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null)
+			)
+		);
 	}
 
 	async getAllAlerts(): Promise<Alert[]> {
@@ -140,10 +142,13 @@ export class AlertBL {
 	): Promise<Alert | null> {
 		try {
 			logger.info(`Silencing alert with id: ${id}`);
-			let alert = await this.alertRepo.silenceAlert(id, silencedUntil);
+			// Normalize to UTC before persisting: expiry uses lexicographic string comparison,
+			// which is only correct when every stored value shares the same ISO-UTC format.
+			const normalizedSilencedUntil = silencedUntil ? toIsoUtc(silencedUntil) : null;
+			let alert = await this.alertRepo.silenceAlert(id, normalizedSilencedUntil);
 			if (alert) {
-				const description = silencedUntil
-					? `Alert silenced until ${toIsoUtc(silencedUntil)}`
+				const description = normalizedSilencedUntil
+					? `Alert silenced until ${normalizedSilencedUntil}`
 					: 'Alert silenced';
 				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
 				if (actor.id != null && Number.isFinite(Number(actor.id))) {

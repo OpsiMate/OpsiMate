@@ -23,8 +23,8 @@ export const useSilenceAlert = () => {
 		onSuccess: (_data, { alertId }) => {
 			// Invalidate and refetch alerts
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
-			// Refresh any open alert-history panel (this records a history event server-side).
-			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+			// Refresh any open alert-history panel (this records history events server-side).
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistory(alertId) });
 			// A silence note is stored as a regular comment, so refresh the comment thread too.
 			queryClient.invalidateQueries({ queryKey: [...queryKeys.alertComments, alertId] });
 		},
