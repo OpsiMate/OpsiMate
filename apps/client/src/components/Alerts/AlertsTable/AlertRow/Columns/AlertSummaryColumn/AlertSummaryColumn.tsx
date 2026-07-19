@@ -12,11 +12,15 @@ export interface AlertSummaryColumnProps {
 
 export const AlertSummaryColumn = ({ alert, expanded = false, className }: AlertSummaryColumnProps) => {
 	// The cell renders formatted summaries as plain text; the full formatting shows in
-	// the details panel. Collapsed it is a single truncated line, expanded it wraps.
+	// the details panel. Collapsed it is a single truncated line; expanded it wraps but
+	// is capped at 6 lines (line-clamp) so one huge summary can't fill the viewport.
 	return (
 		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
 			<span
-				className={cn('text-sm text-foreground block', expanded ? 'whitespace-normal break-words' : 'truncate')}
+				className={cn(
+					'text-sm text-foreground block',
+					expanded ? 'whitespace-normal break-words line-clamp-6' : 'truncate'
+				)}
 			>
 				{alert.summary ? stripHtml(alert.summary) : '-'}
 			</span>

@@ -15,7 +15,7 @@ export const AlertNameColumn = ({ alert, expanded = false, className }: AlertNam
 			<span
 				className={cn(
 					'text-sm block text-foreground',
-					expanded ? 'whitespace-normal break-words' : 'truncate',
+					expanded ? 'whitespace-normal break-words line-clamp-6' : 'truncate',
 					// Unread alerts: bold the name (the row's own font-medium would otherwise win).
 					alert.isRead === false ? 'font-bold' : 'font-medium'
 				)}

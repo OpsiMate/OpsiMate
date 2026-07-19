@@ -23,8 +23,9 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className }
 					title={expanded ? undefined : value}
 				>
 					{/* truncate must sit on a child of the badge's inline-flex container
-					    for the ellipsis to render on long values */}
-					<span className={expanded ? 'break-all' : 'truncate'}>{value}</span>
+					    for the ellipsis to render on long values; expanded wraps but
+					    caps at 6 lines */}
+					<span className={expanded ? 'break-all line-clamp-6' : 'truncate'}>{value}</span>
 				</Badge>
 			) : (
 				<span className="text-foreground text-xs">-</span>
