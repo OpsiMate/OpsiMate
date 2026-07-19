@@ -1,30 +1,24 @@
-import { Logger } from '@OpsiMate/shared';
+import { DashboardTimeRange, Logger } from '@OpsiMate/shared';
 import { DashboardState, TimeRange } from './DashboardContext';
 
 const logger = new Logger('DashboardContext.utils');
 
 export const DASHBOARD_STORAGE_KEY = 'OpsiMate-active-dashboard';
 
-interface SerializedTimeRange {
-	from: string | null;
-	to: string | null;
-	preset: TimeRange['preset'];
-}
-
-const serializeTimeRange = (timeRange: TimeRange): SerializedTimeRange => ({
+export const serializeTimeRange = (timeRange: TimeRange): DashboardTimeRange => ({
 	from: timeRange.from?.toISOString() ?? null,
 	to: timeRange.to?.toISOString() ?? null,
 	preset: timeRange.preset,
 });
 
-const deserializeTimeRange = (stored: SerializedTimeRange | undefined): TimeRange => {
+export const deserializeTimeRange = (stored: DashboardTimeRange | undefined): TimeRange => {
 	if (!stored) {
 		return { from: null, to: null, preset: null };
 	}
 	return {
 		from: stored.from ? new Date(stored.from) : null,
 		to: stored.to ? new Date(stored.to) : null,
-		preset: stored.preset,
+		preset: stored.preset as TimeRange['preset'],
 	};
 };
 

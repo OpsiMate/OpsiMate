@@ -264,6 +264,13 @@ export const CreateDashboardSchema = z.object({
 	visibleColumns: z.array(z.string()),
 	query: z.string(),
 	groupBy: z.array(z.string()),
+	timeRange: z
+		.object({
+			from: z.string().nullable(),
+			to: z.string().nullable(),
+			preset: z.string().nullable(),
+		})
+		.optional(),
 });
 
 export const DashboardIdSchema = z.object({

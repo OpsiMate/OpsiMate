@@ -1,3 +1,5 @@
+import { DashboardTimeRange, Tag } from '@OpsiMate/shared';
+
 export interface Dashboard {
 	id: string;
 	name: string;
@@ -7,6 +9,7 @@ export interface Dashboard {
 	visibleColumns: string[];
 	query: string;
 	groupBy: string[];
+	timeRange?: DashboardTimeRange;
 	createdAt?: string;
 }
 
@@ -18,13 +21,12 @@ export interface CreateDashboardInput {
 	visibleColumns: string[];
 	query: string;
 	groupBy: string[];
+	timeRange?: DashboardTimeRange;
 }
 
 export interface UpdateDashboardInput extends CreateDashboardInput {
 	id: string;
 }
-
-import { Tag } from '@OpsiMate/shared';
 
 export interface DashboardTagsResponse {
 	dashboardId: number;

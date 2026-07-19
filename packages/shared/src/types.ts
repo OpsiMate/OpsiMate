@@ -339,6 +339,15 @@ export interface ResetPasswordType {
 	expiresAt: Date;
 }
 
+// Serialized time filter persisted with a dashboard. Dates are stored as ISO
+// strings so the range survives the wire and the DB; `preset` mirrors the
+// client TimeRange preset ('last1h', 'custom', ...).
+export interface DashboardTimeRange {
+	from: string | null;
+	to: string | null;
+	preset: string | null;
+}
+
 export interface Dashboard {
 	id: string;
 	type: 'services' | 'alerts';
@@ -348,6 +357,7 @@ export interface Dashboard {
 	visibleColumns: string[];
 	query: string;
 	groupBy: string[];
+	timeRange?: DashboardTimeRange;
 	createdAt?: string;
 }
 

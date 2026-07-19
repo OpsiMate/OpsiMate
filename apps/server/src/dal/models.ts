@@ -49,6 +49,7 @@ export interface DashboardRow {
 	visible_columns: string; // string[]
 	query: string;
 	group_by: string; // string[]
+	time_range?: string | null; // DashboardTimeRange
 }
 
 export type AlertRow = {
