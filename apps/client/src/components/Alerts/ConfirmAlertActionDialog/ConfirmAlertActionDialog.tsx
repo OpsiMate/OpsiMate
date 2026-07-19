@@ -8,7 +8,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
 
@@ -33,18 +32,16 @@ interface ConfirmAlertActionDialogProps {
 // Confirmation gate for silence / resolve / delete: one dialog instance at the page level,
 // fed by whichever entry point (row menu, details footer, bulk bar) requested the action.
 export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActionDialogProps) => {
-	const [addComment, setAddComment] = useState(false);
 	const [comment, setComment] = useState('');
 
 	// Fresh state per confirmation — a note typed for one resolve must not leak into the next.
 	useEffect(() => {
 		if (pending) {
-			setAddComment(false);
 			setComment('');
 		}
 	}, [pending]);
 
-	const resolveNote = addComment && comment.trim() ? comment.trim() : undefined;
+	const resolveNote = comment.trim() || undefined;
 
 	return (
 		<AlertDialog open={!!pending} onOpenChange={(open) => !open && onClose()}>
@@ -55,24 +52,18 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 				</AlertDialogHeader>
 
 				{pending?.withComment && (
-					<div className="space-y-2">
-						<label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-							<Checkbox
-								checked={addComment}
-								onCheckedChange={(checked) => setAddComment(checked === true)}
-							/>
-							Add a resolve comment
+					<div className="space-y-1.5">
+						<label htmlFor="resolve-comment" className="text-sm font-medium">
+							Resolve comment <span className="font-normal text-muted-foreground">(optional)</span>
 						</label>
-						{addComment && (
-							<Textarea
-								value={comment}
-								onChange={(e) => setComment(e.target.value)}
-								placeholder="What fixed it / why is this resolved? (optional)"
-								rows={3}
-								maxLength={5000}
-								autoFocus
-							/>
-						)}
+						<Textarea
+							id="resolve-comment"
+							value={comment}
+							onChange={(e) => setComment(e.target.value)}
+							placeholder="What fixed it / why is this resolved?"
+							rows={3}
+							maxLength={5000}
+						/>
 					</div>
 				)}
 
