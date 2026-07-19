@@ -24,6 +24,8 @@ interface VirtualizedAlertListProps {
 	isResolved?: boolean;
 	// Tint rows by alert severity (the "severity colors" toggle).
 	severityColors?: boolean;
+	// Wrap cell content onto new lines instead of truncating (the "expand rows" toggle).
+	expandRows?: boolean;
 	isDragging?: boolean;
 	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
 	onDragEnter?: (alert: Alert) => void;
@@ -47,6 +49,7 @@ export const VirtualizedAlertList = ({
 	columnLabels,
 	isResolved = false,
 	severityColors = false,
+	expandRows = false,
 	isDragging = false,
 	onDragStart,
 	onDragEnter,
@@ -125,6 +128,7 @@ export const VirtualizedAlertList = ({
 									onSelectAlerts={onSelectAlerts}
 									isResolved={isResolved}
 									severityColors={severityColors}
+									expandRows={expandRows}
 									isDragging={isDragging}
 									onDragStart={onDragStart}
 									onDragEnter={onDragEnter}

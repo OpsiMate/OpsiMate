@@ -33,6 +33,8 @@ export interface AlertRowProps {
 	isDragging?: boolean;
 	// Tint the whole row by alert severity (the table's "severity colors" toggle).
 	severityColors?: boolean;
+	// Wrap cell content onto new lines instead of truncating (the "expand rows" toggle).
+	expandRows?: boolean;
 	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
 	onDragEnter?: (alert: Alert) => void;
 	onDragEnd?: () => void;
@@ -53,6 +55,7 @@ export const AlertRow = ({
 	isResolved = false,
 	isDragging = false,
 	severityColors = false,
+	expandRows = false,
 	onDragStart,
 	onDragEnter,
 	onDragEnd,
@@ -115,6 +118,7 @@ export const AlertRow = ({
 								key={column}
 								alert={alert}
 								tagKey={tagKey}
+								expanded={expandRows}
 								className={COLUMN_WIDTHS.default}
 							/>
 						);
@@ -126,13 +130,27 @@ export const AlertRow = ({
 					case 'type':
 						return <AlertTypeColumn key={column} alert={alert} className={COLUMN_WIDTHS.type} />;
 					case 'alertName':
-						return <AlertNameColumn key={column} alert={alert} className={COLUMN_WIDTHS.alertName} />;
+						return (
+							<AlertNameColumn
+								key={column}
+								alert={alert}
+								expanded={expandRows}
+								className={COLUMN_WIDTHS.alertName}
+							/>
+						);
 					case 'severity':
 						return <AlertSeverityColumn key={column} alert={alert} className={COLUMN_WIDTHS.severity} />;
 					case 'status':
 						return <AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />;
 					case 'summary':
-						return <AlertSummaryColumn key={column} alert={alert} className={COLUMN_WIDTHS.summary} />;
+						return (
+							<AlertSummaryColumn
+								key={column}
+								alert={alert}
+								expanded={expandRows}
+								className={COLUMN_WIDTHS.summary}
+							/>
+						);
 					case 'owner':
 						return (
 							<AlertOwnerColumn
