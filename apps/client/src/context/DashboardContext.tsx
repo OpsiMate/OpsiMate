@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { clearStorage, loadFromStorage, saveToStorage } from './DashboardContext.utils';
+import { clearStorage, loadFromStorage, saveToStorage, serializeTimeRange } from './DashboardContext.utils';
 
 export type DashboardType = 'services' | 'alerts';
 
@@ -107,9 +107,10 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		const initialVisibleColumns = JSON.stringify(initialState.visibleColumns);
 		const currentQuery = dashboardState.query;
 		const initialQuery = initialState.query;
-		// Dates serialize to ISO strings, so JSON.stringify gives a stable comparison.
-		const currentTimeRange = JSON.stringify(dashboardState.timeRange);
-		const initialTimeRange = JSON.stringify(initialState.timeRange);
+		// serializeTimeRange fixes the property order (and turns Dates into ISO
+		// strings), so the stringified comparison is stable.
+		const currentTimeRange = JSON.stringify(serializeTimeRange(dashboardState.timeRange));
+		const initialTimeRange = JSON.stringify(serializeTimeRange(initialState.timeRange));
 
 		return (
 			currentName !== initialName ||
