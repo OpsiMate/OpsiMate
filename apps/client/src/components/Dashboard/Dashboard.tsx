@@ -111,7 +111,8 @@ export const Dashboard = () => {
 
 	const handleAlertSilence = async (alertId: string) => {
 		try {
-			await silenceAlertMutation.mutateAsync(alertId);
+			// The dashboard has no duration picker — silence stays until manually lifted.
+			await silenceAlertMutation.mutateAsync({ alertId });
 		} catch (error) {
 			logger.error('Error silencing alert:', error);
 			toast({

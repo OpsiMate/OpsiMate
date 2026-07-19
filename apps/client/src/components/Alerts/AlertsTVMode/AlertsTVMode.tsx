@@ -233,7 +233,8 @@ const AlertsTVMode = () => {
 
 	const handleSilenceAlert = async (alertId: string) => {
 		try {
-			await silenceAlertMutation.mutateAsync(alertId);
+			// TV mode has no duration picker — silence stays until manually lifted.
+			await silenceAlertMutation.mutateAsync({ alertId });
 			toast({
 				title: 'Alert silenced',
 				description: 'The alert has been marked as silenced.',

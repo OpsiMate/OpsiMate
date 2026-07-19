@@ -53,6 +53,15 @@ export const ResolveAlertBodySchema = z.object({
 	comment: z.string().trim().max(5000).optional(),
 });
 
+// Optional body of the silence request (PATCH /alerts/:id/silence).
+export const SilenceAlertBodySchema = z.object({
+	// ISO time when the silence auto-expires; null or absent silences until manually
+	// unsilenced. Always overwritten on re-silence, so the timer restarts each time.
+	silencedUntil: isoDateString.nullable().optional(),
+	// Optional note, stored as a regular alert comment by the acting user.
+	comment: z.string().trim().max(5000).optional(),
+});
+
 /**
  * Datadog alerts webhook payload.
  *

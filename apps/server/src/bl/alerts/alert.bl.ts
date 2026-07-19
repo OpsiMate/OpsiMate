@@ -101,9 +101,21 @@ export class AlertBL {
 		}
 	}
 
+	// Timed silences expire lazily: every listing first sweeps alerts whose silence window
+	// has passed back to unsilenced, with a history entry so the timeline explains the flip.
+	private async expireSilences(): Promise<void> {
+		const expiredIds = await this.alertRepo.clearExpiredSilences(new Date().toISOString());
+		await Promise.all(
+			expiredIds.map((id) =>
+				this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null)
+			)
+		);
+	}
+
 	async getAllAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all alerts');
+			await this.expireSilences();
 			let alerts = await this.alertRepo.getAllAlerts();
 			// Enrich before muting so mute policy rules can match enrichment-added tags.
 			if (this.enrichmentBL) {
@@ -119,12 +131,33 @@ export class AlertBL {
 		}
 	}
 
-	async silenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	// silencedUntil (ISO) bounds the silence; null means until manually unsilenced. An
+	// optional note is stored as a regular comment by the acting user, and — mirroring
+	// resolve — whoever silences the alert takes ownership of it.
+	async silenceAlert(
+		id: string,
+		actor: { id: string | null; name: string | null },
+		silencedUntil: string | null,
+		comment?: string
+	): Promise<Alert | null> {
 		try {
 			logger.info(`Silencing alert with id: ${id}`);
-			const alert = await this.alertRepo.silenceAlert(id);
+			// Normalize to UTC before persisting: expiry uses lexicographic string comparison,
+			// which is only correct when every stored value shares the same ISO-UTC format.
+			const normalizedSilencedUntil = silencedUntil ? toIsoUtc(silencedUntil) : null;
+			let alert = await this.alertRepo.silenceAlert(id, normalizedSilencedUntil);
 			if (alert) {
-				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, 'Alert silenced', actorName);
+				const description = normalizedSilencedUntil
+					? `Alert silenced until ${normalizedSilencedUntil}`
+					: 'Alert silenced';
+				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
+				if (actor.id != null && Number.isFinite(Number(actor.id))) {
+					// setAlertOwner also records the "Assigned to …" history event.
+					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
+				}
+				if (comment && actor.id != null) {
+					await this.createComment({ alertId: id, userId: actor.id, comment });
+				}
 			}
 			return alert;
 		} catch (error) {

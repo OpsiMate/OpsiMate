@@ -18,6 +18,14 @@ const formatFullDate = (dateStr: string) =>
 		minute: '2-digit',
 	});
 
+// Descriptions may embed machine ISO timestamps (e.g. "Alert silenced until
+// 2026-07-19T09:23:39.487Z"); show them as short datetimes in the viewer's timezone.
+const ISO_TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})/g;
+const humanizeTimestamps = (text: string): string =>
+	text.replace(ISO_TIMESTAMP_RE, (iso) =>
+		new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+	);
+
 interface EventStyle {
 	label: string;
 	dotClass: string;
@@ -126,7 +134,9 @@ export const AlertHistoryTimeline = ({ data, isFiltered }: AlertHistoryTimelineP
 									<span>{style.label}</span>
 								</div>
 								{item.description && (
-									<div className="text-xs text-foreground/80">{item.description}</div>
+									<div className="text-xs text-foreground/80">
+										{humanizeTimestamps(item.description)}
+									</div>
 								)}
 								<div className="text-xs text-muted-foreground">
 									{formatFullDate(item.date)}
