@@ -199,8 +199,9 @@ export const AlertsTable = ({
 																			variant="ghost"
 																			size="icon"
 																			className={cn(
-																				'h-6 w-6',
-																				expandRows && 'bg-muted text-primary'
+																				'h-7 w-7 rounded-md flex-shrink-0 border hover:bg-muted hover:text-foreground',
+																				expandRows &&
+																					'text-primary border-primary'
 																			)}
 																			onClick={() =>
 																				setExpandRows((prev) => !prev)
@@ -212,7 +213,7 @@ export const AlertsTable = ({
 																			}
 																			aria-pressed={expandRows}
 																		>
-																			<WrapText className="h-3.5 w-3.5" />
+																			<WrapText className="h-4 w-4" />
 																		</Button>
 																	</TooltipTrigger>
 																	<TooltipContent>
