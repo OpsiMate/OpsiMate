@@ -169,11 +169,16 @@ export class AlertBL {
 		}
 	}
 
-	// manualActorName differentiates the two resolve flows: pass it (even as null) when a user
-	// resolved the alert from the UI — a RESOLVED history event is recorded with their name.
-	// Leave it undefined for API-driven resolution (a source reporting the alert as recovered),
-	// which only gets the automatic status-transition entry.
-	async resolveAlert(activeAlertId: string, manualActorName?: string | null): Promise<void> {
+	// manualActor differentiates the two resolve flows: pass it (even with null fields) when
+	// a user resolved the alert from the UI — a RESOLVED history event is recorded with their
+	// name, they become the alert's owner, and an optional resolve note is stored as a
+	// regular comment. Leave it undefined for API-driven resolution (a source reporting the
+	// alert as recovered), which only gets the automatic status-transition entry.
+	async resolveAlert(
+		activeAlertId: string,
+		manualActor?: { id: string | null; name: string | null },
+		comment?: string
+	): Promise<void> {
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
 
@@ -190,13 +195,22 @@ export class AlertBL {
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
 
-			if (manualActorName !== undefined) {
+			if (manualActor !== undefined) {
 				await this.recordHistoryEvent(
 					activeAlertId,
 					AlertHistoryEventType.RESOLVED,
 					'Alert resolved manually',
-					manualActorName
+					manualActor.name
 				);
+
+				// Whoever resolved the alert takes ownership of it.
+				if (manualActor.id != null && Number.isFinite(Number(manualActor.id))) {
+					await this.resolvedAlertRepo.updateResolvedAlertOwner(activeAlertId, Number(manualActor.id));
+				}
+
+				if (comment && manualActor.id != null) {
+					await this.createComment({ alertId: activeAlertId, userId: manualActor.id, comment });
+				}
 			}
 
 			logger.info(`Resolved alert ${activeAlertId}`);

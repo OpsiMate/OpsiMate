@@ -242,7 +242,7 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
-	http.delete(`${API_BASE}/alerts/:alertId`, ({ params }) => {
+	http.delete(`${API_BASE}/alerts/:alertId`, async ({ params, request }) => {
 		const alertId = params.alertId as string;
 		const alertIndex = playgroundState.alerts.findIndex((a) => a.id === alertId);
 
@@ -250,12 +250,18 @@ export const handlers = [
 			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
 
+		// Optional resolve note in the body (mirrors the server: stored as a comment).
+		const body = (await request.json().catch(() => null)) as { comment?: string } | null;
+		const resolveComment = typeof body?.comment === 'string' ? body.comment.trim() : '';
+
 		const alert = { ...playgroundState.alerts[alertIndex] };
 		// Resolving pins the status and clears silence — an alert is either silenced or
 		// resolved, never both.
 		alert.status = AlertStatus.RESOLVED;
 		alert.isSilenced = false;
 		alert.updatedAt = nowIso();
+		// The resolver takes ownership of the alert (mirrors the server).
+		alert.ownerId = getPlaygroundUser().id;
 
 		playgroundState.alerts.splice(alertIndex, 1);
 		playgroundState.resolvedAlerts.unshift(alert);
@@ -266,6 +272,16 @@ export const handlers = [
 			actorName: PLAYGROUND_ACTOR,
 			description: 'Alert resolved manually',
 		});
+		if (resolveComment) {
+			playgroundState.alertComments.push({
+				id: `comment-${randomId()}`,
+				alertId,
+				userId: getPlaygroundUser().id,
+				comment: resolveComment,
+				createdAt: nowIso(),
+				updatedAt: nowIso(),
+			});
+		}
 
 		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
 	}),

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { AlertCommentRow } from './models.ts';
+import { AlertCommentRow, ForeignKeyInfoRow } from './models.ts';
 import { AlertComment } from '@OpsiMate/shared';
 
 export class AlertCommentsRepository {
@@ -20,7 +20,6 @@ export class AlertCommentsRepository {
 					comment TEXT NOT NULL,
 					created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 					updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-					FOREIGN KEY (alert_id) REFERENCES alerts(id) ON DELETE CASCADE,
 					FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 				);
 
@@ -28,6 +27,36 @@ export class AlertCommentsRepository {
 				CREATE INDEX IF NOT EXISTS idx_alert_comments_user_id ON alert_comments(user_id);
 				CREATE INDEX IF NOT EXISTS idx_alert_comments_created_at ON alert_comments(created_at);
 			`);
+
+			// Migration: the table used to declare alert_id as an FK to alerts(id) ON DELETE
+			// CASCADE — but an alert id outlives its row in `alerts` (resolving moves it to
+			// alerts_resolved), so resolving an alert silently wiped its whole comment
+			// thread, and post-resolve comments (resolve notes) couldn't be inserted at all.
+			// SQLite can't drop an FK in place; rebuild the table when the old shape exists.
+			const fks = this.db.prepare(`PRAGMA foreign_key_list(alert_comments)`).all() as ForeignKeyInfoRow[];
+			if (fks.some((fk) => fk.table === 'alerts')) {
+				const rebuild = this.db.transaction(() => {
+					this.db.exec(`
+						CREATE TABLE alert_comments_new (
+							id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+							alert_id TEXT NOT NULL,
+							user_id TEXT NOT NULL,
+							comment TEXT NOT NULL,
+							created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+							updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+							FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+						);
+						INSERT INTO alert_comments_new (id, alert_id, user_id, comment, created_at, updated_at)
+							SELECT id, alert_id, user_id, comment, created_at, updated_at FROM alert_comments;
+						DROP TABLE alert_comments;
+						ALTER TABLE alert_comments_new RENAME TO alert_comments;
+						CREATE INDEX IF NOT EXISTS idx_alert_comments_alert_id ON alert_comments(alert_id);
+						CREATE INDEX IF NOT EXISTS idx_alert_comments_user_id ON alert_comments(user_id);
+						CREATE INDEX IF NOT EXISTS idx_alert_comments_created_at ON alert_comments(created_at);
+					`);
+				});
+				rebuild();
+			}
 		});
 	}
 
