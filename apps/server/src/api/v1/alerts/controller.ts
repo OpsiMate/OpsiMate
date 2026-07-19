@@ -7,6 +7,7 @@ import {
 	GrafanaWebhookSchema,
 	HttpAlertWebhookSchema,
 	SetAlertOwnerSchema,
+	ResolveAlertBodySchema,
 	UptimeKumaWebhookPayload,
 	ZabbixWebhookPayload,
 } from './models';
@@ -487,9 +488,17 @@ export class AlertController {
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
+			const { comment } = ResolveAlertBodySchema.parse(req.body ?? {});
 			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
 			// the acting user (unlike the integration webhooks, which resolve without one).
-			await this.alertBL.resolveAlert(alertId, req.user?.fullName ?? null);
+			// The resolver becomes the alert's owner, and an optional resolve note is stored
+			// as a regular comment.
+			await this.alertBL.resolveAlert(
+				alertId,
+				// String() — the JWT carries the id as a number; comments store it as TEXT.
+				{ id: req.user != null ? String(req.user.id) : null, name: req.user?.fullName ?? null },
+				comment
+			);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting alert:', error);

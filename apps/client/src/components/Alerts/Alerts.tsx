@@ -221,9 +221,9 @@ const Alerts = () => {
 		await handleAssignOwnerAll(selectedAlerts, ownerId, () => setSelectedAlerts([]));
 	};
 
-	const handleResolveAllSelected = async () => {
+	const handleResolveAllSelected = async (comment?: string) => {
 		setSelectedAlert(null);
-		await handleResolveAll(selectedAlerts, () => setSelectedAlerts([]));
+		await handleResolveAll(selectedAlerts, () => setSelectedAlerts([]), comment);
 	};
 
 	const handleDeleteAllSelected = async () => {
@@ -259,7 +259,8 @@ const Alerts = () => {
 			title: 'Resolve this alert?',
 			description: 'The alert moves to the Resolved list. You can unresolve it later if it is still an issue.',
 			confirmLabel: 'Resolve',
-			run: () => void handleDeleteAlert(alertId),
+			withComment: true,
+			run: (comment) => void handleDeleteAlert(alertId, comment),
 		});
 
 	const confirmDeleteResolvedAlert = (alertId: string) =>
@@ -293,9 +294,11 @@ const Alerts = () => {
 	const confirmResolveAllSelected = () =>
 		setPendingAction({
 			title: `Resolve ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
-			description: 'The selected alerts move to the Resolved list. You can unresolve them later if needed.',
+			description:
+				'The selected alerts move to the Resolved list. You can unresolve them later if needed. A comment is added to every resolved alert.',
 			confirmLabel: 'Resolve',
-			run: () => void handleResolveAllSelected(),
+			withComment: true,
+			run: (comment) => void handleResolveAllSelected(comment),
 		});
 
 	// Active-tab alerts table, parameterized by the alert list so it can render full-width

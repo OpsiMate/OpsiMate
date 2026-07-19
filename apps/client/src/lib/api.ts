@@ -557,9 +557,9 @@ export const alertsApi = {
 		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/unsilence`, 'PATCH');
 	},
 
-	// Delete an alert
-	async deleteAlert(alertId: string): Promise<ApiResponse<void>> {
-		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE');
+	// Delete an alert (the UI's manual resolve); an optional note is stored as a comment.
+	async deleteAlert(alertId: string, comment?: string): Promise<ApiResponse<void>> {
+		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE', comment ? { comment } : undefined);
 	},
 
 	// Mark alert as read (unread alerts render bold in the table)

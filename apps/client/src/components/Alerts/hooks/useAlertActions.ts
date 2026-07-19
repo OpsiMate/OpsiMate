@@ -44,9 +44,9 @@ export const useAlertActions = () => {
 
 	// Deleting an active alert IS resolving it (permanent delete only exists for resolved
 	// alerts), so the feedback speaks in resolve terms.
-	const handleDeleteAlert = async (alertId: string) => {
+	const handleDeleteAlert = async (alertId: string, comment?: string) => {
 		try {
-			await deleteAlertMutation.mutateAsync(alertId);
+			await deleteAlertMutation.mutateAsync({ alertId, comment });
 			toast({
 				title: 'Alert resolved',
 				description: 'The alert was moved to Resolved.',
@@ -118,9 +118,9 @@ export const useAlertActions = () => {
 	};
 
 	// Bulk-resolve the selected active alerts (active "delete" == resolve).
-	const handleResolveAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
+	const handleResolveAll = async (selectedAlerts: Alert[], onComplete: () => void, comment?: string) => {
 		const results = await Promise.allSettled(
-			selectedAlerts.map((alert) => deleteAlertMutation.mutateAsync(alert.id))
+			selectedAlerts.map((alert) => deleteAlertMutation.mutateAsync({ alertId: alert.id, comment }))
 		);
 		const successCount = results.filter((r) => r.status === 'fulfilled').length;
 		const failCount = results.length - successCount;
@@ -144,7 +144,7 @@ export const useAlertActions = () => {
 	const handleDeleteForeverAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
 		const results = await Promise.allSettled(
 			selectedAlerts.map(async (alert) => {
-				await deleteAlertMutation.mutateAsync(alert.id);
+				await deleteAlertMutation.mutateAsync({ alertId: alert.id });
 				await deleteResolvedAlertMutation.mutateAsync(alert.id);
 			})
 		);

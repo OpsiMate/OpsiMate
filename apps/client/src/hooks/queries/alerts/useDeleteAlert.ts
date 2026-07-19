@@ -7,14 +7,14 @@ export const useDeleteAlert = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async (alertId: string) => {
-			const response = await alertsApi.deleteAlert(alertId);
+		mutationFn: async ({ alertId, comment }: { alertId: string; comment?: string }) => {
+			const response = await alertsApi.deleteAlert(alertId, comment);
 			if (!response.success) {
 				throw new Error(response.error || 'Failed to delete alert');
 			}
 			return response.data;
 		},
-		onMutate: async (alertId: string) => {
+		onMutate: async ({ alertId }: { alertId: string; comment?: string }) => {
 			// Cancel any outgoing refetches to avoid overwriting our optimistic update
 			await queryClient.cancelQueries({ queryKey: queryKeys.alerts });
 

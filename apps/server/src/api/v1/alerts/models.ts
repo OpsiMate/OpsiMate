@@ -47,6 +47,12 @@ export const HttpAlertWebhookSchema = z.object({
 	team: z.string().optional(),
 });
 
+// Optional body of the manual-resolve request (DELETE /alerts/:alertId).
+export const ResolveAlertBodySchema = z.object({
+	// Optional resolve note, stored as a regular alert comment by the acting user.
+	comment: z.string().trim().max(5000).optional(),
+});
+
 /**
  * Datadog alerts webhook payload.
  *
