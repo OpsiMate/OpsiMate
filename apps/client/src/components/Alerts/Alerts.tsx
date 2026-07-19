@@ -3,6 +3,7 @@ import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDashboard } from '@/context/DashboardContext';
+import { deserializeTimeRange, serializeTimeRange } from '@/context/DashboardContext.utils';
 import { useAlerts, useResolvedAlerts, useDeleteResolvedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
@@ -141,6 +142,7 @@ const Alerts = () => {
 			visibleColumns: dashboardState.visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
+			timeRange: serializeTimeRange(dashboardState.timeRange),
 		};
 
 		try {
@@ -371,7 +373,7 @@ const Alerts = () => {
 				columnOrder: [],
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
-				timeRange: { from: null, to: null, preset: null },
+				timeRange: deserializeTimeRange(dashboard.timeRange),
 			});
 		};
 

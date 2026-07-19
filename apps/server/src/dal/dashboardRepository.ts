@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { DashboardRow } from './models';
-import { Dashboard } from '@OpsiMate/shared';
+import { DashboardRow, TableInfoRow } from './models';
+import { Dashboard, DashboardTimeRange } from '@OpsiMate/shared';
 
 export class DashboardRepository {
 	constructor(private db: Database.Database) {}
@@ -16,6 +16,9 @@ export class DashboardRepository {
 			visibleColumns: JSON.parse(dashboardRow.visible_columns) as string[],
 			query: dashboardRow.query,
 			groupBy: JSON.parse(dashboardRow.group_by) as string[],
+			timeRange: dashboardRow.time_range
+				? (JSON.parse(dashboardRow.time_range) as DashboardTimeRange)
+				: undefined,
 			createdAt: dashboardRow.created_at,
 		};
 	};
@@ -37,8 +40,8 @@ export class DashboardRepository {
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO dashboards (name, type, description, filters, visible_columns, query, group_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO dashboards (name, type, description, filters, visible_columns, query, group_by, time_range)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
 			const result = stmt.run(
 				dashboard.name,
@@ -47,7 +50,8 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.query,
-				JSON.stringify(dashboard.groupBy)
+				JSON.stringify(dashboard.groupBy),
+				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null
 			);
 			return result.lastInsertRowid as number;
 		});
@@ -75,11 +79,18 @@ export class DashboardRepository {
 							filters         TEXT NOT NULL,
 							visible_columns TEXT NOT NULL,
 							query           TEXT,
-							group_by        TEXT NOT NULL
+							group_by        TEXT NOT NULL,
+							time_range      TEXT
 						)
 					`
 				)
 				.run();
+
+			// Backward compatibility: ensure time_range column exists on older DBs
+			const columns = this.db.prepare(`PRAGMA table_info(dashboards)`).all() as TableInfoRow[];
+			if (!columns.some((col) => col.name === 'time_range')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN time_range TEXT`).run();
+			}
 		});
 	}
 
@@ -94,7 +105,8 @@ export class DashboardRepository {
                 filters = ?,
                 visible_columns = ?,
                 query = ?,
-                group_by = ?
+                group_by = ?,
+                time_range = ?
             WHERE id = ?
         `);
 
@@ -106,6 +118,7 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
+				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null,
 				dashboardId
 			);
 

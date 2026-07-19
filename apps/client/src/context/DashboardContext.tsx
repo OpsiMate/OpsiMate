@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { clearStorage, loadFromStorage, saveToStorage } from './DashboardContext.utils';
+import { clearStorage, loadFromStorage, saveToStorage, serializeTimeRange } from './DashboardContext.utils';
 
 export type DashboardType = 'services' | 'alerts';
 
@@ -83,8 +83,11 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 	}, [dashboardState]);
 
 	const setInitialState = useCallback((state: DashboardState) => {
-		setInitialStateState(JSON.parse(JSON.stringify(state)));
-		setDashboardState(JSON.parse(JSON.stringify(state)));
+		// structuredClone (not JSON round-trip) so timeRange's Date objects survive
+		// the deep copy — JSON.stringify would turn them into strings and break the
+		// time filter comparisons in useAlertsFiltering.
+		setInitialStateState(structuredClone(state));
+		setDashboardState(structuredClone(state));
 		setHasUserMadeChanges(false);
 	}, []);
 
@@ -104,6 +107,10 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		const initialVisibleColumns = JSON.stringify(initialState.visibleColumns);
 		const currentQuery = dashboardState.query;
 		const initialQuery = initialState.query;
+		// serializeTimeRange fixes the property order (and turns Dates into ISO
+		// strings), so the stringified comparison is stable.
+		const currentTimeRange = JSON.stringify(serializeTimeRange(dashboardState.timeRange));
+		const initialTimeRange = JSON.stringify(serializeTimeRange(initialState.timeRange));
 
 		return (
 			currentName !== initialName ||
@@ -111,7 +118,8 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			currentGroupBy !== initialGroupBy ||
 			currentFilters !== initialFilters ||
 			currentVisibleColumns !== initialVisibleColumns ||
-			currentQuery !== initialQuery
+			currentQuery !== initialQuery ||
+			currentTimeRange !== initialTimeRange
 		);
 	}, [dashboardState, initialState, hasUserMadeChanges]);
 
@@ -123,6 +131,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			'filters',
 			'visibleColumns',
 			'query',
+			'timeRange',
 		];
 		if (userEditableFields.includes(field)) {
 			setHasUserMadeChanges(true);
@@ -138,7 +147,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	const markAsClean = useCallback(() => {
-		setInitialStateState(JSON.parse(JSON.stringify(dashboardState)));
+		setInitialStateState(structuredClone(dashboardState));
 		setHasUserMadeChanges(false);
 	}, [dashboardState]);
 

@@ -8,6 +8,7 @@ import { getAlertSeverity } from '@/components/Alerts/utils/severity.utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useDashboard } from '@/context/DashboardContext';
+import { deserializeTimeRange, serializeTimeRange } from '@/context/DashboardContext.utils';
 import { useAlerts, useSilenceAlert, useUnsilenceAlert } from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
@@ -147,6 +148,7 @@ const AlertsTVMode = () => {
 			visibleColumns: dashboardState.visibleColumns,
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
+			timeRange: serializeTimeRange(dashboardState.timeRange),
 		};
 
 		try {
@@ -202,6 +204,7 @@ const AlertsTVMode = () => {
 					columnOrder: [],
 					groupBy: dashboard.groupBy || [],
 					query: dashboard.query || '',
+					timeRange: deserializeTimeRange(dashboard.timeRange),
 				});
 			};
 
