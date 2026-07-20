@@ -46,8 +46,7 @@ const sheetVariants = cva(
 );
 
 interface SheetContentProps
-	extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-		VariantProps<typeof sheetVariants> {
+	extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>, VariantProps<typeof sheetVariants> {
 	closable?: boolean;
 }
 

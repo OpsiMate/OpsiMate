@@ -196,8 +196,7 @@ export class ResolvedAlertRepository {
 	async getResolvedAlert(alertId: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
 			const row = this.db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertId) as
-				| ResolvedAlertRow
-				| undefined;
+				ResolvedAlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
@@ -221,8 +220,7 @@ export class ResolvedAlertRepository {
 		return runAsync(() => {
 			this.db.prepare('UPDATE alerts_resolved SET owner_id = ? WHERE id = ?').run(ownerId, alertId);
 			const row = this.db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertId) as
-				| ResolvedAlertRow
-				| undefined;
+				ResolvedAlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
 	}
