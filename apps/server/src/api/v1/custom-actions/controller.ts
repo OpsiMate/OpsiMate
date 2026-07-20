@@ -1,7 +1,6 @@
 import { Logger } from '@OpsiMate/shared';
 import { Request, Response } from 'express';
 import { CustomActionBL } from '../../../bl/custom-actions/customAction.bl';
-import { CustomAction } from '@OpsiMate/custom-actions';
 import { z } from 'zod';
 import { isZodError } from '../../../utils/isZodError.ts';
 
@@ -41,7 +40,7 @@ export class CustomActionsController {
 			const validatedData = CustomActionSchema.parse(req.body);
 			// Remove id if present (it's auto-generated) and create a proper CustomAction
 			const { id: _, ...dataWithoutId } = validatedData;
-			const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
+			const actionData = { ...dataWithoutId, id: 0 }; // id will be ignored
 			const id = await this.bl.create(actionData);
 			return res.status(201).json({ success: true, data: { id } });
 		} catch (error) {
@@ -72,7 +71,7 @@ export class CustomActionsController {
 			const validatedData = CustomActionSchema.parse(req.body);
 			// Remove id if present (use parameter id instead) and create a proper CustomAction
 			const { id: _, ...dataWithoutId } = validatedData;
-			const actionData = { ...dataWithoutId, id: 0 } as CustomAction; // id will be ignored
+			const actionData = { ...dataWithoutId, id: 0 }; // id will be ignored
 			await this.bl.update(id, actionData);
 			return res.status(200).json({ success: true });
 		} catch (error) {

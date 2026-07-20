@@ -83,8 +83,7 @@ export class OncallRepository {
 	async getTeamByName(name: string): Promise<OncallTeamRow | null> {
 		return runAsync(() => {
 			const row = this.db.prepare('SELECT * FROM oncall_teams WHERE name = ? COLLATE NOCASE').get(name) as
-				| OncallTeamRow
-				| undefined;
+				OncallTeamRow | undefined;
 			return row ?? null;
 		});
 	}
@@ -98,8 +97,7 @@ export class OncallRepository {
 	async getTeam(teamId: number): Promise<OncallTeamRow | null> {
 		return runAsync(() => {
 			const row = this.db.prepare('SELECT * FROM oncall_teams WHERE id = ?').get(teamId) as
-				| OncallTeamRow
-				| undefined;
+				OncallTeamRow | undefined;
 			return row ?? null;
 		});
 	}

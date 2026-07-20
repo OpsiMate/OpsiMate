@@ -130,8 +130,7 @@ export class MutePolicyRepository {
 	async getMutePolicyById(id: number): Promise<MutePolicy | undefined> {
 		return runAsync(() => {
 			const row = this.db.prepare(`SELECT * FROM alert_mute_policies WHERE id = ?`).get(id) as
-				| MutePolicyRow
-				| undefined;
+				MutePolicyRow | undefined;
 			return row ? this.toShared(row) : undefined;
 		});
 	}
