@@ -1,10 +1,12 @@
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Activity, Plug, TriangleAlert } from 'lucide-react';
-import { ReactNode, useMemo, useRef } from 'react';
+import { Activity, Plug, TriangleAlert, WrapText } from 'lucide-react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -66,6 +68,10 @@ export const AlertsTable = ({
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
 
+	// Expanded rows: cell content wraps onto new lines (full name/summary/labels)
+	// instead of truncating to a single line.
+	const [expandRows, setExpandRows] = useState(false);
+
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
 	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
@@ -93,6 +99,11 @@ export const AlertsTable = ({
 				? (element) => element?.getBoundingClientRect().height
 				: undefined,
 	});
+
+	// Row heights change when toggling expanded rows; re-measure everything.
+	useEffect(() => {
+		virtualizer.measure();
+	}, [expandRows, virtualizer]);
 
 	const virtualItems = virtualizer.getVirtualItems();
 	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
@@ -182,6 +193,35 @@ export const AlertsTable = ({
 															}}
 														>
 															<div className="flex items-center justify-end gap-2 min-w-0">
+																<Tooltip>
+																	<TooltipTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			className={cn(
+																				'h-7 w-7 rounded-md flex-shrink-0 border hover:bg-muted hover:text-foreground',
+																				expandRows &&
+																					'text-primary border-primary'
+																			)}
+																			onClick={() =>
+																				setExpandRows((prev) => !prev)
+																			}
+																			aria-label={
+																				expandRows
+																					? 'Collapse rows'
+																					: 'Expand rows'
+																			}
+																			aria-pressed={expandRows}
+																		>
+																			<WrapText className="h-4 w-4" />
+																		</Button>
+																	</TooltipTrigger>
+																	<TooltipContent>
+																		{expandRows
+																			? 'Collapse rows'
+																			: 'Expand rows to show full content'}
+																	</TooltipContent>
+																</Tooltip>
 																<GroupByControls
 																	groupByColumns={groupByColumns}
 																	onGroupByChange={setGroupByColumns}
@@ -282,6 +322,7 @@ export const AlertsTable = ({
 											flatRows={flatRows}
 											selectedAlerts={selectedAlerts}
 											orderedColumns={orderedColumns}
+											expandRows={expandRows}
 											onToggleGroup={toggleGroup}
 											onSelectAlert={handleSelectAlert}
 											onAlertClick={onAlertClick}

@@ -24,12 +24,16 @@ import { useMemo, useState } from 'react';
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 	<div className="flex flex-wrap gap-1.5">
 		{enrichment.nameContains && (
-			<Badge variant="secondary" className="font-mono text-xs">
+			<Badge variant="secondary" className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md">
 				name ~ "{enrichment.nameContains}"
 			</Badge>
 		)}
 		{(enrichment.labelMatchers ?? []).map((m, idx) => (
-			<Badge key={idx} variant="outline" className="font-mono text-xs">
+			<Badge
+				key={idx}
+				variant="outline"
+				className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md"
+			>
 				{m.key}={m.value}
 			</Badge>
 		))}
@@ -45,7 +49,7 @@ const EffectBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 			<Badge
 				key={idx}
 				variant="outline"
-				className="font-mono text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+				className="font-mono text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 max-w-full whitespace-normal break-all rounded-md"
 			>
 				+{f.key}={f.value}
 			</Badge>

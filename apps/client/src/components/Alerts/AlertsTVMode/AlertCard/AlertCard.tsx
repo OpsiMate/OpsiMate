@@ -4,7 +4,6 @@ import { Alert, AlertSeverity } from '@OpsiMate/shared';
 import { AlertCircle, BellOff, Clock, Server } from 'lucide-react';
 import { getAlertTagEntries, hasAlertTags } from '../../utils/alertTags.utils';
 import { getAlertSeverity } from '../../utils/severity.utils';
-import { getTagKeyColor } from '../../utils/tagColors.utils';
 import { CardSize } from '../AlertsTVMode.constants';
 
 interface AlertCardProps {
@@ -155,21 +154,16 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 				<div className="mt-3 flex flex-wrap gap-1">
 					{getAlertTagEntries(alert)
 						.slice(0, 3)
-						.map(({ key, value }) => {
-							const colors = getTagKeyColor(key);
-							return (
-								<Badge
-									key={key}
-									className="text-[10px] px-1.5 py-0.5 border-0 font-medium"
-									style={{
-										backgroundColor: colors.background,
-										color: colors.text,
-									}}
-								>
-									{value}
-								</Badge>
-							);
-						})}
+						.map(({ key, value }) => (
+							<Badge
+								key={key}
+								variant="outline"
+								className="max-w-full text-[10px] px-1.5 py-0.5 font-medium"
+								title={`${key}: ${value}`}
+							>
+								<span className="truncate">{value}</span>
+							</Badge>
+						))}
 					{getAlertTagEntries(alert).length > 3 && (
 						<Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
 							+{getAlertTagEntries(alert).length - 3}

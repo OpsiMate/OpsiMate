@@ -5,15 +5,23 @@ import { Alert } from '@OpsiMate/shared';
 
 export interface AlertSummaryColumnProps {
 	alert: Alert;
+	// Wrap the full summary onto new lines instead of truncating (the "expand rows" toggle).
+	expanded?: boolean;
 	className?: string;
 }
 
-export const AlertSummaryColumn = ({ alert, className }: AlertSummaryColumnProps) => {
-	// The cell is a single truncated line, so render formatted summaries as plain text here;
-	// the full formatting shows in the details panel.
+export const AlertSummaryColumn = ({ alert, expanded = false, className }: AlertSummaryColumnProps) => {
+	// The cell renders formatted summaries as plain text; the full formatting shows in
+	// the details panel. Collapsed it is a single truncated line; expanded it wraps but
+	// is capped at 6 lines (line-clamp) so one huge summary can't fill the viewport.
 	return (
 		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
-			<span className="text-sm text-foreground truncate block">
+			<span
+				className={cn(
+					'text-sm text-foreground block',
+					expanded ? 'whitespace-normal break-words line-clamp-6' : 'truncate'
+				)}
+			>
 				{alert.summary ? stripHtml(alert.summary) : '-'}
 			</span>
 		</TableCell>
