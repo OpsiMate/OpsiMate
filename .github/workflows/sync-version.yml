@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: main
@@ -41,7 +41,7 @@ jobs:
           mv package.tmp.json package.json
 
       - name: Commit and push version sync
-        uses: stefanzweifel/git-auto-commit-action@v6
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: sync version to ${{ env.NEXT_VERSION }} on release"
           branch: main
