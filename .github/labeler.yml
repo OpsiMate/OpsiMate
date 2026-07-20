@@ -1,27 +1,38 @@
+# Schema for actions/labeler v5+ (changed-files / any-glob-to-any-file).
 DevOps:
-  - 'devops*'
-  - 'infrastructure/**'
-  - 'ci/**'
-  - 'docker/**'
-  - '**/.github/**'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'devops*'
+          - 'infrastructure/**'
+          - 'ci/**'
+          - 'docker/**'
+          - '**/.github/**'
 
 documentation:
-  - 'docs/**'
-  - '**/*.md'
-  - 'README.md'
-  - 'documentation/**'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'
+          - 'README.md'
+          - 'documentation/**'
 
 Server:
-  - '**/server/**'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/server/**'
 
 UI:
-  - '**/client/**'
-  - '**/*.css'
-  - '**/*.scss'
-  - '**/*.html'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/client/**'
+          - '**/*.css'
+          - '**/*.scss'
+          - '**/*.html'
 
 Test:
-  - '**/*.test.*'
-  - '**/tests/**'
-  - '**/__tests__/**'
-  - '**/test/**'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.test.*'
+          - '**/tests/**'
+          - '**/__tests__/**'
+          - '**/test/**'
