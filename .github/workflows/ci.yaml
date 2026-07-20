@@ -78,3 +78,5 @@ jobs:
           path: |
             apps/server/test-results/
           retention-days: 7
+          # The server suite doesn't emit files here yet; don't warn when the dir is empty.
+          if-no-files-found: ignore
