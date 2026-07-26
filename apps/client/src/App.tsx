@@ -47,6 +47,9 @@ const App: React.FC = () => {
 	// Tailwind 4's `@layer utilities` regardless of specificity — that wiped out every border and
 	// button background (reset) and forced `border-color` to Chakra's gray.200 (global styles).
 	// Tailwind's preflight is this app's reset; Chakra is only here for the actions modal.
+	// BrowserRouter opts in to the v7 behaviors: silences the future-flag console warnings and
+	// makes the eventual React Router 7 upgrade a no-op. Safe here — state updates tolerate
+	// startTransition, and the only splat route (NotFound) has no relative router links.
 	return (
 		<ChakraProvider resetCSS={false} disableGlobalStyle>
 			<ThemeProvider
@@ -64,10 +67,6 @@ const App: React.FC = () => {
 							<Sonner />
 							<UnsavedChangesDialogWrapper />
 
-							{/* Opt in to the v7 behaviors now: silences the future-flag console warnings
-							    and makes the eventual React Router 7 upgrade a no-op. Safe here — state
-							    updates tolerate startTransition, and the only splat route (NotFound)
-							    contains no relative router links. */}
 							<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
 								<AuthGuard>
 									<Routes>
