@@ -69,7 +69,7 @@
 		"dompurify": "^3.4.12",
 		"embla-carousel-react": "^8.6.0",
 		"express": "^5.2.1",
-		"framer-motion": "^10.18.0",
+		"framer-motion": "^12.42.2",
 		"input-otp": "^1.4.2",
 		"js-yaml": "^4.3.0",
 		"jwt-decode": "^4.0.0",
