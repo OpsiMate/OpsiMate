@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { authenticateJWT } from '../../middleware/auth';
 import { ActionController } from './actions/controller';
 import createActionRouter from './actions/router';
@@ -55,7 +54,7 @@ export default function createV1Router(
 	retentionController: RetentionController,
 	oncallController: OncallController
 ) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	// Public endpoints
 	router.post('/users/register', usersController.registerHandler);

@@ -1,8 +1,7 @@
-import { Request, Response } from 'express';
-import PromiseRouter from 'express-promise-router';
+import { Request, Response, Router } from 'express';
 import { isEmailEnabled } from '../config/config';
 
-const router = PromiseRouter();
+const router = Router();
 
 function healthCheck(req: Request, res: Response) {
 	res.send('ok');

@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { ServiceController } from './controller';
 import { TagController } from '../tags/controller';
 
 export default function createServiceRouter(serviceController: ServiceController, tagController: TagController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	// POST /api/v1/integration/services
 	router.post('/', serviceController.createServiceHandler);

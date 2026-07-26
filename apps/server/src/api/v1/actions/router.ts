@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { ActionController } from './controller';
 
 export default function createActionRouter(actionController: ActionController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	router.get('/', actionController.listHandler);
 	router.post('/', actionController.createHandler);

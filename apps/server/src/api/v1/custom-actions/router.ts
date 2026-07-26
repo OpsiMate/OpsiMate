@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { CustomActionsController } from './controller';
 
 export default function createCustomActionsRouter(controller: CustomActionsController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	// CRUD
 	router.get('/', controller.list);
