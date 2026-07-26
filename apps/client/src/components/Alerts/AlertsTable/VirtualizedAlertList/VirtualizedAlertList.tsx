@@ -1,4 +1,3 @@
-import { Table, TableBody } from '@/components/ui/table';
 import { Alert } from '@OpsiMate/shared';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { useEffect } from 'react';
@@ -71,74 +70,81 @@ export const VirtualizedAlertList = ({
 		};
 	}, [onDragEnd]);
 
+	// Each virtual row is absolutely positioned, so it never participated in a shared
+	// table layout — a row was already its own `display: table` box. Rendering each one
+	// as a real single-row <table> keeps that layout identical while producing valid
+	// HTML (React 19 logs <div>-in-<tbody> / <tr>-in-<div> nesting as console errors).
+	// `text-sm` replaces the removed ui/Table wrapper; the `[&_tr:last-child]:border-0`
+	// rule replaces the ui/TableBody one (every row's <tr> is the last child of its own
+	// table, which is what kept the rows border-free before, too).
 	return (
-		<div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
-			<Table className="w-full table-fixed">
-				<TableBody>
-					{virtualItems.map((virtualRow) => {
-						const item = flatRows[virtualRow.index];
+		<div
+			className="text-sm [&_tr:last-child]:border-0"
+			style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}
+		>
+			{virtualItems.map((virtualRow) => {
+				const item = flatRows[virtualRow.index];
 
-						if (item.type === 'group') {
-							return (
-								<div
-									key={virtualRow.key}
-									data-index={virtualRow.index}
-									ref={virtualizer.measureElement}
-									style={{
-										position: 'absolute',
-										top: 0,
-										left: 0,
-										width: '100%',
-										transform: `translateY(${virtualRow.start}px)`,
-									}}
-								>
-									<GroupHeader item={item} onToggle={onToggleGroup} columnLabels={columnLabels} />
-								</div>
-							);
-						}
+				if (item.type === 'group') {
+					return (
+						<div
+							key={virtualRow.key}
+							data-index={virtualRow.index}
+							ref={virtualizer.measureElement}
+							style={{
+								position: 'absolute',
+								top: 0,
+								left: 0,
+								width: '100%',
+								transform: `translateY(${virtualRow.start}px)`,
+							}}
+						>
+							<GroupHeader item={item} onToggle={onToggleGroup} columnLabels={columnLabels} />
+						</div>
+					);
+				}
 
-						const alert = item.alert;
-						const isSelected = selectedAlerts.some((a) => a.id === alert.id);
-						return (
-							<div
-								key={virtualRow.key}
-								data-index={virtualRow.index}
-								ref={virtualizer.measureElement}
-								style={{
-									position: 'absolute',
-									top: 0,
-									left: 0,
-									width: '100%',
-									transform: `translateY(${virtualRow.start}px)`,
-									display: 'table',
-									tableLayout: 'fixed',
-								}}
-							>
-								<AlertRow
-									alert={alert}
-									isSelected={isSelected}
-									orderedColumns={orderedColumns}
-									onSelectAlert={onSelectAlert}
-									onAlertClick={onAlertClick}
-									isActiveRow={alert.id === activeAlertId}
-									onSilenceAlert={onSilenceAlert}
-									onUnsilenceAlert={onUnsilenceAlert}
-									onDeleteAlert={onDeleteAlert}
-									onUnresolveAlert={onUnresolveAlert}
-									onSelectAlerts={onSelectAlerts}
-									isResolved={isResolved}
-									severityColors={severityColors}
-									expandRows={expandRows}
-									isDragging={isDragging}
-									onDragStart={onDragStart}
-									onDragEnter={onDragEnter}
-									onDragEnd={onDragEnd}
-								/>
-							</div>
-						);
-					})}
-				</TableBody>
-			</Table>
+				const alert = item.alert;
+				const isSelected = selectedAlerts.some((a) => a.id === alert.id);
+				return (
+					<table
+						key={virtualRow.key}
+						data-index={virtualRow.index}
+						ref={virtualizer.measureElement}
+						className="w-full table-fixed"
+						style={{
+							position: 'absolute',
+							top: 0,
+							left: 0,
+							width: '100%',
+							transform: `translateY(${virtualRow.start}px)`,
+						}}
+					>
+						<tbody>
+							<AlertRow
+								alert={alert}
+								isSelected={isSelected}
+								orderedColumns={orderedColumns}
+								onSelectAlert={onSelectAlert}
+								onAlertClick={onAlertClick}
+								isActiveRow={alert.id === activeAlertId}
+								onSilenceAlert={onSilenceAlert}
+								onUnsilenceAlert={onUnsilenceAlert}
+								onDeleteAlert={onDeleteAlert}
+								onUnresolveAlert={onUnresolveAlert}
+								onSelectAlerts={onSelectAlerts}
+								isResolved={isResolved}
+								severityColors={severityColors}
+								expandRows={expandRows}
+								isDragging={isDragging}
+								onDragStart={onDragStart}
+								onDragEnter={onDragEnter}
+								onDragEnd={onDragEnd}
+							/>
+						</tbody>
+					</table>
+				);
+			})}
 		</div>
 	);
 };
