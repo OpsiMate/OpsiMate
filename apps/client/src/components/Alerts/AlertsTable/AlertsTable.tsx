@@ -11,6 +11,7 @@ import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
 	ACTIONS_COLUMN_WIDTH,
+	ACTIONS_COLUMN_WIDTH_WITH_SETTINGS,
 	COLUMN_LABELS,
 	COLUMN_MIN_WIDTHS,
 	COLUMN_WIDTHS,
@@ -113,12 +114,24 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
+	// The actions header holds two buttons (expand rows + group by), or three when column
+	// settings are enabled — the column must widen with it or the extra button overflows
+	// the fixed <th> onto the neighboring column's header text.
+	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
+
 	// Floor width for the table: the sum of the visible columns' minimums. Narrower
 	// panes get a horizontal scrollbar instead of columns crushing each other.
 	const tableMinWidth = useMemo(() => {
 		const columns = onSelectAlerts ? ['select', ...orderedColumns] : orderedColumns;
-		return columns.reduce((sum, col) => sum + (COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default), 0);
-	}, [orderedColumns, onSelectAlerts]);
+		return columns.reduce(
+			(sum, col) =>
+				sum +
+				(col === ACTIONS_COLUMN
+					? parseInt(actionsColumnWidth, 10)
+					: (COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default)),
+			0
+		);
+	}, [orderedColumns, onSelectAlerts, actionsColumnWidth]);
 
 	const hasActiveTimeFilter = timeRange && !isTimeRangeEmpty(timeRange);
 
@@ -184,9 +197,9 @@ export const AlertsTable = ({
 															key={column}
 															className={`${TABLE_HEAD_CLASSES} text-xs`}
 															style={{
-																width: ACTIONS_COLUMN_WIDTH,
-																minWidth: ACTIONS_COLUMN_WIDTH,
-																maxWidth: ACTIONS_COLUMN_WIDTH,
+																width: actionsColumnWidth,
+																minWidth: actionsColumnWidth,
+																maxWidth: actionsColumnWidth,
 															}}
 														>
 															<div className="flex items-center justify-end gap-2 min-w-0">
@@ -332,6 +345,7 @@ export const AlertsTable = ({
 											columnLabels={allColumnLabels}
 											isResolved={isResolved}
 											severityColors={severityColors}
+											actionsColumnWidth={actionsColumnWidth}
 											isDragging={isDragging}
 											onDragStart={handleDragStart}
 											onDragEnter={handleDragEnter}

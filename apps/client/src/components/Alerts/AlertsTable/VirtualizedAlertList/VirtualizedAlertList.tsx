@@ -25,6 +25,8 @@ interface VirtualizedAlertListProps {
 	severityColors?: boolean;
 	// Wrap cell content onto new lines instead of truncating (the "expand rows" toggle).
 	expandRows?: boolean;
+	// Width of the trailing actions column; must match the header's or columns drift.
+	actionsColumnWidth?: string;
 	isDragging?: boolean;
 	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
 	onDragEnter?: (alert: Alert) => void;
@@ -49,6 +51,7 @@ export const VirtualizedAlertList = ({
 	isResolved = false,
 	severityColors = false,
 	expandRows = false,
+	actionsColumnWidth,
 	isDragging = false,
 	onDragStart,
 	onDragEnter,
@@ -136,6 +139,7 @@ export const VirtualizedAlertList = ({
 								isResolved={isResolved}
 								severityColors={severityColors}
 								expandRows={expandRows}
+								actionsColumnWidth={actionsColumnWidth}
 								isDragging={isDragging}
 								onDragStart={onDragStart}
 								onDragEnter={onDragEnter}

@@ -35,6 +35,8 @@ export interface AlertRowProps {
 	severityColors?: boolean;
 	// Wrap cell content onto new lines instead of truncating (the "expand rows" toggle).
 	expandRows?: boolean;
+	// Width of the trailing actions column; must match the header's or columns drift.
+	actionsColumnWidth?: string;
 	onDragStart?: (alert: Alert, e: React.MouseEvent) => void;
 	onDragEnter?: (alert: Alert) => void;
 	onDragEnd?: () => void;
@@ -56,6 +58,7 @@ export const AlertRow = ({
 	isDragging = false,
 	severityColors = false,
 	expandRows = false,
+	actionsColumnWidth,
 	onDragStart,
 	onDragEnter,
 	onDragEnd,
@@ -167,6 +170,7 @@ export const AlertRow = ({
 							<AlertActionsColumn
 								key={column}
 								alert={alert}
+								width={actionsColumnWidth}
 								onSilenceAlert={onSilenceAlert}
 								onUnsilenceAlert={onUnsilenceAlert}
 								onDeleteAlert={onDeleteAlert}
