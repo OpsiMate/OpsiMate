@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 
 # Install build tools and clean up in same layer
 RUN npm install -g pnpm typescript && \
@@ -27,7 +27,7 @@ RUN pnpm run build && \
     rm -rf .pnpm-store node_modules/.cache
 
 # Production stage - minimal runtime
-FROM node:20-alpine
+FROM node:26-alpine
 
 # Install only runtime essentials
 RUN npm install -g serve && \

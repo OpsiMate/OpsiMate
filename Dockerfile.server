@@ -1,4 +1,4 @@
-FROM node:20-alpine AS server-builder
+FROM node:26-alpine AS server-builder
 
 RUN npm install -g pnpm typescript && npm cache clean --force
 WORKDIR /app
@@ -23,7 +23,7 @@ RUN pnpm --filter @OpsiMate/shared build && \
     pnpm --filter @OpsiMate/server build
 
 # Production runtime
-FROM node:20-alpine AS server-runtime
+FROM node:26-alpine AS server-runtime
 WORKDIR /app
 
 # Copy built server and minimal workspace files
