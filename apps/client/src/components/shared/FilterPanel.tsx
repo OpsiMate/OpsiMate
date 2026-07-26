@@ -247,7 +247,10 @@ export const FilterPanel = ({
 
 							return (
 								<AccordionItem key={field} value={field} className="border-b">
-									<AccordionTrigger className="px-2 py-1.5 hover:no-underline hover:bg-muted/50 text-foreground">
+									{/* pr-3 (not px-2): the chevron's right edge then sits 20px from the panel
+								    edge — same inset as the option rows' count badges (px-2 + px-1 + badge),
+								    so the chevron and the counts form one aligned column. */}
+									<AccordionTrigger className="pl-2 pr-3 py-1.5 hover:no-underline hover:bg-muted/50 text-foreground">
 										<div className="flex items-center justify-between w-full pr-2">
 											<span className="text-xs font-medium text-foreground">
 												{config.fieldLabels[field] || field}
