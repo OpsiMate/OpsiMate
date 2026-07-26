@@ -27,7 +27,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^22.20.1",
-		"eslint": "^9.39.5",
+		"eslint": "^10.8.0",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.6",
 		"vite-plugin-dts": "^4.5.4"
