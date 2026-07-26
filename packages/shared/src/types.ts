@@ -5,14 +5,7 @@ export enum ProviderType {
 
 // Client-side provider types for UI configuration
 export type ClientProviderType =
-	| 'server'
-	| 'kubernetes'
-	| 'aws-ec2'
-	| 'aws-eks'
-	| 'gcp-compute'
-	| 'gcp-gke'
-	| 'azure-vm'
-	| 'azure-aks';
+	'server' | 'kubernetes' | 'aws-ec2' | 'aws-eks' | 'gcp-compute' | 'gcp-gke' | 'azure-vm' | 'azure-aks';
 
 export enum IntegrationType {
 	Grafana = 'Grafana',

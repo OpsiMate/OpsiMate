@@ -157,7 +157,7 @@ export class ServiceRepository {
 						createdAt: row.provider_created_at,
 						providerType: row.provider_type as ProviderType,
 					},
-				} as ServiceWithProvider;
+				};
 			});
 		});
 	}

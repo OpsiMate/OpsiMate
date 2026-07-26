@@ -91,8 +91,7 @@ export class AlertCommentsRepository {
 	async updateComment(id: string, userId: string, comment: string): Promise<AlertComment | null> {
 		return runAsync(() => {
 			const existingRow = this.db.prepare('SELECT * FROM alert_comments WHERE id = ?').get(id) as
-				| AlertCommentRow
-				| undefined;
+				AlertCommentRow | undefined;
 
 			if (!existingRow) {
 				return null;
@@ -119,8 +118,7 @@ export class AlertCommentsRepository {
 	async deleteComment(id: string, userId: string): Promise<void> {
 		return runAsync(() => {
 			const existingRow = this.db.prepare('SELECT * FROM alert_comments WHERE id = ?').get(id) as
-				| AlertCommentRow
-				| undefined;
+				AlertCommentRow | undefined;
 
 			if (!existingRow) {
 				return;

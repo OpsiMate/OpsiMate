@@ -39,8 +39,8 @@ export class AuditLogRepository {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
 			const result = stmt.run(
-				log.actionType as string,
-				log.resourceType as string,
+				log.actionType,
+				log.resourceType,
 				log.resourceId,
 				log.userId,
 				log.userName,

@@ -38,7 +38,7 @@ export const getK8SDeployments = async (_provider: Provider): Promise<Discovered
 		})
 	);
 
-	return results.filter((result) => result != null) as DiscoveredService[];
+	return results.filter((result) => result != null);
 };
 
 export const restartK8SDeploymentPods = async (provider: Provider, service: Service) => {
