@@ -19,8 +19,7 @@ beforeAll(async () => {
 	app = await setupExpressApp(db);
 	jwtToken = await setupUserWithToken(app);
 	const testUser = db.prepare('SELECT id FROM users WHERE email = ?').get('provideruser@example.com') as
-		| { id: number }
-		| undefined;
+		{ id: number } | undefined;
 	if (!testUser) {
 		throw new Error('Expected test user provideruser@example.com to exist');
 	}

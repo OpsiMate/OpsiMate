@@ -115,8 +115,7 @@ export class EnrichmentRepository {
 	async getEnrichmentById(id: number): Promise<AlertEnrichment | undefined> {
 		return runAsync(() => {
 			const row = this.db.prepare(`SELECT * FROM alert_enrichments WHERE id = ?`).get(id) as
-				| EnrichmentRow
-				| undefined;
+				EnrichmentRow | undefined;
 			return row ? this.toShared(row) : undefined;
 		});
 	}

@@ -44,8 +44,7 @@ export class PasswordResetsRepository {
 	async getPasswordResetByTokenHash(tokenHash: string): Promise<ResetPassword | null> {
 		return runAsync((): ResetPassword | null => {
 			const row = this.db.prepare('SELECT * FROM password_resets WHERE token_hash = ?').get(tokenHash) as
-				| ResetPasswordRow
-				| undefined;
+				ResetPasswordRow | undefined;
 
 			return row ? this.toSharedResetPassword(row) : null;
 		});

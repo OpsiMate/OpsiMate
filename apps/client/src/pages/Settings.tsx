@@ -806,10 +806,7 @@ const AuditLogTable: React.FC = () => {
 											<Badge
 												variant={
 													actionProps.variant as
-														| 'default'
-														| 'destructive'
-														| 'outline'
-														| 'secondary'
+														'default' | 'destructive' | 'outline' | 'secondary'
 												}
 												className={actionProps.className}
 											>
