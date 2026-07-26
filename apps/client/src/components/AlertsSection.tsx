@@ -79,12 +79,12 @@ export const AlertsSection = ({ alerts, onAlertSilence, className }: AlertsSecti
 									</h4>
 								</div>
 								{alert.summary && (
-									<div className="text-xs text-muted-foreground mt-1 whitespace-pre-line break-words w-full">
+									<div className="text-xs text-muted-foreground mt-1 whitespace-pre-line wrap-break-word w-full">
 										{alert.summary}
 									</div>
 								)}
 							</div>
-							<div className="flex items-center gap-1 flex-shrink-0">
+							<div className="flex items-center gap-1 shrink-0">
 								{alert.runbookUrl && (
 									<Button
 										variant="ghost"

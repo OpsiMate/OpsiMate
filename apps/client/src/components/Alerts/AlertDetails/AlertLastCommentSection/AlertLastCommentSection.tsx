@@ -68,15 +68,13 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 			{latest ? (
 				<div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
 					<div className="flex items-center gap-2">
-						<span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-medium flex items-center justify-center flex-shrink-0">
+						<span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-medium flex items-center justify-center shrink-0">
 							{initials(authorName)}
 						</span>
 						<span className="text-xs font-medium truncate">{authorName}</span>
-						<span className="text-xs text-muted-foreground flex-shrink-0">
-							{relativeTime(latest.createdAt)}
-						</span>
+						<span className="text-xs text-muted-foreground shrink-0">{relativeTime(latest.createdAt)}</span>
 					</div>
-					<p className="text-sm text-foreground whitespace-pre-wrap break-words line-clamp-4">
+					<p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word line-clamp-4">
 						{latest.comment}
 					</p>
 				</div>

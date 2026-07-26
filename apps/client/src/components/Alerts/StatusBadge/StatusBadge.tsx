@@ -44,7 +44,7 @@ export const StatusBadge = ({ alert, className }: StatusBadgeProps) => {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<span
-					className={cn('inline-flex items-center flex-shrink-0', colorClass, className)}
+					className={cn('inline-flex items-center shrink-0', colorClass, className)}
 					aria-label={fullLabel}
 					data-testid={testId}
 				>

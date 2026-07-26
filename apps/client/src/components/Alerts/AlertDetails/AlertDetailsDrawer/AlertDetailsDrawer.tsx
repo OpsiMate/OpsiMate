@@ -85,7 +85,7 @@ export const AlertDetailsDrawer = ({
 				isClosing && 'animate-out slide-out-to-right duration-300'
 			)}
 		>
-			<div className="px-6 py-4 border-b flex-shrink-0 flex items-center justify-between">
+			<div className="px-6 py-4 border-b shrink-0 flex items-center justify-between">
 				<h2 className="text-lg font-semibold text-foreground">Alert Details</h2>
 				<Button
 					variant="ghost"
@@ -135,7 +135,7 @@ export const AlertDetailsDrawer = ({
 
 			{/* Primary actions pinned at the drawer's bottom, outside the scroll area. */}
 			{renderedAlert && (
-				<div className="border-t p-3 flex-shrink-0">
+				<div className="border-t p-3 shrink-0">
 					<AlertFooterActions
 						alert={renderedAlert}
 						isActive={isActive}

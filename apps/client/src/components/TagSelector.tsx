@@ -134,7 +134,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 								'inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border border-gray-200 bg-muted transition-colors',
 								'h-7 min-w-[32px] justify-center',
 								'hover:bg-muted/80 focus:bg-muted/80 active:bg-muted/90',
-								'focus:outline-none'
+								'focus:outline-hidden'
 								// Remove strong focus ring
 								// open && "ring-2 ring-ring"
 							)}

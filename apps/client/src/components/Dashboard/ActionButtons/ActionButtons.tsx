@@ -27,7 +27,7 @@ export const ActionButtons = ({
 	if (!canOperate()) return null;
 
 	return (
-		<div className="bg-card border-t border-border p-3 shadow-sm">
+		<div className="bg-card border-t border-border p-3 shadow-xs">
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 				<SelectedServicesInfo selectedServices={selectedServices} />
 

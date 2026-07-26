@@ -142,7 +142,7 @@ export const GroupByControls = ({
 								variant="ghost"
 								size="icon"
 								className={cn(
-									'h-7 w-7 rounded-md flex-shrink-0 border hover:bg-muted hover:text-foreground',
+									'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
 									groupByColumns.length > 0 && 'text-primary border-primary'
 								)}
 							>
@@ -191,7 +191,7 @@ export const GroupByControls = ({
 										return (
 											<CommandItem
 												key={col}
-												className={`flex items-center justify-between text-foreground hover:bg-muted/50 data-[selected=true]:text-white data-[selected=true]:bg-accent [&[data-selected=true]_button_svg]:text-white [&[data-selected=true]_button]:text-white [&[data-selected=true]_div]:text-white [&[data-selected=true]_div]:hover:text-white transition-transform duration-150 ${
+												className={`flex items-center justify-between text-foreground hover:bg-muted/50 data-[selected=true]:text-white data-[selected=true]:bg-accent [&[data-selected=true]_button_svg]:text-white [&[data-selected=true]_button]:text-white [&[data-selected=true]_div]:text-white hover:[&[data-selected=true]_div]:text-white transition-transform duration-150 ${
 													isDragging && isBeingDragged ? 'bg-accent/50 shadow-md' : ''
 												}`}
 												onSelect={() => {}}
@@ -203,7 +203,7 @@ export const GroupByControls = ({
 											>
 												<div className="flex items-center gap-2 flex-1 min-w-0">
 													<div
-														className="h-5 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground [&[data-selected=true]]:text-white [&[data-selected=true]]:hover:text-white"
+														className="h-5 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground data-[selected=true]:text-white data-[selected=true]:hover:text-white"
 														onMouseDown={(e) => {
 															e.stopPropagation();
 															const item = e.currentTarget.closest(
@@ -227,7 +227,7 @@ export const GroupByControls = ({
 												<Button
 													variant="ghost"
 													size="icon"
-													className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/30 [&_svg]:hover:text-destructive [&[data-selected=true]]:text-white [&[data-selected=true]]:hover:bg-destructive/40 [&[data-selected=true]]:hover:text-white [&[data-selected=true]_svg]:hover:text-white"
+													className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/30 hover:[&_svg]:text-destructive data-[selected=true]:text-white data-[selected=true]:hover:bg-destructive/40 data-[selected=true]:hover:text-white hover:[&[data-selected=true]_svg]:text-white"
 													aria-label="Remove"
 													onClick={(e) => {
 														e.stopPropagation();

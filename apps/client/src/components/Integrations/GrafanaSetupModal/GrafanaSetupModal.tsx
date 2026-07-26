@@ -136,7 +136,7 @@ export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps
 						</div>
 
 						<div className="flex items-start gap-2 text-xs text-muted-foreground">
-							<Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+							<Info className="h-4 w-4 mt-0.5 shrink-0" />
 							<p>
 								OpsiMate reads each alert&apos;s <code>fingerprint</code> as the identifier,{' '}
 								<code>alertname</code> as the name, the <code>summary</code> annotation as the summary,

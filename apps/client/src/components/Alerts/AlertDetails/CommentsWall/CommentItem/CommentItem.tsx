@@ -66,18 +66,16 @@ export const CommentItem = ({
 
 	return (
 		<div className={cn('flex gap-3 p-3 rounded-lg', isOwnComment ? 'bg-primary/5' : 'bg-muted/30')}>
-			<div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
+			<div className="shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
 				{initials}
 			</div>
 			<div className="flex-1 min-w-0">
 				<div className="flex items-center justify-between gap-2 mb-1">
 					<div className="flex items-center gap-2 min-w-0">
 						<span className="font-medium text-sm text-foreground truncate">{displayName}</span>
-						<span className="text-xs text-muted-foreground flex-shrink-0">
-							{formatDate(comment.createdAt)}
-						</span>
+						<span className="text-xs text-muted-foreground shrink-0">{formatDate(comment.createdAt)}</span>
 						{comment.updatedAt !== comment.createdAt && (
-							<span className="text-xs text-muted-foreground italic flex-shrink-0">(edited)</span>
+							<span className="text-xs text-muted-foreground italic shrink-0">(edited)</span>
 						)}
 					</div>
 					{isOwnComment && !isEditing && (
@@ -129,7 +127,7 @@ export const CommentItem = ({
 						</div>
 					</div>
 				) : (
-					<p className="text-sm text-foreground whitespace-pre-wrap break-words">{comment.comment}</p>
+					<p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word">{comment.comment}</p>
 				)}
 			</div>
 		</div>

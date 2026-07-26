@@ -42,7 +42,7 @@ export const AlertDetails = ({
 			</ScrollArea>
 
 			{/* Primary actions pinned at the bottom, outside the scroll area. */}
-			<div className="border-t p-3 flex-shrink-0">
+			<div className="border-t p-3 shrink-0">
 				<AlertFooterActions
 					alert={alert}
 					isActive={isActive}

@@ -302,7 +302,7 @@ export const FilterPanel = ({
 																			onCheckedChange={() =>
 																				handleFilterToggle(field, value)
 																			}
-																			className="h-3 w-3 border-2 flex-shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors disabled:cursor-not-allowed"
+																			className="h-3 w-3 border-2 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors disabled:cursor-not-allowed"
 																		/>
 																		<span
 																			className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground"
@@ -312,7 +312,7 @@ export const FilterPanel = ({
 																		</span>
 																		<Badge
 																			variant="outline"
-																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] flex-shrink-0 flex items-center justify-center ml-auto"
+																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center ml-auto"
 																		>
 																			{count}
 																		</Badge>

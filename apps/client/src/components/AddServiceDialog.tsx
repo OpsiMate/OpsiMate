@@ -519,7 +519,7 @@ export const AddServiceDialog = ({
 											<div
 												key={container.id}
 												className={cn(
-													'flex items-center space-x-3 border rounded-lg p-4 transition-all duration-200 shadow-sm',
+													'flex items-center space-x-3 border rounded-lg p-4 transition-all duration-200 shadow-xs',
 													container.selected && 'border-primary bg-primary/5 shadow-md',
 													'hover:bg-slate-50 hover:border-slate-300 hover:shadow-md cursor-pointer dark:hover:bg-slate-800 dark:hover:border-slate-600'
 												)}
@@ -633,7 +633,7 @@ export const AddServiceDialog = ({
 												<div
 													key={container.id}
 													className={cn(
-														'flex items-center space-x-3 border rounded-lg p-4 transition-all duration-200 shadow-sm',
+														'flex items-center space-x-3 border rounded-lg p-4 transition-all duration-200 shadow-xs',
 														container.selected && 'border-primary bg-primary/5 shadow-md',
 														'hover:bg-slate-50 hover:border-slate-300 hover:shadow-md cursor-pointer dark:hover:bg-slate-800 dark:hover:border-slate-600'
 													)}

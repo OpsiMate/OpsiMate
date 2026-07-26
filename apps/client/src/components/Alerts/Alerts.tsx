@@ -430,7 +430,7 @@ const Alerts = () => {
 
 				<div className="flex-1 flex min-h-0 overflow-hidden">
 					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', 'flex-1 min-w-0')}>
-						<div className="flex-shrink-0 mb-4">
+						<div className="shrink-0 mb-4">
 							<DashboardHeader
 								dashboardName={dashboardState.name}
 								onDashboardNameChange={(name) => updateDashboardField('name', name)}
@@ -470,7 +470,7 @@ const Alerts = () => {
 										value={AlertTab.Active}
 										aria-label="Active alerts"
 										size="sm"
-										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
+										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current [&_svg]:data-[state=on]:text-primary-foreground"
 									>
 										<Bell className="h-4 w-4" />
 										<span>Active</span>
@@ -479,7 +479,7 @@ const Alerts = () => {
 										value={AlertTab.Resolved}
 										aria-label="Resolved alerts"
 										size="sm"
-										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
+										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current [&_svg]:data-[state=on]:text-primary-foreground"
 									>
 										<CheckCircle2 className="h-4 w-4" />
 										<span>Resolved</span>
@@ -488,7 +488,7 @@ const Alerts = () => {
 										value={AlertTab.All}
 										aria-label="All alerts"
 										size="sm"
-										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current data-[state=on]:[&_svg]:text-primary-foreground"
+										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current [&_svg]:data-[state=on]:text-primary-foreground"
 									>
 										<LayoutList className="h-4 w-4" />
 										<span>All</span>
@@ -518,7 +518,7 @@ const Alerts = () => {
 										variant={splitByAssignment ? 'default' : 'outline'}
 										size="sm"
 										onClick={() => setSplitByAssignment((v) => !v)}
-										className="gap-1.5 flex-shrink-0"
+										className="gap-1.5 shrink-0"
 										title="Split into Unassigned and Assigned"
 									>
 										<Columns2 className="h-4 w-4" />
@@ -530,7 +530,7 @@ const Alerts = () => {
 									variant={severityColors ? 'default' : 'outline'}
 									size="sm"
 									onClick={toggleSeverityColors}
-									className="gap-1.5 flex-shrink-0"
+									className="gap-1.5 shrink-0"
 									title="Color rows by severity"
 								>
 									<Palette className="h-4 w-4" />
@@ -583,7 +583,7 @@ const Alerts = () => {
 									</div>
 								)}
 
-								<div className="flex-shrink-0">
+								<div className="shrink-0">
 									<AlertsSelectionBar
 										selectedAlerts={selectedAlerts}
 										onClearSelection={() => setSelectedAlerts([])}

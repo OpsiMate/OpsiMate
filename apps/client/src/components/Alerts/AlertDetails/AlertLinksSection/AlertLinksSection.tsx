@@ -20,7 +20,7 @@ export const AlertLinksSection = ({ alert }: AlertLinksSectionProps) => {
 					className="w-full justify-start gap-2 text-xs h-8"
 					onClick={() => window.open(alert.alertUrl, '_blank', 'noopener,noreferrer')}
 				>
-					<ExternalLink className="h-3 w-3 flex-shrink-0" />
+					<ExternalLink className="h-3 w-3 shrink-0" />
 					<span className="truncate">Source</span>
 				</Button>
 			)}
@@ -32,7 +32,7 @@ export const AlertLinksSection = ({ alert }: AlertLinksSectionProps) => {
 					className="w-full justify-start gap-2 text-xs h-8"
 					onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
 				>
-					<Book className="h-3 w-3 flex-shrink-0" />
+					<Book className="h-3 w-3 shrink-0" />
 					<span className="truncate">Runbook</span>
 				</Button>
 			)}

@@ -90,7 +90,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 						onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
 						variant="ghost"
 						size="icon"
-						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center !p-0 text-foreground"
+						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center p-0! text-foreground"
 					>
 						{isSidebarCollapsed ? (
 							<ChevronRight className="h-4 w-4" />

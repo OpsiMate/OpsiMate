@@ -490,9 +490,9 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 						}`}
 					>
 						{testResult.ok ? (
-							<CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+							<CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
 						) : (
-							<XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+							<XCircle className="h-5 w-5 shrink-0 mt-0.5" />
 						)}
 						<div className="flex-1">
 							<p className="font-medium text-sm">
@@ -510,7 +510,7 @@ const ServerForm = ({ onSubmit, onClose }: ProviderFormProps<ServerFormData>) =>
 					variant="ghost"
 					onClick={onClose}
 					disabled={isSubmitting}
-					className="shadow-sm active:scale-95 dark:border dark:border-white"
+					className="shadow-xs active:scale-95 dark:border dark:border-white"
 				>
 					Cancel
 				</Button>
@@ -576,7 +576,7 @@ const KubernetesForm = ({ onSubmit, onClose }: ProviderFormProps<KubernetesFormD
 					type="button"
 					variant="ghost"
 					onClick={onClose}
-					className="shadow-sm active:scale-95 dark:border dark:border-white"
+					className="shadow-xs active:scale-95 dark:border dark:border-white"
 				>
 					Cancel
 				</Button>
@@ -664,7 +664,7 @@ const AWSForm = ({ onSubmit, onClose }: ProviderFormProps<AWSFormData>) => {
 					type="button"
 					variant="ghost"
 					onClick={onClose}
-					className="shadow-sm active:scale-95 dark:border dark:border-white"
+					className="shadow-xs active:scale-95 dark:border dark:border-white"
 				>
 					Cancel
 				</Button>

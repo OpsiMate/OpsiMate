@@ -29,7 +29,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				)}
 			>
 				<div className="flex items-center">
-					<div className="relative w-11 h-11 flex-shrink-0 transition-all duration-200 hover:drop-shadow-lg hover:scale-110">
+					<div className="relative w-11 h-11 shrink-0 transition-all duration-200 hover:drop-shadow-lg hover:scale-110">
 						<AppIcon className="w-full h-full text-primary" />
 					</div>
 					<div className={cn('ml-3', collapsed && 'sr-only')}>
@@ -41,7 +41,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 
 			<div
 				className={cn(
-					'px-4 space-y-2 w-full flex-grow flex flex-col pt-4',
+					'px-4 space-y-2 w-full grow flex flex-col pt-4',
 					collapsed && 'px-2 items-center space-y-1'
 				)}
 			>
@@ -51,7 +51,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					asChild
 				>
 					<PreserveQueryLink to="/">
-						<Bell className="h-5 w-5 flex-shrink-0" />
+						<Bell className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
 					</PreserveQueryLink>
 				</Button>
@@ -62,7 +62,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					asChild
 				>
 					<PreserveQueryLink to="/dashboards">
-						<LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+						<LayoutDashboard className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
 					</PreserveQueryLink>
 				</Button>
@@ -73,7 +73,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					asChild
 				>
 					<PreserveQueryLink to="/mute-policies">
-						<BellOff className="h-5 w-5 flex-shrink-0" />
+						<BellOff className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Mute Policies</span>
 					</PreserveQueryLink>
 				</Button>
@@ -84,7 +84,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					asChild
 				>
 					<PreserveQueryLink to="/actions">
-						<Zap className="h-5 w-5 flex-shrink-0" />
+						<Zap className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Actions</span>
 					</PreserveQueryLink>
 				</Button>
@@ -95,7 +95,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					asChild
 				>
 					<PreserveQueryLink to="/enrichments">
-						<Sparkles className="h-5 w-5 flex-shrink-0" />
+						<Sparkles className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Enrichment</span>
 					</PreserveQueryLink>
 				</Button>
@@ -113,7 +113,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							asChild
 						>
 							<PreserveQueryLink to="/integrations">
-								<Puzzle className="h-5 w-5 flex-shrink-0" />
+								<Puzzle className="h-5 w-5 shrink-0" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
 							</PreserveQueryLink>
 						</Button>
@@ -128,7 +128,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							asChild
 						>
 							<PreserveQueryLink to="/settings">
-								<Settings className="h-5 w-5 flex-shrink-0 items-center" />
+								<Settings className="h-5 w-5 shrink-0 items-center" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Settings</span>
 							</PreserveQueryLink>
 						</Button>
@@ -142,7 +142,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 						asChild
 					>
 						<PreserveQueryLink to="/oncall">
-							<PhoneCall className="h-5 w-5 flex-shrink-0" />
+							<PhoneCall className="h-5 w-5 shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>On-Call</span>
 						</PreserveQueryLink>
 					</Button>

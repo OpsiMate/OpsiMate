@@ -26,7 +26,7 @@ const ClearButton = React.forwardRef<HTMLButtonElement, ClearButtonProps>(
 				type="button"
 				onClick={handleClick}
 				className={cn(
-					'flex items-center justify-center flex-shrink-0 rounded-sm opacity-70 hover:opacity-100 focus:outline-none hover:bg-primary hover:text-primary-foreground transition-colors',
+					'flex items-center justify-center shrink-0 rounded-sm opacity-70 hover:opacity-100 focus:outline-hidden hover:bg-primary hover:text-primary-foreground transition-colors',
 					className
 				)}
 				{...props}

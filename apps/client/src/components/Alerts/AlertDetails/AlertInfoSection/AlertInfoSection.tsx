@@ -25,15 +25,15 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex items-center gap-3">
-				<div className="flex-shrink-0">
+				<div className="shrink-0">
 					<IntegrationAvatar
 						integration={integration}
 						size="md"
-						className="ring-2 ring-background shadow-sm"
+						className="ring-2 ring-background shadow-xs"
 					/>
 				</div>
 				<div className="flex-1 min-w-0">
-					<h3 className="text-lg font-semibold break-words min-w-0 text-foreground">{alert.alertName}</h3>
+					<h3 className="text-lg font-semibold wrap-break-word min-w-0 text-foreground">{alert.alertName}</h3>
 				</div>
 			</div>
 			<div className="flex items-center gap-2 flex-wrap">
@@ -48,7 +48,7 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<span
-									className="flex-shrink-0 text-violet-500"
+									className="shrink-0 text-violet-500"
 									aria-label={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
 								>
 									<Sparkles className="h-3.5 w-3.5" aria-hidden />

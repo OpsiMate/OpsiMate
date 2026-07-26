@@ -43,8 +43,12 @@ const queryClient = new QueryClient();
 const App: React.FC = () => {
 	// The playground/demo defaults to light mode for a consistent first impression.
 	const playground = isPlaygroundMode();
+	// Chakra injects its reset and global theme styles as *unlayered* Emotion CSS, which outranks
+	// Tailwind 4's `@layer utilities` regardless of specificity — that wiped out every border and
+	// button background (reset) and forced `border-color` to Chakra's gray.200 (global styles).
+	// Tailwind's preflight is this app's reset; Chakra is only here for the actions modal.
 	return (
-		<ChakraProvider>
+		<ChakraProvider resetCSS={false} disableGlobalStyle>
 			<ThemeProvider
 				attribute="class"
 				defaultTheme={playground ? 'light' : 'system'}

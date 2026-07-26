@@ -15,7 +15,7 @@ export const AlertTimestampsSection = ({ alert }: AlertTimestampsSectionProps) =
 	return (
 		<div className="space-y-3">
 			<div className="flex items-start gap-3">
-				<Calendar className="h-4 w-4 text-foreground mt-0.5 flex-shrink-0" />
+				<Calendar className="h-4 w-4 text-foreground mt-0.5 shrink-0" />
 				<div className="flex-1 min-w-0">
 					<div className="text-xs font-medium text-foreground mb-1">Started At</div>
 					<div className="text-sm text-foreground">{formatDate(alert.startsAt)}</div>
@@ -24,7 +24,7 @@ export const AlertTimestampsSection = ({ alert }: AlertTimestampsSectionProps) =
 
 			{alert.updatedAt && (
 				<div className="flex items-start gap-3">
-					<Clock className="h-4 w-4 text-foreground mt-0.5 flex-shrink-0" />
+					<Clock className="h-4 w-4 text-foreground mt-0.5 shrink-0" />
 					<div className="flex-1 min-w-0">
 						<div className="text-xs font-medium text-foreground mb-1">Last Updated</div>
 						<div className="text-sm text-foreground">{formatDate(alert.updatedAt)}</div>

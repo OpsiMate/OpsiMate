@@ -17,7 +17,7 @@ export const HeatmapLegend = () => {
 					<span className="text-sm font-bold text-foreground">Recency:</span>
 					<div className="flex items-center gap-2">
 						<span className="text-xs text-foreground font-medium">New</span>
-						<div className="flex h-5 w-32 rounded overflow-hidden border border-border shadow-sm">
+						<div className="flex h-5 w-32 rounded overflow-hidden border border-border shadow-xs">
 							{RECENCY_GRADIENT_STEPS.map((color, i) => (
 								<div key={i} className="flex-1" style={{ backgroundColor: color }} />
 							))}

@@ -60,11 +60,11 @@ export const SortableHeader = ({
 					<TooltipTrigger asChild>
 						<div className="flex items-center gap-1 min-w-0">
 							{labelIcon ? (
-								<span className="flex-shrink-0 text-muted-foreground">{labelIcon}</span>
+								<span className="shrink-0 text-muted-foreground">{labelIcon}</span>
 							) : (
 								<span className="truncate">{label}</span>
 							)}
-							<span className="flex-shrink-0">{getSortIcon()}</span>
+							<span className="shrink-0">{getSortIcon()}</span>
 						</div>
 					</TooltipTrigger>
 					<TooltipContent>

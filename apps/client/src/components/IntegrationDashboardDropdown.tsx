@@ -82,7 +82,7 @@ const DashboardMenuContent = ({
 				>
 					<div className="flex items-center justify-between w-full">
 						<span className="truncate">{dashboard.name}</span>
-						<ExternalLink className="h-3 w-3 ml-2 flex-shrink-0" />
+						<ExternalLink className="h-3 w-3 ml-2 shrink-0" />
 					</div>
 				</DropdownMenuItem>
 			))}

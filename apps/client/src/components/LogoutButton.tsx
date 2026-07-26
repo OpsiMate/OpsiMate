@@ -14,7 +14,7 @@ export const LogoutButton = ({ collapsed, onLogout }: LogoutButtonProps) => {
 			className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-center px-3')}
 			onClick={onLogout}
 		>
-			<LogOut className="h-5 w-5 flex-shrink-0" />
+			<LogOut className="h-5 w-5 shrink-0" />
 			<span className={cn('font-medium', collapsed && 'sr-only')}>Log out</span>
 		</Button>
 	);

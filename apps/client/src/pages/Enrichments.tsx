@@ -59,7 +59,7 @@ const EffectBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 				variant="outline"
 				className="text-xs bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 max-w-[260px]"
 			>
-				<FileText className="h-3 w-3 mr-1 flex-shrink-0" />
+				<FileText className="h-3 w-3 mr-1 shrink-0" />
 				<span className="truncate">summary: {enrichment.summaryTemplate}</span>
 			</Badge>
 		)}

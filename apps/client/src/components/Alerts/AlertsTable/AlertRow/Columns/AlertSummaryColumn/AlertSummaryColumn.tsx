@@ -19,7 +19,7 @@ export const AlertSummaryColumn = ({ alert, expanded = false, className }: Alert
 			<span
 				className={cn(
 					'text-sm text-foreground block',
-					expanded ? 'whitespace-normal break-words line-clamp-6' : 'truncate'
+					expanded ? 'whitespace-normal wrap-break-word line-clamp-6' : 'truncate'
 				)}
 			>
 				{alert.summary ? stripHtml(alert.summary) : '-'}

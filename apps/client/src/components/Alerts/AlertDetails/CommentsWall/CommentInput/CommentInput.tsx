@@ -42,7 +42,7 @@ export const CommentInput = ({
 				size="icon"
 				onClick={onSubmit}
 				disabled={!value.trim() || isSubmitting}
-				className="flex-shrink-0 h-10 w-10"
+				className="shrink-0 h-10 w-10"
 			>
 				<Send className="h-4 w-4" />
 				<span className="sr-only">{SUBMIT_BUTTON_TEXT}</span>

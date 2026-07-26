@@ -58,7 +58,7 @@ export const TimeFilter = ({ value, onChange }: TimeFilterProps) => {
 						hasValue && 'border-primary text-primary'
 					)}
 				>
-					<Clock className="h-4 w-4 flex-shrink-0" />
+					<Clock className="h-4 w-4 shrink-0" />
 					<span className="whitespace-nowrap">{displayText}</span>
 					{hasValue && (
 						<ClearButton

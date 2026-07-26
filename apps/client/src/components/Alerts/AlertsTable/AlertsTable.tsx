@@ -140,7 +140,7 @@ export const AlertsTable = ({
 			) : (
 				<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
 					{heading && (
-						<div className="flex items-center gap-2 px-3 py-1.5 border-b flex-shrink-0 bg-muted/30">
+						<div className="flex items-center gap-2 px-3 py-1.5 border-b shrink-0 bg-muted/30">
 							{heading}
 						</div>
 					)}
@@ -152,10 +152,7 @@ export const AlertsTable = ({
 							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
 							    scrollbar gutter (see below) so header and body columns stay aligned on
 							    classic-scrollbar systems. */}
-							<div
-								className="border-b flex-shrink-0 overflow-hidden"
-								style={{ scrollbarGutter: 'stable' }}
-							>
+							<div className="border-b shrink-0 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
 								<Table className="table-fixed w-full">
 									<TableHeader>
 										<TableRow className="h-8">
@@ -199,7 +196,7 @@ export const AlertsTable = ({
 																			variant="ghost"
 																			size="icon"
 																			className={cn(
-																				'h-7 w-7 rounded-md flex-shrink-0 border hover:bg-muted hover:text-foreground',
+																				'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
 																				expandRows &&
 																					'text-primary border-primary'
 																			)}

@@ -59,7 +59,7 @@ export const CommentsWall = ({ alertId }: CommentsWallProps) => {
 
 	return (
 		<div className="flex flex-col h-full border-l bg-background">
-			<div className="flex items-center gap-2 px-4 py-3 border-b flex-shrink-0">
+			<div className="flex items-center gap-2 px-4 py-3 border-b shrink-0">
 				<MessageSquare className="h-4 w-4 text-muted-foreground" />
 				<h3 className="font-semibold text-sm text-foreground">{COMMENTS_HEADER}</h3>
 				{comments.length > 0 && (

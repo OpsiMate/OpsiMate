@@ -78,7 +78,7 @@ export const DashboardHeader = ({
 	return (
 		<div className="flex items-center gap-2">
 			{/* Dashboard name + settings + save */}
-			<div className="flex items-center gap-2 min-w-0 flex-shrink">
+			<div className="flex items-center gap-2 min-w-0 shrink">
 				{isEditingName ? (
 					<Input
 						ref={inputRef}
@@ -98,7 +98,7 @@ export const DashboardHeader = ({
 							{dashboardName || 'New Dashboard'}
 						</div>
 						{isDraft && (
-							<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none flex-shrink-0">
+							<span className="text-[10px] text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5 leading-none shrink-0">
 								Draft
 							</span>
 						)}
@@ -111,7 +111,7 @@ export const DashboardHeader = ({
 						size="icon"
 						onClick={onSettingsClick}
 						title="Dashboard Settings"
-						className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground flex-shrink-0"
+						className="rounded-full h-8 w-8 hover:bg-muted hover:text-foreground shrink-0"
 					>
 						<Settings className="h-4 w-4" />
 					</Button>
@@ -123,7 +123,7 @@ export const DashboardHeader = ({
 						size="icon"
 						onClick={onSave}
 						title="Save Dashboard"
-						className="rounded-full h-8 w-8 hover:bg-muted flex-shrink-0"
+						className="rounded-full h-8 w-8 hover:bg-muted shrink-0"
 					>
 						<Save className="h-4 w-4 text-foreground" />
 					</Button>
@@ -136,7 +136,7 @@ export const DashboardHeader = ({
 					<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
 					<input
 						ref={searchInputRef}
-						className="flex h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+						className="flex h-full w-full bg-transparent text-sm text-foreground outline-hidden placeholder:text-muted-foreground"
 						placeholder="Search dashboards..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
@@ -168,7 +168,7 @@ export const DashboardHeader = ({
 			</div>
 
 			{/* Actions (fixed, right-aligned) */}
-			<div className="flex items-center gap-2 flex-shrink-0">
+			<div className="flex items-center gap-2 shrink-0">
 				<Button
 					variant="ghost"
 					size="icon"
