@@ -1,0 +1,50 @@
+{
+	"version": 1.1,
+	"atDirectives": [
+		{
+			"name": "@theme",
+			"description": "Tailwind CSS 4: declares design tokens (colors, fonts, breakpoints, …) as CSS variables that also generate utilities.",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/theme" }]
+		},
+		{
+			"name": "@plugin",
+			"description": "Tailwind CSS 4: loads a JavaScript plugin (replaces the `plugins` array of the v3 config file).",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#plugin-directive" }]
+		},
+		{
+			"name": "@custom-variant",
+			"description": "Tailwind CSS 4: defines a custom variant (e.g. the class-based `dark:` variant).",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#custom-variant-directive" }]
+		},
+		{
+			"name": "@variant",
+			"description": "Tailwind CSS 4: applies a variant's rules inside plain CSS.",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#variant-directive" }]
+		},
+		{
+			"name": "@utility",
+			"description": "Tailwind CSS 4: registers a custom utility that works with variants (replaces v3 `@layer utilities` additions).",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#utility-directive" }]
+		},
+		{
+			"name": "@apply",
+			"description": "Tailwind CSS: inlines utility classes into custom CSS rules.",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#apply-directive" }]
+		},
+		{
+			"name": "@source",
+			"description": "Tailwind CSS 4: registers extra source files to scan for class names.",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#source-directive" }]
+		},
+		{
+			"name": "@reference",
+			"description": "Tailwind CSS 4: imports a stylesheet for @apply/@variant resolution without emitting its CSS.",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#reference-directive" }]
+		},
+		{
+			"name": "@config",
+			"description": "Tailwind CSS 4: loads a legacy JavaScript config file.",
+			"references": [{ "name": "Tailwind docs", "url": "https://tailwindcss.com/docs/functions-and-directives#config-directive" }]
+		}
+	]
+}

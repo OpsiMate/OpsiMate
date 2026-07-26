@@ -1,0 +1,5 @@
+{
+	// Tailwind CSS IntelliSense understands the v4 CSS-first config natively and adds
+	// class completion/hover previews on top of the at-rule support in settings.json.
+	"recommendations": ["bradlc.vscode-tailwindcss"]
+}

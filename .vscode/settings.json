@@ -1,0 +1,6 @@
+{
+	// Teach the built-in CSS language server Tailwind 4's at-rules (@theme, @plugin,
+	// @custom-variant, @utility, @apply, …) so index.css doesn't light up with
+	// "Unknown at rule" warnings. Genuinely unknown at-rules are still flagged.
+	"css.customData": [".vscode/tailwind.css-data.json"]
+}
