@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { MutePolicyController } from './controller';
 
 export default function createMutePolicyRouter(mutePolicyController: MutePolicyController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	router.get('/', mutePolicyController.listHandler);
 	router.post('/', mutePolicyController.createHandler);

@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { PlaygroundController } from './controller';
 
 export default function createPlaygroundRouter(controller: PlaygroundController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	router.post('/book-demo', controller.bookDemoHandler);
 

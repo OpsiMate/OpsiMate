@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { EnrichmentController } from './controller';
 
 export default function createEnrichmentRouter(enrichmentController: EnrichmentController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	router.get('/', enrichmentController.listHandler);
 	router.post('/', enrichmentController.createHandler);

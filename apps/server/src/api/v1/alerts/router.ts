@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { AlertController } from './controller';
 
 export default function createAlertRouter(controller: AlertController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));

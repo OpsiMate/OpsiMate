@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { OncallController } from './controller';
 
 export default function createOncallRouter(controller: OncallController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	router.get('/teams', controller.listTeamsHandler);
 	router.post('/teams', controller.createTeamHandler);

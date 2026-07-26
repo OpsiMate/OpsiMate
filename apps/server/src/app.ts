@@ -119,6 +119,14 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	app.use(express.json());
 
+	// Express 5 leaves req.body undefined when a request carries no body, where Express 4
+	// left an empty object. Controllers validate req.body directly, so keep the old shape
+	// and let the schemas decide whether an empty payload is acceptable.
+	app.use((req, _res, next) => {
+		if (req.body === undefined) req.body = {};
+		next();
+	});
+
 	app.use(
 		cors({
 			origin: (origin, callback) => {

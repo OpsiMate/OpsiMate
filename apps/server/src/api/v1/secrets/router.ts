@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import PromiseRouter from 'express-promise-router';
+import { Router } from 'express';
 import { SecretsController } from './controller';
 import multer from 'multer';
 import { getSecurityConfig } from '../../../config/config';
@@ -25,7 +24,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 export default function createSecretsRouter(secretsController: SecretsController) {
-	const router = PromiseRouter();
+	const router = Router();
 
 	// POST /api/v1/secrets
 	router.post('/', upload.single('secret_file'), secretsController.createSecret);

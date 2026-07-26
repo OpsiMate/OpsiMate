@@ -43,7 +43,6 @@ export default defineConfig({
 				'multer',
 				'js-yaml',
 				'zod',
-				'express-promise-router',
 				'sshpk',
 				'@OpsiMate/shared',
 			],
