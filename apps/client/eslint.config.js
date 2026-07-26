@@ -23,7 +23,9 @@ export default tseslint.config(
 		},
 		settings: {
 			react: {
-				version: 'detect',
+				// Pinned, not 'detect': eslint-plugin-react's version detection calls
+				// context.getFilename(), which ESLint 10 removed, and it throws on every file.
+				version: '19.2',
 			},
 		},
 		rules: {
