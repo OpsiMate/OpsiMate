@@ -432,8 +432,6 @@ const Alerts = () => {
 		[AlertTab.Resolved]: filteredResolvedAlerts.length,
 		[AlertTab.All]: filteredAllAlerts.length,
 	};
-	const currentTabOption = ALERT_TAB_OPTIONS.find((option) => option.value === activeTab) ?? ALERT_TAB_OPTIONS[0];
-
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
@@ -484,10 +482,26 @@ const Alerts = () => {
 											className="gap-1.5 shrink-0"
 											aria-label="Choose which alerts to show"
 										>
-											<currentTabOption.Icon className="h-4 w-4" />
-											<span>{currentTabOption.label}</span>
-											<span className="text-xs text-muted-foreground tabular-nums">
-												{tabCounts[activeTab]}
+											{/* All options render stacked in one grid cell (hidden except the
+											    current one) so the button keeps the width of the widest option
+											    and nothing shifts when switching views. */}
+											<span className="grid">
+												{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
+													<span
+														key={value}
+														aria-hidden={value !== activeTab}
+														className={cn(
+															'col-start-1 row-start-1 flex items-center gap-1.5 whitespace-nowrap',
+															value !== activeTab && 'invisible'
+														)}
+													>
+														<Icon className="h-4 w-4" />
+														<span>{label}</span>
+														<span className="text-xs text-muted-foreground tabular-nums">
+															{tabCounts[value]}
+														</span>
+													</span>
+												))}
 											</span>
 											<ChevronDown className="h-3.5 w-3.5 opacity-60" />
 										</Button>
