@@ -44,13 +44,13 @@ export const AlertDetailsPanel = ({
 		<div
 			ref={panelRef}
 			style={{ width }}
-			className="relative flex-shrink-0 border-l bg-background flex flex-col h-full overflow-hidden"
+			className="relative shrink-0 border-l bg-background flex flex-col h-full overflow-hidden"
 		>
 			<PanelResizeHandle onPointerDown={startResizing} onDoubleClick={resetWidth} />
 
 			<AlertDetailsHeader
 				onClose={onClose}
-				className="px-4 py-3 flex-shrink-0"
+				className="px-4 py-3 shrink-0"
 				actions={tab === 'details' && <SectionsExpandControls onBroadcast={broadcast} />}
 			/>
 
@@ -76,7 +76,7 @@ export const AlertDetailsPanel = ({
 			</Tabs>
 
 			{/* Primary actions pinned at the panel's bottom, outside the scroll area. */}
-			<div className="border-t p-3 flex-shrink-0">
+			<div className="border-t p-3 shrink-0">
 				<AlertFooterActions
 					alert={alert}
 					isActive={isActive}

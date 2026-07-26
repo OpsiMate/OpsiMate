@@ -350,7 +350,7 @@ const Integrations = () => {
 						</Button>
 					</div>
 
-					<div className="bg-card rounded-lg border shadow-sm p-6">
+					<div className="bg-card rounded-lg border shadow-xs p-6">
 						<div className="flex flex-col gap-5">
 							<div className="flex gap-4 items-center">
 								<div className="relative flex-1">
@@ -374,7 +374,7 @@ const Integrations = () => {
 											key={tag}
 											variant={selectedTags.includes(tag) ? 'default' : 'outline'}
 											className={cn(
-												'cursor-pointer transition-all hover:shadow-sm',
+												'cursor-pointer transition-all hover:shadow-xs',
 												selectedTags.includes(tag)
 													? 'hover:bg-primary/90'
 													: 'hover:bg-primary hover:text-primary-foreground hover:border-primary'
@@ -500,7 +500,7 @@ const Integrations = () => {
 													: '',
 												!integration.supported
 													? 'border-dashed bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
-													: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95'
+													: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:scale-95'
 											)}
 											onClick={() => {
 												// Special handling for GCP - show webhook setup modal
@@ -679,7 +679,7 @@ const Integrations = () => {
 									<TabsContent value="configuration" className="space-y-6 py-4">
 										<div className="bg-muted/50 rounded-lg p-4 border border-muted">
 											<div className="flex items-start gap-3">
-												<Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+												<Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
 												<div>
 													<h4 className="font-medium text-sm text-foreground">
 														Integration Information
@@ -829,7 +829,7 @@ const Integrations = () => {
 														<select
 															id={`${selectedIntegration.id}-${field.name}`}
 															name={field.name}
-															className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+															className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 															required={field.required}
 															value={formData[field.name] || ''}
 															onChange={(e) =>

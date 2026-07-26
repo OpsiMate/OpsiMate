@@ -15,7 +15,7 @@ export const IntegrationAvatar = ({ integration, size = 'md', className }: Integ
 	return (
 		<div
 			className={cn(
-				'rounded-full border flex items-center justify-center font-semibold uppercase tracking-tight shadow-sm ring-1 ring-background',
+				'rounded-full border flex items-center justify-center font-semibold uppercase tracking-tight shadow-xs ring-1 ring-background',
 				sizeMap[size],
 				definition.bgClass,
 				definition.borderClass,

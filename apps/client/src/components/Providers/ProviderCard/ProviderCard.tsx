@@ -48,7 +48,7 @@ export const ProviderCard = ({
 			<Card className="flex flex-col transition-all duration-300 hover:shadow-md">
 				<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
 					<div className="flex items-start gap-3">
-						<div className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg flex-shrink-0">
+						<div className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg shrink-0">
 							{getProviderIcon(provider.providerType)}
 						</div>
 						<div className="flex-1 min-w-0">
@@ -105,7 +105,7 @@ export const ProviderCard = ({
 					</DropdownMenu>
 				</CardHeader>
 
-				<CardContent className="flex-grow pt-2 px-6 pb-4 h-full">
+				<CardContent className="grow pt-2 px-6 pb-4 h-full">
 					<div className="min-h-[320px] h-full flex flex-col justify-start">
 						<div className="relative h-full">
 							<div className="overflow-y-scroll pr-2 max-h-[304px] h-full services-scrollbar">

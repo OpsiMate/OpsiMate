@@ -98,18 +98,18 @@ export const EditableCustomField: React.FC<EditableCustomFieldProps> = ({
 					placeholder="Enter value..."
 				/>
 			) : (
-				<div className="flex items-center justify-between min-h-[1.5rem]">
+				<div className="flex items-center justify-between min-h-6">
 					<div className="font-medium text-foreground font-mono text-sm flex-1">{displayValue}</div>
 					{isHovered && !isSaving && (
 						<button
 							onClick={handleEdit}
-							className="p-1 rounded hover:bg-blue-100 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0"
+							className="p-1 rounded hover:bg-blue-100 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0"
 							title={`Edit ${fieldName}`}
 						>
 							<Edit className="h-3 w-3" />
 						</button>
 					)}
-					{isSaving && <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">Saving...</div>}
+					{isSaving && <div className="text-xs text-muted-foreground ml-2 shrink-0">Saving...</div>}
 				</div>
 			)}
 		</div>

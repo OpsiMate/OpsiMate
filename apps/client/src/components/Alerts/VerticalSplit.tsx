@@ -58,7 +58,7 @@ export const VerticalSplit = ({ top, bottom, defaultRatio = 0.5, minRatio = 0.15
 				role="separator"
 				aria-orientation="horizontal"
 				onPointerDown={startDragging}
-				className="group flex-shrink-0 h-2 my-0.5 flex items-center justify-center cursor-row-resize"
+				className="group shrink-0 h-2 my-0.5 flex items-center justify-center cursor-row-resize"
 				title="Drag to resize"
 			>
 				<div className="h-1 w-12 rounded-full bg-border group-hover:bg-primary/60 transition-colors" />

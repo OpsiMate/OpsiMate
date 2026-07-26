@@ -812,7 +812,7 @@ const TVMode = ({
 									<span className="text-xs text-blue-500 dark:text-blue-400">/{stats.total}</span>
 								)}
 							</div>
-							<div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-center min-h-5">
 								{stats.filtered.total !== stats.total ? 'Filtered/Total' : 'Total'}
 							</div>
 						</CardContent>
@@ -826,7 +826,7 @@ const TVMode = ({
 									<span className="text-xs text-green-500 dark:text-green-400">/{stats.running}</span>
 								)}
 							</div>
-							<div className="text-xs text-green-600 dark:text-green-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-xs text-green-600 dark:text-green-400 mt-0.5 flex items-center justify-center min-h-5">
 								Running
 							</div>
 						</CardContent>
@@ -840,7 +840,7 @@ const TVMode = ({
 									<span className="text-xs text-foreground">/{stats.stopped}</span>
 								)}
 							</div>
-							<div className="text-xs text-foreground mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-xs text-foreground mt-0.5 flex items-center justify-center min-h-5">
 								Stopped
 							</div>
 						</CardContent>
@@ -854,7 +854,7 @@ const TVMode = ({
 									<span className="text-xs text-red-500 dark:text-red-400">/{stats.error}</span>
 								)}
 							</div>
-							<div className="text-xs text-red-600 dark:text-red-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-xs text-red-600 dark:text-red-400 mt-0.5 flex items-center justify-center min-h-5">
 								Error
 							</div>
 						</CardContent>
@@ -870,7 +870,7 @@ const TVMode = ({
 									</span>
 								)}
 							</div>
-							<div className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 flex items-center justify-center min-h-5">
 								Unknown
 							</div>
 						</CardContent>
@@ -881,7 +881,7 @@ const TVMode = ({
 							<div className="text-lg font-bold text-orange-700 dark:text-orange-300 leading-none">
 								{stats.totalAlerts}
 							</div>
-							<div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5 flex items-center justify-center min-h-[1.25rem]">
+							<div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5 flex items-center justify-center min-h-5">
 								Alerts
 							</div>
 						</CardContent>
@@ -929,7 +929,7 @@ const TVMode = ({
 											'shadow-md shadow-red-500/15',
 											'ring-1 ring-red-500/20',
 											'border-red-400/60',
-											'bg-gradient-to-br from-red-50/30 to-transparent dark:from-red-950/30',
+											'bg-linear-to-br from-red-50/30 to-transparent dark:from-red-950/30',
 										]
 									)}
 								>

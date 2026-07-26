@@ -95,7 +95,7 @@ export const AlertsHeatmap = ({
 
 	return (
 		<div className="w-full flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 113px)' }}>
-			<div className="flex-shrink-0 border-b bg-background/95 backdrop-blur-sm">
+			<div className="shrink-0 border-b bg-background/95 backdrop-blur-xs">
 				<GroupByControls
 					groupByColumns={groupByColumns}
 					onGroupByChange={onGroupByChange}
@@ -107,7 +107,7 @@ export const AlertsHeatmap = ({
 				<D3Treemap data={data} onAlertClick={handleAlertClick} />
 			</div>
 
-			<div className="flex-shrink-0 border-t bg-background/95 backdrop-blur-sm">
+			<div className="shrink-0 border-t bg-background/95 backdrop-blur-xs">
 				<HeatmapLegend />
 			</div>
 

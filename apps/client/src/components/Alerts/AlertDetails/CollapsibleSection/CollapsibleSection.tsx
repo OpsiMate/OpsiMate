@@ -50,17 +50,17 @@ export const CollapsibleSection = ({
 					className="flex items-center gap-1.5 min-w-0 flex-1 text-muted-foreground hover:text-foreground transition-colors"
 				>
 					{open ? (
-						<ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
+						<ChevronDown className="h-3.5 w-3.5 shrink-0" />
 					) : (
-						<ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+						<ChevronRight className="h-3.5 w-3.5 shrink-0" />
 					)}
-					{icon && <span className="flex-shrink-0">{icon}</span>}
+					{icon && <span className="shrink-0">{icon}</span>}
 					<h3 className="text-xs font-semibold uppercase tracking-wide truncate">{title}</h3>
 					{badge != null && (
 						<span className="text-xs font-normal normal-case text-muted-foreground">{badge}</span>
 					)}
 				</button>
-				{headerRight && <div className="flex-shrink-0">{headerRight}</div>}
+				{headerRight && <div className="shrink-0">{headerRight}</div>}
 			</div>
 			{open && <div className="mt-2">{children}</div>}
 		</div>

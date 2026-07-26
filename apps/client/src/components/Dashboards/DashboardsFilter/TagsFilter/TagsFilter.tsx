@@ -101,7 +101,7 @@ export const TagsFilter = ({ availableTags, selectedTagIds, onTagToggle, onClear
 										onClick={() => onTagToggle(tag.id)}
 									>
 										<div
-											className="w-3 h-3 rounded-full flex-shrink-0"
+											className="w-3 h-3 rounded-full shrink-0"
 											style={{ backgroundColor: tag.color }}
 										/>
 										<span className="text-sm flex-1 truncate">{tag.name}</span>

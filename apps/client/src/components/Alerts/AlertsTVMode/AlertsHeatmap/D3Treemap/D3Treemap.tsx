@@ -241,14 +241,14 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 					const nameSpan = document.createElement('span');
 					nameSpan.className =
-						'font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate';
+						'font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-xs truncate';
 					nameSpan.textContent = displayName;
 					leftGroup.appendChild(nameSpan);
 
 					if (count) {
 						const countSpan = document.createElement('span');
 						countSpan.className =
-							'text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0';
+							'text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full shrink-0';
 						countSpan.textContent = count;
 						leftGroup.appendChild(countSpan);
 					}
@@ -257,7 +257,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 					const percentSpan = document.createElement('span');
 					percentSpan.className =
-						'font-bold text-white/95 text-xs tracking-wide drop-shadow-sm flex-shrink-0 ml-2';
+						'font-bold text-white/95 text-xs tracking-wide drop-shadow-xs shrink-0 ml-2';
 					percentSpan.textContent = `${percentage}%`;
 					div.appendChild(percentSpan);
 
@@ -275,7 +275,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 					if (!isOverflowNode && nodeWidth >= 60 && nodeHeight >= 35) {
 						const percentSpan = document.createElement('div');
 						percentSpan.className =
-							'absolute top-1 right-1 font-bold text-white/95 text-[10px] tracking-wide drop-shadow-sm';
+							'absolute top-1 right-1 font-bold text-white/95 text-[10px] tracking-wide drop-shadow-xs';
 						percentSpan.textContent = `${percentage}%`;
 						container.appendChild(percentSpan);
 					}
@@ -299,7 +299,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 						if (nodeHeight >= 35) {
 							const textSpan = document.createElement('span');
-							textSpan.className = 'text-xs font-semibold text-white/90 drop-shadow mt-1';
+							textSpan.className = 'text-xs font-semibold text-white/90 drop-shadow-sm mt-1';
 							textSpan.style.fontSize = `${Math.max(9, nodeHeight / 6)}px`;
 							textSpan.textContent = `+${(node.data as TreemapNode).overflowAlerts?.length || 0}`;
 							div.appendChild(textSpan);
@@ -326,7 +326,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 					if (count && nodeWidth >= 45 && nodeHeight >= 35) {
 						const countSpan = document.createElement('span');
-						countSpan.className = 'text-xs font-semibold text-white/90 drop-shadow';
+						countSpan.className = 'text-xs font-semibold text-white/90 drop-shadow-sm';
 						countSpan.style.fontSize = `${Math.max(8, fontSize * 0.75)}px`;
 						countSpan.textContent = `${count} alert${count !== '1' ? 's' : ''}`;
 						div.appendChild(countSpan);
@@ -375,21 +375,21 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 		<div className="w-full h-full flex flex-col">
 			{breadcrumbs.length > 0 && (
 				<div
-					className="h-7 border-b flex items-center justify-between px-3 flex-shrink-0 cursor-pointer hover:brightness-110 transition-all"
+					className="h-7 border-b flex items-center justify-between px-3 shrink-0 cursor-pointer hover:brightness-110 transition-all"
 					style={{ backgroundColor: currentGroupColor }}
 					onClick={() => handleBreadcrumbClick(breadcrumbs.length - 2)}
 					title="Click to go back"
 				>
 					<div className="flex items-center gap-2 overflow-hidden">
-						<ArrowLeft className="w-3.5 h-3.5 text-white/90 flex-shrink-0" />
-						<span className="font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-sm truncate">
+						<ArrowLeft className="w-3.5 h-3.5 text-white/90 shrink-0" />
+						<span className="font-bold text-white/90 text-xs uppercase tracking-wider drop-shadow-xs truncate">
 							{currentGroupName}
 						</span>
-						<span className="text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full flex-shrink-0">
+						<span className="text-[10px] text-white/70 font-medium bg-black/20 px-1.5 py-0.5 rounded-full shrink-0">
 							{breadcrumbs[breadcrumbs.length - 1]?.name.split(' (')[1]?.replace(')', '')}
 						</span>
 					</div>
-					<span className="font-bold text-white/95 text-xs tracking-wide drop-shadow-sm flex-shrink-0 ml-2">
+					<span className="font-bold text-white/95 text-xs tracking-wide drop-shadow-xs shrink-0 ml-2">
 						{currentGroupPercentage}%
 					</span>
 				</div>
@@ -400,7 +400,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 			{tooltip && (
 				<div
-					className="fixed z-50 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg text-xs max-w-xs pointer-events-none"
+					className="fixed z-50 bg-background/95 backdrop-blur-xs border rounded-lg p-2 shadow-lg text-xs max-w-xs pointer-events-none"
 					style={{
 						left: tooltip.x,
 						top: tooltip.y,
@@ -417,7 +417,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 
 			{overflowAlerts && overflowAlerts.length > 0 && (
 				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
 					onClick={() => setOverflowAlerts(null)}
 				>
 					<div
@@ -462,7 +462,7 @@ export const D3Treemap = ({ data, onAlertClick }: Omit<D3TreemapProps, 'width' |
 											)}
 										</div>
 										<div
-											className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+											className="w-3 h-3 rounded-full shrink-0 mt-1"
 											style={{ backgroundColor: getAlertColor(alert) }}
 										/>
 									</div>

@@ -780,7 +780,7 @@ export const Providers = () => {
 									>
 										<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
 											<div className="flex items-start gap-3">
-												<div className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg flex-shrink-0">
+												<div className="bg-primary/10 dark:bg-primary/20 text-primary p-2 rounded-lg shrink-0">
 													{getProviderIcon(provider.providerType)}
 												</div>
 												<div className="flex-1 min-w-0">
@@ -855,7 +855,7 @@ export const Providers = () => {
 											</DropdownMenu>
 										</CardHeader>
 
-										<CardContent className="flex-grow pt-2 px-6 pb-4 h-full">
+										<CardContent className="grow pt-2 px-6 pb-4 h-full">
 											<div className="min-h-[320px] h-full flex flex-col justify-start">
 												<div className="relative h-full">
 													<div className="overflow-y-scroll pr-2 max-h-[304px] h-full services-scrollbar">
@@ -864,10 +864,10 @@ export const Providers = () => {
 																{servicesToShow.map((service) => (
 																	<div
 																		key={service.id}
-																		className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+																		className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-xs"
 																	>
 																		<div className="flex items-center gap-3">
-																			<div className="flex-shrink-0">
+																			<div className="shrink-0">
 																				{service.type === 'DOCKER' ? (
 																					<Container className="h-4 w-4 text-blue-500" />
 																				) : (

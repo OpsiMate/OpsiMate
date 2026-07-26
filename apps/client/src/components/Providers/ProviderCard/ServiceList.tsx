@@ -73,10 +73,10 @@ export const ServiceList = ({ services, provider, onServiceAction, onDeleteServi
 				{services.map((service) => (
 					<div
 						key={service.id}
-						className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+						className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-xs"
 					>
 						<div className="flex items-center gap-3">
-							<div className="flex-shrink-0">
+							<div className="shrink-0">
 								{service.type === 'DOCKER' ? (
 									<Container className="h-4 w-4 text-blue-500" />
 								) : (

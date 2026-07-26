@@ -44,7 +44,7 @@ const getSeverityConfig = (alert: Alert) => {
 	switch (severity) {
 		case AlertSeverity.CRITICAL:
 			return {
-				bg: 'bg-gradient-to-br from-red-500/20 to-red-600/10',
+				bg: 'bg-linear-to-br from-red-500/20 to-red-600/10',
 				border: 'border-red-500/50',
 				glow: 'shadow-[0_0_20px_rgba(239,68,68,0.3)]',
 				iconBg: 'bg-red-500',
@@ -53,7 +53,7 @@ const getSeverityConfig = (alert: Alert) => {
 			};
 		case AlertSeverity.WARNING:
 			return {
-				bg: 'bg-gradient-to-br from-amber-500/20 to-orange-500/10',
+				bg: 'bg-linear-to-br from-amber-500/20 to-orange-500/10',
 				border: 'border-amber-500/50',
 				glow: 'shadow-[0_0_15px_rgba(245,158,11,0.2)]',
 				iconBg: 'bg-amber-500',
@@ -62,7 +62,7 @@ const getSeverityConfig = (alert: Alert) => {
 			};
 		default:
 			return {
-				bg: 'bg-gradient-to-br from-blue-500/20 to-blue-600/10',
+				bg: 'bg-linear-to-br from-blue-500/20 to-blue-600/10',
 				border: 'border-blue-500/50',
 				glow: '',
 				iconBg: 'bg-blue-500',
@@ -85,7 +85,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 		<div
 			onClick={onClick}
 			className={cn(
-				'group relative rounded-xl border backdrop-blur-sm cursor-pointer',
+				'group relative rounded-xl border backdrop-blur-xs cursor-pointer',
 				'transition-all duration-300 ease-out',
 				'hover:scale-[1.02] hover:shadow-xl',
 				config.bg,
@@ -102,7 +102,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 				{/* Status Icon */}
 				<div
 					className={cn(
-						'flex-shrink-0 rounded-lg flex items-center justify-center',
+						'shrink-0 rounded-lg flex items-center justify-center',
 						config.iconBg,
 						cardSize === 'extra-small' ? 'h-6 w-6' : cardSize === 'small' ? 'h-8 w-8' : 'h-10 w-10'
 					)}
@@ -181,7 +181,7 @@ export const AlertCard = ({ alert, cardSize, serviceName, onClick }: AlertCardPr
 			<div
 				className={cn(
 					'absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100',
-					'bg-gradient-to-t from-primary/5 to-transparent',
+					'bg-linear-to-t from-primary/5 to-transparent',
 					'transition-opacity duration-300 pointer-events-none'
 				)}
 			/>

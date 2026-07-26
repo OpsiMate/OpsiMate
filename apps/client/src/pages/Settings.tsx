@@ -204,7 +204,7 @@ const Settings: React.FC = () => {
 		<DashboardLayout>
 			<div className="flex flex-col h-full">
 				{/* Header */}
-				<div className="flex-shrink-0 bg-background border-b border-border px-6 py-4">
+				<div className="shrink-0 bg-background border-b border-border px-6 py-4">
 					<h1 className="text-2xl font-bold text-foreground">Settings</h1>
 				</div>
 
@@ -237,7 +237,7 @@ const Settings: React.FC = () => {
 							className="space-y-6"
 						>
 							<div className="flex gap-6">
-								<div className="w-64 flex-shrink-0">
+								<div className="w-64 shrink-0">
 									<TabsList className="flex flex-col items-stretch h-auto p-2 gap-2">
 										<TabsTrigger value="users" className="justify-start gap-2">
 											<Users className="h-4 w-4" />
@@ -1003,7 +1003,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 							</div>
 							{isFileValid === false && (
 								<div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-									<X className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+									<X className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
 									<div className="text-sm text-red-700">
 										<p className="font-medium">Invalid file format</p>
 										<p className="text-red-600 mt-1">

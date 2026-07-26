@@ -22,7 +22,7 @@ export const ActionCard = ({ action, onClick, onDelete, onPlay }: ActionCardProp
 				className={cn(
 					'w-full flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all duration-300 cursor-pointer min-h-[100px]',
 					'hover:scale-105 hover:shadow-md',
-					'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+					'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-2',
 					targetColor
 				)}
 			>

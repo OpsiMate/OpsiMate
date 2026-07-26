@@ -94,7 +94,7 @@ const PolicyRow = ({ policy }: { policy: RetentionPolicy }) => {
 				<div className="font-medium text-foreground">{meta.title}</div>
 				<div className="text-sm text-muted-foreground">{meta.description}</div>
 			</div>
-			<div className="flex items-center gap-4 flex-shrink-0">
+			<div className="flex items-center gap-4 shrink-0">
 				<div className="flex items-center gap-2">
 					<span className="text-sm text-muted-foreground">Delete after</span>
 					<Input
@@ -256,7 +256,7 @@ export const RetentionSettings = () => {
 			</div>
 
 			<div className="flex items-start gap-2 text-xs text-muted-foreground">
-				<Trash2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+				<Trash2 className="h-4 w-4 mt-0.5 shrink-0" />
 				<p>
 					Deletions are permanent. The scheduled job runs in the background worker; “Run cleanup now” triggers
 					it immediately for all enabled categories.

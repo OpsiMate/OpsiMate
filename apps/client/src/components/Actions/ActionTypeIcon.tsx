@@ -19,7 +19,7 @@ export const ActionTypeIcon = ({ type, className }: ActionTypeIconProps) => {
 	const cls = className ?? 'h-4 w-4';
 	const src = ACTION_LOGO_SRC[type];
 	if (src) {
-		return <img src={src} alt={type} className={cn(cls, 'object-contain flex-shrink-0')} />;
+		return <img src={src} alt={type} className={cn(cls, 'object-contain shrink-0')} />;
 	}
-	return <Globe className={cn(cls, 'flex-shrink-0 text-muted-foreground')} />;
+	return <Globe className={cn(cls, 'shrink-0 text-muted-foreground')} />;
 };

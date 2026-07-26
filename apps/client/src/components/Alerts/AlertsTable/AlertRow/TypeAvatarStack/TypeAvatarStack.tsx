@@ -14,11 +14,11 @@ export const TypeAvatarStack = ({ alert }: TypeAvatarStackProps) => {
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<div className="flex -space-x-1.5 flex-shrink-0" aria-label={`${integrationLabel} alert type`}>
+				<div className="flex -space-x-1.5 shrink-0" aria-label={`${integrationLabel} alert type`}>
 					<IntegrationAvatar
 						integration={integration}
 						size="sm"
-						className="ring-2 ring-background shadow-sm"
+						className="ring-2 ring-background shadow-xs"
 					/>
 				</div>
 			</TooltipTrigger>

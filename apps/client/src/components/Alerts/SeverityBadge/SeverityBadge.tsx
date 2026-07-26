@@ -25,7 +25,7 @@ export const SeverityBadge = ({ severity, className }: SeverityBadgeProps) => {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<span
-					className={cn('inline-flex items-center flex-shrink-0', SEVERITY_TEXT_CLASSES[severity], className)}
+					className={cn('inline-flex items-center shrink-0', SEVERITY_TEXT_CLASSES[severity], className)}
 					aria-label={label}
 				>
 					<Icon className="h-3.5 w-3.5" aria-hidden />

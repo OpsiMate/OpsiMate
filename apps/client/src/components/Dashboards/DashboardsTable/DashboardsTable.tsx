@@ -89,7 +89,7 @@ export const DashboardsTable = ({
 
 	return (
 		<div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-			<div className="border-b flex-shrink-0">
+			<div className="border-b shrink-0">
 				<Table className="table-fixed w-full">
 					<TableHeader>
 						<TableRow className="h-10">
@@ -106,7 +106,7 @@ export const DashboardsTable = ({
 							</TableHead>
 							<TableHead className={cn('py-2 px-3 font-medium overflow-hidden', COLUMN_WIDTHS.tags)}>
 								<div className="flex items-center gap-1">
-									<Tags className="h-4 w-4 flex-shrink-0" />
+									<Tags className="h-4 w-4 shrink-0" />
 									Tags
 								</div>
 							</TableHead>

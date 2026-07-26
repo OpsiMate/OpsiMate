@@ -291,7 +291,7 @@ const AlertsTVMode = () => {
 	).length;
 
 	return (
-		<div className="h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col overflow-hidden">
+		<div className="h-screen bg-linear-to-br from-background via-background to-muted/20 flex flex-col overflow-hidden">
 			{/* Modern Header */}
 			<div className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b">
 				<div className="px-6 py-4">

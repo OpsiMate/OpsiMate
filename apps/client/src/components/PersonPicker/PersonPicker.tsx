@@ -48,14 +48,14 @@ export const PersonPicker = ({
 				>
 					{selectedUser ? (
 						<>
-							<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium flex-shrink-0">
+							<div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium shrink-0">
 								{getInitials(selectedUser.fullName)}
 							</div>
 							<span className="truncate">{selectedUser.fullName}</span>
 						</>
 					) : (
 						<>
-							<User className="h-3.5 w-3.5 flex-shrink-0" />
+							<User className="h-3.5 w-3.5 shrink-0" />
 							<span className="truncate">{placeholder}</span>
 						</>
 					)}

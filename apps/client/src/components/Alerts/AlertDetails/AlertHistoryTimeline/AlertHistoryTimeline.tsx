@@ -126,11 +126,11 @@ export const AlertHistoryTimeline = ({ data, isFiltered }: AlertHistoryTimelineP
 							{!isLast && <span className="absolute left-[5px] top-3 bottom-0 w-px bg-border" />}
 							{/* node */}
 							<span
-								className={`relative z-10 mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2 ring-background ${style.dotClass}`}
+								className={`relative z-10 mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background ${style.dotClass}`}
 							/>
 							<div className="flex-1 min-w-0 -mt-0.5">
 								<div className={`flex items-center gap-1.5 text-sm font-medium ${style.textClass}`}>
-									<Icon className="h-3.5 w-3.5 flex-shrink-0" />
+									<Icon className="h-3.5 w-3.5 shrink-0" />
 									<span>{style.label}</span>
 								</div>
 								{item.description && (

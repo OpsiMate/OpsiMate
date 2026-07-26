@@ -22,7 +22,7 @@ export const ServiceActionBar = ({
 	isRunningAction = false,
 }: ServiceActionBarProps) => {
 	return (
-		<div className="flex-shrink-0 p-2 border-t border-border">
+		<div className="shrink-0 p-2 border-t border-border">
 			<ActionButtons
 				selectedService={selectedService}
 				selectedServices={selectedServices}
