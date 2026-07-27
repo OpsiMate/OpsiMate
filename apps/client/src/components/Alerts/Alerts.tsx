@@ -486,7 +486,12 @@ const Alerts = () => {
 											variant="outline"
 											size="sm"
 											className="gap-1.5 shrink-0"
-											aria-label="Choose which alerts to show"
+											// Dynamic name: a static label would override the visible text and
+											// hide the current view + count from screen readers.
+											aria-label={`Choose which alerts to show — currently ${
+												ALERT_TAB_OPTIONS.find((option) => option.value === activeTab)?.label ??
+												'Active'
+											}, ${tabCounts[activeTab]} alerts`}
 										>
 											{/* All options render stacked in one grid cell (hidden except the
 											    current one) so the button keeps the width of the widest option
