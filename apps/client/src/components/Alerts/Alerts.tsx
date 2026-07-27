@@ -1,7 +1,13 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { FilterSidebar } from '@/components/shared';
 import { Button } from '@/components/ui/button';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, serializeTimeRange } from '@/context/DashboardContext.utils';
 import { useAlerts, useResolvedAlerts, useDeleteResolvedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
@@ -16,7 +22,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Bell, CheckCircle2, Columns2, LayoutList, Palette } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
@@ -27,6 +33,7 @@ import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
+import { filterAlerts } from './AlertsTable/AlertsTable.utils';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
@@ -41,6 +48,14 @@ import {
 	useColumnManagement,
 	useSeverityColors,
 } from './hooks';
+
+// Options for the alert-list picker (one dropdown instead of three toggle buttons);
+// per-tab counts come from the filtered lists at render time.
+const ALERT_TAB_OPTIONS = [
+	{ value: AlertTab.Active, label: 'Active', Icon: Bell },
+	{ value: AlertTab.Resolved, label: 'Resolved', Icon: CheckCircle2 },
+	{ value: AlertTab.All, label: 'All', Icon: LayoutList },
+] as const;
 
 const Alerts = () => {
 	const navigate = useNavigate();
@@ -411,6 +426,18 @@ const Alerts = () => {
 		setSelectedAlert((prev) => (prev?.id === alert.id ? null : alert));
 	};
 
+	// Per-tab counts for the alert-list picker; the dropdown shows every tab's count so
+	// switching isn't needed just to see how many resolved/all alerts there are. The
+	// search term is applied too — AlertsTable filters by it after the sidebar/time
+	// filters, and the counts must agree with the rows actually shown.
+	const tabCounts: Record<AlertTab, number> = useMemo(
+		() => ({
+			[AlertTab.Active]: filterAlerts(filteredAlerts, dashboardState.query).length,
+			[AlertTab.Resolved]: filterAlerts(filteredResolvedAlerts, dashboardState.query).length,
+			[AlertTab.All]: filterAlerts(filteredAllAlerts, dashboardState.query).length,
+		}),
+		[filteredAlerts, filteredResolvedAlerts, filteredAllAlerts, dashboardState.query]
+	);
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
@@ -453,58 +480,64 @@ const Alerts = () => {
 							/>
 
 							<div className="mt-3 flex items-center gap-4">
-								<ToggleGroup
-									type="single"
-									value={activeTab}
-									onValueChange={(value) => {
-										if (value) {
-											const newTab = value as AlertTab;
-											setActiveTab(newTab);
-											setSelectedAlert(null);
-											setSelectedAlerts([]);
-										}
-									}}
-									className="justify-start"
-								>
-									<ToggleGroupItem
-										value={AlertTab.Active}
-										aria-label="Active alerts"
-										size="sm"
-										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current [&_svg]:data-[state=on]:text-primary-foreground"
-									>
-										<Bell className="h-4 w-4" />
-										<span>Active</span>
-									</ToggleGroupItem>
-									<ToggleGroupItem
-										value={AlertTab.Resolved}
-										aria-label="Resolved alerts"
-										size="sm"
-										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current [&_svg]:data-[state=on]:text-primary-foreground"
-									>
-										<CheckCircle2 className="h-4 w-4" />
-										<span>Resolved</span>
-									</ToggleGroupItem>
-									<ToggleGroupItem
-										value={AlertTab.All}
-										aria-label="All alerts"
-										size="sm"
-										className="gap-1.5 bg-transparent text-foreground hover:bg-muted hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground [&_svg]:text-current [&_svg]:data-[state=on]:text-primary-foreground"
-									>
-										<LayoutList className="h-4 w-4" />
-										<span>All</span>
-									</ToggleGroupItem>
-								</ToggleGroup>
-								<span className="text-sm text-muted-foreground whitespace-nowrap">
-									{(() => {
-										const count =
-											activeTab === AlertTab.Active
-												? filteredAlerts.length
-												: activeTab === AlertTab.Resolved
-													? filteredResolvedAlerts.length
-													: filteredAllAlerts.length;
-										return `${count} Alert${count !== 1 ? 's' : ''}`;
-									})()}
-								</span>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											className="gap-1.5 shrink-0"
+											// Dynamic name: a static label would override the visible text and
+											// hide the current view + count from screen readers.
+											aria-label={`Choose which alerts to show — currently ${
+												ALERT_TAB_OPTIONS.find((option) => option.value === activeTab)?.label ??
+												'Active'
+											}, ${tabCounts[activeTab]} alerts`}
+										>
+											{/* All options render stacked in one grid cell (hidden except the
+											    current one) so the button keeps the width of the widest option
+											    and nothing shifts when switching views. */}
+											<span className="grid">
+												{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
+													<span
+														key={value}
+														aria-hidden={value !== activeTab}
+														className={cn(
+															'col-start-1 row-start-1 flex items-center gap-1.5 whitespace-nowrap',
+															value !== activeTab && 'invisible'
+														)}
+													>
+														<Icon className="h-4 w-4" />
+														<span>{label}</span>
+														<span className="text-xs text-muted-foreground tabular-nums">
+															{tabCounts[value]}
+														</span>
+													</span>
+												))}
+											</span>
+											<ChevronDown className="h-3.5 w-3.5 opacity-60" />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="start" className="w-44">
+										<DropdownMenuRadioGroup
+											value={activeTab}
+											onValueChange={(value) => {
+												setActiveTab(value as AlertTab);
+												setSelectedAlert(null);
+												setSelectedAlerts([]);
+											}}
+										>
+											{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
+												<DropdownMenuRadioItem key={value} value={value} className="gap-1.5">
+													<Icon className="h-4 w-4" />
+													<span>{label}</span>
+													<span className="ml-auto pl-4 text-xs text-muted-foreground tabular-nums">
+														{tabCounts[value]}
+													</span>
+												</DropdownMenuRadioItem>
+											))}
+										</DropdownMenuRadioGroup>
+									</DropdownMenuContent>
+								</DropdownMenu>
 
 								<div className="flex-1 min-w-0">
 									<SearchBar
