@@ -33,6 +33,7 @@ import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
+import { filterAlerts } from './AlertsTable/AlertsTable.utils';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
@@ -426,12 +427,17 @@ const Alerts = () => {
 	};
 
 	// Per-tab counts for the alert-list picker; the dropdown shows every tab's count so
-	// switching isn't needed just to see how many resolved/all alerts there are.
-	const tabCounts: Record<AlertTab, number> = {
-		[AlertTab.Active]: filteredAlerts.length,
-		[AlertTab.Resolved]: filteredResolvedAlerts.length,
-		[AlertTab.All]: filteredAllAlerts.length,
-	};
+	// switching isn't needed just to see how many resolved/all alerts there are. The
+	// search term is applied too — AlertsTable filters by it after the sidebar/time
+	// filters, and the counts must agree with the rows actually shown.
+	const tabCounts: Record<AlertTab, number> = useMemo(
+		() => ({
+			[AlertTab.Active]: filterAlerts(filteredAlerts, dashboardState.query).length,
+			[AlertTab.Resolved]: filterAlerts(filteredResolvedAlerts, dashboardState.query).length,
+			[AlertTab.All]: filterAlerts(filteredAllAlerts, dashboardState.query).length,
+		}),
+		[filteredAlerts, filteredResolvedAlerts, filteredAllAlerts, dashboardState.query]
+	);
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
