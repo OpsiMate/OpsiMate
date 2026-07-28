@@ -544,6 +544,16 @@ export interface RetentionPolicy {
 	updatedAt: string;
 }
 
+// Org-wide daily silence reset: at `hour` (server-local time) every silenced alert flips
+// back to alerting, regardless of the duration originally chosen. Off by default.
+export interface SilenceResetSettings {
+	enabled: boolean;
+	// Hour of day (0-23, server-local time) at which all silences clear.
+	hour: number;
+	// ISO timestamp of the reset occurrence most recently applied (null if never).
+	lastClearedAt: string | null;
+}
+
 export interface RetentionConfig {
 	// How often the cleanup job runs.
 	cleanupIntervalHours: number;

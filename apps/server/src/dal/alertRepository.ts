@@ -1,4 +1,10 @@
-import { AlertStatus, AlertType, normalizeAlertSeverity, Alert as SharedAlert } from '@OpsiMate/shared';
+import {
+	AlertStatus,
+	AlertType,
+	normalizeAlertSeverity,
+	Alert as SharedAlert,
+	SilenceResetSettings,
+} from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AlertRow, TableInfoRow } from './models';
@@ -122,6 +128,14 @@ export class AlertRepository {
 					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 				);
 	
+				CREATE TABLE IF NOT EXISTS silence_reset_config (
+					id INTEGER PRIMARY KEY CHECK (id = 1),
+					enabled INTEGER NOT NULL DEFAULT 0,
+					hour INTEGER NOT NULL DEFAULT 0,
+					last_cleared_at TEXT,
+					updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				);
+
 				CREATE TRIGGER IF NOT EXISTS archive_alert_on_insert
 					AFTER INSERT ON alerts
 					FOR EACH ROW
@@ -253,6 +267,71 @@ export class AlertRepository {
 				return rows.map((r) => r.id);
 			});
 			return sweep();
+		});
+	}
+
+	// Daily reset sweep: unsilence every silenced alert, whatever its remaining window
+	// (including no-expiry quick-silences). Returns the affected ids for history entries.
+	async clearAllSilences(): Promise<string[]> {
+		return runAsync(() => {
+			const sweep = this.db.transaction(() => {
+				const rows = this.db.prepare(`SELECT id FROM alerts WHERE is_dismissed = 1`).all() as {
+					id: string;
+				}[];
+				if (rows.length > 0) {
+					this.db
+						.prepare(`UPDATE alerts SET is_dismissed = 0, silenced_until = NULL WHERE is_dismissed = 1`)
+						.run();
+				}
+				return rows.map((r) => r.id);
+			});
+			return sweep();
+		});
+	}
+
+	async getSilenceResetSettings(): Promise<SilenceResetSettings> {
+		return runAsync(() => {
+			const row = this.db
+				.prepare(`SELECT enabled, hour, last_cleared_at FROM silence_reset_config WHERE id = 1`)
+				.get() as { enabled: number; hour: number; last_cleared_at: string | null } | undefined;
+			return {
+				enabled: row ? !!row.enabled : false,
+				hour: row?.hour ?? 0,
+				lastClearedAt: row?.last_cleared_at ?? null,
+			};
+		});
+	}
+
+	async updateSilenceResetSettings(updates: { enabled?: boolean; hour?: number }): Promise<SilenceResetSettings> {
+		await runAsync(() => {
+			this.db
+				.prepare(
+					`INSERT INTO silence_reset_config (id, enabled, hour)
+					 VALUES (1, COALESCE(?, 0), COALESCE(?, 0))
+					 ON CONFLICT (id) DO UPDATE SET
+						enabled = COALESCE(?, enabled),
+						hour = COALESCE(?, hour),
+						updated_at = CURRENT_TIMESTAMP`
+				)
+				.run(
+					updates.enabled === undefined ? null : updates.enabled ? 1 : 0,
+					updates.hour ?? null,
+					updates.enabled === undefined ? null : updates.enabled ? 1 : 0,
+					updates.hour ?? null
+				);
+		});
+		return this.getSilenceResetSettings();
+	}
+
+	async markSilenceResetCleared(occurrenceIso: string): Promise<void> {
+		return runAsync(() => {
+			this.db
+				.prepare(
+					`INSERT INTO silence_reset_config (id, enabled, hour, last_cleared_at)
+					 VALUES (1, 0, 0, ?)
+					 ON CONFLICT (id) DO UPDATE SET last_cleared_at = ?`
+				)
+				.run(occurrenceIso, occurrenceIso);
 		});
 	}
 

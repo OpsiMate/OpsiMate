@@ -560,6 +560,16 @@ export const UpdateRetentionConfigSchema = z
 		message: 'Provide cleanupIntervalHours and/or vacuumAfterCleanup',
 	});
 
+export const UpdateSilenceResetSettingsSchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		// Hour of day, server-local time.
+		hour: z.number().int().min(0).max(23).optional(),
+	})
+	.refine((v) => v.enabled !== undefined || v.hour !== undefined, {
+		message: 'Provide enabled and/or hour',
+	});
+
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
 });

@@ -1302,3 +1302,104 @@ describe('Alerts API', () => {
 		});
 	});
 });
+
+describe('Silence reset settings API', () => {
+	// Each test starts from a clean config (the table survives seedAlerts, which only
+	// clears the alerts tables).
+	beforeEach(() => {
+		db.exec('DELETE FROM silence_reset_config');
+	});
+
+	test('GET returns disabled defaults', async () => {
+		const response = await app.get('/api/v1/alerts/silence-reset').set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(response.status).toBe(200);
+		expect(response.body.data).toEqual({ enabled: false, hour: 0, lastClearedAt: null });
+	});
+
+	test('PUT updates enabled and hour', async () => {
+		const response = await app
+			.put('/api/v1/alerts/silence-reset')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ enabled: true, hour: 17 });
+
+		expect(response.status).toBe(200);
+		expect(response.body.data.enabled).toBe(true);
+		expect(response.body.data.hour).toBe(17);
+
+		// Partial update keeps the other field.
+		const partial = await app
+			.put('/api/v1/alerts/silence-reset')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ hour: 9 });
+		expect(partial.body.data).toMatchObject({ enabled: true, hour: 9 });
+	});
+
+	test('PUT rejects an invalid hour', async () => {
+		const response = await app
+			.put('/api/v1/alerts/silence-reset')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ hour: 24 });
+
+		expect(response.status).toBe(400);
+	});
+
+	test('endpoints reject non-admin users', async () => {
+		await app
+			.post('/api/v1/users')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ email: 'sr-viewer@example.com', fullName: 'SR Viewer', password: 'testpassword', role: 'viewer' });
+		const login = await app
+			.post('/api/v1/users/login')
+			.send({ email: 'sr-viewer@example.com', password: 'testpassword' });
+		const viewerToken = login.body.token as string;
+
+		const get = await app.get('/api/v1/alerts/silence-reset').set('Authorization', `Bearer ${viewerToken}`);
+		expect(get.status).toBe(403);
+		const put = await app
+			.put('/api/v1/alerts/silence-reset')
+			.set('Authorization', `Bearer ${viewerToken}`)
+			.send({ enabled: true });
+		expect(put.status).toBe(403);
+	});
+
+	test('listing alerts after the configured hour clears every silence once', async () => {
+		// Current hour: the day's occurrence is already in the past (or exactly now), so the
+		// first listing applies the reset deterministically.
+		const currentHour = new Date().getHours();
+		await app
+			.put('/api/v1/alerts/silence-reset')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ enabled: true, hour: currentHour });
+
+		// alert-3 is seeded silenced; silence alert-1 too, with a timed window.
+		await app
+			.patch(`/api/v1/alerts/${testAlerts[0].id}/silence`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ silencedUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		expect(listing.status).toBe(200);
+		const silenced = (listing.body.data.alerts as { isSilenced: boolean }[]).filter((a) => a.isSilenced);
+		expect(silenced).toHaveLength(0);
+
+		// The reset is applied once per occurrence: a silence created afterwards survives
+		// subsequent listings until the next day's occurrence.
+		await app
+			.patch(`/api/v1/alerts/${testAlerts[0].id}/silence`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({});
+		const second = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const silencedAfter = (second.body.data.alerts as { id: string; isSilenced: boolean }[]).filter(
+			(a) => a.isSilenced
+		);
+		expect(silencedAfter.map((a) => a.id)).toEqual([testAlerts[0].id]);
+
+		// History explains the flip.
+		const history = await app
+			.get(`/api/v1/alerts/${testAlerts[0].id}/history`)
+			.set('Authorization', `Bearer ${jwtToken}`);
+		const descriptions = (history.body.data.data as { description: string }[]).map((h) => h.description);
+		expect(descriptions).toContain('Silence cleared by daily reset');
+	});
+});

@@ -25,4 +25,5 @@ export const queryKeys = {
 	enrichments: ['enrichments'] as const,
 	actions: ['actions'] as const,
 	retention: ['retention'] as const,
+	silenceReset: ['silenceReset'] as const,
 };
