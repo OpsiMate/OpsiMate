@@ -68,6 +68,7 @@ export type AlertRow = {
 	created_at: string;
 	is_dismissed: boolean;
 	silenced_until?: string | null;
+	silenced_at?: string | null;
 	is_read?: boolean | number | null;
 	owner_id?: number | null;
 };

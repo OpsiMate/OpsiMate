@@ -1363,7 +1363,7 @@ describe('Silence reset settings API', () => {
 		expect(put.status).toBe(403);
 	});
 
-	test('listing alerts after the configured hour clears every silence once', async () => {
+	test('listing after the configured hour clears silences from before it, once', async () => {
 		// Current hour: the day's occurrence is already in the past (or exactly now), so the
 		// first listing applies the reset deterministically.
 		const currentHour = new Date().getHours();
@@ -1372,30 +1372,39 @@ describe('Silence reset settings API', () => {
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ enabled: true, hour: currentHour });
 
-		// alert-3 is seeded silenced; silence alert-1 too, with a timed window.
+		// Silence alert-1 and backdate silenced_at to before the occurrence — the timeline
+		// CodeRabbit flagged: silence established before the hour, sweep arriving later.
 		await app
 			.patch(`/api/v1/alerts/${testAlerts[0].id}/silence`)
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ silencedUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+		db.prepare(`UPDATE alerts SET silenced_at = ? WHERE id = ?`).run(
+			new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+			testAlerts[0].id
+		);
+		// alert-2: silenced NOW — after the occurrence — so the (late) sweep must leave it.
+		await app
+			.patch(`/api/v1/alerts/${testAlerts[1].id}/silence`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({});
+		// alert-3 is seeded silenced with no silenced_at (pre-migration shape) — swept as old.
 
 		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
 		expect(listing.status).toBe(200);
-		const silenced = (listing.body.data.alerts as { isSilenced: boolean }[]).filter((a) => a.isSilenced);
-		expect(silenced).toHaveLength(0);
+		const silenced = (listing.body.data.alerts as { id: string; isSilenced: boolean }[]).filter(
+			(a) => a.isSilenced
+		);
+		expect(silenced.map((a) => a.id)).toEqual([testAlerts[1].id]);
 
-		// The reset is applied once per occurrence: a silence created afterwards survives
+		// The reset is applied once per occurrence: the surviving silence stays silenced on
 		// subsequent listings until the next day's occurrence.
-		await app
-			.patch(`/api/v1/alerts/${testAlerts[0].id}/silence`)
-			.set('Authorization', `Bearer ${jwtToken}`)
-			.send({});
 		const second = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
 		const silencedAfter = (second.body.data.alerts as { id: string; isSilenced: boolean }[]).filter(
 			(a) => a.isSilenced
 		);
-		expect(silencedAfter.map((a) => a.id)).toEqual([testAlerts[0].id]);
+		expect(silencedAfter.map((a) => a.id)).toEqual([testAlerts[1].id]);
 
-		// History explains the flip.
+		// History explains the flip on the cleared alert.
 		const history = await app
 			.get(`/api/v1/alerts/${testAlerts[0].id}/history`)
 			.set('Authorization', `Bearer ${jwtToken}`);

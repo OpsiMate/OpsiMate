@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { useSilenceResetSettings, useUpdateSilenceResetSettings } from '@/hooks/queries/alerts/useSilenceReset';
+import { UpdateSilenceResetSettings } from '@OpsiMate/shared';
 import { Loader2 } from 'lucide-react';
 
 // 0..23 rendered as "00:00" … "23:00".
@@ -34,7 +35,7 @@ export const SilenceResetSettings = () => {
 		);
 	}
 
-	const save = (updates: { enabled?: boolean; hour?: number }) => {
+	const save = (updates: UpdateSilenceResetSettings) => {
 		updateSettings(updates, {
 			onError: (e) =>
 				toast({ title: 'Failed to save', description: (e as Error).message, variant: 'destructive' }),

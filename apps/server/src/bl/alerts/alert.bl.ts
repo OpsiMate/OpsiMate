@@ -11,6 +11,7 @@ import {
 	Logger,
 	normalizeAlertSeverity,
 	SilenceResetSettings,
+	UpdateSilenceResetSettings,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
@@ -135,9 +136,11 @@ export class AlertBL {
 		}
 
 		// Mark first: if history writes fail the reset is not retried in a loop, and the sweep
-		// itself is transactional either way.
+		// itself is transactional either way. The occurrence is also the clearing cutoff, so a
+		// late sweep (nothing listed alerts for a while) leaves silences created after the
+		// hour alone — they belong to the next day's reset.
 		await this.alertRepo.markSilenceResetCleared(occurrence.toISOString());
-		const clearedIds = await this.alertRepo.clearAllSilences();
+		const clearedIds = await this.alertRepo.clearSilencesEstablishedBy(occurrence.toISOString());
 		if (clearedIds.length > 0) {
 			logger.info(`Daily silence reset cleared ${clearedIds.length} silence(s)`);
 		}
@@ -152,7 +155,7 @@ export class AlertBL {
 		return this.alertRepo.getSilenceResetSettings();
 	}
 
-	async updateSilenceResetSettings(updates: { enabled?: boolean; hour?: number }): Promise<SilenceResetSettings> {
+	async updateSilenceResetSettings(updates: UpdateSilenceResetSettings): Promise<SilenceResetSettings> {
 		return this.alertRepo.updateSilenceResetSettings(updates);
 	}
 

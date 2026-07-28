@@ -22,6 +22,7 @@ import {
 	RetentionRunResult,
 	RetentionSettings,
 	SilenceResetSettings,
+	UpdateSilenceResetSettings,
 	Service,
 	ServiceWithProvider,
 	Alert as SharedAlert,
@@ -730,7 +731,7 @@ export const retentionApi = {
 // Org-wide daily silence reset (admin-only endpoints).
 export const silenceResetApi = {
 	getSettings: () => apiRequest<SilenceResetSettings>('/alerts/silence-reset'),
-	updateSettings: (updates: { enabled?: boolean; hour?: number }) =>
+	updateSettings: (updates: UpdateSilenceResetSettings) =>
 		apiRequest<SilenceResetSettings>('/alerts/silence-reset', 'PUT', updates),
 };
 

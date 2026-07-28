@@ -4,6 +4,7 @@ import {
 	normalizeAlertSeverity,
 	Alert as SharedAlert,
 	SilenceResetSettings,
+	UpdateSilenceResetSettings,
 } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
@@ -181,6 +182,14 @@ export class AlertRepository {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN silenced_until TEXT`).run();
 			}
 
+			// When the silence was established (ISO). The daily reset clears only silences
+			// created on or before the day's reset occurrence, so it needs this timestamp;
+			// NULL (pre-migration silences) is treated as old and swept.
+			const hasSilencedAt = columns.some((col: TableInfoRow) => col.name === 'silenced_at');
+			if (!hasSilencedAt) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN silenced_at TEXT`).run();
+			}
+
 			// Repair: an alert id must never exist as both active and resolved. Ingestion used
 			// to re-insert a previously-resolved alert into the active table without dropping
 			// its resolved copy, so it showed up twice in the UI. The active row wins — the
@@ -238,8 +247,8 @@ export class AlertRepository {
 	async silenceAlert(id: string, silencedUntil: string | null): Promise<SharedAlert | null> {
 		return runAsync(() => {
 			this.db
-				.prepare('UPDATE alerts SET is_dismissed = 1, silenced_until = ? WHERE id = ?')
-				.run(silencedUntil, id);
+				.prepare('UPDATE alerts SET is_dismissed = 1, silenced_until = ?, silenced_at = ? WHERE id = ?')
+				.run(silencedUntil, new Date().toISOString(), id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});
@@ -259,7 +268,7 @@ export class AlertRepository {
 				if (rows.length > 0) {
 					this.db
 						.prepare(
-							`UPDATE alerts SET is_dismissed = 0, silenced_until = NULL
+							`UPDATE alerts SET is_dismissed = 0, silenced_until = NULL, silenced_at = NULL
 							 WHERE is_dismissed = 1 AND silenced_until IS NOT NULL AND silenced_until <= ?`
 						)
 						.run(nowIso);
@@ -270,18 +279,27 @@ export class AlertRepository {
 		});
 	}
 
-	// Daily reset sweep: unsilence every silenced alert, whatever its remaining window
-	// (including no-expiry quick-silences). Returns the affected ids for history entries.
-	async clearAllSilences(): Promise<string[]> {
+	// Daily reset sweep: unsilence every silence established on or before the reset
+	// occurrence, whatever its remaining window (including no-expiry quick-silences).
+	// Silences created after the occurrence survive until the next day's reset — even
+	// when the sweep runs late because nothing listed the alerts for a while. NULL
+	// silenced_at (silences from before the column existed) counts as old and is swept.
+	// Returns the affected ids for history entries.
+	async clearSilencesEstablishedBy(cutoffIso: string): Promise<string[]> {
 		return runAsync(() => {
 			const sweep = this.db.transaction(() => {
-				const rows = this.db.prepare(`SELECT id FROM alerts WHERE is_dismissed = 1`).all() as {
-					id: string;
-				}[];
+				const rows = this.db
+					.prepare(
+						`SELECT id FROM alerts WHERE is_dismissed = 1 AND (silenced_at IS NULL OR silenced_at <= ?)`
+					)
+					.all(cutoffIso) as { id: string }[];
 				if (rows.length > 0) {
 					this.db
-						.prepare(`UPDATE alerts SET is_dismissed = 0, silenced_until = NULL WHERE is_dismissed = 1`)
-						.run();
+						.prepare(
+							`UPDATE alerts SET is_dismissed = 0, silenced_until = NULL, silenced_at = NULL
+							 WHERE is_dismissed = 1 AND (silenced_at IS NULL OR silenced_at <= ?)`
+						)
+						.run(cutoffIso);
 				}
 				return rows.map((r) => r.id);
 			});
@@ -302,7 +320,7 @@ export class AlertRepository {
 		});
 	}
 
-	async updateSilenceResetSettings(updates: { enabled?: boolean; hour?: number }): Promise<SilenceResetSettings> {
+	async updateSilenceResetSettings(updates: UpdateSilenceResetSettings): Promise<SilenceResetSettings> {
 		await runAsync(() => {
 			this.db
 				.prepare(
@@ -345,7 +363,9 @@ export class AlertRepository {
 
 	async unsilenceAlert(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
-			this.db.prepare('UPDATE alerts SET is_dismissed = 0, silenced_until = NULL WHERE id = ?').run(id);
+			this.db
+				.prepare('UPDATE alerts SET is_dismissed = 0, silenced_until = NULL, silenced_at = NULL WHERE id = ?')
+				.run(id);
 			const row = this.db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
 		});

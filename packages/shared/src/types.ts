@@ -544,6 +544,14 @@ export interface RetentionPolicy {
 	updatedAt: string;
 }
 
+// The one update shape shared by the API layer, hooks and BL for silence-reset settings;
+// UpdateSilenceResetSettingsSchema (schemas.ts) is its validating counterpart.
+export interface UpdateSilenceResetSettings {
+	enabled?: boolean;
+	// Hour of day (0-23, server-local time).
+	hour?: number;
+}
+
 // Org-wide daily silence reset: at `hour` (server-local time) every silenced alert flips
 // back to alerting, regardless of the duration originally chosen. Off by default.
 export interface SilenceResetSettings {
