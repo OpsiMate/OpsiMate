@@ -14,8 +14,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
-import { Check, DatabaseBackup, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
+import { BellOff, Check, DatabaseBackup, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
+import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -219,6 +220,7 @@ const Settings: React.FC = () => {
 								if (h === 'Users') return 'users';
 								if (h === 'Audit_Log') return 'audit';
 								if (h === 'retention') return 'retention';
+								if (h === 'silences') return 'silences';
 								if (h === 'secrets') return 'secrets';
 								if (h === 'custom-fields') return 'custom-fields';
 								return 'users';
@@ -228,6 +230,7 @@ const Settings: React.FC = () => {
 									users: 'Users',
 									audit: 'Audit_Log',
 									retention: 'retention',
+									silences: 'silences',
 									secrets: 'secrets',
 									'custom-fields': 'custom-fields',
 								};
@@ -250,6 +253,10 @@ const Settings: React.FC = () => {
 										<TabsTrigger value="retention" className="justify-start gap-2">
 											<DatabaseBackup className="h-4 w-4" />
 											Data Retention
+										</TabsTrigger>
+										<TabsTrigger value="silences" className="justify-start gap-2">
+											<BellOff className="h-4 w-4" />
+											Alert Silences
 										</TabsTrigger>
 									</TabsList>
 								</div>
@@ -552,6 +559,10 @@ const Settings: React.FC = () => {
 
 									<TabsContent value="retention" className="space-y-6">
 										<RetentionSettings />
+									</TabsContent>
+
+									<TabsContent value="silences" className="space-y-6">
+										<SilenceResetSettings />
 									</TabsContent>
 
 									<TabsContent value="secrets" className="space-y-6">

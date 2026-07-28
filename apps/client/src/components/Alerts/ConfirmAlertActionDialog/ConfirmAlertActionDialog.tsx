@@ -13,40 +13,44 @@ import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
 
 // How long a silence lasts. The expiry timestamp is computed at confirm time, so
-// re-silencing an alert always restarts the timer from "now".
-export type SilenceDuration = 'midnight' | '1h' | '4h' | '8h' | 'forever';
+// re-silencing an alert always restarts the timer from "now". Every choice expires —
+// an indefinite "forever" option existed once and was removed on purpose.
+export type SilenceDuration = 'midnight' | '5m' | '15m' | '30m' | '1h' | '2h' | '6h';
+
+// Minutes from now for each fixed-length duration; 'midnight' is computed from the clock.
+const DURATION_MINUTES: Record<Exclude<SilenceDuration, 'midnight'>, number> = {
+	'5m': 5,
+	'15m': 15,
+	'30m': 30,
+	'1h': 60,
+	'2h': 120,
+	'6h': 360,
+};
 
 const SILENCE_DURATION_OPTIONS: { value: SilenceDuration; label: string }[] = [
 	{ value: 'midnight', label: 'Until midnight' },
+	{ value: '5m', label: '5 minutes' },
+	{ value: '15m', label: '15 minutes' },
+	{ value: '30m', label: '30 minutes' },
 	{ value: '1h', label: '1 hour' },
-	{ value: '4h', label: '4 hours' },
-	{ value: '8h', label: '8 hours' },
-	{ value: 'forever', label: 'Forever (until unsilenced)' },
+	{ value: '2h', label: '2 hours' },
+	{ value: '6h', label: '6 hours' },
 ];
 
-// null = no expiry (silenced until manually unsilenced).
-const silencedUntilFor = (duration: SilenceDuration): string | null => {
-	switch (duration) {
-		case 'forever':
-			return null;
-		case 'midnight': {
-			// Local midnight — the user thinks in their own day boundary, not UTC's.
-			const endOfDay = new Date();
-			endOfDay.setHours(24, 0, 0, 0);
-			return endOfDay.toISOString();
-		}
-		case '1h':
-			return new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString();
-		case '4h':
-			return new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
-		case '8h':
-			return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+const silencedUntilFor = (duration: SilenceDuration): string => {
+	if (duration === 'midnight') {
+		// Local midnight — the user thinks in their own day boundary, not UTC's.
+		const endOfDay = new Date();
+		endOfDay.setHours(24, 0, 0, 0);
+		return endOfDay.toISOString();
 	}
+	return new Date(Date.now() + DURATION_MINUTES[duration] * 60 * 1000).toISOString();
 };
 
 // A state-changing alert action awaiting the user's go-ahead. `run` executes it; for
 // resolve/silence actions it receives the optional note the user typed, and for silence
-// actions the computed expiry of the chosen duration (null = forever).
+// actions the computed expiry of the chosen duration (always an ISO timestamp here —
+// the API still accepts null for no-expiry, used by quick-silence paths elsewhere).
 export interface PendingAlertAction {
 	title: string;
 	description: string;

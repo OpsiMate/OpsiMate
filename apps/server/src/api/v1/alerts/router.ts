@@ -7,6 +7,10 @@ export default function createAlertRouter(controller: AlertController) {
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
 
+	// Daily silence reset settings (admin; must be before /:alertId to avoid route conflicts)
+	router.get('/silence-reset', controller.getSilenceResetSettings.bind(controller));
+	router.put('/silence-reset', controller.updateSilenceResetSettings.bind(controller));
+
 	// Resolved alerts (must be before /:alertId to avoid route conflicts)
 	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
 	router.delete('/resolved/:alertId', controller.deleteResolvedAlert.bind(controller));

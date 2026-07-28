@@ -10,6 +10,8 @@ import {
 	AlertType,
 	Logger,
 	normalizeAlertSeverity,
+	SilenceResetSettings,
+	UpdateSilenceResetSettings,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
@@ -110,6 +112,51 @@ export class AlertBL {
 				this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null)
 			)
 		);
+		await this.runDailySilenceReset();
+	}
+
+	// Org-wide daily reset (opt-in): once the configured hour passes, every silence clears —
+	// whatever its remaining window — so the whole board alerts again. Piggybacks on the same
+	// lazy sweep as timed expiry, so it needs no scheduler; the marker records which daily
+	// occurrence was already applied, letting silences created after the hour survive until
+	// the next day's occurrence.
+	private async runDailySilenceReset(): Promise<void> {
+		const settings = await this.alertRepo.getSilenceResetSettings();
+		if (!settings.enabled) return;
+
+		// Latest occurrence of the configured hour that is not in the future (server-local).
+		const occurrence = new Date();
+		occurrence.setHours(settings.hour, 0, 0, 0);
+		if (occurrence.getTime() > Date.now()) {
+			occurrence.setDate(occurrence.getDate() - 1);
+		}
+
+		if (settings.lastClearedAt && new Date(settings.lastClearedAt).getTime() >= occurrence.getTime()) {
+			return;
+		}
+
+		// Mark first: if history writes fail the reset is not retried in a loop, and the sweep
+		// itself is transactional either way. The occurrence is also the clearing cutoff, so a
+		// late sweep (nothing listed alerts for a while) leaves silences created after the
+		// hour alone — they belong to the next day's reset.
+		await this.alertRepo.markSilenceResetCleared(occurrence.toISOString());
+		const clearedIds = await this.alertRepo.clearSilencesEstablishedBy(occurrence.toISOString());
+		if (clearedIds.length > 0) {
+			logger.info(`Daily silence reset cleared ${clearedIds.length} silence(s)`);
+		}
+		await Promise.all(
+			clearedIds.map((id) =>
+				this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence cleared by daily reset', null)
+			)
+		);
+	}
+
+	async getSilenceResetSettings(): Promise<SilenceResetSettings> {
+		return this.alertRepo.getSilenceResetSettings();
+	}
+
+	async updateSilenceResetSettings(updates: UpdateSilenceResetSettings): Promise<SilenceResetSettings> {
+		return this.alertRepo.updateSilenceResetSettings(updates);
 	}
 
 	async getAllAlerts(): Promise<Alert[]> {

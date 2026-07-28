@@ -1,5 +1,13 @@
 import { Request, Response } from 'express';
-import { AlertHistory, AlertStatus, CreateCommentSchema, Logger, UpdateCommentSchema } from '@OpsiMate/shared';
+import {
+	AlertHistory,
+	AlertStatus,
+	CreateCommentSchema,
+	Logger,
+	Role,
+	UpdateCommentSchema,
+	UpdateSilenceResetSettingsSchema,
+} from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
 	DatadogAlertWebhookSchema,
@@ -28,6 +36,42 @@ export class AlertController {
 			return res.json({ success: true, data: { alerts } });
 		} catch (error) {
 			logger.error('Error getting alerts:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// Both silence-reset endpoints are admin-only: this is org-wide configuration, same
+	// gate the retention settings use.
+	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
+		if (!req.user || req.user.role !== Role.Admin) {
+			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
+			return false;
+		}
+		return true;
+	}
+
+	async getSilenceResetSettings(req: AuthenticatedRequest, res: Response) {
+		if (!this.requireAdmin(req, res)) return;
+		try {
+			const settings = await this.alertBL.getSilenceResetSettings();
+			return res.json({ success: true, data: settings });
+		} catch (error) {
+			logger.error('Error getting silence reset settings:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async updateSilenceResetSettings(req: AuthenticatedRequest, res: Response) {
+		if (!this.requireAdmin(req, res)) return;
+		try {
+			const updates = UpdateSilenceResetSettingsSchema.parse(req.body ?? {});
+			const settings = await this.alertBL.updateSilenceResetSettings(updates);
+			return res.json({ success: true, data: settings });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+			}
+			logger.error('Error updating silence reset settings:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

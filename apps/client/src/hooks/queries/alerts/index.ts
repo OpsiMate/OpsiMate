@@ -8,3 +8,4 @@ export { useMarkAlertRead } from './useMarkAlertRead';
 export { useUnsilenceAlert } from './useUnsilenceAlert';
 export { useSetAlertOwner } from './useSetAlertOwner';
 export { useSetResolvedAlertOwner } from './useSetResolvedAlertOwner';
+export { useSilenceResetSettings, useUpdateSilenceResetSettings } from './useSilenceReset';
