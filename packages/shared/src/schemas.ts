@@ -570,7 +570,6 @@ export const UpdateSilenceResetSettingsSchema = z
 		message: 'Provide enabled and/or hour',
 	});
 
-
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
 });
