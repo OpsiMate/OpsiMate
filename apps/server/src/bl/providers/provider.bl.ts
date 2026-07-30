@@ -1,5 +1,6 @@
 import { DiscoveredService, Provider, Service, Logger, User, ServiceType } from '@OpsiMate/shared';
 import { ProviderNotFound } from './ProviderNotFound';
+import { DuplicateProviderError } from './DuplicateProviderError';
 import { providerConnectorFactory } from './provider-connector/providerConnectorFactory';
 import { ProviderRepository } from '../../dal/providerRepository';
 import { ServiceRepository } from '../../dal/serviceRepository';
@@ -62,6 +63,10 @@ export class ProviderBL {
 
 			return createdProvider;
 		} catch (error) {
+			// Check if it's a UNIQUE constraint violation from the database
+			if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+				throw new DuplicateProviderError(providerToCreate.name, providerToCreate.providerType);
+			}
 			logger.error(`Error creating provider`, error);
 			throw error;
 		}
@@ -100,6 +105,10 @@ export class ProviderBL {
 			});
 			return await this.providerRepo.getProviderById(providerId);
 		} catch (error) {
+			// Check if it's a UNIQUE constraint violation from the database
+			if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+				throw new DuplicateProviderError(providerToUpdate.name, providerToUpdate.providerType);
+			}
 			logger.error(`Error updating provider`, error);
 			throw error;
 		}
