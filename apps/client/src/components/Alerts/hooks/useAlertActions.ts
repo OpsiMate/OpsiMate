@@ -6,7 +6,9 @@ import {
 	useUnresolveAlert,
 	useUnsilenceAlert,
 } from '@/hooks/queries/alerts';
+import { useCreateAlertComment } from '@/hooks/queries/alertComments';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentUser } from '@/lib/auth';
 import { Alert } from '@OpsiMate/shared';
 
 export const useAlertActions = () => {
@@ -16,6 +18,7 @@ export const useAlertActions = () => {
 	const setAlertOwnerMutation = useSetAlertOwner();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const unresolveAlertMutation = useUnresolveAlert();
+	const createCommentMutation = useCreateAlertComment();
 	const { toast } = useToast();
 
 	const handleSilenceAlert = async (alertId: string, silencedUntil?: string | null, comment?: string) => {
@@ -170,6 +173,40 @@ export const useAlertActions = () => {
 		onComplete();
 	};
 
+	// Post the same comment on every selected alert, as the current user (mirrors the
+	// bulk resolve/silence pattern: fan out, then a single success/partial toast).
+	const handleCommentAll = async (selectedAlerts: Alert[], comment: string, onComplete: () => void) => {
+		const currentUser = getCurrentUser();
+		if (!currentUser) {
+			toast({
+				title: 'Not signed in',
+				description: 'Sign in again to comment on alerts',
+				variant: 'destructive',
+			});
+			return;
+		}
+		const results = await Promise.allSettled(
+			selectedAlerts.map((alert) =>
+				createCommentMutation.mutateAsync({ alertId: alert.id, userId: String(currentUser.id), comment })
+			)
+		);
+		const successCount = results.filter((r) => r.status === 'fulfilled').length;
+		const failCount = results.length - successCount;
+		toast(
+			failCount > 0
+				? {
+						title: 'Partial comment',
+						description: `Commented on ${successCount} alerts, ${failCount} failed`,
+						variant: 'destructive',
+					}
+				: {
+						title: 'Comment added',
+						description: `Commented on ${successCount} alert${successCount !== 1 ? 's' : ''}`,
+					}
+		);
+		onComplete();
+	};
+
 	return {
 		handleSilenceAlert,
 		handleUnsilenceAlert,
@@ -178,6 +215,7 @@ export const useAlertActions = () => {
 		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
+		handleCommentAll,
 		handleDeleteForeverAll,
 	};
 };

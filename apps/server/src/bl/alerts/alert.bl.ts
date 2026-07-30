@@ -203,7 +203,7 @@ export class AlertBL {
 					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
 				}
 				if (comment && actor.id != null) {
-					await this.createComment({ alertId: id, userId: actor.id, comment });
+					await this.createComment({ alertId: id, userId: actor.id, comment }, actor.name);
 				}
 			}
 			return alert;
@@ -289,7 +289,10 @@ export class AlertBL {
 				}
 
 				if (comment && manualActor.id != null) {
-					await this.createComment({ alertId: activeAlertId, userId: manualActor.id, comment });
+					await this.createComment(
+						{ alertId: activeAlertId, userId: manualActor.id, comment },
+						manualActor.name
+					);
 				}
 			}
 
@@ -460,8 +463,20 @@ export class AlertBL {
 	// region comments
 	// Comments are intentionally NOT recorded in the alert history timeline (they live in their
 	// own Comments tab), to keep the history focused on status/ownership/action events.
-	async createComment(comment: Omit<AlertComment, 'createdAt' | 'updatedAt' | 'id'>): Promise<AlertComment> {
-		return this.alertCommentsRepo.createComment(comment);
+	// actorName feeds the COMMENT_ADDED history event: the timeline has rendered that event
+	// type from day one, but nothing ever recorded it — comments were invisible in history.
+	async createComment(
+		comment: Omit<AlertComment, 'createdAt' | 'updatedAt' | 'id'>,
+		actorName?: string | null
+	): Promise<AlertComment> {
+		const created = await this.alertCommentsRepo.createComment(comment);
+		await this.recordHistoryEvent(
+			comment.alertId,
+			AlertHistoryEventType.COMMENT_ADDED,
+			'Comment added',
+			actorName ?? null
+		);
+		return created;
 	}
 
 	async updateComment(id: string, userId: string, comment: string): Promise<AlertComment | null> {

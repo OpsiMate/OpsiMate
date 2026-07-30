@@ -59,6 +59,9 @@ export interface PendingAlertAction {
 	destructive?: boolean;
 	// Resolve/silence actions offer an optional note, stored as a comment on the alert(s).
 	withComment?: boolean;
+	// For actions whose whole point is the note (bulk comment): confirm stays disabled
+	// until something is typed, and the "(optional)" hint is dropped.
+	requireComment?: boolean;
 	commentLabel?: string;
 	commentPlaceholder?: string;
 	// Silence actions pick a duration (defaults to "until midnight").
@@ -119,8 +122,10 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 				{pending?.withComment && (
 					<div className="space-y-1.5">
 						<label htmlFor="action-comment" className="text-sm font-medium">
-							{pending.commentLabel ?? 'Comment'}{' '}
-							<span className="font-normal text-muted-foreground">(optional)</span>
+							{pending.commentLabel ?? 'Comment'}
+							{!pending.requireComment && (
+								<span className="font-normal text-muted-foreground"> (optional)</span>
+							)}
 						</label>
 						<Textarea
 							id="action-comment"
@@ -136,6 +141,7 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 				<AlertDialogFooter>
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
 					<AlertDialogAction
+						disabled={!!pending?.requireComment && !note}
 						onClick={() => {
 							pending?.run(note, pending.withSilenceDuration ? silencedUntilFor(duration) : undefined);
 							onClose();

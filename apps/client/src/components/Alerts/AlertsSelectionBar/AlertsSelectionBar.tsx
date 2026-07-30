@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
-import { CheckCircle2, Trash2 } from 'lucide-react';
+import { CheckCircle2, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
@@ -21,6 +21,8 @@ export interface AlertsSelectionBarProps {
 	onSilenceAll: () => void;
 	onAssignOwnerAll?: (ownerId: string | null) => void;
 	onResolveAll?: () => void;
+	// Adds the same comment to every selected alert (opens the comment dialog).
+	onCommentAll?: () => void;
 	onDeleteAll?: () => void;
 }
 
@@ -30,6 +32,7 @@ export const AlertsSelectionBar = ({
 	onSilenceAll,
 	onAssignOwnerAll,
 	onResolveAll,
+	onCommentAll,
 	onDeleteAll,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
@@ -71,6 +74,12 @@ export const AlertsSelectionBar = ({
 					<Button variant="outline" size="sm" onClick={onResolveAll} className="gap-1.5">
 						<CheckCircle2 className="h-3.5 w-3.5" />
 						Resolve
+					</Button>
+				)}
+				{onCommentAll && (
+					<Button variant="outline" size="sm" onClick={onCommentAll} className="gap-1.5">
+						<MessageSquarePlus className="h-3.5 w-3.5" />
+						Comment
 					</Button>
 				)}
 				{onDeleteAll && (
