@@ -461,10 +461,9 @@ export class AlertBL {
 	// endregion
 
 	// region comments
-	// Comments are intentionally NOT recorded in the alert history timeline (they live in their
-	// own Comments tab), to keep the history focused on status/ownership/action events.
-	// actorName feeds the COMMENT_ADDED history event: the timeline has rendered that event
-	// type from day one, but nothing ever recorded it — comments were invisible in history.
+	// Every created comment is mirrored into the alert history timeline as a COMMENT_ADDED
+	// event (actorName identifies who commented); the comment body itself lives only in the
+	// Comments tab, so the timeline stays a compact activity log.
 	async createComment(
 		comment: Omit<AlertComment, 'createdAt' | 'updatedAt' | 'id'>,
 		actorName?: string | null
