@@ -21,6 +21,8 @@ export const useCreateAlertComment = () => {
 		},
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: [...queryKeys.alertComments, variables.alertId] });
+			// Comments now appear in the history timeline too (COMMENT_ADDED event).
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistory(variables.alertId) });
 		},
 	});
 };

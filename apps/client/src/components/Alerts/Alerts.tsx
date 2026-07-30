@@ -225,6 +225,7 @@ const Alerts = () => {
 		handleSilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
+		handleCommentAll,
 		handleDeleteForeverAll,
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
@@ -318,6 +319,24 @@ const Alerts = () => {
 			commentLabel: 'Silence comment',
 			commentPlaceholder: 'Why are these silenced?',
 			run: (comment, silencedUntil) => void handleSilenceAllSelected(silencedUntil, comment),
+		});
+
+	const handleCommentAllSelected = async (comment: string) => {
+		await handleCommentAll(selectedAlerts, comment, () => setSelectedAlerts([]));
+	};
+
+	const confirmCommentAllSelected = () =>
+		setPendingAction({
+			title: `Comment on ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
+			description: 'The same comment is added to every selected alert, visible in its comments and history.',
+			confirmLabel: 'Comment',
+			withComment: true,
+			requireComment: true,
+			commentLabel: 'Comment',
+			commentPlaceholder: 'What should the team know about these alerts?',
+			run: (comment) => {
+				if (comment) void handleCommentAllSelected(comment);
+			},
 		});
 
 	const confirmResolveAllSelected = () =>
@@ -623,6 +642,7 @@ const Alerts = () => {
 										onSilenceAll={confirmSilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
 										onResolveAll={confirmResolveAllSelected}
+										onCommentAll={confirmCommentAllSelected}
 										onDeleteAll={handleDeleteAllSelected}
 									/>
 								</div>
