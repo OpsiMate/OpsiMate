@@ -24,12 +24,16 @@ interface CustomTimeFilterTabProps {
 
 export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilterTabProps) => {
 	// Prefill from the resolved window so switching from a quick preset (stored without
-	// dates) starts the pickers at the preset's current from/to instead of empty.
+	// dates) starts the pickers at the preset's current from/to instead of empty — the
+	// time inputs included, or applying "Custom" right after "Last 1 hour" would silently
+	// widen the range to the full day.
 	const initial = resolveTimeRange(value);
+	const toTimeInput = (date: Date): string =>
+		`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 	const [customFrom, setCustomFrom] = useState<Date | undefined>(initial.from ?? undefined);
 	const [customTo, setCustomTo] = useState<Date | undefined>(initial.to ?? undefined);
-	const [fromTime, setFromTime] = useState(DEFAULT_FROM_TIME);
-	const [toTime, setToTime] = useState(DEFAULT_TO_TIME);
+	const [fromTime, setFromTime] = useState(initial.from ? toTimeInput(initial.from) : DEFAULT_FROM_TIME);
+	const [toTime, setToTime] = useState(initial.to ? toTimeInput(initial.to) : DEFAULT_TO_TIME);
 	const [fromCalendarOpen, setFromCalendarOpen] = useState(false);
 	const [toCalendarOpen, setToCalendarOpen] = useState(false);
 

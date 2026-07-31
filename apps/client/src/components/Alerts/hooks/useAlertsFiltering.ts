@@ -33,8 +33,10 @@ export const useAlertsFiltering = (
 	const { filters, timeRange } = useMemo((): { filters: Record<string, string[]>; timeRange?: TimeRange } => {
 		// 'filters' in x can't narrow the union on its own: the legacy shape is an open
 		// Record, so TS keeps both arms alive and unions every property access. The casts
-		// pin each branch to the shape the guard actually identified.
-		if ('filters' in filtersOrOptions) {
+		// pin each branch to the shape the guard actually identified. The Array check
+		// keeps a legacy record whose filter FIELD is named "filters" (value string[])
+		// from being mistaken for the options shape.
+		if ('filters' in filtersOrOptions && !Array.isArray(filtersOrOptions.filters)) {
 			const options = filtersOrOptions as UseAlertsFilteringOptions;
 			return { filters: options.filters, timeRange: options.timeRange };
 		}

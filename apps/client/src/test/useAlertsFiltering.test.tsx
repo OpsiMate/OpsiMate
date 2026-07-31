@@ -65,8 +65,9 @@ describe('useAlertsFiltering rolling time presets', () => {
 
 	test('"today" spans from local midnight regardless of when it was selected', () => {
 		const sinceMidnightMs = Date.now() - new Date().setHours(0, 0, 0, 0);
-		// Guard against the degenerate just-after-midnight case in CI.
-		const earlyToday = mkAlert('early-today', Math.min(sinceMidnightMs - 1_000, sinceMidnightMs));
+		// Clamp to now: less than a second after local midnight, "1s after midnight"
+		// would otherwise be a future timestamp the today-filter may exclude.
+		const earlyToday = mkAlert('early-today', Math.max(0, sinceMidnightMs - 1_000));
 		const yesterday = mkAlert('yesterday', sinceMidnightMs + 3_600_000);
 		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'today' as const } };
 		const { result } = renderHook(() => useAlertsFiltering([earlyToday, yesterday], options), { wrapper });
