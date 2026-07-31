@@ -37,10 +37,13 @@ export const useUnresolveAlert = () => {
 				queryClient.setQueryData(queryKeys.resolvedAlerts, context.previousAlerts);
 			}
 		},
-		onSettled: () => {
+		onSettled: (_data, _error, alertId) => {
 			// Always refetch after error or success: the alert left one list and joined the other
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
+			// The server records an UNRESOLVED history event ("Alert moved back to firing");
+			// without this the open details panel keeps showing the pre-unresolve timeline.
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistory(alertId) });
 		},
 	});
 };
