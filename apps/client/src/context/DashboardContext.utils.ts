@@ -15,10 +15,17 @@ export const deserializeTimeRange = (stored: DashboardTimeRange | undefined): Ti
 	if (!stored) {
 		return { from: null, to: null, preset: null };
 	}
+	const preset = stored.preset as TimeRange['preset'];
+	// Quick presets are rolling windows resolved at filter time; drop any absolute dates
+	// that older versions froze in at click time (a saved "Today" from last week would
+	// otherwise keep filtering last week forever). Only 'custom' keeps its dates.
+	if (preset && preset !== 'custom') {
+		return { from: null, to: null, preset };
+	}
 	return {
 		from: stored.from ? new Date(stored.from) : null,
 		to: stored.to ? new Date(stored.to) : null,
-		preset: stored.preset as TimeRange['preset'],
+		preset,
 	};
 };
 
