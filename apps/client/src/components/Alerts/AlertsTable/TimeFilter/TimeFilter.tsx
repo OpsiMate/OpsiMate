@@ -7,7 +7,6 @@ import { Clock } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { CustomTimeFilterTab } from './CustomTimeFilterTab';
 import { QuickTimeFilterTab } from './QuickTimeFilterTab';
-import { getPresetConfig } from './TimeFilter.constants';
 import { QuickPreset, TimeFilterProps, TimeRange } from './TimeFilter.types';
 import { formatTimeRange, isTimeRangeEmpty } from './TimeFilter.utils';
 
@@ -16,12 +15,11 @@ export const TimeFilter = ({ value, onChange }: TimeFilterProps) => {
 
 	const handlePresetClick = useCallback(
 		(preset: QuickPreset) => {
-			const config = getPresetConfig(preset);
-			if (config) {
-				const { from, to } = config.getRange();
-				onChange({ from, to, preset });
-				setOpen(false);
-			}
+			// Store the preset alone — no materialized dates. Consumers resolve it to a
+			// fresh window at filter time (resolveTimeRange), so the range rolls with the
+			// clock instead of freezing at the moment of the click.
+			onChange({ from: null, to: null, preset });
+			setOpen(false);
 		},
 		[onChange]
 	);

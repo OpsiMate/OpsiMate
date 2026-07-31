@@ -2,9 +2,16 @@ import { TimeRange } from '@/context/DashboardContext';
 import { useUsers } from '@/hooks/queries/users';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { resolveTimeRange } from '../AlertsTable/TimeFilter/TimeFilter.utils';
 import { getOwnerDisplayName } from '../utils/owner.utils';
 import { getAlertSeverity, SEVERITY_LABELS } from '../utils/severity.utils';
+
+// How often a quick-preset window re-anchors to "now". This is the roll cadence: alert
+// refetches keep the same array identity when data is unchanged (react-query structural
+// sharing), so without the tick the memo would never re-evaluate the window. 10s keeps
+// even the "Last 1 minute" preset reasonably fresh at negligible recompute cost.
+const ROLLING_WINDOW_TICK_MS = 10 * 1000;
 
 const getAlertType = (alert: Alert): string => {
 	return alert.type || 'Custom';
@@ -23,25 +30,40 @@ export const useAlertsFiltering = (
 ) => {
 	const { data: users = [] } = useUsers();
 
-	const { filters, timeRange } = useMemo(() => {
+	const { filters, timeRange } = useMemo((): { filters: Record<string, string[]>; timeRange?: TimeRange } => {
+		// 'filters' in x can't narrow the union on its own: the legacy shape is an open
+		// Record, so TS keeps both arms alive and unions every property access. The casts
+		// pin each branch to the shape the guard actually identified.
 		if ('filters' in filtersOrOptions) {
-			return {
-				filters: filtersOrOptions.filters,
-				timeRange: filtersOrOptions.timeRange,
-			};
+			const options = filtersOrOptions as UseAlertsFilteringOptions;
+			return { filters: options.filters, timeRange: options.timeRange };
 		}
-		return { filters: filtersOrOptions, timeRange: undefined };
+		return { filters: filtersOrOptions as Record<string, string[]>, timeRange: undefined };
 	}, [filtersOrOptions]);
 
+	// Quick presets ("Last 1 hour", "Today") are stored as the preset alone and resolved
+	// to concrete dates at filter time, so the window rolls with the clock. The tick
+	// guarantees a periodic re-anchor even when no refetch re-renders the page.
+	const isRollingPreset = !!timeRange?.preset && timeRange.preset !== 'custom';
+	const [tick, setTick] = useState(0);
+	useEffect(() => {
+		if (!isRollingPreset) return;
+		const interval = setInterval(() => setTick((t) => t + 1), ROLLING_WINDOW_TICK_MS);
+		return () => clearInterval(interval);
+	}, [isRollingPreset]);
+
 	const filteredAlerts = useMemo(() => {
+		// Reference the tick so a preset window re-anchors to "now" periodically.
+		void tick;
 		let result = alerts;
 
-		if (timeRange?.from || timeRange?.to) {
+		const resolved = timeRange ? resolveTimeRange(timeRange) : { from: null, to: null };
+		if (resolved.from || resolved.to) {
 			result = result.filter((alert) => {
 				const alertStartDate = new Date(alert.startsAt);
 				const alertEndDate = new Date(alert.updatedAt);
-				const filterStart = timeRange.from || new Date(0);
-				const filterEnd = timeRange.to || new Date();
+				const filterStart = resolved.from || new Date(0);
+				const filterEnd = resolved.to || new Date();
 
 				return alertStartDate <= filterEnd && alertEndDate >= filterStart;
 			});
@@ -95,7 +117,7 @@ export const useAlertsFiltering = (
 			}
 			return true;
 		});
-	}, [alerts, filters, timeRange, users]);
+	}, [alerts, filters, timeRange, users, tick]);
 
 	return filteredAlerts;
 };

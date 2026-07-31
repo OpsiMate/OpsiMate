@@ -14,6 +14,7 @@ import {
 	TO_LABEL,
 } from './CustomTimeFilterTab.constants';
 import { TimeRange } from '../TimeFilter.types';
+import { resolveTimeRange } from '../TimeFilter.utils';
 
 interface CustomTimeFilterTabProps {
 	value: TimeRange;
@@ -22,8 +23,11 @@ interface CustomTimeFilterTabProps {
 }
 
 export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilterTabProps) => {
-	const [customFrom, setCustomFrom] = useState<Date | undefined>(value.from ?? undefined);
-	const [customTo, setCustomTo] = useState<Date | undefined>(value.to ?? undefined);
+	// Prefill from the resolved window so switching from a quick preset (stored without
+	// dates) starts the pickers at the preset's current from/to instead of empty.
+	const initial = resolveTimeRange(value);
+	const [customFrom, setCustomFrom] = useState<Date | undefined>(initial.from ?? undefined);
+	const [customTo, setCustomTo] = useState<Date | undefined>(initial.to ?? undefined);
 	const [fromTime, setFromTime] = useState(DEFAULT_FROM_TIME);
 	const [toTime, setToTime] = useState(DEFAULT_TO_TIME);
 	const [fromCalendarOpen, setFromCalendarOpen] = useState(false);
