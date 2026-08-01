@@ -1427,9 +1427,10 @@ describe('Firing times on alert listings', () => {
 			(a) => a.id === alertId
 		);
 		expect(alert?.firingTimes?.length).toBeGreaterThan(0);
-		// At least one firing timestamp is from just now (the unresolve moment), within 60s.
-		const recent = (alert?.firingTimes ?? []).some((t) => Math.abs(new Date(t).getTime() - before) < 60_000);
-		expect(recent).toBe(true);
+		// At least one firing timestamp is from AFTER the unresolve started — the seeded
+		// fixture rows are older than `before`, so this can only match the unresolve moment.
+		const unresolveRecorded = (alert?.firingTimes ?? []).some((t) => new Date(t).getTime() >= before);
+		expect(unresolveRecorded).toBe(true);
 		// All normalized ISO-UTC.
 		for (const t of alert?.firingTimes ?? []) {
 			expect(t).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);

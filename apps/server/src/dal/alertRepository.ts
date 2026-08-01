@@ -353,14 +353,20 @@ export class AlertRepository {
 		});
 	}
 
-	// Firing-transition timestamps per alert, from the status-history trigger records
-	// (first fire, webhook re-fires, unresolve re-inserts). Raw values — the BL merges
-	// them with unresolve events and normalizes to ISO.
-	async getFiringTimesByAlert(): Promise<Record<string, string[]>> {
+	// Firing-transition timestamps for the given alerts, from the status-history trigger
+	// records (first fire, webhook re-fires, unresolve re-inserts). Raw values — the BL
+	// merges them with unresolve events and normalizes to ISO. Scoped to the listed ids
+	// so the work doesn't grow with total history retention.
+	async getFiringTimesByAlert(alertIds: string[]): Promise<Record<string, string[]>> {
+		if (alertIds.length === 0) return {};
 		return runAsync(() => {
+			const placeholders = alertIds.map(() => '?').join(', ');
 			const rows = this.db
-				.prepare(`SELECT alert_id, archived_at FROM alerts_history WHERE status = 'firing'`)
-				.all() as { alert_id: string; archived_at: string }[];
+				.prepare(
+					`SELECT alert_id, archived_at FROM alerts_history
+					 WHERE status = 'firing' AND alert_id IN (${placeholders})`
+				)
+				.all(...alertIds) as { alert_id: string; archived_at: string }[];
 			const result: Record<string, string[]> = {};
 			for (const row of rows) {
 				(result[row.alert_id] ??= []).push(row.archived_at);

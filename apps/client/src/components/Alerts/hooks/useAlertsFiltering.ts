@@ -82,7 +82,9 @@ export const useAlertsFiltering = (
 					return !isNaN(t.getTime()) && t >= filterStart && t <= filterEnd;
 				});
 				if (candidates.length === 0) return alert;
-				const inRangeStart = candidates.sort()[0];
+				// Numeric sort: startsAt can carry a timezone offset while firingTimes are
+				// normalized UTC — lexicographic order would mis-pick across formats.
+				const inRangeStart = candidates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
 				return inRangeStart === alert.startsAt ? alert : { ...alert, startsAt: inRangeStart };
 			});
 		}

@@ -164,10 +164,12 @@ export class AlertBL {
 	// latter carry the actual unresolve moment, which the status trigger doesn't.
 	// Best-effort: a failed lookup must never break the listing.
 	private async attachFiringTimes(alerts: Alert[]): Promise<Alert[]> {
+		if (alerts.length === 0) return alerts;
 		try {
+			const alertIds = alerts.map((alert) => alert.id);
 			const [firingRows, unresolveEvents] = await Promise.all([
-				this.alertRepo.getFiringTimesByAlert(),
-				this.alertHistoryRepo.getEventTimesByType(AlertHistoryEventType.UNRESOLVED),
+				this.alertRepo.getFiringTimesByAlert(alertIds),
+				this.alertHistoryRepo.getEventTimesByType(AlertHistoryEventType.UNRESOLVED, alertIds),
 			]);
 			return alerts.map((alert) => {
 				const merged = [...(firingRows[alert.id] ?? []), ...(unresolveEvents[alert.id] ?? [])].map(toIsoUtc);
