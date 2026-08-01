@@ -34,6 +34,8 @@ export interface AlertsTableProps {
 	groupByColumns?: string[];
 	onGroupByChange?: (cols: string[]) => void;
 	onColumnToggle?: (column: string) => void;
+	// Persists a user-arranged base-column order (from the column settings drag list).
+	onColumnOrderChange?: (columns: string[]) => void;
 	tagKeys?: TagKeyInfo[];
 	timeRange?: TimeRange;
 	onTimeRangeChange?: (range: TimeRange) => void;

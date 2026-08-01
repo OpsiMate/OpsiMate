@@ -47,6 +47,7 @@ export interface DashboardRow {
 	created_at: string;
 	filters: string; // Record<string, string>
 	visible_columns: string; // string[]
+	column_order?: string | null; // string[]
 	query: string;
 	group_by: string; // string[]
 	time_range?: string | null; // DashboardTimeRange

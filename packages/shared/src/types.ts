@@ -348,6 +348,9 @@ export interface Dashboard {
 	description?: string;
 	filters: Record<string, unknown>;
 	visibleColumns: string[];
+	// User-arranged column order for the alerts table (base columns; tag-key columns
+	// follow the visible list). Absent on dashboards saved before reordering shipped.
+	columnOrder?: string[];
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;

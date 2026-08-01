@@ -105,6 +105,8 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		const initialFilters = JSON.stringify(initialState.filters);
 		const currentVisibleColumns = JSON.stringify(dashboardState.visibleColumns);
 		const initialVisibleColumns = JSON.stringify(initialState.visibleColumns);
+		const currentColumnOrder = JSON.stringify(dashboardState.columnOrder);
+		const initialColumnOrder = JSON.stringify(initialState.columnOrder);
 		const currentQuery = dashboardState.query;
 		const initialQuery = initialState.query;
 		// serializeTimeRange fixes the property order (and turns Dates into ISO
@@ -118,6 +120,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			currentGroupBy !== initialGroupBy ||
 			currentFilters !== initialFilters ||
 			currentVisibleColumns !== initialVisibleColumns ||
+			currentColumnOrder !== initialColumnOrder ||
 			currentQuery !== initialQuery ||
 			currentTimeRange !== initialTimeRange
 		);
@@ -130,6 +133,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			'groupBy',
 			'filters',
 			'visibleColumns',
+			'columnOrder',
 			'query',
 			'timeRange',
 		];

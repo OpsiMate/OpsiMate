@@ -15,6 +15,7 @@ export class DashboardRepository {
 			filters: JSON.parse(dashboardRow.filters) as Record<string, unknown>,
 			visibleColumns: JSON.parse(dashboardRow.visible_columns) as string[],
 			query: dashboardRow.query,
+			columnOrder: dashboardRow.column_order ? (JSON.parse(dashboardRow.column_order) as string[]) : undefined,
 			groupBy: JSON.parse(dashboardRow.group_by) as string[],
 			timeRange: dashboardRow.time_range
 				? (JSON.parse(dashboardRow.time_range) as DashboardTimeRange)
@@ -40,8 +41,8 @@ export class DashboardRepository {
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO dashboards (name, type, description, filters, visible_columns, query, group_by, time_range)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, query, group_by, time_range)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 			const result = stmt.run(
 				dashboard.name,
@@ -49,6 +50,7 @@ export class DashboardRepository {
 				dashboard.description,
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
+				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
 				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null
@@ -91,6 +93,10 @@ export class DashboardRepository {
 			if (!columns.some((col) => col.name === 'time_range')) {
 				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN time_range TEXT`).run();
 			}
+			// Backward compatibility: user-arranged column order (JSON string[]).
+			if (!columns.some((col) => col.name === 'column_order')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN column_order TEXT`).run();
+			}
 		});
 	}
 
@@ -104,6 +110,7 @@ export class DashboardRepository {
                 description = ?,
                 filters = ?,
                 visible_columns = ?,
+                column_order = ?,
                 query = ?,
                 group_by = ?,
                 time_range = ?
@@ -116,6 +123,7 @@ export class DashboardRepository {
 				dashboard.description,
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
+				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
 				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null,

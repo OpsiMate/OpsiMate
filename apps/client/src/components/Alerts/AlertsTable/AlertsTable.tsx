@@ -57,6 +57,7 @@ export const AlertsTable = ({
 	groupByColumns: controlledGroupBy,
 	onGroupByChange,
 	onColumnToggle,
+	onColumnOrderChange,
 	tagKeys = [],
 	searchTerm,
 	onSearchTermChange,
@@ -245,6 +246,8 @@ export const AlertsTable = ({
 																		visibleColumns={visibleColumns}
 																		onColumnToggle={onColumnToggle}
 																		columnLabels={COLUMN_LABELS}
+																		columnOrder={columnOrder}
+																		onColumnOrderChange={onColumnOrderChange}
 																		excludeColumns={[ACTIONS_COLUMN]}
 																		tagKeys={tagKeys}
 																	/>
