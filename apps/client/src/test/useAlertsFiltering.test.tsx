@@ -76,12 +76,21 @@ describe('useAlertsFiltering rolling time presets', () => {
 });
 
 describe('formatDate (Started At display)', () => {
+	// Frozen clock: formatDate reads new Date() internally, so a real-clock test running
+	// across midnight could see "today" flip between capturing `now` and asserting.
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2026, 5, 15, 14, 30, 0));
+	});
+	afterEach(() => vi.useRealTimers());
+
 	test('today renders time-only, older timestamps keep the full date', async () => {
 		const { formatDate } = await import('@/components/Alerts/AlertsTable/AlertsTable.utils');
 		const now = new Date();
 		expect(formatDate(now.toISOString())).toBe(now.toLocaleTimeString());
 
-		const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+		const yesterday = new Date(now);
+		yesterday.setDate(yesterday.getDate() - 1);
 		expect(formatDate(yesterday.toISOString())).toBe(yesterday.toLocaleString());
 
 		expect(formatDate('not-a-date')).toBe('Invalid Date');
