@@ -9,15 +9,19 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { getTagKeyColumnId, TagKeyInfo } from '@/types';
-import { Columns3, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { getTagKeyColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
+import { Columns3, GripVertical, Search, X } from 'lucide-react';
+import { DragEvent, useState } from 'react';
 import { ALERT_TAGS_LABEL, TOGGLE_COLUMNS_LABEL } from './ColumnSettingsDropdown.constants';
 
 export interface ColumnSettingsDropdownProps {
 	visibleColumns: string[];
 	onColumnToggle: (column: string) => void;
 	columnLabels: Record<string, string>;
+	// Current base-column order; the list renders in this order and drags rearrange it.
+	columnOrder?: string[];
+	// When provided, the base columns get drag handles; called with the full new base order.
+	onColumnOrderChange?: (columns: string[]) => void;
 	excludeColumns?: string[];
 	tagKeys?: TagKeyInfo[];
 }
@@ -26,17 +30,73 @@ export const ColumnSettingsDropdown = ({
 	visibleColumns,
 	onColumnToggle,
 	columnLabels,
+	columnOrder = [],
+	onColumnOrderChange,
 	excludeColumns = [],
 	tagKeys = [],
 }: ColumnSettingsDropdownProps) => {
 	const [searchQuery, setSearchQuery] = useState('');
+	const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-	const availableColumns = Object.entries(columnLabels).filter(([key]) => !excludeColumns.includes(key));
+	// Base columns sorted by the current order; columns the (possibly stale) saved order
+	// doesn't know about sink to the end in their label-map order.
+	const baseOrder = columnOrder.filter((col) => !isTagKeyColumn(col));
+	const availableColumns = Object.entries(columnLabels)
+		.filter(([key]) => !excludeColumns.includes(key))
+		.sort(([a], [b]) => {
+			const ia = baseOrder.indexOf(a);
+			const ib = baseOrder.indexOf(b);
+			return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+		});
 
 	// Filter columns based on search query
 	const filteredColumns = availableColumns.filter(([, label]) =>
 		label.toLowerCase().includes(searchQuery.toLowerCase())
 	);
+
+	// Reordering is disabled while searching — dragging within a filtered subset would
+	// splice items at misleading positions.
+	const canReorder = !!onColumnOrderChange && !searchQuery;
+
+	// Live preview: the list as it would look if the dragged item were dropped here.
+	const displayColumns = (() => {
+		if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
+			return filteredColumns;
+		}
+		const next = [...filteredColumns];
+		const [moved] = next.splice(draggedIndex, 1);
+		next.splice(dragOverIndex, 0, moved);
+		return next;
+	})();
+
+	const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+		setDraggedIndex(index);
+		e.dataTransfer.effectAllowed = 'move';
+		e.dataTransfer.setData('text/plain', index.toString());
+	};
+
+	const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'move';
+		if (draggedIndex === null) return;
+		setDragOverIndex(index);
+	};
+
+	const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+			onColumnOrderChange?.(displayColumns.map(([key]) => key));
+		}
+		setDraggedIndex(null);
+		setDragOverIndex(null);
+	};
+
+	const handleDragEnd = () => {
+		setDraggedIndex(null);
+		setDragOverIndex(null);
+	};
 
 	const filteredTagKeys = tagKeys.filter((tagKey) => tagKey.label.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -87,15 +147,37 @@ export const ColumnSettingsDropdown = ({
 
 					{/* Scrollable Column List */}
 					<div className={totalItems > 10 ? 'max-h-[280px] overflow-y-auto' : ''}>
-						{filteredColumns.map(([key, label]) => (
-							<DropdownMenuCheckboxItem
+						{displayColumns.map(([key, label], index) => (
+							<div
 								key={key}
-								checked={visibleColumns.includes(key)}
-								onCheckedChange={() => onColumnToggle(key)}
-								onSelect={(e) => e.preventDefault()}
+								draggable={canReorder}
+								onDragStart={(e) => handleDragStart(e, index)}
+								onDragOver={(e) => handleDragOver(e, index)}
+								onDrop={handleDrop}
+								onDragEnd={handleDragEnd}
+								className={
+									draggedIndex !== null && displayColumns[dragOverIndex ?? -1]?.[0] === key
+										? 'rounded-sm bg-accent/50'
+										: undefined
+								}
 							>
-								{label}
-							</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={visibleColumns.includes(key)}
+									onCheckedChange={() => onColumnToggle(key)}
+									onSelect={(e) => e.preventDefault()}
+									className={canReorder ? 'pr-7 relative' : undefined}
+								>
+									{label}
+									{canReorder && (
+										<span
+											className="absolute right-1.5 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+											aria-label={`Drag to reorder ${label}`}
+										>
+											<GripVertical className="h-3.5 w-3.5" />
+										</span>
+									)}
+								</DropdownMenuCheckboxItem>
+							</div>
 						))}
 						{filteredTagKeys.length > 0 && (
 							<>

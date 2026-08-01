@@ -7,6 +7,8 @@ export interface Dashboard {
 	description?: string;
 	filters: Record<string, string[]>;
 	visibleColumns: string[];
+	// User-arranged base-column order; absent on dashboards saved before reordering shipped.
+	columnOrder?: string[];
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;
@@ -19,6 +21,7 @@ export interface CreateDashboardInput {
 	description?: string;
 	filters: Record<string, string[]>;
 	visibleColumns: string[];
+	columnOrder?: string[];
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;

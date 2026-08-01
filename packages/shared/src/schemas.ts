@@ -262,6 +262,7 @@ export const CreateDashboardSchema = z.object({
 	description: z.string().optional(),
 	filters: z.record(z.unknown()),
 	visibleColumns: z.array(z.string()),
+	columnOrder: z.array(z.string()).optional(),
 	query: z.string(),
 	groupBy: z.array(z.string()),
 	timeRange: z

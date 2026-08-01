@@ -148,6 +148,14 @@ const Alerts = () => {
 			),
 	});
 
+	// Persist a user-arranged base-column order (tag columns follow the visible list).
+	const handleColumnOrderChange = (columns: string[]) => {
+		updateDashboardField(
+			'columnOrder',
+			columns.filter((col) => col !== ACTIONS_COLUMN)
+		);
+	};
+
 	const handleSaveDashboard = async () => {
 		const dashboardData = {
 			name: dashboardState.name || 'New Dashboard',
@@ -155,6 +163,7 @@ const Alerts = () => {
 			description: dashboardState.description,
 			filters: dashboardState.filters,
 			visibleColumns: dashboardState.visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
+			columnOrder: dashboardState.columnOrder.filter((col) => col !== ACTIONS_COLUMN),
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
 			timeRange: serializeTimeRange(dashboardState.timeRange),
@@ -371,6 +380,7 @@ const Alerts = () => {
 			groupByColumns={dashboardState.groupBy}
 			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 			onColumnToggle={handleColumnToggle}
+			onColumnOrderChange={handleColumnOrderChange}
 			tagKeys={tagKeys}
 			timeRange={dashboardState.timeRange}
 			onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
@@ -404,7 +414,7 @@ const Alerts = () => {
 				description: dashboard.description || '',
 				visibleColumns: dashboard.visibleColumns || [],
 				filters: dashboard.filters || {},
-				columnOrder: [],
+				columnOrder: dashboard.columnOrder || [],
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
 				timeRange: deserializeTimeRange(dashboard.timeRange),
@@ -675,6 +685,7 @@ const Alerts = () => {
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 									onColumnToggle={handleColumnToggle}
+									onColumnOrderChange={handleColumnOrderChange}
 									tagKeys={tagKeys}
 									timeRange={dashboardState.timeRange}
 									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
@@ -712,6 +723,7 @@ const Alerts = () => {
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
 									onColumnToggle={handleColumnToggle}
+									onColumnOrderChange={handleColumnOrderChange}
 									tagKeys={tagKeys}
 									timeRange={dashboardState.timeRange}
 									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
