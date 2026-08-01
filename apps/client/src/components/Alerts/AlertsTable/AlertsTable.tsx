@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert, WrapText } from 'lucide-react';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -24,7 +24,14 @@ import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
-import { useAlertGrouping, useAlertSelection, useAlertSorting, useDragSelection, useStickyHeaders } from './hooks';
+import {
+	useAlertGrouping,
+	useAlertSelection,
+	useAlertSorting,
+	useDragAutoScroll,
+	useDragSelection,
+	useStickyHeaders,
+} from './hooks';
 import { SearchBar } from './SearchBar';
 import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
@@ -90,6 +97,18 @@ export const AlertsTable = ({
 		selectedAlerts,
 		onSelectAlerts,
 	});
+
+	// Alert lookup for the auto-scroll hook: rows revealed by scrolling under a held
+	// pointer are selected by id (mouseenter doesn't re-fire on scroll).
+	const alertsById = useMemo(() => new Map(sortedAlerts.map((alert) => [alert.id, alert])), [sortedAlerts]);
+	const handleDragOverAlertId = useCallback(
+		(alertId: string) => {
+			const alert = alertsById.get(alertId);
+			if (alert) handleDragEnter(alert);
+		},
+		[alertsById, handleDragEnter]
+	);
+	useDragAutoScroll({ isDragging, scrollElementRef: parentRef, onDragOverAlertId: handleDragOverAlertId });
 
 	const virtualizer = useVirtualizer({
 		count: flatRows.length,

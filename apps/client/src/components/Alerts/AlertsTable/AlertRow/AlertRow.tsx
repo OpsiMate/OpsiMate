@@ -81,6 +81,7 @@ export const AlertRow = ({
 
 	return (
 		<TableRow
+			data-alert-id={alert.id}
 			className={cn(
 				'h-8 cursor-pointer hover:bg-muted/50',
 				// Severity tint sits under selection/active highlights so those still win.
