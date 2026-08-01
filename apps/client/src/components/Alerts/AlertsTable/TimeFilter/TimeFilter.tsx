@@ -33,7 +33,7 @@ export const TimeFilter = ({ value, onChange }: TimeFilterProps) => {
 	);
 
 	const handleClear = useCallback(
-		(e?: React.MouseEvent) => {
+		(e?: React.SyntheticEvent) => {
 			if (e) {
 				e.stopPropagation();
 			}

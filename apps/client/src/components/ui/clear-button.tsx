@@ -3,36 +3,47 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-export interface ClearButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-	onClear?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+export interface ClearButtonProps extends React.HTMLAttributes<HTMLSpanElement> {
+	onClear?: (e: React.SyntheticEvent) => void;
 }
 
-const ClearButton = React.forwardRef<HTMLButtonElement, ClearButtonProps>(
-	({ className, onClick, onClear, ...props }, ref) => {
-		const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+const ClearButton = React.forwardRef<HTMLSpanElement, ClearButtonProps>(
+	({ className, onClick, onClear, onKeyDown, ...props }, ref) => {
+		const handleActivate = (e: React.SyntheticEvent) => {
 			e.stopPropagation();
 			e.preventDefault();
 			if (onClear) {
 				onClear(e);
 			}
 			if (onClick) {
-				onClick(e);
+				onClick(e as React.MouseEvent<HTMLSpanElement>);
 			}
 		};
 
+		const handleKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				handleActivate(e);
+			}
+			onKeyDown?.(e);
+		};
+
 		return (
-			<button
+			<span
 				ref={ref}
-				type="button"
-				onClick={handleClick}
+				role="button"
+				tabIndex={0}
+				aria-label="Clear filter"
+				onClick={handleActivate}
+				onKeyDown={handleKeyDown}
+				{...props}
 				className={cn(
-					'flex items-center justify-center shrink-0 rounded-sm opacity-70 hover:opacity-100 focus:outline-hidden hover:bg-primary hover:text-primary-foreground transition-colors',
+					'flex cursor-pointer items-center justify-center shrink-0 rounded-sm opacity-70 hover:opacity-100 focus:outline-hidden hover:bg-primary hover:text-primary-foreground transition-colors',
 					className
 				)}
-				{...props}
 			>
-				<X className="h-3.5 w-3.5" />
-			</button>
+				<X aria-hidden="true" className="h-3.5 w-3.5" />
+			</span>
 		);
 	}
 );
