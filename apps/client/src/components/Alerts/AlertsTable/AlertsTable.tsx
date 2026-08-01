@@ -92,7 +92,11 @@ export const AlertsTable = ({
 		controlledGroupBy,
 		onGroupByChange
 	);
-	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
+	const { allSelected, handleSelectAll, handleSelectAlert } = useAlertSelection({
+		sortedAlerts,
+		selectedAlerts,
+		onSelectAlerts,
+	});
 	const { isDragging, handleDragStart, handleDragEnter, handleDragEnd } = useDragSelection({
 		selectedAlerts,
 		onSelectAlerts,
@@ -200,10 +204,7 @@ export const AlertsTable = ({
 												>
 													<div className="flex items-center justify-center">
 														<Checkbox
-															checked={
-																sortedAlerts.length > 0 &&
-																selectedAlerts.length === sortedAlerts.length
-															}
+															checked={allSelected}
 															onCheckedChange={handleSelectAll}
 															className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
 														/>
