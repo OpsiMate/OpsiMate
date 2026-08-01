@@ -9,10 +9,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { getTagKeyColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
+import { getTagKeyColumnId, TagKeyInfo } from '@/types';
 import { Columns3, GripVertical, Search, X } from 'lucide-react';
 import { DragEvent, useState } from 'react';
-import { ALERT_TAGS_LABEL, TOGGLE_COLUMNS_LABEL } from './ColumnSettingsDropdown.constants';
+import { TOGGLE_COLUMNS_LABEL } from './ColumnSettingsDropdown.constants';
 
 export interface ColumnSettingsDropdownProps {
 	visibleColumns: string[];
@@ -39,16 +39,19 @@ export const ColumnSettingsDropdown = ({
 	const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-	// Base columns sorted by the current order; columns the (possibly stale) saved order
-	// doesn't know about sink to the end in their label-map order.
-	const baseOrder = columnOrder.filter((col) => !isTagKeyColumn(col));
-	const availableColumns = Object.entries(columnLabels)
-		.filter(([key]) => !excludeColumns.includes(key))
-		.sort(([a], [b]) => {
-			const ia = baseOrder.indexOf(a);
-			const ib = baseOrder.indexOf(b);
-			return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
-		});
+	// One flat list: base columns and tag-key columns together, sorted by the current
+	// column order — the user arranges the table freely, nothing is segregated. Columns
+	// the (possibly stale) saved order doesn't know about sink to the end: base columns
+	// first, then tag keys, each group keeping its own listing order.
+	const availableColumns: [string, string][] = [
+		...Object.entries(columnLabels).filter(([key]) => !excludeColumns.includes(key)),
+		...tagKeys.map((tagKey): [string, string] => [getTagKeyColumnId(tagKey.key), tagKey.label]),
+	].sort(([a], [b]) => {
+		const ia = columnOrder.indexOf(a);
+		const ib = columnOrder.indexOf(b);
+		if (ia === -1 && ib === -1) return 0;
+		return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+	});
 
 	// Filter columns based on search query
 	const filteredColumns = availableColumns.filter(([, label]) =>
@@ -98,9 +101,7 @@ export const ColumnSettingsDropdown = ({
 		setDragOverIndex(null);
 	};
 
-	const filteredTagKeys = tagKeys.filter((tagKey) => tagKey.label.toLowerCase().includes(searchQuery.toLowerCase()));
-
-	const totalItems = filteredColumns.length + filteredTagKeys.length;
+	const totalItems = filteredColumns.length;
 
 	return (
 		<div className="flex items-center border rounded-md">
@@ -179,25 +180,6 @@ export const ColumnSettingsDropdown = ({
 								</DropdownMenuCheckboxItem>
 							</div>
 						))}
-						{filteredTagKeys.length > 0 && (
-							<>
-								<DropdownMenuSeparator />
-								<DropdownMenuLabel>{ALERT_TAGS_LABEL}</DropdownMenuLabel>
-								{filteredTagKeys.map((tagKey) => {
-									const columnId = getTagKeyColumnId(tagKey.key);
-									return (
-										<DropdownMenuCheckboxItem
-											key={columnId}
-											checked={visibleColumns.includes(columnId)}
-											onCheckedChange={() => onColumnToggle(columnId)}
-											onSelect={(e) => e.preventDefault()}
-										>
-											{tagKey.label}
-										</DropdownMenuCheckboxItem>
-									);
-								})}
-							</>
-						)}
 
 						{/* No Results */}
 						{totalItems === 0 && searchQuery && (

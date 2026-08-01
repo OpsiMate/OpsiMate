@@ -61,9 +61,14 @@ export const useColumnManagement = (options: ColumnManagementOptions = {}) => {
 	const tagKeyColumnIds = useMemo(() => tagKeys.map((tk) => getTagKeyColumnId(tk.key)), [tagKeys]);
 
 	const effectiveColumnOrder = useMemo(() => {
-		const tagKeysInOrder = visibleColumns.filter((col) => isTagKeyColumn(col));
-		const baseOrder = columnOrder.filter((col) => !isTagKeyColumn(col) && col !== ACTIONS_COLUMN);
-		return [...baseOrder, ...tagKeysInOrder];
+		// One unified order — base columns and tag-key columns interleave however the user
+		// arranged them; nothing is segregated. Columns missing from the stored order
+		// (ones that shipped after it was persisted, or tags toggled visible for the first
+		// time) append at the end until the user drags them elsewhere. The table renders
+		// orderedColumns = order ∩ visible, so hidden entries are just remembered positions.
+		const storedOrder = columnOrder.filter((col) => col !== ACTIONS_COLUMN);
+		const missingVisible = visibleColumns.filter((col) => col !== ACTIONS_COLUMN && !storedOrder.includes(col));
+		return [...storedOrder, ...missingVisible];
 	}, [columnOrder, visibleColumns]);
 
 	const handleColumnToggle = useCallback(
