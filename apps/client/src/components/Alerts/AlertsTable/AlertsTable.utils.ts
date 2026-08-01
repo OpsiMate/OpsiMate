@@ -79,9 +79,18 @@ export const sortAlerts = (
 	});
 };
 
+// Timestamps from today render time-only — the date part is noise for the rows users
+// care about most; older timestamps keep the full date. Sorting is unaffected: it runs
+// on the raw epoch value (getSortValue), never on this display string.
 export const formatDate = (dateString: string): string => {
 	const date = new Date(dateString);
-	return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString();
+	if (isNaN(date.getTime())) return 'Invalid Date';
+	const now = new Date();
+	const isToday =
+		date.getFullYear() === now.getFullYear() &&
+		date.getMonth() === now.getMonth() &&
+		date.getDate() === now.getDate();
+	return isToday ? date.toLocaleTimeString() : date.toLocaleString();
 };
 
 export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string => {
