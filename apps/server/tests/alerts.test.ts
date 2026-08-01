@@ -1412,3 +1412,36 @@ describe('Silence reset settings API', () => {
 		expect(descriptions).toContain('Silence cleared by daily reset');
 	});
 });
+
+describe('Last comment on alert listings', () => {
+	test("GET /alerts attaches each alert's newest comment as lastComment", async () => {
+		const alertId = testAlerts[0].id;
+		// No comments yet -> null
+		const before = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const noComment = (before.body.data.alerts as { id: string; lastComment: string | null }[]).find(
+			(a) => a.id === alertId
+		);
+		expect(noComment?.lastComment).toBeNull();
+
+		await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'first note' });
+		await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'newest note' });
+
+		const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (response.body.data.alerts as { id: string; lastComment: string | null }[]).find(
+			(a) => a.id === alertId
+		);
+		expect(alert?.lastComment).toBe('newest note');
+
+		// Other alerts stay null.
+		const other = (response.body.data.alerts as { id: string; lastComment: string | null }[]).find(
+			(a) => a.id === testAlerts[1].id
+		);
+		expect(other?.lastComment).toBeNull();
+	});
+});

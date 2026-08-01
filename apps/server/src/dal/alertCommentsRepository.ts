@@ -144,6 +144,27 @@ export class AlertCommentsRepository {
 		});
 	}
 
+	// Newest comment text per alert, in one query — feeds the alerts listing's optional
+	// "Last Comment" column without a per-alert lookup.
+	async getLatestCommentPerAlert(): Promise<Record<string, string>> {
+		return runAsync(() => {
+			const rows = this.db
+				.prepare(
+					`SELECT alert_id, comment FROM (
+						SELECT alert_id, comment,
+							ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY created_at DESC, id DESC) AS rn
+						FROM alert_comments
+					) WHERE rn = 1`
+				)
+				.all() as { alert_id: string; comment: string }[];
+			const result: Record<string, string> = {};
+			for (const row of rows) {
+				result[row.alert_id] = row.comment;
+			}
+			return result;
+		});
+	}
+
 	async deleteCommentsByAlertId(alertId: string): Promise<void> {
 		return runAsync(() => {
 			this.db.prepare('DELETE FROM alert_comments WHERE alert_id = ?').run(alertId);

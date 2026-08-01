@@ -212,6 +212,9 @@ export interface Alert {
 	isRead?: boolean;
 	// Transient: set at fetch time when an active mute policy rule matches this alert. Not persisted.
 	isMuted?: boolean;
+	// Transient: text of the alert's newest comment, attached at fetch time for the optional
+	// "Last Comment" table column. Not persisted on the alert row itself.
+	lastComment?: string | null;
 	// Transient: set at fetch time with the enrichment rules that matched/decorated this alert.
 	// Empty/undefined means the alert was not enriched. Not persisted.
 	appliedEnrichments?: AppliedEnrichment[];

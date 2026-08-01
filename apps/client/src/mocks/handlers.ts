@@ -144,6 +144,14 @@ const toOncallTeam = (team: OncallTeamState): OncallTeam => {
 	};
 };
 
+// Newest comment text per alert (the optional "Last Comment" column) — mirrors the
+// server attaching it to every alerts listing.
+const withLastComment = <T extends { id: string }>(alert: T): T & { lastComment: string | null } => {
+	const comments = playgroundState.alertComments.filter((c) => c.alertId === alert.id);
+	const newest = comments.length > 0 ? comments[comments.length - 1] : null;
+	return { ...alert, lastComment: newest?.comment ?? null };
+};
+
 export const handlers = [
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, () => {
@@ -162,14 +170,14 @@ export const handlers = [
 		}
 		return HttpResponse.json({
 			success: true,
-			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments) },
+			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment) },
 		});
 	}),
 
 	http.get(`${API_BASE}/alerts/resolved`, () => {
 		return HttpResponse.json({
 			success: true,
-			data: { alerts: playgroundState.resolvedAlerts },
+			data: { alerts: playgroundState.resolvedAlerts.map(withLastComment) },
 		});
 	}),
 

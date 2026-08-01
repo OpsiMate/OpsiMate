@@ -11,7 +11,18 @@ export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
 
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
 
-export const DEFAULT_COLUMN_ORDER = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
+// lastComment is in the order (position when enabled: right after summary) but not in the
+// visible defaults — it's an opt-in column toggled from the column settings.
+export const DEFAULT_COLUMN_ORDER = [
+	'type',
+	'severity',
+	'status',
+	'alertName',
+	'summary',
+	'lastComment',
+	'owner',
+	'startsAt',
+];
 
 export const COLUMN_LABELS: Record<string, string> = {
 	type: 'Type',
@@ -19,12 +30,13 @@ export const COLUMN_LABELS: Record<string, string> = {
 	severity: 'Severity',
 	status: 'Status',
 	summary: 'Summary',
+	lastComment: 'Last Comment',
 	owner: 'Owner',
 	startsAt: 'Started At',
 };
 
-// Every column except alertName and summary has a fixed width; those two share the
-// leftover space equally (the table is layout-fixed). Percentage widths are deliberately
+// Every column except alertName, summary and lastComment has a fixed width; the flexible
+// (w-auto) ones share the leftover space equally (the table is layout-fixed). Percentage widths are deliberately
 // avoided: with enough columns visible their sum exceeded the table's width and the
 // auto-width summary column silently collapsed to 0px, letting neighbors paint over it.
 export const COLUMN_WIDTHS: Record<string, string> = {
@@ -36,6 +48,7 @@ export const COLUMN_WIDTHS: Record<string, string> = {
 	severity: 'w-12 min-w-12 max-w-12',
 	status: 'w-12 min-w-12 max-w-12',
 	summary: 'w-auto',
+	lastComment: 'w-auto',
 	owner: 'w-[120px]',
 	startsAt: 'w-[150px]',
 	[ACTIONS_COLUMN]: 'w-14 min-w-14 max-w-14',
@@ -50,10 +63,11 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	type: 48,
 	severity: 48,
 	status: 48,
-	// The two flexible (w-auto) columns split leftover space equally, so they share
+	// The flexible (w-auto) columns split leftover space equally, so they share
 	// one minimum — declaring different ones would be unenforceable.
 	alertName: 170,
 	summary: 170,
+	lastComment: 170,
 	owner: 120,
 	startsAt: 150,
 	// Rendered at ACTIONS_COLUMN_WIDTH (inline style), not COLUMN_WIDTHS.
