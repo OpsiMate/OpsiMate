@@ -61,13 +61,29 @@ export const useAlertsFiltering = (
 
 		const resolved = timeRange ? resolveTimeRange(timeRange) : { from: null, to: null };
 		if (resolved.from || resolved.to) {
+			const filterStart = resolved.from || new Date(0);
+			const filterEnd = resolved.to || new Date();
+
 			result = result.filter((alert) => {
 				const alertStartDate = new Date(alert.startsAt);
 				const alertEndDate = new Date(alert.updatedAt);
-				const filterStart = resolved.from || new Date(0);
-				const filterEnd = resolved.to || new Date();
 
 				return alertStartDate <= filterEnd && alertEndDate >= filterStart;
+			});
+
+			// Inside a time window, "Started At" means the first time the alert fired WITHIN
+			// that window: an alert that originally fired last week but re-fired/unresolved
+			// inside the range shows (and sorts by) the in-range firing, not the ancient one.
+			// Alerts that simply kept firing across the range boundary have no in-range
+			// transition and keep their real start.
+			result = result.map((alert) => {
+				const candidates = [alert.startsAt, ...(alert.firingTimes ?? [])].filter((iso) => {
+					const t = new Date(iso);
+					return !isNaN(t.getTime()) && t >= filterStart && t <= filterEnd;
+				});
+				if (candidates.length === 0) return alert;
+				const inRangeStart = candidates.sort()[0];
+				return inRangeStart === alert.startsAt ? alert : { ...alert, startsAt: inRangeStart };
 			});
 		}
 

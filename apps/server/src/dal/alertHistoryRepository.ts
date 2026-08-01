@@ -70,6 +70,22 @@ export class AlertHistoryRepository {
 		});
 	}
 
+	// created_at per alert for one event type (e.g. UNRESOLVED = the actual moment an
+	// alert went back to firing; the status-history trigger records the original
+	// starts_at instead on unresolve re-inserts).
+	async getEventTimesByType(eventType: string): Promise<Record<string, string[]>> {
+		return runAsync(() => {
+			const rows = this.db
+				.prepare(`SELECT alert_id, created_at FROM alert_history_events WHERE event_type = ?`)
+				.all(eventType) as { alert_id: string; created_at: string }[];
+			const result: Record<string, string[]> = {};
+			for (const row of rows) {
+				(result[row.alert_id] ??= []).push(row.created_at);
+			}
+			return result;
+		});
+	}
+
 	async getEvents(alertId: string): Promise<AlertHistoryEventRow[]> {
 		return runAsync(() => {
 			return this.db

@@ -1412,3 +1412,27 @@ describe('Silence reset settings API', () => {
 		expect(descriptions).toContain('Silence cleared by daily reset');
 	});
 });
+
+describe('Firing times on alert listings', () => {
+	test('unresolve adds an in-range firing timestamp to firingTimes', async () => {
+		const alertId = testAlerts[0].id;
+		const before = Date.now();
+
+		// resolve (moves to resolved) then unresolve (back to firing, records UNRESOLVED)
+		await app.delete(`/api/v1/alerts/${alertId}`).set('Authorization', `Bearer ${jwtToken}`).send({});
+		await app.patch(`/api/v1/alerts/resolved/${alertId}/unresolve`).set('Authorization', `Bearer ${jwtToken}`);
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as { id: string; firingTimes?: string[] }[]).find(
+			(a) => a.id === alertId
+		);
+		expect(alert?.firingTimes?.length).toBeGreaterThan(0);
+		// At least one firing timestamp is from just now (the unresolve moment), within 60s.
+		const recent = (alert?.firingTimes ?? []).some((t) => Math.abs(new Date(t).getTime() - before) < 60_000);
+		expect(recent).toBe(true);
+		// All normalized ISO-UTC.
+		for (const t of alert?.firingTimes ?? []) {
+			expect(t).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+		}
+	});
+});

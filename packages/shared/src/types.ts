@@ -212,6 +212,10 @@ export interface Alert {
 	isRead?: boolean;
 	// Transient: set at fetch time when an active mute policy rule matches this alert. Not persisted.
 	isMuted?: boolean;
+	// Transient: ISO timestamps of this alert's firing/unresolve transitions, attached at
+	// fetch time. Lets the client show the first firing INSIDE an active time-filter range
+	// instead of the original startsAt. Not persisted on the alert row itself.
+	firingTimes?: string[];
 	// Transient: set at fetch time with the enrichment rules that matched/decorated this alert.
 	// Empty/undefined means the alert was not enriched. Not persisted.
 	appliedEnrichments?: AppliedEnrichment[];

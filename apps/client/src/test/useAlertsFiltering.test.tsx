@@ -75,6 +75,49 @@ describe('useAlertsFiltering rolling time presets', () => {
 	});
 });
 
+describe('in-range Started At override', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => vi.useRealTimers());
+
+	test('an alert that re-fired inside the window shows the in-range firing, not the original start', () => {
+		const oldStart = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+		const inRangeFiring = new Date(Date.now() - 20 * 60_000).toISOString();
+		const alert = {
+			...mkAlert('refired', 0),
+			startsAt: oldStart,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [oldStart, inRangeFiring],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(inRangeFiring);
+	});
+
+	test('an alert firing across the range boundary with no in-range transition keeps its real start', () => {
+		const oldStart = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+		const alert = {
+			...mkAlert('steady', 0),
+			startsAt: oldStart,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [oldStart],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(oldStart);
+	});
+
+	test('without a time filter nothing is overridden', () => {
+		const oldStart = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+		const alert = {
+			...mkAlert('plain', 0),
+			startsAt: oldStart,
+			firingTimes: [new Date(Date.now() - 60_000).toISOString()],
+		};
+		const { result } = renderHook(() => useAlertsFiltering([alert], { filters: {} }), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(oldStart);
+	});
+});
+
 describe('formatDate (Started At display)', () => {
 	// Frozen clock: formatDate reads new Date() internally, so a real-clock test running
 	// across midnight could see "today" flip between capturing `now` and asserting.

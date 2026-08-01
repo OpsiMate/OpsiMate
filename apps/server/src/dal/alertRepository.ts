@@ -353,6 +353,22 @@ export class AlertRepository {
 		});
 	}
 
+	// Firing-transition timestamps per alert, from the status-history trigger records
+	// (first fire, webhook re-fires, unresolve re-inserts). Raw values — the BL merges
+	// them with unresolve events and normalizes to ISO.
+	async getFiringTimesByAlert(): Promise<Record<string, string[]>> {
+		return runAsync(() => {
+			const rows = this.db
+				.prepare(`SELECT alert_id, archived_at FROM alerts_history WHERE status = 'firing'`)
+				.all() as { alert_id: string; archived_at: string }[];
+			const result: Record<string, string[]> = {};
+			for (const row of rows) {
+				(result[row.alert_id] ??= []).push(row.archived_at);
+			}
+			return result;
+		});
+	}
+
 	async markAlertRead(id: string): Promise<SharedAlert | null> {
 		return runAsync(() => {
 			this.db.prepare('UPDATE alerts SET is_read = 1 WHERE id = ?').run(id);
