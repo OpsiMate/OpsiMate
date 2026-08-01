@@ -152,7 +152,7 @@ export class AlertCommentsRepository {
 				.prepare(
 					`SELECT alert_id, comment FROM (
 						SELECT alert_id, comment,
-							ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY created_at DESC, id DESC) AS rn
+							ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY created_at DESC, rowid DESC) AS rn
 						FROM alert_comments
 					) WHERE rn = 1`
 				)
