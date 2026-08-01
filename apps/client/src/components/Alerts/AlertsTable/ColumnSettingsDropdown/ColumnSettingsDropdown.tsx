@@ -36,8 +36,11 @@ export const ColumnSettingsDropdown = ({
 	tagKeys = [],
 }: ColumnSettingsDropdownProps) => {
 	const [searchQuery, setSearchQuery] = useState('');
-	const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+	// Keys, not indexes: after the first preview render, row indexes refer to the
+	// rearranged list, so an index-based drop could land somewhere other than shown.
+	// Keys stay stable and their positions are derived from the immutable base list.
+	const [draggedKey, setDraggedKey] = useState<string | null>(null);
+	const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
 	// One flat list: base columns and tag-key columns together, sorted by the current
 	// column order — the user arranges the table freely, nothing is segregated. Columns
@@ -62,43 +65,50 @@ export const ColumnSettingsDropdown = ({
 	// splice items at misleading positions.
 	const canReorder = !!onColumnOrderChange && !searchQuery;
 
-	// Live preview: the list as it would look if the dragged item were dropped here.
+	// Live preview: the dragged column shown at the hovered column's base position.
+	// Both positions are resolved from the immutable filtered list on every render, so
+	// hovering across several rows never accumulates stale indexes.
 	const displayColumns = (() => {
-		if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
+		if (!draggedKey || !dragOverKey || draggedKey === dragOverKey) {
+			return filteredColumns;
+		}
+		const from = filteredColumns.findIndex(([key]) => key === draggedKey);
+		const to = filteredColumns.findIndex(([key]) => key === dragOverKey);
+		if (from === -1 || to === -1) {
 			return filteredColumns;
 		}
 		const next = [...filteredColumns];
-		const [moved] = next.splice(draggedIndex, 1);
-		next.splice(dragOverIndex, 0, moved);
+		const [moved] = next.splice(from, 1);
+		next.splice(to, 0, moved);
 		return next;
 	})();
 
-	const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
-		setDraggedIndex(index);
+	const handleDragStart = (e: DragEvent<HTMLDivElement>, key: string) => {
+		setDraggedKey(key);
 		e.dataTransfer.effectAllowed = 'move';
-		e.dataTransfer.setData('text/plain', index.toString());
+		e.dataTransfer.setData('text/plain', key);
 	};
 
-	const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+	const handleDragOver = (e: DragEvent<HTMLDivElement>, key: string) => {
 		e.preventDefault();
 		e.dataTransfer.dropEffect = 'move';
-		if (draggedIndex === null) return;
-		setDragOverIndex(index);
+		if (!draggedKey || key === draggedKey) return;
+		setDragOverKey(key);
 	};
 
 	const handleDrop = (e: DragEvent<HTMLDivElement>) => {
 		e.preventDefault();
 		e.stopPropagation();
-		if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+		if (draggedKey && dragOverKey && draggedKey !== dragOverKey) {
 			onColumnOrderChange?.(displayColumns.map(([key]) => key));
 		}
-		setDraggedIndex(null);
-		setDragOverIndex(null);
+		setDraggedKey(null);
+		setDragOverKey(null);
 	};
 
 	const handleDragEnd = () => {
-		setDraggedIndex(null);
-		setDragOverIndex(null);
+		setDraggedKey(null);
+		setDragOverKey(null);
 	};
 
 	const totalItems = filteredColumns.length;
@@ -148,19 +158,15 @@ export const ColumnSettingsDropdown = ({
 
 					{/* Scrollable Column List */}
 					<div className={totalItems > 10 ? 'max-h-[280px] overflow-y-auto' : ''}>
-						{displayColumns.map(([key, label], index) => (
+						{displayColumns.map(([key, label]) => (
 							<div
 								key={key}
 								draggable={canReorder}
-								onDragStart={(e) => handleDragStart(e, index)}
-								onDragOver={(e) => handleDragOver(e, index)}
+								onDragStart={(e) => handleDragStart(e, key)}
+								onDragOver={(e) => handleDragOver(e, key)}
 								onDrop={handleDrop}
 								onDragEnd={handleDragEnd}
-								className={
-									draggedIndex !== null && displayColumns[dragOverIndex ?? -1]?.[0] === key
-										? 'rounded-sm bg-accent/50'
-										: undefined
-								}
+								className={draggedKey === key && dragOverKey ? 'rounded-sm bg-accent/50' : undefined}
 							>
 								<DropdownMenuCheckboxItem
 									checked={visibleColumns.includes(key)}
