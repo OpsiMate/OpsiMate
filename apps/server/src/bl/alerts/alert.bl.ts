@@ -159,6 +159,29 @@ export class AlertBL {
 		return this.alertRepo.updateSilenceResetSettings(updates);
 	}
 
+	// Attaches each alert's firing/unresolve transition timestamps (normalized ISO,
+	// sorted, deduped): status-history "firing" records plus UNRESOLVED events — the
+	// latter carry the actual unresolve moment, which the status trigger doesn't.
+	// Best-effort: a failed lookup must never break the listing.
+	private async attachFiringTimes(alerts: Alert[]): Promise<Alert[]> {
+		if (alerts.length === 0) return alerts;
+		try {
+			const alertIds = alerts.map((alert) => alert.id);
+			const [firingRows, unresolveEvents] = await Promise.all([
+				this.alertRepo.getFiringTimesByAlert(alertIds),
+				this.alertHistoryRepo.getEventTimesByType(AlertHistoryEventType.UNRESOLVED, alertIds),
+			]);
+			return alerts.map((alert) => {
+				const merged = [...(firingRows[alert.id] ?? []), ...(unresolveEvents[alert.id] ?? [])].map(toIsoUtc);
+				if (merged.length === 0) return alert;
+				return { ...alert, firingTimes: [...new Set(merged)].sort() };
+			});
+		} catch (error) {
+			logger.error('Failed to attach firing times to alerts', error);
+			return alerts;
+		}
+	}
+
 	async getAllAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all alerts');
@@ -169,9 +192,9 @@ export class AlertBL {
 				alerts = await this.enrichmentBL.applyEnrichments(alerts);
 			}
 			if (this.mutePolicyBL) {
-				return await this.mutePolicyBL.markMuted(alerts);
+				alerts = await this.mutePolicyBL.markMuted(alerts);
 			}
-			return alerts;
+			return await this.attachFiringTimes(alerts);
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
@@ -242,7 +265,7 @@ export class AlertBL {
 	async getAllResolvedAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all resolved alerts');
-			return await this.resolvedAlertRepo.getAllResolvedAlerts();
+			return await this.attachFiringTimes(await this.resolvedAlertRepo.getAllResolvedAlerts());
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;
