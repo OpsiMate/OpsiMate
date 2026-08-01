@@ -47,25 +47,28 @@ export const TimeFilter = ({ value, onChange }: TimeFilterProps) => {
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
-					size="sm"
-					className={cn(
-						'h-8 gap-2 text-xs font-semibold w-auto items-center rounded-full',
-						hasValue && 'border-primary text-primary'
-					)}
-				>
-					<Clock className="h-4 w-4 shrink-0" />
-					<span className="whitespace-nowrap">{displayText}</span>
-					{hasValue && (
-						<ClearButton
-							onClear={handleClear}
-							className="h-auto w-auto inline-flex items-center justify-center"
-						/>
-					)}
-				</Button>
-			</PopoverTrigger>
+			<div className="relative inline-flex items-center">
+				<PopoverTrigger asChild>
+					<Button
+						variant="outline"
+						size="sm"
+						className={cn(
+							'h-8 gap-2 text-xs font-semibold w-auto items-center rounded-full',
+							hasValue && 'border-primary text-primary pr-8'
+						)}
+					>
+						<Clock className="h-4 w-4 shrink-0" />
+						<span className="whitespace-nowrap">{displayText}</span>
+					</Button>
+				</PopoverTrigger>
+				{hasValue && (
+					<ClearButton
+						onClear={handleClear}
+						aria-label="Clear time filter"
+						className="absolute right-1 h-6 w-6 inline-flex items-center justify-center"
+					/>
+				)}
+			</div>
 			<PopoverContent className="w-[353px] p-0" align="end" side="bottom" sideOffset={4}>
 				<Tabs defaultValue="quick" className="w-full">
 					<TabsList className="w-full grid grid-cols-2 h-9 rounded-b-none">
