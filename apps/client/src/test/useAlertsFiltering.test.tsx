@@ -74,3 +74,16 @@ describe('useAlertsFiltering rolling time presets', () => {
 		expect(result.current.map((a) => a.id)).toEqual(['early-today']);
 	});
 });
+
+describe('formatDate (Started At display)', () => {
+	test('today renders time-only, older timestamps keep the full date', async () => {
+		const { formatDate } = await import('@/components/Alerts/AlertsTable/AlertsTable.utils');
+		const now = new Date();
+		expect(formatDate(now.toISOString())).toBe(now.toLocaleTimeString());
+
+		const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+		expect(formatDate(yesterday.toISOString())).toBe(yesterday.toLocaleString());
+
+		expect(formatDate('not-a-date')).toBe('Invalid Date');
+	});
+});

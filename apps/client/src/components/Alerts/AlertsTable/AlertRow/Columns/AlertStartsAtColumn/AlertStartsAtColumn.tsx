@@ -9,9 +9,15 @@ export interface AlertStartsAtColumnProps {
 }
 
 export const AlertStartsAtColumn = ({ alert, className }: AlertStartsAtColumnProps) => {
+	// Today's alerts render time-only (formatDate); the tooltip always carries the full
+	// timestamp so the date is one hover away.
+	const date = new Date(alert.startsAt);
+	const fullTimestamp = isNaN(date.getTime()) ? undefined : date.toLocaleString();
 	return (
 		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
-			<span className="text-xs text-foreground truncate block">{formatDate(alert.startsAt)}</span>
+			<span className="text-xs text-foreground truncate block" title={fullTimestamp}>
+				{formatDate(alert.startsAt)}
+			</span>
 		</TableCell>
 	);
 };
