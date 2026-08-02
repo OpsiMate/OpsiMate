@@ -33,6 +33,10 @@ export interface DashboardState {
 	visibleColumns: string[];
 	filters: Record<string, string[]>;
 	columnOrder: string[];
+	// Persist the "Split by owner" toggle with the dashboard.
+	splitByAssignment: boolean;
+	// Persist the "Severity colors" toggle with the dashboard.
+	severityColors: boolean;
 	groupBy: string[];
 	query: string;
 	timeRange: TimeRange;
@@ -63,6 +67,8 @@ const defaultState: DashboardState = {
 	visibleColumns: [],
 	filters: {},
 	columnOrder: [],
+	splitByAssignment: false,
+	severityColors: false,
 	groupBy: [],
 	query: '',
 	timeRange: { from: null, to: null, preset: null },
@@ -113,6 +119,10 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		// strings), so the stringified comparison is stable.
 		const currentTimeRange = JSON.stringify(serializeTimeRange(dashboardState.timeRange));
 		const initialTimeRange = JSON.stringify(serializeTimeRange(initialState.timeRange));
+		const currentSplitByAssignment = dashboardState.splitByAssignment;
+		const initialSplitByAssignment = initialState.splitByAssignment;
+		const currentSeverityColors = dashboardState.severityColors;
+		const initialSeverityColors = initialState.severityColors;
 
 		return (
 			currentName !== initialName ||
@@ -122,7 +132,9 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			currentVisibleColumns !== initialVisibleColumns ||
 			currentColumnOrder !== initialColumnOrder ||
 			currentQuery !== initialQuery ||
-			currentTimeRange !== initialTimeRange
+			currentTimeRange !== initialTimeRange ||
+			currentSplitByAssignment !== initialSplitByAssignment ||
+			currentSeverityColors !== initialSeverityColors
 		);
 	}, [dashboardState, initialState, hasUserMadeChanges]);
 
@@ -136,6 +148,8 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			'columnOrder',
 			'query',
 			'timeRange',
+			'splitByAssignment',
+			'severityColors',
 		];
 		if (userEditableFields.includes(field)) {
 			setHasUserMadeChanges(true);

@@ -16,6 +16,8 @@ export class DashboardRepository {
 			visibleColumns: JSON.parse(dashboardRow.visible_columns) as string[],
 			query: dashboardRow.query,
 			columnOrder: dashboardRow.column_order ? (JSON.parse(dashboardRow.column_order) as string[]) : undefined,
+			splitByAssignment: dashboardRow.split_by_assignment ?? undefined,
+			severityColors: dashboardRow.severity_colors ?? undefined,
 			groupBy: JSON.parse(dashboardRow.group_by) as string[],
 			timeRange: dashboardRow.time_range
 				? (JSON.parse(dashboardRow.time_range) as DashboardTimeRange)
@@ -41,8 +43,8 @@ export class DashboardRepository {
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, query, group_by, time_range)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, split_by_assignment, severity_colors, query, group_by, time_range)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 			const result = stmt.run(
 				dashboard.name,
@@ -51,6 +53,8 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
+				dashboard.splitByAssignment ?? null,
+				dashboard.severityColors ?? null,
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
 				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null
@@ -97,6 +101,14 @@ export class DashboardRepository {
 			if (!columns.some((col) => col.name === 'column_order')) {
 				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN column_order TEXT`).run();
 			}
+			// Backward compatibility: persist "Split by owner" and "Severity colors" toggles.
+			const columnsAfter = this.db.prepare(`PRAGMA table_info(dashboards)`).all() as TableInfoRow[];
+			if (!columnsAfter.some((col) => col.name === 'split_by_assignment')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN split_by_assignment INTEGER`).run();
+			}
+			if (!columnsAfter.some((col) => col.name === 'severity_colors')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN severity_colors INTEGER`).run();
+			}
 		});
 	}
 
@@ -111,6 +123,8 @@ export class DashboardRepository {
                 filters = ?,
                 visible_columns = ?,
                 column_order = ?,
+                split_by_assignment = ?,
+                severity_colors = ?,
                 query = ?,
                 group_by = ?,
                 time_range = ?
@@ -124,6 +138,8 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
+				dashboard.splitByAssignment ?? null,
+				dashboard.severityColors ?? null,
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
 				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null,

@@ -48,6 +48,8 @@ export interface DashboardRow {
 	filters: string; // Record<string, string>
 	visible_columns: string; // string[]
 	column_order?: string | null; // string[]
+	split_by_assignment?: boolean | null; // boolean
+	severity_colors?: boolean | null; // boolean
 	query: string;
 	group_by: string; // string[]
 	time_range?: string | null; // DashboardTimeRange

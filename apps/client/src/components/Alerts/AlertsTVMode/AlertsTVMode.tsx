@@ -146,6 +146,8 @@ const AlertsTVMode = () => {
 			description: dashboardState.description,
 			filters: dashboardState.filters,
 			visibleColumns: dashboardState.visibleColumns,
+			splitByAssignment: dashboardState.splitByAssignment,
+			severityColors: dashboardState.severityColors,
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
 			timeRange: serializeTimeRange(dashboardState.timeRange),
