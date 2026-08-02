@@ -86,6 +86,17 @@ export const sortAlerts = (
 // Timestamps from today render time-only — the date part is noise for the rows users
 // care about most; older timestamps keep the full date. Sorting is unaffected: it runs
 // on the raw epoch value (getSortValue), never on this display string.
+// Grouping key for time columns: the LOCAL calendar day (YYYY-MM-DD), matching the
+// local time the cells render (formatDate). A UTC day key could disagree with the
+// displayed date near timezone boundaries.
+const toLocalDayKey = (dateString: string): string => {
+	const date = new Date(dateString);
+	if (isNaN(date.getTime())) return 'Unknown';
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${date.getFullYear()}-${month}-${day}`;
+};
+
 export const formatDate = (dateString: string): string => {
 	const date = new Date(dateString);
 	if (isNaN(date.getTime())) return 'Invalid Date';
@@ -111,16 +122,10 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 			return SEVERITY_LABELS[getAlertSeverity(alert)];
 		case 'summary':
 			return alert.summary || 'Unknown';
-		case 'startsAt': {
-			const date = new Date(alert.startsAt);
-			if (isNaN(date.getTime())) return 'Unknown';
-			return date.toISOString().split('T')[0];
-		}
-		case 'updatedAt': {
-			const date = new Date(alert.updatedAt);
-			if (isNaN(date.getTime())) return 'Unknown';
-			return date.toISOString().split('T')[0];
-		}
+		case 'startsAt':
+			return toLocalDayKey(alert.startsAt);
+		case 'updatedAt':
+			return toLocalDayKey(alert.updatedAt);
 		case 'type':
 			return getIntegrationLabel(resolveAlertIntegration(alert));
 		case 'owner':
