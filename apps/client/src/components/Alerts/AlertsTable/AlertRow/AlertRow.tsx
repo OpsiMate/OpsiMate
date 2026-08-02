@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,8 @@ export interface AlertRowProps {
 	alert: Alert;
 	isSelected: boolean;
 	orderedColumns: string[];
+	// Content-aware pixel widths for alertName/tag columns; must match the header's.
+	contentColumnWidths?: Record<string, number>;
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
@@ -47,6 +50,7 @@ export const AlertRow = ({
 	alert,
 	isSelected,
 	orderedColumns,
+	contentColumnWidths = {},
 	onSelectAlert,
 	onAlertClick,
 	isActiveRow = false,
@@ -136,6 +140,7 @@ export const AlertRow = ({
 								tagKey={tagKey}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.default}
+								style={contentColumnWidths[column] ? { width: contentColumnWidths[column] } : undefined}
 							/>
 						);
 					}
@@ -152,6 +157,11 @@ export const AlertRow = ({
 								alert={alert}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.alertName}
+								style={
+									contentColumnWidths['alertName']
+										? { width: contentColumnWidths['alertName'] }
+										: undefined
+								}
 							/>
 						);
 					case 'severity':
@@ -182,15 +192,19 @@ export const AlertRow = ({
 						return <AlertUpdatedAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.updatedAt} />;
 					case ACTIONS_COLUMN:
 						return (
-							<AlertActionsColumn
-								key={column}
-								alert={alert}
-								width={actionsColumnWidth}
-								onSilenceAlert={onSilenceAlert}
-								onUnsilenceAlert={onUnsilenceAlert}
-								onDeleteAlert={onDeleteAlert}
-								onUnresolveAlert={onUnresolveAlert}
-							/>
+							<Fragment key={column}>
+								{/* Mirrors the header's filler (see AlertsTable): when summary is
+								    hidden this empty flexible cell absorbs the leftover width. */}
+								{!orderedColumns.includes('summary') && <TableCell aria-hidden className="p-0" />}
+								<AlertActionsColumn
+									alert={alert}
+									width={actionsColumnWidth}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
+									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
+								/>
+							</Fragment>
 						);
 					default:
 						return null;

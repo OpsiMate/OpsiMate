@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert, WrapText } from 'lucide-react';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -24,7 +24,14 @@ import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
-import { useAlertGrouping, useAlertSelection, useAlertSorting, useDragSelection, useStickyHeaders } from './hooks';
+import {
+	useAlertGrouping,
+	useAlertSelection,
+	useAlertSorting,
+	useContentColumnWidths,
+	useDragSelection,
+	useStickyHeaders,
+} from './hooks';
 import { SearchBar } from './SearchBar';
 import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
@@ -69,6 +76,18 @@ export const AlertsTable = ({
 	heading,
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
+
+	// Width of the horizontal scroll container, tracked so content-aware column widths
+	// can react to window/pane resizes.
+	const scrollerRef = useRef<HTMLDivElement>(null);
+	const [containerWidth, setContainerWidth] = useState(0);
+	useEffect(() => {
+		const el = scrollerRef.current;
+		if (!el) return;
+		const observer = new ResizeObserver((entries) => setContainerWidth(entries[0]?.contentRect.width ?? 0));
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, []);
 
 	// Expanded rows: cell content wraps onto new lines (full name/summary/labels)
 	// instead of truncating to a single line.
@@ -115,10 +134,28 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
+	// Summary is the table's one flexible column. When it's hidden, an empty filler
+	// column before ACTIONS absorbs the leftover width instead — otherwise the browser
+	// hands the surplus to a data column (huge whitespace) or stretches every fixed
+	// column. The rows render the same filler (AlertRow) or the layouts misalign.
+	const needsFillerColumn = !orderedColumns.includes('summary');
+
 	// The actions header holds two buttons (expand rows + group by), or three when column
 	// settings are enabled — the column must widen with it or the extra button overflows
 	// the fixed <th> onto the neighboring column's header text.
 	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
+
+	// Pixel widths for the content-sized columns (alert name + tags): wide enough that
+	// their longest value fits, no wider. Empty until the container is first measured —
+	// static width classes cover that frame.
+	const contentColumnWidths = useContentColumnWidths({
+		alerts: sortedAlerts,
+		orderedColumns,
+		columnLabels: allColumnLabels,
+		containerWidth,
+		hasSelectColumn: !!onSelectAlerts,
+		actionsColumnWidthPx: parseInt(actionsColumnWidth, 10),
+	});
 
 	// Floor width for the table: the sum of the visible columns' minimums. Narrower
 	// panes get a horizontal scrollbar instead of columns crushing each other.
@@ -161,7 +198,7 @@ export const AlertsTable = ({
 					{/* Header and body share this horizontal scroller: when the pane is narrower
 					    than the table's minimum width they scroll sideways together, instead of the
 					    auto-width summary column silently collapsing to zero. */}
-					<div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+					<div ref={scrollerRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
 						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
 							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
 							    scrollbar gutter (see below) so header and body columns stay aligned on
@@ -194,66 +231,70 @@ export const AlertsTable = ({
 											{orderedColumns.map((column) => {
 												if (column === ACTIONS_COLUMN) {
 													return (
-														<TableHead
-															key={column}
-															className={`${TABLE_HEAD_CLASSES} text-xs`}
-															style={{
-																width: actionsColumnWidth,
-																minWidth: actionsColumnWidth,
-																maxWidth: actionsColumnWidth,
-															}}
-														>
-															<div className="flex items-center justify-end gap-2 min-w-0">
-																<Tooltip>
-																	<TooltipTrigger asChild>
-																		<Button
-																			variant="ghost"
-																			size="icon"
-																			className={cn(
-																				'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
-																				expandRows &&
-																					'text-primary border-primary'
-																			)}
-																			onClick={() =>
-																				setExpandRows((prev) => !prev)
-																			}
-																			aria-label={
-																				expandRows
-																					? 'Collapse rows'
-																					: 'Expand rows'
-																			}
-																			aria-pressed={expandRows}
-																		>
-																			<WrapText className="h-4 w-4" />
-																		</Button>
-																	</TooltipTrigger>
-																	<TooltipContent>
-																		{expandRows
-																			? 'Collapse rows'
-																			: 'Expand rows to show full content'}
-																	</TooltipContent>
-																</Tooltip>
-																<GroupByControls
-																	groupByColumns={groupByColumns}
-																	onGroupByChange={setGroupByColumns}
-																	availableColumns={visibleColumns}
-																	columnLabels={allColumnLabels}
-																	onExpandAll={expandAll}
-																	onCollapseAll={collapseAll}
-																/>
-																{onColumnToggle && (
-																	<ColumnSettingsDropdown
-																		visibleColumns={visibleColumns}
-																		onColumnToggle={onColumnToggle}
-																		columnLabels={COLUMN_LABELS}
-																		columnOrder={columnOrder}
-																		onColumnOrderChange={onColumnOrderChange}
-																		excludeColumns={[ACTIONS_COLUMN]}
-																		tagKeys={tagKeys}
+														<Fragment key={column}>
+															{needsFillerColumn && (
+																<TableHead aria-hidden className="p-0" />
+															)}
+															<TableHead
+																className={`${TABLE_HEAD_CLASSES} text-xs`}
+																style={{
+																	width: actionsColumnWidth,
+																	minWidth: actionsColumnWidth,
+																	maxWidth: actionsColumnWidth,
+																}}
+															>
+																<div className="flex items-center justify-end gap-2 min-w-0">
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<Button
+																				variant="ghost"
+																				size="icon"
+																				className={cn(
+																					'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
+																					expandRows &&
+																						'text-primary border-primary'
+																				)}
+																				onClick={() =>
+																					setExpandRows((prev) => !prev)
+																				}
+																				aria-label={
+																					expandRows
+																						? 'Collapse rows'
+																						: 'Expand rows'
+																				}
+																				aria-pressed={expandRows}
+																			>
+																				<WrapText className="h-4 w-4" />
+																			</Button>
+																		</TooltipTrigger>
+																		<TooltipContent>
+																			{expandRows
+																				? 'Collapse rows'
+																				: 'Expand rows to show full content'}
+																		</TooltipContent>
+																	</Tooltip>
+																	<GroupByControls
+																		groupByColumns={groupByColumns}
+																		onGroupByChange={setGroupByColumns}
+																		availableColumns={visibleColumns}
+																		columnLabels={allColumnLabels}
+																		onExpandAll={expandAll}
+																		onCollapseAll={collapseAll}
 																	/>
-																)}
-															</div>
-														</TableHead>
+																	{onColumnToggle && (
+																		<ColumnSettingsDropdown
+																			visibleColumns={visibleColumns}
+																			onColumnToggle={onColumnToggle}
+																			columnLabels={COLUMN_LABELS}
+																			columnOrder={columnOrder}
+																			onColumnOrderChange={onColumnOrderChange}
+																			excludeColumns={[ACTIONS_COLUMN]}
+																			tagKeys={tagKeys}
+																		/>
+																	)}
+																</div>
+															</TableHead>
+														</Fragment>
 													);
 												}
 												if (isTagKeyColumn(column)) {
@@ -268,6 +309,11 @@ export const AlertsTable = ({
 															sortDirection={sortDirection}
 															onSort={handleSort}
 															className={COLUMN_WIDTHS.default}
+															style={
+																contentColumnWidths[column]
+																	? { width: contentColumnWidths[column] }
+																	: undefined
+															}
 														/>
 													);
 												}
@@ -293,6 +339,11 @@ export const AlertsTable = ({
 															sortDirection={sortDirection}
 															onSort={handleSort}
 															className={COLUMN_WIDTHS[column]}
+															style={
+																contentColumnWidths[column]
+																	? { width: contentColumnWidths[column] }
+																	: undefined
+															}
 														/>
 													);
 												}
@@ -336,6 +387,7 @@ export const AlertsTable = ({
 											flatRows={flatRows}
 											selectedAlerts={selectedAlerts}
 											orderedColumns={orderedColumns}
+											contentColumnWidths={contentColumnWidths}
 											expandRows={expandRows}
 											onToggleGroup={toggleGroup}
 											onSelectAlert={handleSelectAlert}
