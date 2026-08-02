@@ -8,6 +8,7 @@ import {
 } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
+import { toIsoUtc } from '../utils/time';
 import { AlertRow, TableInfoRow } from './models';
 
 export class AlertRepository {
@@ -19,6 +20,12 @@ export class AlertRepository {
 
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
 		return runAsync(() => {
+			// starts_at is deliberately NOT in the DO UPDATE clause: "Started At" means when
+			// the current firing episode began. Sources that re-send an active alert with a
+			// fresh startsAt (some push "now" on every notification) must not drag it forward —
+			// the firing-history trigger only fires on INSERT, so a moving starts_at diverges
+			// from the recorded firing time. A new episode (resolve, then re-fire) deletes and
+			// re-inserts the row, which picks up the new starts_at.
 			const stmt = this.db.prepare(`
 				INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -28,7 +35,6 @@ export class AlertRepository {
 											  severity=excluded.severity,
 											  team=excluded.team,
 											  tags=excluded.tags,
-											  starts_at=excluded.starts_at,
 											  updated_at=excluded.updated_at,
 											  alert_url=excluded.alert_url,
 											  alert_name=excluded.alert_name,
@@ -146,6 +152,30 @@ export class AlertRepository {
 				END;
         	`);
 
+			// The trigger's definition changed over time (older versions stamped the insert
+			// moment instead of starts_at), and CREATE TRIGGER IF NOT EXISTS never upgrades
+			// an existing DB — so installs drifted apart. Recreate it whenever the stored
+			// definition doesn't stamp starts_at, so every install runs the current version.
+			const triggerSql = (
+				this.db
+					.prepare(
+						`SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'archive_alert_on_insert'`
+					)
+					.get() as { sql: string } | undefined
+			)?.sql;
+			if (triggerSql && !triggerSql.includes('NEW.starts_at')) {
+				this.db.exec(`
+					DROP TRIGGER archive_alert_on_insert;
+					CREATE TRIGGER archive_alert_on_insert
+						AFTER INSERT ON alerts
+						FOR EACH ROW
+					BEGIN
+						INSERT INTO alerts_history (alert_id, status, archived_at)
+						VALUES (NEW.id, NEW.status, NEW.starts_at);
+					END;
+				`);
+			}
+
 			// Backward compatibility: ensure tags column exists
 			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all() as TableInfoRow[];
 			if (!columns.some((col: TableInfoRow) => col.name === 'is_read')) {
@@ -220,8 +250,10 @@ export class AlertRepository {
 			// Legacy rows (pre-team column) fall back to their team tag.
 			team: row.team ?? tags['team'] ?? null,
 			tags,
-			startsAt: row.starts_at,
-			updatedAt: row.updated_at,
+			// Normalized so the client never receives SQLite's marker-less UTC format
+			// (which browsers would parse as local time and display shifted).
+			startsAt: toIsoUtc(row.starts_at),
+			updatedAt: toIsoUtc(row.updated_at),
 			alertUrl: row.alert_url,
 			alertName: row.alert_name,
 			summary: row.summary,

@@ -1437,3 +1437,73 @@ describe('Firing times on alert listings', () => {
 		}
 	});
 });
+
+describe('Started At stability', () => {
+	test('re-sending an active alert with a newer startsAt does not move Started At', async () => {
+		const T1 = '2026-08-01T10:00:00.000Z';
+		const T2 = '2026-08-01T12:30:00.000Z';
+		const payload = {
+			id: 'episode-stable',
+			status: 'firing',
+			alertName: 'Episode Stability',
+			summary: 'first push',
+			tags: {},
+		};
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T1 });
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, summary: 'second push', startsAt: T2 });
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === payload.id);
+		// Same episode: Started At stays at the first firing, other fields update.
+		expect(alert?.startsAt).toBe(T1);
+		expect(alert?.summary).toBe('second push');
+
+		// The history's firing entry matches Started At exactly — this pair diverging is
+		// the bug this suite guards against (history showing an earlier "firing" hour).
+		const history = await app
+			.get(`/api/v1/alerts/${payload.id}/history`)
+			.set('Authorization', `Bearer ${jwtToken}`);
+		const firing = (history.body.data.data as { date: string; description?: string }[]).filter(
+			(e) => e.description === 'Alert started firing'
+		);
+		expect(firing).toHaveLength(1);
+		expect(firing[0].date).toBe(T1);
+	});
+
+	test('a new episode after resolve picks up the new startsAt', async () => {
+		const T1 = '2026-08-01T10:00:00.000Z';
+		const T3 = '2026-08-02T09:00:00.000Z';
+		const payload = { id: 'episode-new', status: 'firing', alertName: 'New Episode', summary: 's', tags: {} };
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T1 });
+		await app.delete(`/api/v1/alerts/${payload.id}`).set('Authorization', `Bearer ${jwtToken}`).send({});
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T3 });
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === payload.id);
+		expect(alert?.startsAt).toBe(T3);
+	});
+
+	test('marker-less SQLite timestamps are normalized to ISO UTC in listings', async () => {
+		db.prepare(
+			`INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, is_dismissed)
+			 VALUES ('legacy-format', 'firing', '{}', '2026-08-01 10:00:00', '2026-08-01 11:00:00', 'u', 'Legacy', 's', 0)`
+		).run();
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === 'legacy-format');
+		expect(alert?.startsAt).toBe('2026-08-01T10:00:00.000Z');
+		expect(alert?.updatedAt).toBe('2026-08-01T11:00:00.000Z');
+	});
+});
