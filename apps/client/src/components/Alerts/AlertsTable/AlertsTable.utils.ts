@@ -53,6 +53,10 @@ const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]
 			const date = new Date(alert.startsAt);
 			return isNaN(date.getTime()) ? 0 : date.getTime();
 		}
+		case 'updatedAt': {
+			const date = new Date(alert.updatedAt);
+			return isNaN(date.getTime()) ? 0 : date.getTime();
+		}
 		case 'type':
 			return getIntegrationLabel(resolveAlertIntegration(alert)).toLowerCase();
 		case 'owner':

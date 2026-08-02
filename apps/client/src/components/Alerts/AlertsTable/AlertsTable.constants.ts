@@ -11,7 +11,16 @@ export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
 
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
 
-export const DEFAULT_COLUMN_ORDER = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt', 'updatedAt'];
+export const DEFAULT_COLUMN_ORDER = [
+	'type',
+	'severity',
+	'status',
+	'alertName',
+	'summary',
+	'owner',
+	'startsAt',
+	'updatedAt',
+];
 
 export const COLUMN_LABELS: Record<string, string> = {
 	type: 'Type',
