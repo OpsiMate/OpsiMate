@@ -112,6 +112,11 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 			if (isNaN(date.getTime())) return 'Unknown';
 			return date.toISOString().split('T')[0];
 		}
+		case 'updatedAt': {
+			const date = new Date(alert.updatedAt);
+			if (isNaN(date.getTime())) return 'Unknown';
+			return date.toISOString().split('T')[0];
+		}
 		case 'type':
 			return getIntegrationLabel(resolveAlertIntegration(alert));
 		case 'owner':

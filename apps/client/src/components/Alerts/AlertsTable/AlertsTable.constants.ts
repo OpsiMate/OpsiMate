@@ -11,7 +11,7 @@ export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
 
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
 
-export const DEFAULT_COLUMN_ORDER = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
+export const DEFAULT_COLUMN_ORDER = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt', 'updatedAt'];
 
 export const COLUMN_LABELS: Record<string, string> = {
 	type: 'Type',
@@ -21,6 +21,7 @@ export const COLUMN_LABELS: Record<string, string> = {
 	summary: 'Summary',
 	owner: 'Owner',
 	startsAt: 'Started At',
+	updatedAt: 'Last Update',
 };
 
 // Every column except alertName and summary has a fixed width; those two share the
@@ -38,6 +39,7 @@ export const COLUMN_WIDTHS: Record<string, string> = {
 	summary: 'w-auto',
 	owner: 'w-[120px]',
 	startsAt: 'w-[150px]',
+	updatedAt: 'w-[150px]',
 	[ACTIONS_COLUMN]: 'w-14 min-w-14 max-w-14',
 	default: 'w-[110px]',
 };
@@ -56,6 +58,7 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	summary: 170,
 	owner: 120,
 	startsAt: 150,
+	updatedAt: 150,
 	// Rendered at ACTIONS_COLUMN_WIDTH (inline style), not COLUMN_WIDTHS.
 	[ACTIONS_COLUMN]: 80,
 	default: 110,
