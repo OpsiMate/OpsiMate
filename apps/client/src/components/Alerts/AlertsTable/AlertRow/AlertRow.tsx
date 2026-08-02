@@ -1,9 +1,10 @@
+import { Fragment } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { ACTIONS_COLUMN, COLUMN_WIDTHS, getColumnWidthClass, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
@@ -151,7 +152,7 @@ export const AlertRow = ({
 								key={column}
 								alert={alert}
 								expanded={expandRows}
-								className={getColumnWidthClass('alertName', orderedColumns)}
+								className={COLUMN_WIDTHS.alertName}
 							/>
 						);
 					case 'severity':
@@ -182,15 +183,19 @@ export const AlertRow = ({
 						return <AlertUpdatedAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.updatedAt} />;
 					case ACTIONS_COLUMN:
 						return (
-							<AlertActionsColumn
-								key={column}
-								alert={alert}
-								width={actionsColumnWidth}
-								onSilenceAlert={onSilenceAlert}
-								onUnsilenceAlert={onUnsilenceAlert}
-								onDeleteAlert={onDeleteAlert}
-								onUnresolveAlert={onUnresolveAlert}
-							/>
+							<Fragment key={column}>
+								{/* Mirrors the header's filler (see AlertsTable): when summary is
+								    hidden this empty flexible cell absorbs the leftover width. */}
+								{!orderedColumns.includes('summary') && <TableCell aria-hidden className="p-0" />}
+								<AlertActionsColumn
+									alert={alert}
+									width={actionsColumnWidth}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
+									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
+								/>
+							</Fragment>
 						);
 					default:
 						return null;

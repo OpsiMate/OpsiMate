@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert, WrapText } from 'lucide-react';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -15,7 +15,6 @@ import {
 	COLUMN_LABELS,
 	COLUMN_MIN_WIDTHS,
 	COLUMN_WIDTHS,
-	getColumnWidthClass,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
 	SELECT_COLUMN_WIDTH,
@@ -116,6 +115,12 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
+	// Summary is the table's one flexible column. When it's hidden, an empty filler
+	// column before ACTIONS absorbs the leftover width instead — otherwise the browser
+	// hands the surplus to a data column (huge whitespace) or stretches every fixed
+	// column. The rows render the same filler (AlertRow) or the layouts misalign.
+	const needsFillerColumn = !orderedColumns.includes('summary');
+
 	// The actions header holds two buttons (expand rows + group by), or three when column
 	// settings are enabled — the column must widen with it or the extra button overflows
 	// the fixed <th> onto the neighboring column's header text.
@@ -195,66 +200,70 @@ export const AlertsTable = ({
 											{orderedColumns.map((column) => {
 												if (column === ACTIONS_COLUMN) {
 													return (
-														<TableHead
-															key={column}
-															className={`${TABLE_HEAD_CLASSES} text-xs`}
-															style={{
-																width: actionsColumnWidth,
-																minWidth: actionsColumnWidth,
-																maxWidth: actionsColumnWidth,
-															}}
-														>
-															<div className="flex items-center justify-end gap-2 min-w-0">
-																<Tooltip>
-																	<TooltipTrigger asChild>
-																		<Button
-																			variant="ghost"
-																			size="icon"
-																			className={cn(
-																				'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
-																				expandRows &&
-																					'text-primary border-primary'
-																			)}
-																			onClick={() =>
-																				setExpandRows((prev) => !prev)
-																			}
-																			aria-label={
-																				expandRows
-																					? 'Collapse rows'
-																					: 'Expand rows'
-																			}
-																			aria-pressed={expandRows}
-																		>
-																			<WrapText className="h-4 w-4" />
-																		</Button>
-																	</TooltipTrigger>
-																	<TooltipContent>
-																		{expandRows
-																			? 'Collapse rows'
-																			: 'Expand rows to show full content'}
-																	</TooltipContent>
-																</Tooltip>
-																<GroupByControls
-																	groupByColumns={groupByColumns}
-																	onGroupByChange={setGroupByColumns}
-																	availableColumns={visibleColumns}
-																	columnLabels={allColumnLabels}
-																	onExpandAll={expandAll}
-																	onCollapseAll={collapseAll}
-																/>
-																{onColumnToggle && (
-																	<ColumnSettingsDropdown
-																		visibleColumns={visibleColumns}
-																		onColumnToggle={onColumnToggle}
-																		columnLabels={COLUMN_LABELS}
-																		columnOrder={columnOrder}
-																		onColumnOrderChange={onColumnOrderChange}
-																		excludeColumns={[ACTIONS_COLUMN]}
-																		tagKeys={tagKeys}
+														<Fragment key={column}>
+															{needsFillerColumn && (
+																<TableHead aria-hidden className="p-0" />
+															)}
+															<TableHead
+																className={`${TABLE_HEAD_CLASSES} text-xs`}
+																style={{
+																	width: actionsColumnWidth,
+																	minWidth: actionsColumnWidth,
+																	maxWidth: actionsColumnWidth,
+																}}
+															>
+																<div className="flex items-center justify-end gap-2 min-w-0">
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<Button
+																				variant="ghost"
+																				size="icon"
+																				className={cn(
+																					'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
+																					expandRows &&
+																						'text-primary border-primary'
+																				)}
+																				onClick={() =>
+																					setExpandRows((prev) => !prev)
+																				}
+																				aria-label={
+																					expandRows
+																						? 'Collapse rows'
+																						: 'Expand rows'
+																				}
+																				aria-pressed={expandRows}
+																			>
+																				<WrapText className="h-4 w-4" />
+																			</Button>
+																		</TooltipTrigger>
+																		<TooltipContent>
+																			{expandRows
+																				? 'Collapse rows'
+																				: 'Expand rows to show full content'}
+																		</TooltipContent>
+																	</Tooltip>
+																	<GroupByControls
+																		groupByColumns={groupByColumns}
+																		onGroupByChange={setGroupByColumns}
+																		availableColumns={visibleColumns}
+																		columnLabels={allColumnLabels}
+																		onExpandAll={expandAll}
+																		onCollapseAll={collapseAll}
 																	/>
-																)}
-															</div>
-														</TableHead>
+																	{onColumnToggle && (
+																		<ColumnSettingsDropdown
+																			visibleColumns={visibleColumns}
+																			onColumnToggle={onColumnToggle}
+																			columnLabels={COLUMN_LABELS}
+																			columnOrder={columnOrder}
+																			onColumnOrderChange={onColumnOrderChange}
+																			excludeColumns={[ACTIONS_COLUMN]}
+																			tagKeys={tagKeys}
+																		/>
+																	)}
+																</div>
+															</TableHead>
+														</Fragment>
 													);
 												}
 												if (isTagKeyColumn(column)) {
@@ -293,7 +302,7 @@ export const AlertsTable = ({
 															sortField={sortField}
 															sortDirection={sortDirection}
 															onSort={handleSort}
-															className={getColumnWidthClass(column, orderedColumns)}
+															className={COLUMN_WIDTHS[column]}
 														/>
 													);
 												}
