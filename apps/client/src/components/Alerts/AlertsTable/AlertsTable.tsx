@@ -15,6 +15,7 @@ import {
 	COLUMN_LABELS,
 	COLUMN_MIN_WIDTHS,
 	COLUMN_WIDTHS,
+	getColumnWidthClass,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
 	SELECT_COLUMN_WIDTH,
@@ -292,7 +293,7 @@ export const AlertsTable = ({
 															sortField={sortField}
 															sortDirection={sortDirection}
 															onSort={handleSort}
-															className={COLUMN_WIDTHS[column]}
+															className={getColumnWidthClass(column, orderedColumns)}
 														/>
 													);
 												}

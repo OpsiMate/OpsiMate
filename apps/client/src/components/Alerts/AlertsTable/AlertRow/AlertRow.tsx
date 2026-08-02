@@ -3,7 +3,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_WIDTHS, getColumnWidthClass, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
@@ -151,7 +151,7 @@ export const AlertRow = ({
 								key={column}
 								alert={alert}
 								expanded={expandRows}
-								className={COLUMN_WIDTHS.alertName}
+								className={getColumnWidthClass('alertName', orderedColumns)}
 							/>
 						);
 					case 'severity':

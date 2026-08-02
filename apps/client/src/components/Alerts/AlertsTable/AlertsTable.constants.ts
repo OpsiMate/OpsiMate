@@ -33,16 +33,19 @@ export const COLUMN_LABELS: Record<string, string> = {
 	updatedAt: 'Last Update',
 };
 
-// Every column except alertName and summary has a fixed width; those two share the
-// leftover space equally (the table is layout-fixed). Percentage widths are deliberately
-// avoided: with enough columns visible their sum exceeded the table's width and the
-// auto-width summary column silently collapsed to 0px, letting neighbors paint over it.
+// Every column except summary has a fixed width; summary alone absorbs the leftover
+// space (the table is layout-fixed). Exactly ONE flexible column, on purpose: with two
+// w-auto columns the leftover was split equally, so on wide screens the name column
+// ballooned with whitespace while summary — the column with the long content — couldn't
+// use it. Percentage widths are deliberately avoided: with enough columns visible their
+// sum exceeded the table's width and the auto-width summary column silently collapsed
+// to 0px, letting neighbors paint over it.
 export const COLUMN_WIDTHS: Record<string, string> = {
 	select: 'w-10 min-w-10 max-w-10',
 	// Type, severity and status are icon-only columns (icon-only headers too, names in
 	// tooltips).
 	type: 'w-12 min-w-12 max-w-12',
-	alertName: 'w-auto',
+	alertName: 'w-[240px]',
 	severity: 'w-12 min-w-12 max-w-12',
 	status: 'w-12 min-w-12 max-w-12',
 	summary: 'w-auto',
@@ -53,6 +56,18 @@ export const COLUMN_WIDTHS: Record<string, string> = {
 	default: 'w-[110px]',
 };
 
+// Width class for a column given which columns are shown. The table must always have
+// exactly one flexible column: summary normally, and alertName when summary is hidden
+// (otherwise no column absorbs the leftover and every fixed column stretches). Header
+// and body render as SEPARATE tables, so both MUST size columns through this helper —
+// diverging classes shift the two layouts out of alignment.
+export const getColumnWidthClass = (column: string, orderedColumns: string[]): string => {
+	if (column === 'alertName' && !orderedColumns.includes('summary')) {
+		return 'w-auto';
+	}
+	return COLUMN_WIDTHS[column] ?? COLUMN_WIDTHS.default;
+};
+
 // Per-column minimums (px) summed into the table's floor width: the table never renders
 // narrower than its visible columns' minimums — below that the whole table (header and
 // body together) scrolls horizontally instead of crushing a column.
@@ -61,9 +76,9 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	type: 48,
 	severity: 48,
 	status: 48,
-	// The two flexible (w-auto) columns split leftover space equally, so they share
-	// one minimum — declaring different ones would be unenforceable.
-	alertName: 170,
+	// Matches the fixed w-[240px]; still holds as a floor in the fallback case where
+	// alertName turns flexible (summary hidden).
+	alertName: 240,
 	summary: 170,
 	owner: 120,
 	startsAt: 150,
