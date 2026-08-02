@@ -15,6 +15,7 @@ import { AlertStatusColumn } from './Columns/AlertStatusColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
 import { AlertTagKeyColumn } from './Columns/AlertTagKeyColumn';
 import { AlertTypeColumn } from './Columns/AlertTypeColumn';
+import { AlertUpdatedAtColumn } from './Columns/AlertUpdatedAtColumn';
 
 export interface AlertRowProps {
 	alert: Alert;
@@ -177,6 +178,8 @@ export const AlertRow = ({
 						);
 					case 'startsAt':
 						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
+					case 'updatedAt':
+						return <AlertUpdatedAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.updatedAt} />;
 					case ACTIONS_COLUMN:
 						return (
 							<AlertActionsColumn
