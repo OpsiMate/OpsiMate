@@ -80,9 +80,12 @@ export const AlertRow = ({
 	};
 
 	const handleRowMouseEnter = () => {
-		// During drag selection, entering any part of the row should trigger
-		// the drag selection handler, not just the checkbox column (#712).
-		if (isDragging && onDragEnter) {
+		// During drag selection, entering any part of the row should trigger the drag
+		// selection handler, not just the checkbox column (#712). No isDragging guard:
+		// isDragging only turns true after the first drag-enter, so gating on it would
+		// ignore the first row the cursor reaches after leaving the checkbox column.
+		// The hook itself no-ops unless the mouse went down on a checkbox.
+		if (onDragEnter) {
 			onDragEnter(alert);
 		}
 	};
