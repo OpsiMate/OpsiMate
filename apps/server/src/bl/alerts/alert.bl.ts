@@ -16,19 +16,11 @@ import {
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { UserRepository } from '../../dal/userRepository';
+import { toIsoUtc } from '../../utils/time';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 
 const logger = new Logger('bl/alert.bl');
-
-// Normalizes a timestamp to ISO-8601 UTC. SQLite CURRENT_TIMESTAMP values are
-// "YYYY-MM-DD HH:MM:SS" (UTC, but without a timezone marker); already-ISO values pass through.
-// Guarantees the client receives unambiguous UTC timestamps for display and time-range filtering.
-const toIsoUtc = (value: string): string => {
-	if (!value) return value;
-	const d = value.includes('T') ? new Date(value) : new Date(value.replace(' ', 'T') + 'Z');
-	return isNaN(d.getTime()) ? value : d.toISOString();
-};
 
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
