@@ -277,6 +277,7 @@ export const AlertsTable = ({
 														'severity',
 														'status',
 														'startsAt',
+														'updatedAt',
 														'summary',
 														'type',
 														'owner',
