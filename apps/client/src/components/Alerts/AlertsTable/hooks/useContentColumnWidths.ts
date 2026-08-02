@@ -50,7 +50,8 @@ export const distributeWidths = (
 	return Object.fromEntries(
 		Object.keys(desired).map((col) => {
 			const floor = floors[col] ?? 0;
-			return [col, Math.round(desired[col] - (desired[col] - floor) * scale)];
+			// floor(), not round(): the sum must never exceed `available`.
+			return [col, Math.floor(desired[col] - (desired[col] - floor) * scale)];
 		})
 	);
 };
@@ -145,6 +146,9 @@ export const useContentColumnWidths = ({
 				claimed += COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default;
 			}
 		}
-		return distributeWidths(desired, floors, containerWidth - claimed);
+		// Small buffer so per-column floor-rounding and sub-pixel layout can never push
+		// the summed widths past the container (overflow = phantom header scrollbar).
+		const SAFETY_PX = 8;
+		return distributeWidths(desired, floors, containerWidth - claimed - SAFETY_PX);
 	}, [alerts, orderedColumns, columnLabels, containerWidth, hasSelectColumn, actionsColumnWidthPx]);
 };

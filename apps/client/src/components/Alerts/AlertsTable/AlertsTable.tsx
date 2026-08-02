@@ -77,17 +77,22 @@ export const AlertsTable = ({
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
 
-	// Width of the horizontal scroll container, tracked so content-aware column widths
-	// can react to window/pane resizes.
-	const scrollerRef = useRef<HTMLDivElement>(null);
+	// Width actually available to row content, tracked so content-aware column widths
+	// can react to window/pane resizes. Measured on the body scrollport (parentRef), NOT
+	// the outer horizontal scroller: the scrollport reserves a vertical-scrollbar gutter
+	// (mirrored by the header via scrollbar-gutter: stable), so on classic-scrollbar
+	// systems its content area is ~15px narrower than the scroller. Sizing against the
+	// scroller overflowed the header table by exactly that gutter, giving the header its
+	// own phantom horizontal scrollbar.
 	const [containerWidth, setContainerWidth] = useState(0);
 	useEffect(() => {
-		const el = scrollerRef.current;
+		const el = parentRef.current;
 		if (!el) return;
-		const observer = new ResizeObserver((entries) => setContainerWidth(entries[0]?.contentRect.width ?? 0));
+		const observer = new ResizeObserver(() => setContainerWidth(el.clientWidth));
 		observer.observe(el);
 		return () => observer.disconnect();
-	}, []);
+		// Re-attach when the empty state swaps for the table (the scrollport div appears).
+	}, [isLoading, alerts.length]);
 
 	// Expanded rows: cell content wraps onto new lines (full name/summary/labels)
 	// instead of truncating to a single line.
@@ -198,7 +203,7 @@ export const AlertsTable = ({
 					{/* Header and body share this horizontal scroller: when the pane is narrower
 					    than the table's minimum width they scroll sideways together, instead of the
 					    auto-width summary column silently collapsing to zero. */}
-					<div ref={scrollerRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+					<div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
 						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
 							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
 							    scrollbar gutter (see below) so header and body columns stay aligned on
