@@ -24,7 +24,14 @@ import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { filterAlerts } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
-import { useAlertGrouping, useAlertSelection, useAlertSorting, useDragSelection, useStickyHeaders } from './hooks';
+import {
+	useAlertGrouping,
+	useAlertSelection,
+	useAlertSorting,
+	useContentColumnWidths,
+	useDragSelection,
+	useStickyHeaders,
+} from './hooks';
 import { SearchBar } from './SearchBar';
 import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
@@ -69,6 +76,18 @@ export const AlertsTable = ({
 	heading,
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
+
+	// Width of the horizontal scroll container, tracked so content-aware column widths
+	// can react to window/pane resizes.
+	const scrollerRef = useRef<HTMLDivElement>(null);
+	const [containerWidth, setContainerWidth] = useState(0);
+	useEffect(() => {
+		const el = scrollerRef.current;
+		if (!el) return;
+		const observer = new ResizeObserver((entries) => setContainerWidth(entries[0]?.contentRect.width ?? 0));
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, []);
 
 	// Expanded rows: cell content wraps onto new lines (full name/summary/labels)
 	// instead of truncating to a single line.
@@ -126,6 +145,18 @@ export const AlertsTable = ({
 	// the fixed <th> onto the neighboring column's header text.
 	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
 
+	// Pixel widths for the content-sized columns (alert name + tags): wide enough that
+	// their longest value fits, no wider. Empty until the container is first measured —
+	// static width classes cover that frame.
+	const contentColumnWidths = useContentColumnWidths({
+		alerts: sortedAlerts,
+		orderedColumns,
+		columnLabels: allColumnLabels,
+		containerWidth,
+		hasSelectColumn: !!onSelectAlerts,
+		actionsColumnWidthPx: parseInt(actionsColumnWidth, 10),
+	});
+
 	// Floor width for the table: the sum of the visible columns' minimums. Narrower
 	// panes get a horizontal scrollbar instead of columns crushing each other.
 	const tableMinWidth = useMemo(() => {
@@ -167,7 +198,7 @@ export const AlertsTable = ({
 					{/* Header and body share this horizontal scroller: when the pane is narrower
 					    than the table's minimum width they scroll sideways together, instead of the
 					    auto-width summary column silently collapsing to zero. */}
-					<div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+					<div ref={scrollerRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
 						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
 							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
 							    scrollbar gutter (see below) so header and body columns stay aligned on
@@ -278,6 +309,11 @@ export const AlertsTable = ({
 															sortDirection={sortDirection}
 															onSort={handleSort}
 															className={COLUMN_WIDTHS.default}
+															style={
+																contentColumnWidths[column]
+																	? { width: contentColumnWidths[column] }
+																	: undefined
+															}
 														/>
 													);
 												}
@@ -303,6 +339,11 @@ export const AlertsTable = ({
 															sortDirection={sortDirection}
 															onSort={handleSort}
 															className={COLUMN_WIDTHS[column]}
+															style={
+																contentColumnWidths[column]
+																	? { width: contentColumnWidths[column] }
+																	: undefined
+															}
 														/>
 													);
 												}
@@ -346,6 +387,7 @@ export const AlertsTable = ({
 											flatRows={flatRows}
 											selectedAlerts={selectedAlerts}
 											orderedColumns={orderedColumns}
+											contentColumnWidths={contentColumnWidths}
 											expandRows={expandRows}
 											onToggleGroup={toggleGroup}
 											onSelectAlert={handleSelectAlert}

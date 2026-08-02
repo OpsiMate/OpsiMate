@@ -22,6 +22,8 @@ export interface AlertRowProps {
 	alert: Alert;
 	isSelected: boolean;
 	orderedColumns: string[];
+	// Content-aware pixel widths for alertName/tag columns; must match the header's.
+	contentColumnWidths?: Record<string, number>;
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
@@ -48,6 +50,7 @@ export const AlertRow = ({
 	alert,
 	isSelected,
 	orderedColumns,
+	contentColumnWidths = {},
 	onSelectAlert,
 	onAlertClick,
 	isActiveRow = false,
@@ -137,6 +140,7 @@ export const AlertRow = ({
 								tagKey={tagKey}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.default}
+								style={contentColumnWidths[column] ? { width: contentColumnWidths[column] } : undefined}
 							/>
 						);
 					}
@@ -153,6 +157,11 @@ export const AlertRow = ({
 								alert={alert}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.alertName}
+								style={
+									contentColumnWidths['alertName']
+										? { width: contentColumnWidths['alertName'] }
+										: undefined
+								}
 							/>
 						);
 					case 'severity':

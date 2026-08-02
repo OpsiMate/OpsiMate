@@ -66,13 +66,13 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	type: 48,
 	severity: 48,
 	status: 48,
-	// Matches the fixed w-[240px].
-	alertName: 240,
+	// Shrink floor; the rendered width is content-aware (useContentColumnWidths).
+	alertName: 170,
 	summary: 170,
 	owner: 120,
 	startsAt: 150,
 	updatedAt: 150,
 	// Rendered at ACTIONS_COLUMN_WIDTH (inline style), not COLUMN_WIDTHS.
 	[ACTIONS_COLUMN]: 80,
-	default: 150,
+	default: 110,
 };
