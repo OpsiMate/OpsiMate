@@ -29,7 +29,7 @@
 		"@kubernetes/client-node": "^1.4.0",
 		"@types/cors": "^2.8.19",
 		"@types/jsonwebtoken": "^9.0.10",
-		"axios": "^1.18.1",
+		"axios": "^1.19.0",
 		"bcrypt": "^6.0.0",
 		"better-sqlite3": "^12.11.1",
 		"cors": "^2.8.6",
