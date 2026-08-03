@@ -7,11 +7,13 @@ export interface AlertNameColumnProps {
 	// Wrap the full name onto new lines instead of truncating (the "expand rows" toggle).
 	expanded?: boolean;
 	className?: string;
+	// Inline width for content-aware sizing; wins over any width class.
+	style?: React.CSSProperties;
 }
 
-export const AlertNameColumn = ({ alert, expanded = false, className }: AlertNameColumnProps) => {
+export const AlertNameColumn = ({ alert, expanded = false, className, style }: AlertNameColumnProps) => {
 	return (
-		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell style={style} className={cn('py-1 px-2 overflow-hidden', className)}>
 			<span
 				className={cn(
 					'text-sm block text-foreground',

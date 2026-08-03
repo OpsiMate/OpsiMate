@@ -9,13 +9,15 @@ export interface AlertTagKeyColumnProps {
 	// Wrap the full value onto new lines instead of truncating (the "expand rows" toggle).
 	expanded?: boolean;
 	className?: string;
+	// Inline width for content-aware sizing; wins over any width class.
+	style?: React.CSSProperties;
 }
 
-export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className }: AlertTagKeyColumnProps) => {
+export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, style }: AlertTagKeyColumnProps) => {
 	const value = alert.tags?.[tagKey];
 
 	return (
-		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell style={style} className={cn('py-1 px-2 overflow-hidden', className)}>
 			{value ? (
 				<Badge
 					variant="outline"
