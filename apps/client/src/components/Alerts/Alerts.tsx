@@ -44,7 +44,6 @@ import {
 	useAlertsFiltering,
 	useAlertsRefresh,
 	useAlertTagKeys,
-	useResolvedTabStatusFilterReset,
 	useColumnManagement,
 	useSeverityColors,
 } from './hooks';
@@ -199,18 +198,27 @@ const Alerts = () => {
 		updateDashboardField('filters', newFilters);
 	};
 
-	useResolvedTabStatusFilterReset({
-		activeTab,
-		filters: dashboardState.filters,
-		onFilterChange: handleFilterChange,
-	});
-
 	const filteredAlerts = useAlertsFiltering(alerts, {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
+	// Fully-filtered resolved list (status included) — feeds the All view, where a
+	// status filter is meaningful ("Resolved" is one of its options).
 	const filteredResolvedAlerts = useAlertsFiltering(resolvedAlerts, {
 		filters: dashboardState.filters,
+		timeRange: dashboardState.timeRange,
+	});
+	// The Resolved VIEW runs with the status filter suspended — not deleted: an active
+	// status like Firing/Silenced can never match resolved alerts, so applying it would
+	// make the view silently empty, but wiping it (the old behavior) destroyed the
+	// user's stored filter — and dirtied the dashboard — just for peeking at Resolved.
+	// The stored filters stay intact; Active/All keep applying them.
+	const resolvedViewFilters = useMemo(() => {
+		const { status: _status, ...rest } = dashboardState.filters;
+		return rest;
+	}, [dashboardState.filters]);
+	const resolvedViewAlerts = useAlertsFiltering(resolvedAlerts, {
+		filters: resolvedViewFilters,
 		timeRange: dashboardState.timeRange,
 	});
 
@@ -462,10 +470,11 @@ const Alerts = () => {
 	const tabCounts: Record<AlertTab, number> = useMemo(
 		() => ({
 			[AlertTab.Active]: filterAlerts(filteredAlerts, dashboardState.query).length,
-			[AlertTab.Resolved]: filterAlerts(filteredResolvedAlerts, dashboardState.query).length,
+			// Mirrors the Resolved view, which suspends the status filter (see above).
+			[AlertTab.Resolved]: filterAlerts(resolvedViewAlerts, dashboardState.query).length,
 			[AlertTab.All]: filterAlerts(filteredAllAlerts, dashboardState.query).length,
 		}),
-		[filteredAlerts, filteredResolvedAlerts, filteredAllAlerts, dashboardState.query]
+		[filteredAlerts, resolvedViewAlerts, filteredAllAlerts, dashboardState.query]
 	);
 	return (
 		<DashboardLayout>
@@ -661,13 +670,15 @@ const Alerts = () => {
 							<div
 								className={cn(
 									'flex-1 min-h-0',
-									resolvedAlerts.length === 0 &&
+									// Matches the list the table actually renders, so the empty state
+									// centers also when filters (not just an empty source) clear it.
+									resolvedViewAlerts.length === 0 &&
 										!isLoadingResolved &&
 										'flex items-center justify-center'
 								)}
 							>
 								<AlertsTable
-									alerts={filteredResolvedAlerts}
+									alerts={resolvedViewAlerts}
 									services={services}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
