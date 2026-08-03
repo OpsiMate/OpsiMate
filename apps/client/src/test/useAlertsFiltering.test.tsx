@@ -75,7 +75,7 @@ describe('useAlertsFiltering rolling time presets', () => {
 	});
 });
 
-describe('in-range Started At override', () => {
+describe('episode-start Started At override under a time filter', () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
@@ -91,6 +91,22 @@ describe('in-range Started At override', () => {
 		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
 		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
 		expect(result.current[0]?.startsAt).toBe(inRangeFiring);
+	});
+
+	test('multiple episodes inside the window: Started At is the latest transition into firing', () => {
+		// fired 18:00-style (3h ago), resolved, re-fired 1h... the current episode's start
+		// (the LAST transition to firing) must win — not the first in-range firing.
+		const firstEpisode = new Date(Date.now() - 3 * 3600_000).toISOString();
+		const currentEpisode = new Date(Date.now() - 40 * 60_000).toISOString();
+		const alert = {
+			...mkAlert('episodes', 0),
+			startsAt: currentEpisode,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [firstEpisode, currentEpisode],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last6h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(currentEpisode);
 	});
 
 	test('an alert firing across the range boundary with no in-range transition keeps its real start', () => {
@@ -162,7 +178,8 @@ describe('in-range override with mixed timestamp formats', () => {
 		};
 		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
 		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
-		// The earliest REAL instant is the offset startsAt — numeric sort keeps it.
-		expect(result.current[0]?.startsAt).toBe(offsetIso);
+		// The latest REAL instant is the UTC firing time; a lexicographic comparison
+		// would have picked the offset startsAt ("…T14+03:00" > "…T11…Z").
+		expect(result.current[0]?.startsAt).toBe(laterUtc);
 	});
 });
