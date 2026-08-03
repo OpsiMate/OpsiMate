@@ -1478,7 +1478,9 @@ describe('Started At stability', () => {
 
 	test('a new episode after resolve picks up the new startsAt', async () => {
 		const T1 = '2026-08-01T10:00:00.000Z';
-		const T3 = '2026-08-02T09:00:00.000Z';
+		// Must postdate the resolve: a re-fire claiming a PRE-resolve start is treated as
+		// a replayed stale claim and stamped with the observed moment instead.
+		const T3 = new Date(Date.now() + 1000).toISOString();
 		const payload = { id: 'episode-new', status: 'firing', alertName: 'New Episode', summary: 's', tags: {} };
 		await app
 			.post('/api/v1/alerts/custom')
@@ -1505,5 +1507,95 @@ describe('Started At stability', () => {
 		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === 'legacy-format');
 		expect(alert?.startsAt).toBe('2026-08-01T10:00:00.000Z');
 		expect(alert?.updatedAt).toBe('2026-08-01T11:00:00.000Z');
+	});
+});
+
+describe('Unresolve starts a new episode', () => {
+	test('unresolving stamps Started At with the unresolve moment, not the original start', async () => {
+		const alertId = testAlerts[0].id;
+		const before = Date.now();
+		const original = (await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`)).body.data
+			.alerts as Alert[];
+		const originalStart = original.find((a) => a.id === alertId)?.startsAt;
+
+		await app.delete(`/api/v1/alerts/${alertId}`).set('Authorization', `Bearer ${jwtToken}`).send({});
+		const unresolved = await app
+			.patch(`/api/v1/alerts/resolved/${alertId}/unresolve`)
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(unresolved.status).toBe(200);
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === alertId);
+		// New episode: startsAt is the unresolve moment (>= test start), not the seed value.
+		expect(alert?.startsAt).not.toBe(originalStart);
+		expect(new Date(alert?.startsAt ?? 0).getTime()).toBeGreaterThanOrEqual(before);
+		expect(alert?.startsAt).toBe(alert?.updatedAt);
+	});
+
+	test('the history timeline keeps the original firing entry and shows one unresolve entry', async () => {
+		// Seed via the API so the alert's status is genuinely 'firing' (the fixture rows
+		// use 'active'/'warning', whose trigger entries don't render as firing).
+		const T1 = '2026-08-01T08:00:00.000Z';
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: 'unresolve-hist', status: 'firing', alertName: 'UH', summary: 's', tags: {}, startsAt: T1 });
+		await app.delete('/api/v1/alerts/unresolve-hist').set('Authorization', `Bearer ${jwtToken}`).send({});
+		await app.patch('/api/v1/alerts/resolved/unresolve-hist/unresolve').set('Authorization', `Bearer ${jwtToken}`);
+
+		const history = await app
+			.get('/api/v1/alerts/unresolve-hist/history')
+			.set('Authorization', `Bearer ${jwtToken}`);
+		const entries = history.body.data.data as { eventType: string; description?: string; date: string }[];
+		const firingEntries = entries.filter((e) => e.description === 'Alert started firing');
+		const unresolveEntries = entries.filter((e) => e.eventType === 'unresolved');
+		// The original firing survives as the episode's historical record; the unresolve
+		// is recorded once (restoreAlert removes the trigger's duplicate re-insert row).
+		expect(firingEntries).toHaveLength(1);
+		expect(firingEntries[0].date).toBe(T1);
+		expect(unresolveEntries).toHaveLength(1);
+	});
+
+	test('a source re-fire replaying a pre-resolve startsAt stamps the observed moment instead', async () => {
+		const T1 = '2026-08-01T08:00:00.000Z';
+		const payload = { id: 'refire-stale', status: 'firing', alertName: 'RS', summary: 's', tags: {} };
+		const before = Date.now();
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T1 });
+		await app.delete('/api/v1/alerts/refire-stale').set('Authorization', `Bearer ${jwtToken}`).send({});
+		// Source re-fires but replays the ORIGINAL incident start (predates the resolve).
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T1 });
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === 'refire-stale');
+		expect(alert?.startsAt).not.toBe(T1);
+		expect(new Date(alert?.startsAt ?? 0).getTime()).toBeGreaterThanOrEqual(before);
+	});
+
+	test('a source re-fire with a genuinely fresh startsAt keeps the claimed start', async () => {
+		const T1 = '2026-08-01T08:00:00.000Z';
+		const payload = { id: 'refire-fresh', status: 'firing', alertName: 'RF', summary: 's', tags: {} };
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T1 });
+		await app.delete('/api/v1/alerts/refire-fresh').set('Authorization', `Bearer ${jwtToken}`).send({});
+		// Created AFTER the resolve so it postdates archived_at no matter how slowly the
+		// requests above ran — otherwise the stale-claim rule would (correctly) reject it.
+		const fresh = new Date(Date.now() + 60_000).toISOString();
+		// New incident with its own recent start (after the resolve): trusted verbatim.
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: fresh });
+
+		const listing = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+		const alert = (listing.body.data.alerts as Alert[]).find((a) => a.id === 'refire-fresh');
+		expect(alert?.startsAt).toBe(fresh);
 	});
 });

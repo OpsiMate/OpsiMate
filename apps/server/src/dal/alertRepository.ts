@@ -47,6 +47,25 @@ export class AlertRepository {
 			// copy — the active row is the truth. Same transaction as the upsert so a
 			// failure between the two can't leave the alert in neither table.
 			const upsert = this.db.transaction(() => {
+				// Re-fire after a resolve = a new episode. Sources often replay the ORIGINAL
+				// incident startsAt on the re-fire push; trusting that claim would show a
+				// freshly re-activated alert as weeks old. If the claimed start predates the
+				// resolve that ended the previous episode (a contradiction — it can't have
+				// started before it last ended), stamp the observed re-fire moment instead.
+				// A claimed start AFTER the resolve is a genuine fresh start and is kept.
+				let startsAt = alert.startsAt;
+				const resolvedCopy = this.db
+					.prepare(`SELECT archived_at, updated_at FROM alerts_resolved WHERE id = ?`)
+					.get(alert.id) as { archived_at: string | null; updated_at: string } | undefined;
+				if (resolvedCopy) {
+					const resolveMoment = new Date(
+						toIsoUtc(resolvedCopy.archived_at ?? resolvedCopy.updated_at)
+					).getTime();
+					const claimed = new Date(startsAt).getTime();
+					if (isNaN(claimed) || (!isNaN(resolveMoment) && claimed <= resolveMoment)) {
+						startsAt = new Date().toISOString();
+					}
+				}
 				this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`).run(alert.id);
 				return stmt.run(
 					alert.id,
@@ -55,7 +74,7 @@ export class AlertRepository {
 					alert.severity,
 					alert.team ?? null,
 					JSON.stringify(alert.tags ?? {}),
-					alert.startsAt,
+					startsAt,
 					alert.updatedAt,
 					alert.alertUrl,
 					alert.alertName,

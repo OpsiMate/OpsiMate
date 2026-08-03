@@ -350,6 +350,7 @@ export class AlertBL {
 				return null;
 			}
 
+			const now = new Date().toISOString();
 			const alert: Alert = {
 				...resolved,
 				status: AlertStatus.FIRING,
@@ -358,7 +359,13 @@ export class AlertBL {
 				// Restored as unread (matches the is_read = 0 the repository writes) so the
 				// returned alert renders with the unread treatment without waiting for a refetch.
 				isRead: false,
-				updatedAt: new Date().toISOString(),
+				// Unresolving starts a NEW firing episode: "Started At" means the last
+				// transition into firing, so it stamps the unresolve moment — not the original
+				// start, which would make a re-activated alert look ancient. The original
+				// start stays visible in the history timeline, and filtered/unfiltered views
+				// now agree (the UNRESOLVED event and starts_at carry the same moment).
+				startsAt: now,
+				updatedAt: now,
 			};
 
 			await this.alertRepo.restoreAlert(alert);
@@ -408,7 +415,9 @@ export class AlertBL {
 		// A manual resolve records a RESOLVED event (with the acting user) AND fires the
 		// automatic status trigger. Suppress the trigger's entry when a manual-resolve event
 		// sits right next to it, so the timeline shows one entry per resolve — with the actor
-		// for manual resolves, without one for API/source-driven resolution.
+		// for manual resolves, without one for API/source-driven resolution. (Unresolve needs
+		// no counterpart: restoreAlert deletes the trigger's re-insert row, leaving the
+		// UNRESOLVED event as the transition's single record.)
 		const manualResolveTimes = eventEntries
 			.filter((e) => e.eventType === AlertHistoryEventType.RESOLVED)
 			.map((e) => new Date(e.date).getTime());
@@ -416,8 +425,18 @@ export class AlertBL {
 			entry.status !== AlertStatus.FIRING &&
 			manualResolveTimes.some((t) => Math.abs(t - new Date(toIsoUtc(entry.date)).getTime()) < 10_000);
 
+		// Exact-duplicate transitions collapse to one entry: unresolve re-inserts used to
+		// stamp the trigger row with the ORIGINAL starts_at, so older alerts carry several
+		// identical "firing" rows at the same instant.
+		const seenTransitions = new Set<string>();
 		const statusEntries: AlertHistoryData[] = statusHistory.data
 			.filter((entry) => !coveredByManualResolve(entry))
+			.filter((entry) => {
+				const key = `${entry.status}@${toIsoUtc(entry.date)}`;
+				if (seenTransitions.has(key)) return false;
+				seenTransitions.add(key);
+				return true;
+			})
 			.map((entry) => ({
 				...entry,
 				date: toIsoUtc(entry.date),
