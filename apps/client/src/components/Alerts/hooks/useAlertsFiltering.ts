@@ -71,21 +71,23 @@ export const useAlertsFiltering = (
 				return alertStartDate <= filterEnd && alertEndDate >= filterStart;
 			});
 
-			// Inside a time window, "Started At" means the first time the alert fired WITHIN
-			// that window: an alert that originally fired last week but re-fired/unresolved
-			// inside the range shows (and sorts by) the in-range firing, not the ancient one.
-			// Alerts that simply kept firing across the range boundary have no in-range
-			// transition and keep their real start.
+			// Inside a time window, "Started At" means when the firing episode CURRENT AS OF
+			// the window's end began: the LATEST transition into firing at or before the
+			// window closes. An alert that fired at 18:00, resolved at 19:00 and re-fired at
+			// 20:00 shows 20:00 — the 18:00 episode ended; showing it would misstate how long
+			// the alert has been burning. Transitions after the window's end belong to a
+			// later episode and are ignored; an alert that simply kept firing across the
+			// window's start keeps its real (pre-window) start.
 			result = result.map((alert) => {
-				const candidates = [alert.startsAt, ...(alert.firingTimes ?? [])].filter((iso) => {
-					const t = new Date(iso);
-					return !isNaN(t.getTime()) && t >= filterStart && t <= filterEnd;
-				});
+				// Numeric (epoch) comparison: startsAt can carry a timezone offset while
+				// firingTimes are normalized UTC — lexicographic order would mis-pick
+				// across formats.
+				const candidates = [alert.startsAt, ...(alert.firingTimes ?? [])]
+					.map((iso) => ({ iso, epoch: new Date(iso).getTime() }))
+					.filter(({ epoch }) => !isNaN(epoch) && epoch <= filterEnd.getTime());
 				if (candidates.length === 0) return alert;
-				// Numeric sort: startsAt can carry a timezone offset while firingTimes are
-				// normalized UTC — lexicographic order would mis-pick across formats.
-				const inRangeStart = candidates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
-				return inRangeStart === alert.startsAt ? alert : { ...alert, startsAt: inRangeStart };
+				const episodeStart = candidates.reduce((latest, c) => (c.epoch > latest.epoch ? c : latest));
+				return episodeStart.iso === alert.startsAt ? alert : { ...alert, startsAt: episodeStart.iso };
 			});
 		}
 
