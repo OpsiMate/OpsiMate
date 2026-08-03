@@ -1579,13 +1579,15 @@ describe('Unresolve starts a new episode', () => {
 
 	test('a source re-fire with a genuinely fresh startsAt keeps the claimed start', async () => {
 		const T1 = '2026-08-01T08:00:00.000Z';
-		const fresh = new Date(Date.now() + 60_000).toISOString();
 		const payload = { id: 'refire-fresh', status: 'firing', alertName: 'RF', summary: 's', tags: {} };
 		await app
 			.post('/api/v1/alerts/custom')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ ...payload, startsAt: T1 });
 		await app.delete('/api/v1/alerts/refire-fresh').set('Authorization', `Bearer ${jwtToken}`).send({});
+		// Created AFTER the resolve so it postdates archived_at no matter how slowly the
+		// requests above ran — otherwise the stale-claim rule would (correctly) reject it.
+		const fresh = new Date(Date.now() + 60_000).toISOString();
 		// New incident with its own recent start (after the resolve): trusted verbatim.
 		await app
 			.post('/api/v1/alerts/custom')
