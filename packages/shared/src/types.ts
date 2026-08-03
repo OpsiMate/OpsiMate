@@ -252,6 +252,10 @@ export enum AlertHistoryEventType {
 	UNRESOLVED = 'unresolved',
 	ACTION_RUN = 'action_run',
 	COMMENT_ADDED = 'comment_added',
+	// Synthesized (not persisted): the alert's most recent update from its source,
+	// derived from updated_at at read time. Guarantees a visible alert always has at
+	// least one history entry inside any time window that shows it.
+	UPDATED = 'updated',
 }
 
 export interface AlertHistoryData {

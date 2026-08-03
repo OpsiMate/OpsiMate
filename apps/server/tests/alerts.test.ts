@@ -1599,3 +1599,53 @@ describe('Unresolve starts a new episode', () => {
 		expect(alert?.startsAt).toBe(fresh);
 	});
 });
+
+describe('Synthesized last-update history entry', () => {
+	test('an alert updated after its start gains an UPDATED entry at updated_at', async () => {
+		const T_START = '2026-08-02T21:00:00.000Z';
+		const T_UPDATE = '2026-08-03T00:01:00.000Z';
+		const payload = { id: 'late-update', status: 'firing', alertName: 'LateUpdate', summary: 's', tags: {} };
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T_START, updatedAt: T_START });
+		// The update re-sends the ORIGINAL start (like real sources do) so the scenario
+		// stays purely "same episode, new update" — only updated_at moves.
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T_START, updatedAt: T_UPDATE });
+
+		const history = await app.get('/api/v1/alerts/late-update/history').set('Authorization', `Bearer ${jwtToken}`);
+		const entries = history.body.data.data as { date: string; eventType?: string; description?: string }[];
+		const updated = entries.filter((e) => e.eventType === 'updated');
+		// Exactly one synthesized entry, at the latest update - so a time window that
+		// contains the update but not the original firing still shows history.
+		expect(updated).toHaveLength(1);
+		expect(updated[0].date).toBe(T_UPDATE);
+		// The firing entry itself stays at the episode start.
+		const firing = entries.filter((e) => e.description === 'Alert started firing');
+		expect(firing).toHaveLength(1);
+		expect(firing[0].date).toBe(T_START);
+	});
+
+	test('a never-updated alert gets no duplicate entry at its start moment', async () => {
+		const T = '2026-08-02T21:00:00.000Z';
+		await app.post('/api/v1/alerts/custom').set('Authorization', `Bearer ${jwtToken}`).send({
+			id: 'fresh',
+			status: 'firing',
+			alertName: 'Fresh',
+			summary: 's',
+			tags: {},
+			startsAt: T,
+			updatedAt: T,
+		});
+
+		const history = await app.get('/api/v1/alerts/fresh/history').set('Authorization', `Bearer ${jwtToken}`);
+		const entries = history.body.data.data as { date: string; eventType?: string }[];
+		expect(entries.filter((e) => e.eventType === 'updated')).toHaveLength(0);
+		// The firing entry itself is still there at that moment — matched by type, not
+		// just timestamp, so an unrelated same-moment event can't satisfy this.
+		expect(entries.some((e) => e.date === T && e.eventType === 'status_changed')).toBe(true);
+	});
+});

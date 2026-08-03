@@ -444,9 +444,30 @@ export class AlertBL {
 				description: entry.status === AlertStatus.FIRING ? 'Alert started firing' : 'Alert resolved',
 			}));
 
-		const data = [...statusEntries, ...eventEntries].sort(
-			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-		);
+		const data = [...statusEntries, ...eventEntries];
+
+		// Synthesize a "last update received" entry from the alert row's updated_at (not
+		// persisted — updates are upserts and write no history). Without it, an alert
+		// whose only real entries predate an active time window shows an empty history
+		// log even though its recent update is what keeps it in the list (e.g. fired
+		// 23:00 yesterday, updated 00:01, window "Today"). Skipped when an entry already
+		// sits at that moment (a fresh alert whose updated_at still equals starts_at).
+		const alertRow =
+			(await this.alertRepo.getAlert(alertId)) ?? (await this.resolvedAlertRepo.getResolvedAlert(alertId));
+		if (alertRow?.updatedAt) {
+			const updatedIso = toIsoUtc(alertRow.updatedAt);
+			const updatedMs = new Date(updatedIso).getTime();
+			const covered = data.some((entry) => Math.abs(new Date(entry.date).getTime() - updatedMs) < 1_000);
+			if (!isNaN(updatedMs) && !covered) {
+				data.push({
+					date: updatedIso,
+					eventType: AlertHistoryEventType.UPDATED,
+					description: 'Last update received from the source',
+				});
+			}
+		}
+
+		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 		return { alertId, data };
 	}
