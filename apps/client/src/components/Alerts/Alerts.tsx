@@ -670,7 +670,9 @@ const Alerts = () => {
 							<div
 								className={cn(
 									'flex-1 min-h-0',
-									resolvedAlerts.length === 0 &&
+									// Matches the list the table actually renders, so the empty state
+									// centers also when filters (not just an empty source) clear it.
+									resolvedViewAlerts.length === 0 &&
 										!isLoadingResolved &&
 										'flex items-center justify-center'
 								)}
