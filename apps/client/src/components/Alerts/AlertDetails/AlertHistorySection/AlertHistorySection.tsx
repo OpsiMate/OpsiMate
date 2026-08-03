@@ -15,7 +15,12 @@ interface AlertHistorySectionProps {
 // Self-contained collapsible History section, rendered as a timeline and filtered by the
 // active time range so it mirrors what the "All time" button shows for the alerts list.
 export const AlertHistorySection = ({ historyData, timeRange }: AlertHistorySectionProps) => {
-	const isFiltered = !!(timeRange && (timeRange.from || timeRange.to));
+	// Quick presets carry only `preset` (from/to stay null), so checking the dates
+	// alone would treat a preset window as unfiltered.
+	const isFiltered = !!(
+		timeRange &&
+		(timeRange.from || timeRange.to || (timeRange.preset && timeRange.preset !== 'custom'))
+	);
 	const filtered = useMemo(() => filterHistoryByRange(historyData.data, timeRange), [historyData.data, timeRange]);
 
 	if (!historyData.data.length) {

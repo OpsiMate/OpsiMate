@@ -1599,3 +1599,46 @@ describe('Unresolve starts a new episode', () => {
 		expect(alert?.startsAt).toBe(fresh);
 	});
 });
+
+describe('Synthesized last-update history entry', () => {
+	test('an alert updated after its start gains an UPDATED entry at updated_at', async () => {
+		const T_START = '2026-08-02T21:00:00.000Z';
+		const T_UPDATE = '2026-08-03T00:01:00.000Z';
+		const payload = { id: 'late-update', status: 'firing', alertName: 'LateUpdate', summary: 's', tags: {} };
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T_START, updatedAt: T_START });
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...payload, startsAt: T_UPDATE, updatedAt: T_UPDATE });
+
+		const history = await app.get('/api/v1/alerts/late-update/history').set('Authorization', `Bearer ${jwtToken}`);
+		const entries = history.body.data.data as { date: string; eventType?: string }[];
+		const updated = entries.filter((e) => e.eventType === 'updated');
+		// Exactly one synthesized entry, at the latest update - so a time window that
+		// contains the update but not the original firing still shows history.
+		expect(updated).toHaveLength(1);
+		expect(updated[0].date).toBe(T_UPDATE);
+	});
+
+	test('a never-updated alert gets no duplicate entry at its start moment', async () => {
+		const T = '2026-08-02T21:00:00.000Z';
+		await app.post('/api/v1/alerts/custom').set('Authorization', `Bearer ${jwtToken}`).send({
+			id: 'fresh',
+			status: 'firing',
+			alertName: 'Fresh',
+			summary: 's',
+			tags: {},
+			startsAt: T,
+			updatedAt: T,
+		});
+
+		const history = await app.get('/api/v1/alerts/fresh/history').set('Authorization', `Bearer ${jwtToken}`);
+		const entries = history.body.data.data as { date: string; eventType?: string }[];
+		expect(entries.filter((e) => e.eventType === 'updated')).toHaveLength(0);
+		// The firing entry itself is still there at that moment.
+		expect(entries.some((e) => e.date === T)).toBe(true);
+	});
+});
