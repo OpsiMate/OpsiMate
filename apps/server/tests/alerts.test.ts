@@ -1609,18 +1609,24 @@ describe('Synthesized last-update history entry', () => {
 			.post('/api/v1/alerts/custom')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ ...payload, startsAt: T_START, updatedAt: T_START });
+		// The update re-sends the ORIGINAL start (like real sources do) so the scenario
+		// stays purely "same episode, new update" — only updated_at moves.
 		await app
 			.post('/api/v1/alerts/custom')
 			.set('Authorization', `Bearer ${jwtToken}`)
-			.send({ ...payload, startsAt: T_UPDATE, updatedAt: T_UPDATE });
+			.send({ ...payload, startsAt: T_START, updatedAt: T_UPDATE });
 
 		const history = await app.get('/api/v1/alerts/late-update/history').set('Authorization', `Bearer ${jwtToken}`);
-		const entries = history.body.data.data as { date: string; eventType?: string }[];
+		const entries = history.body.data.data as { date: string; eventType?: string; description?: string }[];
 		const updated = entries.filter((e) => e.eventType === 'updated');
 		// Exactly one synthesized entry, at the latest update - so a time window that
 		// contains the update but not the original firing still shows history.
 		expect(updated).toHaveLength(1);
 		expect(updated[0].date).toBe(T_UPDATE);
+		// The firing entry itself stays at the episode start.
+		const firing = entries.filter((e) => e.description === 'Alert started firing');
+		expect(firing).toHaveLength(1);
+		expect(firing[0].date).toBe(T_START);
 	});
 
 	test('a never-updated alert gets no duplicate entry at its start moment', async () => {
@@ -1638,7 +1644,8 @@ describe('Synthesized last-update history entry', () => {
 		const history = await app.get('/api/v1/alerts/fresh/history').set('Authorization', `Bearer ${jwtToken}`);
 		const entries = history.body.data.data as { date: string; eventType?: string }[];
 		expect(entries.filter((e) => e.eventType === 'updated')).toHaveLength(0);
-		// The firing entry itself is still there at that moment.
-		expect(entries.some((e) => e.date === T)).toBe(true);
+		// The firing entry itself is still there at that moment — matched by type, not
+		// just timestamp, so an unrelated same-moment event can't satisfy this.
+		expect(entries.some((e) => e.date === T && e.eventType === 'status_changed')).toBe(true);
 	});
 });
