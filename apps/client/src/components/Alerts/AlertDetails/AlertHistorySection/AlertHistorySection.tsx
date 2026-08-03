@@ -3,7 +3,7 @@ import { History } from 'lucide-react';
 import { useMemo } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertHistoryTimeline } from '../AlertHistoryTimeline';
-import { filterHistoryByRange } from '../AlertHistoryTimeline/alertHistory.utils';
+import { selectHistoryEntries } from '../AlertHistoryTimeline/alertHistory.utils';
 import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertHistorySectionProps {
@@ -21,7 +21,7 @@ export const AlertHistorySection = ({ historyData, timeRange }: AlertHistorySect
 		timeRange &&
 		(timeRange.from || timeRange.to || (timeRange.preset && timeRange.preset !== 'custom'))
 	);
-	const filtered = useMemo(() => filterHistoryByRange(historyData.data, timeRange), [historyData.data, timeRange]);
+	const filtered = useMemo(() => selectHistoryEntries(historyData.data, timeRange), [historyData.data, timeRange]);
 
 	if (!historyData.data.length) {
 		return null;
