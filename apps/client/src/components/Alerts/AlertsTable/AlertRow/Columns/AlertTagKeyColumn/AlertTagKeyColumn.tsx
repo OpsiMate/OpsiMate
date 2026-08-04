@@ -21,7 +21,13 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, 
 			{value ? (
 				<Badge
 					variant="outline"
-					className={cn('text-xs px-1.5 py-0.5 max-w-full', expanded && 'rounded-md')}
+					className={cn(
+						'text-xs px-1.5 py-0.5 max-w-full',
+						expanded && 'rounded-md',
+						// The badge's own font-semibold blocks the unread row's inherited
+						// font-black; re-apply it so the WHOLE unread line reads bold.
+						alert.isRead === false && 'font-black'
+					)}
 					title={expanded ? undefined : value}
 				>
 					{/* truncate must sit on a child of the badge's inline-flex container
