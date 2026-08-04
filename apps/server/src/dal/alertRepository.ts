@@ -18,6 +18,17 @@ export class AlertRepository {
 		this.db = db;
 	}
 
+	// Serialize tags with keys in a stable (sorted) order so the SAME set of tags always
+	// produces the SAME stored string. The is_read comparison in insertOrUpdateAlert diffs
+	// the stored tags string against the incoming one; without canonical order a source that
+	// merely reorders identical keys would look "changed" and wrongly re-bold a read alert.
+	private static serializeTags(tags?: Record<string, string> | null): string {
+		if (!tags) return '{}';
+		return JSON.stringify(
+			Object.fromEntries(Object.keys(tags).sort().map((k) => [k, tags[k]]))
+		);
+	}
+
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			// starts_at is deliberately NOT in the DO UPDATE clause: "Started At" means when
@@ -90,7 +101,7 @@ export class AlertRepository {
 					alert.type,
 					alert.severity,
 					alert.team ?? null,
-					JSON.stringify(alert.tags ?? {}),
+					AlertRepository.serializeTags(alert.tags),
 					startsAt,
 					alert.updatedAt,
 					alert.alertUrl,
@@ -134,7 +145,7 @@ export class AlertRepository {
 						alert.type,
 						alert.severity,
 						alert.team ?? null,
-						JSON.stringify(alert.tags ?? {}),
+						AlertRepository.serializeTags(alert.tags),
 						alert.startsAt,
 						alert.updatedAt,
 						alert.alertUrl,
