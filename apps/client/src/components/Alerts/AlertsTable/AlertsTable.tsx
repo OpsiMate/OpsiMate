@@ -352,7 +352,11 @@ export const AlertsTable = ({
 								    row pixel-perfectly, and both live in content coordinates, so
 								    horizontal scrolling keeps them aligned with the rows. */}
 								<div className="relative h-0 z-20">
-									<div className="absolute left-0 right-0 top-0">
+									{/* Opaque base under the sticky copies: group bars use a translucent
+								    bg-muted/50, and at rest the pinned copy sits exactly on the real
+								    group row — without this backing the two translucent layers stack
+								    and the first group renders darker than every other one. */}
+									<div className="absolute left-0 right-0 top-0 bg-background">
 										{activeStickyHeaders.map((item) => (
 											<StickyGroupHeader
 												key={`sticky-${item.type === 'group' ? item.key : ''}`}
