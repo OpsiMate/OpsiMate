@@ -18,21 +18,6 @@ export class AlertRepository {
 		this.db = db;
 	}
 
-	// Serialize tags with keys in a stable (sorted) order so the SAME set of tags always
-	// produces the SAME stored string. The is_read comparison in insertOrUpdateAlert diffs
-	// the stored tags string against the incoming one; without canonical order a source that
-	// merely reorders identical keys would look "changed" and wrongly re-bold a read alert.
-	private static serializeTags(tags?: Record<string, string> | null): string {
-		if (!tags) return '{}';
-		return JSON.stringify(
-			Object.fromEntries(
-				Object.keys(tags)
-					.sort()
-					.map((k) => [k, tags[k]])
-			)
-		);
-	}
-
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
 		return runAsync(() => {
 			// starts_at is deliberately NOT in the DO UPDATE clause: "Started At" means when
@@ -55,23 +40,12 @@ export class AlertRepository {
 											  alert_name=excluded.alert_name,
 											  summary=excluded.summary,
 											  runbook_url=excluded.runbook_url,
-											  -- An alert whose content actually changed is "new" again: mark it unread
-											  -- so the row re-bolds, exactly like a freshly inserted alert. Compared with
-											  -- IS NOT (null-safe) against the incoming values; updated_at is excluded on
-											  -- purpose because sources that push "now" on every replay would otherwise
-											  -- flip read alerts back to unread on each poll with no real change.
-											  is_read=CASE
-												WHEN alerts.status IS NOT excluded.status
-													OR alerts.severity IS NOT excluded.severity
-													OR alerts.team IS NOT excluded.team
-													OR alerts.tags IS NOT excluded.tags
-													OR alerts.alert_name IS NOT excluded.alert_name
-													OR alerts.summary IS NOT excluded.summary
-													OR alerts.runbook_url IS NOT excluded.runbook_url
-													OR alerts.alert_url IS NOT excluded.alert_url
-												THEN 0
-												ELSE alerts.is_read
-											  END
+											  -- Every arrival re-surfaces the alert: any push for this id — an update
+											  -- OR an identical replay — marks it unread so the row re-bolds. All
+											  -- ingestion here is push-based webhooks, so a repeat notification is the
+											  -- source deliberately saying "this is still happening"; that deserves
+											  -- the same visual weight as a brand-new alert.
+											  is_read=0
 			`);
 
 			// An alert id must never live in both tables: if this alert was previously
@@ -105,7 +79,7 @@ export class AlertRepository {
 					alert.type,
 					alert.severity,
 					alert.team ?? null,
-					AlertRepository.serializeTags(alert.tags),
+					JSON.stringify(alert.tags ?? {}),
 					startsAt,
 					alert.updatedAt,
 					alert.alertUrl,
@@ -149,7 +123,7 @@ export class AlertRepository {
 						alert.type,
 						alert.severity,
 						alert.team ?? null,
-						AlertRepository.serializeTags(alert.tags),
+						JSON.stringify(alert.tags ?? {}),
 						alert.startsAt,
 						alert.updatedAt,
 						alert.alertUrl,
@@ -269,29 +243,6 @@ export class AlertRepository {
 			const hasSilencedAt = columns.some((col: TableInfoRow) => col.name === 'silenced_at');
 			if (!hasSilencedAt) {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN silenced_at TEXT`).run();
-			}
-
-			// Re-serialize any stored tags whose keys aren't in canonical (sorted) order.
-			// Rows written before serializeTags existed kept the source's key order; the
-			// is_read change-detection in insertOrUpdateAlert compares the stored string
-			// against the canonical incoming one, so a legacy unsorted row would read as
-			// "changed" on its first post-upgrade push and wrongly re-bold a read alert.
-			// Cheap full sweep (active alerts number in the hundreds); no-op once canonical.
-			const legacyRows = this.db.prepare(`SELECT id, tags FROM alerts WHERE tags IS NOT NULL`).all() as {
-				id: string;
-				tags: string;
-			}[];
-			const rewriteTags = this.db.prepare(`UPDATE alerts SET tags = ? WHERE id = ?`);
-			for (const row of legacyRows) {
-				try {
-					const canonical = AlertRepository.serializeTags(JSON.parse(row.tags) as Record<string, string>);
-					if (canonical !== row.tags) {
-						rewriteTags.run(canonical, row.id);
-					}
-				} catch {
-					// Unparseable tags blob: leave it as-is rather than fail startup; the next
-					// push for that alert overwrites it with a canonical value anyway.
-				}
 			}
 
 			// Repair: an alert id must never exist as both active and resolved. Ingestion used

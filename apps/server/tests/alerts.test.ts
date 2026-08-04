@@ -2,7 +2,6 @@ import { SuperTest, Test } from 'supertest';
 import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
-import { AlertRepository } from '../src/dal/alertRepository';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
@@ -628,7 +627,7 @@ describe('Alerts API', () => {
 		});
 	});
 
-	describe('is_read change detection (re-bold on update)', () => {
+	describe('is_read on re-arrival (re-bold whenever an alert fires again)', () => {
 		const basePayload = {
 			id: 'reread-1',
 			tags: { service: 'api', team: 'platform' },
@@ -659,23 +658,15 @@ describe('Alerts API', () => {
 			expect(isRead()).toBe(0);
 		});
 
-		test('a replay with identical content stays read even with a new updatedAt', async () => {
+		test('a repeat arrival with identical content flips a read alert back to unread', async () => {
 			await postAlert();
 			await markRead();
 
 			expect((await postAlert()).status).toBe(200);
-			expect(isRead()).toBe(1);
+			expect(isRead()).toBe(0);
 		});
 
-		test('the same tags in a different key order stay read', async () => {
-			await postAlert();
-			await markRead();
-
-			expect((await postAlert({ tags: { team: 'platform', service: 'api' } })).status).toBe(200);
-			expect(isRead()).toBe(1);
-		});
-
-		test('a summary change flips the alert back to unread', async () => {
+		test('an arrival with updated content flips a read alert back to unread', async () => {
 			await postAlert();
 			await markRead();
 
@@ -683,49 +674,13 @@ describe('Alerts API', () => {
 			expect(isRead()).toBe(0);
 		});
 
-		test('a severity change flips the alert back to unread', async () => {
+		test('marking read after a re-arrival clears the unread state again', async () => {
 			await postAlert();
 			await markRead();
-
-			expect((await postAlert({ severity: 'warning' })).status).toBe(200);
-			expect(isRead()).toBe(0);
-		});
-
-		test('a tag value change flips the alert back to unread', async () => {
 			await postAlert();
-			await markRead();
-
-			expect((await postAlert({ tags: { service: 'api', team: 'checkout' } })).status).toBe(200);
 			expect(isRead()).toBe(0);
-		});
 
-		test('initAlertsTable canonicalizes legacy unsorted tags so the first replay does not re-bold', async () => {
-			// Simulates a row written before serializeTags existed: keys stored in source
-			// order. Without the startup sweep, the first identical replay would compare
-			// unsorted-stored vs sorted-incoming, read as "changed", and re-bold the row.
-			db.prepare(
-				`INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, is_read)
-				 VALUES (?, 'firing', 'Custom', 'critical', 'platform', ?, ?, ?, '', ?, ?, 1)`
-			).run(
-				basePayload.id,
-				JSON.stringify({ team: 'platform', severity: 'critical', service: 'api' }),
-				new Date().toISOString(),
-				new Date().toISOString(),
-				basePayload.alertName,
-				basePayload.summary
-			);
-
-			await new AlertRepository(db).initAlertsTable();
-
-			const stored = (
-				db.prepare('SELECT tags FROM alerts WHERE id = ?').get(basePayload.id) as {
-					tags: string;
-				}
-			).tags;
-			expect(stored).toBe(JSON.stringify({ service: 'api', severity: 'critical', team: 'platform' }));
-
-			// The replay carries the same content; the canonicalized row must stay read.
-			expect((await postAlert()).status).toBe(200);
+			await markRead();
 			expect(isRead()).toBe(1);
 		});
 	});
