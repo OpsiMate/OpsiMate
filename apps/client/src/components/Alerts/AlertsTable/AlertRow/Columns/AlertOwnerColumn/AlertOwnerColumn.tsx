@@ -26,7 +26,9 @@ export const AlertOwnerColumn = ({ alert, className, isResolved = false }: Alert
 
 	return (
 		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
-			<div onClick={(e) => e.stopPropagation()}>
+			{/* PersonPicker's trigger button carries its own font-normal, which blocks the
+			    unread row's inherited font-black — re-apply it so the WHOLE line reads bold. */}
+			<div onClick={(e) => e.stopPropagation()} className={cn(alert.isRead === false && '[&_button]:font-black')}>
 				<PersonPicker
 					selectedUserId={alert.ownerId}
 					users={users}
