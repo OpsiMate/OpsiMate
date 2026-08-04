@@ -1,12 +1,12 @@
 export const ACTIONS_COLUMN = 'actions';
 
 export const SELECT_COLUMN_WIDTH = '40px';
-// Sized for the two header buttons (expand rows + group by): 2×28px + 8px gap + 16px cell
-// padding. When the column-settings button is also shown the header needs a third button,
-// so the table switches to the wider constant — with only 80px the buttons overflow the
-// fixed <th> and sit on top of the neighboring column's header text.
-export const ACTIONS_COLUMN_WIDTH = '80px';
-export const ACTIONS_COLUMN_WIDTH_WITH_SETTINGS = '116px';
+// Sized for the group-by header button: 28px + 16px cell padding. When the
+// column-settings button is also shown the header needs a second button, so the table
+// switches to the wider constant — with only 44px the buttons overflow the fixed <th>
+// and sit on top of the neighboring column's header text.
+export const ACTIONS_COLUMN_WIDTH = '44px';
+export const ACTIONS_COLUMN_WIDTH_WITH_SETTINGS = '80px';
 export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
 
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];

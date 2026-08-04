@@ -259,3 +259,18 @@ export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): Fl
 	traverse(nodes);
 	return result;
 };
+
+// Width of a classic (non-overlay) scrollbar on this system; 0 where scrollbars overlay
+// content (macOS default, most mobile). The table's body scrollport reserves this much
+// with scrollbar-gutter, so width budgets must subtract it or the columns overflow the
+// visible area by exactly one scrollbar and the table scrolls sideways forever.
+let cachedScrollbarWidth: number | null = null;
+export const getScrollbarWidth = (): number => {
+	if (cachedScrollbarWidth !== null) return cachedScrollbarWidth;
+	const probe = document.createElement('div');
+	probe.style.cssText = 'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll;';
+	document.body.appendChild(probe);
+	cachedScrollbarWidth = probe.offsetWidth - probe.clientWidth;
+	probe.remove();
+	return cachedScrollbarWidth;
+};

@@ -1,11 +1,9 @@
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Activity, Plug, TriangleAlert, WrapText } from 'lucide-react';
+import { Activity, Plug, TriangleAlert } from 'lucide-react';
 import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
@@ -21,7 +19,7 @@ import {
 	TABLE_HEAD_CLASSES,
 } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
-import { filterAlerts } from './AlertsTable.utils';
+import { filterAlerts, getScrollbarWidth } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
 import {
@@ -73,6 +71,9 @@ export const AlertsTable = ({
 	isResolved = false,
 	renderToolbar = true,
 	severityColors = false,
+	// Wrap cell content onto new lines (full name/summary/labels) instead of truncating;
+	// owned by the page toolbar so every table on the page follows the same toggle.
+	expandRows = false,
 	heading,
 }: AlertsTableProps) => {
 	const parentRef = useRef<HTMLDivElement>(null);
@@ -88,10 +89,6 @@ export const AlertsTable = ({
 		observer.observe(el);
 		return () => observer.disconnect();
 	}, []);
-
-	// Expanded rows: cell content wraps onto new lines (full name/summary/labels)
-	// instead of truncating to a single line.
-	const [expandRows, setExpandRows] = useState(false);
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
@@ -140,10 +137,17 @@ export const AlertsTable = ({
 	// column. The rows render the same filler (AlertRow) or the layouts misalign.
 	const needsFillerColumn = !orderedColumns.includes('summary');
 
-	// The actions header holds two buttons (expand rows + group by), or three when column
-	// settings are enabled — the column must widen with it or the extra button overflows
-	// the fixed <th> onto the neighboring column's header text.
+	// The actions header holds the group-by button, plus the column-settings button when
+	// enabled — the column must widen with it or the extra button overflows the fixed
+	// <th> onto the neighboring column's header text.
 	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
+
+	// The body scrollport reserves a scrollbar gutter (scrollbar-gutter: stable), so the
+	// columns' usable width is the scroller's width minus one classic scrollbar. Budgeting
+	// the full width instead (the old behavior) made the table permanently overflow by
+	// exactly the gutter on classic-scrollbar systems: an ever-present horizontal
+	// scrollbar, and the actions column clipped at the right edge.
+	const scrollbarWidth = useMemo(() => getScrollbarWidth(), []);
 
 	// Pixel widths for the content-sized columns (alert name + tags): wide enough that
 	// their longest value fits, no wider. Empty until the container is first measured —
@@ -152,7 +156,7 @@ export const AlertsTable = ({
 		alerts: sortedAlerts,
 		orderedColumns,
 		columnLabels: allColumnLabels,
-		containerWidth,
+		containerWidth: Math.max(0, containerWidth - scrollbarWidth),
 		hasSelectColumn: !!onSelectAlerts,
 		actionsColumnWidthPx: parseInt(actionsColumnWidth, 10),
 	});
@@ -197,14 +201,21 @@ export const AlertsTable = ({
 					)}
 					{/* Header and body share this horizontal scroller: when the pane is narrower
 					    than the table's minimum width they scroll sideways together, instead of the
-					    auto-width summary column silently collapsing to zero. */}
+					    auto-width summary column silently collapsing to zero. The floor adds the
+					    reserved scrollbar gutter back so the columns' minimums fit INSIDE the
+					    gutter — otherwise the actions column ends clipped by one scrollbar width
+					    even when scrolled all the way right. */}
 					<div ref={scrollerRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
-						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
+						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth + scrollbarWidth }}>
 							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
 							    scrollbar gutter (see below) so header and body columns stay aligned on
-							    classic-scrollbar systems. */}
+							    classic-scrollbar systems. A raw <table> on purpose: the ui/Table
+							    component wraps its table in an overflow-auto div, which turned the
+							    header into a second, independently scrollable region with its own
+							    scrollbar. The header must never scroll on its own — only the shared
+							    horizontal scroller above moves it, together with the body. */}
 							<div className="border-b shrink-0 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
-								<Table className="table-fixed w-full">
+								<table className="table-fixed w-full text-sm">
 									<TableHeader>
 										<TableRow className="h-8">
 											{onSelectAlerts && (
@@ -244,35 +255,6 @@ export const AlertsTable = ({
 																}}
 															>
 																<div className="flex items-center justify-end gap-2 min-w-0">
-																	<Tooltip>
-																		<TooltipTrigger asChild>
-																			<Button
-																				variant="ghost"
-																				size="icon"
-																				className={cn(
-																					'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
-																					expandRows &&
-																						'text-primary border-primary'
-																				)}
-																				onClick={() =>
-																					setExpandRows((prev) => !prev)
-																				}
-																				aria-label={
-																					expandRows
-																						? 'Collapse rows'
-																						: 'Expand rows'
-																				}
-																				aria-pressed={expandRows}
-																			>
-																				<WrapText className="h-4 w-4" />
-																			</Button>
-																		</TooltipTrigger>
-																		<TooltipContent>
-																			{expandRows
-																				? 'Collapse rows'
-																				: 'Expand rows to show full content'}
-																		</TooltipContent>
-																	</Tooltip>
 																	<GroupByControls
 																		groupByColumns={groupByColumns}
 																		onGroupByChange={setGroupByColumns}
@@ -351,7 +333,7 @@ export const AlertsTable = ({
 											})}
 										</TableRow>
 									</TableHeader>
-								</Table>
+								</table>
 							</div>
 
 							<div className="flex-1 min-h-0 relative">
