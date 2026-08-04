@@ -20,9 +20,7 @@ export const AlertNameColumn = ({ alert, expanded = false, className, style }: A
 				    rows also get a filled dot before the name (the mail-client pattern).
 				    mt-1.5 centers the 8px dot on the first 20px text line, so it stays
 				    top-aligned when the expanded view wraps onto more lines. */}
-				{isUnread && (
-					<span aria-hidden className="h-2 w-2 mt-1.5 rounded-full bg-primary shrink-0" />
-				)}
+				{isUnread && <span aria-hidden className="h-2 w-2 mt-1.5 rounded-full bg-primary shrink-0" />}
 				<span
 					className={cn(
 						'text-sm block text-foreground min-w-0 flex-1',
