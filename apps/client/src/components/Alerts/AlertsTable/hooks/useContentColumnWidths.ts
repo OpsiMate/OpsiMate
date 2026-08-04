@@ -13,9 +13,6 @@ import { ACTIONS_COLUMN, COLUMN_MIN_WIDTHS } from '../AlertsTable.constants';
 
 // Cell horizontal padding (px-2 both sides).
 const CELL_PADDING_PX = 16;
-// Unread rows prefix the name with a dot (8px) and its gap (6px); reserved for every
-// name so an unread row's longest name doesn't truncate where a read one wouldn't.
-const UNREAD_DOT_PX = 14;
 // Tag values render inside a badge: its padding, border and radius chrome.
 const BADGE_CHROME_PX = 30;
 // Header labels sit next to a sort icon and its gap.
@@ -118,7 +115,7 @@ export const useContentColumnWidths = ({
 					0
 				);
 				desired[col] = Math.min(
-					Math.max(content + CELL_PADDING_PX + UNREAD_DOT_PX, headerWidth, MIN_ALERT_NAME_PX),
+					Math.max(content + CELL_PADDING_PX, headerWidth, MIN_ALERT_NAME_PX),
 					MAX_ALERT_NAME_PX
 				);
 				floors[col] = MIN_ALERT_NAME_PX;
