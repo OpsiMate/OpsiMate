@@ -60,6 +60,15 @@ export const AlertsFilterPanel = ({
 		};
 	}, [tagKeys, hideStatusFilter]);
 
+	// The filters the current view actually applies: a hidden status filter is suspended
+	// (see Alerts.tsx), so it must not constrain the other facets' options either —
+	// otherwise the sidebar disagrees with the table it describes.
+	const effectiveFilters = useMemo(() => {
+		if (!hideStatusFilter) return filters;
+		const { status: _status, ...rest } = filters;
+		return rest;
+	}, [filters, hideStatusFilter]);
+
 	const facets: FilterFacets = useMemo(() => {
 		// The value an alert presents for a given filter field, matching useAlertsFiltering's logic.
 		const getFieldValue = (alert: Alert, field: string): string => {
@@ -86,7 +95,7 @@ export const AlertsFilterPanel = ({
 		// Faceted filtering: an alert counts toward a field's facet only if it passes every OTHER
 		// active filter. A facet never constrains itself, so its own options stay fully visible.
 		const passesOtherFilters = (alert: Alert, exceptField: string): boolean => {
-			for (const [field, values] of Object.entries(filters)) {
+			for (const [field, values] of Object.entries(effectiveFilters)) {
 				if (!values || values.length === 0 || field === exceptField) continue;
 				if (!values.includes(getFieldValue(alert, field))) return false;
 			}
@@ -112,7 +121,7 @@ export const AlertsFilterPanel = ({
 		});
 
 		return result;
-	}, [alerts, filterConfig.fields, filters, users]);
+	}, [alerts, filterConfig.fields, effectiveFilters, users]);
 
 	return (
 		<FilterPanel
