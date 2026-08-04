@@ -627,6 +627,64 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('is_read on re-arrival (re-bold whenever an alert fires again)', () => {
+		const basePayload = {
+			id: 'reread-1',
+			tags: { service: 'api', team: 'platform' },
+			alertName: 'Re-read Test Alert',
+			summary: 'p99 latency above 800ms',
+			severity: 'critical',
+		};
+
+		const postAlert = (overrides: Record<string, unknown> = {}) =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ...basePayload, updatedAt: new Date().toISOString(), ...overrides });
+
+		const isRead = () =>
+			(db.prepare('SELECT is_read FROM alerts WHERE id = ?').get(basePayload.id) as { is_read: number }).is_read;
+
+		const markRead = async () => {
+			const response = await app
+				.patch(`/api/v1/alerts/${basePayload.id}/read`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+			expect(response.status).toBe(200);
+			expect(isRead()).toBe(1);
+		};
+
+		test('a new alert starts unread', async () => {
+			expect((await postAlert()).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('a repeat arrival with identical content flips a read alert back to unread', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert()).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('an arrival with updated content flips a read alert back to unread', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert({ summary: 'p99 latency above 1600ms (escalating)' })).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('marking read after a re-arrival clears the unread state again', async () => {
+			await postAlert();
+			await markRead();
+			await postAlert();
+			expect(isRead()).toBe(0);
+
+			await markRead();
+			expect(isRead()).toBe(1);
+		});
+	});
+
 	describe('POST /api/v1/alerts/custom/datadog', () => {
 		test('should create a new Datadog alert successfully with valid payload', async () => {
 			const alertId = 'alert-id';

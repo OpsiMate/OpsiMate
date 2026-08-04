@@ -104,8 +104,9 @@ export const AlertRow = ({
 				// Selection carries its own hover class so the severity hover tint can't
 				// override the selection cue while the pointer is over the row.
 				isSelected && 'bg-muted/50 hover:bg-muted/50',
-				// Unread alerts render bold until someone opens them.
-				alert.isRead === false && 'font-bold',
+				// Unread alerts render at the heaviest weight until someone opens them, so an
+				// updated or freshly firing row stands out clearly from the regular-weight ones.
+				alert.isRead === false && 'font-black',
 				// The alert currently open in the details panel: tinted row + accent edge,
 				// inset shadow instead of a border so the columns don't shift.
 				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary'

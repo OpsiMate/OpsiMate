@@ -39,7 +39,13 @@ export class AlertRepository {
 											  alert_url=excluded.alert_url,
 											  alert_name=excluded.alert_name,
 											  summary=excluded.summary,
-											  runbook_url=excluded.runbook_url
+											  runbook_url=excluded.runbook_url,
+											  -- Every arrival re-surfaces the alert: any push for this id — an update
+											  -- OR an identical replay — marks it unread so the row re-bolds. All
+											  -- ingestion here is push-based webhooks, so a repeat notification is the
+											  -- source deliberately saying "this is still happening"; that deserves
+											  -- the same visual weight as a brand-new alert.
+											  is_read=0
 			`);
 
 			// An alert id must never live in both tables: if this alert was previously
