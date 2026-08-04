@@ -2,6 +2,7 @@ import { SuperTest, Test } from 'supertest';
 import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
+import { AlertRepository } from '../src/dal/alertRepository';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
@@ -624,6 +625,108 @@ describe('Alerts API', () => {
 
 			expect(response.status).toBe(401);
 			expect(response.body.success).toBe(false);
+		});
+	});
+
+	describe('is_read change detection (re-bold on update)', () => {
+		const basePayload = {
+			id: 'reread-1',
+			tags: { service: 'api', team: 'platform' },
+			alertName: 'Re-read Test Alert',
+			summary: 'p99 latency above 800ms',
+			severity: 'critical',
+		};
+
+		const postAlert = (overrides: Record<string, unknown> = {}) =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ ...basePayload, updatedAt: new Date().toISOString(), ...overrides });
+
+		const isRead = () =>
+			(db.prepare('SELECT is_read FROM alerts WHERE id = ?').get(basePayload.id) as { is_read: number }).is_read;
+
+		const markRead = async () => {
+			const response = await app
+				.patch(`/api/v1/alerts/${basePayload.id}/read`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+			expect(response.status).toBe(200);
+			expect(isRead()).toBe(1);
+		};
+
+		test('a new alert starts unread', async () => {
+			expect((await postAlert()).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('a replay with identical content stays read even with a new updatedAt', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert()).status).toBe(200);
+			expect(isRead()).toBe(1);
+		});
+
+		test('the same tags in a different key order stay read', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert({ tags: { team: 'platform', service: 'api' } })).status).toBe(200);
+			expect(isRead()).toBe(1);
+		});
+
+		test('a summary change flips the alert back to unread', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert({ summary: 'p99 latency above 1600ms (escalating)' })).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('a severity change flips the alert back to unread', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert({ severity: 'warning' })).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('a tag value change flips the alert back to unread', async () => {
+			await postAlert();
+			await markRead();
+
+			expect((await postAlert({ tags: { service: 'api', team: 'checkout' } })).status).toBe(200);
+			expect(isRead()).toBe(0);
+		});
+
+		test('initAlertsTable canonicalizes legacy unsorted tags so the first replay does not re-bold', async () => {
+			// Simulates a row written before serializeTags existed: keys stored in source
+			// order. Without the startup sweep, the first identical replay would compare
+			// unsorted-stored vs sorted-incoming, read as "changed", and re-bold the row.
+			db.prepare(
+				`INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, is_read)
+				 VALUES (?, 'firing', 'Custom', 'critical', 'platform', ?, ?, ?, '', ?, ?, 1)`
+			).run(
+				basePayload.id,
+				JSON.stringify({ team: 'platform', severity: 'critical', service: 'api' }),
+				new Date().toISOString(),
+				new Date().toISOString(),
+				basePayload.alertName,
+				basePayload.summary
+			);
+
+			await new AlertRepository(db).initAlertsTable();
+
+			const stored = (
+				db.prepare('SELECT tags FROM alerts WHERE id = ?').get(basePayload.id) as {
+					tags: string;
+				}
+			).tags;
+			expect(stored).toBe(JSON.stringify({ service: 'api', severity: 'critical', team: 'platform' }));
+
+			// The replay carries the same content; the canonicalized row must stay read.
+			expect((await postAlert()).status).toBe(200);
+			expect(isRead()).toBe(1);
 		});
 	});
 

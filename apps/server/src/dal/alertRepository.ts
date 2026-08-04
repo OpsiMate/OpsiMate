@@ -25,7 +25,11 @@ export class AlertRepository {
 	private static serializeTags(tags?: Record<string, string> | null): string {
 		if (!tags) return '{}';
 		return JSON.stringify(
-			Object.fromEntries(Object.keys(tags).sort().map((k) => [k, tags[k]]))
+			Object.fromEntries(
+				Object.keys(tags)
+					.sort()
+					.map((k) => [k, tags[k]])
+			)
 		);
 	}
 
@@ -265,6 +269,29 @@ export class AlertRepository {
 			const hasSilencedAt = columns.some((col: TableInfoRow) => col.name === 'silenced_at');
 			if (!hasSilencedAt) {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN silenced_at TEXT`).run();
+			}
+
+			// Re-serialize any stored tags whose keys aren't in canonical (sorted) order.
+			// Rows written before serializeTags existed kept the source's key order; the
+			// is_read change-detection in insertOrUpdateAlert compares the stored string
+			// against the canonical incoming one, so a legacy unsorted row would read as
+			// "changed" on its first post-upgrade push and wrongly re-bold a read alert.
+			// Cheap full sweep (active alerts number in the hundreds); no-op once canonical.
+			const legacyRows = this.db.prepare(`SELECT id, tags FROM alerts WHERE tags IS NOT NULL`).all() as {
+				id: string;
+				tags: string;
+			}[];
+			const rewriteTags = this.db.prepare(`UPDATE alerts SET tags = ? WHERE id = ?`);
+			for (const row of legacyRows) {
+				try {
+					const canonical = AlertRepository.serializeTags(JSON.parse(row.tags) as Record<string, string>);
+					if (canonical !== row.tags) {
+						rewriteTags.run(canonical, row.id);
+					}
+				} catch {
+					// Unparseable tags blob: leave it as-is rather than fail startup; the next
+					// push for that alert overwrites it with a canonical value anyway.
+				}
 			}
 
 			// Repair: an alert id must never exist as both active and resolved. Ingestion used
