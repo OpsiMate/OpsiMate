@@ -359,6 +359,13 @@ export interface Dashboard {
 	// User-arranged column order for the alerts table (base columns; tag-key columns
 	// follow the visible list). Absent on dashboards saved before reordering shipped.
 	columnOrder?: string[];
+	// Persist the "Split by owner" toggle so a saved dashboard reproduces the exact
+	// view the user works with. Absent on legacy dashboards (defaults to false).
+	splitByAssignment?: boolean;
+	// Persist the "Severity colors" toggle (row tinting by severity) with the dashboard.
+	// When both a dashboard value and the legacy localStorage value exist, the dashboard
+	// value wins on load; localStorage remains the fallback for unsaved drafts.
+	severityColors?: boolean;
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;

@@ -45,7 +45,6 @@ import {
 	useAlertsRefresh,
 	useAlertTagKeys,
 	useColumnManagement,
-	useSeverityColors,
 } from './hooks';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
@@ -85,8 +84,14 @@ const Alerts = () => {
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
-	const [splitByAssignment, setSplitByAssignment] = useState(false);
-	const { severityColors, toggleSeverityColors } = useSeverityColors();
+	// Read "Split by owner" toggle from dashboard state (persisted with the dashboard).
+	// Falls back to false when no dashboard is loaded.
+	const splitByAssignment = dashboardState.splitByAssignment;
+	const handleToggleSplitByAssignment = () => updateDashboardField('splitByAssignment', !splitByAssignment);
+	// Read "Severity colors" toggle from dashboard state, with localStorage as fallback
+	// for unsaved drafts (legacy behavior).
+	const severityColors = dashboardState.severityColors ?? (localStorage.getItem('opsimate-alerts-severity-colors') === 'true');
+	const handleToggleSeverityColors = () => updateDashboardField('severityColors', !severityColors);
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -163,6 +168,8 @@ const Alerts = () => {
 			filters: dashboardState.filters,
 			visibleColumns: dashboardState.visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
 			columnOrder: dashboardState.columnOrder.filter((col) => col !== ACTIONS_COLUMN),
+			splitByAssignment: dashboardState.splitByAssignment,
+			severityColors: dashboardState.severityColors,
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
 			timeRange: serializeTimeRange(dashboardState.timeRange),
@@ -424,6 +431,8 @@ const Alerts = () => {
 				visibleColumns: dashboard.visibleColumns || [],
 				filters: dashboard.filters || {},
 				columnOrder: dashboard.columnOrder || [],
+				splitByAssignment: dashboard.splitByAssignment ?? false,
+				severityColors: dashboard.severityColors ?? false,
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
 				timeRange: deserializeTimeRange(dashboard.timeRange),
@@ -589,7 +598,7 @@ const Alerts = () => {
 									<Button
 										variant={splitByAssignment ? 'default' : 'outline'}
 										size="sm"
-										onClick={() => setSplitByAssignment((v) => !v)}
+										onClick={handleToggleSplitByAssignment}
 										className="gap-1.5 shrink-0"
 										title="Split into Unassigned and Assigned"
 									>
@@ -601,7 +610,7 @@ const Alerts = () => {
 								<Button
 									variant={severityColors ? 'default' : 'outline'}
 									size="sm"
-									onClick={toggleSeverityColors}
+									onClick={handleToggleSeverityColors}
 									className="gap-1.5 shrink-0"
 									title="Color rows by severity"
 								>
