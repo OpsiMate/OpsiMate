@@ -618,6 +618,7 @@ const Alerts = () => {
 									onClick={toggleExpandRows}
 									className="gap-1.5 shrink-0"
 									title="Expand rows to show full content"
+									aria-pressed={expandRows}
 								>
 									<WrapText className="h-4 w-4" />
 									<span className="hidden lg:inline">Expand rows</span>

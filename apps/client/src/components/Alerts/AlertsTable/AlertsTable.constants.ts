@@ -72,7 +72,8 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	owner: 120,
 	startsAt: 150,
 	updatedAt: 150,
-	// Rendered at ACTIONS_COLUMN_WIDTH (inline style), not COLUMN_WIDTHS.
-	[ACTIONS_COLUMN]: 80,
+	// Rendered at ACTIONS_COLUMN_WIDTH (inline style), not COLUMN_WIDTHS. Kept in sync
+	// with ACTIONS_COLUMN_WIDTH so any future generic lookup doesn't over-reserve.
+	[ACTIONS_COLUMN]: 44,
 	default: 110,
 };
