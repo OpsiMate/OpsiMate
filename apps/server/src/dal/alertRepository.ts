@@ -39,7 +39,24 @@ export class AlertRepository {
 											  alert_url=excluded.alert_url,
 											  alert_name=excluded.alert_name,
 											  summary=excluded.summary,
-											  runbook_url=excluded.runbook_url
+											  runbook_url=excluded.runbook_url,
+											  -- An alert whose content actually changed is "new" again: mark it unread
+											  -- so the row re-bolds, exactly like a freshly inserted alert. Compared with
+											  -- IS NOT (null-safe) against the incoming values; updated_at is excluded on
+											  -- purpose because sources that push "now" on every replay would otherwise
+											  -- flip read alerts back to unread on each poll with no real change.
+											  is_read=CASE
+												WHEN alerts.status IS NOT excluded.status
+													OR alerts.severity IS NOT excluded.severity
+													OR alerts.team IS NOT excluded.team
+													OR alerts.tags IS NOT excluded.tags
+													OR alerts.alert_name IS NOT excluded.alert_name
+													OR alerts.summary IS NOT excluded.summary
+													OR alerts.runbook_url IS NOT excluded.runbook_url
+													OR alerts.alert_url IS NOT excluded.alert_url
+												THEN 0
+												ELSE alerts.is_read
+											  END
 			`);
 
 			// An alert id must never live in both tables: if this alert was previously
