@@ -1,11 +1,9 @@
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Activity, Plug, TriangleAlert, WrapText } from 'lucide-react';
+import { Activity, Plug, TriangleAlert } from 'lucide-react';
 import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
@@ -73,25 +71,31 @@ export const AlertsTable = ({
 	isResolved = false,
 	renderToolbar = true,
 	severityColors = false,
+	// Wrap cell content onto new lines (full name/summary/labels) instead of truncating;
+	// owned by the page toolbar so every table on the page follows the same toggle.
+	expandRows = false,
 	heading,
 }: AlertsTableProps) => {
-	const parentRef = useRef<HTMLDivElement>(null);
-
-	// Width of the horizontal scroll container, tracked so content-aware column widths
-	// can react to window/pane resizes.
+	// The single scroll container (both axes): the virtualizer's scroll element and the
+	// width reference for content-aware column sizing.
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const [containerWidth, setContainerWidth] = useState(0);
-	useEffect(() => {
-		const el = scrollerRef.current;
-		if (!el) return;
-		const observer = new ResizeObserver((entries) => setContainerWidth(entries[0]?.contentRect.width ?? 0));
-		observer.observe(el);
-		return () => observer.disconnect();
-	}, []);
-
-	// Expanded rows: cell content wraps onto new lines (full name/summary/labels)
-	// instead of truncating to a single line.
-	const [expandRows, setExpandRows] = useState(false);
+	// Ref CALLBACK (not a mount effect): the scroller node is torn down and recreated
+	// when the view flips through the empty state or the tab switches, and a
+	// once-on-mount observer would keep watching the dead node — containerWidth then
+	// sticks at 0/stale and the content columns silently fall back to their static
+	// classes. The callback re-attaches the observer to whichever node is current.
+	const resizeObserverRef = useRef<ResizeObserver | null>(null);
+	const observeScroller = (el: HTMLDivElement | null) => {
+		scrollerRef.current = el;
+		resizeObserverRef.current?.disconnect();
+		resizeObserverRef.current = null;
+		if (el) {
+			const observer = new ResizeObserver((entries) => setContainerWidth(entries[0]?.contentRect.width ?? 0));
+			observer.observe(el);
+			resizeObserverRef.current = observer;
+		}
+	};
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
@@ -110,9 +114,14 @@ export const AlertsTable = ({
 		onSelectAlerts,
 	});
 
+	// The scroll element also contains the sticky column header above the list, so the
+	// virtualizer's window mapping runs one header-height "late" — far less than the
+	// 5-row overscan, so no visible gap. useStickyHeaders' anchor math is exact: a row
+	// counts as top-visible once its bottom clears the pinned header, which is
+	// item.start + item.size > scrollTop in list coordinates.
 	const virtualizer = useVirtualizer({
 		count: flatRows.length,
-		getScrollElement: () => parentRef.current,
+		getScrollElement: () => scrollerRef.current,
 		estimateSize: () => 32,
 		overscan: 5,
 		measureElement:
@@ -140,14 +149,16 @@ export const AlertsTable = ({
 	// column. The rows render the same filler (AlertRow) or the layouts misalign.
 	const needsFillerColumn = !orderedColumns.includes('summary');
 
-	// The actions header holds two buttons (expand rows + group by), or three when column
-	// settings are enabled — the column must widen with it or the extra button overflows
-	// the fixed <th> onto the neighboring column's header text.
+	// The actions header holds the group-by button, plus the column-settings button when
+	// enabled — the column must widen with it or the extra button overflows the fixed
+	// <th> onto the neighboring column's header text.
 	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
 
 	// Pixel widths for the content-sized columns (alert name + tags): wide enough that
 	// their longest value fits, no wider. Empty until the container is first measured —
-	// static width classes cover that frame.
+	// static width classes cover that frame. containerWidth is the scroller's content
+	// box (ResizeObserver contentRect), which already excludes any classic vertical
+	// scrollbar — so the budget is exactly the width the columns can really use.
 	const contentColumnWidths = useContentColumnWidths({
 		alerts: sortedAlerts,
 		orderedColumns,
@@ -195,221 +206,200 @@ export const AlertsTable = ({
 							{heading}
 						</div>
 					)}
-					{/* Header and body share this horizontal scroller: when the pane is narrower
-					    than the table's minimum width they scroll sideways together, instead of the
-					    auto-width summary column silently collapsing to zero. */}
-					<div ref={scrollerRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
-						<div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
-							{/* overflow-hidden + stable gutter mirrors the body scrollport's reserved
-							    scrollbar gutter (see below) so header and body columns stay aligned on
-							    classic-scrollbar systems. */}
-							<div className="border-b shrink-0 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
-								<Table className="table-fixed w-full">
-									<TableHeader>
-										<TableRow className="h-8">
-											{onSelectAlerts && (
-												<TableHead
-													className={TABLE_HEAD_CLASSES}
-													style={{
-														width: SELECT_COLUMN_WIDTH,
-														minWidth: SELECT_COLUMN_WIDTH,
-														maxWidth: SELECT_COLUMN_WIDTH,
-													}}
-												>
-													<div className="flex items-center justify-center">
-														<Checkbox
-															checked={
-																sortedAlerts.length > 0 &&
-																selectedAlerts.length === sortedAlerts.length
-															}
-															onCheckedChange={handleSelectAll}
-															className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-														/>
-													</div>
-												</TableHead>
-											)}
-											{orderedColumns.map((column) => {
-												if (column === ACTIONS_COLUMN) {
-													return (
-														<Fragment key={column}>
-															{needsFillerColumn && (
-																<TableHead aria-hidden className="p-0" />
-															)}
-															<TableHead
-																className={`${TABLE_HEAD_CLASSES} text-xs`}
-																style={{
-																	width: actionsColumnWidth,
-																	minWidth: actionsColumnWidth,
-																	maxWidth: actionsColumnWidth,
-																}}
-															>
-																<div className="flex items-center justify-end gap-2 min-w-0">
-																	<Tooltip>
-																		<TooltipTrigger asChild>
-																			<Button
-																				variant="ghost"
-																				size="icon"
-																				className={cn(
-																					'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
-																					expandRows &&
-																						'text-primary border-primary'
-																				)}
-																				onClick={() =>
-																					setExpandRows((prev) => !prev)
-																				}
-																				aria-label={
-																					expandRows
-																						? 'Collapse rows'
-																						: 'Expand rows'
-																				}
-																				aria-pressed={expandRows}
-																			>
-																				<WrapText className="h-4 w-4" />
-																			</Button>
-																		</TooltipTrigger>
-																		<TooltipContent>
-																			{expandRows
-																				? 'Collapse rows'
-																				: 'Expand rows to show full content'}
-																		</TooltipContent>
-																	</Tooltip>
-																	<GroupByControls
-																		groupByColumns={groupByColumns}
-																		onGroupByChange={setGroupByColumns}
-																		availableColumns={visibleColumns}
-																		columnLabels={allColumnLabels}
-																		onExpandAll={expandAll}
-																		onCollapseAll={collapseAll}
-																	/>
-																	{onColumnToggle && (
-																		<ColumnSettingsDropdown
-																			visibleColumns={visibleColumns}
-																			onColumnToggle={onColumnToggle}
-																			columnLabels={COLUMN_LABELS}
-																			columnOrder={columnOrder}
-																			onColumnOrderChange={onColumnOrderChange}
-																			excludeColumns={[ACTIONS_COLUMN]}
-																			tagKeys={tagKeys}
+					{/* ONE scroller for both axes. The vertical scrollbar renders at the pane's
+					    edge OUTSIDE the content, so header and rows span the full content width —
+					    no reserved gutter, no dead strip after the actions column, and the
+					    scrollbar is visible regardless of horizontal position. When the pane is
+					    narrower than the table's minimum the whole content (header included)
+					    scrolls sideways as one, so the auto-width summary column never silently
+					    collapses to zero. */}
+					<div ref={observeScroller} className="flex-1 min-h-0 overflow-auto">
+						<div style={{ minWidth: tableMinWidth }}>
+							{/* position: sticky pins the column header vertically while it keeps
+							    moving horizontally with the columns — it cannot scroll on its own.
+							    A raw <table> on purpose: the ui/Table component wraps its table in
+							    an overflow-auto div, which turned the header into a second,
+							    independently scrollable region with its own scrollbar. Opaque
+							    background because rows now scroll underneath it. */}
+							<div className="sticky top-0 z-10">
+								<div className="border-b bg-background">
+									<table className="table-fixed w-full text-sm">
+										<TableHeader>
+											<TableRow className="h-8">
+												{onSelectAlerts && (
+													<TableHead
+														className={TABLE_HEAD_CLASSES}
+														style={{
+															width: SELECT_COLUMN_WIDTH,
+															minWidth: SELECT_COLUMN_WIDTH,
+															maxWidth: SELECT_COLUMN_WIDTH,
+														}}
+													>
+														<div className="flex items-center justify-center">
+															<Checkbox
+																checked={
+																	sortedAlerts.length > 0 &&
+																	selectedAlerts.length === sortedAlerts.length
+																}
+																onCheckedChange={handleSelectAll}
+																className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+															/>
+														</div>
+													</TableHead>
+												)}
+												{orderedColumns.map((column) => {
+													if (column === ACTIONS_COLUMN) {
+														return (
+															<Fragment key={column}>
+																{needsFillerColumn && (
+																	<TableHead aria-hidden className="p-0" />
+																)}
+																<TableHead
+																	className={`${TABLE_HEAD_CLASSES} text-xs`}
+																	style={{
+																		width: actionsColumnWidth,
+																		minWidth: actionsColumnWidth,
+																		maxWidth: actionsColumnWidth,
+																	}}
+																>
+																	<div className="flex items-center justify-end gap-2 min-w-0">
+																		<GroupByControls
+																			groupByColumns={groupByColumns}
+																			onGroupByChange={setGroupByColumns}
+																			availableColumns={visibleColumns}
+																			columnLabels={allColumnLabels}
+																			onExpandAll={expandAll}
+																			onCollapseAll={collapseAll}
 																		/>
-																	)}
-																</div>
-															</TableHead>
-														</Fragment>
-													);
-												}
-												if (isTagKeyColumn(column)) {
-													const tagKey = extractTagKeyFromColumnId(column);
-													const label = allColumnLabels[column] || tagKey || column;
-													return (
-														<SortableHeader
-															key={column}
-															column={column as AlertSortField}
-															label={label}
-															sortField={sortField}
-															sortDirection={sortDirection}
-															onSort={handleSort}
-															className={COLUMN_WIDTHS.default}
-															style={
-																contentColumnWidths[column]
-																	? { width: contentColumnWidths[column] }
-																	: undefined
-															}
-														/>
-													);
-												}
-												if (
-													[
-														'alertName',
-														'severity',
-														'status',
-														'startsAt',
-														'updatedAt',
-														'summary',
-														'type',
-														'owner',
-													].includes(column)
-												) {
-													return (
-														<SortableHeader
-															key={column}
-															column={column as AlertSortField}
-															label={allColumnLabels[column]}
-															labelIcon={HEADER_ICONS[column]}
-															sortField={sortField}
-															sortDirection={sortDirection}
-															onSort={handleSort}
-															className={COLUMN_WIDTHS[column]}
-															style={
-																contentColumnWidths[column]
-																	? { width: contentColumnWidths[column] }
-																	: undefined
-															}
-														/>
-													);
-												}
-												return null;
-											})}
-										</TableRow>
-									</TableHeader>
-								</Table>
-							</div>
-
-							<div className="flex-1 min-h-0 relative">
-								<div className="absolute top-0 left-0 right-0 z-20">
-									{activeStickyHeaders.map((item) => (
-										<StickyGroupHeader
-											key={`sticky-${item.type === 'group' ? item.key : ''}`}
-											item={item}
-											onToggle={toggleGroup}
-											columnLabels={allColumnLabels}
-										/>
-									))}
+																		{onColumnToggle && (
+																			<ColumnSettingsDropdown
+																				visibleColumns={visibleColumns}
+																				onColumnToggle={onColumnToggle}
+																				columnLabels={COLUMN_LABELS}
+																				columnOrder={columnOrder}
+																				onColumnOrderChange={
+																					onColumnOrderChange
+																				}
+																				excludeColumns={[ACTIONS_COLUMN]}
+																				tagKeys={tagKeys}
+																			/>
+																		)}
+																	</div>
+																</TableHead>
+															</Fragment>
+														);
+													}
+													if (isTagKeyColumn(column)) {
+														const tagKey = extractTagKeyFromColumnId(column);
+														const label = allColumnLabels[column] || tagKey || column;
+														return (
+															<SortableHeader
+																key={column}
+																column={column as AlertSortField}
+																label={label}
+																sortField={sortField}
+																sortDirection={sortDirection}
+																onSort={handleSort}
+																className={COLUMN_WIDTHS.default}
+																style={
+																	contentColumnWidths[column]
+																		? { width: contentColumnWidths[column] }
+																		: undefined
+																}
+															/>
+														);
+													}
+													if (
+														[
+															'alertName',
+															'severity',
+															'status',
+															'startsAt',
+															'updatedAt',
+															'summary',
+															'type',
+															'owner',
+														].includes(column)
+													) {
+														return (
+															<SortableHeader
+																key={column}
+																column={column as AlertSortField}
+																label={allColumnLabels[column]}
+																labelIcon={HEADER_ICONS[column]}
+																sortField={sortField}
+																sortDirection={sortDirection}
+																onSort={handleSort}
+																className={COLUMN_WIDTHS[column]}
+																style={
+																	contentColumnWidths[column]
+																		? { width: contentColumnWidths[column] }
+																		: undefined
+																}
+															/>
+														);
+													}
+													return null;
+												})}
+											</TableRow>
+										</TableHeader>
+									</table>
 								</div>
-
-								{/* Stable gutter: non-overlay scrollbars otherwise shrink the rows relative
-							    to the header, drifting the auto-width columns by the scrollbar width. */}
-								<div
-									ref={parentRef}
-									className="overflow-y-auto overflow-x-hidden h-full w-full relative"
-									style={{ scrollbarGutter: 'stable' }}
-								>
-									{isLoading ? (
-										<div className="flex items-center justify-center py-8 text-sm text-foreground">
-											Loading alerts...
-										</div>
-									) : flatRows.length === 0 ? (
-										<div className="flex items-center justify-center py-8 text-sm text-foreground">
-											{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
-										</div>
-									) : (
-										<VirtualizedAlertList
-											virtualizer={virtualizer}
-											flatRows={flatRows}
-											selectedAlerts={selectedAlerts}
-											orderedColumns={orderedColumns}
-											contentColumnWidths={contentColumnWidths}
-											expandRows={expandRows}
-											onToggleGroup={toggleGroup}
-											onSelectAlert={handleSelectAlert}
-											onAlertClick={onAlertClick}
-											activeAlertId={activeAlertId}
-											onSilenceAlert={onSilenceAlert}
-											onUnsilenceAlert={onUnsilenceAlert}
-											onDeleteAlert={onDeleteAlert}
-											onUnresolveAlert={onUnresolveAlert}
-											onSelectAlerts={onSelectAlerts}
-											columnLabels={allColumnLabels}
-											isResolved={isResolved}
-											severityColors={severityColors}
-											actionsColumnWidth={actionsColumnWidth}
-											isDragging={isDragging}
-											onDragStart={handleDragStart}
-											onDragEnter={handleDragEnter}
-											onDragEnd={() => handleDragEnd(handleSelectAlert)}
-										/>
-									)}
+								{/* Sticky GROUP headers hang off the pinned column header: zero height
+								    in flow, absolutely positioned right below it, so their top edge sits
+								    at the header's exact rendered bottom — no hardcoded offset to drift
+								    when the header's height changes. At rest they cover the real group
+								    row pixel-perfectly, and both live in content coordinates, so
+								    horizontal scrolling keeps them aligned with the rows. */}
+								<div className="relative h-0 z-20">
+									<div className="absolute left-0 right-0 top-0">
+										{activeStickyHeaders.map((item) => (
+											<StickyGroupHeader
+												key={`sticky-${item.type === 'group' ? item.key : ''}`}
+												item={item}
+												onToggle={toggleGroup}
+												columnLabels={allColumnLabels}
+											/>
+										))}
+									</div>
 								</div>
 							</div>
+
+							{isLoading ? (
+								<div className="flex items-center justify-center py-8 text-sm text-foreground">
+									Loading alerts...
+								</div>
+							) : flatRows.length === 0 ? (
+								<div className="flex items-center justify-center py-8 text-sm text-foreground">
+									{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
+								</div>
+							) : (
+								<VirtualizedAlertList
+									virtualizer={virtualizer}
+									flatRows={flatRows}
+									selectedAlerts={selectedAlerts}
+									orderedColumns={orderedColumns}
+									contentColumnWidths={contentColumnWidths}
+									expandRows={expandRows}
+									onToggleGroup={toggleGroup}
+									onSelectAlert={handleSelectAlert}
+									onAlertClick={onAlertClick}
+									activeAlertId={activeAlertId}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
+									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
+									onSelectAlerts={onSelectAlerts}
+									columnLabels={allColumnLabels}
+									isResolved={isResolved}
+									severityColors={severityColors}
+									actionsColumnWidth={actionsColumnWidth}
+									isDragging={isDragging}
+									onDragStart={handleDragStart}
+									onDragEnter={handleDragEnter}
+									onDragEnd={() => handleDragEnd(handleSelectAlert)}
+								/>
+							)}
 						</div>
 					</div>
 				</div>

@@ -44,6 +44,9 @@ export interface AlertsTableProps {
 	renderToolbar?: boolean;
 	// Tint rows by alert severity (the page-level "severity colors" toggle).
 	severityColors?: boolean;
+	// Wrap cell content onto new lines instead of truncating (the page-level
+	// "expand rows" toggle).
+	expandRows?: boolean;
 	// Optional caption rendered flush at the top of the table container (e.g. a section
 	// title + count), so callers don't need a separate header row above the table.
 	heading?: ReactNode;

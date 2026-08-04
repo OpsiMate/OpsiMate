@@ -22,7 +22,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
@@ -45,6 +45,7 @@ import {
 	useAlertsRefresh,
 	useAlertTagKeys,
 	useColumnManagement,
+	useExpandRows,
 	useSeverityColors,
 } from './hooks';
 
@@ -87,6 +88,7 @@ const Alerts = () => {
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	const [splitByAssignment, setSplitByAssignment] = useState(false);
 	const { severityColors, toggleSeverityColors } = useSeverityColors();
+	const { expandRows, toggleExpandRows } = useExpandRows();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -397,6 +399,7 @@ const Alerts = () => {
 			onSearchTermChange={(term) => updateDashboardField('query', term)}
 			renderToolbar={false}
 			severityColors={severityColors}
+			expandRows={expandRows}
 		/>
 	);
 
@@ -609,6 +612,18 @@ const Alerts = () => {
 									<span className="hidden lg:inline">Severity colors</span>
 								</Button>
 
+								<Button
+									variant={expandRows ? 'default' : 'outline'}
+									size="sm"
+									onClick={toggleExpandRows}
+									className="gap-1.5 shrink-0"
+									title="Expand rows to show full content"
+									aria-pressed={expandRows}
+								>
+									<WrapText className="h-4 w-4" />
+									<span className="hidden lg:inline">Expand rows</span>
+								</Button>
+
 								<TimeFilter
 									value={dashboardState.timeRange ?? createEmptyTimeRange()}
 									onChange={(range) => updateDashboardField('timeRange', range)}
@@ -705,6 +720,7 @@ const Alerts = () => {
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
 									renderToolbar={false}
 									severityColors={severityColors}
+									expandRows={expandRows}
 								/>
 							</div>
 						) : (
@@ -743,6 +759,7 @@ const Alerts = () => {
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
 									renderToolbar={false}
 									severityColors={severityColors}
+									expandRows={expandRows}
 								/>
 							</div>
 						)}
