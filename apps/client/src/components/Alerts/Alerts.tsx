@@ -202,23 +202,24 @@ const Alerts = () => {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
-	// Fully-filtered resolved list (status included) — feeds the All view, where a
-	// status filter is meaningful ("Resolved" is one of its options).
-	const filteredResolvedAlerts = useAlertsFiltering(resolvedAlerts, {
-		filters: dashboardState.filters,
-		timeRange: dashboardState.timeRange,
-	});
-	// The Resolved VIEW runs with the status filter suspended — not deleted: an active
-	// status like Firing/Silenced can never match resolved alerts, so applying it would
-	// make the view silently empty, but wiping it (the old behavior) destroyed the
-	// user's stored filter — and dirtied the dashboard — just for peeking at Resolved.
-	// The stored filters stay intact; Active/All keep applying them.
-	const resolvedViewFilters = useMemo(() => {
+	// The Resolved and All VIEWS run with the status filter suspended — not deleted.
+	// Resolved: an active status like Firing/Silenced can never match resolved alerts,
+	// so applying it would make the view silently empty. All: the tab's promise is
+	// every alert regardless of status, so a status filter picked on Active must not
+	// follow the user there. Wiping the filter instead (the old behavior) destroyed
+	// the user's stored filter — and dirtied the dashboard — just for peeking at
+	// another tab; the stored filters stay intact and Active keeps applying them.
+	const statusSuspendedFilters = useMemo(() => {
 		const { status: _status, ...rest } = dashboardState.filters;
 		return rest;
 	}, [dashboardState.filters]);
 	const resolvedViewAlerts = useAlertsFiltering(resolvedAlerts, {
-		filters: resolvedViewFilters,
+		filters: statusSuspendedFilters,
+		timeRange: dashboardState.timeRange,
+	});
+	// Active alerts for the All view — same suspension, all statuses shown.
+	const allViewActiveAlerts = useAlertsFiltering(alerts, {
+		filters: statusSuspendedFilters,
 		timeRange: dashboardState.timeRange,
 	});
 
@@ -230,8 +231,8 @@ const Alerts = () => {
 	// its own actions. resolvedIds lets shared callbacks tell which list an alert belongs to.
 	const resolvedIds = useMemo(() => new Set(resolvedAlerts.map((a) => a.id)), [resolvedAlerts]);
 	const filteredAllAlerts = useMemo(
-		() => [...filteredAlerts, ...filteredResolvedAlerts.map((a) => ({ ...a, isResolved: true }))],
-		[filteredAlerts, filteredResolvedAlerts]
+		() => [...allViewActiveAlerts, ...resolvedViewAlerts.map((a) => ({ ...a, isResolved: true }))],
+		[allViewActiveAlerts, resolvedViewAlerts]
 	);
 
 	const {
@@ -470,7 +471,7 @@ const Alerts = () => {
 	const tabCounts: Record<AlertTab, number> = useMemo(
 		() => ({
 			[AlertTab.Active]: filterAlerts(filteredAlerts, dashboardState.query).length,
-			// Mirrors the Resolved view, which suspends the status filter (see above).
+			// Resolved and All mirror their views, which suspend the status filter (see above).
 			[AlertTab.Resolved]: filterAlerts(resolvedViewAlerts, dashboardState.query).length,
 			[AlertTab.All]: filterAlerts(filteredAllAlerts, dashboardState.query).length,
 		}),
@@ -489,7 +490,7 @@ const Alerts = () => {
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
 						tagKeys={tagKeys}
-						isResolved={activeTab === AlertTab.Resolved}
+						hideStatusFilter={activeTab !== AlertTab.Active}
 					/>
 				</FilterSidebar>
 

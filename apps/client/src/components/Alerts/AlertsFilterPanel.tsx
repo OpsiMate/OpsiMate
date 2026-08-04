@@ -13,7 +13,9 @@ interface AlertsFilterPanelProps {
 	collapsed?: boolean;
 	className?: string;
 	tagKeys?: TagKeyInfo[];
-	isResolved?: boolean;
+	// Hide the status field: the Resolved and All views run with the status filter
+	// suspended (see Alerts.tsx), so offering it there would be a dead control.
+	hideStatusFilter?: boolean;
 }
 
 const BASE_FILTER_FIELDS = ['status', 'severity', 'type', 'alertName', 'owner'];
@@ -33,7 +35,7 @@ export const AlertsFilterPanel = ({
 	collapsed = false,
 	className,
 	tagKeys = [],
-	isResolved = false,
+	hideStatusFilter = false,
 }: AlertsFilterPanelProps) => {
 	const { data: users = [] } = useUsers();
 
@@ -50,13 +52,13 @@ export const AlertsFilterPanel = ({
 			tagKeyLabels[getTagKeyColumnId(tk.key)] = tk.label;
 		});
 
-		const baseFields = isResolved ? BASE_FILTER_FIELDS.filter((f) => f !== 'status') : BASE_FILTER_FIELDS;
+		const baseFields = hideStatusFilter ? BASE_FILTER_FIELDS.filter((f) => f !== 'status') : BASE_FILTER_FIELDS;
 
 		return {
 			fields: [...baseFields, ...tagKeyFields],
 			fieldLabels: { ...BASE_FIELD_LABELS, ...tagKeyLabels },
 		};
-	}, [tagKeys, isResolved]);
+	}, [tagKeys, hideStatusFilter]);
 
 	const facets: FilterFacets = useMemo(() => {
 		// The value an alert presents for a given filter field, matching useAlertsFiltering's logic.
