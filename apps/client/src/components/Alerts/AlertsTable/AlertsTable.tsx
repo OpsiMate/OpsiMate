@@ -15,7 +15,6 @@ import {
 	COLUMN_WIDTHS,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
-	HEADER_HEIGHT_PX,
 	SELECT_COLUMN_WIDTH,
 	TABLE_HEAD_CLASSES,
 } from './AlertsTable.constants';
@@ -115,11 +114,11 @@ export const AlertsTable = ({
 		onSelectAlerts,
 	});
 
-	// The scroll element also contains the sticky column header (HEADER_HEIGHT_PX) above
-	// the list, so the virtualizer's window mapping runs one header-height "late" — far
-	// less than the 5-row overscan, so no visible gap. useStickyHeaders' anchor math is
-	// exact: a row counts as top-visible once its bottom clears the pinned header, which
-	// is item.start + item.size > scrollTop in list coordinates.
+	// The scroll element also contains the sticky column header above the list, so the
+	// virtualizer's window mapping runs one header-height "late" — far less than the
+	// 5-row overscan, so no visible gap. useStickyHeaders' anchor math is exact: a row
+	// counts as top-visible once its bottom clears the pinned header, which is
+	// item.start + item.size > scrollTop in list coordinates.
 	const virtualizer = useVirtualizer({
 		count: flatRows.length,
 		getScrollElement: () => scrollerRef.current,
@@ -207,36 +206,23 @@ export const AlertsTable = ({
 							{heading}
 						</div>
 					)}
-					<div className="flex-1 min-h-0 relative">
-						{/* Sticky GROUP headers overlay: anchored to the visible pane (a sibling of
-						    the scroller, not scrolled content), directly below the sticky column
-						    header, so the group label stays readable during horizontal scrolling. */}
-						<div className="absolute left-0 right-0 z-20" style={{ top: HEADER_HEIGHT_PX }}>
-							{activeStickyHeaders.map((item) => (
-								<StickyGroupHeader
-									key={`sticky-${item.type === 'group' ? item.key : ''}`}
-									item={item}
-									onToggle={toggleGroup}
-									columnLabels={allColumnLabels}
-								/>
-							))}
-						</div>
-						{/* ONE scroller for both axes. The vertical scrollbar renders at the pane's
-						    edge OUTSIDE the content, so header and rows span the full content width —
-						    no reserved gutter, no dead strip after the actions column, and the
-						    scrollbar is visible regardless of horizontal position. When the pane is
-						    narrower than the table's minimum the whole content (header included)
-						    scrolls sideways as one, so the auto-width summary column never silently
-						    collapses to zero. */}
-						<div ref={observeScroller} className="h-full w-full overflow-auto">
-							<div style={{ minWidth: tableMinWidth }}>
-								{/* position: sticky pins the column header vertically while it keeps
-								    moving horizontally with the columns — it cannot scroll on its own.
-								    A raw <table> on purpose: the ui/Table component wraps its table in
-								    an overflow-auto div, which turned the header into a second,
-								    independently scrollable region with its own scrollbar. Opaque
-								    background because rows now scroll underneath it. */}
-								<div className="sticky top-0 z-10 border-b bg-background">
+					{/* ONE scroller for both axes. The vertical scrollbar renders at the pane's
+					    edge OUTSIDE the content, so header and rows span the full content width —
+					    no reserved gutter, no dead strip after the actions column, and the
+					    scrollbar is visible regardless of horizontal position. When the pane is
+					    narrower than the table's minimum the whole content (header included)
+					    scrolls sideways as one, so the auto-width summary column never silently
+					    collapses to zero. */}
+					<div ref={observeScroller} className="flex-1 min-h-0 overflow-auto">
+						<div style={{ minWidth: tableMinWidth }}>
+							{/* position: sticky pins the column header vertically while it keeps
+							    moving horizontally with the columns — it cannot scroll on its own.
+							    A raw <table> on purpose: the ui/Table component wraps its table in
+							    an overflow-auto div, which turned the header into a second,
+							    independently scrollable region with its own scrollbar. Opaque
+							    background because rows now scroll underneath it. */}
+							<div className="sticky top-0 z-10">
+								<div className="border-b bg-background">
 									<table className="table-fixed w-full text-sm">
 										<TableHeader>
 											<TableRow className="h-8">
@@ -359,43 +345,61 @@ export const AlertsTable = ({
 										</TableHeader>
 									</table>
 								</div>
-
-								{isLoading ? (
-									<div className="flex items-center justify-center py-8 text-sm text-foreground">
-										Loading alerts...
+								{/* Sticky GROUP headers hang off the pinned column header: zero height
+								    in flow, absolutely positioned right below it, so their top edge sits
+								    at the header's exact rendered bottom — no hardcoded offset to drift
+								    when the header's height changes. At rest they cover the real group
+								    row pixel-perfectly, and both live in content coordinates, so
+								    horizontal scrolling keeps them aligned with the rows. */}
+								<div className="relative h-0 z-20">
+									<div className="absolute left-0 right-0 top-0">
+										{activeStickyHeaders.map((item) => (
+											<StickyGroupHeader
+												key={`sticky-${item.type === 'group' ? item.key : ''}`}
+												item={item}
+												onToggle={toggleGroup}
+												columnLabels={allColumnLabels}
+											/>
+										))}
 									</div>
-								) : flatRows.length === 0 ? (
-									<div className="flex items-center justify-center py-8 text-sm text-foreground">
-										{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
-									</div>
-								) : (
-									<VirtualizedAlertList
-										virtualizer={virtualizer}
-										flatRows={flatRows}
-										selectedAlerts={selectedAlerts}
-										orderedColumns={orderedColumns}
-										contentColumnWidths={contentColumnWidths}
-										expandRows={expandRows}
-										onToggleGroup={toggleGroup}
-										onSelectAlert={handleSelectAlert}
-										onAlertClick={onAlertClick}
-										activeAlertId={activeAlertId}
-										onSilenceAlert={onSilenceAlert}
-										onUnsilenceAlert={onUnsilenceAlert}
-										onDeleteAlert={onDeleteAlert}
-										onUnresolveAlert={onUnresolveAlert}
-										onSelectAlerts={onSelectAlerts}
-										columnLabels={allColumnLabels}
-										isResolved={isResolved}
-										severityColors={severityColors}
-										actionsColumnWidth={actionsColumnWidth}
-										isDragging={isDragging}
-										onDragStart={handleDragStart}
-										onDragEnter={handleDragEnter}
-										onDragEnd={() => handleDragEnd(handleSelectAlert)}
-									/>
-								)}
+								</div>
 							</div>
+
+							{isLoading ? (
+								<div className="flex items-center justify-center py-8 text-sm text-foreground">
+									Loading alerts...
+								</div>
+							) : flatRows.length === 0 ? (
+								<div className="flex items-center justify-center py-8 text-sm text-foreground">
+									{searchTerm ? 'No alerts found matching your search.' : 'No alerts found.'}
+								</div>
+							) : (
+								<VirtualizedAlertList
+									virtualizer={virtualizer}
+									flatRows={flatRows}
+									selectedAlerts={selectedAlerts}
+									orderedColumns={orderedColumns}
+									contentColumnWidths={contentColumnWidths}
+									expandRows={expandRows}
+									onToggleGroup={toggleGroup}
+									onSelectAlert={handleSelectAlert}
+									onAlertClick={onAlertClick}
+									activeAlertId={activeAlertId}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
+									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
+									onSelectAlerts={onSelectAlerts}
+									columnLabels={allColumnLabels}
+									isResolved={isResolved}
+									severityColors={severityColors}
+									actionsColumnWidth={actionsColumnWidth}
+									isDragging={isDragging}
+									onDragStart={handleDragStart}
+									onDragEnter={handleDragEnter}
+									onDragEnd={() => handleDragEnd(handleSelectAlert)}
+								/>
+							)}
 						</div>
 					</div>
 				</div>
