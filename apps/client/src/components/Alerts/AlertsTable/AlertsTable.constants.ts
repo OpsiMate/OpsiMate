@@ -8,6 +8,9 @@ export const SELECT_COLUMN_WIDTH = '40px';
 export const ACTIONS_COLUMN_WIDTH = '44px';
 export const ACTIONS_COLUMN_WIDTH_WITH_SETTINGS = '80px';
 export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
+// Rendered height of the sticky column header: the h-8 (32px) header row plus its 1px
+// bottom border. The sticky group-header overlay is anchored this far down the pane.
+export const HEADER_HEIGHT_PX = 33;
 
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
 
