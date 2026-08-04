@@ -100,10 +100,10 @@ export const useContentColumnWidths = ({
 			return {};
 		}
 
-		// Measure at bold: unread rows render bold, and a column sized for the regular
-		// weight would truncate exactly the rows that must stand out.
+		// Measure at extra-bold: unread rows render font-extrabold (800), and a column
+		// sized for the regular weight would truncate exactly the rows that must stand out.
 		const fontFamily = getComputedStyle(document.body).fontFamily || 'sans-serif';
-		const font = `700 14px ${fontFamily}`;
+		const font = `800 14px ${fontFamily}`;
 
 		const desired: Record<string, number> = {};
 		const floors: Record<string, number> = {};
