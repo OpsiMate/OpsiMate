@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { Check, User, UserX } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PersonPickerProps } from './PersonPicker.types';
 
 const getInitials = (fullName: string): string => {
@@ -26,6 +27,21 @@ export const PersonPicker = ({
 	const [open, setOpen] = useState(false);
 
 	const selectedUser = users.find((u) => u.id === selectedUserId);
+
+	// List order: Unassigned (rendered separately above), then the logged-in user —
+	// people assign to themselves far more often than to anyone else — then everyone
+	// else alphabetically. The JWT id is numeric while user ids here are strings.
+	const currentUserId = useMemo(() => String(getCurrentUser()?.id ?? ''), []);
+	const sortedUsers = useMemo(
+		() =>
+			[...users].sort((a, b) => {
+				const aIsMe = a.id === currentUserId;
+				const bIsMe = b.id === currentUserId;
+				if (aIsMe !== bIsMe) return aIsMe ? -1 : 1;
+				return a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' });
+			}),
+		[users, currentUserId]
+	);
 
 	const handleSelect = (userId: string | null) => {
 		onSelect(userId);
@@ -78,7 +94,7 @@ export const PersonPicker = ({
 								<span className="text-foreground flex-1">Unassigned</span>
 								{!selectedUserId && <Check className="h-4 w-4 text-primary" />}
 							</CommandItem>
-							{users.map((user) => {
+							{sortedUsers.map((user) => {
 								const isSelected = user.id === selectedUserId;
 								return (
 									<CommandItem
