@@ -10,6 +10,8 @@ interface VirtualizedAlertListProps {
 	flatRows: FlatGroupItem[];
 	selectedAlerts: Alert[];
 	orderedColumns: string[];
+	// Content-aware pixel widths for alertName/tag columns (see useContentColumnWidths).
+	contentColumnWidths?: Record<string, number>;
 	onToggleGroup: (key: string) => void;
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
@@ -38,6 +40,7 @@ export const VirtualizedAlertList = ({
 	flatRows,
 	selectedAlerts,
 	orderedColumns,
+	contentColumnWidths,
 	onToggleGroup,
 	onSelectAlert,
 	onAlertClick,
@@ -128,6 +131,7 @@ export const VirtualizedAlertList = ({
 								alert={alert}
 								isSelected={isSelected}
 								orderedColumns={orderedColumns}
+								contentColumnWidths={contentColumnWidths}
 								onSelectAlert={onSelectAlert}
 								onAlertClick={onAlertClick}
 								isActiveRow={alert.id === activeAlertId}

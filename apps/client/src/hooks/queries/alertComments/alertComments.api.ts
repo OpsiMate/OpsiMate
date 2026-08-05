@@ -3,7 +3,7 @@ import { AlertComment } from '@OpsiMate/shared';
 
 export const alertCommentsApi = {
 	getCommentsByAlertId: async (alertId: string): Promise<ApiResponse<{ comments: AlertComment[] }>> => {
-		return apiRequest<{ comments: AlertComment[] }>(`/alerts/${alertId}/comments`, 'GET');
+		return apiRequest<{ comments: AlertComment[] }>(`/alerts/${encodeURIComponent(alertId)}/comments`, 'GET');
 	},
 
 	createComment: async (
@@ -11,7 +11,10 @@ export const alertCommentsApi = {
 		userId: string,
 		comment: string
 	): Promise<ApiResponse<{ comment: AlertComment }>> => {
-		return apiRequest<{ comment: AlertComment }>(`/alerts/${alertId}/comments`, 'POST', { userId, comment });
+		return apiRequest<{ comment: AlertComment }>(`/alerts/${encodeURIComponent(alertId)}/comments`, 'POST', {
+			userId,
+			comment,
+		});
 	},
 
 	updateComment: async (commentId: string, comment: string): Promise<ApiResponse<{ comment: AlertComment }>> => {

@@ -2,7 +2,9 @@
 FROM node:26-alpine AS builder
 
 # Install build tools and clean up in same layer
-RUN npm install -g pnpm typescript && \
+# pnpm is pinned to the repo's packageManager version: an unpinned install pulls
+# latest, and pnpm 11 refuses this project's v9 lockfile (broke Build and Release).
+RUN npm install -g pnpm@9.12.0 typescript && \
     npm cache clean --force
 
 WORKDIR /app
@@ -55,7 +57,7 @@ COPY --from=builder /app/packages/shared/package.json ./packages/shared/
 COPY --from=builder /app/packages/custom-actions/package.json ./packages/custom-actions/
 
 # Install production dependencies using the actual package.json files
-RUN npm install -g pnpm && \
+RUN npm install -g pnpm@9.12.0 && \
     pnpm install --prod --frozen-lockfile && \
     pnpm store prune && \
     npm cache clean --force && \

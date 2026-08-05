@@ -1,4 +1,5 @@
 import { AlertStatus, Alert as SharedAlert, AlertHistory, normalizeAlertSeverity } from '@OpsiMate/shared';
+import { toIsoUtc } from '../utils/time';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ResolvedAlertRow, TableInfoRow } from './models';
@@ -179,8 +180,8 @@ export class ResolvedAlertRepository {
 			team: row.team ?? tags['team'] ?? null,
 			tags,
 			type: row.type,
-			startsAt: row.starts_at,
-			updatedAt: row.updated_at,
+			startsAt: toIsoUtc(row.starts_at),
+			updatedAt: toIsoUtc(row.updated_at),
 			alertUrl: row.alert_url,
 			alertName: row.alert_name,
 			summary: row.summary,

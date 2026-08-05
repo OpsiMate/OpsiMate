@@ -4,3 +4,4 @@ export * from './useAlertSelection';
 export * from './useDragAutoScroll';
 export * from './useDragSelection';
 export * from './useStickyHeaders';
+export { useContentColumnWidths } from './useContentColumnWidths';

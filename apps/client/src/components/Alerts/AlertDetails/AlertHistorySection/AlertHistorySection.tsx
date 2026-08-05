@@ -3,7 +3,7 @@ import { History } from 'lucide-react';
 import { useMemo } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertHistoryTimeline } from '../AlertHistoryTimeline';
-import { filterHistoryByRange } from '../AlertHistoryTimeline/alertHistory.utils';
+import { selectHistoryEntries } from '../AlertHistoryTimeline/alertHistory.utils';
 import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertHistorySectionProps {
@@ -15,8 +15,13 @@ interface AlertHistorySectionProps {
 // Self-contained collapsible History section, rendered as a timeline and filtered by the
 // active time range so it mirrors what the "All time" button shows for the alerts list.
 export const AlertHistorySection = ({ historyData, timeRange }: AlertHistorySectionProps) => {
-	const isFiltered = !!(timeRange && (timeRange.from || timeRange.to));
-	const filtered = useMemo(() => filterHistoryByRange(historyData.data, timeRange), [historyData.data, timeRange]);
+	// Quick presets carry only `preset` (from/to stay null), so checking the dates
+	// alone would treat a preset window as unfiltered.
+	const isFiltered = !!(
+		timeRange &&
+		(timeRange.from || timeRange.to || (timeRange.preset && timeRange.preset !== 'custom'))
+	);
+	const filtered = useMemo(() => selectHistoryEntries(historyData.data, timeRange), [historyData.data, timeRange]);
 
 	if (!historyData.data.length) {
 		return null;

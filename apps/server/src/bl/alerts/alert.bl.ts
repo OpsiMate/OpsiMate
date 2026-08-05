@@ -16,19 +16,11 @@ import {
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { UserRepository } from '../../dal/userRepository';
+import { toIsoUtc } from '../../utils/time';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 
 const logger = new Logger('bl/alert.bl');
-
-// Normalizes a timestamp to ISO-8601 UTC. SQLite CURRENT_TIMESTAMP values are
-// "YYYY-MM-DD HH:MM:SS" (UTC, but without a timezone marker); already-ISO values pass through.
-// Guarantees the client receives unambiguous UTC timestamps for display and time-range filtering.
-const toIsoUtc = (value: string): string => {
-	if (!value) return value;
-	const d = value.includes('T') ? new Date(value) : new Date(value.replace(' ', 'T') + 'Z');
-	return isNaN(d.getTime()) ? value : d.toISOString();
-};
 
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
@@ -358,6 +350,7 @@ export class AlertBL {
 				return null;
 			}
 
+			const now = new Date().toISOString();
 			const alert: Alert = {
 				...resolved,
 				status: AlertStatus.FIRING,
@@ -366,7 +359,13 @@ export class AlertBL {
 				// Restored as unread (matches the is_read = 0 the repository writes) so the
 				// returned alert renders with the unread treatment without waiting for a refetch.
 				isRead: false,
-				updatedAt: new Date().toISOString(),
+				// Unresolving starts a NEW firing episode: "Started At" means the last
+				// transition into firing, so it stamps the unresolve moment — not the original
+				// start, which would make a re-activated alert look ancient. The original
+				// start stays visible in the history timeline, and filtered/unfiltered views
+				// now agree (the UNRESOLVED event and starts_at carry the same moment).
+				startsAt: now,
+				updatedAt: now,
 			};
 
 			await this.alertRepo.restoreAlert(alert);
@@ -416,7 +415,9 @@ export class AlertBL {
 		// A manual resolve records a RESOLVED event (with the acting user) AND fires the
 		// automatic status trigger. Suppress the trigger's entry when a manual-resolve event
 		// sits right next to it, so the timeline shows one entry per resolve — with the actor
-		// for manual resolves, without one for API/source-driven resolution.
+		// for manual resolves, without one for API/source-driven resolution. (Unresolve needs
+		// no counterpart: restoreAlert deletes the trigger's re-insert row, leaving the
+		// UNRESOLVED event as the transition's single record.)
 		const manualResolveTimes = eventEntries
 			.filter((e) => e.eventType === AlertHistoryEventType.RESOLVED)
 			.map((e) => new Date(e.date).getTime());
@@ -424,8 +425,18 @@ export class AlertBL {
 			entry.status !== AlertStatus.FIRING &&
 			manualResolveTimes.some((t) => Math.abs(t - new Date(toIsoUtc(entry.date)).getTime()) < 10_000);
 
+		// Exact-duplicate transitions collapse to one entry: unresolve re-inserts used to
+		// stamp the trigger row with the ORIGINAL starts_at, so older alerts carry several
+		// identical "firing" rows at the same instant.
+		const seenTransitions = new Set<string>();
 		const statusEntries: AlertHistoryData[] = statusHistory.data
 			.filter((entry) => !coveredByManualResolve(entry))
+			.filter((entry) => {
+				const key = `${entry.status}@${toIsoUtc(entry.date)}`;
+				if (seenTransitions.has(key)) return false;
+				seenTransitions.add(key);
+				return true;
+			})
 			.map((entry) => ({
 				...entry,
 				date: toIsoUtc(entry.date),
@@ -433,9 +444,30 @@ export class AlertBL {
 				description: entry.status === AlertStatus.FIRING ? 'Alert started firing' : 'Alert resolved',
 			}));
 
-		const data = [...statusEntries, ...eventEntries].sort(
-			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-		);
+		const data = [...statusEntries, ...eventEntries];
+
+		// Synthesize a "last update received" entry from the alert row's updated_at (not
+		// persisted — updates are upserts and write no history). Without it, an alert
+		// whose only real entries predate an active time window shows an empty history
+		// log even though its recent update is what keeps it in the list (e.g. fired
+		// 23:00 yesterday, updated 00:01, window "Today"). Skipped when an entry already
+		// sits at that moment (a fresh alert whose updated_at still equals starts_at).
+		const alertRow =
+			(await this.alertRepo.getAlert(alertId)) ?? (await this.resolvedAlertRepo.getResolvedAlert(alertId));
+		if (alertRow?.updatedAt) {
+			const updatedIso = toIsoUtc(alertRow.updatedAt);
+			const updatedMs = new Date(updatedIso).getTime();
+			const covered = data.some((entry) => Math.abs(new Date(entry.date).getTime() - updatedMs) < 1_000);
+			if (!isNaN(updatedMs) && !covered) {
+				data.push({
+					date: updatedIso,
+					eventType: AlertHistoryEventType.UPDATED,
+					description: 'Last update received from the source',
+				});
+			}
+		}
+
+		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 		return { alertId, data };
 	}

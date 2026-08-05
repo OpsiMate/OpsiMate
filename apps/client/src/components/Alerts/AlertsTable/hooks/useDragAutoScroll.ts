@@ -70,7 +70,12 @@ export const useDragAutoScroll = ({ isDragging, scrollElementRef, onDragOverAler
 
 			// Select the row now under the pointer. Clamp the probe point just inside the
 			// scrollport so drags held past its edge still pick the outermost visible row.
-			const probeY = Math.min(Math.max(pointer.y, rect.top + 4), rect.bottom - 4);
+			// The column header is position:sticky INSIDE this scrollport, pinned at its
+			// top — clamp below it, or an upward drag would probe the header instead of
+			// the row emerging underneath it.
+			const stickyHeader = scrollEl.querySelector(':scope > div > .sticky');
+			const probeTop = (stickyHeader?.getBoundingClientRect().bottom ?? rect.top) + 4;
+			const probeY = Math.min(Math.max(pointer.y, probeTop), rect.bottom - 4);
 			const hit = document.elementFromPoint(pointer.x, probeY)?.closest<HTMLElement>('[data-alert-id]');
 			if (hit?.dataset.alertId) {
 				onDragOverRef.current(hit.dataset.alertId);
