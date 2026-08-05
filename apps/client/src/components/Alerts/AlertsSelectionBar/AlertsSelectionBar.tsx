@@ -12,13 +12,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
-import { CheckCircle2, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { BellRing, CheckCircle2, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
 	selectedAlerts: Alert[];
 	onClearSelection: () => void;
 	onSilenceAll: () => void;
+	// Shown instead of "Silence all" when EVERY selected alert is already silenced.
+	onUnsilenceAll?: () => void;
 	onAssignOwnerAll?: (ownerId: string | null) => void;
 	onResolveAll?: () => void;
 	// Adds the same comment to every selected alert (opens the comment dialog).
@@ -30,6 +32,7 @@ export const AlertsSelectionBar = ({
 	selectedAlerts,
 	onClearSelection,
 	onSilenceAll,
+	onUnsilenceAll,
 	onAssignOwnerAll,
 	onResolveAll,
 	onCommentAll,
@@ -42,7 +45,11 @@ export const AlertsSelectionBar = ({
 		return null;
 	}
 
+	// Silence/unsilence are offered only on uniform selections: all-active gets
+	// "Silence all", all-silenced gets "Unsilence all", a mixed selection gets
+	// neither — the outcome of a bulk action on a mix is too easy to misread.
 	const allNotSilenced = selectedAlerts.every((alert) => !alert.isSilenced);
+	const allSilenced = selectedAlerts.every((alert) => alert.isSilenced);
 
 	const handleAssignOwner = (ownerId: string | null) => {
 		if (onAssignOwnerAll) {
@@ -68,6 +75,12 @@ export const AlertsSelectionBar = ({
 				{allNotSilenced && (
 					<Button variant="outline" size="sm" onClick={onSilenceAll}>
 						Silence all
+					</Button>
+				)}
+				{onUnsilenceAll && allSilenced && (
+					<Button variant="outline" size="sm" onClick={onUnsilenceAll} className="gap-1.5">
+						<BellRing className="h-3.5 w-3.5" />
+						Unsilence all
 					</Button>
 				)}
 				{onResolveAll && (

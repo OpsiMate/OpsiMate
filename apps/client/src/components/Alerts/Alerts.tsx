@@ -243,6 +243,7 @@ const Alerts = () => {
 		handleDeleteAlert,
 		handleUnresolveAlert,
 		handleSilenceAll,
+		handleUnsilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
 		handleCommentAll,
@@ -327,6 +328,10 @@ const Alerts = () => {
 			confirmResolveAlert(alertId);
 		}
 	};
+
+	// Direct (no confirmation dialog), matching the single-row unsilence: it's
+	// non-destructive and instantly reversible by silencing again.
+	const handleUnsilenceAllSelected = () => void handleUnsilenceAll(selectedAlerts, () => setSelectedAlerts([]));
 
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
@@ -675,6 +680,7 @@ const Alerts = () => {
 										selectedAlerts={selectedAlerts}
 										onClearSelection={() => setSelectedAlerts([])}
 										onSilenceAll={confirmSilenceAllSelected}
+										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
 										onResolveAll={confirmResolveAllSelected}
 										onCommentAll={confirmCommentAllSelected}
