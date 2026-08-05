@@ -1,5 +1,4 @@
 import { ServiceConfig } from '@/components/AddServiceDialog';
-import { ClientProviderType } from '@OpsiMate/shared';
 import { EmptyState } from '../EmptyState';
 import { ProviderCard } from '../ProviderCard';
 import { Provider } from '../Providers.types';
@@ -15,7 +14,7 @@ interface ProviderContentProps {
 	onAddService: (providerId: number, service: ServiceConfig) => void;
 	onServiceAction: (providerId: string, serviceId: string, action: 'start' | 'stop' | 'restart') => void;
 	onDeleteService: (serviceId: string) => void;
-	onAddProvider: (type: ClientProviderType) => void;
+	onProviderAdded: () => void;
 }
 
 export const ProviderContent = ({
@@ -29,7 +28,7 @@ export const ProviderContent = ({
 	onAddService,
 	onServiceAction,
 	onDeleteService,
-	onAddProvider,
+	onProviderAdded,
 }: ProviderContentProps) => {
 	if (isLoading) {
 		return (
@@ -40,7 +39,7 @@ export const ProviderContent = ({
 	}
 
 	if (providers.length === 0) {
-		return <EmptyState searchQuery={searchQuery} onAddProvider={onAddProvider} />;
+		return <EmptyState searchQuery={searchQuery} onProviderAdded={onProviderAdded} />;
 	}
 
 	return (
