@@ -2,8 +2,10 @@ import { RefObject, useEffect, useRef } from 'react';
 
 // How close to the scrollport's top/bottom edge (px) the pointer must be before
 // auto-scroll kicks in, and the fastest scroll step (px per frame) at full proximity.
+// 8px/frame (~480px/s at 60fps) — fast enough to sweep a long list, slow enough to
+// release the drag on the right row without overshooting.
 const EDGE_ZONE_PX = 56;
-const MAX_STEP_PX = 16;
+const MAX_STEP_PX = 8;
 
 // Signed scroll step for the current pointer position: 0 outside the edge zones,
 // scaling up to ±MAX_STEP_PX the deeper the pointer sits in a zone (or past the edge).
