@@ -56,6 +56,7 @@ export class AlertCommentsRepository {
 						CREATE INDEX IF NOT EXISTS idx_alert_comments_alert_id ON alert_comments(alert_id);
 						CREATE INDEX IF NOT EXISTS idx_alert_comments_user_id ON alert_comments(user_id);
 						CREATE INDEX IF NOT EXISTS idx_alert_comments_created_at ON alert_comments(created_at);
+						CREATE INDEX IF NOT EXISTS idx_alert_comments_alert_latest ON alert_comments(alert_id, created_at);
 					`);
 				});
 				rebuild();
