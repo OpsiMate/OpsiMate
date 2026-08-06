@@ -24,7 +24,6 @@ import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -58,7 +57,6 @@ const ALERT_TAB_OPTIONS = [
 ] as const;
 
 const Alerts = () => {
-	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: resolvedAlerts = [], isLoading: isLoadingResolved, refetch: refetchResolved } = useResolvedAlerts();
@@ -408,11 +406,6 @@ const Alerts = () => {
 		/>
 	);
 
-	const handleLaunchTVMode = () => {
-		setSelectedAlert(null); // Close alert details panel before navigating
-		navigate('/alerts/tv-mode');
-	};
-
 	const handleNewDashboard = () => {
 		if (isDirty) {
 			setPendingNavigation(() => resetDashboard);
@@ -519,7 +512,6 @@ const Alerts = () => {
 								isRefreshing={isRefreshing}
 								lastRefresh={lastRefresh}
 								onRefresh={handleManualRefresh}
-								onLaunchTVMode={handleLaunchTVMode}
 								dashboards={dashboards}
 								onDashboardSelect={handleDashboardSelect}
 								onNewDashboard={handleNewDashboard}

@@ -1,1 +1,0 @@
-export { AlertsGroupedView } from './AlertsGroupedView';
