@@ -30,7 +30,7 @@
 		"@types/cors": "^2.8.19",
 		"@types/jsonwebtoken": "^9.0.10",
 		"bcrypt": "^6.0.0",
-		"better-sqlite3": "^12.11.1",
+		"better-sqlite3": "^13.0.2",
 		"cors": "^2.8.6",
 		"express": "^5.2.1",
 		"js-yaml": "^4.3.0",

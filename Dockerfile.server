@@ -3,6 +3,9 @@ FROM node:26-alpine AS server-builder
 # pnpm is pinned to the repo's packageManager version: an unpinned install pulls
 # latest, and pnpm 11 refuses this project's v9 lockfile (broke Build and Release).
 RUN npm install -g pnpm@9.12.0 typescript && npm cache clean --force
+# Native-module toolchain: better-sqlite3 13+ ships no musl prebuilds (its N-API
+# prebuild set covers glibc), so Alpine builds compile it from source via node-gyp.
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 # Copy workspace manifests for caching
@@ -39,9 +42,13 @@ COPY --from=server-builder /app/packages/shared/dist packages/shared/dist
 COPY --from=server-builder /app/packages/custom-actions/package.json packages/custom-actions/package.json
 COPY --from=server-builder /app/packages/custom-actions/dist packages/custom-actions/dist
 
-# Install only production deps
+# Install only production deps. The gyp toolchain (needed to compile
+# better-sqlite3 from source on musl — no v13 prebuilds for Alpine) is added as a
+# virtual package and removed in the same layer, so the runtime image stays lean.
 RUN npm install -g pnpm@9.12.0 && \
+    apk add --no-cache --virtual .build-deps python3 make g++ && \
     pnpm install --prod --frozen-lockfile && \
+    apk del .build-deps && \
     pnpm store prune && \
     rm -rf /root/.npm /root/.cache /tmp/*
 
