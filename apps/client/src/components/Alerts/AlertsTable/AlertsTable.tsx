@@ -268,8 +268,13 @@ export const AlertsTable = ({
 																{needsFillerColumn && (
 																	<TableHead aria-hidden className="p-0" />
 																)}
+																{/* Pinned to the scroller's right edge: with many columns the
+																    content is wider than the pane, and without the pin the
+																    group-by/column-toggle buttons sit at the far right of the
+																    SCROLLED content — invisible until the user scrolls all the
+																    way over. Opaque bg so columns slide underneath. */}
 																<TableHead
-																	className={`${TABLE_HEAD_CLASSES} text-xs`}
+																	className={`${TABLE_HEAD_CLASSES} text-xs sticky right-0 z-10 bg-background`}
 																	style={{
 																		width: actionsColumnWidth,
 																		minWidth: actionsColumnWidth,
