@@ -154,8 +154,9 @@ export class AlertBL {
 	// Attaches each alert's newest comment text (the optional "Last Comment" table column).
 	// Best-effort: a failed lookup must never break the listing itself.
 	private async attachLastComments(alerts: Alert[]): Promise<Alert[]> {
+		if (alerts.length === 0) return alerts;
 		try {
-			const latest = await this.alertCommentsRepo.getLatestCommentPerAlert();
+			const latest = await this.alertCommentsRepo.getLatestCommentsByAlertIds(alerts.map((a) => a.id));
 			return alerts.map((alert) => ({ ...alert, lastComment: latest[alert.id] ?? null }));
 		} catch (error) {
 			logger.error('Failed to attach last comments to alerts', error);

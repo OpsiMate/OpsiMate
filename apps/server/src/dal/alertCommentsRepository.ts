@@ -26,6 +26,9 @@ export class AlertCommentsRepository {
 				CREATE INDEX IF NOT EXISTS idx_alert_comments_alert_id ON alert_comments(alert_id);
 				CREATE INDEX IF NOT EXISTS idx_alert_comments_user_id ON alert_comments(user_id);
 				CREATE INDEX IF NOT EXISTS idx_alert_comments_created_at ON alert_comments(created_at);
+				-- Serves the "newest comment for THIS alert" lookup (Last Comment column) as a
+				-- single backward index seek instead of a scan+sort of the alert's thread.
+				CREATE INDEX IF NOT EXISTS idx_alert_comments_alert_latest ON alert_comments(alert_id, created_at);
 			`);
 
 			// Migration: the table used to declare alert_id as an FK to alerts(id) ON DELETE
@@ -144,22 +147,27 @@ export class AlertCommentsRepository {
 		});
 	}
 
-	// Newest comment text per alert, in one query — feeds the alerts listing's optional
-	// "Last Comment" column without a per-alert lookup.
-	async getLatestCommentPerAlert(): Promise<Record<string, string>> {
+	// Newest comment text for each of the given alerts — feeds the alerts listing's
+	// optional "Last Comment" column. One prepared indexed seek per listed alert
+	// (idx_alert_comments_alert_latest, read backward, LIMIT 1): cost scales with the
+	// number of alerts LISTED, not with every comment ever written — a global window
+	// ranking over alert_comments would re-rank the whole table on every 5s poll.
+	// rowid breaks created_at ties by insertion order (same-second comments).
+	async getLatestCommentsByAlertIds(alertIds: string[]): Promise<Record<string, string>> {
+		if (alertIds.length === 0) return {};
 		return runAsync(() => {
-			const rows = this.db
-				.prepare(
-					`SELECT alert_id, comment FROM (
-						SELECT alert_id, comment,
-							ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY created_at DESC, rowid DESC) AS rn
-						FROM alert_comments
-					) WHERE rn = 1`
-				)
-				.all() as { alert_id: string; comment: string }[];
+			const stmt = this.db.prepare(
+				`SELECT comment FROM alert_comments
+				 WHERE alert_id = ?
+				 ORDER BY created_at DESC, rowid DESC
+				 LIMIT 1`
+			);
 			const result: Record<string, string> = {};
-			for (const row of rows) {
-				result[row.alert_id] = row.comment;
+			for (const alertId of alertIds) {
+				const row = stmt.get(alertId) as { comment: string } | undefined;
+				if (row) {
+					result[alertId] = row.comment;
+				}
 			}
 			return result;
 		});
