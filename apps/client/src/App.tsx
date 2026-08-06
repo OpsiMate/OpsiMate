@@ -1,6 +1,7 @@
 // src/App.tsx
 import { Alerts, AuthGuard, MobileWebOverlay, Profile, ThemeProvider } from '@/components';
 import { Dashboards } from '@/components/Dashboards';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { UnsavedChangesDialog } from '@/components/shared';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -56,25 +57,27 @@ const App: React.FC = () => {
 							<UnsavedChangesDialogWrapper />
 
 							<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-								<AuthGuard>
-									<Routes>
-										<Route path="/" element={<Alerts />} />
-										<Route path="/dashboards" element={<Dashboards />} />
-										<Route path="/integrations" element={<Integrations />} />
-										<Route path="/settings" element={<Settings />} />
-										<Route path="/profile" element={<Profile />} />
-										<Route path="/login" element={<Login />} />
-										<Route path="/register" element={<Register />} />
-										<Route path="/alerts" element={<Alerts />} />
-										<Route path="/mute-policies" element={<MutePolicies />} />
-										<Route path="/oncall" element={<Oncall />} />
-										<Route path="/actions" element={<Actions />} />
-										<Route path="/enrichments" element={<Enrichments />} />
-										<Route path="/forgot-password" element={<ForgotPassword />} />
-										<Route path="/reset-password" element={<ResetPasswordByEmail />} />
-										<Route path="*" element={<NotFound />} />
-									</Routes>
-								</AuthGuard>
+								<ErrorBoundary>
+									<AuthGuard>
+										<Routes>
+											<Route path="/" element={<Alerts />} />
+											<Route path="/dashboards" element={<Dashboards />} />
+											<Route path="/integrations" element={<Integrations />} />
+											<Route path="/settings" element={<Settings />} />
+											<Route path="/profile" element={<Profile />} />
+											<Route path="/login" element={<Login />} />
+											<Route path="/register" element={<Register />} />
+											<Route path="/alerts" element={<Alerts />} />
+											<Route path="/mute-policies" element={<MutePolicies />} />
+											<Route path="/oncall" element={<Oncall />} />
+											<Route path="/actions" element={<Actions />} />
+											<Route path="/enrichments" element={<Enrichments />} />
+											<Route path="/forgot-password" element={<ForgotPassword />} />
+											<Route path="/reset-password" element={<ResetPasswordByEmail />} />
+											<Route path="*" element={<NotFound />} />
+										</Routes>
+									</AuthGuard>
+								</ErrorBoundary>
 							</BrowserRouter>
 
 							<ScrollToTopButton />
