@@ -1,6 +1,5 @@
 export { default as Actions } from './Actions';
 export { Alerts } from '../components/Alerts';
-export { default as AlertsTVMode } from '../components/Alerts/AlertsTVMode';
 export { Dashboards } from '../components/Dashboards';
 export { default as Enrichments } from './Enrichments';
 export { default as Integrations } from './Integrations';
@@ -11,4 +10,3 @@ export { default as Register } from './Register';
 export { default as Settings } from './Settings';
 export { default as MutePolicies } from './MutePolicies';
 export { default as Oncall } from './Oncall';
-export { default as TVMode } from './TVMode';

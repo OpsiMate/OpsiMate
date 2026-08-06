@@ -44,7 +44,6 @@ export { TableSettingsModal } from './TableSettingsModal';
 export { TagSelector } from './TagSelector';
 export { ThemeButton } from './ThemeButton';
 export { ThemeToggle } from './ThemeToggle';
-export { TVModeLauncher } from './TVModeLauncher';
 export { ValidationFeedback, validationRules } from './ValidationFeedback';
 
 export * from './Actions';

@@ -7,19 +7,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DashboardProvider, useDashboard } from '@/context/DashboardContext';
-import {
-	Actions,
-	AlertsTVMode,
-	Enrichments,
-	Integrations,
-	Login,
-	NotFound,
-	Register,
-	Settings,
-	MutePolicies,
-	Oncall,
-	TVMode,
-} from '@/pages';
+import { Actions, Enrichments, Integrations, Login, NotFound, Register, Settings, MutePolicies, Oncall } from '@/pages';
 import { isPlaygroundMode } from '@/lib/playground';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -71,7 +59,6 @@ const App: React.FC = () => {
 								<AuthGuard>
 									<Routes>
 										<Route path="/" element={<Alerts />} />
-										<Route path="/tv-mode" element={<TVMode />} />
 										<Route path="/dashboards" element={<Dashboards />} />
 										<Route path="/integrations" element={<Integrations />} />
 										<Route path="/settings" element={<Settings />} />
@@ -83,7 +70,6 @@ const App: React.FC = () => {
 										<Route path="/oncall" element={<Oncall />} />
 										<Route path="/actions" element={<Actions />} />
 										<Route path="/enrichments" element={<Enrichments />} />
-										<Route path="/alerts/tv-mode" element={<AlertsTVMode />} />
 										<Route path="/forgot-password" element={<ForgotPassword />} />
 										<Route path="/reset-password" element={<ResetPasswordByEmail />} />
 										<Route path="*" element={<NotFound />} />
