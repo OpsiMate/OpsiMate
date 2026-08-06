@@ -23,7 +23,6 @@
     "fix": "turbo run fix"
   },
   "devDependencies": {
-    "@turbo/gen": "^1.13.4",
     "prettier": "^3.9.6",
     "turbo": "^2.10.8"
   },
