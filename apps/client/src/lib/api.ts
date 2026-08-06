@@ -543,6 +543,9 @@ export const integrationApi = {
 /**
  * Alerts API endpoints
  */
+// Alert IDs are caller-supplied (custom alerts API) and may contain URL-hostile
+// characters (#, /, ?, %); any ID placed in a request path must be encoded or the
+// browser truncates/mangles the URL.
 export const alertsApi = {
 	// Get all alerts
 	async getAllAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
@@ -555,7 +558,7 @@ export const alertsApi = {
 		alertId: string,
 		options?: { silencedUntil?: string | null; comment?: string }
 	): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/silence`, 'PATCH', {
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${encodeURIComponent(alertId)}/silence`, 'PATCH', {
 			silencedUntil: options?.silencedUntil ?? null,
 			comment: options?.comment,
 		});
@@ -563,21 +566,25 @@ export const alertsApi = {
 
 	// Unsilence an alert
 	async unsilenceAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/unsilence`, 'PATCH');
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${encodeURIComponent(alertId)}/unsilence`, 'PATCH');
 	},
 
 	// Delete an alert (the UI's manual resolve); an optional note is stored as a comment.
 	async deleteAlert(alertId: string, comment?: string): Promise<ApiResponse<void>> {
-		return await apiRequest<void>(`/alerts/${alertId}`, 'DELETE', comment ? { comment } : undefined);
+		return await apiRequest<void>(
+			`/alerts/${encodeURIComponent(alertId)}`,
+			'DELETE',
+			comment ? { comment } : undefined
+		);
 	},
 
 	// Mark alert as read (unread alerts render bold in the table)
 	async markAlertRead(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/read`, 'PATCH');
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${encodeURIComponent(alertId)}/read`, 'PATCH');
 	},
 
 	getAlertHistory: (alertId: string) => {
-		return apiRequest<AlertHistory>(`/alerts/${alertId}/history`, 'GET');
+		return apiRequest<AlertHistory>(`/alerts/${encodeURIComponent(alertId)}/history`, 'GET');
 	},
 
 	// Get alerts by tag
@@ -617,22 +624,31 @@ export const alertsApi = {
 
 	// Delete an resolved alert permanently
 	async deleteResolvedAlert(alertId: string): Promise<ApiResponse<void>> {
-		return await apiRequest<void>(`/alerts/resolved/${alertId}`, 'DELETE');
+		return await apiRequest<void>(`/alerts/resolved/${encodeURIComponent(alertId)}`, 'DELETE');
 	},
 
 	// Move a resolved alert back to the active (firing) list
 	async unresolveAlert(alertId: string): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/resolved/${alertId}/unresolve`, 'PATCH');
+		return await apiRequest<{ alert: SharedAlert }>(
+			`/alerts/resolved/${encodeURIComponent(alertId)}/unresolve`,
+			'PATCH'
+		);
 	},
 
 	// Set alert owner
 	async setAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${alertId}/owner`, 'PATCH', { ownerId });
+		return await apiRequest<{ alert: SharedAlert }>(`/alerts/${encodeURIComponent(alertId)}/owner`, 'PATCH', {
+			ownerId,
+		});
 	},
 
 	// Set resolved alert owner
 	async setResolvedAlertOwner(alertId: string, ownerId: string | null): Promise<ApiResponse<{ alert: SharedAlert }>> {
-		return await apiRequest<{ alert: SharedAlert }>(`/alerts/resolved/${alertId}/owner`, 'PATCH', { ownerId });
+		return await apiRequest<{ alert: SharedAlert }>(
+			`/alerts/resolved/${encodeURIComponent(alertId)}/owner`,
+			'PATCH',
+			{ ownerId }
+		);
 	},
 };
 

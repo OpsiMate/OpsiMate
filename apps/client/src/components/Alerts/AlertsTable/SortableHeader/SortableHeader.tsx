@@ -21,6 +21,8 @@ export interface SortableHeaderProps {
 	sortDirection: SortDirection;
 	onSort: (field: AlertSortField) => void;
 	className?: string;
+	// Inline width for content-aware columns; wins over any width class.
+	style?: React.CSSProperties;
 }
 
 export const SortableHeader = ({
@@ -31,6 +33,7 @@ export const SortableHeader = ({
 	sortDirection,
 	onSort,
 	className,
+	style,
 }: SortableHeaderProps) => {
 	const getSortIcon = () => {
 		if (sortField !== column) {
@@ -51,6 +54,7 @@ export const SortableHeader = ({
 
 	return (
 		<TableHead
+			style={style}
 			className={cn('h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground', className)}
 			onClick={handleClick}
 			aria-label={label}

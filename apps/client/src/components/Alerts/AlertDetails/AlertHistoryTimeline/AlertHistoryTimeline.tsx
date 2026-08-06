@@ -1,5 +1,16 @@
 import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/shared';
-import { Bell, BellOff, CheckCircle2, Flame, MessageSquare, RefreshCw, UserMinus, UserPlus, Zap } from 'lucide-react';
+import {
+	Activity,
+	Bell,
+	BellOff,
+	CheckCircle2,
+	Flame,
+	MessageSquare,
+	RefreshCw,
+	UserMinus,
+	UserPlus,
+	Zap,
+} from 'lucide-react';
 import { ComponentType } from 'react';
 
 interface AlertHistoryTimelineProps {
@@ -77,6 +88,12 @@ const EVENT_STYLES: Record<Exclude<AlertHistoryEventType, AlertHistoryEventType.
 		dotClass: 'bg-violet-500',
 		textClass: 'text-violet-600 dark:text-violet-400',
 		Icon: Zap,
+	},
+	[AlertHistoryEventType.UPDATED]: {
+		label: 'Updated',
+		dotClass: 'bg-sky-500',
+		textClass: 'text-sky-600 dark:text-sky-400',
+		Icon: Activity,
 	},
 	[AlertHistoryEventType.COMMENT_ADDED]: {
 		label: 'Comment added',
