@@ -90,6 +90,13 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 	}, [pending]);
 
 	const note = comment.trim() || undefined;
+	const confirmDisabled = !!pending?.requireComment && !note;
+
+	const confirm = () => {
+		if (!pending || confirmDisabled) return;
+		pending.run(note, pending.withSilenceDuration ? silencedUntilFor(duration) : undefined);
+		onClose();
+	};
 
 	return (
 		<AlertDialog open={!!pending} onOpenChange={(open) => !open && onClose()}>
@@ -131,21 +138,33 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 							id="action-comment"
 							value={comment}
 							onChange={(e) => setComment(e.target.value)}
+							onKeyDown={(e) => {
+								// Enter confirms the action with the typed note; Shift+Enter keeps
+								// its usual insert-a-newline meaning. Guarded against IME
+								// composition, where Enter merely commits the composed text.
+								if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+									e.preventDefault();
+									confirm();
+								}
+							}}
 							placeholder={pending.commentPlaceholder ?? 'Add a note for your team'}
 							rows={3}
 							maxLength={5000}
 						/>
+						<p className="text-xs text-muted-foreground">
+							<kbd className="rounded border bg-muted px-1 py-0.5 font-sans text-[10px]">Enter</kbd> to{' '}
+							{pending.confirmLabel.toLowerCase()} ·{' '}
+							<kbd className="rounded border bg-muted px-1 py-0.5 font-sans text-[10px]">Shift+Enter</kbd>{' '}
+							for a new line
+						</p>
 					</div>
 				)}
 
 				<AlertDialogFooter>
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
 					<AlertDialogAction
-						disabled={!!pending?.requireComment && !note}
-						onClick={() => {
-							pending?.run(note, pending.withSilenceDuration ? silencedUntilFor(duration) : undefined);
-							onClose();
-						}}
+						disabled={confirmDisabled}
+						onClick={confirm}
 						className={
 							pending?.destructive
 								? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'

@@ -3,20 +3,18 @@ import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { formatDate } from '../../../AlertsTable.utils';
 
-export interface AlertStartsAtColumnProps {
+export interface AlertUpdatedAtColumnProps {
 	alert: Alert;
 	className?: string;
 }
 
-export const AlertStartsAtColumn = ({ alert, className }: AlertStartsAtColumnProps) => {
-	// Today's alerts render time-only (formatDate); the tooltip always carries the full
-	// timestamp so the date is one hover away.
-	const date = new Date(alert.startsAt);
+export const AlertUpdatedAtColumn = ({ alert, className }: AlertUpdatedAtColumnProps) => {
+	const date = new Date(alert.updatedAt);
 	const fullTimestamp = isNaN(date.getTime()) ? undefined : date.toLocaleString();
 	return (
 		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
 			<span className="text-xs text-foreground truncate block" title={fullTimestamp}>
-				{formatDate(alert.startsAt)}
+				{formatDate(alert.updatedAt)}
 			</span>
 		</TableCell>
 	);

@@ -22,7 +22,7 @@ import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertsFilterPanel } from '.';
@@ -44,8 +44,8 @@ import {
 	useAlertsFiltering,
 	useAlertsRefresh,
 	useAlertTagKeys,
-	useResolvedTabStatusFilterReset,
 	useColumnManagement,
+	useExpandRows,
 	useSeverityColors,
 } from './hooks';
 
@@ -88,6 +88,7 @@ const Alerts = () => {
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	const [splitByAssignment, setSplitByAssignment] = useState(false);
 	const { severityColors, toggleSeverityColors } = useSeverityColors();
+	const { expandRows, toggleExpandRows } = useExpandRows();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -199,18 +200,28 @@ const Alerts = () => {
 		updateDashboardField('filters', newFilters);
 	};
 
-	useResolvedTabStatusFilterReset({
-		activeTab,
-		filters: dashboardState.filters,
-		onFilterChange: handleFilterChange,
-	});
-
 	const filteredAlerts = useAlertsFiltering(alerts, {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
-	const filteredResolvedAlerts = useAlertsFiltering(resolvedAlerts, {
-		filters: dashboardState.filters,
+	// The Resolved and All VIEWS run with the status filter suspended — not deleted.
+	// Resolved: an active status like Firing/Silenced can never match resolved alerts,
+	// so applying it would make the view silently empty. All: the tab's promise is
+	// every alert regardless of status, so a status filter picked on Active must not
+	// follow the user there. Wiping the filter instead (the old behavior) destroyed
+	// the user's stored filter — and dirtied the dashboard — just for peeking at
+	// another tab; the stored filters stay intact and Active keeps applying them.
+	const statusSuspendedFilters = useMemo(() => {
+		const { status: _status, ...rest } = dashboardState.filters;
+		return rest;
+	}, [dashboardState.filters]);
+	const resolvedViewAlerts = useAlertsFiltering(resolvedAlerts, {
+		filters: statusSuspendedFilters,
+		timeRange: dashboardState.timeRange,
+	});
+	// Active alerts for the All view — same suspension, all statuses shown.
+	const allViewActiveAlerts = useAlertsFiltering(alerts, {
+		filters: statusSuspendedFilters,
 		timeRange: dashboardState.timeRange,
 	});
 
@@ -222,8 +233,8 @@ const Alerts = () => {
 	// its own actions. resolvedIds lets shared callbacks tell which list an alert belongs to.
 	const resolvedIds = useMemo(() => new Set(resolvedAlerts.map((a) => a.id)), [resolvedAlerts]);
 	const filteredAllAlerts = useMemo(
-		() => [...filteredAlerts, ...filteredResolvedAlerts.map((a) => ({ ...a, isResolved: true }))],
-		[filteredAlerts, filteredResolvedAlerts]
+		() => [...allViewActiveAlerts, ...resolvedViewAlerts.map((a) => ({ ...a, isResolved: true }))],
+		[allViewActiveAlerts, resolvedViewAlerts]
 	);
 
 	const {
@@ -232,6 +243,7 @@ const Alerts = () => {
 		handleDeleteAlert,
 		handleUnresolveAlert,
 		handleSilenceAll,
+		handleUnsilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
 		handleCommentAll,
@@ -317,6 +329,10 @@ const Alerts = () => {
 		}
 	};
 
+	// Direct (no confirmation dialog), matching the single-row unsilence: it's
+	// non-destructive and instantly reversible by silencing again.
+	const handleUnsilenceAllSelected = () => void handleUnsilenceAll(selectedAlerts, () => setSelectedAlerts([]));
+
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
 			title: `Silence ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
@@ -388,6 +404,7 @@ const Alerts = () => {
 			onSearchTermChange={(term) => updateDashboardField('query', term)}
 			renderToolbar={false}
 			severityColors={severityColors}
+			expandRows={expandRows}
 		/>
 	);
 
@@ -462,10 +479,11 @@ const Alerts = () => {
 	const tabCounts: Record<AlertTab, number> = useMemo(
 		() => ({
 			[AlertTab.Active]: filterAlerts(filteredAlerts, dashboardState.query).length,
-			[AlertTab.Resolved]: filterAlerts(filteredResolvedAlerts, dashboardState.query).length,
+			// Resolved and All mirror their views, which suspend the status filter (see above).
+			[AlertTab.Resolved]: filterAlerts(resolvedViewAlerts, dashboardState.query).length,
 			[AlertTab.All]: filterAlerts(filteredAllAlerts, dashboardState.query).length,
 		}),
-		[filteredAlerts, filteredResolvedAlerts, filteredAllAlerts, dashboardState.query]
+		[filteredAlerts, resolvedViewAlerts, filteredAllAlerts, dashboardState.query]
 	);
 	return (
 		<DashboardLayout>
@@ -480,7 +498,7 @@ const Alerts = () => {
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
 						tagKeys={tagKeys}
-						isResolved={activeTab === AlertTab.Resolved}
+						hideStatusFilter={activeTab !== AlertTab.Active}
 					/>
 				</FilterSidebar>
 
@@ -599,6 +617,18 @@ const Alerts = () => {
 									<span className="hidden lg:inline">Severity colors</span>
 								</Button>
 
+								<Button
+									variant={expandRows ? 'default' : 'outline'}
+									size="sm"
+									onClick={toggleExpandRows}
+									className="gap-1.5 shrink-0"
+									title="Expand rows to show full content"
+									aria-pressed={expandRows}
+								>
+									<WrapText className="h-4 w-4" />
+									<span className="hidden lg:inline">Expand rows</span>
+								</Button>
+
 								<TimeFilter
 									value={dashboardState.timeRange ?? createEmptyTimeRange()}
 									onChange={(range) => updateDashboardField('timeRange', range)}
@@ -650,6 +680,7 @@ const Alerts = () => {
 										selectedAlerts={selectedAlerts}
 										onClearSelection={() => setSelectedAlerts([])}
 										onSilenceAll={confirmSilenceAllSelected}
+										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
 										onResolveAll={confirmResolveAllSelected}
 										onCommentAll={confirmCommentAllSelected}
@@ -661,13 +692,15 @@ const Alerts = () => {
 							<div
 								className={cn(
 									'flex-1 min-h-0',
-									resolvedAlerts.length === 0 &&
+									// Matches the list the table actually renders, so the empty state
+									// centers also when filters (not just an empty source) clear it.
+									resolvedViewAlerts.length === 0 &&
 										!isLoadingResolved &&
 										'flex items-center justify-center'
 								)}
 							>
 								<AlertsTable
-									alerts={filteredResolvedAlerts}
+									alerts={resolvedViewAlerts}
 									services={services}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
@@ -693,6 +726,7 @@ const Alerts = () => {
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
 									renderToolbar={false}
 									severityColors={severityColors}
+									expandRows={expandRows}
 								/>
 							</div>
 						) : (
@@ -731,6 +765,7 @@ const Alerts = () => {
 									onSearchTermChange={(term) => updateDashboardField('query', term)}
 									renderToolbar={false}
 									severityColors={severityColors}
+									expandRows={expandRows}
 								/>
 							</div>
 						)}

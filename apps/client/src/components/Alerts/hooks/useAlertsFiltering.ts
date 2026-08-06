@@ -61,13 +61,33 @@ export const useAlertsFiltering = (
 
 		const resolved = timeRange ? resolveTimeRange(timeRange) : { from: null, to: null };
 		if (resolved.from || resolved.to) {
+			const filterStart = resolved.from || new Date(0);
+			const filterEnd = resolved.to || new Date();
+
 			result = result.filter((alert) => {
 				const alertStartDate = new Date(alert.startsAt);
 				const alertEndDate = new Date(alert.updatedAt);
-				const filterStart = resolved.from || new Date(0);
-				const filterEnd = resolved.to || new Date();
 
 				return alertStartDate <= filterEnd && alertEndDate >= filterStart;
+			});
+
+			// Inside a time window, "Started At" means when the firing episode CURRENT AS OF
+			// the window's end began: the LATEST transition into firing at or before the
+			// window closes. An alert that fired at 18:00, resolved at 19:00 and re-fired at
+			// 20:00 shows 20:00 — the 18:00 episode ended; showing it would misstate how long
+			// the alert has been burning. Transitions after the window's end belong to a
+			// later episode and are ignored; an alert that simply kept firing across the
+			// window's start keeps its real (pre-window) start.
+			result = result.map((alert) => {
+				// Numeric (epoch) comparison: startsAt can carry a timezone offset while
+				// firingTimes are normalized UTC — lexicographic order would mis-pick
+				// across formats.
+				const candidates = [alert.startsAt, ...(alert.firingTimes ?? [])]
+					.map((iso) => ({ iso, epoch: new Date(iso).getTime() }))
+					.filter(({ epoch }) => !isNaN(epoch) && epoch <= filterEnd.getTime());
+				if (candidates.length === 0) return alert;
+				const episodeStart = candidates.reduce((latest, c) => (c.epoch > latest.epoch ? c : latest));
+				return episodeStart.iso === alert.startsAt ? alert : { ...alert, startsAt: episodeStart.iso };
 			});
 		}
 

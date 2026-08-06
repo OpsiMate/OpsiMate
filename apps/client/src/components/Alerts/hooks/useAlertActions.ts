@@ -100,6 +100,13 @@ export const useAlertActions = () => {
 		onComplete();
 	};
 
+	// Mirror of handleSilenceAll for the way back: selections of already-silenced
+	// alerts get a one-click bulk unsilence.
+	const handleUnsilenceAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
+		await Promise.allSettled(selectedAlerts.map((alert) => unsilenceAlertMutation.mutateAsync(alert.id)));
+		onComplete();
+	};
+
 	const handleAssignOwnerAll = async (selectedAlerts: Alert[], ownerId: string | null, onComplete: () => void) => {
 		const assignPromises = selectedAlerts.map((alert) =>
 			setAlertOwnerMutation.mutateAsync({ alertId: alert.id, ownerId })
@@ -213,6 +220,7 @@ export const useAlertActions = () => {
 		handleDeleteAlert,
 		handleUnresolveAlert,
 		handleSilenceAll,
+		handleUnsilenceAll,
 		handleAssignOwnerAll,
 		handleResolveAll,
 		handleCommentAll,

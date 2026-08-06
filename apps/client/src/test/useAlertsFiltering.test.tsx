@@ -74,3 +74,112 @@ describe('useAlertsFiltering rolling time presets', () => {
 		expect(result.current.map((a) => a.id)).toEqual(['early-today']);
 	});
 });
+
+describe('episode-start Started At override under a time filter', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => vi.useRealTimers());
+
+	test('an alert that re-fired inside the window shows the in-range firing, not the original start', () => {
+		const oldStart = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+		const inRangeFiring = new Date(Date.now() - 20 * 60_000).toISOString();
+		const alert = {
+			...mkAlert('refired', 0),
+			startsAt: oldStart,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [oldStart, inRangeFiring],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(inRangeFiring);
+	});
+
+	test('multiple episodes inside the window: Started At is the latest transition into firing', () => {
+		// fired 18:00-style (3h ago), resolved, re-fired 1h... the current episode's start
+		// (the LAST transition to firing) must win — not the first in-range firing.
+		const firstEpisode = new Date(Date.now() - 3 * 3600_000).toISOString();
+		const currentEpisode = new Date(Date.now() - 40 * 60_000).toISOString();
+		const alert = {
+			...mkAlert('episodes', 0),
+			startsAt: currentEpisode,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [firstEpisode, currentEpisode],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last6h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(currentEpisode);
+	});
+
+	test('an alert firing across the range boundary with no in-range transition keeps its real start', () => {
+		const oldStart = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+		const alert = {
+			...mkAlert('steady', 0),
+			startsAt: oldStart,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [oldStart],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(oldStart);
+	});
+
+	test('without a time filter nothing is overridden', () => {
+		const oldStart = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+		const alert = {
+			...mkAlert('plain', 0),
+			startsAt: oldStart,
+			firingTimes: [new Date(Date.now() - 60_000).toISOString()],
+		};
+		const { result } = renderHook(() => useAlertsFiltering([alert], { filters: {} }), { wrapper });
+		expect(result.current[0]?.startsAt).toBe(oldStart);
+	});
+});
+
+describe('formatDate (Started At display)', () => {
+	// Frozen clock: formatDate reads new Date() internally, so a real-clock test running
+	// across midnight could see "today" flip between capturing `now` and asserting.
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2026, 5, 15, 14, 30, 0));
+	});
+	afterEach(() => vi.useRealTimers());
+
+	test('today renders time-only, older timestamps keep the full date', async () => {
+		const { formatDate } = await import('@/components/Alerts/AlertsTable/AlertsTable.utils');
+		const now = new Date();
+		expect(formatDate(now.toISOString())).toBe(now.toLocaleTimeString());
+
+		const yesterday = new Date(now);
+		yesterday.setDate(yesterday.getDate() - 1);
+		expect(formatDate(yesterday.toISOString())).toBe(yesterday.toLocaleString());
+
+		expect(formatDate('not-a-date')).toBe('Invalid Date');
+	});
+});
+
+describe('in-range override with mixed timestamp formats', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => vi.useRealTimers());
+
+	test('offset-ISO startsAt and UTC firingTimes sort numerically, not lexically', () => {
+		// startsAt uses a +03:00 offset and is EARLIER in real time than the UTC firing
+		// time, but LATER lexicographically ("2026-…T14" > "2026-…T11").
+		const base = Date.now();
+		const startsAtOffset = new Date(base - 30 * 60_000);
+		const offsetIso = new Date(startsAtOffset.getTime() + 3 * 3600_000)
+			.toISOString()
+			.replace('Z', '+03:00')
+			.replace(/\.\d{3}/, '');
+		const laterUtc = new Date(base - 10 * 60_000).toISOString();
+		const alert = {
+			...mkAlert('mixed', 0),
+			startsAt: offsetIso,
+			updatedAt: new Date().toISOString(),
+			firingTimes: [laterUtc],
+		};
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([alert], options), { wrapper });
+		// The latest REAL instant is the UTC firing time; a lexicographic comparison
+		// would have picked the offset startsAt ("…T14+03:00" > "…T11…Z").
+		expect(result.current[0]?.startsAt).toBe(laterUtc);
+	});
+});

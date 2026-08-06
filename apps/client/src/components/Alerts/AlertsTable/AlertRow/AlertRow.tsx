@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -16,11 +17,14 @@ import { AlertLastCommentColumn } from './Columns/AlertLastCommentColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
 import { AlertTagKeyColumn } from './Columns/AlertTagKeyColumn';
 import { AlertTypeColumn } from './Columns/AlertTypeColumn';
+import { AlertUpdatedAtColumn } from './Columns/AlertUpdatedAtColumn';
 
 export interface AlertRowProps {
 	alert: Alert;
 	isSelected: boolean;
 	orderedColumns: string[];
+	// Content-aware pixel widths for alertName/tag columns; must match the header's.
+	contentColumnWidths?: Record<string, number>;
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
@@ -47,6 +51,7 @@ export const AlertRow = ({
 	alert,
 	isSelected,
 	orderedColumns,
+	contentColumnWidths = {},
 	onSelectAlert,
 	onAlertClick,
 	isActiveRow = false,
@@ -80,8 +85,20 @@ export const AlertRow = ({
 		}
 	};
 
+	const handleRowMouseEnter = () => {
+		// During drag selection, entering any part of the row should trigger the drag
+		// selection handler, not just the checkbox column (#712). No isDragging guard:
+		// isDragging only turns true after the first drag-enter, so gating on it would
+		// ignore the first row the cursor reaches after leaving the checkbox column.
+		// The hook itself no-ops unless the mouse went down on a checkbox.
+		if (onDragEnter) {
+			onDragEnter(alert);
+		}
+	};
+
 	return (
 		<TableRow
+			data-alert-id={alert.id}
 			className={cn(
 				'h-8 cursor-pointer hover:bg-muted/50',
 				// Severity tint sits under selection/active highlights so those still win.
@@ -89,13 +106,15 @@ export const AlertRow = ({
 				// Selection carries its own hover class so the severity hover tint can't
 				// override the selection cue while the pointer is over the row.
 				isSelected && 'bg-muted/50 hover:bg-muted/50',
-				// Unread alerts render bold until someone opens them.
-				alert.isRead === false && 'font-bold',
+				// Unread alerts render at the heaviest weight until someone opens them, so an
+				// updated or freshly firing row stands out clearly from the regular-weight ones.
+				alert.isRead === false && 'font-black',
 				// The alert currently open in the details panel: tinted row + accent edge,
 				// inset shadow instead of a border so the columns don't shift.
 				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary'
 			)}
 			onClick={handleRowClick}
+			onMouseEnter={handleRowMouseEnter}
 		>
 			{onSelectAlerts && (
 				<TableCell
@@ -124,6 +143,7 @@ export const AlertRow = ({
 								tagKey={tagKey}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.default}
+								style={contentColumnWidths[column] ? { width: contentColumnWidths[column] } : undefined}
 							/>
 						);
 					}
@@ -140,6 +160,11 @@ export const AlertRow = ({
 								alert={alert}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.alertName}
+								style={
+									contentColumnWidths['alertName']
+										? { width: contentColumnWidths['alertName'] }
+										: undefined
+								}
 							/>
 						);
 					case 'severity':
@@ -175,17 +200,23 @@ export const AlertRow = ({
 						);
 					case 'startsAt':
 						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
+					case 'updatedAt':
+						return <AlertUpdatedAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.updatedAt} />;
 					case ACTIONS_COLUMN:
 						return (
-							<AlertActionsColumn
-								key={column}
-								alert={alert}
-								width={actionsColumnWidth}
-								onSilenceAlert={onSilenceAlert}
-								onUnsilenceAlert={onUnsilenceAlert}
-								onDeleteAlert={onDeleteAlert}
-								onUnresolveAlert={onUnresolveAlert}
-							/>
+							<Fragment key={column}>
+								{/* Mirrors the header's filler (see AlertsTable): when summary is
+								    hidden this empty flexible cell absorbs the leftover width. */}
+								{!orderedColumns.includes('summary') && <TableCell aria-hidden className="p-0" />}
+								<AlertActionsColumn
+									alert={alert}
+									width={actionsColumnWidth}
+									onSilenceAlert={onSilenceAlert}
+									onUnsilenceAlert={onUnsilenceAlert}
+									onDeleteAlert={onDeleteAlert}
+									onUnresolveAlert={onUnresolveAlert}
+								/>
+							</Fragment>
 						);
 					default:
 						return null;

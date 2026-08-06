@@ -8,6 +8,7 @@ import {
 } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
+import { toIsoUtc } from '../utils/time';
 import { AlertRow, TableInfoRow } from './models';
 
 export class AlertRepository {
@@ -19,6 +20,12 @@ export class AlertRepository {
 
 	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
 		return runAsync(() => {
+			// starts_at is deliberately NOT in the DO UPDATE clause: "Started At" means when
+			// the current firing episode began. Sources that re-send an active alert with a
+			// fresh startsAt (some push "now" on every notification) must not drag it forward —
+			// the firing-history trigger only fires on INSERT, so a moving starts_at diverges
+			// from the recorded firing time. A new episode (resolve, then re-fire) deletes and
+			// re-inserts the row, which picks up the new starts_at.
 			const stmt = this.db.prepare(`
 				INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -28,12 +35,17 @@ export class AlertRepository {
 											  severity=excluded.severity,
 											  team=excluded.team,
 											  tags=excluded.tags,
-											  starts_at=excluded.starts_at,
 											  updated_at=excluded.updated_at,
 											  alert_url=excluded.alert_url,
 											  alert_name=excluded.alert_name,
 											  summary=excluded.summary,
-											  runbook_url=excluded.runbook_url
+											  runbook_url=excluded.runbook_url,
+											  -- Every arrival re-surfaces the alert: any push for this id — an update
+											  -- OR an identical replay — marks it unread so the row re-bolds. All
+											  -- ingestion here is push-based webhooks, so a repeat notification is the
+											  -- source deliberately saying "this is still happening"; that deserves
+											  -- the same visual weight as a brand-new alert.
+											  is_read=0
 			`);
 
 			// An alert id must never live in both tables: if this alert was previously
@@ -41,6 +53,25 @@ export class AlertRepository {
 			// copy — the active row is the truth. Same transaction as the upsert so a
 			// failure between the two can't leave the alert in neither table.
 			const upsert = this.db.transaction(() => {
+				// Re-fire after a resolve = a new episode. Sources often replay the ORIGINAL
+				// incident startsAt on the re-fire push; trusting that claim would show a
+				// freshly re-activated alert as weeks old. If the claimed start predates the
+				// resolve that ended the previous episode (a contradiction — it can't have
+				// started before it last ended), stamp the observed re-fire moment instead.
+				// A claimed start AFTER the resolve is a genuine fresh start and is kept.
+				let startsAt = alert.startsAt;
+				const resolvedCopy = this.db
+					.prepare(`SELECT archived_at, updated_at FROM alerts_resolved WHERE id = ?`)
+					.get(alert.id) as { archived_at: string | null; updated_at: string } | undefined;
+				if (resolvedCopy) {
+					const resolveMoment = new Date(
+						toIsoUtc(resolvedCopy.archived_at ?? resolvedCopy.updated_at)
+					).getTime();
+					const claimed = new Date(startsAt).getTime();
+					if (isNaN(claimed) || (!isNaN(resolveMoment) && claimed <= resolveMoment)) {
+						startsAt = new Date().toISOString();
+					}
+				}
 				this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`).run(alert.id);
 				return stmt.run(
 					alert.id,
@@ -49,7 +80,7 @@ export class AlertRepository {
 					alert.severity,
 					alert.team ?? null,
 					JSON.stringify(alert.tags ?? {}),
-					alert.startsAt,
+					startsAt,
 					alert.updatedAt,
 					alert.alertUrl,
 					alert.alertName,
@@ -146,6 +177,30 @@ export class AlertRepository {
 				END;
         	`);
 
+			// The trigger's definition changed over time (older versions stamped the insert
+			// moment instead of starts_at), and CREATE TRIGGER IF NOT EXISTS never upgrades
+			// an existing DB — so installs drifted apart. Recreate it whenever the stored
+			// definition doesn't stamp starts_at, so every install runs the current version.
+			const triggerSql = (
+				this.db
+					.prepare(
+						`SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'archive_alert_on_insert'`
+					)
+					.get() as { sql: string } | undefined
+			)?.sql;
+			if (triggerSql && !triggerSql.includes('NEW.starts_at')) {
+				this.db.exec(`
+					DROP TRIGGER archive_alert_on_insert;
+					CREATE TRIGGER archive_alert_on_insert
+						AFTER INSERT ON alerts
+						FOR EACH ROW
+					BEGIN
+						INSERT INTO alerts_history (alert_id, status, archived_at)
+						VALUES (NEW.id, NEW.status, NEW.starts_at);
+					END;
+				`);
+			}
+
 			// Backward compatibility: ensure tags column exists
 			const columns = this.db.prepare(`PRAGMA table_info(alerts)`).all() as TableInfoRow[];
 			if (!columns.some((col: TableInfoRow) => col.name === 'is_read')) {
@@ -220,8 +275,10 @@ export class AlertRepository {
 			// Legacy rows (pre-team column) fall back to their team tag.
 			team: row.team ?? tags['team'] ?? null,
 			tags,
-			startsAt: row.starts_at,
-			updatedAt: row.updated_at,
+			// Normalized so the client never receives SQLite's marker-less UTC format
+			// (which browsers would parse as local time and display shifted).
+			startsAt: toIsoUtc(row.starts_at),
+			updatedAt: toIsoUtc(row.updated_at),
 			alertUrl: row.alert_url,
 			alertName: row.alert_name,
 			summary: row.summary,
@@ -350,6 +407,28 @@ export class AlertRepository {
 					 ON CONFLICT (id) DO UPDATE SET last_cleared_at = ?`
 				)
 				.run(occurrenceIso, occurrenceIso);
+		});
+	}
+
+	// Firing-transition timestamps for the given alerts, from the status-history trigger
+	// records (first fire, webhook re-fires, unresolve re-inserts). Raw values — the BL
+	// merges them with unresolve events and normalizes to ISO. Scoped to the listed ids
+	// so the work doesn't grow with total history retention.
+	async getFiringTimesByAlert(alertIds: string[]): Promise<Record<string, string[]>> {
+		if (alertIds.length === 0) return {};
+		return runAsync(() => {
+			const placeholders = alertIds.map(() => '?').join(', ');
+			const rows = this.db
+				.prepare(
+					`SELECT alert_id, archived_at FROM alerts_history
+					 WHERE status = 'firing' AND alert_id IN (${placeholders})`
+				)
+				.all(...alertIds) as { alert_id: string; archived_at: string }[];
+			const result: Record<string, string[]> = {};
+			for (const row of rows) {
+				(result[row.alert_id] ??= []).push(row.archived_at);
+			}
+			return result;
 		});
 	}
 

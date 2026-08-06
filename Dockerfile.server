@@ -1,6 +1,8 @@
 FROM node:26-alpine AS server-builder
 
-RUN npm install -g pnpm typescript && npm cache clean --force
+# pnpm is pinned to the repo's packageManager version: an unpinned install pulls
+# latest, and pnpm 11 refuses this project's v9 lockfile (broke Build and Release).
+RUN npm install -g pnpm@9.12.0 typescript && npm cache clean --force
 WORKDIR /app
 
 # Copy workspace manifests for caching
@@ -38,7 +40,7 @@ COPY --from=server-builder /app/packages/custom-actions/package.json packages/cu
 COPY --from=server-builder /app/packages/custom-actions/dist packages/custom-actions/dist
 
 # Install only production deps
-RUN npm install -g pnpm && \
+RUN npm install -g pnpm@9.12.0 && \
     pnpm install --prod --frozen-lockfile && \
     pnpm store prune && \
     rm -rf /root/.npm /root/.cache /tmp/*

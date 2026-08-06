@@ -3,6 +3,7 @@ export const BASE_SORT_FIELDS = [
 	'severity',
 	'status',
 	'startsAt',
+	'updatedAt',
 	'summary',
 	'lastComment',
 	'type',
