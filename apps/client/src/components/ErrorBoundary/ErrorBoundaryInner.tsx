@@ -2,25 +2,25 @@ import { Button } from '@/components/ui/button';
 import { Logger } from '@OpsiMate/shared';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
 
 const logger = new Logger('ErrorBoundary');
 
-interface ErrorBoundaryProps {
+export interface ErrorBoundaryInnerProps {
 	children: ReactNode;
 }
 
-interface ErrorBoundaryState {
+interface ErrorBoundaryInnerState {
 	error: Error | null;
 }
 
 // Last line of defense for render-time exceptions: without a boundary React unmounts
 // the entire tree and the user gets an unexplained white screen. This renders a
-// readable error card instead (message + component stack) with recovery actions.
-class ErrorBoundaryInner extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-	state: ErrorBoundaryState = { error: null };
+// readable error card instead, with recovery actions. The full stack goes to the
+// logger; the card shows the message always and the stack only in dev builds.
+export class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, ErrorBoundaryInnerState> {
+	state: ErrorBoundaryInnerState = { error: null };
 
-	static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+	static getDerivedStateFromError(error: Error): ErrorBoundaryInnerState {
 		return { error };
 	}
 
@@ -46,7 +46,9 @@ class ErrorBoundaryInner extends Component<ErrorBoundaryProps, ErrorBoundaryStat
 					</p>
 					<pre className="mt-4 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs text-foreground whitespace-pre-wrap break-words">
 						{error.message}
-						{error.stack ? `\n\n${error.stack.split('\n').slice(1, 6).join('\n')}` : ''}
+						{import.meta.env.DEV && error.stack
+							? `\n\n${error.stack.split('\n').slice(1, 6).join('\n')}`
+							: ''}
 					</pre>
 					<div className="mt-4 flex gap-2">
 						<Button onClick={() => window.location.reload()} className="gap-1.5">
@@ -62,10 +64,3 @@ class ErrorBoundaryInner extends Component<ErrorBoundaryProps, ErrorBoundaryStat
 		);
 	}
 }
-
-// Keyed by pathname so navigating to another page automatically clears a caught error —
-// a crash on one route must not brick the rest of the app.
-export const ErrorBoundary = ({ children }: ErrorBoundaryProps) => {
-	const location = useLocation();
-	return <ErrorBoundaryInner key={location.pathname}>{children}</ErrorBoundaryInner>;
-};
