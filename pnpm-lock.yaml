@@ -395,8 +395,8 @@ importers:
         specifier: ^7.0.12
         version: 7.0.12
       '@types/supertest':
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.2.1
+        version: 7.2.1
       '@vitest/coverage-v8':
         specifier: ^3.2.7
         version: 3.2.7(vitest@3.2.7)
@@ -2735,8 +2735,8 @@ packages:
   '@types/superagent@8.1.11':
     resolution: {integrity: sha512-KA7srSW/HENDtOw9DOqaFLgWuMqN9WgjEw62lh9dpvRaZDkhdOkazASd7X7i2eMUYLHa1U37ZttnePsH5zTDHw==}
 
-  '@types/supertest@6.0.3':
-    resolution: {integrity: sha512-8WzXq62EXFhJ7QsH3Ocb/iKQ/Ty9ZVWnVzoTKc9tyyFRRF3a74Tk2+TLFgaFFw364Ere+npzHKEJ6ga2LzIL7w==}
+  '@types/supertest@7.2.1':
+    resolution: {integrity: sha512-4CbBvoYVLHL7+yhbYrZET0vsvuyXTC05aRe7dNQkwMzm56auceoy6Yu3K50uZmwfHna1os3CMSgM/3QVkUtPTw==}
 
   '@types/through@0.0.33':
     resolution: {integrity: sha512-HsJ+z3QuETzP3cswwtzt2vEIiHBk/dCcHGhbmG5X3ecnwFD/lPrMpliGXxSCg03L9AhrdwA4Oz/qfspkDW+xGQ==}
@@ -8640,7 +8640,7 @@ snapshots:
       '@types/node': 22.20.1
       form-data: 4.0.6
 
-  '@types/supertest@6.0.3':
+  '@types/supertest@7.2.1':
     dependencies:
       '@types/methods': 1.1.4
       '@types/superagent': 8.1.11
@@ -8768,7 +8768,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.2
       tinyrainbow: 2.0.0
-      vitest: 3.2.7(@types/node@22.20.1)(@vitest/ui@3.2.7)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(terser@5.44.1)(tsx@4.23.1)(yaml@2.8.1)
+      vitest: 3.2.7(@types/node@22.20.1)(@vitest/ui@3.2.7)(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(terser@5.44.1)(tsx@4.23.1)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -8818,7 +8818,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 2.0.0
-      vitest: 3.2.7(@types/node@22.20.1)(@vitest/ui@3.2.7)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(terser@5.44.1)(tsx@4.23.1)(yaml@2.8.1)
+      vitest: 3.2.7(@types/node@22.20.1)(@vitest/ui@3.2.7)(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(terser@5.44.1)(tsx@4.23.1)(yaml@2.8.1)
 
   '@vitest/utils@3.2.7':
     dependencies:
