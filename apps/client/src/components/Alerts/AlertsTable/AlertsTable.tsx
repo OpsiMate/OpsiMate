@@ -331,6 +331,7 @@ export const AlertsTable = ({
 															'startsAt',
 															'updatedAt',
 															'summary',
+															'lastComment',
 															'type',
 															'owner',
 														].includes(column)

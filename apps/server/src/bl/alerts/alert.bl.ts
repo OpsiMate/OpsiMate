@@ -151,6 +151,19 @@ export class AlertBL {
 		return this.alertRepo.updateSilenceResetSettings(updates);
 	}
 
+	// Attaches each alert's newest comment text (the optional "Last Comment" table column).
+	// Best-effort: a failed lookup must never break the listing itself.
+	private async attachLastComments(alerts: Alert[]): Promise<Alert[]> {
+		if (alerts.length === 0) return alerts;
+		try {
+			const latest = await this.alertCommentsRepo.getLatestCommentsByAlertIds(alerts.map((a) => a.id));
+			return alerts.map((alert) => ({ ...alert, lastComment: latest[alert.id] ?? null }));
+		} catch (error) {
+			logger.error('Failed to attach last comments to alerts', error);
+			return alerts;
+		}
+	}
+
 	// Attaches each alert's firing/unresolve transition timestamps (normalized ISO,
 	// sorted, deduped): status-history "firing" records plus UNRESOLVED events — the
 	// latter carry the actual unresolve moment, which the status trigger doesn't.
@@ -186,7 +199,7 @@ export class AlertBL {
 			if (this.mutePolicyBL) {
 				alerts = await this.mutePolicyBL.markMuted(alerts);
 			}
-			return await this.attachFiringTimes(alerts);
+			return await this.attachLastComments(await this.attachFiringTimes(alerts));
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
@@ -257,7 +270,9 @@ export class AlertBL {
 	async getAllResolvedAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all resolved alerts');
-			return await this.attachFiringTimes(await this.resolvedAlertRepo.getAllResolvedAlerts());
+			return await this.attachLastComments(
+				await this.attachFiringTimes(await this.resolvedAlertRepo.getAllResolvedAlerts())
+			);
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;

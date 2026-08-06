@@ -5,6 +5,7 @@ export const BASE_SORT_FIELDS = [
 	'startsAt',
 	'updatedAt',
 	'summary',
+	'lastComment',
 	'type',
 	'owner',
 ] as const;

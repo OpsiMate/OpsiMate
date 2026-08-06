@@ -23,6 +23,7 @@ export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 			(alert.status && alert.status.toLowerCase().includes(lower)) ||
 			tagsString.includes(lower) ||
 			(alert.summary && alert.summary.toLowerCase().includes(lower)) ||
+			(alert.lastComment && alert.lastComment.toLowerCase().includes(lower)) ||
 			integrationLabel.includes(lower)
 		);
 	});
@@ -49,6 +50,8 @@ const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]
 			return SEVERITY_RANK[getAlertSeverity(alert)];
 		case 'summary':
 			return (alert.summary || '').toLowerCase();
+		case 'lastComment':
+			return (alert.lastComment || '').toLowerCase();
 		case 'startsAt': {
 			const date = new Date(alert.startsAt);
 			return isNaN(date.getTime()) ? 0 : date.getTime();

@@ -11,12 +11,15 @@ export const TABLE_HEAD_CLASSES = 'h-8 py-1 px-2';
 
 export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName', 'summary', 'owner', 'startsAt'];
 
+// lastComment is in the order (position when enabled: right after summary) but not in the
+// visible defaults — it's an opt-in column toggled from the column settings.
 export const DEFAULT_COLUMN_ORDER = [
 	'type',
 	'severity',
 	'status',
 	'alertName',
 	'summary',
+	'lastComment',
 	'owner',
 	'startsAt',
 	'updatedAt',
@@ -28,6 +31,7 @@ export const COLUMN_LABELS: Record<string, string> = {
 	severity: 'Severity',
 	status: 'Status',
 	summary: 'Summary',
+	lastComment: 'Last Comment',
 	owner: 'Owner',
 	startsAt: 'Started At',
 	updatedAt: 'Last Update',
@@ -51,6 +55,9 @@ export const COLUMN_WIDTHS: Record<string, string> = {
 	severity: 'w-12 min-w-12 max-w-12',
 	status: 'w-12 min-w-12 max-w-12',
 	summary: 'w-auto',
+	// Fixed like the date columns on purpose — summary must stay the table's single
+	// flexible column (see the block comment above).
+	lastComment: 'w-[150px]',
 	owner: 'w-[120px]',
 	startsAt: 'w-[150px]',
 	updatedAt: 'w-[150px]',
@@ -69,6 +76,7 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	// Shrink floor; the rendered width is content-aware (useContentColumnWidths).
 	alertName: 170,
 	summary: 170,
+	lastComment: 150,
 	owner: 120,
 	startsAt: 150,
 	updatedAt: 150,

@@ -13,6 +13,7 @@ import { AlertOwnerColumn } from './Columns/AlertOwnerColumn';
 import { AlertSeverityColumn } from './Columns/AlertSeverityColumn';
 import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
 import { AlertStatusColumn } from './Columns/AlertStatusColumn';
+import { AlertLastCommentColumn } from './Columns/AlertLastCommentColumn';
 import { AlertSummaryColumn } from './Columns/AlertSummaryColumn';
 import { AlertTagKeyColumn } from './Columns/AlertTagKeyColumn';
 import { AlertTypeColumn } from './Columns/AlertTypeColumn';
@@ -177,6 +178,15 @@ export const AlertRow = ({
 								alert={alert}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.summary}
+							/>
+						);
+					case 'lastComment':
+						return (
+							<AlertLastCommentColumn
+								key={column}
+								alert={alert}
+								expanded={expandRows}
+								className={COLUMN_WIDTHS.lastComment}
 							/>
 						);
 					case 'owner':
