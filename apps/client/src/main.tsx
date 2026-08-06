@@ -8,6 +8,10 @@ import App from './App.tsx';
 import '@fontsource/nunito-sans/400.css';
 import '@fontsource/nunito-sans/600.css';
 import '@fontsource/nunito-sans/700.css';
+// 900 backs the unread-alert rows' font-black. Without a real 900 face the browser
+// silently maps font-black down to the heaviest loaded weight (700), which made
+// unread rows nearly indistinguishable from read ones.
+import '@fontsource/nunito-sans/900.css';
 import './index.css';
 
 const logger = new Logger('main');

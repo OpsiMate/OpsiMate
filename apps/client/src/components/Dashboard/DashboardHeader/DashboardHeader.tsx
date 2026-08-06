@@ -1,5 +1,4 @@
 import { SavedViewsManager } from '@/components/SavedViewsManager';
-import { TVModeLauncher } from '@/components/TVModeLauncher';
 import { SavedView } from '@/types/SavedView';
 import { ColumnVisibility } from '../Dashboard.types';
 
@@ -34,12 +33,6 @@ export const DashboardHeader = ({
 				onSaveView={onSaveView}
 				onDeleteView={onDeleteView}
 				onLoadView={onLoadView}
-				activeViewId={activeViewId}
-			/>
-			<TVModeLauncher
-				currentFilters={currentFilters}
-				currentVisibleColumns={currentVisibleColumns}
-				currentSearchTerm={currentSearchTerm}
 				activeViewId={activeViewId}
 			/>
 		</div>

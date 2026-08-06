@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { cn } from '@/lib/utils';
-import { Plus, RefreshCw, Save, Search, Settings, Tv } from 'lucide-react';
+import { Plus, RefreshCw, Save, Search, Settings } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface DashboardHeaderProps {
@@ -16,10 +16,8 @@ export interface DashboardHeaderProps {
 	isRefreshing: boolean;
 	lastRefresh?: Date;
 	onRefresh: () => void;
-	onLaunchTVMode?: () => void;
 	dashboards?: Dashboard[];
 	onDashboardSelect?: (dashboard: Dashboard) => void;
-	showTvModeButton?: boolean;
 	onNewDashboard?: () => void;
 	isDraft?: boolean;
 }
@@ -34,10 +32,8 @@ export const DashboardHeader = ({
 	isRefreshing,
 	lastRefresh,
 	onRefresh,
-	onLaunchTVMode,
 	dashboards = [],
 	onDashboardSelect,
-	showTvModeButton = true,
 	onNewDashboard,
 	isDraft = false,
 }: DashboardHeaderProps) => {
@@ -184,12 +180,6 @@ export const DashboardHeader = ({
 					<Button size="sm" onClick={onNewDashboard} className="gap-2">
 						<Plus className="h-4 w-4" />
 						<span className="hidden sm:inline">New Dashboard</span>
-					</Button>
-				)}
-
-				{showTvModeButton && onLaunchTVMode && (
-					<Button size="sm" onClick={onLaunchTVMode} className="gap-2">
-						<Tv className="h-4 w-4" />
 					</Button>
 				)}
 			</div>

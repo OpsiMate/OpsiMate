@@ -212,6 +212,9 @@ export interface Alert {
 	isRead?: boolean;
 	// Transient: set at fetch time when an active mute policy rule matches this alert. Not persisted.
 	isMuted?: boolean;
+	// Transient: text of the alert's newest comment, attached at fetch time for the optional
+	// "Last Comment" table column. Not persisted on the alert row itself.
+	lastComment?: string | null;
 	// Transient: ISO timestamps of this alert's firing/unresolve transitions, attached at
 	// fetch time. Lets the client show the first firing INSIDE an active time-filter range
 	// instead of the original startsAt. Not persisted on the alert row itself.
@@ -252,6 +255,10 @@ export enum AlertHistoryEventType {
 	UNRESOLVED = 'unresolved',
 	ACTION_RUN = 'action_run',
 	COMMENT_ADDED = 'comment_added',
+	// Synthesized (not persisted): the alert's most recent update from its source,
+	// derived from updated_at at read time. Guarantees a visible alert always has at
+	// least one history entry inside any time window that shows it.
+	UPDATED = 'updated',
 }
 
 export interface AlertHistoryData {
