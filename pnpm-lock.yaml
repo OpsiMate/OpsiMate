@@ -180,8 +180,8 @@ importers:
         specifier: ^19.2.8
         version: 19.2.8
       react-day-picker:
-        specifier: ^8.10.2
-        version: 8.10.2(date-fns@3.6.0)(react@19.2.8)
+        specifier: ^10.0.1
+        version: 10.0.1(@types/react@19.2.17)(react@19.2.8)
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
@@ -607,6 +607,9 @@ packages:
   '@csstools/css-tokenizer@4.0.0':
     resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
     engines: {node: '>=20.19.0'}
+
+  '@date-fns/tz@1.5.0':
+    resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
 
   '@dnd-kit/accessibility@3.1.1':
     resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
@@ -3311,6 +3314,9 @@ packages:
   date-fns@3.6.0:
     resolution: {integrity: sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww==}
 
+  date-fns@4.4.0:
+    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
+
   debounce@2.2.0:
     resolution: {integrity: sha512-Xks6RUDLZFdz8LIdR6q0MTH44k7FikOmnh5xkSjMig6ch45afc8sjTjRQf3P6ax8dMgcQrYO/AR2RGWURrruqw==}
     engines: {node: '>=18'}
@@ -5054,11 +5060,15 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  react-day-picker@8.10.2:
-    resolution: {integrity: sha512-LK68OTbHB3oJNhl9cA0qVizzp3o26w61YSjAFkYi67N86iro32wx86kSNeFU/hq+gI8m1yzWhnomMLfZ041RzQ==}
+  react-day-picker@10.0.1:
+    resolution: {integrity: sha512-eNh6BlwcYInWaJtRv18mXQ06Ys/H6rdTZAnTaSdOYJuTpwP1JMCHNd1FDRadA+gbeinq+psdULN5Xnowy9mV8w==}
+    engines: {node: '>=18'}
     peerDependencies:
-      date-fns: ^2.28.0 || ^3.0.0
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   react-dom@19.2.8:
     resolution: {integrity: sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==}
@@ -6334,6 +6344,8 @@ snapshots:
       css-tree: 3.2.1
 
   '@csstools/css-tokenizer@4.0.0': {}
+
+  '@date-fns/tz@1.5.0': {}
 
   '@dnd-kit/accessibility@3.1.1(react@19.2.8)':
     dependencies:
@@ -8996,6 +9008,8 @@ snapshots:
 
   date-fns@3.6.0: {}
 
+  date-fns@4.4.0: {}
+
   debounce@2.2.0: {}
 
   debug@4.4.3:
@@ -10988,10 +11002,13 @@ snapshots:
       '@babel/runtime': 7.29.7
       react: 19.2.8
 
-  react-day-picker@8.10.2(date-fns@3.6.0)(react@19.2.8):
+  react-day-picker@10.0.1(@types/react@19.2.17)(react@19.2.8):
     dependencies:
-      date-fns: 3.6.0
+      '@date-fns/tz': 1.5.0
+      date-fns: 4.4.0
       react: 19.2.8
+    optionalDependencies:
+      '@types/react': 19.2.17
 
   react-dom@19.2.8(react@19.2.8):
     dependencies:
