@@ -1,6 +1,7 @@
 export * from './useAlertGrouping';
 export * from './useAlertSorting';
 export * from './useAlertSelection';
+export * from './useDragAutoScroll';
 export * from './useDragSelection';
 export * from './useStickyHeaders';
 export { useContentColumnWidths } from './useContentColumnWidths';

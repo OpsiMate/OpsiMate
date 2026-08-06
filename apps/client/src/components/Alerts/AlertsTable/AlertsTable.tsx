@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert } from 'lucide-react';
-import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -27,6 +27,7 @@ import {
 	useAlertSelection,
 	useAlertSorting,
 	useContentColumnWidths,
+	useDragAutoScroll,
 	useDragSelection,
 	useStickyHeaders,
 } from './hooks';
@@ -108,11 +109,27 @@ export const AlertsTable = ({
 		controlledGroupBy,
 		onGroupByChange
 	);
-	const { handleSelectAll, handleSelectAlert } = useAlertSelection({ sortedAlerts, selectedAlerts, onSelectAlerts });
+	const { allSelected, handleSelectAll, handleSelectAlert } = useAlertSelection({
+		sortedAlerts,
+		selectedAlerts,
+		onSelectAlerts,
+	});
 	const { isDragging, handleDragStart, handleDragEnter, handleDragEnd } = useDragSelection({
 		selectedAlerts,
 		onSelectAlerts,
 	});
+
+	// Alert lookup for the auto-scroll hook: rows revealed by scrolling under a held
+	// pointer are selected by id (mouseenter doesn't re-fire on scroll).
+	const alertsById = useMemo(() => new Map(sortedAlerts.map((alert) => [alert.id, alert])), [sortedAlerts]);
+	const handleDragOverAlertId = useCallback(
+		(alertId: string) => {
+			const alert = alertsById.get(alertId);
+			if (alert) handleDragEnter(alert);
+		},
+		[alertsById, handleDragEnter]
+	);
+	useDragAutoScroll({ isDragging, scrollElementRef: scrollerRef, onDragOverAlertId: handleDragOverAlertId });
 
 	// The scroll element also contains the sticky column header above the list, so the
 	// virtualizer's window mapping runs one header-height "late" — far less than the
@@ -237,10 +254,7 @@ export const AlertsTable = ({
 													>
 														<div className="flex items-center justify-center">
 															<Checkbox
-																checked={
-																	sortedAlerts.length > 0 &&
-																	selectedAlerts.length === sortedAlerts.length
-																}
+																checked={allSelected}
 																onCheckedChange={handleSelectAll}
 																className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
 															/>
