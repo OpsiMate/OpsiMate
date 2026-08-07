@@ -161,8 +161,12 @@ const Alerts = () => {
 			type: dashboardState.type,
 			description: dashboardState.description,
 			filters: dashboardState.filters,
-			visibleColumns: dashboardState.visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
-			columnOrder: dashboardState.columnOrder.filter((col) => col !== ACTIONS_COLUMN),
+			// Persist the EFFECTIVE columns/order (what's rendered), not the raw state:
+			// the raw state can be empty (render falls back to defaults) or missing the
+			// injected severity / appended tag columns — saving it means the arrangement
+			// on screen is not the arrangement that comes back on the next load.
+			visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
+			columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
 			timeRange: serializeTimeRange(dashboardState.timeRange),
