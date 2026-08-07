@@ -155,7 +155,9 @@
 		--info-foreground: 210 40% 98%;
 
 		--muted: 220 13% 91%;
-		--muted-foreground: 220 9% 45%; /* Medium Gray - Foggy */
+		/* Secondary text. Darkened from 45% lightness after readability complaints —
+		   ~10.5:1 contrast on white while staying visibly lighter than --foreground. */
+		--muted-foreground: 220 9% 25%;
 
 		--accent: 210 100% 13%; /* Dark Blue from icon */
 		--accent-foreground: 0 0% 100%;
