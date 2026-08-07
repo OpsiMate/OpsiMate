@@ -156,8 +156,8 @@
 
 		--muted: 220 13% 91%;
 		/* Secondary text. Darkened from 45% lightness after readability complaints —
-		   ~7:1 contrast on white (AAA) while staying visibly lighter than --foreground. */
-		--muted-foreground: 220 9% 35%;
+		   ~10.5:1 contrast on white while staying visibly lighter than --foreground. */
+		--muted-foreground: 220 9% 25%;
 
 		--accent: 210 100% 13%; /* Dark Blue from icon */
 		--accent-foreground: 0 0% 100%;
