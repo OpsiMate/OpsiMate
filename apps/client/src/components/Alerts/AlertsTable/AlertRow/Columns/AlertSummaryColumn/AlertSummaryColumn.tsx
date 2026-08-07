@@ -2,6 +2,7 @@ import { stripHtml } from '@/components/shared';
 import { TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
+import { CopyCellButton } from '../../CopyCellButton';
 
 export interface AlertSummaryColumnProps {
 	alert: Alert;
@@ -15,7 +16,7 @@ export const AlertSummaryColumn = ({ alert, expanded = false, className }: Alert
 	// the details panel. Collapsed it is a single truncated line; expanded it wraps but
 	// is capped at 6 lines (line-clamp) so one huge summary can't fill the viewport.
 	return (
-		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
 			<span
 				className={cn(
 					'text-sm text-foreground block',
@@ -24,6 +25,7 @@ export const AlertSummaryColumn = ({ alert, expanded = false, className }: Alert
 			>
 				{alert.summary ? stripHtml(alert.summary) : '-'}
 			</span>
+			{alert.summary && <CopyCellButton value={stripHtml(alert.summary)} />}
 		</TableCell>
 	);
 };

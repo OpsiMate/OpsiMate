@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
+import { CopyCellButton } from '../../CopyCellButton';
 
 export interface AlertTagKeyColumnProps {
 	alert: Alert;
@@ -17,7 +18,7 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, 
 	const value = alert.tags?.[tagKey];
 
 	return (
-		<TableCell style={style} className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
 			{value ? (
 				<Badge
 					variant="outline"
@@ -38,6 +39,7 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, 
 			) : (
 				<span className="text-foreground text-xs">-</span>
 			)}
+			{value && <CopyCellButton value={value} />}
 		</TableCell>
 	);
 };
