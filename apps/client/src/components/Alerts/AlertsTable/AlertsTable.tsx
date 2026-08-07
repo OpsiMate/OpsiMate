@@ -92,14 +92,25 @@ export const AlertsTable = ({
 		resizeObserverRef.current?.disconnect();
 		resizeObserverRef.current = null;
 		if (el) {
+			// The first measurement of each observed element is always accepted:
+			// containerWidth survives in React state across scroller remounts (tab
+			// switches, empty-state flips), and a new element measuring within the
+			// damper's threshold of the STALE value must not be rejected into
+			// distributing column widths from the previous element's geometry.
+			let measured = false;
 			const observer = new ResizeObserver((entries) => {
 				const width = entries[0]?.contentRect.width ?? 0;
+				if (!measured) {
+					measured = true;
+					setContainerWidth(width);
+					return;
+				}
 				// Damper against measure feedback: sub-scrollbar-width deltas are noise
-				// from scrollbar/border toggles, and reacting to them can oscillate —
-				// width change -> columns recompute -> overflow flips -> width change...
+				// from scrollbar/border toggles, and reacting to them re-runs the
+				// content-aware column sizing for no visual gain (and can feed back:
+				// width change -> columns recompute -> overflow flips -> width change).
 				// The scroller reserves its scrollbar gutter (scrollbar-gutter: stable
-				// below) so these deltas shouldn't occur at all; this is the backstop
-				// that keeps a future layout change from reintroducing the freeze.
+				// below) so these deltas shouldn't occur at all; this is the backstop.
 				setContainerWidth((prev) => (Math.abs(width - prev) < 16 && prev !== 0 ? prev : width));
 			});
 			observer.observe(el);
@@ -242,8 +253,8 @@ export const AlertsTable = ({
 					    ALWAYS reserved, so the scrollbar appearing/disappearing cannot change
 					    the measured content width. Without it, on classic-scrollbar systems a
 					    filter click that flips the overflow state feeds back through the width
-					    observer (width change -> column widths recompute -> overflow flips
-					    again...) and can live-lock the renderer into a white-screen freeze. */}
+					    observer (width change -> column widths recompute -> overflow can flip
+					    again), visible as a ~15px column jump and wasted re-renders. */}
 					<div
 						ref={observeScroller}
 						className="flex-1 min-h-0 overflow-auto"
