@@ -503,7 +503,7 @@ export class AlertController {
 				team: alert.team,
 				// The fix field rides on the fix tag (the client's first-class Fix column
 				// reads it from there); an explicit tag wins over the convenience field.
-				tags: alert.fix && !alert.tags['fix'] ? { ...alert.tags, fix: alert.fix } : alert.tags,
+				tags: alert.fix && !('fix' in alert.tags) ? { ...alert.tags, fix: alert.fix } : alert.tags,
 				startsAt: alert.startsAt || new Date().toISOString(),
 				updatedAt: alert.updatedAt || new Date().toISOString(),
 				alertUrl: alert.alertUrl || '',

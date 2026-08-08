@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
 import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
-import { AlertLinkIcon } from '../../../AlertDetails/AlertLinksSection/AlertLinksSection';
+import { AlertLinkIcon } from '../../../AlertLinkIcon';
 import { getAlertLinks } from '../../../utils/links.utils';
 
 export interface RowActionsProps {
