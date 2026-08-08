@@ -183,3 +183,37 @@ describe('in-range override with mixed timestamp formats', () => {
 		expect(result.current[0]?.startsAt).toBe(laterUtc);
 	});
 });
+
+// "!field" filter keys are exclusions ("filter out" from the sidebar): listed values are
+// dropped; same field semantics as the positive filters, including tag-key fields.
+describe('exclusion filters (!field keys)', () => {
+	const critical = { ...mkAlert('crit', 0), severity: 'critical', tags: { env: 'prod' } } as unknown as Alert;
+	const info = { ...mkAlert('info', 0), severity: 'info', tags: { env: 'dev' } } as unknown as Alert;
+
+	test('!severity drops the listed severities and keeps the rest', () => {
+		const { result } = renderHook(() => useAlertsFiltering([critical, info], { '!severity': ['Critical'] }), {
+			wrapper,
+		});
+		expect(result.current.map((a) => a.id)).toEqual(['info']);
+	});
+
+	test('include and exclude compose across fields', () => {
+		const { result } = renderHook(
+			() => useAlertsFiltering([critical, info], { status: ['Firing'], '!severity': ['Info'] }),
+			{ wrapper }
+		);
+		expect(result.current.map((a) => a.id)).toEqual(['crit']);
+	});
+
+	test('excludes tag-key fields too', () => {
+		const { result } = renderHook(() => useAlertsFiltering([critical, info], { '!tagKey:env': ['prod'] }), {
+			wrapper,
+		});
+		expect(result.current.map((a) => a.id)).toEqual(['info']);
+	});
+
+	test('an empty exclusion list constrains nothing', () => {
+		const { result } = renderHook(() => useAlertsFiltering([critical, info], { '!severity': [] }), { wrapper });
+		expect(result.current).toHaveLength(2);
+	});
+});

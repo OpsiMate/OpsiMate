@@ -65,7 +65,7 @@ export const AlertsFilterPanel = ({
 	// otherwise the sidebar disagrees with the table it describes.
 	const effectiveFilters = useMemo(() => {
 		if (!hideStatusFilter) return filters;
-		const { status: _status, ...rest } = filters;
+		const { status: _status, ['!status']: _notStatus, ...rest } = filters;
 		return rest;
 	}, [filters, hideStatusFilter]);
 
@@ -93,11 +93,16 @@ export const AlertsFilterPanel = ({
 		};
 
 		// Faceted filtering: an alert counts toward a field's facet only if it passes every OTHER
-		// active filter. A facet never constrains itself, so its own options stay fully visible.
+		// active filter (includes AND "!field" exclusions). A facet never constrains itself —
+		// neither its includes nor its exclusions — so its own options stay fully visible.
 		const passesOtherFilters = (alert: Alert, exceptField: string): boolean => {
-			for (const [field, values] of Object.entries(effectiveFilters)) {
-				if (!values || values.length === 0 || field === exceptField) continue;
-				if (!values.includes(getFieldValue(alert, field))) return false;
+			for (const [key, values] of Object.entries(effectiveFilters)) {
+				if (!values || values.length === 0) continue;
+				const isExclusion = key.startsWith('!');
+				const field = isExclusion ? key.slice(1) : key;
+				if (field === exceptField) continue;
+				const value = getFieldValue(alert, field);
+				if (isExclusion ? values.includes(value) : !values.includes(value)) return false;
 			}
 			return true;
 		};
@@ -131,6 +136,7 @@ export const AlertsFilterPanel = ({
 			onFilterChange={onFilterChange}
 			collapsed={collapsed}
 			className={className}
+			allowExclude
 		/>
 	);
 };

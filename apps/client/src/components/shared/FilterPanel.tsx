@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Filter, RotateCcw } from 'lucide-react';
+import { CircleMinus, Filter, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActiveFiltersSection } from './FilterPanel/ActiveFiltersSection';
 import { FilterSearchInput } from './FilterPanel/FilterSearchInput';
@@ -35,6 +35,10 @@ interface FilterPanelProps {
 	collapsed?: boolean;
 	onToggle?: () => void;
 	className?: string;
+	// Offer a hover-revealed "filter out" button per option. Exclusions live in the same
+	// filters record under "!<field>" keys, so persistence needs no schema change — only
+	// pass this where the consumer's filtering logic understands those keys.
+	allowExclude?: boolean;
 }
 
 const SEARCHABLE_THRESHOLD = 8;
@@ -47,6 +51,7 @@ export const FilterPanel = ({
 	collapsed = false,
 	onToggle,
 	className,
+	allowExclude = false,
 }: FilterPanelProps) => {
 	const { searchTerms, getFilteredAndLimitedFacets, handleSearchChange, handleLoadMore, shouldShowSearch } =
 		useFilterPanel();
@@ -100,9 +105,27 @@ export const FilterPanel = ({
 			? currentValues.filter((v) => v !== value)
 			: [...currentValues, value];
 
+		// Checking a value always clears its exclusion — include and exclude are mutually
+		// exclusive per value.
+		const excludeKey = `!${field}`;
+		const excluded = (filters[excludeKey] || []).filter((v) => v !== value);
+
 		onFilterChange({
 			...filters,
 			[field]: newValues,
+			...(filters[excludeKey] ? { [excludeKey]: excluded } : {}),
+		});
+	};
+
+	// Toggle a value's "filter out" state; excluding also unchecks any include of it.
+	const handleExcludeToggle = (field: string, value: string) => {
+		const excludeKey = `!${field}`;
+		const currentExcluded = filters[excludeKey] || [];
+		const isExcluded = currentExcluded.includes(value);
+		onFilterChange({
+			...filters,
+			[excludeKey]: isExcluded ? currentExcluded.filter((v) => v !== value) : [...currentExcluded, value],
+			...(isExcluded ? {} : { [field]: (filters[field] || []).filter((v) => v !== value) }),
 		});
 	};
 
@@ -209,11 +232,12 @@ export const FilterPanel = ({
 						{config.fields.map((field) => {
 							const fieldFacets = facets[field] || [];
 							const activeValues = filters[field] || [];
+							const excludedValues = filters[`!${field}`] || [];
 							const seenValues = allSeenValues[field] || new Set();
 
 							const existingValues = new Set(fieldFacets.map((f) => f.value));
-							const orphanedFilters = activeValues
-								.filter((v) => !existingValues.has(v))
+							const orphanedFilters = [...activeValues, ...excludedValues]
+								.filter((v, i, arr) => !existingValues.has(v) && arr.indexOf(v) === i)
 								.map((value) => ({ value, count: 0 }));
 
 							// Apply global search filter
@@ -232,7 +256,12 @@ export const FilterPanel = ({
 							};
 
 							const missingSeenValues = Array.from(seenValues)
-								.filter((v) => !existingValues.has(v) && !activeValues.includes(v))
+								.filter(
+									(v) =>
+										!existingValues.has(v) &&
+										!activeValues.includes(v) &&
+										!excludedValues.includes(v)
+								)
 								.map((value) => ({ value, count: 0 }));
 
 							const allFacets = [...fieldFacets, ...orphanedFilters, ...missingSeenValues];
@@ -255,12 +284,12 @@ export const FilterPanel = ({
 											<span className="text-xs font-medium text-foreground">
 												{config.fieldLabels[field] || field}
 											</span>
-											{activeValues.length > 0 && (
+											{activeValues.length + excludedValues.length > 0 && (
 												<Badge
 													variant="outline"
 													className="text-[10px] px-1.5 py-0 h-4 bg-muted/50 border-muted-foreground/20"
 												>
-													{activeValues.length}
+													{activeValues.length + excludedValues.length}
 												</Badge>
 											)}
 										</div>
@@ -286,17 +315,19 @@ export const FilterPanel = ({
 														{filteredAndLimitedFacets.map(
 															({ value, count, displayValue, disabled }) => {
 																const isChecked = activeValues.includes(value);
+																const isExcluded = excludedValues.includes(value);
 																const label = displayValue || value;
 																const isDisabled = disabled === true;
 																return (
 																	<label
 																		key={value}
 																		className={cn(
-																			'flex items-center gap-2 py-1 px-1 rounded transition-colors w-full overflow-hidden',
+																			'group/row flex items-center gap-2 py-1 px-1 rounded transition-colors w-full overflow-hidden',
 																			isDisabled
 																				? 'cursor-not-allowed opacity-50'
 																				: 'cursor-pointer hover:bg-muted/50',
-																			isChecked && 'bg-muted'
+																			isChecked && 'bg-muted',
+																			isExcluded && 'bg-destructive/10'
 																		)}
 																	>
 																		<Checkbox
@@ -308,11 +339,45 @@ export const FilterPanel = ({
 																			className="h-3 w-3 border-2 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors disabled:cursor-not-allowed"
 																		/>
 																		<span
-																			className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground"
+																			className={cn(
+																				'text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground',
+																				isExcluded &&
+																					'line-through text-destructive'
+																			)}
 																			title={label}
 																		>
 																			{label}
 																		</span>
+																		{allowExclude && !isDisabled && (
+																			<button
+																				type="button"
+																				// A label click toggles the checkbox; this
+																				// must only toggle the exclusion.
+																				onClick={(e) => {
+																					e.preventDefault();
+																					e.stopPropagation();
+																					handleExcludeToggle(field, value);
+																				}}
+																				className={cn(
+																					'shrink-0 rounded p-0.5 transition-opacity',
+																					isExcluded
+																						? 'opacity-100 text-destructive'
+																						: 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive'
+																				)}
+																				title={
+																					isExcluded
+																						? 'Stop filtering out'
+																						: 'Filter out'
+																				}
+																				aria-label={
+																					isExcluded
+																						? `Stop filtering out ${label}`
+																						: `Filter out ${label}`
+																				}
+																			>
+																				<CircleMinus className="h-3 w-3" />
+																			</button>
+																		)}
 																		<Badge
 																			variant="outline"
 																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center ml-auto"
