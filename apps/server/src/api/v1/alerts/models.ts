@@ -51,6 +51,10 @@ export const HttpAlertWebhookSchema = z.object({
 	// Deprecated in favor of `links` — still accepted; folds in as the "Runbook" entry.
 	runbookUrl: z.string().url().optional(),
 	links: z.array(AlertLinkSchema).max(20).optional(),
+	// Fix classification: manual or auto (free-form synonyms accepted — "manual fix",
+	// "autofix", "automated", ...). Stored on the fix tag; unlike severity there is no
+	// default — alerts without it show no fix classification.
+	fix: z.string().optional(),
 	createdAt: isoDateString.optional(),
 	// Free-form; normalized onto the fixed critical/warning/info scale at ingestion
 	// (unknown or missing values default to warning).

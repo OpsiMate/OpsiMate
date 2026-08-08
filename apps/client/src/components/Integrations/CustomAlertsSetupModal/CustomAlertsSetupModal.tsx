@@ -29,6 +29,8 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
   "tags": { "environment": "production", "team": "backend" },
   "alertName": "High CPU Usage Alert",
   "summary": "CPU usage exceeded 90% threshold",
+  "severity": "critical",
+  "fix": "manual",
   "startsAt": "2024-01-15T10:30:00Z",
   "links": [
     { "label": "OpsiMate demo", "icon": "", "url": "https://demo.opsimate.dev/" },
@@ -202,6 +204,27 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											</td>
 											<td className="p-3 text-muted-foreground">
 												Key-value pairs for categorization
+											</td>
+										</tr>
+										<tr>
+											<td className="p-3 font-mono text-xs">severity</td>
+											<td className="p-3">
+												<span className="text-muted-foreground">No</span>
+											</td>
+											<td className="p-3 text-muted-foreground">
+												critical / warning / info (free-form synonyms accepted — P1, error,
+												disaster, ...); defaults to warning
+											</td>
+										</tr>
+										<tr>
+											<td className="p-3 font-mono text-xs">fix</td>
+											<td className="p-3">
+												<span className="text-muted-foreground">No</span>
+											</td>
+											<td className="p-3 text-muted-foreground">
+												&quot;manual&quot; or &quot;auto&quot; (synonyms accepted — manual fix,
+												autofix, automated, ...); shows as the Fix column and badge. Empty by
+												default
 											</td>
 										</tr>
 										<tr>

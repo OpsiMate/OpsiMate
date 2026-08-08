@@ -501,7 +501,9 @@ export class AlertController {
 				status: AlertStatus.FIRING,
 				severity: alert.severity,
 				team: alert.team,
-				tags: alert.tags,
+				// The fix field rides on the fix tag (the client's first-class Fix column
+				// reads it from there); an explicit tag wins over the convenience field.
+				tags: alert.fix && !alert.tags['fix'] ? { ...alert.tags, fix: alert.fix } : alert.tags,
 				startsAt: alert.startsAt || new Date().toISOString(),
 				updatedAt: alert.updatedAt || new Date().toISOString(),
 				alertUrl: alert.alertUrl || '',

@@ -482,6 +482,35 @@ describe('Alerts API', () => {
 			expect(alert.links).toEqual(payload.links);
 		});
 
+		test('should fold the fix field into the fix tag', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'fix-field-alert', tags: {}, alertName: 'Fix Field Test', fix: 'manual' });
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT tags FROM alerts WHERE id = ?').get('fix-field-alert') as { tags: string };
+			expect(JSON.parse(row.tags).fix).toBe('manual');
+		});
+
+		test('an explicit fix tag wins over the fix field', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'fix-field-tag-wins',
+					tags: { fix: 'auto' },
+					alertName: 'Fix Tag Wins Test',
+					fix: 'manual',
+				});
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT tags FROM alerts WHERE id = ?').get('fix-field-tag-wins') as {
+				tags: string;
+			};
+			expect(JSON.parse(row.tags).fix).toBe('auto');
+		});
+
 		test('should reject a links entry with an invalid url', async () => {
 			const response = await app
 				.post('/api/v1/alerts/custom')
