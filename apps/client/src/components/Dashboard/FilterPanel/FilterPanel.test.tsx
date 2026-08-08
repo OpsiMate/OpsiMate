@@ -98,9 +98,10 @@ describe('FilterPanel', () => {
 			/>
 		);
 
-		// Status section is open by default, so we can click the Running checkbox
-		const runningCheckbox = screen.getByRole('checkbox', { name: /running/i });
-		fireEvent.click(runningCheckbox);
+		// Status section is open by default; the option's include control is the "+"
+		// button (the checkbox was replaced by +/- filter controls).
+		const runningButton = screen.getByRole('button', { name: /filter running/i });
+		fireEvent.click(runningButton);
 
 		expect(onFilterChange).toHaveBeenCalledWith({
 			serviceStatus: ['running'],

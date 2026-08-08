@@ -1,10 +1,9 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { CircleMinus, Filter, RotateCcw } from 'lucide-react';
+import { CircleMinus, CirclePlus, Filter, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActiveFiltersSection } from './FilterPanel/ActiveFiltersSection';
 import { FilterSearchInput } from './FilterPanel/FilterSearchInput';
@@ -227,7 +226,12 @@ export const FilterPanel = ({
 				onRemoveFilter={handleRemoveFilter}
 			/>
 			<ScrollArea className="flex-1">
-				<div className="px-2 py-2">
+				{/* w-0 + min-w-full: Radix ScrollArea's viewport child is display:table,
+				    which grows to CONTENT width — one long option label would widen every
+				    row past the visible panel and push the +/- controls and count badges
+				    out of view. This pins the content to the viewport width so labels
+				    truncate and the counts stay hugging the visible right edge. */}
+				<div className="px-2 py-2 w-0 min-w-full">
 					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
 						{config.fields.map((field) => {
 							const fieldFacets = facets[field] || [];
@@ -319,10 +323,17 @@ export const FilterPanel = ({
 																const label = displayValue || value;
 																const isDisabled = disabled === true;
 																return (
-																	<label
+																	// Row click = include toggle (the old checkbox
+																	// behavior); the +/− buttons are the explicit,
+																	// keyboard-accessible controls.
+																	<div
 																		key={value}
+																		onClick={() =>
+																			!isDisabled &&
+																			handleFilterToggle(field, value)
+																		}
 																		className={cn(
-																			'group/row flex items-center gap-2 py-1 px-1 rounded transition-colors w-full overflow-hidden',
+																			'group/row flex items-center gap-1.5 py-1 px-1 rounded transition-colors w-full overflow-hidden',
 																			isDisabled
 																				? 'cursor-not-allowed opacity-50'
 																				: 'cursor-pointer hover:bg-muted/50',
@@ -330,17 +341,10 @@ export const FilterPanel = ({
 																			isExcluded && 'bg-destructive/10'
 																		)}
 																	>
-																		<Checkbox
-																			checked={isChecked}
-																			disabled={isDisabled}
-																			onCheckedChange={() =>
-																				handleFilterToggle(field, value)
-																			}
-																			className="h-3 w-3 border-2 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors disabled:cursor-not-allowed"
-																		/>
 																		<span
 																			className={cn(
-																				'text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground',
+																				'text-xs flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-foreground',
+																				isChecked && 'font-medium text-primary',
 																				isExcluded &&
 																					'line-through text-destructive'
 																			)}
@@ -348,16 +352,42 @@ export const FilterPanel = ({
 																		>
 																			{label}
 																		</span>
+																		{!isDisabled && (
+																			<button
+																				type="button"
+																				onClick={(e) => {
+																					e.stopPropagation();
+																					handleFilterToggle(field, value);
+																				}}
+																				aria-pressed={isChecked}
+																				className={cn(
+																					'shrink-0 rounded p-0.5 transition-opacity',
+																					isChecked
+																						? 'opacity-100 text-primary'
+																						: 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-primary'
+																				)}
+																				title={
+																					isChecked
+																						? 'Remove filter'
+																						: 'Filter'
+																				}
+																				aria-label={
+																					isChecked
+																						? `Stop filtering ${label}`
+																						: `Filter ${label}`
+																				}
+																			>
+																				<CirclePlus className="h-3 w-3" />
+																			</button>
+																		)}
 																		{allowExclude && !isDisabled && (
 																			<button
 																				type="button"
-																				// A label click toggles the checkbox; this
-																				// must only toggle the exclusion.
 																				onClick={(e) => {
-																					e.preventDefault();
 																					e.stopPropagation();
 																					handleExcludeToggle(field, value);
 																				}}
+																				aria-pressed={isExcluded}
 																				className={cn(
 																					'shrink-0 rounded p-0.5 transition-opacity',
 																					isExcluded
@@ -380,11 +410,11 @@ export const FilterPanel = ({
 																		)}
 																		<Badge
 																			variant="outline"
-																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center ml-auto"
+																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center"
 																		>
 																			{count}
 																		</Badge>
-																	</label>
+																	</div>
 																);
 															}
 														)}
