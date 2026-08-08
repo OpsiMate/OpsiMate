@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import {
 	AlertHistory,
+	AlertLink,
 	AlertStatus,
 	CreateCommentSchema,
 	Logger,
@@ -338,6 +339,12 @@ export class AlertController {
 					alertName: incident.policy_name || 'UNKNOWN',
 					summary: incident.summary || 'No summary provided for this alert.',
 					runbookUrl: incident.documentation?.content,
+					links: AlertController.buildLinks([
+						{ label: 'View incident', icon: 'gcp', url: incident.url },
+						// documentation.content is free-form text; only URL-shaped content
+						// ever produced a working runbook button.
+						{ label: 'Documentation', icon: '', url: incident.documentation?.content },
+					]),
 				});
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
@@ -390,6 +397,7 @@ export class AlertController {
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
 				runbookUrl: undefined,
+				links: AlertController.buildLinks([{ label: 'View in Datadog', icon: 'datadog', url: payload.link }]),
 			});
 
 			return res.status(200).json({ success: true, data: { alertId } });
@@ -417,6 +425,23 @@ export class AlertController {
 	// Stable, collision-resistant id derived from an alert's full label set. Used only as a
 	// fallback when Grafana omits the fingerprint, so distinct instances of the same rule (which
 	// share alertname/rulename but differ in their labels) never collapse onto one alert record.
+	// Builds an alert's links collection from candidate entries: drops empty and
+	// non-http(s) urls, dedupes by url (integrations often repeat the same URL across
+	// payload fields), and returns undefined when nothing survives so the client's
+	// legacy alertUrl/runbookUrl fold-in still applies.
+	private static buildLinks(
+		candidates: Array<{ label: string; icon: string; url?: string | null }>
+	): AlertLink[] | undefined {
+		const seen = new Set<string>();
+		const links: AlertLink[] = [];
+		for (const { label, icon, url } of candidates) {
+			if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) continue;
+			seen.add(url);
+			links.push({ label, icon, url });
+		}
+		return links.length ? links : undefined;
+	}
+
 	private static idFromLabels(labels: Record<string, string>): string {
 		const normalized = Object.keys(labels)
 			.sort()
@@ -466,6 +491,16 @@ export class AlertController {
 					Object.entries(labels).filter(([key]) => !AlertController.GRAFANA_LABELS_TO_IGNORE.has(key))
 				);
 
+				// Grafana sends up to three distinct URLs; the legacy alertUrl kept only the
+				// first non-empty one. The links collection surfaces them all (deduped —
+				// Grafana often repeats the same URL across fields).
+				const links = AlertController.buildLinks([
+					{ label: 'View in Grafana', icon: 'grafana', url: alert.generatorURL },
+					{ label: 'Dashboard', icon: 'grafana', url: alert.dashboardURL },
+					{ label: 'Panel', icon: 'grafana', url: alert.panelURL },
+					{ label: 'Runbook', icon: '', url: alert.annotations?.runbook_url },
+				]);
+
 				await this.alertBL.insertOrUpdateAlert({
 					id: alertId,
 					type: 'Grafana',
@@ -477,6 +512,7 @@ export class AlertController {
 					alertName: labels.rulename || labels.alertname || alert.annotations?.summary || 'Grafana alert',
 					summary: alert.annotations?.summary || alert.annotations?.description || '',
 					runbookUrl: alert.annotations?.runbook_url || '',
+					links,
 				});
 				processedIds.push(alertId);
 			}

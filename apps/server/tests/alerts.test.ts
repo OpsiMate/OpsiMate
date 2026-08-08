@@ -754,6 +754,66 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('POST /api/v1/alerts/custom/grafana links', () => {
+		test('surfaces generator/dashboard/panel/runbook URLs as deduped links', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/grafana')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					alerts: [
+						{
+							fingerprint: 'grafana-links-1',
+							status: 'firing',
+							labels: { alertname: 'Grafana Links Test' },
+							annotations: { summary: 'links test', runbook_url: 'https://runbook.example.com/g' },
+							generatorURL: 'https://grafana.example.com/alerting/1',
+							// Duplicates generatorURL on purpose — must dedupe.
+							dashboardURL: 'https://grafana.example.com/alerting/1',
+							panelURL: 'https://grafana.example.com/d/abc?panelId=2',
+						},
+					],
+				});
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT links, alert_url, runbook_url FROM alerts WHERE id = ?')
+				.get('grafana-links-1') as {
+				links: string;
+				alert_url: string;
+				runbook_url: string;
+			};
+			expect(JSON.parse(row.links)).toEqual([
+				{ label: 'View in Grafana', icon: 'grafana', url: 'https://grafana.example.com/alerting/1' },
+				{ label: 'Panel', icon: 'grafana', url: 'https://grafana.example.com/d/abc?panelId=2' },
+				{ label: 'Runbook', icon: '', url: 'https://runbook.example.com/g' },
+			]);
+			// Legacy fields stay populated for consumers that still read them.
+			expect(row.alert_url).toBe('https://grafana.example.com/alerting/1');
+			expect(row.runbook_url).toBe('https://runbook.example.com/g');
+		});
+
+		test('omits links entirely when the payload carries no URLs', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/grafana')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					alerts: [
+						{
+							fingerprint: 'grafana-links-2',
+							status: 'firing',
+							labels: { alertname: 'Grafana No Links Test' },
+						},
+					],
+				});
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT links FROM alerts WHERE id = ?').get('grafana-links-2') as {
+				links: string | null;
+			};
+			expect(row.links).toBeNull();
+		});
+	});
+
 	describe('POST /api/v1/alerts/custom/datadog', () => {
 		test('should create a new Datadog alert successfully with valid payload', async () => {
 			const alertId = 'alert-id';
