@@ -1,6 +1,7 @@
 import { TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
+import { CopyCellButton } from '../../CopyCellButton';
 
 export interface AlertLastCommentColumnProps {
 	alert: Alert;
@@ -13,7 +14,7 @@ export interface AlertLastCommentColumnProps {
 // the full comment thread lives in the details panel's Comments tab.
 export const AlertLastCommentColumn = ({ alert, expanded = false, className }: AlertLastCommentColumnProps) => {
 	return (
-		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
 			<span
 				className={cn(
 					'text-sm text-foreground block',
@@ -23,6 +24,7 @@ export const AlertLastCommentColumn = ({ alert, expanded = false, className }: A
 			>
 				{alert.lastComment || '-'}
 			</span>
+			{alert.lastComment && <CopyCellButton value={alert.lastComment} />}
 		</TableCell>
 	);
 };

@@ -1,6 +1,7 @@
 import { TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
+import { CopyCellButton } from '../../CopyCellButton';
 
 export interface AlertNameColumnProps {
 	alert: Alert;
@@ -13,7 +14,7 @@ export interface AlertNameColumnProps {
 
 export const AlertNameColumn = ({ alert, expanded = false, className, style }: AlertNameColumnProps) => {
 	return (
-		<TableCell style={style} className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
 			<span
 				className={cn(
 					'text-sm block text-foreground',
@@ -27,6 +28,7 @@ export const AlertNameColumn = ({ alert, expanded = false, className, style }: A
 			>
 				{alert.alertName}
 			</span>
+			<CopyCellButton value={alert.alertName} />
 		</TableCell>
 	);
 };
