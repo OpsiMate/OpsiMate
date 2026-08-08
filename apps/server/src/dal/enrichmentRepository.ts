@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { AlertEnrichment, AlertEnrichmentField, MutePolicyLabelMatcher } from '@OpsiMate/shared';
+import { AlertEnrichment, AlertEnrichmentField, AlertLink, MutePolicyLabelMatcher } from '@OpsiMate/shared';
 import { runAsync } from './db';
 
 interface EnrichmentRow {
@@ -8,6 +8,7 @@ interface EnrichmentRow {
 	name_contains: string | null;
 	label_matchers: string | null;
 	add_fields: string | null;
+	add_links: string | null;
 	summary_template: string | null;
 	priority: number | null;
 	created_by: string | null;
@@ -38,6 +39,7 @@ export class EnrichmentRepository {
 		nameContains: row.name_contains,
 		labelMatchers: parseJsonArray<MutePolicyLabelMatcher>(row.label_matchers),
 		addFields: parseJsonArray<AlertEnrichmentField>(row.add_fields),
+		addLinks: parseJsonArray<AlertLink>(row.add_links),
 		summaryTemplate: row.summary_template,
 		priority: row.priority ?? 0,
 		createdBy: row.created_by,
@@ -57,6 +59,7 @@ export class EnrichmentRepository {
 						name_contains    TEXT,
 						label_matchers   TEXT,
 						add_fields       TEXT,
+						add_links        TEXT,
 						summary_template TEXT,
 						priority         INTEGER DEFAULT 0,
 						created_by       TEXT,
@@ -80,20 +83,24 @@ export class EnrichmentRepository {
 			if (!hasColumn('last_modified_by')) {
 				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN last_modified_by TEXT`).run();
 			}
+			if (!hasColumn('add_links')) {
+				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN add_links TEXT`).run();
+			}
 		});
 	}
 
 	async createEnrichment(data: CreateEnrichmentInput, actor?: string | null): Promise<{ lastID: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
-				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields, summary_template, priority, created_by, last_modified_by)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields, add_links, summary_template, priority, created_by, last_modified_by)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 			);
 			const result = stmt.run(
 				data.name,
 				data.nameContains ?? null,
 				JSON.stringify(data.labelMatchers ?? []),
 				JSON.stringify(data.addFields ?? []),
+				JSON.stringify(data.addLinks ?? []),
 				data.summaryTemplate ?? null,
 				data.priority ?? 0,
 				actor ?? null,
@@ -140,6 +147,10 @@ export class EnrichmentRepository {
 			if (data.addFields !== undefined) {
 				updates.push('add_fields = ?');
 				values.push(JSON.stringify(data.addFields));
+			}
+			if (data.addLinks !== undefined) {
+				updates.push('add_links = ?');
+				values.push(JSON.stringify(data.addLinks));
 			}
 			if (data.summaryTemplate !== undefined) {
 				updates.push('summary_template = ?');

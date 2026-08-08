@@ -50,6 +50,7 @@ export class EnrichmentController {
 					nameContains: data.nameContains ?? null,
 					labelMatchers: data.labelMatchers ?? [],
 					addFields: data.addFields ?? [],
+					addLinks: data.addLinks ?? [],
 					summaryTemplate: data.summaryTemplate ?? null,
 					priority: data.priority ?? 0,
 				},

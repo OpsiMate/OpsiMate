@@ -1,6 +1,7 @@
 import {
 	Alert,
 	AlertEnrichment,
+	AlertLink,
 	AppliedEnrichment,
 	AuditActionType,
 	AuditResourceType,
@@ -72,6 +73,7 @@ export class EnrichmentBL {
 			data.nameContains !== undefined ||
 			data.labelMatchers !== undefined ||
 			data.addFields !== undefined ||
+			data.addLinks !== undefined ||
 			data.summaryTemplate !== undefined ||
 			data.priority !== undefined
 		);
@@ -161,7 +163,31 @@ export class EnrichmentBL {
 			enrichment.summaryTemplate && enrichment.summaryTemplate.trim().length > 0
 				? EnrichmentBL.resolveTemplate(enrichment.summaryTemplate, alert)
 				: alert.summary;
-		return { ...alert, tags, summary, severity };
+		const links = EnrichmentBL.applyLinks(enrichment, alert);
+		return { ...alert, tags, summary, severity, links };
+	}
+
+	// Appends the rule's links to the alert's collection. When the alert has no links of
+	// its own, its legacy alertUrl/runbookUrl materialize first — the client only folds
+	// those in when links is ABSENT, so appending without them would make the enrichment
+	// hide the alert's original buttons. Label and url are templated like field values;
+	// duplicates (by resolved url) are dropped, which also keeps chained rules idempotent.
+	private static applyLinks(enrichment: AlertEnrichment, alert: Alert): AlertLink[] | undefined {
+		if (!enrichment.addLinks?.length) return alert.links;
+		const base: AlertLink[] = alert.links?.length
+			? [...alert.links]
+			: [
+					...(alert.alertUrl ? [{ label: 'Source', icon: alert.type as string, url: alert.alertUrl }] : []),
+					...(alert.runbookUrl ? [{ label: 'Runbook', icon: '', url: alert.runbookUrl }] : []),
+				];
+		const seen = new Set(base.map((l) => l.url));
+		for (const link of enrichment.addLinks) {
+			const url = EnrichmentBL.resolveTemplate(link.url, alert);
+			if (!url || seen.has(url)) continue;
+			seen.add(url);
+			base.push({ label: EnrichmentBL.resolveTemplate(link.label, alert), icon: link.icon ?? '', url });
+		}
+		return base;
 	}
 
 	// Decorate alerts with all matching enrichment rules. Applied at fetch time only —

@@ -464,6 +464,10 @@ export interface AlertEnrichment {
 	nameContains?: string | null;
 	labelMatchers: MutePolicyLabelMatcher[];
 	addFields: AlertEnrichmentField[];
+	// Links appended to matching alerts' link collection. Label and url are templated
+	// like field values ({{label.<key>}} etc.); icon is a slug from the integration
+	// icon set, '' for the generic link icon.
+	addLinks?: AlertLink[];
 	summaryTemplate?: string | null;
 	// Rank: rules apply highest-priority first. When two rules set the same field the higher
 	// priority wins; summary templates chain in priority order. Ties break by creation order.

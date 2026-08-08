@@ -13,9 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAlerts } from '@/hooks/queries/alerts';
 import { useCreateEnrichment, useUpdateEnrichment } from '@/hooks/queries/enrichments';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EnrichmentPayload } from '@/lib/api';
-import { AlertEnrichment } from '@OpsiMate/shared';
+import { AlertEnrichment, AlertLink } from '@OpsiMate/shared';
 import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
+import { AlertLinkIcon } from '@/components/Alerts/AlertLinkIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type KeyValue = { key: string; value: string };
@@ -95,6 +97,94 @@ const KeyValueRows = ({
 	</div>
 );
 
+// Icon slugs offered for enrichment links — the integration icon set plus "no icon".
+const LINK_ICON_OPTIONS: { value: string; label: string }[] = [
+	{ value: '', label: 'No icon' },
+	{ value: 'grafana', label: 'Grafana' },
+	{ value: 'uptimekuma', label: 'Uptime Kuma' },
+	{ value: 'gcp', label: 'Google Cloud' },
+	{ value: 'datadog', label: 'Datadog' },
+	{ value: 'zabbix', label: 'Zabbix' },
+	{ value: 'custom', label: 'Bell' },
+];
+
+// Radix Select can't carry an empty-string item value; stand in for "no icon".
+const NO_ICON = '__none__';
+
+const LinkRows = ({ rows, onChange }: { rows: AlertLink[]; onChange: (rows: AlertLink[]) => void }) => (
+	<div className="space-y-2">
+		<div className="flex items-center justify-between">
+			<Label className="text-xs">Links to add</Label>
+			<Button
+				type="button"
+				variant="outline"
+				size="sm"
+				onClick={() => onChange([...rows, { label: '', icon: '', url: '' }])}
+			>
+				<Plus className="h-3.5 w-3.5 mr-1" /> Add
+			</Button>
+		</div>
+		{rows.length === 0 ? (
+			<p className="text-xs text-muted-foreground italic">
+				No links. Added as buttons in the alert&apos;s Links section, next to its existing links.
+			</p>
+		) : (
+			<div className="space-y-2">
+				{rows.map((row, idx) => (
+					<div key={idx} className="grid grid-cols-[1fr_130px_1.5fr_auto] items-center gap-2">
+						<Input
+							placeholder="label (e.g. Dashboard)"
+							value={row.label}
+							onChange={(e) =>
+								onChange(rows.map((r, i) => (i === idx ? { ...r, label: e.target.value } : r)))
+							}
+						/>
+						<Select
+							value={row.icon || NO_ICON}
+							onValueChange={(value) =>
+								onChange(
+									rows.map((r, i) => (i === idx ? { ...r, icon: value === NO_ICON ? '' : value } : r))
+								)
+							}
+						>
+							<SelectTrigger className="h-9">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{LINK_ICON_OPTIONS.map((opt) => (
+									<SelectItem key={opt.value || NO_ICON} value={opt.value || NO_ICON}>
+										<span className="flex items-center gap-2">
+											<AlertLinkIcon icon={opt.value} className="h-3.5 w-3.5" />
+											{opt.label}
+										</span>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<Input
+							placeholder="url (e.g. https://grafana/d/{{label.host}})"
+							value={row.url}
+							onChange={(e) =>
+								onChange(rows.map((r, i) => (i === idx ? { ...r, url: e.target.value } : r)))
+							}
+						/>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="h-9 w-9"
+							onClick={() => onChange(rows.filter((_, i) => i !== idx))}
+							aria-label="Remove link"
+						>
+							<Trash2 className="h-4 w-4" />
+						</Button>
+					</div>
+				))}
+			</div>
+		)}
+	</div>
+);
+
 export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicateFrom }: EnrichmentFormDialogProps) => {
 	const isEdit = !!enrichment;
 	const { toast } = useToast();
@@ -105,6 +195,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const [nameContains, setNameContains] = useState('');
 	const [matchers, setMatchers] = useState<KeyValue[]>([]);
 	const [addFields, setAddFields] = useState<KeyValue[]>([]);
+	const [addLinks, setAddLinks] = useState<AlertLink[]>([]);
 	const [summaryTemplate, setSummaryTemplate] = useState('');
 	const [priority, setPriority] = useState('0');
 
@@ -145,6 +236,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 			setNameContains(source.nameContains ?? '');
 			setMatchers((source.labelMatchers ?? []).map((m) => ({ ...m })));
 			setAddFields((source.addFields ?? []).map((f) => ({ ...f })));
+			setAddLinks((source.addLinks ?? []).map((l) => ({ ...l })));
 			setSummaryTemplate(source.summaryTemplate ?? '');
 			setPriority(String(source.priority ?? 0));
 		} else {
@@ -152,6 +244,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 			setNameContains('');
 			setMatchers([]);
 			setAddFields([]);
+			setAddLinks([]);
 			// Pre-fill with {{summary}} so the user keeps the existing summary and appends to it.
 			setSummaryTemplate(DEFAULT_SUMMARY_TEMPLATE);
 			setPriority('0');
@@ -164,9 +257,10 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		const hasLabelMatchers = matchers.some((m) => m.key.trim() && m.value.trim());
 		if (!hasNameMatcher && !hasLabelMatchers) return false;
 		const hasFields = addFields.some((f) => f.key.trim() && f.value.trim());
+		const hasLinks = addLinks.some((l) => l.label.trim() && l.url.trim());
 		const hasSummary = summaryTemplate.trim().length > 0;
-		return hasFields || hasSummary;
-	}, [name, nameContains, matchers, addFields, summaryTemplate]);
+		return hasFields || hasLinks || hasSummary;
+	}, [name, nameContains, matchers, addFields, addLinks, summaryTemplate]);
 
 	const submit = async () => {
 		const clean = (rows: KeyValue[]) =>
@@ -177,6 +271,9 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 			nameContains: nameContains.trim() || null,
 			labelMatchers: clean(matchers),
 			addFields: clean(addFields),
+			addLinks: addLinks
+				.map((l) => ({ label: l.label.trim(), icon: (l.icon ?? '').trim(), url: l.url.trim() }))
+				.filter((l) => l.label && l.url),
 			summaryTemplate: summaryTemplate.trim() || null,
 			priority: Math.max(0, Math.min(1000, parseInt(priority, 10) || 0)),
 		};
@@ -210,8 +307,8 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 						{isEdit ? 'Edit enrichment' : 'New enrichment'}
 					</DialogTitle>
 					<DialogDescription>
-						Automatically add fields or rewrite the summary of alerts that match the criteria below. Applied
-						live whenever alerts are fetched.
+						Automatically add fields, links, or rewrite the summary of alerts that match the criteria below.
+						Applied live whenever alerts are fetched.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -282,7 +379,8 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							<h4 className="text-sm font-semibold">Enrichment</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							What to change on matching alerts. At least one field or a summary template is required.
+							What to change on matching alerts. At least one field, link, or summary template is
+							required.
 						</p>
 
 						<KeyValueRows
@@ -296,6 +394,12 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 						<p className="text-xs text-muted-foreground -mt-2">
 							A value can copy a label, e.g. <code className="text-[11px]">owner={'{{label.team}}'}</code>
 							.
+						</p>
+
+						<LinkRows rows={addLinks} onChange={setAddLinks} />
+						<p className="text-xs text-muted-foreground -mt-2">
+							Label and URL accept the same placeholders, e.g.{' '}
+							<code className="text-[11px]">https://grafana.example.com/d/{'{{label.host}}'}</code>.
 						</p>
 
 						<div className="space-y-2">
