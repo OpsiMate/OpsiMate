@@ -358,10 +358,14 @@ export const AlertsTable = ({
 															/>
 														);
 													}
+													// Every base column must be listed here — a column the BODY renders
+													// (AlertRow's switch) but this list omits gets no header at all, so
+													// every header to its right shifts one slot left of its cells.
 													if (
 														[
 															'alertName',
 															'severity',
+															'fix',
 															'status',
 															'startsAt',
 															'updatedAt',
