@@ -692,6 +692,7 @@ export type EnrichmentPayload = {
 	nameContains?: string | null;
 	labelMatchers?: { key: string; value: string }[];
 	addFields?: { key: string; value: string }[];
+	addLinks?: { label: string; icon?: string; url: string }[];
 	summaryTemplate?: string | null;
 	priority?: number;
 };

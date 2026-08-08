@@ -390,11 +390,24 @@ const enrichmentFieldSchema = z.object({
 	value: z.string().min(1, 'Field value is required').max(1000),
 });
 
-// At least one effect: a field to add/override or a summary template.
-const enrichmentEffectRefinement = (data: { addFields?: unknown[]; summaryTemplate?: string | null }) => {
+// Enrichment links: url is NOT z.url() — label and url accept template placeholders
+// ({{label.runbook}}, https://grafana/d/{{label.dashboard}}) resolved per-alert.
+const enrichmentLinkSchema = z.object({
+	label: z.string().min(1, 'Link label is required').max(200),
+	icon: z.string().max(100).optional().default(''),
+	url: z.string().min(1, 'Link URL is required').max(2000),
+});
+
+// At least one effect: a field to add/override, a link to add, or a summary template.
+const enrichmentEffectRefinement = (data: {
+	addFields?: unknown[];
+	addLinks?: unknown[];
+	summaryTemplate?: string | null;
+}) => {
 	const hasFields = Array.isArray(data.addFields) && data.addFields.length > 0;
+	const hasLinks = Array.isArray(data.addLinks) && data.addLinks.length > 0;
 	const hasSummary = !!data.summaryTemplate && data.summaryTemplate.trim().length > 0;
-	return hasFields || hasSummary;
+	return hasFields || hasLinks || hasSummary;
 };
 
 export const CreateAlertEnrichmentSchema = z
@@ -403,6 +416,7 @@ export const CreateAlertEnrichmentSchema = z
 		nameContains: z.string().max(500).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
 		addFields: z.array(enrichmentFieldSchema).max(20).optional().default([]),
+		addLinks: z.array(enrichmentLinkSchema).max(20).optional().default([]),
 		summaryTemplate: z.string().max(5000).optional().nullable(),
 		priority: z.number().int().min(0).max(1000).optional().default(0),
 	})
@@ -411,7 +425,7 @@ export const CreateAlertEnrichmentSchema = z
 		path: ['nameContains'],
 	})
 	.refine(enrichmentEffectRefinement, {
-		message: 'Provide at least one field to add or a summary template',
+		message: 'Provide at least one field to add, a link to add, or a summary template',
 		path: ['addFields'],
 	});
 
@@ -422,6 +436,7 @@ export const UpdateAlertEnrichmentSchema = z.object({
 	nameContains: z.string().max(500).optional().nullable(),
 	labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
 	addFields: z.array(enrichmentFieldSchema).max(20).optional(),
+	addLinks: z.array(enrichmentLinkSchema).max(20).optional(),
 	summaryTemplate: z.string().max(5000).optional().nullable(),
 	priority: z.number().int().min(0).max(1000).optional(),
 });

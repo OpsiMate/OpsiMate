@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
 import { AlertEnrichment } from '@OpsiMate/shared';
-import { Copy, FileText, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
@@ -52,6 +52,16 @@ const EffectBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 				className="font-mono text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 max-w-full whitespace-normal break-all rounded-md"
 			>
 				+{f.key}={f.value}
+			</Badge>
+		))}
+		{(enrichment.addLinks ?? []).map((l, idx) => (
+			<Badge
+				key={`link-${idx}`}
+				variant="outline"
+				className="text-xs bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30 max-w-[260px]"
+			>
+				<Link2 className="h-3 w-3 mr-1 shrink-0" />
+				<span className="truncate">{l.label}</span>
 			</Badge>
 		))}
 		{enrichment.summaryTemplate && (
@@ -88,7 +98,9 @@ const Enrichments: React.FC = () => {
 			if (e.summaryTemplate?.toLowerCase().includes(q)) return true;
 			if (e.labelMatchers?.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q)))
 				return true;
-			return e.addFields?.some((f) => f.key.toLowerCase().includes(q) || f.value.toLowerCase().includes(q));
+			if (e.addFields?.some((f) => f.key.toLowerCase().includes(q) || f.value.toLowerCase().includes(q)))
+				return true;
+			return e.addLinks?.some((l) => l.label.toLowerCase().includes(q) || l.url.toLowerCase().includes(q));
 		});
 	}, [enrichments, search]);
 
@@ -117,9 +129,9 @@ const Enrichments: React.FC = () => {
 							<h1 className="text-2xl font-semibold tracking-tight">Enrichment</h1>
 						</div>
 						<p className="text-sm text-muted-foreground mt-1">
-							Automatically add fields or rewrite the summary of matching alerts — e.g. tag every "Disk"
-							alert with disk_alert=true and append help-desk instructions to its summary. Rules run in
-							priority order (highest first); on conflicts the higher-priority rule wins.
+							Automatically add fields, links, or rewrite the summary of matching alerts — e.g. tag every
+							"Disk" alert with disk_alert=true and append help-desk instructions to its summary. Rules
+							run in priority order (highest first); on conflicts the higher-priority rule wins.
 						</p>
 					</div>
 					<Button onClick={() => setCreating(true)}>

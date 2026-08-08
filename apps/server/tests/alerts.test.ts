@@ -754,6 +754,62 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('enrichment links', () => {
+		test('a matching rule appends templated links, materializing legacy alertUrl first', async () => {
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'enrich-links-1',
+					tags: { host: 'db-7' },
+					alertName: 'Enrich Links Test',
+					alertUrl: 'https://source.example.com/a1',
+				});
+
+			const created = await app
+				.post('/api/v1/enrichments')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'add host dashboard link',
+					nameContains: 'Enrich Links',
+					addLinks: [
+						{
+							label: '{{label.host}} dashboard',
+							icon: 'grafana',
+							url: 'https://grafana.example.com/d/{{label.host}}',
+						},
+					],
+				});
+			expect(created.status).toBe(201);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			const alert = list.body.data.alerts.find((a: { id: string }) => a.id === 'enrich-links-1');
+			expect(alert.links).toEqual([
+				// The alert's own legacy link materializes so the enrichment doesn't hide it.
+				{ label: 'Source', icon: 'Custom', url: 'https://source.example.com/a1' },
+				{ label: 'db-7 dashboard', icon: 'grafana', url: 'https://grafana.example.com/d/db-7' },
+			]);
+			expect(alert.appliedEnrichments).toHaveLength(1);
+
+			await app.delete(`/api/v1/enrichments/${created.body.data.id}`).set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test('a links-only rule is a valid enrichment (no fields, no summary)', async () => {
+			const created = await app
+				.post('/api/v1/enrichments')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'links only',
+					nameContains: 'whatever',
+					addLinks: [{ label: 'Docs', url: 'https://docs.example.com' }],
+				});
+			expect(created.status).toBe(201);
+			expect(created.body.data.addLinks).toEqual([{ label: 'Docs', icon: '', url: 'https://docs.example.com' }]);
+
+			await app.delete(`/api/v1/enrichments/${created.body.data.id}`).set('Authorization', `Bearer ${jwtToken}`);
+		});
+	});
+
 	describe('POST /api/v1/alerts/custom/grafana links', () => {
 		test('surfaces generator/dashboard/panel/runbook URLs as deduped links', async () => {
 			const response = await app
