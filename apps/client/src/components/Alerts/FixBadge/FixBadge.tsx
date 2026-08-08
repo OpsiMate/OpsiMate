@@ -31,6 +31,7 @@ export const FixBadge = ({ fix, className }: FixBadgeProps) => {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<span
+					role="img"
 					className={cn('inline-flex items-center shrink-0', FIX_TEXT_CLASSES[fix], className)}
 					aria-label={label}
 				>
