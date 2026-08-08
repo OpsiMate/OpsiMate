@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Logger, Alert as SharedAlert } from '@OpsiMate/shared';
-import { ExternalLink, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { AlertLinkIcon } from '@/components/Alerts/AlertDetails/AlertLinksSection/AlertLinksSection';
+import { getAlertLinks } from '@/components/Alerts/utils/links.utils';
 import { useState } from 'react';
 
 const logger = new Logger('AlertsSection');

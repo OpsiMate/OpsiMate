@@ -508,6 +508,7 @@ export class AlertController {
 				alertName: alert.alertName,
 				summary: alert.summary,
 				runbookUrl: alert.runbookUrl,
+				links: alert.links,
 			});
 			return res.status(200).json({ success: true, data: { alertId: alert.id } });
 		} catch (error) {

@@ -2,7 +2,12 @@ import { cn } from '@/lib/utils';
 import { AlertIntegrationKind, iconSizeMap, sizeMap } from './IntegrationAvatar.types';
 import { integrationDefinitions } from './IntegrationAvatar.utils';
 
-export { getIntegrationLabel, resolveAlertIntegration } from './IntegrationAvatar.utils';
+export {
+	getIntegrationLabel,
+	integrationDefinitions,
+	normalizeIntegration,
+	resolveAlertIntegration,
+} from './IntegrationAvatar.utils';
 
 interface IntegrationAvatarProps {
 	integration: AlertIntegrationKind;

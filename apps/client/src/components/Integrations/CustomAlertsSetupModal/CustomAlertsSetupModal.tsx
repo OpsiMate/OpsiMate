@@ -27,11 +27,14 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 	const examplePayload = `{
   "id": "unique-alert-id",
   "tags": { "environment": "production", "team": "backend" },
-  "alertUrl": "https://link-to-alert-source",
   "alertName": "High CPU Usage Alert",
   "summary": "CPU usage exceeded 90% threshold",
   "startsAt": "2024-01-15T10:30:00Z",
-  "runbookUrl": "https://docs.example.com/runbooks/cpu-alert"
+  "links": [
+    { "label": "OpsiMate demo", "icon": "", "url": "https://demo.opsimate.dev/" },
+    { "label": "Grafana dashboard", "icon": "grafana", "url": "https://grafana.example.com/d/cpu" },
+    { "label": "Runbook", "icon": "", "url": "https://docs.example.com/runbooks/cpu-alert" }
+  ]
 }`;
 
 	const handleCopy = async (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
@@ -202,11 +205,26 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											</td>
 										</tr>
 										<tr>
+											<td className="p-3 font-mono text-xs">links</td>
+											<td className="p-3">
+												<span className="text-muted-foreground">No</span>
+											</td>
+											<td className="p-3 text-muted-foreground">
+												Array of {'{ label, icon, url }'} — each renders as a button in the
+												alert&apos;s Links section. icon is an optional slug matched against the
+												integration icons (grafana, uptimekuma, gcp, datadog, zabbix); empty or
+												unknown values get a generic link icon
+											</td>
+										</tr>
+										<tr>
 											<td className="p-3 font-mono text-xs">alertUrl</td>
 											<td className="p-3">
-												<span className="text-red-600 dark:text-red-400 font-medium">Yes</span>
+												<span className="text-muted-foreground">No</span>
 											</td>
-											<td className="p-3 text-muted-foreground">URL to the alert source</td>
+											<td className="p-3 text-muted-foreground">
+												Deprecated — use links. Still accepted; shows as the &quot;Source&quot;
+												link when links is absent
+											</td>
 										</tr>
 										<tr>
 											<td className="p-3 font-mono text-xs">summary</td>
@@ -240,7 +258,10 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											<td className="p-3">
 												<span className="text-muted-foreground">No</span>
 											</td>
-											<td className="p-3 text-muted-foreground">URL to runbook documentation</td>
+											<td className="p-3 text-muted-foreground">
+												Deprecated — use links. Still accepted; shows as the &quot;Runbook&quot;
+												link when links is absent
+											</td>
 										</tr>
 									</tbody>
 								</table>
@@ -257,7 +278,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
     "id": "alert-123",
     "alertName": "High CPU Usage",
     "tags": {"env": "prod"},
-    "alertUrl": "https://monitoring.example.com/alert/123"
+    "links": [{"label": "Dashboard", "icon": "grafana", "url": "https://monitoring.example.com/alert/123"}]
   }'`}
 							</pre>
 						</div>

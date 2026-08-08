@@ -48,6 +48,7 @@ export class ResolvedAlertRepository {
 																	   is_dismissed BOOLEAN DEFAULT 0,
 																	   summary TEXT,
 																	   runbook_url TEXT,
+																	   links TEXT,
 																	   created_at TEXT,
 																	   archived_at DATETIME DEFAULT CURRENT_TIMESTAMP
 						);
@@ -112,6 +113,12 @@ export class ResolvedAlertRepository {
 				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN severity TEXT`).run();
 			}
 
+			// Backward compatibility: ensure links column exists (JSON array of AlertLink)
+			const hasLinks = columns.some((col: TableInfoRow) => col.name === 'links');
+			if (!hasLinks) {
+				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN links TEXT`).run();
+			}
+
 			// Backward compatibility: ensure team column exists
 			const hasTeam = columns.some((col: TableInfoRow) => col.name === 'team');
 			if (!hasTeam) {
@@ -124,8 +131,8 @@ export class ResolvedAlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO alerts_resolved
-                    (id, status, severity, team, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, created_at, owner_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, status, severity, team, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed, summary, runbook_url, links, created_at, owner_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     status = excluded.status,
                     severity = excluded.severity,
@@ -139,6 +146,7 @@ export class ResolvedAlertRepository {
                     is_dismissed = excluded.is_dismissed,
                     summary = excluded.summary,
                     runbook_url = excluded.runbook_url,
+                    links = excluded.links,
                     created_at = excluded.created_at,
                     owner_id = excluded.owner_id,
                     archived_at = CURRENT_TIMESTAMP
@@ -159,6 +167,7 @@ export class ResolvedAlertRepository {
 				0,
 				alert.summary || null,
 				alert.runbookUrl || null,
+				alert.links?.length ? JSON.stringify(alert.links) : null,
 				alert.createdAt,
 				alert.ownerId != null ? Number(alert.ownerId) : null
 			);
@@ -186,6 +195,7 @@ export class ResolvedAlertRepository {
 			alertName: row.alert_name,
 			summary: row.summary,
 			runbookUrl: row.runbook_url,
+			links: row.links ? (JSON.parse(row.links) as SharedAlert['links']) : undefined,
 			createdAt: row.created_at,
 			// Resolved alerts are never silenced (legacy rows may still carry is_dismissed=1
 			// from before resolving cleared the flag).

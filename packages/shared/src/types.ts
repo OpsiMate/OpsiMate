@@ -217,6 +217,15 @@ export function normalizeAlertFix(value?: string | null): AlertFix | null {
 	return Object.hasOwn(FIX_SYNONYMS, key) ? FIX_SYNONYMS[key] : null;
 }
 
+// A link attached to an alert. `icon` is a free-form slug matched against the
+// integration icon set (grafana, uptimekuma, gcp, datadog, zabbix, custom); empty or
+// unrecognized values render the generic link icon.
+export interface AlertLink {
+	label: string;
+	icon?: string;
+	url: string;
+}
+
 export interface Alert {
 	id: string;
 	type: AlertType;
@@ -229,10 +238,15 @@ export interface Alert {
 	tags: Record<string, string>;
 	startsAt: string;
 	updatedAt: string;
+	// Legacy single links, superseded by `links`: when `links` is absent they fold into
+	// the links UI as "Source" / "Runbook" entries. Integrations still populate them.
 	alertUrl: string;
 	alertName: string;
 	summary?: string;
 	runbookUrl?: string;
+	// The alert's link collection — each entry renders as a button in the details panel's
+	// links section (and the row's ⋮ menu) with its icon when the slug is recognized.
+	links?: AlertLink[];
 	createdAt: string;
 	isSilenced: boolean;
 	// When the silence auto-expires (ISO); null while silenced means silenced forever.

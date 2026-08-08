@@ -66,6 +66,7 @@ export type AlertRow = {
 	alert_name: string;
 	summary?: string;
 	runbook_url?: string;
+	links?: string | null;
 	created_at: string;
 	is_dismissed: boolean;
 	silenced_until?: string | null;
@@ -87,6 +88,7 @@ export type ResolvedAlertRow = {
 	alert_name: string;
 	summary?: string;
 	runbook_url?: string;
+	links?: string | null;
 	created_at: string;
 	is_dismissed: boolean;
 	archived_at: string;

@@ -457,6 +457,46 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe(payload.alertName);
 		});
 
+		test('should persist a links array and serve it back on the alert', async () => {
+			const payload = {
+				id: 'links-alert-1',
+				tags: {},
+				alertName: 'Links Test',
+				links: [
+					{ label: 'OpsiMate demo', icon: '', url: 'https://demo.opsimate.dev/' },
+					{ label: 'Grafana demo', icon: 'grafana', url: 'https://demo.grafana.dev/' },
+				],
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT links FROM alerts WHERE id = ?').get(payload.id) as { links: string };
+			expect(JSON.parse(row.links)).toEqual(payload.links);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			const alert = list.body.data.alerts.find((a: { id: string }) => a.id === payload.id);
+			expect(alert.links).toEqual(payload.links);
+		});
+
+		test('should reject a links entry with an invalid url', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'links-alert-bad',
+					tags: {},
+					alertName: 'Bad Links Test',
+					links: [{ label: 'nope', url: 'not-a-url' }],
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBe('Validation error');
+		});
+
 		test('should store a normalized explicit severity', async () => {
 			const payload = {
 				id: 'severity-explicit',

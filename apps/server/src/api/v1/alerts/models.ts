@@ -30,15 +30,27 @@ const isoDateString = z.string().refine(
 	}
 );
 
+// Attached links: label + url, with an optional icon slug matched against the client's
+// integration icon set (grafana, uptimekuma, gcp, ...); '' or unknown = generic icon.
+export const AlertLinkSchema = z.object({
+	label: z.string().min(1),
+	icon: z.string().optional(),
+	url: z.string().url(),
+});
+
 export const HttpAlertWebhookSchema = z.object({
 	id: z.string(),
 	tags: z.record(z.string(), z.string()),
 	startsAt: isoDateString.optional(),
 	updatedAt: isoDateString.optional(),
+	// Deprecated in favor of `links` — still accepted; folds into the links UI as the
+	// "Source" entry when `links` is absent.
 	alertUrl: z.string().url().optional(),
 	alertName: z.string(),
 	summary: z.string().optional(),
+	// Deprecated in favor of `links` — still accepted; folds in as the "Runbook" entry.
 	runbookUrl: z.string().url().optional(),
+	links: z.array(AlertLinkSchema).max(20).optional(),
 	createdAt: isoDateString.optional(),
 	// Free-form; normalized onto the fixed critical/warning/info scale at ingestion
 	// (unknown or missing values default to warning).
