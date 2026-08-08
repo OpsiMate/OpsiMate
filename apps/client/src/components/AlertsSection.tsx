@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Logger, Alert as SharedAlert } from '@OpsiMate/shared';
-import { ExternalLink, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { AlertLinkIcon } from '@/components/Alerts/AlertLinkIcon';
+import { getAlertLinks } from '@/components/Alerts/utils/links.utils';
 import { useState } from 'react';
 
 const logger = new Logger('AlertsSection');
@@ -85,29 +87,19 @@ export const AlertsSection = ({ alerts, onAlertSilence, className }: AlertsSecti
 								)}
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
-								{alert.runbookUrl && (
+								{getAlertLinks(alert).map((link) => (
 									<Button
+										key={`${link.label}-${link.url}`}
 										variant="ghost"
 										size="icon"
 										className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
-										title="Open Runbook"
-										onClick={() => window.open(alert.runbookUrl, '_blank', 'noopener,noreferrer')}
+										title={link.label}
+										onClick={() => handleAlertClick(link.url)}
 									>
-										<span className="sr-only">Open Runbook</span>
-										📖
+										<span className="sr-only">{link.label}</span>
+										<AlertLinkIcon icon={link.icon} className="h-4 w-4" />
 									</Button>
-								)}
-								{alert.alertUrl && (
-									<Button
-										variant="ghost"
-										size="icon"
-										className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-2 focus:ring-primary"
-										title="View in Grafana"
-										onClick={() => handleAlertClick(alert.alertUrl)}
-									>
-										<ExternalLink className="h-4 w-4" />
-									</Button>
-								)}
+								))}
 								{onAlertSilence && (
 									<Button
 										variant="ghost"

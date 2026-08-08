@@ -54,7 +54,7 @@ export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDef
 	},
 };
 
-const normalizeIntegration = (value?: string | null): AlertIntegrationKind | undefined => {
+export const normalizeIntegration = (value?: string | null): AlertIntegrationKind | undefined => {
 	if (!value) return undefined;
 	const normalized = value.toLowerCase();
 	if (normalized.includes('grafana')) return 'grafana';

@@ -457,6 +457,75 @@ describe('Alerts API', () => {
 			expect(row.alert_name).toBe(payload.alertName);
 		});
 
+		test('should persist a links array and serve it back on the alert', async () => {
+			const payload = {
+				id: 'links-alert-1',
+				tags: {},
+				alertName: 'Links Test',
+				links: [
+					{ label: 'OpsiMate demo', icon: '', url: 'https://demo.opsimate.dev/' },
+					{ label: 'Grafana demo', icon: 'grafana', url: 'https://demo.grafana.dev/' },
+				],
+			};
+
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(payload);
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT links FROM alerts WHERE id = ?').get(payload.id) as { links: string };
+			expect(JSON.parse(row.links)).toEqual(payload.links);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			const alert = list.body.data.alerts.find((a: { id: string }) => a.id === payload.id);
+			expect(alert.links).toEqual(payload.links);
+		});
+
+		test('should fold the fix field into the fix tag', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'fix-field-alert', tags: {}, alertName: 'Fix Field Test', fix: 'manual' });
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT tags FROM alerts WHERE id = ?').get('fix-field-alert') as { tags: string };
+			expect(JSON.parse(row.tags).fix).toBe('manual');
+		});
+
+		test('an explicit fix tag wins over the fix field', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'fix-field-tag-wins',
+					tags: { fix: 'auto' },
+					alertName: 'Fix Tag Wins Test',
+					fix: 'manual',
+				});
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT tags FROM alerts WHERE id = ?').get('fix-field-tag-wins') as {
+				tags: string;
+			};
+			expect(JSON.parse(row.tags).fix).toBe('auto');
+		});
+
+		test('should reject a links entry with an invalid url', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'links-alert-bad',
+					tags: {},
+					alertName: 'Bad Links Test',
+					links: [{ label: 'nope', url: 'not-a-url' }],
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBe('Validation error');
+		});
+
 		test('should store a normalized explicit severity', async () => {
 			const payload = {
 				id: 'severity-explicit',
@@ -682,6 +751,66 @@ describe('Alerts API', () => {
 
 			await markRead();
 			expect(isRead()).toBe(1);
+		});
+	});
+
+	describe('POST /api/v1/alerts/custom/grafana links', () => {
+		test('surfaces generator/dashboard/panel/runbook URLs as deduped links', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/grafana')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					alerts: [
+						{
+							fingerprint: 'grafana-links-1',
+							status: 'firing',
+							labels: { alertname: 'Grafana Links Test' },
+							annotations: { summary: 'links test', runbook_url: 'https://runbook.example.com/g' },
+							generatorURL: 'https://grafana.example.com/alerting/1',
+							// Duplicates generatorURL on purpose — must dedupe.
+							dashboardURL: 'https://grafana.example.com/alerting/1',
+							panelURL: 'https://grafana.example.com/d/abc?panelId=2',
+						},
+					],
+				});
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT links, alert_url, runbook_url FROM alerts WHERE id = ?')
+				.get('grafana-links-1') as {
+				links: string;
+				alert_url: string;
+				runbook_url: string;
+			};
+			expect(JSON.parse(row.links)).toEqual([
+				{ label: 'View in Grafana', icon: 'grafana', url: 'https://grafana.example.com/alerting/1' },
+				{ label: 'Panel', icon: 'grafana', url: 'https://grafana.example.com/d/abc?panelId=2' },
+				{ label: 'Runbook', icon: '', url: 'https://runbook.example.com/g' },
+			]);
+			// Legacy fields stay populated for consumers that still read them.
+			expect(row.alert_url).toBe('https://grafana.example.com/alerting/1');
+			expect(row.runbook_url).toBe('https://runbook.example.com/g');
+		});
+
+		test('omits links entirely when the payload carries no URLs', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/grafana')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					alerts: [
+						{
+							fingerprint: 'grafana-links-2',
+							status: 'firing',
+							labels: { alertname: 'Grafana No Links Test' },
+						},
+					],
+				});
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT links FROM alerts WHERE id = ?').get('grafana-links-2') as {
+				links: string | null;
+			};
+			expect(row.links).toBeNull();
 		});
 	});
 

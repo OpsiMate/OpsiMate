@@ -7,7 +7,9 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { BellOff, Book, CheckCircle2, ExternalLink, Flame, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
+import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
+import { AlertLinkIcon } from '../../../AlertLinkIcon';
+import { getAlertLinks } from '../../../utils/links.utils';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -25,7 +27,8 @@ export const RowActions = ({
 	onDeleteAlert,
 	onUnresolveAlert,
 }: RowActionsProps) => {
-	const { alertUrl, runbookUrl, isSilenced } = alert;
+	const { isSilenced } = alert;
+	const links = getAlertLinks(alert);
 	// In the combined "All" view a row carries a transient isResolved flag so it can present
 	// resolved behaviour (permanent delete, no silence/resolve) even though the table-level
 	// callbacks are shared across active and resolved rows.
@@ -36,7 +39,7 @@ export const RowActions = ({
 	// Only resolved rows can be moved back to firing (isActive is false on the Resolved tab
 	// and on resolved rows in the All view).
 	const canUnresolve = !isActive && Boolean(onUnresolveAlert);
-	const hasActions = Boolean(alertUrl || runbookUrl || onDeleteAlert || canToggleSilence || canUnresolve);
+	const hasActions = Boolean(links.length > 0 || onDeleteAlert || canToggleSilence || canUnresolve);
 
 	const handleToggleSilence = (event: React.MouseEvent) => {
 		event.stopPropagation();
@@ -78,29 +81,21 @@ export const RowActions = ({
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
-					{runbookUrl && (
+					{links.map((link) => (
 						<DropdownMenuItem
+							key={`${link.label}-${link.url}`}
 							onClick={(event) => {
 								event.stopPropagation();
-								handleOpenLink(runbookUrl);
+								handleOpenLink(link.url);
 							}}
 						>
-							<Book className="mr-2 h-3 w-3" />
-							Runbook
+							<span className="mr-2 inline-flex">
+								<AlertLinkIcon icon={link.icon} className="h-3 w-3" />
+							</span>
+							{link.label}
 						</DropdownMenuItem>
-					)}
-					{alertUrl && (
-						<DropdownMenuItem
-							onClick={(event) => {
-								event.stopPropagation();
-								handleOpenLink(alertUrl);
-							}}
-						>
-							<ExternalLink className="mr-2 h-3 w-3" />
-							Source
-						</DropdownMenuItem>
-					)}
-					{(runbookUrl || alertUrl) && (onDeleteAlert || canToggleSilence || canUnresolve) && (
+					))}
+					{links.length > 0 && (onDeleteAlert || canToggleSilence || canUnresolve) && (
 						<DropdownMenuSeparator />
 					)}
 					{canUnresolve && (

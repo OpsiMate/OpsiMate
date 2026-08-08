@@ -7,6 +7,7 @@ import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLastCommentSection } from '../AlertLastCommentSection';
 import { AlertLinksSection } from '../AlertLinksSection';
+import { getAlertLinks } from '../../utils/links.utils';
 import { AlertSummarySection } from '../AlertSummarySection';
 import { AlertTagsSection } from '../AlertTagsSection';
 import { AlertTeamSection } from '../AlertTeamSection';
@@ -59,7 +60,7 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 				<AlertTimestampsSection alert={alert} />
 			</CollapsibleSection>
 
-			{(alert.alertUrl || alert.runbookUrl) && (
+			{getAlertLinks(alert).length > 0 && (
 				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>
 					<AlertLinksSection alert={alert} />
 				</CollapsibleSection>

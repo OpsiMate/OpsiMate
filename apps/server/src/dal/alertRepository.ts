@@ -27,8 +27,8 @@ export class AlertRepository {
 			// from the recorded firing time. A new episode (resolve, then re-fire) deletes and
 			// re-inserts the row, which picks up the new starts_at.
 			const stmt = this.db.prepare(`
-				INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, links)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 											  status=excluded.status,
 											  type=excluded.type,
@@ -40,6 +40,7 @@ export class AlertRepository {
 											  alert_name=excluded.alert_name,
 											  summary=excluded.summary,
 											  runbook_url=excluded.runbook_url,
+											  links=excluded.links,
 											  -- Every arrival re-surfaces the alert: any push for this id — an update
 											  -- OR an identical replay — marks it unread so the row re-bolds. All
 											  -- ingestion here is push-based webhooks, so a repeat notification is the
@@ -85,7 +86,8 @@ export class AlertRepository {
 					alert.alertUrl,
 					alert.alertName,
 					alert.summary || null,
-					alert.runbookUrl || null
+					alert.runbookUrl || null,
+					alert.links?.length ? JSON.stringify(alert.links) : null
 				);
 			});
 			return { changes: upsert().changes };
@@ -110,8 +112,8 @@ export class AlertRepository {
 				this.db
 					.prepare(
 						`
-						INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed, is_read, created_at, owner_id)
-						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+						INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, links, is_dismissed, is_read, created_at, owner_id)
+						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 						ON CONFLICT(id) DO UPDATE SET
 													  status=excluded.status,
 													  updated_at=excluded.updated_at
@@ -130,6 +132,7 @@ export class AlertRepository {
 						alert.alertName,
 						alert.summary || null,
 						alert.runbookUrl || null,
+						alert.links?.length ? JSON.stringify(alert.links) : null,
 						alert.isSilenced ? 1 : 0,
 						alert.createdAt,
 						alert.ownerId != null ? Number(alert.ownerId) : null
@@ -157,6 +160,7 @@ export class AlertRepository {
 					is_dismissed BOOLEAN DEFAULT 0,
 					summary TEXT,
 					runbook_url TEXT,
+					links TEXT,
 					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 				);
 	
@@ -224,6 +228,12 @@ export class AlertRepository {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN severity TEXT`).run();
 			}
 
+			// Backward compatibility: ensure links column exists (JSON array of AlertLink)
+			const hasLinks = columns.some((col: TableInfoRow) => col.name === 'links');
+			if (!hasLinks) {
+				this.db.prepare(`ALTER TABLE alerts ADD COLUMN links TEXT`).run();
+			}
+
 			// Backward compatibility: ensure team column exists
 			const hasTeam = columns.some((col: TableInfoRow) => col.name === 'team');
 			if (!hasTeam) {
@@ -283,6 +293,7 @@ export class AlertRepository {
 			alertName: row.alert_name,
 			summary: row.summary,
 			runbookUrl: row.runbook_url,
+			links: row.links ? (JSON.parse(row.links) as SharedAlert['links']) : undefined,
 			createdAt: row.created_at,
 			isSilenced: row.is_dismissed ? true : false,
 			silencedUntil: row.is_dismissed ? (row.silenced_until ?? null) : null,
