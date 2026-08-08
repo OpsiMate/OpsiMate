@@ -379,7 +379,8 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							<h4 className="text-sm font-semibold">Enrichment</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							What to change on matching alerts. At least one field, link, or summary template is required.
+							What to change on matching alerts. At least one field, link, or summary template is
+							required.
 						</p>
 
 						<KeyValueRows
