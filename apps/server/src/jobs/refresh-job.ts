@@ -3,18 +3,19 @@ import { ProviderBL } from '../bl/providers/provider.bl';
 import { Logger, Provider } from '@OpsiMate/shared';
 
 const BATCH_SIZE = 10;
+const REFRESH_INTERVAL_MS = 5 * 1000;
 const logger = new Logger('refresh-job');
 
 export class RefreshJob {
 	constructor(private providerBL: ProviderBL) {}
 
 	startRefreshJob = () => {
-		logger.info('[Job] Starting refreshAllProvidersServices job (every 10 minutes)');
+		logger.info('[Job] Starting refreshAllProvidersServices job (every 5 seconds)');
 
 		// Run immediately on startup (optional)
 		this.refreshAllProvidersServices().catch((err) => logger.error('[Job] Initial run failed:', err));
 
-		// Then run every 10 minutes
+		// Then run every 5 seconds
 		setInterval(async () => {
 			logger.info('[Job] Running refreshAllProvidersServices');
 			try {
@@ -22,7 +23,7 @@ export class RefreshJob {
 			} catch (err) {
 				logger.error('[Job] Failed to refresh services:', err);
 			}
-		}, 10 * 1000);
+		}, REFRESH_INTERVAL_MS);
 	};
 
 	private refreshAllProvidersServices = async () => {
