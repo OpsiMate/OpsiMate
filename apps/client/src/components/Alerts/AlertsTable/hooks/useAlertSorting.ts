@@ -19,8 +19,13 @@ export const useAlertSorting = (filteredAlerts: Alert[]) => {
 			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
 		} else {
 			setSortField(field);
-			// Time columns: newest first; severity: critical first (desc by rank).
-			setSortDirection(field === 'startsAt' || field === 'updatedAt' || field === 'severity' ? 'desc' : 'asc');
+			// Time columns: newest first; severity: critical first; fix: manual first
+			// (both desc by rank).
+			setSortDirection(
+				field === 'startsAt' || field === 'updatedAt' || field === 'severity' || field === 'fix'
+					? 'desc'
+					: 'asc'
+			);
 		}
 	};
 

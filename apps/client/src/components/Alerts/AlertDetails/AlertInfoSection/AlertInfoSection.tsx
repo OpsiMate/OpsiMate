@@ -5,8 +5,10 @@ import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
 import { Sparkles } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
+import { FixBadge } from '../../FixBadge';
 import { SeverityBadge } from '../../SeverityBadge';
 import { StatusBadge } from '../../StatusBadge';
+import { getAlertFix } from '../../utils/fix.utils';
 import { getAlertSeverity } from '../../utils/severity.utils';
 
 interface AlertInfoSectionProps {
@@ -15,6 +17,7 @@ interface AlertInfoSectionProps {
 
 export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 	const integration = resolveAlertIntegration(alert);
+	const fix = getAlertFix(alert);
 	const { data: users = [] } = useUsers();
 	const { mutate: setOwner } = useSetAlertOwner();
 
@@ -43,6 +46,7 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 				    so the owner row stays compact even in a narrow panel. */}
 				<div className="ml-auto flex items-center gap-2">
 					<SeverityBadge severity={getAlertSeverity(alert)} />
+					{fix && <FixBadge fix={fix} />}
 					<StatusBadge alert={alert} />
 					{alert.appliedEnrichments && alert.appliedEnrichments.length > 0 && (
 						<Tooltip>

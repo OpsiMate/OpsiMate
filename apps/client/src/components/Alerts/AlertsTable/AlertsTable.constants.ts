@@ -16,6 +16,7 @@ export const DEFAULT_VISIBLE_COLUMNS = ['type', 'severity', 'status', 'alertName
 export const DEFAULT_COLUMN_ORDER = [
 	'type',
 	'severity',
+	'fix',
 	'status',
 	'alertName',
 	'summary',
@@ -29,6 +30,7 @@ export const COLUMN_LABELS: Record<string, string> = {
 	type: 'Type',
 	alertName: 'Alert Name',
 	severity: 'Severity',
+	fix: 'Fix',
 	status: 'Status',
 	summary: 'Summary',
 	lastComment: 'Last Comment',
@@ -48,11 +50,12 @@ export const COLUMN_LABELS: Record<string, string> = {
 // summary column silently collapsed to 0px, letting neighbors paint over it.
 export const COLUMN_WIDTHS: Record<string, string> = {
 	select: 'w-10 min-w-10 max-w-10',
-	// Type, severity and status are icon-only columns (icon-only headers too, names in
+	// Type, severity, fix and status are icon-only columns (icon-only headers too, names in
 	// tooltips).
 	type: 'w-12 min-w-12 max-w-12',
 	alertName: 'w-[240px]',
 	severity: 'w-12 min-w-12 max-w-12',
+	fix: 'w-12 min-w-12 max-w-12',
 	status: 'w-12 min-w-12 max-w-12',
 	summary: 'w-auto',
 	// Fixed like the date columns on purpose — summary must stay the table's single
@@ -72,6 +75,7 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	select: 40,
 	type: 48,
 	severity: 48,
+	fix: 48,
 	status: 48,
 	// Shrink floor; the rendered width is content-aware (useContentColumnWidths).
 	alertName: 170,
