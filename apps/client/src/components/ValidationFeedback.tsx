@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, X } from 'lucide-react';
+import { TAG_NAME_MAX_LENGTH, TAG_NAME_MAX_LENGTH_LABEL } from './ValidationFeedback.constants';
 
 export interface ValidationRule {
 	id: string;
@@ -140,8 +141,8 @@ export const validationRules = {
 		},
 		{
 			id: 'tag-length',
-			label: 'Must be less than 50 characters',
-			validator: (value: string) => value.length <= 50,
+			label: TAG_NAME_MAX_LENGTH_LABEL,
+			validator: (value: string) => value.length <= TAG_NAME_MAX_LENGTH,
 		},
 	],
 	color: [
