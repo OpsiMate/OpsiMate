@@ -16,7 +16,7 @@ import { useCreateEnrichment, useUpdateEnrichment } from '@/hooks/queries/enrich
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EnrichmentPayload } from '@/lib/api';
 import { AlertEnrichment, AlertLink } from '@OpsiMate/shared';
-import { Link2, Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
+import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
 import { AlertLinkIcon } from '@/components/Alerts/AlertLinkIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -379,7 +379,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							<h4 className="text-sm font-semibold">Enrichment</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							What to change on matching alerts. At least one field or a summary template is required.
+							What to change on matching alerts. At least one field, link, or summary template is required.
 						</p>
 
 						<KeyValueRows
