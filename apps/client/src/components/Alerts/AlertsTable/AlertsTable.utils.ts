@@ -5,6 +5,7 @@ import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvat
 import { createServiceNameLookup } from '../utils';
 import { getAlertTagsString } from '../utils/alertTags.utils';
 import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
+import { getAlertFix, FIX_LABELS, FIX_RANK } from '../utils/fix.utils';
 import { getAlertSeverity, SEVERITY_LABELS, SEVERITY_RANK } from '../utils/severity.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
 
@@ -48,6 +49,11 @@ const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]
 		case 'severity':
 			// Rank-based so desc = critical first, info last.
 			return SEVERITY_RANK[getAlertSeverity(alert)];
+		case 'fix': {
+			// Rank-based so desc = manual first; unclassified alerts sink to rank 0.
+			const fix = getAlertFix(alert);
+			return fix ? FIX_RANK[fix] : 0;
+		}
 		case 'summary':
 			return (alert.summary || '').toLowerCase();
 		case 'lastComment':
@@ -123,6 +129,10 @@ export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = [
 			return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : 'Firing';
 		case 'severity':
 			return SEVERITY_LABELS[getAlertSeverity(alert)];
+		case 'fix': {
+			const fix = getAlertFix(alert);
+			return fix ? FIX_LABELS[fix] : 'No fix type';
+		}
 		case 'summary':
 			return alert.summary || 'Unknown';
 		case 'startsAt':

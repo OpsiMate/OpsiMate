@@ -1,9 +1,10 @@
 import { Alert } from '@OpsiMate/shared';
 
 // Tags kept out of every tag UI (labels section, tag columns, facets, TV cards). The
-// severity tag is an internal mirror of the first-class severity field — users interact
-// with severity through the dedicated column/filter/badges, never the raw tag.
-export const HIDDEN_TAG_KEYS = new Set(['severity']);
+// severity tag is an internal mirror of the first-class severity field, and the fix tag
+// backs the first-class Fix column/badge the same way — users interact with the dedicated
+// column/badges, never the raw tag.
+export const HIDDEN_TAG_KEYS = new Set(['severity', 'fix']);
 
 export const getAlertTagsArray = (alert: Alert): string[] => {
 	if (!alert.tags || typeof alert.tags !== 'object') return [];

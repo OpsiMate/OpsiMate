@@ -187,6 +187,36 @@ export function normalizeAlertSeverity(value?: string | null): AlertSeverity {
 	return Object.hasOwn(SEVERITY_SYNONYMS, key) ? SEVERITY_SYNONYMS[key] : DEFAULT_ALERT_SEVERITY;
 }
 
+// How an alert gets fixed: by hand or by automation. Carried on a `fix` tag; unlike
+// severity there is no default — most alerts have no fix classification and show nothing.
+export enum AlertFix {
+	MANUAL = 'manual',
+	AUTO = 'auto',
+}
+
+const FIX_SYNONYMS: Record<string, AlertFix> = {
+	manual: AlertFix.MANUAL,
+	'manual fix': AlertFix.MANUAL,
+	manualfix: AlertFix.MANUAL,
+	manual_fix: AlertFix.MANUAL,
+	'manual-fix': AlertFix.MANUAL,
+	auto: AlertFix.AUTO,
+	'auto fix': AlertFix.AUTO,
+	autofix: AlertFix.AUTO,
+	auto_fix: AlertFix.AUTO,
+	'auto-fix': AlertFix.AUTO,
+	automatic: AlertFix.AUTO,
+	automated: AlertFix.AUTO,
+};
+
+// Maps a free-form fix string onto the manual/auto pair; unknown or missing values are
+// null — "no classification", rendered as empty. Same hasOwn guard as severity.
+export function normalizeAlertFix(value?: string | null): AlertFix | null {
+	if (!value) return null;
+	const key = value.trim().toLowerCase();
+	return Object.hasOwn(FIX_SYNONYMS, key) ? FIX_SYNONYMS[key] : null;
+}
+
 export interface Alert {
 	id: string;
 	type: AlertType;

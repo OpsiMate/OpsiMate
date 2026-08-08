@@ -3,7 +3,7 @@ import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Activity, Plug, TriangleAlert } from 'lucide-react';
+import { Activity, Plug, TriangleAlert, Wrench } from 'lucide-react';
 import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
@@ -42,6 +42,7 @@ import { VirtualizedAlertList } from './VirtualizedAlertList';
 const HEADER_ICONS: Record<string, ReactNode> = {
 	type: <Plug className="h-3.5 w-3.5" />,
 	severity: <TriangleAlert className="h-3.5 w-3.5" />,
+	fix: <Wrench className="h-3.5 w-3.5" />,
 	status: <Activity className="h-3.5 w-3.5" />,
 };
 

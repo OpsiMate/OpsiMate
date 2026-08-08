@@ -1,0 +1,1 @@
+export { FixBadge } from './FixBadge';

@@ -10,6 +10,7 @@ import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.uti
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
 import { AlertOwnerColumn } from './Columns/AlertOwnerColumn';
+import { AlertFixColumn } from './Columns/AlertFixColumn';
 import { AlertSeverityColumn } from './Columns/AlertSeverityColumn';
 import { AlertStartsAtColumn } from './Columns/AlertStartsAtColumn';
 import { AlertStatusColumn } from './Columns/AlertStatusColumn';
@@ -169,6 +170,8 @@ export const AlertRow = ({
 						);
 					case 'severity':
 						return <AlertSeverityColumn key={column} alert={alert} className={COLUMN_WIDTHS.severity} />;
+					case 'fix':
+						return <AlertFixColumn key={column} alert={alert} className={COLUMN_WIDTHS.fix} />;
 					case 'status':
 						return <AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />;
 					case 'summary':
