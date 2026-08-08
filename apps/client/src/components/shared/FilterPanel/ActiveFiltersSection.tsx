@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+import { badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
@@ -32,15 +32,19 @@ export const ActiveFiltersSection = ({
 					const isExclusion = key.startsWith('!');
 					const field = isExclusion ? key.slice(1) : key;
 					return values.map((value) => (
-						<Badge
+						// Native button (not Badge's div) so the removable chip is focusable
+						// and keyboard-operable.
+						<button
 							key={`${key}-${value}`}
-							variant="outline"
+							type="button"
 							className={cn(
+								badgeVariants({ variant: 'outline' }),
 								'text-[10px] px-1.5 py-0.5 h-5 gap-1 cursor-pointer hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-colors group bg-background',
 								isExclusion && 'border-destructive/40 text-destructive'
 							)}
 							onClick={() => onRemoveFilter(key, value)}
 							title={`Remove ${fieldLabels[field]} ${isExclusion ? '≠' : ':'} ${getDisplayValue(field, value)}`}
+							aria-label={`Remove ${fieldLabels[field]} ${isExclusion ? '≠' : ':'} ${getDisplayValue(field, value)}`}
 						>
 							<span className={cn('font-semibold', isExclusion ? 'text-destructive' : 'text-primary')}>
 								{fieldLabels[field]}
@@ -48,7 +52,7 @@ export const ActiveFiltersSection = ({
 							</span>
 							<span className="max-w-[60px] truncate font-medium">{getDisplayValue(field, value)}</span>
 							<X className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
-						</Badge>
+						</button>
 					));
 				})}
 			</div>
