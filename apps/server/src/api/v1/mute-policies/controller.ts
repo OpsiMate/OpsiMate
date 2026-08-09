@@ -42,6 +42,8 @@ export class MutePolicyController {
 				name: data.name,
 				nameContains: data.nameContains ?? null,
 				labelMatchers: data.labelMatchers ?? [],
+				labelMatcherGroups: data.labelMatcherGroups,
+				matchAll: data.matchAll ?? false,
 				startsAt: data.startsAt ?? null,
 				endsAt: data.endsAt ?? null,
 				schedule: data.schedule ?? null,

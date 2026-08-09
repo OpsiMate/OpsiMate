@@ -1,7 +1,7 @@
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Button } from '@/components/ui/button';
 import { useActions } from '@/hooks/queries/actions';
-import { Action, Alert } from '@OpsiMate/shared';
+import { anyMatcherGroupMatchesTags, getLabelMatcherGroups, Action, Alert } from '@OpsiMate/shared';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -12,18 +12,16 @@ interface AlertActionsProps {
 }
 
 // An action shows on an alert when it has no filter, or when its filter matches:
-// the alert name contains nameContains (if set) AND every label matcher matches a tag.
+// the alert name contains nameContains (if set) AND any matcher GROUP fully matches
+// (OR between groups, AND within a group; a legacy flat matcher list is one group).
 const actionMatchesAlert = (action: Action, alert: Alert): boolean => {
 	const hasName = !!action.nameContains && action.nameContains.trim().length > 0;
-	const matchers = action.labelMatchers ?? [];
-	if (!hasName && matchers.length === 0) return true;
+	const groups = getLabelMatcherGroups(action);
+	if (!hasName && groups.length === 0) return true;
 	if (hasName && !alert.alertName?.toLowerCase().includes(action.nameContains!.trim().toLowerCase())) {
 		return false;
 	}
-	for (const m of matchers) {
-		const tagValue = alert.tags?.[m.key];
-		if (tagValue === undefined || String(tagValue) !== m.value) return false;
-	}
+	if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
 	return true;
 };
 

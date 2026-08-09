@@ -26,6 +26,7 @@ import {
 	TeamsActionConfig,
 } from '@OpsiMate/shared';
 import { Globe, Loader2, MessageSquare, Pencil, Play, Plus, Search, Ticket, Trash2, Zap } from 'lucide-react';
+import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { useMemo, useState } from 'react';
 
 const TYPE_META: Record<
@@ -66,8 +67,7 @@ const TypeBadge = ({ type }: { type: ActionType }) => {
 
 const AppliesTo = ({ action }: { action: Action }) => {
 	const hasName = !!action.nameContains && action.nameContains.trim().length > 0;
-	const matchers = action.labelMatchers ?? [];
-	if (!hasName && matchers.length === 0) {
+	if (!hasName && !hasMatcherCriteria(action)) {
 		return (
 			<Badge variant="secondary" className="text-xs">
 				All alerts
@@ -81,11 +81,7 @@ const AppliesTo = ({ action }: { action: Action }) => {
 					name ~ "{action.nameContains}"
 				</Badge>
 			)}
-			{matchers.map((m, idx) => (
-				<Badge key={idx} variant="outline" className="font-mono text-xs">
-					{m.key}={m.value}
-				</Badge>
-			))}
+			<MatcherGroupBadges criteria={action} />
 		</div>
 	);
 };

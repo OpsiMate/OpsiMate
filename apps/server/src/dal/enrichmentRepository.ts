@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
-import { AlertEnrichment, AlertEnrichmentField, AlertLink, MutePolicyLabelMatcher } from '@OpsiMate/shared';
+import { AlertEnrichment, AlertEnrichmentField, AlertLink } from '@OpsiMate/shared';
+import { parseMatcherColumn, serializeMatcherColumn } from './matcherColumn';
 import { runAsync } from './db';
 
 interface EnrichmentRow {
@@ -7,6 +8,7 @@ interface EnrichmentRow {
 	name: string;
 	name_contains: string | null;
 	label_matchers: string | null;
+	match_all?: number | null;
 	add_fields: string | null;
 	add_links: string | null;
 	summary_template: string | null;
@@ -37,7 +39,8 @@ export class EnrichmentRepository {
 		id: row.id,
 		name: row.name,
 		nameContains: row.name_contains,
-		labelMatchers: parseJsonArray<MutePolicyLabelMatcher>(row.label_matchers),
+		...parseMatcherColumn(row.label_matchers),
+		matchAll: !!row.match_all,
 		addFields: parseJsonArray<AlertEnrichmentField>(row.add_fields),
 		addLinks: parseJsonArray<AlertLink>(row.add_links),
 		summaryTemplate: row.summary_template,
@@ -58,6 +61,7 @@ export class EnrichmentRepository {
 						name             TEXT NOT NULL,
 						name_contains    TEXT,
 						label_matchers   TEXT,
+						match_all        INTEGER DEFAULT 0,
 						add_fields       TEXT,
 						add_links        TEXT,
 						summary_template TEXT,
@@ -86,19 +90,23 @@ export class EnrichmentRepository {
 			if (!hasColumn('add_links')) {
 				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN add_links TEXT`).run();
 			}
+			if (!hasColumn('match_all')) {
+				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN match_all INTEGER DEFAULT 0`).run();
+			}
 		});
 	}
 
 	async createEnrichment(data: CreateEnrichmentInput, actor?: string | null): Promise<{ lastID: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
-				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields, add_links, summary_template, priority, created_by, last_modified_by)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, match_all, add_fields, add_links, summary_template, priority, created_by, last_modified_by)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 			);
 			const result = stmt.run(
 				data.name,
 				data.nameContains ?? null,
-				JSON.stringify(data.labelMatchers ?? []),
+				serializeMatcherColumn(data),
+				data.matchAll ? 1 : 0,
 				JSON.stringify(data.addFields ?? []),
 				JSON.stringify(data.addLinks ?? []),
 				data.summaryTemplate ?? null,
@@ -140,9 +148,13 @@ export class EnrichmentRepository {
 				updates.push('name_contains = ?');
 				values.push(data.nameContains);
 			}
-			if (data.labelMatchers !== undefined) {
+			if (data.labelMatchers !== undefined || data.labelMatcherGroups !== undefined) {
 				updates.push('label_matchers = ?');
-				values.push(JSON.stringify(data.labelMatchers));
+				values.push(serializeMatcherColumn(data));
+			}
+			if (data.matchAll !== undefined) {
+				updates.push('match_all = ?');
+				values.push(data.matchAll ? 1 : 0);
 			}
 			if (data.addFields !== undefined) {
 				updates.push('add_fields = ?');

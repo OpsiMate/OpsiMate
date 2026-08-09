@@ -656,6 +656,8 @@ export type MutePolicyPayload = {
 	name: string;
 	nameContains?: string | null;
 	labelMatchers?: { key: string; value: string }[];
+	labelMatcherGroups?: { key: string; value: string }[][];
+	matchAll?: boolean;
 	startsAt?: string | null;
 	endsAt?: string | null;
 	schedule?: { daysOfWeek: number[]; startTime: string; endTime: string } | null;
@@ -691,6 +693,8 @@ export type EnrichmentPayload = {
 	name: string;
 	nameContains?: string | null;
 	labelMatchers?: { key: string; value: string }[];
+	labelMatcherGroups?: { key: string; value: string }[][];
+	matchAll?: boolean;
 	addFields?: { key: string; value: string }[];
 	addLinks?: { label: string; icon?: string; url: string }[];
 	summaryTemplate?: string | null;
@@ -712,6 +716,7 @@ export type ActionPayload = {
 	config: ActionConfig;
 	nameContains?: string | null;
 	labelMatchers?: { key: string; value: string }[];
+	labelMatcherGroups?: { key: string; value: string }[][];
 };
 
 export const actionsApi = {

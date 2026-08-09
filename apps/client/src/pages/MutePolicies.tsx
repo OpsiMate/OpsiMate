@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
 import { MutePolicy } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
+import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { useMemo, useState } from 'react';
 
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
@@ -155,7 +156,9 @@ const MutePolicies: React.FC = () => {
 			if (s.name.toLowerCase().includes(q)) return true;
 			if (s.nameContains?.toLowerCase().includes(q)) return true;
 			if (s.reason?.toLowerCase().includes(q)) return true;
-			return s.labelMatchers?.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q));
+			return (s.labelMatcherGroups ?? [s.labelMatchers ?? []])
+				.flat()
+				.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q));
 		});
 	}, [mutePolicies, search]);
 
@@ -285,16 +288,13 @@ const MutePolicies: React.FC = () => {
 																name ~ "{s.nameContains}"
 															</Badge>
 														)}
-														{(s.labelMatchers ?? []).map((m, idx) => (
-															<Badge
-																key={idx}
-																variant="outline"
-																className="font-mono text-xs"
-															>
-																{m.key}={m.value}
+														{s.matchAll && (
+															<Badge variant="secondary" className="text-xs">
+																All alerts
 															</Badge>
-														))}
-														{!s.nameContains && (s.labelMatchers ?? []).length === 0 && (
+														)}
+														{!s.matchAll && <MatcherGroupBadges criteria={s} />}
+														{!s.matchAll && !s.nameContains && !hasMatcherCriteria(s) && (
 															<span className="text-xs text-muted-foreground italic">
 																no matchers
 															</span>

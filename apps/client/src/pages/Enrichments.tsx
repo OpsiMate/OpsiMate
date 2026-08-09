@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
 import { AlertEnrichment } from '@OpsiMate/shared';
+import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -28,16 +29,13 @@ const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 				name ~ "{enrichment.nameContains}"
 			</Badge>
 		)}
-		{(enrichment.labelMatchers ?? []).map((m, idx) => (
-			<Badge
-				key={idx}
-				variant="outline"
-				className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md"
-			>
-				{m.key}={m.value}
+		{enrichment.matchAll && (
+			<Badge variant="secondary" className="text-xs rounded-md">
+				All alerts
 			</Badge>
-		))}
-		{!enrichment.nameContains && (enrichment.labelMatchers ?? []).length === 0 && (
+		)}
+		{!enrichment.matchAll && <MatcherGroupBadges criteria={enrichment} />}
+		{!enrichment.matchAll && !enrichment.nameContains && !hasMatcherCriteria(enrichment) && (
 			<span className="text-xs text-muted-foreground italic">no matchers</span>
 		)}
 	</div>
@@ -96,7 +94,11 @@ const Enrichments: React.FC = () => {
 			if (e.name.toLowerCase().includes(q)) return true;
 			if (e.nameContains?.toLowerCase().includes(q)) return true;
 			if (e.summaryTemplate?.toLowerCase().includes(q)) return true;
-			if (e.labelMatchers?.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q)))
+			if (
+				(e.labelMatcherGroups ?? [e.labelMatchers ?? []])
+					.flat()
+					.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q))
+			)
 				return true;
 			if (e.addFields?.some((f) => f.key.toLowerCase().includes(q) || f.value.toLowerCase().includes(q)))
 				return true;

@@ -1,4 +1,4 @@
-import { Alert, MutePolicy, Logger } from '@OpsiMate/shared';
+import { anyMatcherGroupMatchesTags, getLabelMatcherGroups, Alert, MutePolicy, Logger } from '@OpsiMate/shared';
 import { MutePolicyRepository, CreateMutePolicyInput, UpdateMutePolicyInput } from '../../dal/mutePolicyRepository';
 
 const logger = new Logger('bl/mutePolicy.bl');
@@ -53,21 +53,21 @@ export class MutePolicyBL {
 	}
 
 	static mutePolicyMatchesAlert(mutePolicy: MutePolicy, alert: Alert): boolean {
-		const hasName = !!mutePolicy.nameContains && mutePolicy.nameContains.trim().length > 0;
-		const matchers = mutePolicy.labelMatchers ?? [];
+		// A match-all policy mutes every alert (subject to its active window).
+		if (mutePolicy.matchAll) return true;
 
-		if (!hasName && matchers.length === 0) return false;
+		const hasName = !!mutePolicy.nameContains && mutePolicy.nameContains.trim().length > 0;
+		// OR groups: any group fully matching suffices; a legacy flat matcher list is one group.
+		const groups = getLabelMatcherGroups(mutePolicy);
+
+		if (!hasName && groups.length === 0) return false;
 
 		if (hasName) {
 			const needle = mutePolicy.nameContains!.trim().toLowerCase();
 			if (!alert.alertName?.toLowerCase().includes(needle)) return false;
 		}
 
-		for (const matcher of matchers) {
-			const tagValue = alert.tags?.[matcher.key];
-			if (tagValue === undefined) return false;
-			if (String(tagValue) !== matcher.value) return false;
-		}
+		if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
 		return true;
 	}
 
