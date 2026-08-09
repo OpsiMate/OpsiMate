@@ -228,7 +228,7 @@ const sendJira = async (cfg: JiraActionConfig, summary: string, description: str
 			message: `Jira returned ${res.status}: ${respText || res.statusText}`,
 		};
 	}
-	let key = '';
+	let key: string;
 	try {
 		key = (JSON.parse(respText) as { key?: string }).key ?? '';
 	} catch {

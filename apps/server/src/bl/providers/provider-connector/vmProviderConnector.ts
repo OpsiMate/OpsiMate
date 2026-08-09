@@ -72,7 +72,7 @@ export class VMProviderConnector implements ProviderConnector {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 			this.logger.error(`Failed to execute bash action '${action.name}': ${errorMessage}`);
-			throw new Error(`Failed to execute bash action '${action.name}': ${errorMessage}`);
+			throw new Error(`Failed to execute bash action '${action.name}': ${errorMessage}`, { cause: error });
 		}
 	}
 
