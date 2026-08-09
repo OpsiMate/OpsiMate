@@ -2,14 +2,13 @@ import { Button } from '@/components/ui/button';
 import { useCreateCustomAction, useUpdateCustomAction } from '@/hooks/queries/custom-actions';
 import { useToast } from '@/hooks/use-toast';
 import {
-	Modal,
-	ModalBody,
-	ModalCloseButton,
-	ModalContent,
-	ModalFooter,
-	ModalHeader,
-	ModalOverlay,
-} from '@chakra-ui/react';
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import { useEffect, useState } from 'react';
 import { ActionBasicForm } from './ActionBasicForm';
@@ -163,20 +162,16 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 	};
 
 	return (
-		<Modal isOpen={open} onClose={onClose} isCentered>
-			<ModalOverlay />
-			<ModalContent maxW="600px">
-				<ModalCloseButton />
-				<ModalHeader pb={4}>
-					<h2 className="text-lg font-semibold leading-none tracking-tight">
-						{action ? 'Edit Action' : 'Create New Action'}
-					</h2>
-					<p className="text-sm text-muted-foreground mt-1.5">{dialogDescription}</p>
-				</ModalHeader>
+		<Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+			<DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto">
+				<DialogHeader>
+					<DialogTitle>{action ? 'Edit Action' : 'Create New Action'}</DialogTitle>
+					<DialogDescription>{dialogDescription}</DialogDescription>
+				</DialogHeader>
 
-				<ModalBody pt={0}>{renderFormContent()}</ModalBody>
+				{renderFormContent()}
 
-				<ModalFooter pt={4}>
+				<DialogFooter>
 					<div className="flex justify-between w-full">
 						{step > 1 && (
 							<Button variant="outline" onClick={() => setStep(step - 1)}>
@@ -197,8 +192,8 @@ export const ActionModal = ({ open, onClose, action }: ActionModalProps) => {
 							)}
 						</div>
 					</div>
-				</ModalFooter>
-			</ModalContent>
-		</Modal>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 };

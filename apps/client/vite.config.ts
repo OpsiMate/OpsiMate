@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
 		},
 	},
 	optimizeDeps: {
-		include: ['@OpsiMate/shared', '@chakra-ui/react'],
+		include: ['@OpsiMate/shared'],
 		force: true, // Force re-optimization on server start
 	},
 }));
