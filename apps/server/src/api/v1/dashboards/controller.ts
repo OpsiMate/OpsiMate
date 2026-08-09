@@ -33,7 +33,7 @@ export class DashboardController {
 			return res.json({ success: true, data: { id: createdDashboardId } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error saving dashboard:', error);
 			const message = error instanceof Error ? error.message : String(error);
@@ -59,7 +59,7 @@ export class DashboardController {
 			return res.json({ success: true, data: null });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error Updating dashboard:', error);
 			const message = error instanceof Error ? error.message : String(error);
@@ -95,7 +95,7 @@ export class DashboardController {
 			return res.json({ success: true, data: tags });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error getting dashboard tags:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -130,7 +130,7 @@ export class DashboardController {
 			return res.json({ success: true, message: 'Tag added to dashboard successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			const message = error instanceof Error ? error.message : 'Internal server error';
 			if (message.includes('not found')) {
@@ -153,7 +153,7 @@ export class DashboardController {
 			return res.json({ success: true, message: 'Tag removed from dashboard successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			const message = error instanceof Error ? error.message : 'Internal server error';
 			if (message.includes('not found')) {

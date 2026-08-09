@@ -31,7 +31,7 @@ export class UsersController {
 			return res.status(201).json({ success: true, data: result, token });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof Error && error.message === 'Registration is disabled after first admin') {
 				return res.status(403).json({ success: false, error: error.message });
 			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
@@ -52,7 +52,7 @@ export class UsersController {
 			return res.status(201).json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else {
@@ -71,7 +71,7 @@ export class UsersController {
 			return res.status(200).json({ success: true, message: 'User role updated successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
@@ -86,7 +86,7 @@ export class UsersController {
 			return res.status(200).json({ success: true, data: user, token });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof Error && error.message === 'Invalid email or password') {
 				return res.status(401).json({ success: false, error: error.message });
 			} else {
@@ -189,7 +189,7 @@ export class UsersController {
 			return res.status(200).json({ success: true, data: responseData });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof Error && error.message === 'User not found') {
 				return res.status(404).json({ success: false, error: error.message });
 			} else {
@@ -298,7 +298,7 @@ export class UsersController {
 			return res.status(200).json({ success: true, message: 'Password reset email sent' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 
 			logger.error('Error processing forgot password request:', error);
@@ -317,7 +317,7 @@ export class UsersController {
 		} catch (error) {
 			logger.error('Error validating reset password token:', error);
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -332,7 +332,7 @@ export class UsersController {
 			logger.error('Error resetting password:', error);
 
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 
 			if (

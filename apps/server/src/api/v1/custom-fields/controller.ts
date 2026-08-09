@@ -39,7 +39,7 @@ export class CustomFieldsController {
 				return res.status(400).json({
 					success: false,
 					error: 'Validation error',
-					details: error.errors,
+					details: error.issues,
 				});
 			} else {
 				logger.error('Error creating custom field:', error);
@@ -127,7 +127,7 @@ export class CustomFieldsController {
 				return res.status(400).json({
 					success: false,
 					error: 'Validation error',
-					details: error.errors,
+					details: error.issues,
 				});
 			} else {
 				logger.error('Error updating custom field:', error);
@@ -185,7 +185,7 @@ export class CustomFieldsController {
 				return res.status(400).json({
 					success: false,
 					error: 'Validation error',
-					details: error.errors,
+					details: error.issues,
 				});
 			} else {
 				logger.error('Error upserting custom field value:', error);

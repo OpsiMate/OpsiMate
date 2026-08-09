@@ -36,7 +36,7 @@ export class ActionController {
 			return res.json({ success: true, data: action });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error getting action', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -59,7 +59,7 @@ export class ActionController {
 			return res.status(201).json({ success: true, data: action, message: 'Action created' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error creating action', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -73,7 +73,7 @@ export class ActionController {
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error testing action', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -92,7 +92,7 @@ export class ActionController {
 			return res.json({ success: true, data: preview });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error previewing action', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -111,7 +111,7 @@ export class ActionController {
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error running action on alert', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -142,7 +142,7 @@ export class ActionController {
 			return res.json({ success: true, data: updated, message: 'Action updated' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating action', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -160,7 +160,7 @@ export class ActionController {
 			return res.json({ success: true, message: 'Action deleted' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error deleting action', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

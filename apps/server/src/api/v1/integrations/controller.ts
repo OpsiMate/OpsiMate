@@ -62,7 +62,7 @@ export class IntegrationController {
 			return res.status(201).json({ success: true, data: createdIntegration });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error creating integration:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -87,7 +87,7 @@ export class IntegrationController {
 			});
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error updating integration:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -123,7 +123,7 @@ export class IntegrationController {
 				res.status(400).json({
 					success: false,
 					error: 'Validation error',
-					details: error.errors,
+					details: error.issues,
 				});
 				return;
 			} else {
