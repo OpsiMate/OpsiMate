@@ -138,7 +138,7 @@ export class ProviderBL {
 			return await providerConnector.discoverServices(provider);
 		} catch (error) {
 			logger.error(`Error discovering services in provider`, error);
-			throw new Error(`Failed to discover services for provider ${providerId}`);
+			throw new Error(`Failed to discover services for provider ${providerId}`, { cause: error });
 		}
 	}
 
@@ -183,7 +183,9 @@ export class ProviderBL {
 			};
 		} catch (error) {
 			logger.error(`Error refreshing provider ${providerId}:`, error);
-			throw new Error(`Failed to refresh provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			throw new Error(`Failed to refresh provider: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+				cause: error,
+			});
 		}
 	}
 
