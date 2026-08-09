@@ -358,8 +358,8 @@ importers:
         specifier: ^1.18.0
         version: 1.18.0
       uuid:
-        specifier: ^13.0.2
-        version: 13.0.2
+        specifier: ^14.0.1
+        version: 14.0.1
       vite:
         specifier: ^8.2.0
         version: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.44.1)(tsx@4.23.8)(yaml@2.8.1)
@@ -5425,8 +5425,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@13.0.2:
-    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
+  uuid@14.0.1:
+    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -7742,7 +7742,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.44.1)(tsx@4.23.8)(yaml@2.8.1))
+      vitest: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.44.1)(tsx@4.23.8)(yaml@2.8.1))
 
   '@vitest/expect@4.1.10':
     dependencies:
@@ -7798,7 +7798,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.44.1)(tsx@4.23.8)(yaml@2.8.1))
+      vitest: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.15.0(@types/node@22.20.1)(typescript@5.9.3))(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.44.1)(tsx@4.23.8)(yaml@2.8.1))
 
   '@vitest/utils@4.1.10':
     dependencies:
@@ -10913,7 +10913,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@13.0.2: {}
+  uuid@14.0.1: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
