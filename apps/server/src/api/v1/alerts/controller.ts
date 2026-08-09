@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Request, Response } from 'express';
 import {
 	AlertHistory,
@@ -22,7 +23,6 @@ import {
 	ZabbixWebhookPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
-import { v4 } from 'uuid';
 import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
@@ -128,7 +128,7 @@ export class AlertController {
 			if (!payload?.heartbeat || !payload?.monitor) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
-					id: v4(),
+					id: randomUUID(),
 					type: 'UptimeKuma',
 					status: AlertStatus.FIRING,
 					tags: {},
@@ -200,7 +200,7 @@ export class AlertController {
 			if (!payload.event_id && !payload.trigger_id) {
 				logger.info('Zabbix Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
-					id: v4(),
+					id: randomUUID(),
 					type: 'Zabbix',
 					status: AlertStatus.FIRING,
 					tags: {},
