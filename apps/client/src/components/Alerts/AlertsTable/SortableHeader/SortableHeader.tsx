@@ -52,12 +52,22 @@ export const SortableHeader = ({
 		}
 	};
 
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLTableCellElement>) => {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			handleClick();
+		}
+	};
+
 	return (
 		<TableHead
 			style={style}
 			className={cn('h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground', className)}
 			onClick={handleClick}
+			onKeyDown={handleKeyDown}
+			tabIndex={0}
 			aria-label={label}
+			aria-sort={sortField === column ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
 		>
 			<TooltipProvider>
 				<Tooltip>
