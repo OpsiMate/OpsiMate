@@ -23,7 +23,7 @@
 		"fix": "npm run format-fix && npm run lint-fix"
 	},
 	"dependencies": {
-		"zod": "^3.25.76"
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@types/node": "^22.20.1",
