@@ -357,9 +357,6 @@ importers:
       sshpk:
         specifier: ^1.18.0
         version: 1.18.0
-      uuid:
-        specifier: ^13.0.2
-        version: 13.0.2
       vite:
         specifier: ^8.2.0
         version: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.44.1)(tsx@4.23.8)(yaml@2.8.1)
@@ -5424,10 +5421,6 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
-
-  uuid@13.0.2:
-    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
-    hasBin: true
 
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
@@ -10912,8 +10905,6 @@ snapshots:
       '@types/react': 19.2.18
 
   util-deprecate@1.0.2: {}
-
-  uuid@13.0.2: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
