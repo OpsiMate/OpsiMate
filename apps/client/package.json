@@ -111,7 +111,7 @@
 		"eslint-plugin-react-hooks": "^5.2.0",
 		"eslint-plugin-react-refresh": "^0.5.3",
 		"globals": "^17.9.0",
-		"jsdom": "^27.4.0",
+		"jsdom": "^30.0.1",
 		"lovable-tagger": "^1.3.3",
 		"msw": "^2.15.0",
 		"postcss": "^8.5.25",
