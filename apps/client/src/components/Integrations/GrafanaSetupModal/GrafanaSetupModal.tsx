@@ -158,7 +158,9 @@ export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps
 								<Button
 									variant="link"
 									className="p-0 h-auto text-blue-600 hover:text-blue-700"
-									onClick={() => window.open(GRAFANA_CONTACT_POINTS_DOCS_URL, '_blank')}
+									onClick={() =>
+										window.open(GRAFANA_CONTACT_POINTS_DOCS_URL, '_blank', 'noopener,noreferrer')
+									}
 								>
 									<span>Open Grafana contact points documentation</span>
 									<ExternalLink className="ml-1 h-3 w-3" />

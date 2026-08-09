@@ -158,7 +158,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											onClick={() =>
 												window.open(
 													'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -183,7 +184,11 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 										<div
 											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
 											onClick={() =>
-												window.open('https://github.com/opsimate/opsimate', '_blank')
+												window.open(
+													'https://github.com/opsimate/opsimate',
+													'_blank',
+													'noopener,noreferrer'
+												)
 											}
 										>
 											<img
