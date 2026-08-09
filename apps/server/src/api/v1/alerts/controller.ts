@@ -70,7 +70,7 @@ export class AlertController {
 			return res.json({ success: true, data: settings });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating silence reset settings:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -97,7 +97,7 @@ export class AlertController {
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error silencing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -403,7 +403,7 @@ export class AlertController {
 			return res.status(200).json({ success: true, data: { alertId } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error creating datadog alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -520,7 +520,7 @@ export class AlertController {
 			return res.status(200).json({ success: true, data: { processed: processedIds } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error creating grafana alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -551,7 +551,7 @@ export class AlertController {
 			return res.status(200).json({ success: true, data: { alertId: alert.id } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error creating integration:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -596,7 +596,7 @@ export class AlertController {
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error deleting alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -680,7 +680,7 @@ export class AlertController {
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error setting alert owner:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -750,7 +750,7 @@ export class AlertController {
 			return res.status(201).json({ success: true, data: { comment: newComment } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error creating comment:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -777,7 +777,7 @@ export class AlertController {
 			return res.json({ success: true, data: { comment: updatedComment } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating comment:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

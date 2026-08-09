@@ -45,7 +45,7 @@ export class CustomActionsController {
 			return res.status(201).json({ success: true, data: { id } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error creating custom action:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -76,7 +76,7 @@ export class CustomActionsController {
 			return res.status(200).json({ success: true });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error updating custom action:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });

@@ -42,7 +42,10 @@ const serverSchema = z
 					message: 'Must be a valid IP address or hostname',
 				}
 			),
-		port: z.coerce.number().min(1).max(65535),
+		// zod 4 types plain coerce input as unknown, which breaks zodResolver's
+		// Resolver generics; pinning <number> keeps the runtime string->number
+		// coercion while inferring a number field for react-hook-form.
+		port: z.coerce.number<number>().min(1).max(65535),
 		username: z
 			.string()
 			.min(1, 'Username is required')

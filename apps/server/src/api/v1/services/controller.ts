@@ -108,7 +108,7 @@ export class ServiceController {
 			});
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof ProviderNotFound) {
 				return res.status(404).json({ success: false, error: `Provider with ID ${error.provider} not found` });
 			} else if (error instanceof ServiceNotFound) {
@@ -143,7 +143,7 @@ export class ServiceController {
 			return res.json({ success: true, data: enrichedServices[0] });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error getting service:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -172,7 +172,7 @@ export class ServiceController {
 			}
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error updating service:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -205,7 +205,7 @@ export class ServiceController {
 			res.json({ success: true, message: 'Service deleted successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof ServiceNotFound) {
 				res.status(404).json({ success: false, error: `Service with ID ${error.serviceId} not found` });
 			} else {
@@ -242,7 +242,7 @@ export class ServiceController {
 			}
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error starting service:', error);
 				const message = error instanceof Error ? error.message : String(error);
@@ -278,7 +278,7 @@ export class ServiceController {
 			}
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error stopping service:', error);
 				const message = error instanceof Error ? error.message : String(error);
@@ -307,7 +307,7 @@ export class ServiceController {
 			return res.json({ success: true, data: logs, message: 'Service logs retrieved successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error getting logs:', error);
 				const message = error instanceof Error ? error.message : String(error);
@@ -336,7 +336,7 @@ export class ServiceController {
 			return res.json({ success: true, data: pods, message: 'Service pods retrieved successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error getting pods:', error);
 				const message = error instanceof Error ? error.message : String(error);

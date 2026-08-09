@@ -33,7 +33,7 @@ export class TagController {
 			return res.json({ success: true, data: tag });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error getting tag by ID:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -49,7 +49,7 @@ export class TagController {
 			return res.status(201).json({ success: true, data: newTag, message: 'Tag created successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error creating tag:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -73,7 +73,7 @@ export class TagController {
 			return res.json({ success: true, data: updatedTag, message: 'Tag updated successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error updating tag:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -95,7 +95,7 @@ export class TagController {
 			return res.json({ success: true, message: 'Tag deleted successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error deleting tag:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -127,7 +127,7 @@ export class TagController {
 			return res.json({ success: true, message: 'Tag added to service successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error adding tag to service:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -154,7 +154,7 @@ export class TagController {
 			return res.json({ success: true, message: 'Tag removed from service successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error removing tag from service:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -178,7 +178,7 @@ export class TagController {
 			return res.json({ success: true, data: tags });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error getting service tags:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });

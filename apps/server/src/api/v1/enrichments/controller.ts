@@ -34,7 +34,7 @@ export class EnrichmentController {
 			return res.json({ success: true, data: enrichment });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error getting enrichment', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -59,7 +59,7 @@ export class EnrichmentController {
 			return res.status(201).json({ success: true, data: enrichment, message: 'Enrichment created' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error creating enrichment', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -80,7 +80,7 @@ export class EnrichmentController {
 			return res.json({ success: true, data: updated, message: 'Enrichment updated' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating enrichment', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -98,7 +98,7 @@ export class EnrichmentController {
 			return res.json({ success: true, message: 'Enrichment deleted' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error deleting enrichment', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

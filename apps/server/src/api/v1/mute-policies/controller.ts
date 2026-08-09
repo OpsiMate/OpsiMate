@@ -28,7 +28,7 @@ export class MutePolicyController {
 			return res.json({ success: true, data: mutePolicy });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error getting mute policy', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -50,7 +50,7 @@ export class MutePolicyController {
 			return res.status(201).json({ success: true, data: mutePolicy, message: 'Mute policy created' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error creating mute policy', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -71,7 +71,7 @@ export class MutePolicyController {
 			return res.json({ success: true, data: updated, message: 'Mute policy updated' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating mute policy', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -89,7 +89,7 @@ export class MutePolicyController {
 			return res.json({ success: true, message: 'Mute policy deleted' });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error deleting mute policy', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

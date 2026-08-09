@@ -42,7 +42,7 @@ export class RetentionController {
 			return res.json({ success: true, data: config });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating retention config', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -58,7 +58,7 @@ export class RetentionController {
 			return res.json({ success: true, data: policy });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating retention policy', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

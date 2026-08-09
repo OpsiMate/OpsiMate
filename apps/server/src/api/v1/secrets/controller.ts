@@ -58,7 +58,7 @@ export class SecretsController {
 			return res.status(201).json({ success: true, data: { id: createdSecretId } });
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error creating secret:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -119,7 +119,7 @@ export class SecretsController {
 			}
 		} catch (error) {
 			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error updating secret:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
