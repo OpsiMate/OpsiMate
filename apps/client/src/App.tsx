@@ -1,7 +1,7 @@
 // src/App.tsx
 import { Alerts, AuthGuard, MobileWebOverlay, Profile, ThemeProvider } from '@/components';
 import { Dashboards } from '@/components/Dashboards';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ErrorBoundary, ErrorBoundaryInner } from '@/components/ErrorBoundary';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { UnsavedChangesDialog } from '@/components/shared';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -50,40 +50,46 @@ const App: React.FC = () => {
 				storageKey="theme"
 			>
 				<QueryClientProvider client={queryClient}>
-					<DashboardProvider>
-						<TooltipProvider>
-							<Toaster />
-							<Sonner />
-							<UnsavedChangesDialogWrapper />
+					{/* Router-free outer boundary: DashboardProvider renders ABOVE the
+					    pathname-keyed ErrorBoundary inside BrowserRouter, so a crash in the
+					    provider itself (e.g. a malformed persisted dashboard state) used to
+					    unmount everything into a blank white page with no card. */}
+					<ErrorBoundaryInner>
+						<DashboardProvider>
+							<TooltipProvider>
+								<Toaster />
+								<Sonner />
+								<UnsavedChangesDialogWrapper />
 
-							<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-								<ErrorBoundary>
-									<AuthGuard>
-										<Routes>
-											<Route path="/" element={<Alerts />} />
-											<Route path="/dashboards" element={<Dashboards />} />
-											<Route path="/integrations" element={<Integrations />} />
-											<Route path="/settings" element={<Settings />} />
-											<Route path="/profile" element={<Profile />} />
-											<Route path="/login" element={<Login />} />
-											<Route path="/register" element={<Register />} />
-											<Route path="/alerts" element={<Alerts />} />
-											<Route path="/mute-policies" element={<MutePolicies />} />
-											<Route path="/oncall" element={<Oncall />} />
-											<Route path="/actions" element={<Actions />} />
-											<Route path="/enrichments" element={<Enrichments />} />
-											<Route path="/forgot-password" element={<ForgotPassword />} />
-											<Route path="/reset-password" element={<ResetPasswordByEmail />} />
-											<Route path="*" element={<NotFound />} />
-										</Routes>
-									</AuthGuard>
-								</ErrorBoundary>
-							</BrowserRouter>
+								<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+									<ErrorBoundary>
+										<AuthGuard>
+											<Routes>
+												<Route path="/" element={<Alerts />} />
+												<Route path="/dashboards" element={<Dashboards />} />
+												<Route path="/integrations" element={<Integrations />} />
+												<Route path="/settings" element={<Settings />} />
+												<Route path="/profile" element={<Profile />} />
+												<Route path="/login" element={<Login />} />
+												<Route path="/register" element={<Register />} />
+												<Route path="/alerts" element={<Alerts />} />
+												<Route path="/mute-policies" element={<MutePolicies />} />
+												<Route path="/oncall" element={<Oncall />} />
+												<Route path="/actions" element={<Actions />} />
+												<Route path="/enrichments" element={<Enrichments />} />
+												<Route path="/forgot-password" element={<ForgotPassword />} />
+												<Route path="/reset-password" element={<ResetPasswordByEmail />} />
+												<Route path="*" element={<NotFound />} />
+											</Routes>
+										</AuthGuard>
+									</ErrorBoundary>
+								</BrowserRouter>
 
-							<ScrollToTopButton />
-							<MobileWebOverlay />
-						</TooltipProvider>
-					</DashboardProvider>
+								<ScrollToTopButton />
+								<MobileWebOverlay />
+							</TooltipProvider>
+						</DashboardProvider>
+					</ErrorBoundaryInner>
 				</QueryClientProvider>
 			</ThemeProvider>
 		</ChakraProvider>

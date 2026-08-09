@@ -5,10 +5,13 @@ const logger = new Logger('DashboardContext.utils');
 
 export const DASHBOARD_STORAGE_KEY = 'OpsiMate-active-dashboard';
 
-export const serializeTimeRange = (timeRange: TimeRange): DashboardTimeRange => ({
-	from: timeRange.from?.toISOString() ?? null,
-	to: timeRange.to?.toISOString() ?? null,
-	preset: timeRange.preset,
+// Tolerates a missing timeRange: dashboard states built by older code paths (or persisted
+// before the field existed) can lack it, and this runs inside DashboardProvider — above
+// the router-scoped ErrorBoundary — where an exception used to mean a blank white page.
+export const serializeTimeRange = (timeRange: TimeRange | undefined | null): DashboardTimeRange => ({
+	from: timeRange?.from?.toISOString() ?? null,
+	to: timeRange?.to?.toISOString() ?? null,
+	preset: timeRange?.preset ?? null,
 });
 
 export const deserializeTimeRange = (stored: DashboardTimeRange | undefined): TimeRange => {

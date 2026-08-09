@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useDashboard } from '@/context/DashboardContext';
+import { deserializeTimeRange } from '@/context/DashboardContext.utils';
 import {
 	useAddTagToDashboard,
 	useDeleteDashboard,
@@ -80,6 +81,11 @@ export const Dashboards = () => {
 
 	const handleDashboardClick = useCallback(
 		(dashboard: Dashboard) => {
+			// Mirrors Alerts.tsx's loader exactly. This used to omit timeRange (the first
+			// time-range change then crashed DashboardProvider's isDirty memo on
+			// serializeTimeRange(undefined) — a blank white page, since the provider sits
+			// above the ErrorBoundary) and wiped columnOrder to [] — discarding the saved
+			// arrangement whenever a dashboard was opened from this page.
 			setInitialState({
 				id: dashboard.id,
 				name: dashboard.name,
@@ -87,9 +93,10 @@ export const Dashboards = () => {
 				description: dashboard.description || '',
 				visibleColumns: dashboard.visibleColumns || [],
 				filters: dashboard.filters || {},
-				columnOrder: [],
+				columnOrder: dashboard.columnOrder || [],
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
+				timeRange: deserializeTimeRange(dashboard.timeRange),
 			});
 			navigate(`/alerts${location.search}`);
 		},
