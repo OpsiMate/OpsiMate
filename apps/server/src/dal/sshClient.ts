@@ -201,7 +201,7 @@ export async function getServiceLogs(provider: Provider, serviceName: string): P
 		return logs.length > 0 ? logs : ['No error logs found in the last 24 hours'];
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-		throw new Error(`Failed to get logs for service ${serviceName}: ${errorMessage}`);
+		throw new Error(`Failed to get logs for service ${serviceName}: ${errorMessage}`, { cause: error });
 	} finally {
 		ssh.dispose();
 	}
@@ -267,7 +267,7 @@ export async function getSystemServiceLogs(provider: Provider, serviceName: stri
 		return logs.length > 0 ? logs : ['No logs found in the last 24 hours'];
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-		throw new Error(`Failed to get logs for system service ${serviceName}: ${errorMessage}`);
+		throw new Error(`Failed to get logs for system service ${serviceName}: ${errorMessage}`, { cause: error });
 	} finally {
 		ssh.dispose();
 	}
