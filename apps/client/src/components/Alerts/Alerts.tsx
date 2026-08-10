@@ -9,7 +9,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
-import { deserializeTimeRange, serializeTimeRange } from '@/context/DashboardContext.utils';
+import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
 import { useAlerts, useResolvedAlerts, useDeleteResolvedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
@@ -44,7 +44,6 @@ import {
 	useAlertTagKeys,
 	useColumnManagement,
 	useExpandRows,
-	useSeverityColors,
 } from './hooks';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
@@ -82,8 +81,9 @@ const Alerts = () => {
 	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
-	const [splitByAssignment, setSplitByAssignment] = useState(false);
-	const { severityColors, toggleSeverityColors } = useSeverityColors();
+	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
+	// the user actually works with; the draft state is persisted per-browser meanwhile.
+	const { splitByAssignment, severityColors } = dashboardState;
 	const { expandRows, toggleExpandRows } = useExpandRows();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
@@ -165,6 +165,8 @@ const Alerts = () => {
 			// on screen is not the arrangement that comes back on the next load.
 			visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
 			columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
+			splitByAssignment: dashboardState.splitByAssignment,
+			severityColors: dashboardState.severityColors,
 			query: dashboardState.query,
 			groupBy: dashboardState.groupBy,
 			timeRange: serializeTimeRange(dashboardState.timeRange),
@@ -426,6 +428,11 @@ const Alerts = () => {
 				visibleColumns: dashboard.visibleColumns || [],
 				filters: dashboard.filters || {},
 				columnOrder: dashboard.columnOrder || [],
+				splitByAssignment: dashboard.splitByAssignment ?? false,
+				// ?? not ||: a dashboard saved with severity colors explicitly OFF must stay
+				// off, and only a dashboard with no opinion at all falls back to the legacy
+				// per-browser preference.
+				severityColors: dashboard.severityColors ?? readLegacySeverityColors(),
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
 				timeRange: deserializeTimeRange(dashboard.timeRange),
@@ -590,7 +597,7 @@ const Alerts = () => {
 									<Button
 										variant={splitByAssignment ? 'default' : 'outline'}
 										size="sm"
-										onClick={() => setSplitByAssignment((v) => !v)}
+										onClick={() => updateDashboardField('splitByAssignment', !splitByAssignment)}
 										className="gap-1.5 shrink-0"
 										title="Split into Unassigned and Assigned"
 									>
@@ -602,7 +609,7 @@ const Alerts = () => {
 								<Button
 									variant={severityColors ? 'default' : 'outline'}
 									size="sm"
-									onClick={toggleSeverityColors}
+									onClick={() => updateDashboardField('severityColors', !severityColors)}
 									className="gap-1.5 shrink-0"
 									title="Color rows by severity"
 								>

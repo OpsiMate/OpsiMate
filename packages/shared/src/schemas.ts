@@ -149,6 +149,10 @@ export const CreateDashboardSchema = z.object({
 	filters: z.record(z.unknown()),
 	visibleColumns: z.array(z.string()),
 	columnOrder: z.array(z.string()).optional(),
+	// Alerts toolbar toggles. This schema validates BOTH create and update (the controller
+	// reuses it), so adding them here is enough for edits to keep them.
+	splitByAssignment: z.boolean().optional(),
+	severityColors: z.boolean().optional(),
 	query: z.string(),
 	groupBy: z.array(z.string()),
 	timeRange: z
