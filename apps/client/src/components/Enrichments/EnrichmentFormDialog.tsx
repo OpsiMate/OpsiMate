@@ -10,6 +10,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -209,6 +210,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		alerts.forEach((a) => Object.keys(a.tags ?? {}).forEach((k) => keys.add(k)));
 		return Array.from(keys).sort();
 	}, [alerts]);
+	const matcherSuggestions = useAlertTagKeys(alerts);
 
 	const summaryRef = useRef<HTMLTextAreaElement>(null);
 
@@ -391,6 +393,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							keyPlaceholder="key (e.g. severity)"
 							valuePlaceholder="value (e.g. critical)"
 							disabled={matchAll}
+							suggestions={matcherSuggestions}
 						/>
 					</div>
 

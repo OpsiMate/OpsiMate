@@ -11,6 +11,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { useAlerts } from '@/hooks/queries/alerts';
+import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -72,6 +74,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 	const [nameContains, setNameContains] = useState('');
 	const [matcherGroups, setMatcherGroups] = useState<Matcher[][]>([]);
 	const [matchAll, setMatchAll] = useState(false);
+	const { data: alerts = [] } = useAlerts();
+	const matcherSuggestions = useAlertTagKeys(alerts);
 	const [reason, setReason] = useState('');
 	const [mode, setMode] = useState<MutePolicyMode>('one-time');
 	const [hasStart, setHasStart] = useState(false);
@@ -286,7 +290,12 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 							/>
 						</div>
 
-						<MatcherGroupsEditor groups={matcherGroups} onChange={setMatcherGroups} disabled={matchAll} />
+						<MatcherGroupsEditor
+							groups={matcherGroups}
+							onChange={setMatcherGroups}
+							disabled={matchAll}
+							suggestions={matcherSuggestions}
+						/>
 					</div>
 
 					<div className="rounded-lg border bg-muted/30 p-4 space-y-4">
