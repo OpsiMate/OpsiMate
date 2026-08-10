@@ -1,5 +1,11 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { clearStorage, loadFromStorage, saveToStorage, serializeTimeRange } from './DashboardContext.utils';
+import {
+	clearStorage,
+	createFreshState,
+	loadFromStorage,
+	saveToStorage,
+	serializeTimeRange,
+} from './DashboardContext.utils';
 
 export type DashboardType = 'services' | 'alerts';
 
@@ -155,8 +161,12 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	const resetDashboard = useCallback(() => {
-		setDashboardState(defaultState);
-		setInitialStateState(defaultState);
+		// Same fresh-draft state a first visit gets, so starting a new dashboard doesn't
+		// drop the legacy severity-colors preference that startup honours. One object for
+		// both slots keeps them equal, so the new dashboard isn't born dirty.
+		const fresh = createFreshState(defaultState);
+		setDashboardState(fresh);
+		setInitialStateState(fresh);
 		setHasUserMadeChanges(false);
 		clearStorage();
 	}, []);

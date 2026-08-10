@@ -19,6 +19,14 @@ export const readLegacySeverityColors = (): boolean => {
 	}
 };
 
+// The state for a dashboard with no stored values of its own — first visit, or "New
+// dashboard". Every such path goes through here so they agree: the legacy per-browser
+// severity-colors preference applied everywhere, so a fresh draft keeps honouring it.
+export const createFreshState = (defaultState: DashboardState): DashboardState => ({
+	...defaultState,
+	severityColors: readLegacySeverityColors(),
+});
+
 // Tolerates a missing timeRange: dashboard states built by older code paths (or persisted
 // before the field existed) can lack it, and this runs inside DashboardProvider — above
 // the router-scoped ErrorBoundary — where an exception used to mean a blank white page.
@@ -65,10 +73,9 @@ export const loadFromStorage = (defaultState: DashboardState): DashboardState =>
 	} catch (e) {
 		logger.warn('Failed to load dashboard from localStorage:', e);
 	}
-	// No stored draft (or an unreadable one): still honour the legacy per-browser flag.
-	// Both dashboardState and initialState load through here, so they agree and the
-	// dashboard doesn't start out looking dirty.
-	return { ...defaultState, severityColors: readLegacySeverityColors() };
+	// No stored draft (or an unreadable one). Both dashboardState and initialState load
+	// through here, so they agree and the dashboard doesn't start out looking dirty.
+	return createFreshState(defaultState);
 };
 
 export const saveToStorage = (state: DashboardState): void => {

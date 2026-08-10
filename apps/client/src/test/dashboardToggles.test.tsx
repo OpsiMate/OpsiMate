@@ -88,12 +88,42 @@ describe('toolbar toggles mark the dashboard dirty', () => {
 		expect(result.current.isDirty).toBe(false);
 	});
 
-	test('the draft state persists across a remount, so a reload keeps the toggles', () => {
-		const first = renderHook(() => useDashboard(), { wrapper });
-		act(() => first.result.current.updateDashboardField('splitByAssignment', true));
-		first.unmount();
+	test.each([['splitByAssignment' as const], ['severityColors' as const]])(
+		'%s survives a remount, so a reload keeps it',
+		(field) => {
+			const first = renderHook(() => useDashboard(), { wrapper });
+			act(() => first.result.current.updateDashboardField(field, true));
+			first.unmount();
 
-		const second = renderHook(() => useDashboard(), { wrapper });
-		expect(second.result.current.dashboardState.splitByAssignment).toBe(true);
+			const second = renderHook(() => useDashboard(), { wrapper });
+			expect(second.result.current.dashboardState[field]).toBe(true);
+		}
+	);
+});
+
+describe('starting a new dashboard', () => {
+	test('keeps honouring the legacy severity-colors preference', () => {
+		localStorage.setItem(LEGACY_KEY, 'true');
+		const { result } = renderHook(() => useDashboard(), { wrapper });
+
+		act(() => result.current.resetDashboard());
+
+		// A fresh draft is the same situation as a first visit, which does inherit the
+		// preference — the two paths must not disagree.
+		expect(result.current.dashboardState.severityColors).toBe(true);
+		expect(result.current.isDirty).toBe(false);
+	});
+
+	test('clears everything else back to defaults', () => {
+		const { result } = renderHook(() => useDashboard(), { wrapper });
+		act(() => result.current.updateDashboardField('splitByAssignment', true));
+		act(() => result.current.updateDashboardField('query', 'cpu'));
+
+		act(() => result.current.resetDashboard());
+
+		expect(result.current.dashboardState.splitByAssignment).toBe(false);
+		expect(result.current.dashboardState.query).toBe('');
+		expect(result.current.dashboardState.severityColors).toBe(false);
+		expect(result.current.isDirty).toBe(false);
 	});
 });
