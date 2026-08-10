@@ -69,3 +69,96 @@ describe('Dashboards API — column order persistence', () => {
 		expect(legacy?.columnOrder).toBeUndefined();
 	});
 });
+
+// The alerts toolbar toggles are booleans, but SQLite has no boolean type and better-sqlite3
+// refuses to bind one ("can only bind numbers, strings, bigints, buffers, and null") — so
+// these round-trips are what prove the 0/1 conversion is in place at both ends. An absent
+// value must stay absent rather than collapsing to false: the client resolves "never
+// configured" from the user's legacy per-browser preference.
+describe('Dashboards API — toolbar toggle persistence', () => {
+	const base = {
+		name: 'toggles test',
+		type: 'alerts' as const,
+		description: '',
+		filters: {},
+		visibleColumns: ['type', 'alertName'],
+		query: '',
+		groupBy: [],
+	};
+
+	interface ToggleDashboard {
+		id: string | number;
+		name: string;
+		splitByAssignment?: boolean;
+		severityColors?: boolean;
+	}
+
+	const findById = async (id: string): Promise<ToggleDashboard | undefined> => {
+		const list = await app.get('/api/v1/dashboards').set('Authorization', `Bearer ${jwtToken}`);
+		return (list.body.data as ToggleDashboard[]).find((d) => String(d.id) === id);
+	};
+
+	test('both toggles survive a create as real booleans', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, splitByAssignment: true, severityColors: true });
+		expect(created.status).toBe(200);
+
+		const saved = await findById(String(created.body.data.id));
+		// Strict equality, not truthiness: a 0/1 leaking through would pass a loose check.
+		expect(saved?.splitByAssignment).toBe(true);
+		expect(saved?.severityColors).toBe(true);
+	});
+
+	test('an explicit false is stored as false, not dropped', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, name: 'explicit false', splitByAssignment: false, severityColors: false });
+		expect(created.status).toBe(200);
+
+		const saved = await findById(String(created.body.data.id));
+		expect(saved?.splitByAssignment).toBe(false);
+		expect(saved?.severityColors).toBe(false);
+	});
+
+	test('updates round-trip both directions', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, name: 'update round trip', splitByAssignment: true, severityColors: false });
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const updated = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, name: 'update round trip', splitByAssignment: false, severityColors: true });
+		expect(updated.status).toBe(200);
+
+		const saved = await findById(id);
+		expect(saved?.splitByAssignment).toBe(false);
+		expect(saved?.severityColors).toBe(true);
+	});
+
+	test('a dashboard saved without the toggles returns them as undefined', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, name: 'no toggles' });
+		expect(created.status).toBe(200);
+
+		const saved = await findById(String(created.body.data.id));
+		expect(saved?.splitByAssignment).toBeUndefined();
+		expect(saved?.severityColors).toBeUndefined();
+	});
+
+	test('a non-boolean toggle is rejected', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, name: 'bad toggle', severityColors: 'yes' });
+		expect(created.status).toBe(400);
+	});
+});

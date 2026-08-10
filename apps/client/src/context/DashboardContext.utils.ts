@@ -5,6 +5,28 @@ const logger = new Logger('DashboardContext.utils');
 
 export const DASHBOARD_STORAGE_KEY = 'OpsiMate-active-dashboard';
 
+// Where "Severity colors" lived before it became a dashboard field: a per-browser flag.
+// It survives as the fallback for anything with no dashboard value of its own, so users
+// who had it on don't lose it on upgrade.
+const LEGACY_SEVERITY_COLORS_KEY = 'opsimate-alerts-severity-colors';
+
+export const readLegacySeverityColors = (): boolean => {
+	try {
+		return localStorage.getItem(LEGACY_SEVERITY_COLORS_KEY) === 'true';
+	} catch (e) {
+		logger.warn('Failed to read the legacy severity-colors preference:', e);
+		return false;
+	}
+};
+
+// The state for a dashboard with no stored values of its own — first visit, or "New
+// dashboard". Every such path goes through here so they agree: the legacy per-browser
+// severity-colors preference applied everywhere, so a fresh draft keeps honouring it.
+export const createFreshState = (defaultState: DashboardState): DashboardState => ({
+	...defaultState,
+	severityColors: readLegacySeverityColors(),
+});
+
 // Tolerates a missing timeRange: dashboard states built by older code paths (or persisted
 // before the field existed) can lack it, and this runs inside DashboardProvider — above
 // the router-scoped ErrorBoundary — where an exception used to mean a blank white page.
@@ -41,12 +63,19 @@ export const loadFromStorage = (defaultState: DashboardState): DashboardState =>
 				...defaultState,
 				...parsed,
 				timeRange: deserializeTimeRange(parsed.timeRange),
+				// A draft stored before severity colors became a dashboard field has no
+				// opinion on it; inherit the old per-browser flag rather than silently
+				// turning it off. Once the draft carries the field, it wins.
+				severityColors:
+					typeof parsed.severityColors === 'boolean' ? parsed.severityColors : readLegacySeverityColors(),
 			};
 		}
 	} catch (e) {
 		logger.warn('Failed to load dashboard from localStorage:', e);
 	}
-	return defaultState;
+	// No stored draft (or an unreadable one). Both dashboardState and initialState load
+	// through here, so they agree and the dashboard doesn't start out looking dirty.
+	return createFreshState(defaultState);
 };
 
 export const saveToStorage = (state: DashboardState): void => {

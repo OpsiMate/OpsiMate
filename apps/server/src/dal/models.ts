@@ -48,6 +48,10 @@ export interface DashboardRow {
 	filters: string; // Record<string, string>
 	visible_columns: string; // string[]
 	column_order?: string | null; // string[]
+	// SQLite has no boolean type: these are 0/1, or NULL on rows saved before the toggles
+	// existed. Typed as number so the 0/1-to-boolean conversion can't be forgotten.
+	split_by_assignment?: number | null;
+	severity_colors?: number | null;
 	query: string;
 	group_by: string; // string[]
 	time_range?: string | null; // DashboardTimeRange

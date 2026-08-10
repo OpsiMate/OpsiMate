@@ -9,6 +9,10 @@ export interface Dashboard {
 	visibleColumns: string[];
 	// User-arranged base-column order; absent on dashboards saved before reordering shipped.
 	columnOrder?: string[];
+	// Alerts toolbar toggles. Absent on dashboards saved before they were persisted, which
+	// the loader treats differently from an explicit false.
+	splitByAssignment?: boolean;
+	severityColors?: boolean;
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;
@@ -22,6 +26,8 @@ export interface CreateDashboardInput {
 	filters: Record<string, string[]>;
 	visibleColumns: string[];
 	columnOrder?: string[];
+	splitByAssignment?: boolean;
+	severityColors?: boolean;
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;

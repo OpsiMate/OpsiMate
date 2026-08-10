@@ -1,5 +1,11 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { clearStorage, loadFromStorage, saveToStorage, serializeTimeRange } from './DashboardContext.utils';
+import {
+	clearStorage,
+	createFreshState,
+	loadFromStorage,
+	saveToStorage,
+	serializeTimeRange,
+} from './DashboardContext.utils';
 
 export type DashboardType = 'services' | 'alerts';
 
@@ -33,6 +39,11 @@ export interface DashboardState {
 	visibleColumns: string[];
 	filters: Record<string, string[]>;
 	columnOrder: string[];
+	// Alerts toolbar toggles. Definite booleans here (the toolbar needs an on/off), unlike
+	// the API's optional fields — the "never configured" case is resolved when a dashboard
+	// is loaded or a draft is read from storage, not carried through the UI.
+	splitByAssignment: boolean;
+	severityColors: boolean;
 	groupBy: string[];
 	query: string;
 	timeRange: TimeRange;
@@ -63,6 +74,8 @@ const defaultState: DashboardState = {
 	visibleColumns: [],
 	filters: {},
 	columnOrder: [],
+	splitByAssignment: false,
+	severityColors: false,
 	groupBy: [],
 	query: '',
 	timeRange: { from: null, to: null, preset: null },
@@ -122,7 +135,9 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			currentVisibleColumns !== initialVisibleColumns ||
 			currentColumnOrder !== initialColumnOrder ||
 			currentQuery !== initialQuery ||
-			currentTimeRange !== initialTimeRange
+			currentTimeRange !== initialTimeRange ||
+			dashboardState.splitByAssignment !== initialState.splitByAssignment ||
+			dashboardState.severityColors !== initialState.severityColors
 		);
 	}, [dashboardState, initialState, hasUserMadeChanges]);
 
@@ -136,6 +151,8 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			'columnOrder',
 			'query',
 			'timeRange',
+			'splitByAssignment',
+			'severityColors',
 		];
 		if (userEditableFields.includes(field)) {
 			setHasUserMadeChanges(true);
@@ -144,8 +161,12 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	const resetDashboard = useCallback(() => {
-		setDashboardState(defaultState);
-		setInitialStateState(defaultState);
+		// Same fresh-draft state a first visit gets, so starting a new dashboard doesn't
+		// drop the legacy severity-colors preference that startup honours. One object for
+		// both slots keeps them equal, so the new dashboard isn't born dirty.
+		const fresh = createFreshState(defaultState);
+		setDashboardState(fresh);
+		setInitialStateState(fresh);
 		setHasUserMadeChanges(false);
 		clearStorage();
 	}, []);

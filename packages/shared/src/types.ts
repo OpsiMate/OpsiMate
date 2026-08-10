@@ -406,6 +406,11 @@ export interface Dashboard {
 	// User-arranged column order for the alerts table (base columns; tag-key columns
 	// follow the visible list). Absent on dashboards saved before reordering shipped.
 	columnOrder?: string[];
+	// Alerts toolbar toggles. Optional on purpose: absent means "this dashboard predates
+	// the toggle", which the client resolves differently from a saved `false` — see
+	// DashboardContext.utils' legacy severity-colors fallback.
+	splitByAssignment?: boolean;
+	severityColors?: boolean;
 	query: string;
 	groupBy: string[];
 	timeRange?: DashboardTimeRange;

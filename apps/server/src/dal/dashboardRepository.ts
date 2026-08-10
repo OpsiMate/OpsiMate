@@ -3,6 +3,15 @@ import { runAsync } from './db';
 import { DashboardRow, TableInfoRow } from './models';
 import { Dashboard, DashboardTimeRange } from '@OpsiMate/shared';
 
+// SQLite stores booleans as 0/1 and better-sqlite3 refuses to bind a JS boolean outright
+// ("can only bind numbers, strings, bigints, buffers, and null"), so every boolean field
+// has to cross this boundary explicitly. NULL is kept distinct from 0: it means the
+// dashboard predates the column, which the client resolves from its legacy preference.
+const toDbBoolean = (value: boolean | undefined): number | null => (value === undefined ? null : value ? 1 : 0);
+
+const fromDbBoolean = (value: number | null | undefined): boolean | undefined =>
+	value === null || value === undefined ? undefined : Boolean(value);
+
 export class DashboardRepository {
 	constructor(private db: Database.Database) {}
 
@@ -16,6 +25,8 @@ export class DashboardRepository {
 			visibleColumns: JSON.parse(dashboardRow.visible_columns) as string[],
 			query: dashboardRow.query,
 			columnOrder: dashboardRow.column_order ? (JSON.parse(dashboardRow.column_order) as string[]) : undefined,
+			splitByAssignment: fromDbBoolean(dashboardRow.split_by_assignment),
+			severityColors: fromDbBoolean(dashboardRow.severity_colors),
 			groupBy: JSON.parse(dashboardRow.group_by) as string[],
 			timeRange: dashboardRow.time_range
 				? (JSON.parse(dashboardRow.time_range) as DashboardTimeRange)
@@ -41,8 +52,8 @@ export class DashboardRepository {
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, query, group_by, time_range)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, split_by_assignment, severity_colors, query, group_by, time_range)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 			const result = stmt.run(
 				dashboard.name,
@@ -51,6 +62,8 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
+				toDbBoolean(dashboard.splitByAssignment),
+				toDbBoolean(dashboard.severityColors),
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
 				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null
@@ -97,6 +110,14 @@ export class DashboardRepository {
 			if (!columns.some((col) => col.name === 'column_order')) {
 				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN column_order TEXT`).run();
 			}
+			// Backward compatibility: alerts toolbar toggles, 0/1 with NULL meaning "saved
+			// before the toggle existed".
+			if (!columns.some((col) => col.name === 'split_by_assignment')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN split_by_assignment INTEGER`).run();
+			}
+			if (!columns.some((col) => col.name === 'severity_colors')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN severity_colors INTEGER`).run();
+			}
 		});
 	}
 
@@ -111,6 +132,8 @@ export class DashboardRepository {
                 filters = ?,
                 visible_columns = ?,
                 column_order = ?,
+                split_by_assignment = ?,
+                severity_colors = ?,
                 query = ?,
                 group_by = ?,
                 time_range = ?
@@ -124,6 +147,8 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
+				toDbBoolean(dashboard.splitByAssignment),
+				toDbBoolean(dashboard.severityColors),
 				dashboard.query,
 				JSON.stringify(dashboard.groupBy),
 				dashboard.timeRange ? JSON.stringify(dashboard.timeRange) : null,
