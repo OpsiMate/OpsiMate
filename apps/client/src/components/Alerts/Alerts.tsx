@@ -212,7 +212,7 @@ const Alerts = () => {
 	// the user's stored filter — and dirtied the dashboard — just for peeking at
 	// another tab; the stored filters stay intact and Active keeps applying them.
 	const statusSuspendedFilters = useMemo(() => {
-		const { status: _status, ...rest } = dashboardState.filters;
+		const { status: _status, ['!status']: _notStatus, ...rest } = dashboardState.filters;
 		return rest;
 	}, [dashboardState.filters]);
 	const resolvedViewAlerts = useAlertsFiltering(resolvedAlerts, {

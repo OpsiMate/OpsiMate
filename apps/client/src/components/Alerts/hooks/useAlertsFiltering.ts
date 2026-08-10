@@ -93,47 +93,42 @@ export const useAlertsFiltering = (
 
 		if (Object.keys(filters).length === 0) return result;
 
+		// The value an alert presents for a filter field; null when the field is unknown
+		// (unknown fields never constrain).
+		const getFieldValue = (alert: Alert, field: string): string | null => {
+			if (isTagKeyColumn(field)) {
+				const tagKey = extractTagKeyFromColumnId(field);
+				return tagKey ? alert.tags?.[tagKey] || '' : null;
+			}
+			switch (field) {
+				case 'status':
+					return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : capitalizeFirst(alert.status);
+				case 'severity':
+					return SEVERITY_LABELS[getAlertSeverity(alert)];
+				case 'type':
+					return getAlertType(alert);
+				case 'alertName':
+					return alert.alertName ?? '';
+				case 'owner':
+					return getOwnerDisplayName(alert.ownerId, users);
+				default:
+					return null;
+			}
+		};
+
 		return result.filter((alert) => {
-			for (const [field, values] of Object.entries(filters)) {
+			for (const [key, values] of Object.entries(filters)) {
 				if (values.length === 0) continue;
 
-				if (isTagKeyColumn(field)) {
-					const tagKey = extractTagKeyFromColumnId(field);
-					if (tagKey) {
-						const tagValue = alert.tags?.[tagKey] || '';
-						if (!values.includes(tagValue)) {
-							return false;
-						}
-					}
-					continue;
-				}
+				// "!field" entries are exclusions ("filter out" in the sidebar): an alert
+				// whose value is listed is dropped. Same field-value semantics as the
+				// positive filters, same storage shape — dashboards persist them with no
+				// schema change.
+				const isExclusion = key.startsWith('!');
+				const fieldValue = getFieldValue(alert, isExclusion ? key.slice(1) : key);
+				if (fieldValue === null) continue;
 
-				let fieldValue: string;
-				switch (field) {
-					case 'status':
-						fieldValue = alert.isSilenced
-							? 'Silenced'
-							: alert.isMuted
-								? 'Muted'
-								: capitalizeFirst(alert.status);
-						break;
-					case 'severity':
-						fieldValue = SEVERITY_LABELS[getAlertSeverity(alert)];
-						break;
-					case 'type':
-						fieldValue = getAlertType(alert);
-						break;
-					case 'alertName':
-						fieldValue = alert.alertName ?? '';
-						break;
-					case 'owner':
-						fieldValue = getOwnerDisplayName(alert.ownerId, users);
-						break;
-					default:
-						continue;
-				}
-
-				if (!values.includes(fieldValue)) {
+				if (isExclusion ? values.includes(fieldValue) : !values.includes(fieldValue)) {
 					return false;
 				}
 			}

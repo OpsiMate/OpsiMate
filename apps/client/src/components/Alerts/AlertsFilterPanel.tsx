@@ -65,16 +65,18 @@ export const AlertsFilterPanel = ({
 	// otherwise the sidebar disagrees with the table it describes.
 	const effectiveFilters = useMemo(() => {
 		if (!hideStatusFilter) return filters;
-		const { status: _status, ...rest } = filters;
+		const { status: _status, ['!status']: _notStatus, ...rest } = filters;
 		return rest;
 	}, [filters, hideStatusFilter]);
 
 	const facets: FilterFacets = useMemo(() => {
-		// The value an alert presents for a given filter field, matching useAlertsFiltering's logic.
-		const getFieldValue = (alert: Alert, field: string): string => {
+		// The value an alert presents for a given filter field, matching useAlertsFiltering's
+		// logic — including null for unknown fields, which never constrain (a stale persisted
+		// filter must not zero out every facet).
+		const getFieldValue = (alert: Alert, field: string): string | null => {
 			if (isTagKeyColumn(field)) {
 				const tagKey = extractTagKeyFromColumnId(field);
-				return tagKey ? alert.tags?.[tagKey] || '' : '';
+				return tagKey ? alert.tags?.[tagKey] || '' : null;
 			}
 			switch (field) {
 				case 'status':
@@ -88,16 +90,22 @@ export const AlertsFilterPanel = ({
 				case 'owner':
 					return getOwnerDisplayName(alert.ownerId, users);
 				default:
-					return '';
+					return null;
 			}
 		};
 
 		// Faceted filtering: an alert counts toward a field's facet only if it passes every OTHER
-		// active filter. A facet never constrains itself, so its own options stay fully visible.
+		// active filter (includes AND "!field" exclusions). A facet never constrains itself —
+		// neither its includes nor its exclusions — so its own options stay fully visible.
 		const passesOtherFilters = (alert: Alert, exceptField: string): boolean => {
-			for (const [field, values] of Object.entries(effectiveFilters)) {
-				if (!values || values.length === 0 || field === exceptField) continue;
-				if (!values.includes(getFieldValue(alert, field))) return false;
+			for (const [key, values] of Object.entries(effectiveFilters)) {
+				if (!values || values.length === 0) continue;
+				const isExclusion = key.startsWith('!');
+				const field = isExclusion ? key.slice(1) : key;
+				if (field === exceptField) continue;
+				const value = getFieldValue(alert, field);
+				if (value === null) continue;
+				if (isExclusion ? values.includes(value) : !values.includes(value)) return false;
 			}
 			return true;
 		};
