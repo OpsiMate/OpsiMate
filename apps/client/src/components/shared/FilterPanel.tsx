@@ -345,7 +345,7 @@ export const FilterPanel = ({
 																	>
 																		<span
 																			className={cn(
-																				'text-xs flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-foreground',
+																				'text-xs flex-1 min-w-0 break-words line-clamp-2 text-foreground',
 																				isIncluded &&
 																					'font-medium text-primary',
 																				isExcluded &&
@@ -355,65 +355,92 @@ export const FilterPanel = ({
 																		>
 																			{label}
 																		</span>
+																		{/* Hover/focus swap: idle rows show only a pinned
+																		    state icon + count so the label keeps the width;
+																		    hovering (or tabbing in — sr-only keeps the
+																		    buttons focusable) replaces them with the +/−
+																		    pair in the same slot. */}
 																		{!isDisabled && (
-																			<button
-																				type="button"
-																				onClick={(e) => {
-																					e.stopPropagation();
-																					handleFilterToggle(field, value);
-																				}}
-																				aria-pressed={isIncluded}
-																				className={cn(
-																					'shrink-0 rounded p-0.5 transition-opacity',
-																					isIncluded
-																						? 'opacity-100 text-primary'
-																						: 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-primary'
-																				)}
-																				title={
-																					isIncluded
-																						? 'Remove filter'
-																						: 'Filter'
-																				}
-																				aria-label={
-																					isIncluded
-																						? `Stop filtering ${label}`
-																						: `Filter ${label}`
-																				}
-																			>
-																				<CirclePlus className="h-3.5 w-3.5" />
-																			</button>
+																			<span className="sr-only group-hover/row:not-sr-only group-focus-within/row:not-sr-only flex items-center gap-0.5 shrink-0">
+																				<button
+																					type="button"
+																					onClick={(e) => {
+																						e.stopPropagation();
+																						handleFilterToggle(
+																							field,
+																							value
+																						);
+																					}}
+																					aria-pressed={isIncluded}
+																					className={cn(
+																						'shrink-0 rounded p-0.5',
+																						isIncluded
+																							? 'text-primary'
+																							: 'text-muted-foreground hover:text-primary'
+																					)}
+																					title={
+																						isIncluded
+																							? 'Remove filter'
+																							: 'Filter'
+																					}
+																					aria-label={
+																						isIncluded
+																							? `Stop filtering ${label}`
+																							: `Filter ${label}`
+																					}
+																				>
+																					<CirclePlus className="h-3.5 w-3.5" />
+																				</button>
+																				<button
+																					type="button"
+																					onClick={(e) => {
+																						e.stopPropagation();
+																						handleExcludeToggle(
+																							field,
+																							value
+																						);
+																					}}
+																					aria-pressed={isExcluded}
+																					className={cn(
+																						'shrink-0 rounded p-0.5',
+																						isExcluded
+																							? 'text-destructive'
+																							: 'text-muted-foreground hover:text-destructive'
+																					)}
+																					title={
+																						isExcluded
+																							? 'Stop filtering out'
+																							: 'Filter out'
+																					}
+																					aria-label={
+																						isExcluded
+																							? `Stop filtering out ${label}`
+																							: `Filter out ${label}`
+																					}
+																				>
+																					<CircleMinus className="h-3.5 w-3.5" />
+																				</button>
+																			</span>
 																		)}
-																		{!isDisabled && (
-																			<button
-																				type="button"
-																				onClick={(e) => {
-																					e.stopPropagation();
-																					handleExcludeToggle(field, value);
-																				}}
-																				aria-pressed={isExcluded}
-																				className={cn(
-																					'shrink-0 rounded p-0.5 transition-opacity',
-																					isExcluded
-																						? 'opacity-100 text-destructive'
-																						: 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive'
-																				)}
-																				title={
-																					isExcluded
-																						? 'Stop filtering out'
-																						: 'Filter out'
-																				}
-																				aria-label={
-																					isExcluded
-																						? `Stop filtering out ${label}`
-																						: `Filter out ${label}`
-																				}
-																			>
-																				<CircleMinus className="h-3.5 w-3.5" />
-																			</button>
+																		{isIncluded && !isDisabled && (
+																			<CirclePlus
+																				aria-hidden
+																				className="h-3.5 w-3.5 shrink-0 text-primary group-hover/row:hidden group-focus-within/row:hidden"
+																			/>
+																		)}
+																		{isExcluded && !isDisabled && (
+																			<CircleMinus
+																				aria-hidden
+																				className="h-3.5 w-3.5 shrink-0 text-destructive group-hover/row:hidden group-focus-within/row:hidden"
+																			/>
 																		)}
 																		<Badge
 																			variant="outline"
-																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center"
+																			className={cn(
+																				'text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center',
+																				!isDisabled &&
+																					'group-hover/row:hidden group-focus-within/row:hidden'
+																			)}
 																		>
 																			{count}
 																		</Badge>

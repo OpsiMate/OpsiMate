@@ -70,11 +70,13 @@ export const AlertsFilterPanel = ({
 	}, [filters, hideStatusFilter]);
 
 	const facets: FilterFacets = useMemo(() => {
-		// The value an alert presents for a given filter field, matching useAlertsFiltering's logic.
-		const getFieldValue = (alert: Alert, field: string): string => {
+		// The value an alert presents for a given filter field, matching useAlertsFiltering's
+		// logic — including null for unknown fields, which never constrain (a stale persisted
+		// filter must not zero out every facet).
+		const getFieldValue = (alert: Alert, field: string): string | null => {
 			if (isTagKeyColumn(field)) {
 				const tagKey = extractTagKeyFromColumnId(field);
-				return tagKey ? alert.tags?.[tagKey] || '' : '';
+				return tagKey ? alert.tags?.[tagKey] || '' : null;
 			}
 			switch (field) {
 				case 'status':
@@ -88,7 +90,7 @@ export const AlertsFilterPanel = ({
 				case 'owner':
 					return getOwnerDisplayName(alert.ownerId, users);
 				default:
-					return '';
+					return null;
 			}
 		};
 
@@ -102,6 +104,7 @@ export const AlertsFilterPanel = ({
 				const field = isExclusion ? key.slice(1) : key;
 				if (field === exceptField) continue;
 				const value = getFieldValue(alert, field);
+				if (value === null) continue;
 				if (isExclusion ? values.includes(value) : !values.includes(value)) return false;
 			}
 			return true;
