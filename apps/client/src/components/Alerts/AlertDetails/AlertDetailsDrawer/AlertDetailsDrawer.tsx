@@ -98,7 +98,9 @@ export const AlertDetailsDrawer = ({
 				</Button>
 			</div>
 
-			<Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
+			{/* Keyed by alert: switching alerts remounts the tabs, so a new alert always
+			    opens on Details instead of inheriting the previous one's tab. */}
+			<Tabs key={renderedAlert?.id} defaultValue="details" className="flex-1 flex flex-col min-h-0">
 				<TabsList className="mx-4 mt-4 grid w-auto grid-cols-2">
 					<TabsTrigger value="details" className="gap-1.5">
 						<Info className="h-4 w-4" />

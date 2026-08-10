@@ -1,7 +1,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertDetailsBody } from '../AlertDetailsBody';
 import { AlertDetailsHeader } from '../AlertDetailsHeader';
@@ -39,6 +39,14 @@ export const AlertDetailsPanel = ({
 	const [tab, setTab] = useState('details');
 	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth();
 	const { signal, broadcast } = useSectionsExpandBroadcast();
+
+	// Selecting a different alert starts a fresh read: back to Details, not whichever tab
+	// the previous alert was left on. Reading someone else's comment thread is never what
+	// clicking a new row means — and it also drops the half-typed comment that belonged to
+	// the alert you just left (the wall unmounts with the tab).
+	useEffect(() => {
+		setTab('details');
+	}, [alert.id]);
 
 	return (
 		<div
