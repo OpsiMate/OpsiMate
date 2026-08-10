@@ -15,7 +15,7 @@ export const FilterSidebar = ({ children, collapsed, onToggle, className }: Filt
 		<div
 			className={cn(
 				'border-r border-border transition-all duration-300 ease-in-out shrink-0 relative',
-				collapsed ? 'w-12' : 'w-64',
+				collapsed ? 'w-12' : 'w-48',
 				className
 			)}
 		>
