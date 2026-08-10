@@ -2,6 +2,8 @@ import {
 	Alert,
 	AlertEnrichment,
 	AlertLink,
+	anyMatcherGroupMatchesTags,
+	getLabelMatcherGroups,
 	AppliedEnrichment,
 	AuditActionType,
 	AuditResourceType,
@@ -72,6 +74,8 @@ export class EnrichmentBL {
 			data.name !== undefined ||
 			data.nameContains !== undefined ||
 			data.labelMatchers !== undefined ||
+			data.labelMatcherGroups !== undefined ||
+			data.matchAll !== undefined ||
 			data.addFields !== undefined ||
 			data.addLinks !== undefined ||
 			data.summaryTemplate !== undefined ||
@@ -104,21 +108,21 @@ export class EnrichmentBL {
 	// Same matching semantics as mute policies: nameContains is a case-insensitive substring match
 	// on the alert name, and every label matcher must equal the alert's tag value.
 	static enrichmentMatchesAlert(enrichment: AlertEnrichment, alert: Alert): boolean {
-		const hasName = !!enrichment.nameContains && enrichment.nameContains.trim().length > 0;
-		const matchers = enrichment.labelMatchers ?? [];
+		// A match-all rule decorates every alert.
+		if (enrichment.matchAll) return true;
 
-		if (!hasName && matchers.length === 0) return false;
+		const hasName = !!enrichment.nameContains && enrichment.nameContains.trim().length > 0;
+		// OR groups: any group fully matching suffices; a legacy flat matcher list is one group.
+		const groups = getLabelMatcherGroups(enrichment);
+
+		if (!hasName && groups.length === 0) return false;
 
 		if (hasName) {
 			const needle = enrichment.nameContains!.trim().toLowerCase();
 			if (!alert.alertName?.toLowerCase().includes(needle)) return false;
 		}
 
-		for (const matcher of matchers) {
-			const tagValue = alert.tags?.[matcher.key];
-			if (tagValue === undefined) return false;
-			if (String(tagValue) !== matcher.value) return false;
-		}
+		if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
 		return true;
 	}
 

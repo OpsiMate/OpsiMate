@@ -7,7 +7,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -193,7 +195,8 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 
 	const [name, setName] = useState('');
 	const [nameContains, setNameContains] = useState('');
-	const [matchers, setMatchers] = useState<KeyValue[]>([]);
+	const [matcherGroups, setMatcherGroups] = useState<KeyValue[][]>([]);
+	const [matchAll, setMatchAll] = useState(false);
 	const [addFields, setAddFields] = useState<KeyValue[]>([]);
 	const [addLinks, setAddLinks] = useState<AlertLink[]>([]);
 	const [summaryTemplate, setSummaryTemplate] = useState('');
@@ -234,7 +237,14 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		if (source) {
 			setName(enrichment ? source.name : `${source.name} (copy)`);
 			setNameContains(source.nameContains ?? '');
-			setMatchers((source.labelMatchers ?? []).map((m) => ({ ...m })));
+			setMatcherGroups(
+				source.labelMatcherGroups?.length
+					? source.labelMatcherGroups.map((g) => g.map((m) => ({ ...m })))
+					: (source.labelMatchers ?? []).length
+						? [(source.labelMatchers ?? []).map((m) => ({ ...m }))]
+						: []
+			);
+			setMatchAll(!!source.matchAll);
 			setAddFields((source.addFields ?? []).map((f) => ({ ...f })));
 			setAddLinks((source.addLinks ?? []).map((l) => ({ ...l })));
 			setSummaryTemplate(source.summaryTemplate ?? '');
@@ -242,7 +252,8 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		} else {
 			setName('');
 			setNameContains('');
-			setMatchers([]);
+			setMatcherGroups([]);
+			setMatchAll(false);
 			setAddFields([]);
 			setAddLinks([]);
 			// Pre-fill with {{summary}} so the user keeps the existing summary and appends to it.
@@ -254,22 +265,25 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
 		const hasNameMatcher = nameContains.trim().length > 0;
-		const hasLabelMatchers = matchers.some((m) => m.key.trim() && m.value.trim());
-		if (!hasNameMatcher && !hasLabelMatchers) return false;
+		const hasLabelMatchers = matcherGroups.some((g) => g.some((m) => m.key.trim() && m.value.trim()));
+		if (!matchAll && !hasNameMatcher && !hasLabelMatchers) return false;
 		const hasFields = addFields.some((f) => f.key.trim() && f.value.trim());
 		const hasLinks = addLinks.some((l) => l.label.trim() && l.url.trim());
 		const hasSummary = summaryTemplate.trim().length > 0;
 		return hasFields || hasLinks || hasSummary;
-	}, [name, nameContains, matchers, addFields, addLinks, summaryTemplate]);
+	}, [name, nameContains, matcherGroups, matchAll, addFields, addLinks, summaryTemplate]);
 
 	const submit = async () => {
 		const clean = (rows: KeyValue[]) =>
 			rows.map((r) => ({ key: r.key.trim(), value: r.value.trim() })).filter((r) => r.key && r.value);
 
+		const cleanedGroups = matchAll ? [] : cleanMatcherGroups(matcherGroups);
 		const payload: EnrichmentPayload = {
 			name: name.trim(),
-			nameContains: nameContains.trim() || null,
-			labelMatchers: clean(matchers),
+			nameContains: matchAll ? null : nameContains.trim() || null,
+			labelMatchers: cleanedGroups[0] ?? [],
+			labelMatcherGroups: cleanedGroups,
+			matchAll,
 			addFields: clean(addFields),
 			addLinks: addLinks
 				.map((l) => ({ label: l.label.trim(), icon: (l.icon ?? '').trim(), url: l.url.trim() }))
@@ -347,11 +361,18 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							<h4 className="text-sm font-semibold">Match criteria</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							An alert is enriched when its name matches and ALL labels match. At least one criterion is
-							required.
+							An alert is enriched when its name matches and any matcher group matches. At least one
+							criterion (or match-all) is required.
 						</p>
 
-						<div className="space-y-2">
+						<label className="flex items-center gap-2 cursor-pointer">
+							<Checkbox checked={matchAll} onCheckedChange={(v) => setMatchAll(v === true)} />
+							<span className="text-xs font-medium">
+								Apply to all alerts (ignore name and label criteria)
+							</span>
+						</label>
+
+						<div className={matchAll ? 'space-y-2 opacity-50 pointer-events-none' : 'space-y-2'}>
 							<Label htmlFor="enrichment-nameContains" className="text-xs">
 								Alert name contains
 							</Label>
@@ -359,17 +380,17 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 								id="enrichment-nameContains"
 								placeholder="e.g. Disk, HighCPU, prod-db"
 								value={nameContains}
+								disabled={matchAll}
 								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>
 
-						<KeyValueRows
-							rows={matchers}
-							onChange={setMatchers}
+						<MatcherGroupsEditor
+							groups={matcherGroups}
+							onChange={setMatcherGroups}
 							keyPlaceholder="key (e.g. severity)"
 							valuePlaceholder="value (e.g. critical)"
-							emptyText="No label matchers. Use these to scope by environment, service, severity, etc."
-							addLabel="Label matchers (key = value)"
+							disabled={matchAll}
 						/>
 					</div>
 

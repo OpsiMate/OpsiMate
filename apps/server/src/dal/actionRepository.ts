@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
-import { Action, ActionConfig, ActionLabelMatcher, ActionType } from '@OpsiMate/shared';
+import { Action, ActionConfig, ActionType } from '@OpsiMate/shared';
 import { runAsync } from './db';
+import { parseMatcherColumn, serializeMatcherColumn } from './matcherColumn';
 
 interface ActionRow {
 	id: number;
@@ -29,15 +30,7 @@ export class ActionRepository {
 				config = {} as ActionConfig;
 			}
 		}
-		let labelMatchers: ActionLabelMatcher[] = [];
-		if (row.label_matchers) {
-			try {
-				const parsed: unknown = JSON.parse(row.label_matchers);
-				if (Array.isArray(parsed)) labelMatchers = parsed as ActionLabelMatcher[];
-			} catch {
-				labelMatchers = [];
-			}
-		}
+		const { labelMatchers, labelMatcherGroups } = parseMatcherColumn(row.label_matchers);
 		return {
 			id: row.id,
 			name: row.name,
@@ -45,6 +38,7 @@ export class ActionRepository {
 			config,
 			nameContains: row.name_contains,
 			labelMatchers,
+			labelMatcherGroups,
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
 		};
@@ -90,7 +84,7 @@ export class ActionRepository {
 				data.type,
 				JSON.stringify(data.config ?? {}),
 				data.nameContains ?? null,
-				JSON.stringify(data.labelMatchers ?? [])
+				serializeMatcherColumn(data)
 			);
 			return { lastID: result.lastInsertRowid as number };
 		});
@@ -123,7 +117,7 @@ export class ActionRepository {
 					data.type,
 					JSON.stringify(data.config ?? {}),
 					data.nameContains ?? null,
-					JSON.stringify(data.labelMatchers ?? []),
+					serializeMatcherColumn(data),
 					id
 				);
 		});

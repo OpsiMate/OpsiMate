@@ -424,7 +424,44 @@ export interface AlertComment {
 export interface MutePolicyLabelMatcher {
 	key: string;
 	value: string;
+	// How the value compares against the alert's tag: exact equality (default) or
+	// case-insensitive substring. Absent = equals, so every stored row keeps meaning
+	// what it meant.
+	op?: 'equals' | 'contains';
 }
+
+// OR groups of label matchers: an entity matches an alert when ANY group matches, and a
+// group matches when EVERY matcher in it equals the alert's tag value (AND within a
+// group, OR between groups). The legacy flat labelMatchers list is equivalent to a
+// single group; helpers below normalize both shapes.
+export type LabelMatcherGroups = MutePolicyLabelMatcher[][];
+
+export interface MatcherCriteria {
+	labelMatchers?: MutePolicyLabelMatcher[] | null;
+	labelMatcherGroups?: LabelMatcherGroups | null;
+}
+
+// The entity's effective OR groups: explicit groups win; a legacy flat list folds into
+// one group; empty rows are dropped so blank editor lines never block a match.
+export const getLabelMatcherGroups = (criteria: MatcherCriteria): LabelMatcherGroups => {
+	const groups = (criteria.labelMatcherGroups ?? [])
+		.map((group) => (group ?? []).filter((m) => m && m.key))
+		.filter((group) => group.length > 0);
+	if (groups.length > 0) return groups;
+	const flat = (criteria.labelMatchers ?? []).filter((m) => m && m.key);
+	return flat.length > 0 ? [flat] : [];
+};
+
+const matcherMatchesTagValue = (m: MutePolicyLabelMatcher, tagValue: string | undefined): boolean => {
+	if (tagValue === undefined) return false;
+	if (m.op === 'contains') return String(tagValue).toLowerCase().includes(m.value.toLowerCase());
+	return String(tagValue) === m.value;
+};
+
+export const anyMatcherGroupMatchesTags = (
+	groups: LabelMatcherGroups,
+	tags: Record<string, string> | undefined
+): boolean => groups.some((group) => group.every((m) => matcherMatchesTagValue(m, tags?.[m.key])));
 
 // Recurring weekly schedule, evaluated in server local time.
 // daysOfWeek: 0=Sunday … 6=Saturday (matches Date.prototype.getDay()).
@@ -441,6 +478,11 @@ export interface MutePolicy {
 	name: string;
 	nameContains?: string | null;
 	labelMatchers: MutePolicyLabelMatcher[];
+	// OR groups (see LabelMatcherGroups); when present they supersede labelMatchers,
+	// which then carries the first group for backward compatibility.
+	labelMatcherGroups?: LabelMatcherGroups;
+	// Match every alert, ignoring name/label criteria entirely.
+	matchAll?: boolean;
 	startsAt?: string | null;
 	endsAt?: string | null;
 	schedule?: MutePolicySchedule | null;
@@ -463,6 +505,10 @@ export interface AlertEnrichment {
 	name: string;
 	nameContains?: string | null;
 	labelMatchers: MutePolicyLabelMatcher[];
+	// OR groups (see LabelMatcherGroups); when present they supersede labelMatchers.
+	labelMatcherGroups?: LabelMatcherGroups;
+	// Match every alert, ignoring name/label criteria entirely.
+	matchAll?: boolean;
 	addFields: AlertEnrichmentField[];
 	// Links appended to matching alerts' link collection. Label and url are templated
 	// like field values ({{label.<key>}} etc.); icon is a slug from the integration
@@ -532,6 +578,8 @@ export interface Action {
 	// (when set) AND whose tags match every label matcher.
 	nameContains?: string | null;
 	labelMatchers: ActionLabelMatcher[];
+	// OR groups (see LabelMatcherGroups); when present they supersede labelMatchers.
+	labelMatcherGroups?: LabelMatcherGroups;
 	createdAt: string;
 	updatedAt: string;
 }

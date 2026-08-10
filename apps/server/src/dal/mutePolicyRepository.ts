@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
-import { MutePolicy, MutePolicyLabelMatcher, MutePolicySchedule } from '@OpsiMate/shared';
+import { MutePolicy, MutePolicySchedule } from '@OpsiMate/shared';
+import { parseMatcherColumn, serializeMatcherColumn } from './matcherColumn';
 import { runAsync } from './db';
 
 interface MutePolicyRow {
@@ -7,6 +8,7 @@ interface MutePolicyRow {
 	name: string;
 	name_contains: string | null;
 	label_matchers: string | null;
+	match_all?: number | null;
 	starts_at: string | null;
 	ends_at: string | null;
 	schedule: string | null;
@@ -22,15 +24,7 @@ export class MutePolicyRepository {
 	constructor(private db: Database.Database) {}
 
 	private toShared = (row: MutePolicyRow): MutePolicy => {
-		let labelMatchers: MutePolicyLabelMatcher[] = [];
-		if (row.label_matchers) {
-			try {
-				const parsed: unknown = JSON.parse(row.label_matchers);
-				if (Array.isArray(parsed)) labelMatchers = parsed as MutePolicyLabelMatcher[];
-			} catch {
-				labelMatchers = [];
-			}
-		}
+		const { labelMatchers, labelMatcherGroups } = parseMatcherColumn(row.label_matchers);
 		let schedule: MutePolicySchedule | null = null;
 		if (row.schedule) {
 			try {
@@ -53,6 +47,8 @@ export class MutePolicyRepository {
 			name: row.name,
 			nameContains: row.name_contains,
 			labelMatchers,
+			labelMatcherGroups,
+			matchAll: !!row.match_all,
 			startsAt: row.starts_at,
 			endsAt: row.ends_at,
 			schedule,
@@ -81,6 +77,7 @@ export class MutePolicyRepository {
 						name            TEXT NOT NULL,
 						name_contains   TEXT,
 						label_matchers  TEXT,
+						match_all       INTEGER DEFAULT 0,
 						starts_at       DATETIME,
 						ends_at         DATETIME,
 						schedule        TEXT,
@@ -96,19 +93,23 @@ export class MutePolicyRepository {
 			if (!columns.some((c) => c.name === 'schedule')) {
 				this.db.prepare(`ALTER TABLE alert_mute_policies ADD COLUMN schedule TEXT`).run();
 			}
+			if (!columns.some((c) => c.name === 'match_all')) {
+				this.db.prepare(`ALTER TABLE alert_mute_policies ADD COLUMN match_all INTEGER DEFAULT 0`).run();
+			}
 		});
 	}
 
 	async createMutePolicy(data: CreateMutePolicyInput): Promise<{ lastID: number }> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
-				`INSERT INTO alert_mute_policies (name, name_contains, label_matchers, starts_at, ends_at, schedule, reason)
-				 VALUES (?, ?, ?, ?, ?, ?, ?)`
+				`INSERT INTO alert_mute_policies (name, name_contains, label_matchers, match_all, starts_at, ends_at, schedule, reason)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 			);
 			const result = stmt.run(
 				data.name,
 				data.nameContains ?? null,
-				JSON.stringify(data.labelMatchers ?? []),
+				serializeMatcherColumn(data),
+				data.matchAll ? 1 : 0,
 				data.startsAt ?? null,
 				data.endsAt ?? null,
 				data.schedule ? JSON.stringify(data.schedule) : null,
@@ -148,9 +149,13 @@ export class MutePolicyRepository {
 				updates.push('name_contains = ?');
 				values.push(data.nameContains);
 			}
-			if (data.labelMatchers !== undefined) {
+			if (data.labelMatchers !== undefined || data.labelMatcherGroups !== undefined) {
 				updates.push('label_matchers = ?');
-				values.push(JSON.stringify(data.labelMatchers));
+				values.push(serializeMatcherColumn(data));
+			}
+			if (data.matchAll !== undefined) {
+				updates.push('match_all = ?');
+				values.push(data.matchAll ? 1 : 0);
 			}
 			if (data.startsAt !== undefined) {
 				updates.push('starts_at = ?');

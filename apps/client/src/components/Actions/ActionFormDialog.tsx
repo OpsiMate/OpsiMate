@@ -9,6 +9,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -69,7 +70,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 
 	// Alert filter (empty = applies to all alerts)
 	const [nameContains, setNameContains] = useState('');
-	const [matchers, setMatchers] = useState<HeaderRow[]>([]);
+	const [matcherGroups, setMatcherGroups] = useState<HeaderRow[][]>([]);
 
 	// Slack
 	const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
@@ -123,7 +124,13 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 			setName(action.name);
 			setType(action.type);
 			setNameContains(action.nameContains ?? '');
-			setMatchers((action.labelMatchers ?? []).map((m) => ({ ...m })));
+			setMatcherGroups(
+				action.labelMatcherGroups?.length
+					? action.labelMatcherGroups.map((g) => g.map((m) => ({ ...m })))
+					: (action.labelMatchers ?? []).length
+						? [(action.labelMatchers ?? []).map((m) => ({ ...m }))]
+						: []
+			);
 			if (action.type === 'slack') {
 				const cfg = action.config as SlackActionConfig;
 				setSlackWebhookUrl(cfg.webhookUrl ?? '');
@@ -154,7 +161,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 			setName('');
 			setType('slack');
 			setNameContains('');
-			setMatchers([]);
+			setMatcherGroups([]);
 		}
 	}, [open, action]);
 
@@ -193,11 +200,11 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 
 	const buildPayload = (): ActionPayload => {
 		const trimmedName = name.trim();
+		const cleanedGroups = cleanMatcherGroups(matcherGroups);
 		const match = {
 			nameContains: nameContains.trim() || null,
-			labelMatchers: matchers
-				.map((m) => ({ key: m.key.trim(), value: m.value.trim() }))
-				.filter((m) => m.key && m.value),
+			labelMatchers: cleanedGroups[0] ?? [],
+			labelMatcherGroups: cleanedGroups,
 		};
 		switch (type) {
 			case 'slack':
@@ -635,7 +642,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
 							Leave empty to show this action on every alert. Add criteria to show it only on matching
-							alerts (name contains AND all labels match).
+							alerts (name contains AND any matcher group matches).
 						</p>
 
 						<div className="space-y-2">
@@ -650,67 +657,13 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 							/>
 						</div>
 
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label className="text-xs">Label matchers (key = value)</Label>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => setMatchers((m) => [...m, { key: '', value: '' }])}
-								>
-									<Plus className="h-3.5 w-3.5 mr-1" /> Add
-								</Button>
-							</div>
-							{matchers.length === 0 ? (
-								<p className="text-xs text-muted-foreground italic">
-									No label matchers. Scope by environment, service, severity, etc.
-								</p>
-							) : (
-								<div className="space-y-2">
-									{matchers.map((matcher, idx) => (
-										<div
-											key={idx}
-											className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2"
-										>
-											<Input
-												placeholder="key (e.g. severity)"
-												value={matcher.key}
-												onChange={(e) =>
-													setMatchers((m) =>
-														m.map((row, i) =>
-															i === idx ? { ...row, key: e.target.value } : row
-														)
-													)
-												}
-											/>
-											<span className="text-muted-foreground text-sm">=</span>
-											<Input
-												placeholder="value (e.g. critical)"
-												value={matcher.value}
-												onChange={(e) =>
-													setMatchers((m) =>
-														m.map((row, i) =>
-															i === idx ? { ...row, value: e.target.value } : row
-														)
-													)
-												}
-											/>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="h-9 w-9"
-												onClick={() => setMatchers((m) => m.filter((_, i) => i !== idx))}
-												aria-label="Remove matcher"
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</div>
-									))}
-								</div>
-							)}
-						</div>
+						<MatcherGroupsEditor
+							groups={matcherGroups}
+							onChange={setMatcherGroups}
+							keyPlaceholder="key (e.g. severity)"
+							valuePlaceholder="value (e.g. critical)"
+							emptyText="No label matchers. Scope by environment, service, severity, etc."
+						/>
 					</div>
 				</div>
 

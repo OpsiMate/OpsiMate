@@ -754,6 +754,141 @@ describe('Alerts API', () => {
 		});
 	});
 
+	describe('OR matcher groups and match-all', () => {
+		test('a mute policy with OR groups mutes alerts matching ANY group', async () => {
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'or-mute-a', tags: { env: 'prod' }, alertName: 'OR Mute A' });
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'or-mute-b', tags: { team: 'db' }, alertName: 'OR Mute B' });
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'or-mute-c', tags: { env: 'dev' }, alertName: 'OR Mute C' });
+
+			const created = await app
+				.post('/api/v1/mute-policies')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'or groups policy',
+					labelMatcherGroups: [[{ key: 'env', value: 'prod' }], [{ key: 'team', value: 'db' }]],
+				});
+			expect(created.status).toBe(201);
+			expect(created.body.data.labelMatcherGroups).toEqual([
+				[{ key: 'env', value: 'prod' }],
+				[{ key: 'team', value: 'db' }],
+			]);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			const byId = Object.fromEntries(list.body.data.alerts.map((a: { id: string }) => [a.id, a]));
+			expect(byId['or-mute-a'].isMuted).toBe(true);
+			expect(byId['or-mute-b'].isMuted).toBe(true);
+			expect(byId['or-mute-c'].isMuted).toBeUndefined();
+
+			await app
+				.delete(`/api/v1/mute-policies/${created.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test("a 'contains' matcher matches by case-insensitive substring", async () => {
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'contains-a', tags: { service: 'CPU-worker-3' }, alertName: 'Contains A' });
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'contains-b', tags: { service: 'db-primary' }, alertName: 'Contains B' });
+
+			const created = await app
+				.post('/api/v1/mute-policies')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'contains policy',
+					labelMatcherGroups: [[{ key: 'service', value: 'cpu', op: 'contains' }]],
+				});
+			expect(created.status).toBe(201);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			const byId = Object.fromEntries(list.body.data.alerts.map((a: { id: string }) => [a.id, a]));
+			expect(byId['contains-a'].isMuted).toBe(true);
+			expect(byId['contains-b'].isMuted).toBeUndefined();
+
+			await app
+				.delete(`/api/v1/mute-policies/${created.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test('enrichment updates preserve labelMatcherGroups and matchAll', async () => {
+			const created = await app
+				.post('/api/v1/enrichments')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'update keeps groups',
+					labelMatcherGroups: [[{ key: 'a', value: '1' }], [{ key: 'b', value: '2' }]],
+					addFields: [{ key: 'x', value: 'y' }],
+				});
+			expect(created.status).toBe(201);
+
+			const updated = await app
+				.put(`/api/v1/enrichments/${created.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					labelMatcherGroups: [[{ key: 'c', value: '3', op: 'contains' }]],
+					matchAll: false,
+				});
+			expect(updated.status).toBe(200);
+			expect(updated.body.data.labelMatcherGroups).toEqual([[{ key: 'c', value: '3', op: 'contains' }]]);
+
+			await app.delete(`/api/v1/enrichments/${created.body.data.id}`).set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test('a match-all mute policy needs no criteria and mutes everything', async () => {
+			const created = await app
+				.post('/api/v1/mute-policies')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ name: 'global mute', matchAll: true });
+			expect(created.status).toBe(201);
+			expect(created.body.data.matchAll).toBe(true);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			expect(list.body.data.alerts.length).toBeGreaterThan(0);
+			for (const alert of list.body.data.alerts) {
+				expect(alert.isMuted).toBe(true);
+			}
+
+			await app
+				.delete(`/api/v1/mute-policies/${created.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test('a match-all enrichment decorates every alert', async () => {
+			const created = await app
+				.post('/api/v1/enrichments')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ name: 'global tagger', matchAll: true, addFields: [{ key: 'org', value: 'opsimate' }] });
+			expect(created.status).toBe(201);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			for (const alert of list.body.data.alerts) {
+				expect(alert.tags.org).toBe('opsimate');
+			}
+
+			await app.delete(`/api/v1/enrichments/${created.body.data.id}`).set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test('a policy with neither criteria nor matchAll is rejected', async () => {
+			const response = await app
+				.post('/api/v1/mute-policies')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ name: 'no criteria' });
+			expect(response.status).toBe(400);
+		});
+	});
+
 	describe('enrichment links', () => {
 		test('a matching rule appends templated links, materializing legacy alertUrl first', async () => {
 			await app

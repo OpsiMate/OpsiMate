@@ -8,7 +8,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreateMutePolicy, useUpdateMutePolicy } from '@/hooks/queries/mute-policies';
 import { MutePolicyPayload } from '@/lib/api';
 import { MutePolicy } from '@OpsiMate/shared';
-import { BellOff, Plus, Tag, Trash2 } from 'lucide-react';
+import { BellOff, Tag } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 type Matcher = { key: string; value: string };
@@ -68,7 +70,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 
 	const [name, setName] = useState('');
 	const [nameContains, setNameContains] = useState('');
-	const [matchers, setMatchers] = useState<Matcher[]>([]);
+	const [matcherGroups, setMatcherGroups] = useState<Matcher[][]>([]);
+	const [matchAll, setMatchAll] = useState(false);
 	const [reason, setReason] = useState('');
 	const [mode, setMode] = useState<MutePolicyMode>('one-time');
 	const [hasStart, setHasStart] = useState(false);
@@ -84,7 +87,14 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 		if (mutePolicy) {
 			setName(mutePolicy.name);
 			setNameContains(mutePolicy.nameContains ?? '');
-			setMatchers((mutePolicy.labelMatchers ?? []).map((m) => ({ ...m })));
+			setMatcherGroups(
+				mutePolicy.labelMatcherGroups?.length
+					? mutePolicy.labelMatcherGroups.map((g) => g.map((m) => ({ ...m })))
+					: (mutePolicy.labelMatchers ?? []).length
+						? [(mutePolicy.labelMatchers ?? []).map((m) => ({ ...m }))]
+						: []
+			);
+			setMatchAll(!!mutePolicy.matchAll);
 			setReason(mutePolicy.reason ?? '');
 			if (mutePolicy.schedule) {
 				setMode('recurring');
@@ -108,7 +118,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 		} else {
 			setName('');
 			setNameContains('');
-			setMatchers([]);
+			setMatcherGroups([]);
+			setMatchAll(false);
 			setReason('');
 			setMode('one-time');
 			setHasStart(false);
@@ -131,8 +142,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
 		const hasNameMatcher = nameContains.trim().length > 0;
-		const hasLabelMatchers = matchers.some((m) => m.key.trim() && m.value.trim());
-		if (!hasNameMatcher && !hasLabelMatchers) return false;
+		const hasLabelMatchers = matcherGroups.some((g) => g.some((m) => m.key.trim() && m.value.trim()));
+		if (!matchAll && !hasNameMatcher && !hasLabelMatchers) return false;
 		if (mode === 'recurring') {
 			if (daysOfWeek.length === 0) return false;
 			if (!recurStartTime || !recurEndTime) return false;
@@ -146,7 +157,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 	}, [
 		name,
 		nameContains,
-		matchers,
+		matcherGroups,
+		matchAll,
 		mode,
 		hasStart,
 		hasEnd,
@@ -168,16 +180,16 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 	};
 
 	const submit = async () => {
-		const cleanedMatchers = matchers
-			.map((m) => ({ key: m.key.trim(), value: m.value.trim() }))
-			.filter((m) => m.key && m.value);
+		const cleanedGroups = matchAll ? [] : cleanMatcherGroups(matcherGroups);
 
 		const payload: MutePolicyPayload =
 			mode === 'recurring'
 				? {
 						name: name.trim(),
-						nameContains: nameContains.trim() || null,
-						labelMatchers: cleanedMatchers,
+						nameContains: matchAll ? null : nameContains.trim() || null,
+						labelMatchers: cleanedGroups[0] ?? [],
+						labelMatcherGroups: cleanedGroups,
+						matchAll,
 						startsAt: null,
 						endsAt: null,
 						schedule: {
@@ -189,8 +201,10 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 					}
 				: {
 						name: name.trim(),
-						nameContains: nameContains.trim() || null,
-						labelMatchers: cleanedMatchers,
+						nameContains: matchAll ? null : nameContains.trim() || null,
+						labelMatchers: cleanedGroups[0] ?? [],
+						labelMatcherGroups: cleanedGroups,
+						matchAll,
 						startsAt: hasStart ? fromLocalInputValue(startsAt) : null,
 						endsAt: hasEnd ? fromLocalInputValue(endsAt) : null,
 						schedule: null,
@@ -248,11 +262,18 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 							<h4 className="text-sm font-semibold">Match criteria</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							An alert is muted when its name matches and ALL labels match. At least one criterion is
-							required.
+							An alert is muted when its name matches and ANY matcher group matches (all matchers within a
+							group must match). At least one criterion — or match-all — is required.
 						</p>
 
-						<div className="space-y-2">
+						<label className="flex items-center gap-2 cursor-pointer">
+							<Checkbox checked={matchAll} onCheckedChange={(v) => setMatchAll(v === true)} />
+							<span className="text-xs font-medium">
+								Apply to all alerts (ignore name and label criteria)
+							</span>
+						</label>
+
+						<div className={matchAll ? 'space-y-2 opacity-50 pointer-events-none' : 'space-y-2'}>
 							<Label htmlFor="mute-policy-nameContains" className="text-xs">
 								Alert name contains
 							</Label>
@@ -260,71 +281,12 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 								id="mute-policy-nameContains"
 								placeholder="e.g. HighCPU, prod-db, latency"
 								value={nameContains}
+								disabled={matchAll}
 								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>
 
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label className="text-xs">Label matchers (key = value)</Label>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => setMatchers((m) => [...m, { key: '', value: '' }])}
-								>
-									<Plus className="h-3.5 w-3.5 mr-1" /> Add
-								</Button>
-							</div>
-							{matchers.length === 0 ? (
-								<p className="text-xs text-muted-foreground italic">
-									No label matchers. Use these to scope by environment, service, severity, etc.
-								</p>
-							) : (
-								<div className="space-y-2">
-									{matchers.map((matcher, idx) => (
-										<div
-											key={idx}
-											className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2"
-										>
-											<Input
-												placeholder="key (e.g. severity)"
-												value={matcher.key}
-												onChange={(e) =>
-													setMatchers((m) =>
-														m.map((row, i) =>
-															i === idx ? { ...row, key: e.target.value } : row
-														)
-													)
-												}
-											/>
-											<span className="text-muted-foreground text-sm">=</span>
-											<Input
-												placeholder="value (e.g. critical)"
-												value={matcher.value}
-												onChange={(e) =>
-													setMatchers((m) =>
-														m.map((row, i) =>
-															i === idx ? { ...row, value: e.target.value } : row
-														)
-													)
-												}
-											/>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="h-9 w-9"
-												onClick={() => setMatchers((m) => m.filter((_, i) => i !== idx))}
-												aria-label="Remove matcher"
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</div>
-									))}
-								</div>
-							)}
-						</div>
+						<MatcherGroupsEditor groups={matcherGroups} onChange={setMatcherGroups} disabled={matchAll} />
 					</div>
 
 					<div className="rounded-lg border bg-muted/30 p-4 space-y-4">

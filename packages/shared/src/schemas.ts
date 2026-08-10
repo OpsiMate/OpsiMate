@@ -300,6 +300,7 @@ export const UpdateCommentSchema = z.object({
 const labelMatcherSchema = z.object({
 	key: z.string().min(1, 'Label key is required').max(200),
 	value: z.string().min(1, 'Label value is required').max(500),
+	op: z.enum(['equals', 'contains']).optional(),
 });
 
 const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -322,10 +323,20 @@ const mutePolicyTimeRefinement = (data: { startsAt?: string | null; endsAt?: str
 	return true;
 };
 
-const mutePolicyMatchersRefinement = (data: { nameContains?: string | null; labelMatchers?: unknown[] }) => {
+// OR groups: array of AND-groups, each a non-empty matcher list.
+const labelMatcherGroupsSchema = z.array(z.array(labelMatcherSchema).min(1).max(20)).max(20);
+
+const mutePolicyMatchersRefinement = (data: {
+	nameContains?: string | null;
+	labelMatchers?: unknown[];
+	labelMatcherGroups?: unknown[];
+	matchAll?: boolean;
+}) => {
+	if (data.matchAll) return true;
 	const hasName = !!data.nameContains && data.nameContains.trim().length > 0;
 	const hasMatchers = Array.isArray(data.labelMatchers) && data.labelMatchers.length > 0;
-	return hasName || hasMatchers;
+	const hasGroups = Array.isArray(data.labelMatcherGroups) && data.labelMatcherGroups.length > 0;
+	return hasName || hasMatchers || hasGroups;
 };
 
 const mutePolicyScheduleExclusivityRefinement = (data: {
@@ -342,6 +353,8 @@ export const CreateMutePolicySchema = z
 		name: z.string().min(1, 'Name is required').max(200),
 		nameContains: z.string().max(500).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+		labelMatcherGroups: labelMatcherGroupsSchema.optional(),
+		matchAll: z.boolean().optional().default(false),
 		startsAt: z.string().datetime({ offset: true }).optional().nullable(),
 		endsAt: z.string().datetime({ offset: true }).optional().nullable(),
 		schedule: mutePolicyScheduleSchema.optional().nullable(),
@@ -349,7 +362,7 @@ export const CreateMutePolicySchema = z
 	})
 	.refine(mutePolicyTimeRefinement, { message: 'End time must be after start time', path: ['endsAt'] })
 	.refine(mutePolicyMatchersRefinement, {
-		message: 'Provide at least a name match or one label matcher',
+		message: 'Provide at least a name match, one label matcher, or enable match-all',
 		path: ['nameContains'],
 	})
 	.refine(mutePolicyScheduleExclusivityRefinement, {
@@ -362,6 +375,8 @@ export const UpdateMutePolicySchema = z
 		name: z.string().min(1).max(200).optional(),
 		nameContains: z.string().max(500).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
+		labelMatcherGroups: labelMatcherGroupsSchema.optional(),
+		matchAll: z.boolean().optional(),
 		startsAt: z.string().datetime({ offset: true }).optional().nullable(),
 		endsAt: z.string().datetime({ offset: true }).optional().nullable(),
 		schedule: mutePolicyScheduleSchema.optional().nullable(),
@@ -415,13 +430,15 @@ export const CreateAlertEnrichmentSchema = z
 		name: z.string().min(1, 'Name is required').max(200),
 		nameContains: z.string().max(500).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+		labelMatcherGroups: labelMatcherGroupsSchema.optional(),
+		matchAll: z.boolean().optional().default(false),
 		addFields: z.array(enrichmentFieldSchema).max(20).optional().default([]),
 		addLinks: z.array(enrichmentLinkSchema).max(20).optional().default([]),
 		summaryTemplate: z.string().max(5000).optional().nullable(),
 		priority: z.number().int().min(0).max(1000).optional().default(0),
 	})
 	.refine(mutePolicyMatchersRefinement, {
-		message: 'Provide at least a name match or one label matcher',
+		message: 'Provide at least a name match, one label matcher, or enable match-all',
 		path: ['nameContains'],
 	})
 	.refine(enrichmentEffectRefinement, {
@@ -435,6 +452,8 @@ export const UpdateAlertEnrichmentSchema = z.object({
 	name: z.string().min(1).max(200).optional(),
 	nameContains: z.string().max(500).optional().nullable(),
 	labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
+	labelMatcherGroups: labelMatcherGroupsSchema.optional(),
+	matchAll: z.boolean().optional(),
 	addFields: z.array(enrichmentFieldSchema).max(20).optional(),
 	addLinks: z.array(enrichmentLinkSchema).max(20).optional(),
 	summaryTemplate: z.string().max(5000).optional().nullable(),
@@ -490,6 +509,7 @@ const httpActionConfigSchema = z.object({
 const actionMatchFields = {
 	nameContains: z.string().max(500).optional().nullable(),
 	labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
+	labelMatcherGroups: labelMatcherGroupsSchema.optional(),
 };
 
 export const CreateActionSchema = z.discriminatedUnion('type', [

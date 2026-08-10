@@ -53,6 +53,7 @@ export class ActionController {
 					config: data.config,
 					nameContains: data.nameContains ?? null,
 					labelMatchers: data.labelMatchers ?? [],
+					labelMatcherGroups: data.labelMatcherGroups,
 				},
 				req.user
 			);
@@ -136,6 +137,7 @@ export class ActionController {
 					config: data.config,
 					nameContains: data.nameContains ?? null,
 					labelMatchers: data.labelMatchers ?? [],
+					labelMatcherGroups: data.labelMatcherGroups,
 				},
 				req.user
 			);
