@@ -168,7 +168,15 @@ export const MatcherGroupsEditor = ({
 export const cleanMatcherGroups = (groups: MatcherRow[][]): MatcherRow[][] =>
 	groups
 		.map((group) =>
-			group.map((m) => ({ key: m.key.trim(), value: m.value.trim() })).filter((m) => m.key && m.value)
+			group
+				.map((m) => ({
+					key: m.key.trim(),
+					value: m.value.trim(),
+					// The op must survive cleaning — omitting it silently turns every
+					// "contains" matcher back into equals at save time.
+					...(m.op === 'contains' ? { op: 'contains' as const } : {}),
+				}))
+				.filter((m) => m.key && m.value)
 		)
 		.filter((group) => group.length > 0);
 
