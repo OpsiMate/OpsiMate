@@ -4,6 +4,12 @@ import { describe, expect, test, vi } from 'vitest';
 import { AlertDetailsPanel } from '@/components/Alerts/AlertDetails/AlertDetailsPanel/AlertDetailsPanel';
 import { render } from './test-utils';
 
+// The stub echoes the alert id it was handed, which is what proves the wall is showing the
+// newly selected alert rather than the previous one.
+interface MockCommentsWallProps {
+	alertId: string;
+}
+
 // The panel's body, footer and comment wall all fetch; stub them out so this test is about
 // tab behavior alone.
 vi.mock('@/components/Alerts/AlertDetails/AlertDetailsBody', () => ({
@@ -13,7 +19,7 @@ vi.mock('@/components/Alerts/AlertDetails/AlertFooterActions', () => ({
 	AlertFooterActions: () => <div>footer-actions</div>,
 }));
 vi.mock('@/components/Alerts/AlertDetails/CommentsWall', () => ({
-	CommentsWall: ({ alertId }: { alertId: string }) => <div>{`comments-wall:${alertId}`}</div>,
+	CommentsWall: ({ alertId }: MockCommentsWallProps) => <div>{`comments-wall:${alertId}`}</div>,
 }));
 vi.mock('@/components/Alerts/AlertDetails/hooks', () => ({
 	useAlertHistory: () => null,
