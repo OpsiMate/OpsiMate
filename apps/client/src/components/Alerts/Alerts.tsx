@@ -21,7 +21,7 @@ import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Bell, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
+import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
@@ -32,6 +32,7 @@ import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
 import { filterAlerts } from './AlertsTable/AlertsTable.utils';
+import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
@@ -201,6 +202,13 @@ const Alerts = () => {
 	const handleFilterChange = (newFilters: Record<string, string[]>) => {
 		updateDashboardField('filters', newFilters);
 	};
+
+	// Derived from the filters themselves rather than tracked separately, so the button and
+	// the sidebar's Status section always describe the same thing. The count comes from the
+	// unfiltered active list — the point of the button is to reveal alerts the current
+	// filters are hiding, so it has to say how many are out there.
+	const silencedShown = areSilencedAlertsShown(dashboardState.filters);
+	const silencedCount = useMemo(() => alerts.filter((a) => a.isSilenced).length, [alerts]);
 
 	const filteredAlerts = useAlertsFiltering(alerts, {
 		filters: dashboardState.filters,
@@ -592,6 +600,30 @@ const Alerts = () => {
 										onSearchChange={(term) => updateDashboardField('query', term)}
 									/>
 								</div>
+
+								{/* Silenced alerts are usually filtered out (a dashboard's status filter
+								    typically pins Firing), and digging into the sidebar to check what's
+								    silenced is a lot of clicks for a routine question. Active-only: the
+								    Resolved and All views suspend the status filter, so the button would
+								    be inert there. */}
+								{activeTab === AlertTab.Active && (
+									<Button
+										variant={silencedShown ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => handleFilterChange(toggleSilencedAlerts(dashboardState.filters))}
+										className="gap-1.5 shrink-0"
+										title={silencedShown ? 'Hide silenced alerts' : 'Show silenced alerts'}
+										aria-pressed={silencedShown}
+									>
+										<BellOff className="h-4 w-4" />
+										<span className="hidden lg:inline">Silenced</span>
+										{silencedCount > 0 && (
+											<span className="text-[10px] font-semibold tabular-nums opacity-80">
+												{silencedCount}
+											</span>
+										)}
+									</Button>
+								)}
 
 								{activeTab === AlertTab.Active && (
 									<Button
