@@ -1,16 +1,13 @@
-import { Logger, ServiceCustomField, ServiceCustomFieldValue } from '@OpsiMate/shared';
+import { Logger, ServiceCustomField } from '@OpsiMate/shared';
 import { ServiceCustomFieldRepository } from '../../dal/serviceCustomFieldRepository';
-import { ServiceCustomFieldValueRepository } from '../../dal/serviceCustomFieldValueRepository';
 
 const logger = new Logger('bl/custom-fields/serviceCustomField.bl');
 
+// Custom field DEFINITIONS only. The per-service VALUES half went away with the provider/
+// services feature (#783); Settings still manages the field definitions themselves.
 export class ServiceCustomFieldBL {
-	constructor(
-		private customFieldRepository: ServiceCustomFieldRepository,
-		private customFieldValueRepository: ServiceCustomFieldValueRepository
-	) {}
+	constructor(private customFieldRepository: ServiceCustomFieldRepository) {}
 
-	// Custom Field CRUD operations
 	async createCustomField(name: string): Promise<number> {
 		try {
 			logger.info(`Creating custom field with name: ${name}`);
@@ -72,7 +69,6 @@ export class ServiceCustomFieldBL {
 				throw new Error(`Custom field with ID ${id} not found`);
 			}
 
-			// Check for name conflicts
 			const allFields = await this.customFieldRepository.getCustomFields();
 			const duplicate = allFields.find(
 				(field) => field.id !== id && field.name.toLowerCase() === name.toLowerCase()
@@ -107,118 +103,14 @@ export class ServiceCustomFieldBL {
 				return false;
 			}
 
-			// Delete all values for this custom field first
-			const deletedValuesCount = await this.customFieldValueRepository.deleteAllValuesForCustomField(id);
-			logger.info(`Deleted ${deletedValuesCount} custom field values for field ${id}`);
-
-			// Then delete the custom field itself
 			const deleted = await this.customFieldRepository.deleteCustomField(id);
-
 			if (deleted) {
-				logger.info(`Successfully deleted custom field '${field.name}' and all its values`);
+				logger.info(`Successfully deleted custom field '${field.name}'`);
 			}
 
 			return deleted;
 		} catch (error) {
 			logger.error(`Error deleting custom field ${id}`, error);
-			throw error;
-		}
-	}
-
-	// Custom Field Value operations
-	async upsertCustomFieldValue(serviceId: number, customFieldId: number, value: string): Promise<void> {
-		try {
-			logger.info(`Upserting custom field value for service ${serviceId}, field ${customFieldId}`);
-
-			// Validate that the custom field exists
-			const field = await this.customFieldRepository.getCustomFieldById(customFieldId);
-			if (!field) {
-				throw new Error(`Custom field with ID ${customFieldId} not found`);
-			}
-
-			await this.customFieldValueRepository.upsertCustomFieldValue(serviceId, customFieldId, value);
-			logger.info(`Successfully upserted custom field value for service ${serviceId}, field ${customFieldId}`);
-		} catch (error) {
-			logger.error(`Error upserting custom field value for service ${serviceId}, field ${customFieldId}`, error);
-			throw error;
-		}
-	}
-
-	async getCustomFieldValuesForService(serviceId: number): Promise<ServiceCustomFieldValue[]> {
-		try {
-			logger.info(`Fetching custom field values for service ${serviceId}`);
-			const values = await this.customFieldValueRepository.getCustomFieldValuesByServiceId(serviceId);
-			logger.info(`Successfully fetched ${values.length} custom field values for service ${serviceId}`);
-
-			return values;
-		} catch (error) {
-			logger.error(`Error fetching custom field values for service ${serviceId}`, error);
-			throw error;
-		}
-	}
-
-	async getCustomFieldValue(serviceId: number, customFieldId: number): Promise<ServiceCustomFieldValue | null> {
-		try {
-			logger.info(`Fetching custom field value for service ${serviceId}, field ${customFieldId}`);
-			const value = await this.customFieldValueRepository.getCustomFieldValue(serviceId, customFieldId);
-
-			if (value) {
-				logger.info(`Successfully fetched custom field value for service ${serviceId}, field ${customFieldId}`);
-			} else {
-				logger.info(`No custom field value found for service ${serviceId}, field ${customFieldId}`);
-			}
-
-			return value;
-		} catch (error) {
-			logger.error(`Error fetching custom field value for service ${serviceId}, field ${customFieldId}`, error);
-			throw error;
-		}
-	}
-
-	async deleteCustomFieldValue(serviceId: number, customFieldId: number): Promise<boolean> {
-		try {
-			logger.info(`Deleting custom field value for service ${serviceId}, field ${customFieldId}`);
-			const deleted = await this.customFieldValueRepository.deleteCustomFieldValue(serviceId, customFieldId);
-
-			if (deleted) {
-				logger.info(`Successfully deleted custom field value for service ${serviceId}, field ${customFieldId}`);
-			} else {
-				logger.warn(`No custom field value found to delete for service ${serviceId}, field ${customFieldId}`);
-			}
-
-			return deleted;
-		} catch (error) {
-			logger.error(`Error deleting custom field value for service ${serviceId}, field ${customFieldId}`, error);
-			throw error;
-		}
-	}
-
-	// Helper methods
-	async getCustomFieldsWithValuesForService(serviceId: number): Promise<Record<number, string>> {
-		try {
-			const values = await this.getCustomFieldValuesForService(serviceId);
-			const customFields: Record<number, string> = {};
-
-			values.forEach((value) => {
-				customFields[value.customFieldId] = value.value;
-			});
-
-			return customFields;
-		} catch (error) {
-			logger.error(`Error getting custom fields with values for service ${serviceId}`, error);
-			throw error;
-		}
-	}
-
-	async deleteAllValuesForService(serviceId: number): Promise<number> {
-		try {
-			logger.info(`Deleting all custom field values for service ${serviceId}`);
-			const deletedCount = await this.customFieldValueRepository.deleteAllValuesForService(serviceId);
-			logger.info(`Deleted ${deletedCount} custom field values for service ${serviceId}`);
-
-			return deletedCount;
-		} catch (error) {
-			logger.error(`Error deleting custom field values for service ${serviceId}`, error);
 			throw error;
 		}
 	}

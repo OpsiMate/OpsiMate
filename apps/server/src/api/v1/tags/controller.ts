@@ -1,17 +1,12 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
-import { CreateTagSchema, UpdateTagSchema, TagIdSchema, ServiceTagSchema, Logger } from '@OpsiMate/shared';
+import { CreateTagSchema, UpdateTagSchema, TagIdSchema, Logger } from '@OpsiMate/shared';
 import { TagRepository } from '../../../dal/tagRepository';
-import { ServiceRepository } from '../../../dal/serviceRepository'; // can be refactored to use DI as well
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/tags/controller');
 
 export class TagController {
-	constructor(
-		private tagRepo: TagRepository,
-		private serviceRepo: ServiceRepository
-	) {}
+	constructor(private tagRepo: TagRepository) {}
 
 	getAllTagsHandler = async (req: Request, res: Response) => {
 		try {
@@ -98,89 +93,6 @@ export class TagController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
 				logger.error('Error deleting tag:', error);
-				return res.status(500).json({ success: false, error: 'Internal server error' });
-			}
-		}
-	};
-
-	addTagToServiceHandler = async (req: Request, res: Response) => {
-		try {
-			// Get serviceId from params, tagId from body
-			const { serviceId } = req.params;
-			const { tagId } = req.body as { tagId: string };
-			const parsed = ServiceTagSchema.parse({
-				serviceId: Number(serviceId),
-				tagId: Number(tagId),
-			});
-
-			const service = await this.serviceRepo.getServiceById(parsed.serviceId);
-			if (!service) {
-				return res.status(404).json({ success: false, error: 'Service not found' });
-			}
-
-			const tag = await this.tagRepo.getTagById(parsed.tagId);
-			if (!tag) {
-				return res.status(404).json({ success: false, error: 'Tag not found' });
-			}
-
-			await this.tagRepo.addTagToService(parsed.serviceId, parsed.tagId);
-			return res.json({ success: true, message: 'Tag added to service successfully' });
-		} catch (error) {
-			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			} else {
-				logger.error('Error adding tag to service:', error);
-				return res.status(500).json({ success: false, error: 'Internal server error' });
-			}
-		}
-	};
-
-	removeTagFromServiceHandler = async (req: Request, res: Response) => {
-		try {
-			// Get serviceId and tagId from route params
-			const { serviceId, tagId } = req.params;
-			const parsed = ServiceTagSchema.parse({
-				serviceId: Number(serviceId),
-				tagId: Number(tagId),
-			});
-
-			const tag = await this.tagRepo.getTagById(parsed.tagId);
-			if (!tag) {
-				return res.status(404).json({ success: false, error: 'Tag not found' });
-			}
-
-			await this.tagRepo.removeTagFromService(parsed.serviceId, parsed.tagId);
-
-			return res.json({ success: true, message: 'Tag removed from service successfully' });
-		} catch (error) {
-			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			} else {
-				logger.error('Error removing tag from service:', error);
-				return res.status(500).json({ success: false, error: 'Internal server error' });
-			}
-		}
-	};
-
-	getServiceTagsHandler = async (req: Request, res: Response) => {
-		try {
-			const { serviceId } = z
-				.object({
-					serviceId: z.string().transform((val) => {
-						const parsed = parseInt(val);
-						if (isNaN(parsed)) throw new Error('Invalid service ID');
-						return parsed;
-					}),
-				})
-				.parse({ serviceId: req.params.serviceId });
-
-			const tags = await this.tagRepo.getServiceTags(serviceId);
-			return res.json({ success: true, data: tags });
-		} catch (error) {
-			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			} else {
-				logger.error('Error getting service tags:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}

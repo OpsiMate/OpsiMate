@@ -362,8 +362,10 @@ describe('Authentication API', () => {
 			const viewerToken = viewerLoginRes.body.token;
 
 			// Test edit methods that should be restricted for viewers
-			const testEndpoint = '/api/v1/providers';
-			const testData = { name: 'test-provider', type: 'ssh', host: 'test.com' };
+			// Any role-guarded write endpoint exercises the viewer restriction; tags is a
+			// stable live one (providers/services were removed in #783).
+			const testEndpoint = '/api/v1/tags';
+			const testData = { name: 'rbac-test-tag', color: '#FF0000' };
 
 			const adminResponse = await app
 				.post(testEndpoint)
@@ -393,7 +395,7 @@ describe('Authentication API', () => {
 			expect(viewerResponse.body.success).toBe(false);
 
 			// GET requests should work for all roles, including viewer
-			const readResponse = await app.get('/api/v1/providers').set('Authorization', `Bearer ${viewerToken}`);
+			const readResponse = await app.get('/api/v1/tags').set('Authorization', `Bearer ${viewerToken}`);
 
 			// Should not be blocked by role restriction (may get other status codes like 200, 404, etc.)
 			expect(readResponse.status).not.toBe(403);
