@@ -1,11 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { AutocompleteInput } from './AutocompleteInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { getLabelMatcherGroups, MatcherCriteria } from '@OpsiMate/shared';
-import { Fragment, useId, useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 export type MatcherRow = { key: string; value: string; op?: 'equals' | 'contains' };
@@ -41,15 +41,13 @@ export const MatcherGroupsEditor = ({
 	disabled = false,
 	suggestions = [],
 }: MatcherGroupsEditorProps) => {
-	// Stable datalist id prefix so multiple editors on a page don't collide.
-	const listId = useId();
-	// key -> its known values, for scoping the value datalist to the row's chosen key.
+	// key -> its known values, for scoping the value dropdown to the row's chosen key.
 	const valuesByKey = useMemo(() => {
 		const m = new Map<string, string[]>();
 		suggestions.forEach((s) => m.set(s.key, s.values));
 		return m;
 	}, [suggestions]);
-	const keyListId = `${listId}-keys`;
+	const keySuggestions = useMemo(() => suggestions.map((s) => s.key), [suggestions]);
 	const updateRow = (groupIdx: number, rowIdx: number, patch: Partial<MatcherRow>) =>
 		onChange(
 			groups.map((group, gi) =>
@@ -100,12 +98,13 @@ export const MatcherGroupsEditor = ({
 							<div className="rounded-md border bg-background/50 p-2 space-y-2">
 								{group.map((row, rowIdx) => (
 									<div key={rowIdx} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
-										<Input
+										<AutocompleteInput
 											placeholder={keyPlaceholder}
 											value={row.key}
 											disabled={disabled}
-											list={keyListId}
-											onChange={(e) => updateRow(groupIdx, rowIdx, { key: e.target.value })}
+											aria-label="Matcher key"
+											suggestions={keySuggestions}
+											onChange={(key) => updateRow(groupIdx, rowIdx, { key })}
 										/>
 										{/* Comparison operator: exact equality or case-insensitive
 										    substring ("contains"). */}
@@ -129,20 +128,16 @@ export const MatcherGroupsEditor = ({
 												<SelectItem value="contains">contains</SelectItem>
 											</SelectContent>
 										</Select>
-										<Input
+										<AutocompleteInput
 											placeholder={valuePlaceholder}
 											value={row.value}
 											disabled={disabled}
-											list={`${listId}-v-${groupIdx}-${rowIdx}`}
-											onChange={(e) => updateRow(groupIdx, rowIdx, { value: e.target.value })}
+											aria-label="Matcher value"
+											// Scoped to THIS row's key — only the chosen key's
+											// values, never all at once.
+											suggestions={valuesByKey.get(row.key) ?? []}
+											onChange={(value) => updateRow(groupIdx, rowIdx, { value })}
 										/>
-										{/* Values datalist scoped to THIS row's key — only the
-										    chosen key's values load, never all at once. */}
-										<datalist id={`${listId}-v-${groupIdx}-${rowIdx}`}>
-											{(valuesByKey.get(row.key) ?? []).map((v) => (
-												<option key={v} value={v} />
-											))}
-										</datalist>
 										<Button
 											type="button"
 											variant="ghost"
@@ -183,12 +178,6 @@ export const MatcherGroupsEditor = ({
 					<Plus className="h-3.5 w-3.5 mr-1" /> OR group
 				</Button>
 			)}
-			{/* Shared keys datalist — a handful of tag keys, rendered once. */}
-			<datalist id={keyListId}>
-				{suggestions.map((s) => (
-					<option key={s.key} value={s.key} />
-				))}
-			</datalist>
 			{groups.length > 1 && (
 				<p className="text-xs text-muted-foreground">
 					Matches when ANY group matches; within a group every matcher must match.
