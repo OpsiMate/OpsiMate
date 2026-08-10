@@ -2140,3 +2140,62 @@ describe('Synthesized last-update history entry', () => {
 		expect(entries.some((e) => e.date === T && e.eventType === 'status_changed')).toBe(true);
 	});
 });
+
+// SQLite's CURRENT_TIMESTAMP is UTC but carries no timezone marker, and the client feeds
+// these straight into new Date(...) — which reads a bare "YYYY-MM-DD HH:MM:SS" as LOCAL
+// time. Unnormalized, a comment posted right now renders as hours old for anyone east of
+// UTC (a UTC+3 viewer saw "3h ago" on a fresh comment).
+describe('Comment timestamps are ISO UTC', () => {
+	const alertId = 'comment-tz-alert';
+
+	test('createdAt and updatedAt come back as ISO UTC, matching real time', async () => {
+		await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: alertId, tags: {}, alertName: 'Comment TZ Test' });
+
+		const before = Date.now();
+		const created = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'what time is it' });
+		expect(created.status).toBe(201);
+
+		const list = await app.get(`/api/v1/alerts/${alertId}/comments`).set('Authorization', `Bearer ${jwtToken}`);
+		const comment = (list.body.data.comments as { comment: string; createdAt: string; updatedAt: string }[]).find(
+			(c) => c.comment === 'what time is it'
+		);
+		expect(comment).toBeDefined();
+
+		// Explicitly UTC — this is what stops new Date() reading it as local time.
+		expect(comment!.createdAt).toMatch(/Z$/);
+		expect(comment!.updatedAt).toMatch(/Z$/);
+
+		// The instant it names must be NOW, not now shifted by a timezone offset. A whole
+		// hour of tolerance would still pass under the old behaviour in UTC+1, so this is
+		// deliberately tight (SQLite truncates to the second, hence the small allowance).
+		const parsed = new Date(comment!.createdAt).getTime();
+		expect(Math.abs(parsed - before)).toBeLessThan(5_000);
+	});
+
+	test('an edited comment keeps a UTC updatedAt', async () => {
+		const created = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'before edit' });
+		expect(created.status).toBe(201);
+
+		const updated = await app
+			.patch(`/api/v1/alerts/comments/${created.body.data.comment.id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'after edit' });
+		expect(updated.status).toBe(200);
+
+		const list = await app.get(`/api/v1/alerts/${alertId}/comments`).set('Authorization', `Bearer ${jwtToken}`);
+		const comment = (list.body.data.comments as { comment: string; updatedAt: string }[]).find(
+			(c) => c.comment === 'after edit'
+		);
+		expect(comment!.updatedAt).toMatch(/Z$/);
+		expect(Math.abs(new Date(comment!.updatedAt).getTime() - Date.now())).toBeLessThan(5_000);
+	});
+});
