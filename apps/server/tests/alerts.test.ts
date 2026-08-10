@@ -1567,6 +1567,86 @@ describe('Alerts API', () => {
 			});
 		});
 
+		// An alert's enrichment describes it — the added tags, links, summary and severity
+		// shouldn't vanish the moment it resolves. Actions matter here too: an action whose
+		// filter matches an enrichment-added tag has to keep matching on the Resolved view,
+		// and its payload templates from these same values.
+		describe('enrichment on resolved alerts', () => {
+			test('a resolved alert carries the same enrichment an active one gets', async () => {
+				await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({
+						id: 'resolved-enrich-1',
+						tags: { host: 'db-9' },
+						alertName: 'Resolved Enrichment Test',
+					});
+
+				const created = await app
+					.post('/api/v1/enrichments')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({
+						name: 'tag and link resolved alerts',
+						nameContains: 'Resolved Enrichment',
+						addFields: [{ key: 'team', value: 'platform-{{label.host}}' }],
+						addLinks: [{ label: 'Runbook', icon: 'grafana', url: 'https://rb.example.com/{{label.host}}' }],
+					});
+				expect(created.status).toBe(201);
+
+				const active = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+				const activeAlert = active.body.data.alerts.find((a: { id: string }) => a.id === 'resolved-enrich-1');
+				expect(activeAlert.tags.team).toBe('platform-db-9');
+
+				// Resolve it, then read it back off the resolved listing.
+				const resolved = await app
+					.delete('/api/v1/alerts/resolved-enrich-1')
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(resolved.status).toBe(200);
+
+				const list = await app.get('/api/v1/alerts/resolved').set('Authorization', `Bearer ${jwtToken}`);
+				const alert = list.body.data.alerts.find((a: { id: string }) => a.id === 'resolved-enrich-1');
+				expect(alert).toBeDefined();
+				expect(alert.tags.team).toBe('platform-db-9');
+				expect(alert.links).toEqual([
+					{ label: 'Runbook', icon: 'grafana', url: 'https://rb.example.com/db-9' },
+				]);
+				expect(alert.appliedEnrichments).toHaveLength(1);
+
+				await app
+					.delete(`/api/v1/enrichments/${created.body.data.id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				await app
+					.delete('/api/v1/alerts/resolved/resolved-enrich-1')
+					.set('Authorization', `Bearer ${jwtToken}`);
+			});
+
+			test('a mute policy does not mark a resolved alert muted', async () => {
+				await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ id: 'resolved-mute-1', tags: {}, alertName: 'Resolved Mute Test' });
+
+				const policy = await app
+					.post('/api/v1/mute-policies')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ name: 'mute resolved test', nameContains: 'Resolved Mute', matchAll: false });
+				expect(policy.status).toBe(201);
+
+				await app.delete('/api/v1/alerts/resolved-mute-1').set('Authorization', `Bearer ${jwtToken}`);
+
+				const list = await app.get('/api/v1/alerts/resolved').set('Authorization', `Bearer ${jwtToken}`);
+				const alert = list.body.data.alerts.find((a: { id: string }) => a.id === 'resolved-mute-1');
+				expect(alert).toBeDefined();
+				// Muting suppresses a FIRING alert; it carries no meaning once resolved.
+				expect(alert.isMuted).toBeFalsy();
+
+				await app
+					.delete(`/api/v1/mute-policies/${policy.body.data.id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				await app.delete('/api/v1/alerts/resolved/resolved-mute-1').set('Authorization', `Bearer ${jwtToken}`);
+			});
+		});
+
 		describe('Active to Resolved transition', () => {
 			test('should resolve alert with resolved status when deleted', async () => {
 				// Create a new alert

@@ -270,9 +270,19 @@ export class AlertBL {
 	async getAllResolvedAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all resolved alerts');
-			return await this.attachLastComments(
-				await this.attachFiringTimes(await this.resolvedAlertRepo.getAllResolvedAlerts())
-			);
+			let alerts = await this.resolvedAlertRepo.getAllResolvedAlerts();
+			// Resolved alerts are enriched exactly like active ones. The added tags, links,
+			// summary and severity are how an alert is DESCRIBED, and that description
+			// shouldn't change the instant it resolves: the Resolved view would show raw
+			// values, and any action whose filter matches an enrichment-added tag would
+			// stop offering itself (and would template its payload from unenriched values).
+			//
+			// Mute policies are deliberately not applied here: muting suppresses a firing
+			// alert, so "Muted" carries no meaning once the alert is resolved.
+			if (this.enrichmentBL) {
+				alerts = await this.enrichmentBL.applyEnrichments(alerts);
+			}
+			return await this.attachLastComments(await this.attachFiringTimes(alerts));
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;
