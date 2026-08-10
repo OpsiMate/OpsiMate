@@ -97,11 +97,14 @@ export const CommentsWall = ({ alertId }: CommentsWallProps) => {
 				</div>
 			</ScrollArea>
 
+			{/* The wall only mounts when the user opens Comments, so focusing here means
+			    "opened Comments" == "ready to type" — no click into the field first. */}
 			<CommentInput
 				value={newComment}
 				onChange={setNewComment}
 				onSubmit={handleSubmit}
 				isSubmitting={createMutation.isPending}
+				autoFocus
 			/>
 		</div>
 	);
