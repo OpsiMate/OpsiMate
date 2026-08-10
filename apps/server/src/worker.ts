@@ -1,7 +1,6 @@
 import { initializeDb } from './dal/db';
 import { createApp, AppMode } from './app';
 import { Logger } from '@OpsiMate/shared';
-import { initializePrivateKeysDir } from './dal/sshClient';
 
 const logger = new Logger('worker');
 
@@ -10,7 +9,6 @@ await (async () => {
 
 	// Initialize database and directories
 	const db = initializeDb();
-	initializePrivateKeysDir();
 
 	// Initialize worker mode (starts background jobs only)
 	await createApp(db, AppMode.WORKER);

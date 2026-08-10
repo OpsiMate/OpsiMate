@@ -20,15 +20,5 @@ export default function createCustomFieldsRouter(customFieldsController: CustomF
 	// DELETE /api/v1/custom-fields/:id
 	router.delete('/:id', customFieldsController.deleteCustomField);
 
-	// Custom Field Value operations
-	// POST /api/v1/custom-fields/values
-	router.post('/values', customFieldsController.upsertCustomFieldValue);
-
-	// GET /api/v1/custom-fields/services/:serviceId/values
-	router.get('/services/:serviceId/values', customFieldsController.getCustomFieldValuesForService);
-
-	// DELETE /api/v1/custom-fields/services/:serviceId/values/:customFieldId
-	router.delete('/services/:serviceId/values/:customFieldId', customFieldsController.deleteCustomFieldValue);
-
 	return router;
 }

@@ -6,8 +6,6 @@ import { AlertController } from './alerts/controller';
 import alertRouter from './alerts/router';
 import { AuditController } from './audit/controller';
 import createAuditRouter from './audit/router';
-import { CustomActionsController } from './custom-actions/controller';
-import createCustomActionsRouter from './custom-actions/router';
 import { CustomFieldsController } from './custom-fields/controller';
 import createCustomFieldsRouter from './custom-fields/router';
 import { DashboardController } from './dashboards/controller';
@@ -16,12 +14,8 @@ import { IntegrationController } from './integrations/controller';
 import integrationRouter from './integrations/router';
 import { PlaygroundController } from './playground/controller';
 import playgroundRouter from './playground/router';
-import { ProviderController } from './providers/controller';
-import providerRouter from './providers/router';
 import { SecretsController } from './secrets/controller';
 import createSecretsRouter from './secrets/router';
-import { ServiceController } from './services/controller';
-import serviceRouter from './services/router';
 import { EnrichmentController } from './enrichments/controller';
 import createEnrichmentRouter from './enrichments/router';
 import { MutePolicyController } from './mute-policies/controller';
@@ -36,8 +30,6 @@ import { RetentionController } from './retention/controller';
 import createRetentionRouter from './retention/router';
 
 export default function createV1Router(
-	providerController: ProviderController,
-	serviceController: ServiceController,
 	dashboardController: DashboardController,
 	tagController: TagController,
 	integrationController: IntegrationController,
@@ -46,7 +38,6 @@ export default function createV1Router(
 	auditController: AuditController, // optional for backward compatibility
 	secretsController: SecretsController,
 	customFieldsController: CustomFieldsController,
-	customActionsController: CustomActionsController,
 	playgroundController: PlaygroundController,
 	mutePolicyController: MutePolicyController,
 	enrichmentController: EnrichmentController,
@@ -69,15 +60,12 @@ export default function createV1Router(
 
 	// JWT-protected endpoints
 	router.use(authenticateJWT);
-	router.use('/providers', providerRouter(providerController));
-	router.use('/services', serviceRouter(serviceController, tagController));
 	router.use('/dashboards', dashboardRouter(dashboardController));
 	router.use('/tags', tagRouter(tagController));
 	router.use('/integrations', integrationRouter(integrationController));
 	router.use('/alerts', alertRouter(alertController));
 	router.use('/secrets', createSecretsRouter(secretsController));
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
-	router.use('/custom-actions', createCustomActionsRouter(customActionsController));
 	router.use('/mute-policies', createMutePolicyRouter(mutePolicyController));
 	router.use('/oncall', createOncallRouter(oncallController));
 	router.use('/enrichments', createEnrichmentRouter(enrichmentController));
