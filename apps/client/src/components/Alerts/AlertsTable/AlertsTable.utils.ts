@@ -2,14 +2,11 @@ import { UserInfo } from '@/hooks/queries/users';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
-import { createServiceNameLookup } from '../utils';
 import { getAlertTagsString } from '../utils/alertTags.utils';
 import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
 import { getAlertFix, FIX_LABELS, FIX_RANK } from '../utils/fix.utils';
 import { getAlertSeverity, SEVERITY_LABELS, SEVERITY_RANK } from '../utils/severity.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
-
-export { createServiceNameLookup };
 
 export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	if (!searchTerm.trim()) return alerts;

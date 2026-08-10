@@ -1,1 +1,0 @@
-export { ServiceDetailsDrawer } from './ServiceDetailsDrawer';

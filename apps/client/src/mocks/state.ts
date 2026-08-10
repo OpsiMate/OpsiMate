@@ -1,6 +1,18 @@
 import { getPlaygroundUser } from '@/lib/playground';
 import { getTagKeyColumnId } from '@/types';
-import { SavedView } from '@/types/SavedView';
+// Local shape for the playground's saved-views mock (the app's saved-views feature was
+// removed with the dead provider/dashboard cluster; the playground handlers still serve
+// this array so their /views endpoints don't 404).
+interface MockSavedView {
+	id: string;
+	name: string;
+	description: string;
+	createdAt: string;
+	filters: Record<string, string[]>;
+	visibleColumns: Record<string, unknown>;
+	searchTerm: string;
+	isDefault: number;
+}
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	Action,
@@ -39,7 +51,7 @@ export interface PlaygroundState {
 	integrations: Integration[];
 	dashboards: Dashboard[];
 	dashboardTags: Record<string, number[]>;
-	views: SavedView[];
+	views: MockSavedView[];
 	activeViewId: string | null;
 	users: User[];
 	customActions: CustomAction[];
@@ -204,7 +216,7 @@ const createDashboards = (): Dashboard[] => [
 	},
 ];
 
-const createViews = (): SavedView[] => [
+const createViews = (): MockSavedView[] => [
 	{
 		id: 'v-1',
 		name: 'All environments',

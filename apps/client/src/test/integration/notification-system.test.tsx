@@ -4,7 +4,6 @@ import { render, screen, fireEvent, waitFor, act } from '../test-utils';
 import { Toaster } from '@/components/ui/toaster';
 import type { ToastActionElement } from '@/components/ui/toast';
 import { useToast } from '@/hooks/use-toast';
-import { AlertsSection } from '@/components/AlertsSection';
 
 // Lightweight mock WebSocket to simulate server push messages
 class MockWebSocket {
@@ -167,46 +166,6 @@ describe('notification system - integration', () => {
 			fireEvent.click(closeBtn);
 			await waitFor(() => expect(root?.getAttribute('data-state')).toBe('closed'));
 		}
-	});
-
-	it('alert notifications persist until silenced and show toast on silence', async () => {
-		const AlertsWrapper = () => {
-			const [alerts, setAlerts] = useState([
-				{
-					id: '1',
-					status: 'firing',
-					tag: 'infrastructure',
-					startsAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					alertUrl: '',
-					alertName: 'High CPU',
-					summary: 'cpu > 95%',
-					runbookUrl: '',
-					createdAt: new Date().toISOString(),
-					isSilenced: false,
-				},
-			]);
-			const handleSilence = async (id: string) => {
-				await Promise.resolve();
-				setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, isSilenced: true } : a)));
-			};
-
-			return (
-				<>
-					<Toaster />
-					<AlertsSection alerts={alerts} onAlertSilence={handleSilence} />
-				</>
-			);
-		};
-
-		render(<AlertsWrapper />);
-
-		// initial alert should be visible
-		expect(screen.getByText('High CPU')).toBeInTheDocument();
-		const silenceButton = screen.getByTitle('Silence Alert') as HTMLElement;
-		fireEvent.click(silenceButton);
-		await waitFor(() => expect(screen.getByText('Alert silenced')).toBeInTheDocument());
-		await waitFor(() => expect(screen.queryByText('High CPU')).toBeNull());
 	});
 
 	it('renders different notification types with distinct styling and actions work', async () => {

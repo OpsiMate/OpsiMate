@@ -15,7 +15,6 @@ export type SortDirection = 'asc' | 'desc';
 
 export interface AlertsTableProps {
 	alerts: Alert[];
-	services: Array<{ id: string | number; name: string }>;
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
