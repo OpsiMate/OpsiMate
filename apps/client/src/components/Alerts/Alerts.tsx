@@ -18,7 +18,6 @@ import {
 	useUpdateDashboard,
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
-import { useServices } from '@/hooks/queries/services';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
@@ -60,7 +59,6 @@ const Alerts = () => {
 	const { toast } = useToast();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
 	const { data: resolvedAlerts = [], isLoading: isLoadingResolved, refetch: refetchResolved } = useResolvedAlerts();
-	const { data: services = [] } = useServices();
 	const { data: dashboards = [] } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
@@ -383,7 +381,6 @@ const Alerts = () => {
 	const renderActiveAlertsTable = (list: Alert[]) => (
 		<AlertsTable
 			alerts={list}
-			services={services}
 			onSilenceAlert={confirmSilenceAlert}
 			onUnsilenceAlert={handleUnsilenceAlert}
 			onDeleteAlert={confirmResolveAlert}
@@ -697,7 +694,6 @@ const Alerts = () => {
 							>
 								<AlertsTable
 									alerts={resolvedViewAlerts}
-									services={services}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
 									onDeleteAlert={confirmDeleteResolvedAlert}
@@ -737,7 +733,6 @@ const Alerts = () => {
 							>
 								<AlertsTable
 									alerts={filteredAllAlerts}
-									services={services}
 									onSilenceAlert={confirmSilenceAlert}
 									onUnsilenceAlert={handleUnsilenceAlert}
 									onDeleteAlert={confirmDeleteAnyAlert}

@@ -1,4 +1,3 @@
-import { SavedView } from '@/types/SavedView';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	Action,
@@ -127,41 +126,6 @@ async function apiRequest<T>(
 		};
 	}
 }
-
-/**
- * Views API endpoints
- */
-export const viewsApi = {
-	// Get all views for the current user
-	getViews: () => {
-		return apiRequest<SavedView[]>('/views');
-	},
-
-	// Get a specific view
-	getView: (viewId: string) => {
-		return apiRequest<SavedView>(`/views/${viewId}`);
-	},
-
-	// Save a view (create or update)
-	saveView: (view: SavedView) => {
-		return apiRequest<SavedView>('/views', 'POST', view);
-	},
-
-	// Delete a view
-	deleteView: (viewId: string) => {
-		return apiRequest<{ message: string }>(`/views/${viewId}`, 'DELETE');
-	},
-
-	// Set active view
-	setActiveView: (viewId: string) => {
-		return apiRequest<{ message: string }>(`/views/active/${viewId}`, 'POST');
-	},
-
-	// Get active view ID
-	getActiveViewId: () => {
-		return apiRequest<{ activeViewId: string | null }>('/views/active');
-	},
-};
 
 /**
  * Provider API endpoints
