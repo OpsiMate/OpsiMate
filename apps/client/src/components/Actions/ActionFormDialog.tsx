@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { useAlerts } from '@/hooks/queries/alerts';
+import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,6 +73,8 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	// Alert filter (empty = applies to all alerts)
 	const [nameContains, setNameContains] = useState('');
 	const [matcherGroups, setMatcherGroups] = useState<HeaderRow[][]>([]);
+	const { data: alerts = [] } = useAlerts();
+	const matcherSuggestions = useAlertTagKeys(alerts);
 
 	// Slack
 	const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
@@ -663,6 +667,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 							keyPlaceholder="key (e.g. severity)"
 							valuePlaceholder="value (e.g. critical)"
 							emptyText="No label matchers. Scope by environment, service, severity, etc."
+							suggestions={matcherSuggestions}
 						/>
 					</div>
 				</div>

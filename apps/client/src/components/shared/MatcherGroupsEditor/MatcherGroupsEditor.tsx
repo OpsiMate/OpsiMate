@@ -5,10 +5,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { getLabelMatcherGroups, MatcherCriteria } from '@OpsiMate/shared';
-import { Fragment } from 'react';
+import { Fragment, useId, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 export type MatcherRow = { key: string; value: string; op?: 'equals' | 'contains' };
+
+// Autocomplete source: the tag keys seen on current alerts and, per key, the values seen.
+export interface MatcherSuggestion {
+	key: string;
+	values: string[];
+}
 
 interface MatcherGroupsEditorProps {
 	// OR groups of AND matchers: the entity matches when ANY group fully matches.
@@ -18,6 +24,9 @@ interface MatcherGroupsEditorProps {
 	valuePlaceholder?: string;
 	emptyText?: string;
 	disabled?: boolean;
+	// Type-ahead suggestions for keys, and scoped values per selected key. Free typing is
+	// always allowed — a matcher can target a key/value not present on any current alert.
+	suggestions?: MatcherSuggestion[];
 }
 
 // Grouped label-matcher editor shared by mute policies, enrichments, and actions.
@@ -30,7 +39,17 @@ export const MatcherGroupsEditor = ({
 	valuePlaceholder = 'value (e.g. prod)',
 	emptyText = 'No label matchers. Use these to scope by environment, service, severity, etc.',
 	disabled = false,
+	suggestions = [],
 }: MatcherGroupsEditorProps) => {
+	// Stable datalist id prefix so multiple editors on a page don't collide.
+	const listId = useId();
+	// key -> its known values, for scoping the value datalist to the row's chosen key.
+	const valuesByKey = useMemo(() => {
+		const m = new Map<string, string[]>();
+		suggestions.forEach((s) => m.set(s.key, s.values));
+		return m;
+	}, [suggestions]);
+	const keyListId = `${listId}-keys`;
 	const updateRow = (groupIdx: number, rowIdx: number, patch: Partial<MatcherRow>) =>
 		onChange(
 			groups.map((group, gi) =>
@@ -85,6 +104,7 @@ export const MatcherGroupsEditor = ({
 											placeholder={keyPlaceholder}
 											value={row.key}
 											disabled={disabled}
+											list={keyListId}
 											onChange={(e) => updateRow(groupIdx, rowIdx, { key: e.target.value })}
 										/>
 										{/* Comparison operator: exact equality or case-insensitive
@@ -113,8 +133,16 @@ export const MatcherGroupsEditor = ({
 											placeholder={valuePlaceholder}
 											value={row.value}
 											disabled={disabled}
+											list={`${listId}-v-${groupIdx}-${rowIdx}`}
 											onChange={(e) => updateRow(groupIdx, rowIdx, { value: e.target.value })}
 										/>
+										{/* Values datalist scoped to THIS row's key — only the
+										    chosen key's values load, never all at once. */}
+										<datalist id={`${listId}-v-${groupIdx}-${rowIdx}`}>
+											{(valuesByKey.get(row.key) ?? []).map((v) => (
+												<option key={v} value={v} />
+											))}
+										</datalist>
 										<Button
 											type="button"
 											variant="ghost"
@@ -155,6 +183,12 @@ export const MatcherGroupsEditor = ({
 					<Plus className="h-3.5 w-3.5 mr-1" /> OR group
 				</Button>
 			)}
+			{/* Shared keys datalist — a handful of tag keys, rendered once. */}
+			<datalist id={keyListId}>
+				{suggestions.map((s) => (
+					<option key={s.key} value={s.key} />
+				))}
+			</datalist>
 			{groups.length > 1 && (
 				<p className="text-xs text-muted-foreground">
 					Matches when ANY group matches; within a group every matcher must match.
