@@ -1,10 +1,9 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Filter, RotateCcw } from 'lucide-react';
+import { CircleMinus, CirclePlus, Filter, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActiveFiltersSection } from './FilterPanel/ActiveFiltersSection';
 import { FilterSearchInput } from './FilterPanel/FilterSearchInput';
@@ -76,7 +75,10 @@ export const FilterPanel = ({
 	}, [facets]);
 
 	useEffect(() => {
-		Object.entries(filters).forEach(([field, values]) => {
+		Object.entries(filters).forEach(([key, values]) => {
+			// Exclusion keys ("!field") register their values under the plain field, so an
+			// excluded value stays listed as an option even when no alert carries it anymore.
+			const field = key.startsWith('!') ? key.slice(1) : key;
 			if (!allSeenValuesRef.current[field]) {
 				allSeenValuesRef.current[field] = new Set();
 			}
@@ -100,9 +102,30 @@ export const FilterPanel = ({
 			? currentValues.filter((v) => v !== value)
 			: [...currentValues, value];
 
+		// Including a value always clears its exclusion — a value can't be filtered in
+		// and out at the same time.
+		const excludeKey = `!${field}`;
+		const excluded = (filters[excludeKey] || []).filter((v) => v !== value);
+
 		onFilterChange({
 			...filters,
 			[field]: newValues,
+			...(filters[excludeKey] ? { [excludeKey]: excluded } : {}),
+		});
+	};
+
+	// Toggle a value's "filter out" state. Exclusions live in the same filters record
+	// under "!<field>" keys, so persistence needs no schema change. Excluding a value
+	// also removes any include of it (mutually exclusive per value).
+	const handleExcludeToggle = (field: string, value: string) => {
+		const excludeKey = `!${field}`;
+		const currentExcluded = filters[excludeKey] || [];
+		const isExcluded = currentExcluded.includes(value);
+		onFilterChange({
+			...filters,
+			[excludeKey]: isExcluded ? currentExcluded.filter((v) => v !== value) : [...currentExcluded, value],
+			// Only rewrite the include list when one exists — no phantom empty keys.
+			...(!isExcluded && filters[field] ? { [field]: filters[field].filter((v) => v !== value) } : {}),
 		});
 	};
 
@@ -204,16 +227,22 @@ export const FilterPanel = ({
 				onRemoveFilter={handleRemoveFilter}
 			/>
 			<ScrollArea className="flex-1">
-				<div className="px-2 py-2">
+				{/* w-0 + min-w-full: Radix ScrollArea's viewport child is display:table, which
+				    grows to CONTENT width — one long option label would widen every row past
+				    the visible panel and push the +/− controls and count badges out of view.
+				    This pins the content to the viewport width so labels truncate and the
+				    controls stay hugging the visible right edge. */}
+				<div className="px-2 py-2 w-0 min-w-full">
 					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
 						{config.fields.map((field) => {
 							const fieldFacets = facets[field] || [];
 							const activeValues = filters[field] || [];
+							const excludedValues = filters[`!${field}`] || [];
 							const seenValues = allSeenValues[field] || new Set();
 
 							const existingValues = new Set(fieldFacets.map((f) => f.value));
-							const orphanedFilters = activeValues
-								.filter((v) => !existingValues.has(v))
+							const orphanedFilters = [...activeValues, ...excludedValues]
+								.filter((v, i, arr) => !existingValues.has(v) && arr.indexOf(v) === i)
 								.map((value) => ({ value, count: 0 }));
 
 							// Apply global search filter
@@ -232,7 +261,12 @@ export const FilterPanel = ({
 							};
 
 							const missingSeenValues = Array.from(seenValues)
-								.filter((v) => !existingValues.has(v) && !activeValues.includes(v))
+								.filter(
+									(v) =>
+										!existingValues.has(v) &&
+										!activeValues.includes(v) &&
+										!excludedValues.includes(v)
+								)
 								.map((value) => ({ value, count: 0 }));
 
 							const allFacets = [...fieldFacets, ...orphanedFilters, ...missingSeenValues];
@@ -255,12 +289,12 @@ export const FilterPanel = ({
 											<span className="text-xs font-medium text-foreground">
 												{config.fieldLabels[field] || field}
 											</span>
-											{activeValues.length > 0 && (
+											{activeValues.length + excludedValues.length > 0 && (
 												<Badge
 													variant="outline"
 													className="text-[10px] px-1.5 py-0 h-4 bg-muted/50 border-muted-foreground/20"
 												>
-													{activeValues.length}
+													{activeValues.length + excludedValues.length}
 												</Badge>
 											)}
 										</div>
@@ -285,41 +319,105 @@ export const FilterPanel = ({
 													<>
 														{filteredAndLimitedFacets.map(
 															({ value, count, displayValue, disabled }) => {
-																const isChecked = activeValues.includes(value);
+																const isIncluded = activeValues.includes(value);
+																const isExcluded = excludedValues.includes(value);
 																const label = displayValue || value;
 																const isDisabled = disabled === true;
 																return (
-																	<label
+																	// Row click = include toggle (the biggest target,
+																	// same gesture the old checkbox served); the +/−
+																	// buttons are the explicit controls — hover-revealed
+																	// when idle, pinned while their state is active.
+																	<div
 																		key={value}
+																		onClick={() =>
+																			!isDisabled &&
+																			handleFilterToggle(field, value)
+																		}
 																		className={cn(
-																			'flex items-center gap-2 py-1 px-1 rounded transition-colors w-full overflow-hidden',
+																			'group/row flex items-center gap-1.5 py-1 px-1 rounded transition-colors w-full overflow-hidden',
 																			isDisabled
 																				? 'cursor-not-allowed opacity-50'
 																				: 'cursor-pointer hover:bg-muted/50',
-																			isChecked && 'bg-muted'
+																			isIncluded && 'bg-muted',
+																			isExcluded && 'bg-destructive/10'
 																		)}
 																	>
-																		<Checkbox
-																			checked={isChecked}
-																			disabled={isDisabled}
-																			onCheckedChange={() =>
-																				handleFilterToggle(field, value)
-																			}
-																			className="h-3 w-3 border-2 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer hover:bg-primary/10 transition-colors disabled:cursor-not-allowed"
-																		/>
 																		<span
-																			className="text-xs overflow-hidden text-ellipsis whitespace-nowrap block max-w-[100px] text-foreground"
+																			className={cn(
+																				'text-xs flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-foreground',
+																				isIncluded &&
+																					'font-medium text-primary',
+																				isExcluded &&
+																					'line-through text-destructive'
+																			)}
 																			title={label}
 																		>
 																			{label}
 																		</span>
+																		{!isDisabled && (
+																			<button
+																				type="button"
+																				onClick={(e) => {
+																					e.stopPropagation();
+																					handleFilterToggle(field, value);
+																				}}
+																				aria-pressed={isIncluded}
+																				className={cn(
+																					'shrink-0 rounded p-0.5 transition-opacity',
+																					isIncluded
+																						? 'opacity-100 text-primary'
+																						: 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-primary'
+																				)}
+																				title={
+																					isIncluded
+																						? 'Remove filter'
+																						: 'Filter'
+																				}
+																				aria-label={
+																					isIncluded
+																						? `Stop filtering ${label}`
+																						: `Filter ${label}`
+																				}
+																			>
+																				<CirclePlus className="h-3.5 w-3.5" />
+																			</button>
+																		)}
+																		{!isDisabled && (
+																			<button
+																				type="button"
+																				onClick={(e) => {
+																					e.stopPropagation();
+																					handleExcludeToggle(field, value);
+																				}}
+																				aria-pressed={isExcluded}
+																				className={cn(
+																					'shrink-0 rounded p-0.5 transition-opacity',
+																					isExcluded
+																						? 'opacity-100 text-destructive'
+																						: 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive'
+																				)}
+																				title={
+																					isExcluded
+																						? 'Stop filtering out'
+																						: 'Filter out'
+																				}
+																				aria-label={
+																					isExcluded
+																						? `Stop filtering out ${label}`
+																						: `Filter out ${label}`
+																				}
+																			>
+																				<CircleMinus className="h-3.5 w-3.5" />
+																			</button>
+																		)}
 																		<Badge
 																			variant="outline"
-																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center ml-auto"
+																			className="text-[10px] px-1 py-0 h-4 min-w-[20px] shrink-0 flex items-center justify-center"
 																		>
 																			{count}
 																		</Badge>
-																	</label>
+																	</div>
 																);
 															}
 														)}
