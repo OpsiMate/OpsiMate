@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
-import { AlertEnrichment } from '@OpsiMate/shared';
+import { AlertEnrichment, getLabelMatcherGroups } from '@OpsiMate/shared';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -95,7 +95,7 @@ const Enrichments: React.FC = () => {
 			if (e.nameContains?.toLowerCase().includes(q)) return true;
 			if (e.summaryTemplate?.toLowerCase().includes(q)) return true;
 			if (
-				(e.labelMatcherGroups ?? [e.labelMatchers ?? []])
+				getLabelMatcherGroups(e)
 					.flat()
 					.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q))
 			)

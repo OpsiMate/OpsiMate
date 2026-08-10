@@ -380,6 +380,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 								id="enrichment-nameContains"
 								placeholder="e.g. Disk, HighCPU, prod-db"
 								value={nameContains}
+								disabled={matchAll}
 								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>

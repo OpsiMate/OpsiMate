@@ -1,13 +1,14 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { getLabelMatcherGroups, MatcherCriteria } from '@OpsiMate/shared';
 import { Fragment } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-export type MatcherRow = { key: string; value: string };
+export type MatcherRow = { key: string; value: string; op?: 'equals' | 'contains' };
 
 interface MatcherGroupsEditorProps {
 	// OR groups of AND matchers: the entity matches when ANY group fully matches.
@@ -83,12 +84,35 @@ export const MatcherGroupsEditor = ({
 										<Input
 											placeholder={keyPlaceholder}
 											value={row.key}
+											disabled={disabled}
 											onChange={(e) => updateRow(groupIdx, rowIdx, { key: e.target.value })}
 										/>
-										<span className="text-muted-foreground text-sm">=</span>
+										{/* Comparison operator: exact equality or case-insensitive
+										    substring ("contains"). */}
+										<Select
+											value={row.op === 'contains' ? 'contains' : 'equals'}
+											onValueChange={(op) =>
+												updateRow(groupIdx, rowIdx, {
+													op: op === 'contains' ? 'contains' : undefined,
+												})
+											}
+											disabled={disabled}
+										>
+											<SelectTrigger
+												className="h-9 w-[110px] shrink-0"
+												aria-label="Comparison operator"
+											>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="equals">=</SelectItem>
+												<SelectItem value="contains">contains</SelectItem>
+											</SelectContent>
+										</Select>
 										<Input
 											placeholder={valuePlaceholder}
 											value={row.value}
+											disabled={disabled}
 											onChange={(e) => updateRow(groupIdx, rowIdx, { value: e.target.value })}
 										/>
 										<Button
@@ -96,6 +120,7 @@ export const MatcherGroupsEditor = ({
 											variant="ghost"
 											size="icon"
 											className="h-9 w-9"
+											disabled={disabled}
 											onClick={() => removeRow(groupIdx, rowIdx)}
 											aria-label="Remove matcher"
 										>
@@ -108,6 +133,7 @@ export const MatcherGroupsEditor = ({
 									variant="ghost"
 									size="sm"
 									className="h-7 text-xs text-muted-foreground"
+									disabled={disabled}
 									onClick={() => addRow(groupIdx)}
 								>
 									<Plus className="h-3 w-3 mr-1" /> AND matcher
@@ -123,6 +149,7 @@ export const MatcherGroupsEditor = ({
 					variant="outline"
 					size="sm"
 					className="w-full text-xs"
+					disabled={disabled}
 					onClick={() => onChange([...groups, [{ key: '', value: '' }]])}
 				>
 					<Plus className="h-3.5 w-3.5 mr-1" /> OR group
@@ -162,7 +189,9 @@ export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) 
 							variant="outline"
 							className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md"
 						>
-							{m.key}={m.value}
+							{m.key}
+							{m.op === 'contains' ? ' ~ ' : '='}
+							{m.value}
 						</Badge>
 					))}
 				</Fragment>

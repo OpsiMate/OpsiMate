@@ -642,7 +642,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
 							Leave empty to show this action on every alert. Add criteria to show it only on matching
-							alerts (name contains AND all labels match).
+							alerts (name contains AND any matcher group matches).
 						</p>
 
 						<div className="space-y-2">

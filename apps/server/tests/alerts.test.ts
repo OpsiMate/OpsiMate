@@ -793,6 +793,59 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`);
 		});
 
+		test("a 'contains' matcher matches by case-insensitive substring", async () => {
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'contains-a', tags: { service: 'CPU-worker-3' }, alertName: 'Contains A' });
+			await app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'contains-b', tags: { service: 'db-primary' }, alertName: 'Contains B' });
+
+			const created = await app
+				.post('/api/v1/mute-policies')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'contains policy',
+					labelMatcherGroups: [[{ key: 'service', value: 'cpu', op: 'contains' }]],
+				});
+			expect(created.status).toBe(201);
+
+			const list = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			const byId = Object.fromEntries(list.body.data.alerts.map((a: { id: string }) => [a.id, a]));
+			expect(byId['contains-a'].isMuted).toBe(true);
+			expect(byId['contains-b'].isMuted).toBeUndefined();
+
+			await app
+				.delete(`/api/v1/mute-policies/${created.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+		});
+
+		test('enrichment updates preserve labelMatcherGroups and matchAll', async () => {
+			const created = await app
+				.post('/api/v1/enrichments')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					name: 'update keeps groups',
+					labelMatcherGroups: [[{ key: 'a', value: '1' }], [{ key: 'b', value: '2' }]],
+					addFields: [{ key: 'x', value: 'y' }],
+				});
+			expect(created.status).toBe(201);
+
+			const updated = await app
+				.put(`/api/v1/enrichments/${created.body.data.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					labelMatcherGroups: [[{ key: 'c', value: '3', op: 'contains' }]],
+					matchAll: false,
+				});
+			expect(updated.status).toBe(200);
+			expect(updated.body.data.labelMatcherGroups).toEqual([[{ key: 'c', value: '3', op: 'contains' }]]);
+
+			await app.delete(`/api/v1/enrichments/${created.body.data.id}`).set('Authorization', `Bearer ${jwtToken}`);
+		});
+
 		test('a match-all mute policy needs no criteria and mutes everything', async () => {
 			const created = await app
 				.post('/api/v1/mute-policies')

@@ -300,6 +300,7 @@ export const UpdateCommentSchema = z.object({
 const labelMatcherSchema = z.object({
 	key: z.string().min(1, 'Label key is required').max(200),
 	value: z.string().min(1, 'Label value is required').max(500),
+	op: z.enum(['equals', 'contains']).optional(),
 });
 
 const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -451,6 +452,8 @@ export const UpdateAlertEnrichmentSchema = z.object({
 	name: z.string().min(1).max(200).optional(),
 	nameContains: z.string().max(500).optional().nullable(),
 	labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
+	labelMatcherGroups: labelMatcherGroupsSchema.optional(),
+	matchAll: z.boolean().optional(),
 	addFields: z.array(enrichmentFieldSchema).max(20).optional(),
 	addLinks: z.array(enrichmentLinkSchema).max(20).optional(),
 	summaryTemplate: z.string().max(5000).optional().nullable(),

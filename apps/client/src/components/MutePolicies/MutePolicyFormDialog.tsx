@@ -262,8 +262,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 							<h4 className="text-sm font-semibold">Match criteria</h4>
 						</div>
 						<p className="text-xs text-muted-foreground -mt-2">
-							An alert is muted when its name matches and ALL labels match. At least one criterion is
-							required.
+							An alert is muted when its name matches and ANY matcher group matches (all matchers within a
+							group must match). At least one criterion — or match-all — is required.
 						</p>
 
 						<label className="flex items-center gap-2 cursor-pointer">
@@ -281,6 +281,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 								id="mute-policy-nameContains"
 								placeholder="e.g. HighCPU, prod-db, latency"
 								value={nameContains}
+								disabled={matchAll}
 								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>

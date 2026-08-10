@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
-import { MutePolicy } from '@OpsiMate/shared';
+import { getLabelMatcherGroups, MutePolicy } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { useMemo, useState } from 'react';
@@ -156,7 +156,7 @@ const MutePolicies: React.FC = () => {
 			if (s.name.toLowerCase().includes(q)) return true;
 			if (s.nameContains?.toLowerCase().includes(q)) return true;
 			if (s.reason?.toLowerCase().includes(q)) return true;
-			return (s.labelMatcherGroups ?? [s.labelMatchers ?? []])
+			return getLabelMatcherGroups(s)
 				.flat()
 				.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q));
 		});

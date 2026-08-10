@@ -424,6 +424,10 @@ export interface AlertComment {
 export interface MutePolicyLabelMatcher {
 	key: string;
 	value: string;
+	// How the value compares against the alert's tag: exact equality (default) or
+	// case-insensitive substring. Absent = equals, so every stored row keeps meaning
+	// what it meant.
+	op?: 'equals' | 'contains';
 }
 
 // OR groups of label matchers: an entity matches an alert when ANY group matches, and a
@@ -448,11 +452,16 @@ export const getLabelMatcherGroups = (criteria: MatcherCriteria): LabelMatcherGr
 	return flat.length > 0 ? [flat] : [];
 };
 
+const matcherMatchesTagValue = (m: MutePolicyLabelMatcher, tagValue: string | undefined): boolean => {
+	if (tagValue === undefined) return false;
+	if (m.op === 'contains') return String(tagValue).toLowerCase().includes(m.value.toLowerCase());
+	return String(tagValue) === m.value;
+};
+
 export const anyMatcherGroupMatchesTags = (
 	groups: LabelMatcherGroups,
 	tags: Record<string, string> | undefined
-): boolean =>
-	groups.some((group) => group.every((m) => tags?.[m.key] !== undefined && String(tags[m.key]) === m.value));
+): boolean => groups.some((group) => group.every((m) => matcherMatchesTagValue(m, tags?.[m.key])));
 
 // Recurring weekly schedule, evaluated in server local time.
 // daysOfWeek: 0=Sunday … 6=Saturday (matches Date.prototype.getDay()).
