@@ -2145,6 +2145,13 @@ describe('Synthesized last-update history entry', () => {
 // these straight into new Date(...) — which reads a bare "YYYY-MM-DD HH:MM:SS" as LOCAL
 // time. Unnormalized, a comment posted right now renders as hours old for anyone east of
 // UTC (a UTC+3 viewer saw "3h ago" on a fresh comment).
+interface CommentResponse {
+	id: string;
+	comment: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 describe('Comment timestamps are ISO UTC', () => {
 	const alertId = 'comment-tz-alert';
 
@@ -2162,9 +2169,7 @@ describe('Comment timestamps are ISO UTC', () => {
 		expect(created.status).toBe(201);
 
 		const list = await app.get(`/api/v1/alerts/${alertId}/comments`).set('Authorization', `Bearer ${jwtToken}`);
-		const comment = (list.body.data.comments as { comment: string; createdAt: string; updatedAt: string }[]).find(
-			(c) => c.comment === 'what time is it'
-		);
+		const comment = (list.body.data.comments as CommentResponse[]).find((c) => c.comment === 'what time is it');
 		expect(comment).toBeDefined();
 
 		// Explicitly UTC — this is what stops new Date() reading it as local time.
@@ -2192,9 +2197,7 @@ describe('Comment timestamps are ISO UTC', () => {
 		expect(updated.status).toBe(200);
 
 		const list = await app.get(`/api/v1/alerts/${alertId}/comments`).set('Authorization', `Bearer ${jwtToken}`);
-		const comment = (list.body.data.comments as { comment: string; updatedAt: string }[]).find(
-			(c) => c.comment === 'after edit'
-		);
+		const comment = (list.body.data.comments as CommentResponse[]).find((c) => c.comment === 'after edit');
 		expect(comment!.updatedAt).toMatch(/Z$/);
 		expect(Math.abs(new Date(comment!.updatedAt).getTime() - Date.now())).toBeLessThan(5_000);
 	});
