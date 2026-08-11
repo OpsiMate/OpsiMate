@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -55,6 +55,8 @@ const ALERT_TAB_OPTIONS = [
 	{ value: AlertTab.All, label: 'All', Icon: LayoutList },
 ] as const;
 
+const FILTER_PANEL_COLLAPSED_KEY = 'OpsiMate-alerts-filter-panel-collapsed';
+
 const Alerts = () => {
 	const { toast } = useToast();
 	const { data: alerts = [], isLoading, refetch } = useAlerts();
@@ -79,7 +81,20 @@ const Alerts = () => {
 	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
+	// Collapsed by default — most sessions start from a saved view, not from building
+	// filters — and persisted per-browser (the DashboardLayout sidebar pattern), so a
+	// user who works with the panel open keeps it open.
+	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState<boolean>(() => {
+		try {
+			const saved = localStorage.getItem(FILTER_PANEL_COLLAPSED_KEY);
+			return saved === null ? true : JSON.parse(saved) === false ? false : true;
+		} catch {
+			return true;
+		}
+	});
+	useEffect(() => {
+		localStorage.setItem(FILTER_PANEL_COLLAPSED_KEY, JSON.stringify(filterPanelCollapsed));
+	}, [filterPanelCollapsed]);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
