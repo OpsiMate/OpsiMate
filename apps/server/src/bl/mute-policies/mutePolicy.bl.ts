@@ -4,7 +4,15 @@ import { MutePolicyRepository, CreateMutePolicyInput, UpdateMutePolicyInput } fr
 const logger = new Logger('bl/mutePolicy.bl');
 
 export class MutePolicyBL {
+	// Mute rules change what markMuted stamps on every alert, so the alerts snapshot
+	// cache must drop when a rule changes; wired to AlertBL.invalidateSnapshots in app.ts.
+	private onRulesChanged: (() => void) | null = null;
+
 	constructor(private mutePolicyRepo: MutePolicyRepository) {}
+
+	setOnRulesChanged(callback: () => void): void {
+		this.onRulesChanged = callback;
+	}
 
 	async create(data: CreateMutePolicyInput): Promise<MutePolicy> {
 		const { lastID } = await this.mutePolicyRepo.createMutePolicy(data);
@@ -12,6 +20,7 @@ export class MutePolicyBL {
 		if (!created) {
 			throw new Error('Failed to retrieve created mute policy');
 		}
+		this.onRulesChanged?.();
 		return created;
 	}
 
@@ -25,11 +34,13 @@ export class MutePolicyBL {
 
 	async update(id: number, data: UpdateMutePolicyInput): Promise<MutePolicy | undefined> {
 		await this.mutePolicyRepo.updateMutePolicy(id, data);
+		this.onRulesChanged?.();
 		return this.mutePolicyRepo.getMutePolicyById(id);
 	}
 
 	async delete(id: number): Promise<void> {
 		await this.mutePolicyRepo.deleteMutePolicy(id);
+		this.onRulesChanged?.();
 	}
 
 	static isMutePolicyActive(mutePolicy: MutePolicy, now: Date = new Date()): boolean {

@@ -20,10 +20,18 @@ const API_TOKEN_ACTOR_ID = 0;
 const API_TOKEN_ACTOR_NAME = 'API Token';
 
 export class EnrichmentBL {
+	// Enrichment rules rewrite tags/severity/summary on every alert the snapshot cache
+	// serves, so a rule change must drop it; wired to AlertBL.invalidateSnapshots in app.ts.
+	private onRulesChanged: (() => void) | null = null;
+
 	constructor(
 		private enrichmentRepo: EnrichmentRepository,
 		private auditBL: AuditBL
 	) {}
+
+	setOnRulesChanged(callback: () => void): void {
+		this.onRulesChanged = callback;
+	}
 
 	async create(data: CreateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment> {
 		const { lastID } = await this.enrichmentRepo.createEnrichment(data, actor?.fullName);
@@ -32,6 +40,7 @@ export class EnrichmentBL {
 			throw new Error('Failed to retrieve created enrichment');
 		}
 		await this.recordAuditAction(AuditActionType.CREATE, created, actor);
+		this.onRulesChanged?.();
 		return created;
 	}
 
@@ -50,12 +59,14 @@ export class EnrichmentBL {
 		if (updated && shouldAudit) {
 			await this.recordAuditAction(AuditActionType.UPDATE, updated, actor, JSON.stringify(data));
 		}
+		this.onRulesChanged?.();
 		return updated;
 	}
 
 	async delete(id: number, actor?: User | null): Promise<void> {
 		const existing = await this.enrichmentRepo.getEnrichmentById(id);
 		await this.enrichmentRepo.deleteEnrichment(id);
+		this.onRulesChanged?.();
 		if (existing) {
 			await this.recordAuditAction(AuditActionType.DELETE, existing, actor);
 		}

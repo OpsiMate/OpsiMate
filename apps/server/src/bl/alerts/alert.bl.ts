@@ -19,12 +19,28 @@ import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
+import { Snapshot, SnapshotCache } from './snapshotCache';
 
 const logger = new Logger('bl/alert.bl');
+
+// Also the staleness bound for writes made by the worker process, which this cache
+// never hears about. Kept well under the client's 5s poll. Tests set 0 to disable —
+// which is why this is read per instance rather than at module level: the test setup
+// assigns the env var after imports are evaluated but before the app is constructed.
+const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
 
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
+
+	// One compute per TTL window serves every poller in it; every write path below calls
+	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
+	// follows it. See SnapshotCache for the generation/race handling.
+	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
+	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
+		() => this.computeAllResolvedAlerts(),
+		snapshotTtlMs()
+	);
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -33,6 +49,22 @@ export class AlertBL {
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
 	) {}
+
+	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
+	// affect both, so both drop together — a second compute per edit is far cheaper than
+	// reasoning about which list a given write touched.
+	invalidateSnapshots(): void {
+		this.activeSnapshot.invalidate();
+		this.resolvedSnapshot.invalidate();
+	}
+
+	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
+		return this.activeSnapshot.get();
+	}
+
+	async getResolvedAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
+		return this.resolvedSnapshot.get();
+	}
 
 	// Best-effort history logging: never let a failed history write break the underlying
 	// mutation (the event is informational, not transactional).
@@ -88,7 +120,9 @@ export class AlertBL {
 			const tags = { ...(alert.tags ?? {}), severity };
 			// The repository atomically drops any resolved copy of this id — a re-firing
 			// alert must never show as both firing and resolved.
-			return await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
+			const result = await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
+			this.invalidateSnapshots();
+			return result;
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
@@ -99,6 +133,7 @@ export class AlertBL {
 	// has passed back to unsilenced, with a history entry so the timeline explains the flip.
 	private async expireSilences(): Promise<void> {
 		const expiredIds = await this.alertRepo.clearExpiredSilences(new Date().toISOString());
+		if (expiredIds.length > 0) this.invalidateSnapshots();
 		await Promise.all(
 			expiredIds.map((id) =>
 				this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null)
@@ -133,6 +168,7 @@ export class AlertBL {
 		// hour alone — they belong to the next day's reset.
 		await this.alertRepo.markSilenceResetCleared(occurrence.toISOString());
 		const clearedIds = await this.alertRepo.clearSilencesEstablishedBy(occurrence.toISOString());
+		if (clearedIds.length > 0) this.invalidateSnapshots();
 		if (clearedIds.length > 0) {
 			logger.info(`Daily silence reset cleared ${clearedIds.length} silence(s)`);
 		}
@@ -188,6 +224,10 @@ export class AlertBL {
 	}
 
 	async getAllAlerts(): Promise<Alert[]> {
+		return (await this.activeSnapshot.get()).value;
+	}
+
+	private async computeAllAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
@@ -221,6 +261,7 @@ export class AlertBL {
 			// which is only correct when every stored value shares the same ISO-UTC format.
 			const normalizedSilencedUntil = silencedUntil ? toIsoUtc(silencedUntil) : null;
 			let alert = await this.alertRepo.silenceAlert(id, normalizedSilencedUntil);
+			this.invalidateSnapshots();
 			if (alert) {
 				const description = normalizedSilencedUntil
 					? `Alert silenced until ${normalizedSilencedUntil}`
@@ -244,7 +285,9 @@ export class AlertBL {
 	async markAlertRead(id: string): Promise<Alert | null> {
 		try {
 			logger.info(`Marking alert as read: ${id}`);
-			return await this.alertRepo.markAlertRead(id);
+			const updated = await this.alertRepo.markAlertRead(id);
+			this.invalidateSnapshots();
+			return updated;
 		} catch (error) {
 			logger.error('Error marking alert as read', error);
 			throw error;
@@ -255,6 +298,7 @@ export class AlertBL {
 		try {
 			logger.info(`Unsilenceing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
+			this.invalidateSnapshots();
 			if (alert) {
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
 			}
@@ -268,6 +312,10 @@ export class AlertBL {
 
 	// region resolved
 	async getAllResolvedAlerts(): Promise<Alert[]> {
+		return (await this.resolvedSnapshot.get()).value;
+	}
+
+	private async computeAllResolvedAlerts(): Promise<Alert[]> {
 		try {
 			logger.info('Fetching all resolved alerts');
 			let alerts = await this.resolvedAlertRepo.getAllResolvedAlerts();
@@ -314,6 +362,7 @@ export class AlertBL {
 
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
+			this.invalidateSnapshots();
 
 			if (manualActor !== undefined) {
 				await this.recordHistoryEvent(
@@ -326,6 +375,7 @@ export class AlertBL {
 				// Whoever resolved the alert takes ownership of it.
 				if (manualActor.id != null && Number.isFinite(Number(manualActor.id))) {
 					await this.resolvedAlertRepo.updateResolvedAlertOwner(activeAlertId, Number(manualActor.id));
+					this.invalidateSnapshots();
 				}
 
 				if (comment && manualActor.id != null) {
@@ -356,6 +406,7 @@ export class AlertBL {
 
 			// Delete alerts from active table
 			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
+			this.invalidateSnapshots();
 
 			logger.info(`Resolved ${alertsToResolve.length} alerts`);
 		} catch (error) {
@@ -395,6 +446,7 @@ export class AlertBL {
 
 			await this.alertRepo.restoreAlert(alert);
 			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			this.invalidateSnapshots();
 			await this.recordHistoryEvent(
 				alertId,
 				AlertHistoryEventType.UNRESOLVED,
@@ -414,6 +466,7 @@ export class AlertBL {
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
 			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			this.invalidateSnapshots();
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
 			throw error;
@@ -512,6 +565,7 @@ export class AlertBL {
 			const updated = isResolved
 				? await this.resolvedAlertRepo.updateResolvedAlertOwner(alertId, numericOwnerId)
 				: await this.alertRepo.updateAlertOwner(alertId, numericOwnerId);
+			this.invalidateSnapshots();
 
 			if (updated) {
 				if (numericOwnerId !== null) {
@@ -549,6 +603,7 @@ export class AlertBL {
 		actorName?: string | null
 	): Promise<AlertComment> {
 		const created = await this.alertCommentsRepo.createComment(comment);
+		this.invalidateSnapshots();
 		await this.recordHistoryEvent(
 			comment.alertId,
 			AlertHistoryEventType.COMMENT_ADDED,
@@ -559,11 +614,14 @@ export class AlertBL {
 	}
 
 	async updateComment(id: string, userId: string, comment: string): Promise<AlertComment | null> {
-		return await this.alertCommentsRepo.updateComment(id, userId, comment);
+		const updated = await this.alertCommentsRepo.updateComment(id, userId, comment);
+		this.invalidateSnapshots();
+		return updated;
 	}
 
 	async deleteComment(id: string, userId: string): Promise<void> {
-		return await this.alertCommentsRepo.deleteComment(id, userId);
+		await this.alertCommentsRepo.deleteComment(id, userId);
+		this.invalidateSnapshots();
 	}
 
 	async getCommentsByAlertId(alertId: string): Promise<AlertComment[]> {

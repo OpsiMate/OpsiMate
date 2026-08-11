@@ -33,12 +33,26 @@ export class AlertController {
 
 	async getAlerts(req: Request, res: Response) {
 		try {
-			const alerts = await this.alertBL.getAllAlerts();
-			return res.json({ success: true, data: { alerts } });
+			const snapshot = await this.alertBL.getAlertsSnapshot();
+			return this.sendAlertsSnapshot(req, res, snapshot);
 		} catch (error) {
 			logger.error('Error getting alerts:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
+	}
+
+	// The list is identical for every viewer and polled on a short interval, so the
+	// content-derived ETag turns the common "nothing changed since your last poll" case
+	// into a bodyless 304. The body string is assembled from the snapshot's precomputed
+	// JSON — one serialization per compute, not one per poller.
+	private sendAlertsSnapshot(req: Request, res: Response, snapshot: { json: string; etag: string }) {
+		res.set('ETag', snapshot.etag);
+		// Polling data: always revalidate, never reuse blind.
+		res.set('Cache-Control', 'no-cache');
+		if (req.headers['if-none-match'] === snapshot.etag) {
+			return res.status(304).end();
+		}
+		return res.type('application/json').send(`{"success":true,"data":{"alerts":${snapshot.json}}}`);
 	}
 
 	// Both silence-reset endpoints are admin-only: this is org-wide configuration, same
@@ -605,8 +619,8 @@ export class AlertController {
 
 	async getResolvedAlerts(req: Request, res: Response) {
 		try {
-			const alerts = await this.alertBL.getAllResolvedAlerts();
-			return res.json({ success: true, data: { alerts } });
+			const snapshot = await this.alertBL.getResolvedAlertsSnapshot();
+			return this.sendAlertsSnapshot(req, res, snapshot);
 		} catch (error) {
 			logger.error('Error getting resolved alerts:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
