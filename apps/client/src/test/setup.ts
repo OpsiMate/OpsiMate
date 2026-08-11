@@ -51,6 +51,7 @@ if (locationDescriptor?.configurable) {
 		},
 	});
 } else {
+	// eslint-disable-next-line no-console -- test-only diagnostic; there is no Logger here and this must reach the terminal
 	console.warn(
 		'[test setup] window.location is non-configurable; navigation stub skipped. ' +
 			'Expect "Not implemented: navigation" noise and possible teardown flakes.'
