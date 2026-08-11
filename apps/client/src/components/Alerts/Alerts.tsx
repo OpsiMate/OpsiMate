@@ -45,6 +45,7 @@ import {
 	useAlertTagKeys,
 	useColumnManagement,
 	useExpandRows,
+	useFilterPanelCollapsed,
 } from './hooks';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
@@ -79,13 +80,13 @@ const Alerts = () => {
 	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
 	// the user actually works with; the draft state is persisted per-browser meanwhile.
 	const { splitByAssignment, severityColors } = dashboardState;
 	const { expandRows, toggleExpandRows } = useExpandRows();
+	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -497,10 +498,7 @@ const Alerts = () => {
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
-				<FilterSidebar
-					collapsed={filterPanelCollapsed}
-					onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-				>
+				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={toggleFilterPanelCollapsed}>
 					<AlertsFilterPanel
 						alerts={currentAlertData}
 						filters={dashboardState.filters}
