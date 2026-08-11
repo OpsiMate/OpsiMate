@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { AlertCommentRow, ForeignKeyInfoRow } from './models.ts';
 import { AlertComment } from '@OpsiMate/shared';
+import { toIsoUtc } from '../utils/time';
 
 export class AlertCommentsRepository {
 	private db: Database.Database;
@@ -70,8 +71,12 @@ export class AlertCommentsRepository {
 			alertId: row.alert_id,
 			userId: row.user_id,
 			comment: row.comment,
-			createdAt: row.created_at,
-			updatedAt: row.updated_at,
+			// CURRENT_TIMESTAMP is UTC but carries no timezone marker, so the client's
+			// new Date(...) reads it as LOCAL and a fresh comment shows up hours old
+			// (UTC+3 → "3h ago" the moment you post it). Normalized here, the same way
+			// the alert repositories do it.
+			createdAt: toIsoUtc(row.created_at),
+			updatedAt: toIsoUtc(row.updated_at),
 		};
 	};
 
