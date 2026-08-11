@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
+import { Logger } from '@OpsiMate/shared';
 import { afterEach, vi } from 'vitest';
+
+const logger = new Logger('test/setup');
 
 Object.defineProperty(window, 'matchMedia', {
 	writable: true,
@@ -47,13 +50,16 @@ if (locationDescriptor?.configurable) {
 			assign: vi.fn(),
 			replace: vi.fn(),
 			reload: vi.fn(),
-			toString: () => href,
+			// Reads the live property: href is writable, and a closure over the initial
+			// value would return a stale URL after a test assigns location.href.
+			toString(this: { href: string }) {
+				return this.href;
+			},
 		},
 	});
 } else {
-	// eslint-disable-next-line no-console -- test-only diagnostic; there is no Logger here and this must reach the terminal
-	console.warn(
-		'[test setup] window.location is non-configurable; navigation stub skipped. ' +
+	logger.warn(
+		'window.location is non-configurable; navigation stub skipped. ' +
 			'Expect "Not implemented: navigation" noise and possible teardown flakes.'
 	);
 }
