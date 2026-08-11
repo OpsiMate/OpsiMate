@@ -22,26 +22,40 @@ Object.defineProperty(window, 'matchMedia', {
 // console — and a burst of those can still be in flight when the worker tears down, which
 // vitest reports as an EnvironmentTeardownError that fails an otherwise-green run.
 // Swapping in a plain stub keeps every field the app reads while making assignment inert.
-const { protocol, hostname, port, host, origin, pathname, search, hash, href } = window.location;
-Object.defineProperty(window, 'location', {
-	configurable: true,
-	writable: true,
-	value: {
-		protocol,
-		hostname,
-		port,
-		host,
-		origin,
-		pathname,
-		search,
-		hash,
-		href,
-		assign: vi.fn(),
-		replace: vi.fn(),
-		reload: vi.fn(),
-		toString: () => href,
-	},
-});
+//
+// Guarded on the descriptor because location is only replaceable here by grace of how
+// vitest builds its jsdom globals — the spec marks it unforgeable, and raw jsdom (and
+// jsdom under jest) makes it non-configurable, where defineProperty throws. Should vitest
+// ever match that, the warning points at the cause instead of every test file failing on
+// a TypeError raised from setup.
+const locationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+if (locationDescriptor?.configurable) {
+	const { protocol, hostname, port, host, origin, pathname, search, hash, href } = window.location;
+	Object.defineProperty(window, 'location', {
+		configurable: true,
+		writable: true,
+		value: {
+			protocol,
+			hostname,
+			port,
+			host,
+			origin,
+			pathname,
+			search,
+			hash,
+			href,
+			assign: vi.fn(),
+			replace: vi.fn(),
+			reload: vi.fn(),
+			toString: () => href,
+		},
+	});
+} else {
+	console.warn(
+		'[test setup] window.location is non-configurable; navigation stub skipped. ' +
+			'Expect "Not implemented: navigation" noise and possible teardown flakes.'
+	);
+}
 
 afterEach(() => {
 	cleanup();
