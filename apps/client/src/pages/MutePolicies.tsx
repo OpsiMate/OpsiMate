@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { formatShortDateTime } from '@/lib/datetime';
 import { MutePolicyFormDialog } from '@/components/MutePolicies/MutePolicyFormDialog';
 import {
 	AlertDialog,
@@ -50,17 +51,7 @@ const formatDaysOfWeek = (days: number[]): string => {
 	return sorted.map((d) => DAY_SHORT[d]).join(', ');
 };
 
-const formatDateTime = (iso?: string | null): string => {
-	if (!iso) return '—';
-	const d = new Date(iso);
-	if (Number.isNaN(d.getTime())) return iso;
-	return d.toLocaleString(undefined, {
-		month: 'short',
-		day: 'numeric',
-		hour: '2-digit',
-		minute: '2-digit',
-	});
-};
+const formatDateTime = (iso?: string | null): string => formatShortDateTime(iso, iso ?? '—');
 
 const relativeFromNow = (iso?: string | null): string => {
 	if (!iso) return 'no end';

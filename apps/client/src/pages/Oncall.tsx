@@ -19,6 +19,7 @@ import { useOncallTeamMutations, useOncallTeams } from '@/hooks/queries/oncall';
 import { useUsers } from '@/hooks/queries/users';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/auth';
+import { formatShortDateTime } from '@/lib/datetime';
 import { OncallTeam } from '@OpsiMate/shared';
 import { Pencil, Phone, PhoneCall, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -26,12 +27,7 @@ import { useMemo, useState } from 'react';
 // Big teams: the table shows the first chips in call order and folds the rest into "+X".
 const MAX_VISIBLE_MEMBERS = 5;
 
-const formatDateTime = (iso: string | null): string => {
-	if (!iso) return '—';
-	const d = new Date(iso);
-	if (Number.isNaN(d.getTime())) return '—';
-	return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
+const formatDateTime = (iso: string | null): string => formatShortDateTime(iso);
 
 // On-call schedule: one row per team, members shown in current call order (1 = the person
 // the NOC phones now). Admins manage teams, members, and the rotation cadence.

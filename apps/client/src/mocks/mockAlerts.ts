@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/datetime';
 import { Alert, AlertStatus, AlertType } from '@OpsiMate/shared';
 
 export interface MockAlertsConfig {
@@ -296,7 +297,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		updatedAt: updatedAt.toISOString(),
 		alertUrl: `${baseUrl}/alert/${index}`,
 		alertName,
-		summary: `Alert detected at ${startsAt.toLocaleString()}. ${rng.choice(summaryOptions)}`,
+		summary: `Alert detected at ${formatDateTime(startsAt)}. ${rng.choice(summaryOptions)}`,
 		runbookUrl: hasRunbook ? `https://runbook.example.com/alert-${index}` : undefined,
 		createdAt: startsAt.toISOString(),
 		isSilenced,

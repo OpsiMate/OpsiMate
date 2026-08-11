@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatShortDateTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { BellOff, CircleCheck, Flame, VolumeX } from 'lucide-react';
@@ -13,8 +14,7 @@ interface StatusIndicator {
 // Precedence mirrors the old status badge: silenced wins over muted, which wins over
 // the firing/resolved lifecycle state.
 // "Jul 19, 14:30" in the viewer's locale/timezone — enough to know when the silence lifts.
-const formatSilencedUntil = (iso: string): string =>
-	new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const formatSilencedUntil = (iso: string): string => formatShortDateTime(iso);
 
 const getStatusIndicator = (alert: Alert): StatusIndicator => {
 	if (alert.isSilenced)
