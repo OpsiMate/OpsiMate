@@ -1,5 +1,5 @@
 import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
-import { Clock, FileText, Link2, PhoneCall, Tag } from 'lucide-react';
+import { FileText, Link2, PhoneCall, Tag } from 'lucide-react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { hasAlertTags } from '../../utils/alertTags.utils';
 import { AlertActionsSection } from '../AlertActionsSection';
@@ -11,7 +11,6 @@ import { getAlertLinks } from '../../utils/links.utils';
 import { AlertSummarySection } from '../AlertSummarySection';
 import { AlertTagsSection } from '../AlertTagsSection';
 import { AlertTeamSection } from '../AlertTeamSection';
-import { AlertTimestampsSection } from '../AlertTimestampsSection';
 import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertDetailsBodyProps {
@@ -55,10 +54,6 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 					<AlertTagsSection alert={alert} />
 				</CollapsibleSection>
 			)}
-
-			<CollapsibleSection title="Timestamps" icon={<Clock className="h-3.5 w-3.5" />} defaultOpen={false}>
-				<AlertTimestampsSection alert={alert} />
-			</CollapsibleSection>
 
 			{getAlertLinks(alert).length > 0 && (
 				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>

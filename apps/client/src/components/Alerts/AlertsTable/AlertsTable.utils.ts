@@ -103,6 +103,32 @@ const toLocalDayKey = (dateString: string): string => {
 	return `${date.getFullYear()}-${month}-${day}`;
 };
 
+// 24-hour clock everywhere: an AM/PM suffix costs horizontal space in the table and a
+// beat of reading time on a fast-moving alert list. hourCycle 'h23' (not hour12: false)
+// is what keeps midnight at 00:00 — some locales render h24 and print it as 24:00.
+const TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+	hour: '2-digit',
+	minute: '2-digit',
+	second: '2-digit',
+	hourCycle: 'h23',
+};
+
+// Date part stays locale-ordered (the viewer's own d/m/y vs m/d/y), only the clock is pinned.
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+	...TIME_OPTIONS,
+};
+
+// The full date+time, for tooltips and copy-to-clipboard. Returns undefined for an
+// unparseable value so callers can fall back to the raw string.
+export const formatFullTimestamp = (dateString: string): string | undefined => {
+	const date = new Date(dateString);
+	if (isNaN(date.getTime())) return undefined;
+	return date.toLocaleString(undefined, DATE_TIME_OPTIONS);
+};
+
 export const formatDate = (dateString: string): string => {
 	const date = new Date(dateString);
 	if (isNaN(date.getTime())) return 'Invalid Date';
@@ -111,7 +137,9 @@ export const formatDate = (dateString: string): string => {
 		date.getFullYear() === now.getFullYear() &&
 		date.getMonth() === now.getMonth() &&
 		date.getDate() === now.getDate();
-	return isToday ? date.toLocaleTimeString() : date.toLocaleString();
+	return isToday
+		? date.toLocaleTimeString(undefined, TIME_OPTIONS)
+		: date.toLocaleString(undefined, DATE_TIME_OPTIONS);
 };
 
 export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string => {

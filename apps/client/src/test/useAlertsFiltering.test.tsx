@@ -146,11 +146,15 @@ describe('formatDate (Started At display)', () => {
 	test('today renders time-only, older timestamps keep the full date', async () => {
 		const { formatDate } = await import('@/components/Alerts/AlertsTable/AlertsTable.utils');
 		const now = new Date();
-		expect(formatDate(now.toISOString())).toBe(now.toLocaleTimeString());
+		// Time-only for today: no date part, 24-hour clock.
+		expect(formatDate(now.toISOString())).toBe('14:30:00');
 
 		const yesterday = new Date(now);
 		yesterday.setDate(yesterday.getDate() - 1);
-		expect(formatDate(yesterday.toISOString())).toBe(yesterday.toLocaleString());
+		const olderFormatted = formatDate(yesterday.toISOString());
+		expect(olderFormatted).toContain('14:30:00');
+		expect(olderFormatted).toContain('14');
+		expect(olderFormatted.length).toBeGreaterThan('14:30:00'.length);
 
 		expect(formatDate('not-a-date')).toBe('Invalid Date');
 	});

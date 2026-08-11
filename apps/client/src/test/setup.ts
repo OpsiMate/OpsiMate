@@ -16,6 +16,33 @@ Object.defineProperty(window, 'matchMedia', {
 	})),
 });
 
+// Tests render components that fire real requests; those 401 and send lib/api down its
+// session-expired path, which assigns window.location.href. jsdom implements no navigation,
+// so each assignment emits "Not implemented: navigation to another Document" on its virtual
+// console — and a burst of those can still be in flight when the worker tears down, which
+// vitest reports as an EnvironmentTeardownError that fails an otherwise-green run.
+// Swapping in a plain stub keeps every field the app reads while making assignment inert.
+const { protocol, hostname, port, host, origin, pathname, search, hash, href } = window.location;
+Object.defineProperty(window, 'location', {
+	configurable: true,
+	writable: true,
+	value: {
+		protocol,
+		hostname,
+		port,
+		host,
+		origin,
+		pathname,
+		search,
+		hash,
+		href,
+		assign: vi.fn(),
+		replace: vi.fn(),
+		reload: vi.fn(),
+		toString: () => href,
+	},
+});
+
 afterEach(() => {
 	cleanup();
 });
