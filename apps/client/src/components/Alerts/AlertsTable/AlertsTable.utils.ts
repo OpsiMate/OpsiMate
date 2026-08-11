@@ -114,8 +114,9 @@ export const formatFullTimestamp = (dateString: string): string | undefined => {
 // Today's rows drop the date and show the clock alone, which is what keeps these two
 // columns narrow; anything older carries the full date.
 export const formatDate = (dateString: string): string => {
-	if (!formatDateTime(dateString, '')) return 'Invalid Date';
-	return isSameLocalDay(dateString) ? formatTime(dateString) : formatDateTime(dateString);
+	const full = formatDateTime(dateString, '');
+	if (!full) return 'Invalid Date';
+	return isSameLocalDay(dateString) ? formatTime(dateString) : full;
 };
 
 export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string => {
