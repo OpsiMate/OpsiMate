@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -45,6 +45,7 @@ import {
 	useAlertTagKeys,
 	useColumnManagement,
 	useExpandRows,
+	useFilterPanelCollapsed,
 } from './hooks';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
@@ -54,8 +55,6 @@ const ALERT_TAB_OPTIONS = [
 	{ value: AlertTab.Resolved, label: 'Resolved', Icon: CheckCircle2 },
 	{ value: AlertTab.All, label: 'All', Icon: LayoutList },
 ] as const;
-
-const FILTER_PANEL_COLLAPSED_KEY = 'OpsiMate-alerts-filter-panel-collapsed';
 
 const Alerts = () => {
 	const { toast } = useToast();
@@ -81,26 +80,13 @@ const Alerts = () => {
 	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-	// Collapsed by default — most sessions start from a saved view, not from building
-	// filters — and persisted per-browser (the DashboardLayout sidebar pattern), so a
-	// user who works with the panel open keeps it open.
-	const [filterPanelCollapsed, setFilterPanelCollapsed] = useState<boolean>(() => {
-		try {
-			const saved = localStorage.getItem(FILTER_PANEL_COLLAPSED_KEY);
-			return saved === null ? true : JSON.parse(saved) === false ? false : true;
-		} catch {
-			return true;
-		}
-	});
-	useEffect(() => {
-		localStorage.setItem(FILTER_PANEL_COLLAPSED_KEY, JSON.stringify(filterPanelCollapsed));
-	}, [filterPanelCollapsed]);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
 	// the user actually works with; the draft state is persisted per-browser meanwhile.
 	const { splitByAssignment, severityColors } = dashboardState;
 	const { expandRows, toggleExpandRows } = useExpandRows();
+	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 	const tagKeys = useAlertTagKeys(allAlerts);
@@ -512,10 +498,7 @@ const Alerts = () => {
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
-				<FilterSidebar
-					collapsed={filterPanelCollapsed}
-					onToggle={() => setFilterPanelCollapsed(!filterPanelCollapsed)}
-				>
+				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={toggleFilterPanelCollapsed}>
 					<AlertsFilterPanel
 						alerts={currentAlertData}
 						filters={dashboardState.filters}
