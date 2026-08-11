@@ -184,7 +184,11 @@ export class AlertBL {
 	}
 
 	async updateSilenceResetSettings(updates: UpdateSilenceResetSettings): Promise<SilenceResetSettings> {
-		return this.alertRepo.updateSilenceResetSettings(updates);
+		const settings = await this.alertRepo.updateSilenceResetSettings(updates);
+		// The next compute may run the daily reset under the new settings (e.g. a reset
+		// hour that has already passed today) — don't leave that behind a fresh snapshot.
+		this.invalidateSnapshots();
+		return settings;
 	}
 
 	// Attaches each alert's newest comment text (the optional "Last Comment" table column).

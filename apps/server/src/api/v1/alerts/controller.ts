@@ -23,6 +23,7 @@ import {
 	ZabbixWebhookPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
@@ -49,7 +50,7 @@ export class AlertController {
 		res.set('ETag', snapshot.etag);
 		// Polling data: always revalidate, never reuse blind.
 		res.set('Cache-Control', 'no-cache');
-		if (req.headers['if-none-match'] === snapshot.etag) {
+		if (ifNoneMatchSatisfied(req.headers['if-none-match'], snapshot.etag)) {
 			return res.status(304).end();
 		}
 		return res.type('application/json').send(`{"success":true,"data":{"alerts":${snapshot.json}}}`);

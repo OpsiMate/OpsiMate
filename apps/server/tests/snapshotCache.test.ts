@@ -140,3 +140,31 @@ describe('SnapshotCache', () => {
 		expect((await cache.get()).value).toBe('recovered');
 	});
 });
+
+describe('ifNoneMatchSatisfied', async () => {
+	const { ifNoneMatchSatisfied } = await import('../src/utils/etag');
+	const etag = '"abc123"';
+
+	test('matches the exact strong validator', () => {
+		expect(ifNoneMatchSatisfied('"abc123"', etag)).toBe(true);
+	});
+
+	test('matches a weak validator — proxies downgrade ETags when re-compressing', () => {
+		expect(ifNoneMatchSatisfied('W/"abc123"', etag)).toBe(true);
+		expect(ifNoneMatchSatisfied('w/"abc123"', etag)).toBe(true);
+	});
+
+	test('matches within a validator list', () => {
+		expect(ifNoneMatchSatisfied('"zzz", W/"abc123", "yyy"', etag)).toBe(true);
+	});
+
+	test('star matches any representation', () => {
+		expect(ifNoneMatchSatisfied('*', etag)).toBe(true);
+	});
+
+	test('no match and no header stay false', () => {
+		expect(ifNoneMatchSatisfied('"different"', etag)).toBe(false);
+		expect(ifNoneMatchSatisfied(undefined, etag)).toBe(false);
+		expect(ifNoneMatchSatisfied('', etag)).toBe(false);
+	});
+});
