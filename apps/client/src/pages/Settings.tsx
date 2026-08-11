@@ -12,6 +12,7 @@ import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateTime, formatLongDateTime } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
 import { BellOff, Check, DatabaseBackup, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
@@ -164,15 +165,7 @@ const Settings: React.FC = () => {
 		setUsers((prevUsers) => prevUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit',
-		});
-	};
+	const formatDate = (dateString: string) => formatLongDateTime(dateString);
 
 	const isAdmin = currentUser?.role === Role.Admin;
 
@@ -809,7 +802,7 @@ const AuditLogTable: React.FC = () => {
 								return (
 									<TableRow key={log.id}>
 										<TableCell>
-											<span title={parseUTCDate(log.timestamp).toLocaleString()}>
+											<span title={formatDateTime(parseUTCDate(log.timestamp))}>
 												{formatRelativeTime(log.timestamp)}
 											</span>
 										</TableCell>

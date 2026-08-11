@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { formatDateTime } from '@/lib/datetime';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
@@ -194,7 +195,7 @@ export const RetentionSettings = () => {
 		(p): p is RetentionPolicy => !!p
 	);
 
-	const lastRun = data.config.lastRunAt ? new Date(data.config.lastRunAt).toLocaleString() : 'never';
+	const lastRun = formatDateTime(data.config.lastRunAt, 'never');
 
 	return (
 		<div className="space-y-6">

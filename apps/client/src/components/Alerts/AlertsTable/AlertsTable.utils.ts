@@ -1,4 +1,5 @@
 import { UserInfo } from '@/hooks/queries/users';
+import { formatDateTime, formatTime, isSameLocalDay } from '@/lib/datetime';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
@@ -103,15 +104,19 @@ const toLocalDayKey = (dateString: string): string => {
 	return `${date.getFullYear()}-${month}-${day}`;
 };
 
+// The full date+time, for tooltips and copy-to-clipboard. Returns undefined for an
+// unparseable value so callers can fall back to the raw string.
+export const formatFullTimestamp = (dateString: string): string | undefined => {
+	const formatted = formatDateTime(dateString, '');
+	return formatted || undefined;
+};
+
+// Today's rows drop the date and show the clock alone, which is what keeps these two
+// columns narrow; anything older carries the full date.
 export const formatDate = (dateString: string): string => {
-	const date = new Date(dateString);
-	if (isNaN(date.getTime())) return 'Invalid Date';
-	const now = new Date();
-	const isToday =
-		date.getFullYear() === now.getFullYear() &&
-		date.getMonth() === now.getMonth() &&
-		date.getDate() === now.getDate();
-	return isToday ? date.toLocaleTimeString() : date.toLocaleString();
+	const full = formatDateTime(dateString, '');
+	if (!full) return 'Invalid Date';
+	return isSameLocalDay(dateString) ? formatTime(dateString) : full;
 };
 
 export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string => {

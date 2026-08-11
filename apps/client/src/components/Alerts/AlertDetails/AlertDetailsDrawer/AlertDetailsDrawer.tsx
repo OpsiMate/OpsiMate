@@ -11,7 +11,6 @@ import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLinksSection } from '../AlertLinksSection';
 import { AlertSummarySection } from '../AlertSummarySection';
-import { AlertTimestampsSection } from '../AlertTimestampsSection';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
 import { DRAWER_WIDTH } from './AlertDetailsDrawer.constants';
@@ -118,8 +117,6 @@ export const AlertDetailsDrawer = ({
 							{renderedAlert && <AlertInfoSection alert={renderedAlert} />}
 
 							{renderedAlert?.summary && <AlertSummarySection summary={renderedAlert.summary} />}
-
-							{renderedAlert && <AlertTimestampsSection alert={renderedAlert} />}
 
 							{historyData && <AlertHistorySection historyData={historyData} />}
 
