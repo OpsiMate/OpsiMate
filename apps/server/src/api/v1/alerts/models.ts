@@ -131,8 +131,8 @@ export type DatadogAlertWebhook = z.infer<typeof DatadogAlertWebhookSchema>;
 export const GrafanaWebhookAlertSchema = z
 	.object({
 		status: z.string(), // 'firing' | 'resolved'
-		labels: z.record(z.string()).optional(),
-		annotations: z.record(z.string()).optional(),
+		labels: z.record(z.string(), z.string()).optional(),
+		annotations: z.record(z.string(), z.string()).optional(),
 		startsAt: z.string().optional(),
 		endsAt: z.string().optional(),
 		generatorURL: z.string().optional(),
@@ -148,8 +148,8 @@ export const GrafanaWebhookSchema = z
 		// Group-level status; per-alert status is authoritative and used for firing/resolved.
 		status: z.string().optional(),
 		alerts: z.array(GrafanaWebhookAlertSchema).optional(),
-		commonLabels: z.record(z.string()).optional(),
-		commonAnnotations: z.record(z.string()).optional(),
+		commonLabels: z.record(z.string(), z.string()).optional(),
+		commonAnnotations: z.record(z.string(), z.string()).optional(),
 		externalURL: z.string().optional(),
 		title: z.string().optional(),
 		message: z.string().optional(),

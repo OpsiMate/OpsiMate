@@ -16,6 +16,14 @@ import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository.ts';
 // Increase timeout for integration tests
 vi.setConfig({ testTimeout: 30000 });
 
+// Existing tests seed the DB directly (db.exec) and expect the next request to see it —
+// a TTL'd snapshot cache would serve them stale data. 0 disables caching while keeping
+// the snapshot/ETag shape; cache behaviour itself is covered by snapshotCache.test.ts
+// and alertsSnapshotCache.test.ts, which construct their own TTLs. Must be set before
+// app.ts (and its AlertBL) is imported, which the import above already guarantees only
+// for module-eval order — so keep this line ahead of any setup*() call.
+process.env.ALERTS_SNAPSHOT_TTL_MS = '0';
+
 export async function setupDB(): Promise<Database.Database> {
 	const db = new Database(':memory:');
 	const dashboardRepo = new DashboardRepository(db);

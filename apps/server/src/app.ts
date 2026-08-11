@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import cors from 'cors';
+import compression from 'compression';
 import express from 'express';
 import healthRouter from './api/health';
 import { ActionController } from './api/v1/actions/controller';
@@ -100,6 +101,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// SERVER mode: Create Express app and API routes
 	const app = express();
 
+	// The alerts payload is large, repetitive JSON polled every few seconds by every
+	// open client — the highest-volume traffic this server produces, and it compresses
+	// roughly tenfold.
+	app.use(compression());
 	app.use(express.json());
 
 	// Express 5 leaves req.body undefined when a request carries no body, where Express 4
@@ -164,6 +169,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
+	// Rule edits change what the cached alerts snapshot would serve.
+	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
+	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
 
 	// Controllers (only for SERVER)

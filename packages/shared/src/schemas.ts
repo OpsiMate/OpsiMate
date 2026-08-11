@@ -146,7 +146,7 @@ export const CreateDashboardSchema = z.object({
 	name: z.string(),
 	type: z.enum(['services', 'alerts']),
 	description: z.string().optional(),
-	filters: z.record(z.unknown()),
+	filters: z.record(z.string(), z.unknown()),
 	visibleColumns: z.array(z.string()),
 	columnOrder: z.array(z.string()).optional(),
 	// Alerts toolbar toggles. This schema validates BOTH create and update (the controller
@@ -391,7 +391,7 @@ const jiraActionConfigSchema = z.object({
 const httpActionConfigSchema = z.object({
 	url: z.string().url('A valid URL is required'),
 	method: httpMethodSchema,
-	headers: z.record(z.string()).optional().nullable(),
+	headers: z.record(z.string(), z.string()).optional().nullable(),
 	bodyTemplate: z.string().max(10000).optional().nullable(),
 });
 
@@ -445,7 +445,7 @@ const alertContextSchema = z
 		createdAt: z.string().optional(),
 		alertUrl: z.string().optional(),
 		runbookUrl: z.string().optional().nullable(),
-		tags: z.record(z.string()).optional(),
+		tags: z.record(z.string(), z.string()).optional(),
 	})
 	.passthrough();
 
