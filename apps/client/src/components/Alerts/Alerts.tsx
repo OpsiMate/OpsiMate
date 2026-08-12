@@ -68,9 +68,12 @@ const ALERT_TAB_OPTIONS = [
 ] as const;
 
 // One page of server-filtered alerts; views under this size (the overwhelmingly common
-// case) load completely and every client-side behavior — grouping, sorting, select-all —
-// is exactly what it was before server-side querying existed.
-const SERVER_PAGE_SIZE = 500;
+// case — real deployments run 1-3k active) load completely and every client-side
+// behavior — grouping, sorting, select-all — is exactly what it was before server-side
+// querying existed. 1000 is the server schema's max, and it's near-free on the wire
+// (~33KB gzipped, ~50ms measured at 10k alerts); bigger pages also mean FEWER poll
+// requests for deep scrollers, since every loaded page refetches on each poll.
+const SERVER_PAGE_SIZE = 1000;
 
 // Grouping loads the whole matching set, so a 5s poll would re-download all of it every
 // tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
@@ -173,7 +176,7 @@ const Alerts = () => {
 	// looking at. Active alerts number in the thousands; resolved can be 50-60k, so
 	// pulling all resolved to group the active tab would be a huge wasted download.
 	// Active data feeds the Active and All views; resolved data feeds Resolved and All.
-	// The non-viewed list stays a cheap 500-row page — enough for its tab-dropdown count
+	// The non-viewed list stays a cheap one-page fetch — enough for its tab-dropdown count
 	// (the response carries the true total regardless of limit) and a ready first page.
 	// Both queries already honor the time range, so narrowing the window trims what a
 	// grouped view has to load.
@@ -478,20 +481,49 @@ const Alerts = () => {
 	};
 	// The count query needs a STABLE object for its key, so it memoizes — with a slow
 	// tick re-resolving the rolling window, keeping the displayed N within a minute of
-	// what the action would do. The tick only runs while a selection is open.
+	// what the action would do. The tick only runs while something consumes a count:
+	// an open selection, or the split-by-owner panes.
 	const bulkCountEnabled = activeTab === AlertTab.Active && selectedAlerts.length > 0;
+	const splitCountsEnabled = splitByAssignment === true && activeTab === AlertTab.Active;
 	const [bulkWindowTick, setBulkWindowTick] = useState(0);
 	useEffect(() => {
-		if (!bulkCountEnabled) return;
+		if (!bulkCountEnabled && !splitCountsEnabled) return;
 		const timer = setInterval(() => setBulkWindowTick((t) => t + 1), 30 * 1000);
 		return () => clearInterval(timer);
-	}, [bulkCountEnabled]);
+	}, [bulkCountEnabled, splitCountsEnabled]);
 	const bulkCountQuery = useMemo(
 		() => buildBulkScopeQuery(),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[dashboardState.filters, dashboardState.timeRange, dashboardState.query, bulkWindowTick]
 	);
 	const bulkMatchCount = useAlertMatchCount(bulkCountQuery, bulkCountEnabled);
+
+	// True totals for the split-by-owner panes. The loaded page splits 500 rows into
+	// "assigned 200 / unassigned 300" — a lie when thousands match — so each pane's count
+	// comes from a limit-1 server query over the SAME full view query, constrained by
+	// owner ('Unassigned' is the engine's display value for ownerless alerts; !owner
+	// excludes it). Only fetched while the split view is on — and only while no explicit
+	// owner filter is set: the filter record can't express an intersection on the same
+	// key, so the pane constraint would REPLACE the user's owner filter and the header
+	// would count alerts the pane doesn't display. Under an explicit owner filter the
+	// panes fall back to loaded counts, which do match the displayed rows.
+	const hasExplicitOwnerFilter =
+		(dashboardState.filters.owner?.length ?? 0) > 0 || (dashboardState.filters['!owner']?.length ?? 0) > 0;
+	const paneCountsEnabled = splitCountsEnabled && !hasExplicitOwnerFilter;
+	const unassignedCountQuery = useMemo(
+		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, owner: ['Unassigned'] } }),
+		[bulkCountQuery]
+	);
+	const assignedCountQuery = useMemo(
+		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, ['!owner']: ['Unassigned'] } }),
+		[bulkCountQuery]
+	);
+	// Read through the enabled gate: a disabled query can still surface stale placeholder
+	// data from before the owner filter was applied.
+	const unassignedMatchCount = useAlertMatchCount(unassignedCountQuery, paneCountsEnabled);
+	const assignedMatchCount = useAlertMatchCount(assignedCountQuery, paneCountsEnabled);
+	const unassignedTotal = paneCountsEnabled ? unassignedMatchCount : undefined;
+	const assignedTotal = paneCountsEnabled ? assignedMatchCount : undefined;
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -1067,7 +1099,10 @@ const Alerts = () => {
 										top={
 											<AssignmentPane
 												title="Unassigned"
-												count={unassignedAlerts.length}
+												// Server-counted total over the full matching set — the
+												// loaded page's split is a lie past 500 rows. Falls back
+												// to the loaded count until the first response.
+												count={unassignedTotal ?? unassignedAlerts.length}
 												tone="amber"
 												isEmpty={unassignedAlerts.length === 0 && !isLoading}
 												emptyText="Nothing waiting — all alerts are assigned."
@@ -1078,7 +1113,7 @@ const Alerts = () => {
 										bottom={
 											<AssignmentPane
 												title="Assigned"
-												count={assignedAlerts.length}
+												count={assignedTotal ?? assignedAlerts.length}
 												tone="emerald"
 												isEmpty={assignedAlerts.length === 0 && !isLoading}
 												emptyText="No alerts assigned yet."

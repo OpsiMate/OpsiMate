@@ -1,5 +1,5 @@
 import { alertsApi, AlertListResponse, AlertQueryParams } from '@/lib/api';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
 
@@ -21,6 +21,8 @@ export const useResolvedAlerts = (query?: AlertQueryParams, options?: { refetchI
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 30 * 1000,
 		refetchInterval: options?.refetchIntervalMs ?? 30 * 1000,
+		// See useAlerts: previous rows stay on screen while a changed query refetches.
+		placeholderData: keepPreviousData,
 	});
 
 	const alerts = useMemo(() => result.data?.pages.flatMap((page) => page.alerts) ?? [], [result.data]);
