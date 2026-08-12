@@ -184,25 +184,35 @@ export const AlertsTable = ({
 
 	const virtualItems = virtualizer.getVirtualItems();
 
-	// Infinite scroll, keyed on actual scroll position: the next page is requested when
-	// the user is within NEAR_BOTTOM_PX of the end of a scrollable list. Rendering-based
-	// triggers ("last row is in the virtual window") misfire on short lists — overscan
-	// keeps the last row permanently rendered, which chain-loads page after page until
-	// the entire dataset is in the browser. The initial check covers arriving back at a
-	// list that is already scrolled to its end; growth from an appended page moves the
-	// bottom away, so it cannot re-fire without the user scrolling again.
+	// Infinite scroll. onEndReached is defined only while more pages exist (the parent
+	// passes undefined once the loaded set is complete), so its presence IS "there is
+	// more to load". Two ways to ask for the next page:
+	//
+	//  - Scrollable list: fire when the user reaches within NEAR_BOTTOM_PX of the bottom.
+	//    A render-based trigger ("last row in the virtual window") can't be used — overscan
+	//    keeps the last row permanently rendered and chain-loads to the whole dataset.
+	//
+	//  - NON-scrollable list while more pages exist: fetch the next page immediately. This
+	//    is the recovery path. The server query suspends the status filter, so status is
+	//    narrowed client-side over the loaded page; if the loaded page happens to hold only
+	//    a screenful of status-matching rows (e.g. Active pinned to Firing while the newest
+	//    500 are almost all silenced), the list can't scroll and a scroll-only trigger would
+	//    strand every matching alert past page 1. Auto-fetching pulls pages until the
+	//    viewport fills or the data is exhausted (onEndReached becomes undefined). It's
+	//    bounded — fetchNextPage dedupes, and the effect re-runs per appended page — so it
+	//    can't chain-load a scrollable list.
 	useEffect(() => {
 		if (!onEndReached) return;
 		const scroller = scrollerRef.current;
 		if (!scroller) return;
 		const NEAR_BOTTOM_PX = 400;
+		const isScrollable = () => scroller.scrollHeight > scroller.clientHeight + 1;
 		const maybeFire = () => {
-			if (scroller.scrollHeight <= scroller.clientHeight + 1) return;
-			// Never at the very top: a barely-scrollable list (content shorter than
-			// viewport + threshold) is "near its bottom" before anyone touches it, and
-			// firing there chain-loads. Requiring real scroll makes the trigger strictly
-			// user-driven.
-			if (scroller.scrollTop === 0) return;
+			if (!onEndReached) return;
+			if (!isScrollable()) {
+				onEndReached();
+				return;
+			}
 			if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - NEAR_BOTTOM_PX) {
 				onEndReached();
 			}

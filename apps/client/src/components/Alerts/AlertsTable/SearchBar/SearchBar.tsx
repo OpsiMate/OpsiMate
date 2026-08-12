@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface SearchBarProps {
 	searchTerm: string;
@@ -17,15 +17,22 @@ const SEARCH_DEBOUNCE_MS = 300;
 export const SearchBar = ({ searchTerm, onSearchChange }: SearchBarProps) => {
 	const [value, setValue] = useState(searchTerm);
 
+	// Read the latest callback through a ref so the debounce effect does NOT depend on it.
+	// The parent passes a fresh closure every render, and a parent re-render (the 5s poll)
+	// while a term is pending would otherwise clear and restart the timer — delaying the
+	// search. Keyed only on value/searchTerm now, the timer survives unrelated re-renders.
+	const onSearchChangeRef = useRef(onSearchChange);
+	onSearchChangeRef.current = onSearchChange;
+
 	useEffect(() => {
 		setValue(searchTerm);
 	}, [searchTerm]);
 
 	useEffect(() => {
 		if (value === searchTerm) return;
-		const timer = setTimeout(() => onSearchChange(value), SEARCH_DEBOUNCE_MS);
+		const timer = setTimeout(() => onSearchChangeRef.current(value), SEARCH_DEBOUNCE_MS);
 		return () => clearTimeout(timer);
-	}, [value, searchTerm, onSearchChange]);
+	}, [value, searchTerm]);
 
 	return (
 		<div className="relative flex-1 max-w-sm">
