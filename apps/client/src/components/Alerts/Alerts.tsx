@@ -31,7 +31,18 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
+import {
+	Bell,
+	BellOff,
+	CheckCircle2,
+	ChevronDown,
+	Columns2,
+	LayoutList,
+	Palette,
+	Search,
+	WrapText,
+	X,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
@@ -1090,6 +1101,33 @@ const Alerts = () => {
 								/>
 							</div>
 						</div>
+
+						{/* An active free-text search silently narrows every tab, and users forget
+						    it's on and wonder where their alerts went — so it gets an unmissable
+						    strip above the table naming the term, the match count, and a one-click
+						    way out. */}
+						{dashboardState.query.trim().length > 0 && (
+							<div className="mt-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
+								<Search className="h-3.5 w-3.5 shrink-0 text-primary" />
+								<span className="min-w-0 truncate">
+									Showing only alerts matching{' '}
+									<span className="font-semibold">“{dashboardState.query}”</span>
+									<span className="text-muted-foreground">
+										{' '}
+										— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this view
+									</span>
+								</span>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateDashboardField('query', '')}
+									className="ml-auto h-6 shrink-0 gap-1 px-2 text-xs"
+								>
+									<X className="h-3 w-3" />
+									Clear search
+								</Button>
+							</div>
+						)}
 
 						{activeTab === AlertTab.Active ? (
 							<>
