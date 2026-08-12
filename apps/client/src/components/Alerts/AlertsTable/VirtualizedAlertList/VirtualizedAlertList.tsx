@@ -80,12 +80,12 @@ export const VirtualizedAlertList = ({
 	// table layout — a row was already its own `display: table` box. Rendering each one
 	// as a real single-row <table> keeps that layout identical while producing valid
 	// HTML (React 19 logs <div>-in-<tbody> / <tr>-in-<div> nesting as console errors).
-	// `text-sm` replaces the removed ui/Table wrapper; the `[&_tr:last-child]:border-0`
-	// rule replaces the ui/TableBody one (every row's <tr> is the last child of its own
-	// table, which is what kept the rows border-free before, too).
+	// `text-sm` replaces the removed ui/Table wrapper. Rows keep TableRow's built-in
+	// border-b at the full theme border color — clearly visible 1px separation between
+	// rows, matching the weight tables use elsewhere in the app.
 	return (
 		<div
-			className="text-sm [&_tr:last-child]:border-0"
+			className="text-sm [&_tr]:border-border"
 			style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}
 		>
 			{virtualItems.map((virtualRow) => {
