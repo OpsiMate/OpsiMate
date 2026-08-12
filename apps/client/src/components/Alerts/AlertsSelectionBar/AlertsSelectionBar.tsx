@@ -117,8 +117,10 @@ export const AlertsSelectionBar = ({
 				</Button>
 			</div>
 
-			<span className="text-sm font-medium whitespace-nowrap">
-				{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+			<span className="min-w-0 text-sm font-medium">
+				<span className="whitespace-nowrap">
+					{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+				</span>
 				{hasUnloadedMatches && (
 					<span className="ml-2 text-xs text-muted-foreground">
 						— actions apply to the loaded alerts only; scroll to load more first
