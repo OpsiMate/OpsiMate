@@ -176,17 +176,33 @@ export const AlertsTable = ({
 
 	const virtualItems = virtualizer.getVirtualItems();
 
-	// Infinite scroll: when the rendered window nears the end of what's loaded, ask for
-	// the next page. fetchNextPage dedupes in-flight requests, so firing per render is
-	// safe; the 10-row lead keeps skeleton time mostly out of view at scroll speed.
-	const lastVirtualIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
+	// Infinite scroll, keyed on actual scroll position: the next page is requested when
+	// the user is within NEAR_BOTTOM_PX of the end of a scrollable list. Rendering-based
+	// triggers ("last row is in the virtual window") misfire on short lists — overscan
+	// keeps the last row permanently rendered, which chain-loads page after page until
+	// the entire dataset is in the browser. The initial check covers arriving back at a
+	// list that is already scrolled to its end; growth from an appended page moves the
+	// bottom away, so it cannot re-fire without the user scrolling again.
 	useEffect(() => {
 		if (!onEndReached) return;
-		if (flatRows.length === 0) return;
-		if (lastVirtualIndex >= flatRows.length - 10) {
-			onEndReached();
-		}
-	}, [onEndReached, lastVirtualIndex, flatRows.length]);
+		const scroller = scrollerRef.current;
+		if (!scroller) return;
+		const NEAR_BOTTOM_PX = 400;
+		const maybeFire = () => {
+			if (scroller.scrollHeight <= scroller.clientHeight + 1) return;
+			// Never at the very top: a barely-scrollable list (content shorter than
+			// viewport + threshold) is "near its bottom" before anyone touches it, and
+			// firing there chain-loads. Requiring real scroll makes the trigger strictly
+			// user-driven.
+			if (scroller.scrollTop === 0) return;
+			if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - NEAR_BOTTOM_PX) {
+				onEndReached();
+			}
+		};
+		maybeFire();
+		scroller.addEventListener('scroll', maybeFire, { passive: true });
+		return () => scroller.removeEventListener('scroll', maybeFire);
+	}, [onEndReached, flatRows.length]);
 	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
 
 	const orderedColumns = useMemo(() => {
