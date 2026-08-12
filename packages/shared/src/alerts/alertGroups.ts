@@ -1,4 +1,4 @@
-import { Alert } from '../types';
+import { Alert, AlertStatus } from '../types';
 import {
 	AlertOwnerInfo,
 	FIX_LABELS,
@@ -95,7 +95,7 @@ export interface AlertGroupSummaryNode {
 const leafStatus = (alert: Alert): AlertGroupStatus => {
 	if (alert.isSilenced) return 'silenced';
 	if (alert.isMuted) return 'muted';
-	return alert.status === 'firing' ? 'firing' : 'resolved';
+	return alert.status === AlertStatus.FIRING ? 'firing' : 'resolved';
 };
 
 // Rollup precedence mirrors the client's getGroupStatus: firing > muted > resolved,
