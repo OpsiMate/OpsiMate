@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { TemplateVariablePicker } from '@/components/shared';
 import { useAlerts } from '@/hooks/queries/alerts';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,8 @@ import { ActionPayload } from '@/lib/api';
 import {
 	Action,
 	ActionType,
+	ALERT_TEMPLATE_VARIABLES,
+	alertTagTemplateVariable,
 	HttpActionConfig,
 	HttpActionMethod,
 	JiraActionConfig,
@@ -29,7 +32,7 @@ import {
 } from '@OpsiMate/shared';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface ActionFormDialogProps {
 	open: boolean;
@@ -100,6 +103,23 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	const [httpMethod, setHttpMethod] = useState<HttpActionMethod>('POST');
 	const [httpHeaders, setHttpHeaders] = useState<HeaderRow[]>([]);
 	const [httpBody, setHttpBody] = useState('');
+
+	// Template variables offered by the picker under each templated field: the fixed
+	// alert fields plus one alert.tags.<key> per tag key seen on current alerts.
+	const templateVariables = useMemo(
+		() => [...ALERT_TEMPLATE_VARIABLES, ...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key))],
+		[matcherSuggestions]
+	);
+
+	// Refs for the templated fields, so the picker can insert at the caret of whichever
+	// one is focused (falling back to the type's main template field).
+	const slackMessageRef = useRef<HTMLTextAreaElement>(null);
+	const teamsTitleRef = useRef<HTMLInputElement>(null);
+	const teamsMessageRef = useRef<HTMLTextAreaElement>(null);
+	const jiraSummaryRef = useRef<HTMLInputElement>(null);
+	const jiraDescriptionRef = useRef<HTMLTextAreaElement>(null);
+	const httpUrlRef = useRef<HTMLInputElement>(null);
+	const httpBodyRef = useRef<HTMLTextAreaElement>(null);
 
 	const resetTypeFields = () => {
 		setSlackWebhookUrl('');
@@ -313,8 +333,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						{isEdit ? 'Edit action' : 'New action'}
 					</DialogTitle>
 					<DialogDescription>
-						Configure a reusable action. You'll be able to run it against alerts from the alert view.
-						Templates may reference alert fields like {'{{alert.name}}'} once wired to an alert.
+						Configure a reusable action. You'll be able to run it against alerts from the alert view. Every
+						template field resolves alert variables like {'{{alert.name}}'} — for HTTP requests that
+						includes the URL and header values, so endpoints like /alerts/{'{{alert.id}}'}/ack work.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -385,12 +406,17 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</Label>
 									<Textarea
 										id="slack-message"
+										ref={slackMessageRef}
 										placeholder="🔔 {{alert.name}} fired on {{alert.service}}"
 										value={slackMessage}
 										onChange={(e) => setSlackMessage(e.target.value)}
 										rows={3}
 									/>
 								</div>
+								<TemplateVariablePicker
+									variables={templateVariables}
+									targets={[{ ref: slackMessageRef, value: slackMessage, onChange: setSlackMessage }]}
+								/>
 							</>
 						)}
 
@@ -413,6 +439,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</Label>
 									<Input
 										id="teams-title"
+										ref={teamsTitleRef}
 										placeholder="Alert: {{alert.name}}"
 										value={teamsTitle}
 										onChange={(e) => setTeamsTitle(e.target.value)}
@@ -424,12 +451,20 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</Label>
 									<Textarea
 										id="teams-message"
+										ref={teamsMessageRef}
 										placeholder="{{alert.name}} fired on {{alert.service}}"
 										value={teamsMessage}
 										onChange={(e) => setTeamsMessage(e.target.value)}
 										rows={3}
 									/>
 								</div>
+								<TemplateVariablePicker
+									variables={templateVariables}
+									targets={[
+										{ ref: teamsMessageRef, value: teamsMessage, onChange: setTeamsMessage },
+										{ ref: teamsTitleRef, value: teamsTitle, onChange: setTeamsTitle },
+									]}
+								/>
 							</>
 						)}
 
@@ -502,6 +537,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</Label>
 									<Input
 										id="jira-summary"
+										ref={jiraSummaryRef}
 										placeholder="{{alert.name}} on {{alert.service}}"
 										value={jiraSummary}
 										onChange={(e) => setJiraSummary(e.target.value)}
@@ -513,12 +549,24 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</Label>
 									<Textarea
 										id="jira-description"
+										ref={jiraDescriptionRef}
 										placeholder="Triggered at {{alert.startsAt}}. Details: {{alert.summary}}"
 										value={jiraDescription}
 										onChange={(e) => setJiraDescription(e.target.value)}
 										rows={3}
 									/>
 								</div>
+								<TemplateVariablePicker
+									variables={templateVariables}
+									targets={[
+										{
+											ref: jiraDescriptionRef,
+											value: jiraDescription,
+											onChange: setJiraDescription,
+										},
+										{ ref: jiraSummaryRef, value: jiraSummary, onChange: setJiraSummary },
+									]}
+								/>
 							</>
 						)}
 
@@ -545,11 +593,12 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</div>
 									<div className="space-y-2">
 										<Label htmlFor="http-url" className="text-xs">
-											URL
+											URL — variables resolve here too
 										</Label>
 										<Input
 											id="http-url"
-											placeholder="https://api.example.com/webhook"
+											ref={httpUrlRef}
+											placeholder="https://api.example.com/alerts/{{alert.id}}/ack"
 											value={httpUrl}
 											onChange={(e) => setHttpUrl(e.target.value)}
 										/>
@@ -624,6 +673,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									</Label>
 									<Textarea
 										id="http-body"
+										ref={httpBodyRef}
 										placeholder={'{\n  "text": "{{alert.name}} fired"\n}'}
 										value={httpBody}
 										onChange={(e) => setHttpBody(e.target.value)}
@@ -631,6 +681,14 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										className="font-mono text-xs"
 									/>
 								</div>
+								<TemplateVariablePicker
+									variables={templateVariables}
+									targets={[
+										{ ref: httpBodyRef, value: httpBody, onChange: setHttpBody },
+										{ ref: httpUrlRef, value: httpUrl, onChange: setHttpUrl },
+									]}
+									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too):"
+								/>
 							</>
 						)}
 

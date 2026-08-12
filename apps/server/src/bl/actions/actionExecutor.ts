@@ -37,14 +37,25 @@ export interface AlertContextInput {
 	tags?: Record<string, string>;
 }
 
-// Sample alert context used when testing an action, so templates render with realistic values.
+// Sample alert context used when testing an action, so templates render with realistic
+// values. Covers EVERY variable in ALERT_TEMPLATE_VARIABLES (asserted by test) — a test
+// run must resolve the same variables a real run would, or a template that works in Test
+// ships with literal {{...}} left in it.
 export const buildSampleContext = (): Record<string, string> => ({
 	'alert.name': 'Test alert from OpsiMate',
-	'alert.service': 'demo-service',
-	'alert.severity': 'critical',
+	'alert.id': 'test-alert-1',
 	'alert.status': 'firing',
+	'alert.type': 'custom',
 	'alert.summary': 'This is a test action triggered from OpsiMate.',
+	'alert.severity': 'critical',
+	'alert.service': 'demo-service',
 	'alert.startsAt': new Date().toISOString(),
+	'alert.updatedAt': new Date().toISOString(),
+	'alert.createdAt': new Date().toISOString(),
+	'alert.url': 'https://example.com/alerts/test-alert-1',
+	'alert.runbookUrl': 'https://example.com/runbooks/demo-service',
+	'alert.tags.env': 'prod',
+	'alert.tags.team': 'platform',
 });
 
 // Context built from a real alert, used when running an action against an alert.

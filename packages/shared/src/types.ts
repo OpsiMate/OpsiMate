@@ -535,6 +535,28 @@ export interface AlertEnrichment {
 // This phase only covers configuring them; wiring them to alerts comes later.
 export type ActionType = 'slack' | 'teams' | 'jira' | 'http';
 
+// The alert fields available as {{...}} template variables in every action template —
+// message/title/summary/description/body, and the HTTP action's URL and header values.
+// One list shared by the client's variable picker and the server's resolver context
+// (buildAlertContext), which additionally exposes one `alert.tags.<key>` variable per
+// tag on the alert (see alertTagTemplateVariable).
+export const ALERT_TEMPLATE_VARIABLES = [
+	'alert.name',
+	'alert.id',
+	'alert.status',
+	'alert.type',
+	'alert.summary',
+	'alert.severity',
+	'alert.service',
+	'alert.startsAt',
+	'alert.updatedAt',
+	'alert.createdAt',
+	'alert.url',
+	'alert.runbookUrl',
+] as const;
+
+export const alertTagTemplateVariable = (tagKey: string): string => `alert.tags.${tagKey}`;
+
 export type HttpActionMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 export interface SlackActionConfig {
