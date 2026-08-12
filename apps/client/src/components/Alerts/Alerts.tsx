@@ -157,9 +157,22 @@ const Alerts = () => {
 	// load". So when a group-by is active the query drops its limit and the server returns
 	// every matching alert (filtered/searched/time-bounded), which the client groups
 	// exactly as it always did. Flat views keep the page limit and infinite-scroll.
+	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
+
 	const isGrouping = dashboardState.groupBy.length > 0;
 
-	const serverQuery = useMemo(() => {
+	// Grouping loads the WHOLE matching set, but only for the list you're actually
+	// looking at. Active alerts number in the thousands; resolved can be 50-60k, so
+	// pulling all resolved to group the active tab would be a huge wasted download.
+	// Active data feeds the Active and All views; resolved data feeds Resolved and All.
+	// The non-viewed list stays a cheap 500-row page — enough for its tab-dropdown count
+	// (the response carries the true total regardless of limit) and a ready first page.
+	// Both queries already honor the time range, so narrowing the window trims what a
+	// grouped view has to load.
+	const activeViewed = activeTab === AlertTab.Active || activeTab === AlertTab.All;
+	const resolvedViewed = activeTab === AlertTab.Resolved || activeTab === AlertTab.All;
+
+	const baseQuery = useMemo(() => {
 		const window = toCoarseWindow(dashboardState.timeRange);
 		return {
 			filters: statusSuspendedFilters,
@@ -168,9 +181,17 @@ const Alerts = () => {
 			search: dashboardState.query || undefined,
 			sort: alertSort.field,
 			dir: alertSort.dir,
-			limit: isGrouping ? undefined : SERVER_PAGE_SIZE,
 		};
-	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort, isGrouping]);
+	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort]);
+
+	const activeQuery = useMemo(
+		() => ({ ...baseQuery, limit: isGrouping && activeViewed ? undefined : SERVER_PAGE_SIZE }),
+		[baseQuery, isGrouping, activeViewed]
+	);
+	const resolvedQuery = useMemo(
+		() => ({ ...baseQuery, limit: isGrouping && resolvedViewed ? undefined : SERVER_PAGE_SIZE }),
+		[baseQuery, isGrouping, resolvedViewed]
+	);
 
 	const {
 		data: alerts = [],
@@ -179,7 +200,7 @@ const Alerts = () => {
 		refetch,
 		fetchNextPage: fetchMoreActive,
 		hasNextPage: hasMoreActive,
-	} = useAlerts(serverQuery, { refetchIntervalMs: isGrouping ? GROUPED_POLL_MS : undefined });
+	} = useAlerts(activeQuery, { refetchIntervalMs: isGrouping && activeViewed ? GROUPED_POLL_MS : undefined });
 	const {
 		data: resolvedAlerts = [],
 		total: resolvedTotal,
@@ -187,9 +208,10 @@ const Alerts = () => {
 		refetch: refetchResolved,
 		fetchNextPage: fetchMoreResolved,
 		hasNextPage: hasMoreResolved,
-	} = useResolvedAlerts(serverQuery, { refetchIntervalMs: isGrouping ? GROUPED_POLL_MS : undefined });
+	} = useResolvedAlerts(resolvedQuery, {
+		refetchIntervalMs: isGrouping && resolvedViewed ? GROUPED_POLL_MS : undefined,
+	});
 
-	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
