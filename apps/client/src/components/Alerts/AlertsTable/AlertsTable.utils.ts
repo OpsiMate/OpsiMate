@@ -1,12 +1,7 @@
 import { UserInfo } from '@/hooks/queries/users';
 import { formatDateTime, formatTime, isSameLocalDay } from '@/lib/datetime';
-import { Alert, searchAlerts, sortAlertsBy } from '@OpsiMate/shared';
+import { Alert, getAlertGroupValue, groupKeySegment, searchAlerts, sortAlertsBy } from '@OpsiMate/shared';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
-import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
-import { getAlertTagsString } from '../utils/alertTags.utils';
-import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
-import { getAlertFix, FIX_LABELS, FIX_RANK } from '../utils/fix.utils';
-import { getAlertSeverity, SEVERITY_LABELS, SEVERITY_RANK } from '../utils/severity.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
 
 // Search lives in @OpsiMate/shared (searchAlerts) so a server-side search matches this
@@ -29,20 +24,6 @@ export const sortAlerts = (
 	users: UserInfo[] = []
 ): Alert[] => sortAlertsBy(alerts, sortField, sortDirection, users);
 
-// Timestamps from today render time-only — the date part is noise for the rows users
-// care about most; older timestamps keep the full date. Sorting is unaffected: it runs
-// on the raw epoch value (getSortValue), never on this display string.
-// Grouping key for time columns: the LOCAL calendar day (YYYY-MM-DD), matching the
-// local time the cells render (formatDate). A UTC day key could disagree with the
-// displayed date near timezone boundaries.
-const toLocalDayKey = (dateString: string): string => {
-	const date = new Date(dateString);
-	if (isNaN(date.getTime())) return 'Unknown';
-	const month = String(date.getMonth() + 1).padStart(2, '0');
-	const day = String(date.getDate()).padStart(2, '0');
-	return `${date.getFullYear()}-${month}-${day}`;
-};
-
 // The full date+time, for tooltips and copy-to-clipboard. Returns undefined for an
 // unparseable value so callers can fall back to the raw string.
 export const formatFullTimestamp = (dateString: string): string | undefined => {
@@ -58,36 +39,11 @@ export const formatDate = (dateString: string): string => {
 	return isSameLocalDay(dateString) ? formatTime(dateString) : full;
 };
 
-export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string => {
-	if (isTagKeyColumn(field)) {
-		return getTagKeyValue(alert, field) || 'N/A';
-	}
-
-	switch (field) {
-		case 'alertName':
-			return alert.alertName;
-		case 'status':
-			return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : 'Firing';
-		case 'severity':
-			return SEVERITY_LABELS[getAlertSeverity(alert)];
-		case 'fix': {
-			const fix = getAlertFix(alert);
-			return fix ? FIX_LABELS[fix] : 'No fix type';
-		}
-		case 'summary':
-			return alert.summary || 'Unknown';
-		case 'startsAt':
-			return toLocalDayKey(alert.startsAt);
-		case 'updatedAt':
-			return toLocalDayKey(alert.updatedAt);
-		case 'type':
-			return getIntegrationLabel(resolveAlertIntegration(alert));
-		case 'owner':
-			return getOwnerDisplayName(alert.ownerId, users);
-		default:
-			return 'Unknown';
-	}
-};
+// Grouping values live in @OpsiMate/shared (getAlertGroupValue) so server-computed
+// group summaries land on exactly the buckets these rows group into. Default day-key:
+// the viewer's local timezone.
+export const getAlertValue = (alert: Alert, field: string, users: UserInfo[] = []): string =>
+	getAlertGroupValue(alert, field, users);
 
 export const createTagKeyValueGetter = (_columnLabels: Record<string, string>, users: UserInfo[] = []) => {
 	return (alert: Alert, field: string): string => getAlertValue(alert, field, users);
@@ -121,7 +77,7 @@ const groupAlertsRecursive = (options: GroupAlertsRecursiveOptions): GroupNode[]
 	const sortedKeys = Object.keys(groups).sort();
 
 	return sortedKeys.map((value) => {
-		const groupKey = `${parentKey}:${value}`;
+		const groupKey = groupKeySegment(parentKey, value);
 		const groupAlertsList = groups[value];
 		const children = groupAlertsRecursive({
 			alerts: groupAlertsList,

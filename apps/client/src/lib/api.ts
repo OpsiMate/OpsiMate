@@ -1,5 +1,6 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AlertGroupSummaryNode,
 	Action,
 	ActionConfig,
 	ActionOverrides,
@@ -566,6 +567,24 @@ export const alertsApi = {
 	// Get alerts; with params the server filters/sorts/pages, without them the full list.
 	async getAllAlerts(params?: AlertQueryParams): Promise<ApiResponse<AlertListResponse>> {
 		return await apiRequest<AlertListResponse>(`/alerts${alertQueryString(params)}`);
+	},
+
+	// Group counts + rollup status over the full matching set — no alerts in the payload.
+	async getAlertGroupSummaries(
+		groupBy: string[],
+		params: Omit<AlertQueryParams, 'limit' | 'cursor' | 'sort' | 'dir'>,
+		options?: AlertFacetsOptions
+	): Promise<ApiResponse<{ groups: AlertGroupSummaryNode[] }>> {
+		const q = new URLSearchParams();
+		q.set('groupBy', JSON.stringify(groupBy));
+		if (params.filters && Object.keys(params.filters).length > 0) q.set('filters', JSON.stringify(params.filters));
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
+		if (params.search?.trim()) q.set('search', params.search);
+		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (timeZone) q.set('timeZone', timeZone);
+		const base = options?.resolved ? '/alerts/resolved/groups' : '/alerts/groups';
+		return await apiRequest<{ groups: AlertGroupSummaryNode[] }>(`${base}?${q.toString()}`);
 	},
 
 	// Faceted sidebar counts + tag keys over the raw dataset, computed server-side.

@@ -139,3 +139,76 @@ describe('GET /alerts/resolved with query params', () => {
 		expect(res.body.data).toHaveProperty('nextCursor');
 	});
 });
+
+describe('GET /alerts/groups', () => {
+	test('returns group counts + rollup status over the whole matching set, no alerts', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env']));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}`);
+		expect(res.status).toBe(200);
+		const groups = res.body.data.groups;
+		expect(groups.map((g: { value: string; count: number }) => [g.value, g.count])).toEqual([
+			['prod', 10],
+			['staging', 20],
+		]);
+		expect(groups[0].status).toBe('firing');
+		expect(groups[0].key).toBe('root:prod');
+		expect(groups[0]).not.toHaveProperty('alerts');
+	});
+
+	test('nested groupBy nests counts under parent keys', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env', 'severity']));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}`);
+		const prod = res.body.data.groups.find((g: { value: string }) => g.value === 'prod');
+		expect(prod.children.length).toBeGreaterThan(0);
+		expect(prod.children[0].key.startsWith('root:prod:')).toBe(true);
+		const childSum = prod.children.reduce((n: number, c: { count: number }) => n + c.count, 0);
+		expect(childSum).toBe(prod.count);
+	});
+
+	test('filters and search constrain the summaries like the list', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env']));
+		const filters = encodeURIComponent(JSON.stringify({ 'tagKey:env': ['prod'] }));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&filters=${filters}`);
+		expect(res.body.data.groups).toHaveLength(1);
+		expect(res.body.data.groups[0].count).toBe(10);
+	});
+
+	test('date grouping buckets by the VIEWER timezone, not the server clock', async () => {
+		// 20:00 UTC is the same instant but a different calendar day in Tokyo (+9,
+		// next day) vs Los Angeles (-7/-8, same day) — an implementation that ignores
+		// timeZone cannot bucket this alert differently per zone.
+		insertAlert('tz-boundary', 'TZ Boundary Alert', { env: 'prod' }, '2026-03-15T20:00:00.000Z');
+		const groupBy = encodeURIComponent(JSON.stringify(['startsAt']));
+		const search = 'TZ%20Boundary';
+
+		const tokyo = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&search=${search}&timeZone=Asia/Tokyo`);
+		expect(tokyo.status).toBe(200);
+		expect(tokyo.body.data.groups.map((g: { value: string }) => g.value)).toEqual(['2026-03-16']);
+
+		const la = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&search=${search}&timeZone=America/Los_Angeles`);
+		expect(la.body.data.groups.map((g: { value: string }) => g.value)).toEqual(['2026-03-15']);
+
+		db.prepare('DELETE FROM alerts WHERE id = ?').run('tz-boundary');
+	});
+
+	test('group keys are collision-safe when values contain the delimiter', async () => {
+		insertAlert('colon-tag', 'Colon Tag Alert', { env: 'a:b' }, new Date(2026, 0, 2, 12, 0, 0).toISOString());
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env']));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}`);
+		const colonGroup = res.body.data.groups.find((g: { value: string }) => g.value === 'a:b');
+		expect(colonGroup.key).toBe('root:a%3Ab');
+		db.prepare('DELETE FROM alerts WHERE id = ?').run('colon-tag');
+	});
+
+	test('groupBy is required and malformed params are a 400', async () => {
+		expect((await get('/api/v1/alerts/groups')).status).toBe(400);
+		expect((await get('/api/v1/alerts/groups?groupBy=not-json')).status).toBe(400);
+	});
+
+	test('resolved endpoint exists with the same contract', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['severity']));
+		const res = await get(`/api/v1/alerts/resolved/groups?groupBy=${groupBy}`);
+		expect(res.status).toBe(200);
+		expect(Array.isArray(res.body.data.groups)).toBe(true);
+	});
+});

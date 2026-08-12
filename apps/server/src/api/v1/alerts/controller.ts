@@ -25,7 +25,12 @@ import {
 import { isZodError } from '../../../utils/isZodError.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import crypto from 'crypto';
-import { ALERT_QUERY_PARAM_KEYS, AlertFacetsParamsSchema, AlertListQueryParamsSchema } from './models';
+import {
+	ALERT_QUERY_PARAM_KEYS,
+	AlertFacetsParamsSchema,
+	AlertGroupsParamsSchema,
+	AlertListQueryParamsSchema,
+} from './models';
 import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
@@ -65,6 +70,34 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error computing alert facets:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getAlertGroupSummaries(req: Request, res: Response) {
+		try {
+			const params = AlertGroupsParamsSchema.parse(req.query);
+			const groups = await this.alertBL.getAlertGroupSummaries(params, params.groupBy, params.timeZone);
+			return res.json({ success: true, data: { groups } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing alert group summaries:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getResolvedAlertGroupSummaries(req: Request, res: Response) {
+		try {
+			const params = AlertGroupsParamsSchema.parse(req.query);
+			const groups = await this.alertBL.getResolvedAlertGroupSummaries(params, params.groupBy, params.timeZone);
+			return res.json({ success: true, data: { groups } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing resolved alert group summaries:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
