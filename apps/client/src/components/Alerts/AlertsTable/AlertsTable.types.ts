@@ -14,6 +14,9 @@ export type AlertSortField = string;
 export type SortDirection = 'asc' | 'desc';
 
 export interface AlertsTableProps {
+	// Invoked when the scroll approaches the last loaded row — the parent fetches the
+	// next server page. Absent when the loaded set is complete.
+	onEndReached?: () => void;
 	alerts: Alert[];
 	onSilenceAlert?: (alertId: string) => void;
 	onUnsilenceAlert?: (alertId: string) => void;

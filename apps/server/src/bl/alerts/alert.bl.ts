@@ -20,6 +20,14 @@ import { toIsoUtc } from '../../utils/time';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import {
+	AlertFacetsResult,
+	AlertListPage,
+	AlertListQuery,
+	AlertOwnerInfo,
+	applyAlertListQuery,
+	computeAlertFacets,
+} from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
 
@@ -64,6 +72,38 @@ export class AlertBL {
 
 	async getResolvedAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
 		return this.resolvedSnapshot.get();
+	}
+
+	// Owner ids are numeric in the DB but string-typed on alerts; the engine compares
+	// strings, so the mapping happens once here.
+	private async getOwnerInfos(): Promise<AlertOwnerInfo[]> {
+		const users = await this.userRepo.getAllUsers();
+		return users.map((u) => ({ id: String(u.id), fullName: u.fullName }));
+	}
+
+	// Server-side execution of the client's own query engine over the cached snapshot:
+	// filter/search/sort/page semantics are the shared implementation, so a pushed-down
+	// query returns exactly what the client would have computed from the full list.
+	async queryAlerts(query: AlertListQuery): Promise<AlertListPage> {
+		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
+		return applyAlertListQuery(snapshot.value, owners, query);
+	}
+
+	async queryResolvedAlerts(query: AlertListQuery): Promise<AlertListPage> {
+		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
+		return applyAlertListQuery(snapshot.value, owners, query);
+	}
+
+	// Facets for the filter sidebar, computed over the RAW list (the sidebar describes
+	// what filters WOULD show — see computeAlertFacets).
+	async getAlertFacets(filters: Record<string, string[]>, fields?: string[]): Promise<AlertFacetsResult> {
+		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
+		return computeAlertFacets(snapshot.value, filters, fields, owners);
+	}
+
+	async getResolvedAlertFacets(filters: Record<string, string[]>, fields?: string[]): Promise<AlertFacetsResult> {
+		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
+		return computeAlertFacets(snapshot.value, filters, fields, owners);
 	}
 
 	// Best-effort history logging: never let a failed history write break the underlying

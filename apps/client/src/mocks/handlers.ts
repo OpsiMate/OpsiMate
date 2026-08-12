@@ -1,4 +1,4 @@
-import { AlertHistoryData, AlertHistoryEventType, AlertStatus, OncallTeam } from '@OpsiMate/shared';
+import { computeAlertFacets, AlertHistoryData, AlertHistoryEventType, AlertStatus, OncallTeam } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
 
@@ -171,6 +171,26 @@ export const handlers = [
 		return HttpResponse.json({
 			success: true,
 			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment) },
+		});
+	}),
+
+	http.get(`${API_BASE}/alerts/facets`, ({ request }) => {
+		const url = new URL(request.url);
+		const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
+		const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
+		return HttpResponse.json({
+			success: true,
+			data: computeAlertFacets(alerts, filters, undefined, []),
+		});
+	}),
+
+	http.get(`${API_BASE}/alerts/resolved/facets`, ({ request }) => {
+		const url = new URL(request.url);
+		const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
+		const alerts = playgroundState.resolvedAlerts.map(withLastComment);
+		return HttpResponse.json({
+			success: true,
+			data: computeAlertFacets(alerts, filters, undefined, []),
 		});
 	}),
 

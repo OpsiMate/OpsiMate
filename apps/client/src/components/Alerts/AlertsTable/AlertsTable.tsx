@@ -48,6 +48,7 @@ const HEADER_ICONS: Record<string, ReactNode> = {
 
 export const AlertsTable = ({
 	alerts,
+	onEndReached,
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
@@ -174,6 +175,18 @@ export const AlertsTable = ({
 	}, [expandRows, virtualizer]);
 
 	const virtualItems = virtualizer.getVirtualItems();
+
+	// Infinite scroll: when the rendered window nears the end of what's loaded, ask for
+	// the next page. fetchNextPage dedupes in-flight requests, so firing per render is
+	// safe; the 10-row lead keeps skeleton time mostly out of view at scroll speed.
+	const lastVirtualIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
+	useEffect(() => {
+		if (!onEndReached) return;
+		if (flatRows.length === 0) return;
+		if (lastVirtualIndex >= flatRows.length - 10) {
+			onEndReached();
+		}
+	}, [onEndReached, lastVirtualIndex, flatRows.length]);
 	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
 
 	const orderedColumns = useMemo(() => {

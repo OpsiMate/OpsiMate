@@ -1,7 +1,7 @@
 import { UserInfo } from '@/hooks/queries/users';
 import { formatDateTime, formatTime, isSameLocalDay } from '@/lib/datetime';
+import { Alert, searchAlerts, sortAlertsBy } from '@OpsiMate/shared';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
-import { Alert } from '@OpsiMate/shared';
 import { getIntegrationLabel, resolveAlertIntegration } from '../IntegrationAvatar';
 import { getAlertTagsString } from '../utils/alertTags.utils';
 import { getOwnerDisplayName, getOwnerSortKey } from '../utils/owner.utils';
@@ -9,24 +9,9 @@ import { getAlertFix, FIX_LABELS, FIX_RANK } from '../utils/fix.utils';
 import { getAlertSeverity, SEVERITY_LABELS, SEVERITY_RANK } from '../utils/severity.utils';
 import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
 
-export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
-	if (!searchTerm.trim()) return alerts;
-
-	const lower = searchTerm.toLowerCase();
-	return alerts.filter((alert) => {
-		const integration = resolveAlertIntegration(alert);
-		const integrationLabel = getIntegrationLabel(integration).toLowerCase();
-		const tagsString = getAlertTagsString(alert).toLowerCase();
-		return (
-			(alert.alertName && alert.alertName.toLowerCase().includes(lower)) ||
-			(alert.status && alert.status.toLowerCase().includes(lower)) ||
-			tagsString.includes(lower) ||
-			(alert.summary && alert.summary.toLowerCase().includes(lower)) ||
-			(alert.lastComment && alert.lastComment.toLowerCase().includes(lower)) ||
-			integrationLabel.includes(lower)
-		);
-	});
-};
+// Search lives in @OpsiMate/shared (searchAlerts) so a server-side search matches this
+// table's semantics field for field.
+export const filterAlerts = (alerts: Alert[], searchTerm: string): Alert[] => searchAlerts(alerts, searchTerm);
 
 const getTagKeyValue = (alert: Alert, columnId: string): string => {
 	const tagKey = extractTagKeyFromColumnId(columnId);
@@ -34,61 +19,15 @@ const getTagKeyValue = (alert: Alert, columnId: string): string => {
 	return alert.tags?.[tagKey] || '';
 };
 
-// Comparable value for one alert under a sort field; null means "field not sortable".
-const getSortValue = (alert: Alert, sortField: AlertSortField, users: UserInfo[]): string | number | null => {
-	if (isTagKeyColumn(sortField)) {
-		return getTagKeyValue(alert, sortField).toLowerCase();
-	}
-	switch (sortField) {
-		case 'alertName':
-			return alert.alertName.toLowerCase();
-		case 'status':
-			return alert.isSilenced ? 'silenced' : alert.isMuted ? 'muted' : 'firing';
-		case 'severity':
-			// Rank-based so desc = critical first, info last.
-			return SEVERITY_RANK[getAlertSeverity(alert)];
-		case 'fix': {
-			// Rank-based so desc = manual first; unclassified alerts sink to rank 0.
-			const fix = getAlertFix(alert);
-			return fix ? FIX_RANK[fix] : 0;
-		}
-		case 'summary':
-			return (alert.summary || '').toLowerCase();
-		case 'lastComment':
-			return (alert.lastComment || '').toLowerCase();
-		case 'startsAt': {
-			const date = new Date(alert.startsAt);
-			return isNaN(date.getTime()) ? 0 : date.getTime();
-		}
-		case 'updatedAt': {
-			const date = new Date(alert.updatedAt);
-			return isNaN(date.getTime()) ? 0 : date.getTime();
-		}
-		case 'type':
-			return getIntegrationLabel(resolveAlertIntegration(alert)).toLowerCase();
-		case 'owner':
-			return getOwnerSortKey(alert.ownerId, users);
-		default:
-			return null;
-	}
-};
-
+// Sorting lives in @OpsiMate/shared (sortAlertsBy) so server-side pages are ordered
+// exactly as this table would order them; equal keys tiebreak on id, which keeps row
+// order stable across refetches and makes pagination cursors well-defined.
 export const sortAlerts = (
 	alerts: Alert[],
 	sortField: AlertSortField,
 	sortDirection: SortDirection,
 	users: UserInfo[] = []
-): Alert[] => {
-	return [...alerts].sort((a, b) => {
-		const aValue = getSortValue(a, sortField, users);
-		const bValue = getSortValue(b, sortField, users);
-		if (aValue === null || bValue === null) return 0;
-
-		if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-		if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-		return 0;
-	});
-};
+): Alert[] => sortAlertsBy(alerts, sortField, sortDirection, users);
 
 // Timestamps from today render time-only — the date part is noise for the rows users
 // care about most; older timestamps keep the full date. Sorting is unaffected: it runs

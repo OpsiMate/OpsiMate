@@ -1,18 +1,38 @@
-import { alertsApi } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
+import { alertsApi, AlertListResponse, AlertQueryParams } from '@/lib/api';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
 
-export const useResolvedAlerts = () => {
-	return useQuery({
-		queryKey: queryKeys.resolvedAlerts,
-		queryFn: async () => {
-			const response = await alertsApi.getAllResolvedAlerts();
+// Mirror of useAlerts over the resolved list — see that hook for the single-path
+// design; only the poll cadence differs (resolved alerts change less).
+export const useResolvedAlerts = (query?: AlertQueryParams) => {
+	const result = useInfiniteQuery({
+		queryKey: [...queryKeys.resolvedAlerts, query ?? null],
+		queryFn: async ({ pageParam }): Promise<AlertListResponse> => {
+			const response = await alertsApi.getAllResolvedAlerts(
+				query ? { ...query, cursor: pageParam || undefined } : undefined
+			);
 			if (!response.success) {
 				throw new Error(response.error || 'Failed to fetch resolved alerts');
 			}
-			return response.data?.alerts || [];
+			return response.data ?? { alerts: [] };
 		},
-		staleTime: 30 * 1000, // 30 seconds
-		refetchInterval: 30 * 1000, // Refetch every 30 seconds
+		initialPageParam: '',
+		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
+		staleTime: 30 * 1000,
+		refetchInterval: 30 * 1000,
 	});
+
+	const alerts = useMemo(() => result.data?.pages.flatMap((page) => page.alerts) ?? [], [result.data]);
+	const total = result.data?.pages[0]?.total ?? alerts.length;
+
+	return {
+		data: alerts,
+		total,
+		isLoading: result.isLoading,
+		refetch: result.refetch,
+		fetchNextPage: result.fetchNextPage,
+		hasNextPage: result.hasNextPage,
+		isFetchingNextPage: result.isFetchingNextPage,
+	};
 };

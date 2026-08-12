@@ -1,7 +1,6 @@
-import { AlertType } from '@OpsiMate/shared';
 import { ReactNode } from 'react';
 
-export type AlertIntegrationKind = Lowercase<AlertType>;
+export type { AlertIntegrationKind } from '@OpsiMate/shared';
 
 export interface IntegrationDefinition {
 	label: string;

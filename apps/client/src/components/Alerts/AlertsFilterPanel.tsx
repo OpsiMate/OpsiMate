@@ -1,13 +1,16 @@
 import { ActiveFilters, FilterFacets, FilterPanel, FilterPanelConfig } from '@/components/shared';
 import { useUsers } from '@/hooks/queries/users';
 import { extractTagKeyFromColumnId, getTagKeyColumnId, isTagKeyColumn, TagKeyInfo } from '@/types';
-import { Alert } from '@OpsiMate/shared';
+import { AlertFacetsResponse } from '@/lib/api';
+import { Alert, getAlertFilterFieldValue } from '@OpsiMate/shared';
 import { useMemo } from 'react';
-import { getOwnerDisplayName } from './utils/owner.utils';
-import { getAlertSeverity, SEVERITY_LABELS } from './utils/severity.utils';
 
 interface AlertsFilterPanelProps {
 	alerts: Alert[];
+	// Server-computed facet counts over the RAW dataset (the alerts prop only holds the
+	// filtered page). When present these win; the client derivation from `alerts`
+	// remains the fallback so the playground and error paths keep a working sidebar.
+	serverFacets?: AlertFacetsResponse | null;
 	filters: ActiveFilters;
 	onFilterChange: (filters: ActiveFilters) => void;
 	collapsed?: boolean;
@@ -30,6 +33,7 @@ const BASE_FIELD_LABELS: Record<string, string> = {
 
 export const AlertsFilterPanel = ({
 	alerts,
+	serverFacets,
 	filters,
 	onFilterChange,
 	collapsed = false,
@@ -70,29 +74,24 @@ export const AlertsFilterPanel = ({
 	}, [filters, hideStatusFilter]);
 
 	const facets: FilterFacets = useMemo(() => {
-		// The value an alert presents for a given filter field, matching useAlertsFiltering's
-		// logic — including null for unknown fields, which never constrain (a stale persisted
-		// filter must not zero out every facet).
-		const getFieldValue = (alert: Alert, field: string): string | null => {
-			if (isTagKeyColumn(field)) {
-				const tagKey = extractTagKeyFromColumnId(field);
-				return tagKey ? alert.tags?.[tagKey] || '' : null;
-			}
-			switch (field) {
-				case 'status':
-					return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : capitalizeFirst(alert.status);
-				case 'severity':
-					return SEVERITY_LABELS[getAlertSeverity(alert)];
-				case 'type':
-					return getAlertType(alert);
-				case 'alertName':
-					return alert.alertName ?? '';
-				case 'owner':
-					return getOwnerDisplayName(alert.ownerId, users);
-				default:
-					return null;
-			}
-		};
+		if (serverFacets) {
+			const result: FilterFacets = {};
+			filterConfig.fields.forEach((field) => {
+				const counts = serverFacets.facets[field] ?? {};
+				result[field] = Object.entries(counts)
+					.map(([value, count]) => ({ value, count }))
+					.sort((a, b) => {
+						if (b.count !== a.count) return b.count - a.count;
+						return a.value.localeCompare(b.value);
+					});
+			});
+			return result;
+		}
+
+		// The value an alert presents for a filter field — the shared implementation the
+		// table filter and the server both use, so the sidebar can never disagree with them.
+		const getFieldValue = (alert: Alert, field: string): string | null =>
+			getAlertFilterFieldValue(alert, field, users);
 
 		// Faceted filtering: an alert counts toward a field's facet only if it passes every OTHER
 		// active filter (includes AND "!field" exclusions). A facet never constrains itself —
@@ -129,7 +128,7 @@ export const AlertsFilterPanel = ({
 		});
 
 		return result;
-	}, [alerts, filterConfig.fields, effectiveFilters, users]);
+	}, [alerts, serverFacets, filterConfig.fields, effectiveFilters, users]);
 
 	return (
 		<FilterPanel

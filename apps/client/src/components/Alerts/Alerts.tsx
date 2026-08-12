@@ -10,7 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { useAlerts, useResolvedAlerts, useDeleteResolvedAlert, useMarkAlertRead } from '@/hooks/queries/alerts';
+import {
+	useAlertFacets,
+	useAlerts,
+	useResolvedAlerts,
+	useDeleteResolvedAlert,
+	useMarkAlertRead,
+} from '@/hooks/queries/alerts';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -19,6 +25,7 @@ import {
 } from '@/hooks/queries/dashboards';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
+import { AlertFacetsResponse } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
@@ -36,6 +43,8 @@ import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.u
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
+import { resolveTimeRange } from './AlertsTable/TimeFilter/TimeFilter.utils';
+import { TimeRange } from './AlertsTable/TimeFilter/TimeFilter.types';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import {
@@ -56,10 +65,55 @@ const ALERT_TAB_OPTIONS = [
 	{ value: AlertTab.All, label: 'All', Icon: LayoutList },
 ] as const;
 
+// One page of server-filtered alerts; views under this size (the overwhelmingly common
+// case) load completely and every client-side behavior — grouping, sorting, select-all —
+// is exactly what it was before server-side querying existed.
+const SERVER_PAGE_SIZE = 500;
+
+// Rolling presets re-anchor to "now" continuously; a raw resolved window in the query
+// would mint a new cache key every tick. Rounding the window OUTWARD to the minute keeps
+// the key stable for a minute at a time while the server window stays a superset — the
+// client pipeline narrows to the exact rolling window on top.
+const toCoarseWindow = (timeRange: TimeRange | undefined) => {
+	if (!timeRange) return { from: null, to: null };
+	const resolved = resolveTimeRange(timeRange);
+	const floorMinute = (d: Date) => new Date(Math.floor(d.getTime() / 60000) * 60000);
+	const ceilMinute = (d: Date) => new Date(Math.ceil(d.getTime() / 60000) * 60000);
+	return {
+		from: resolved.from ? floorMinute(resolved.from).toISOString() : null,
+		to: resolved.to ? ceilMinute(resolved.to).toISOString() : null,
+	};
+};
+
+// The All view describes active + resolved together: counts add, tag keys union.
+const mergeFacetsResponses = (a?: AlertFacetsResponse, b?: AlertFacetsResponse): AlertFacetsResponse | undefined => {
+	if (!a || !b) return a ?? b;
+	const facets: Record<string, Record<string, number>> = {};
+	for (const field of new Set([...Object.keys(a.facets), ...Object.keys(b.facets)])) {
+		const merged: Record<string, number> = { ...a.facets[field] };
+		for (const [value, count] of Object.entries(b.facets[field] ?? {})) {
+			merged[value] = (merged[value] ?? 0) + count;
+		}
+		facets[field] = merged;
+	}
+	const tagKeys = new Map<string, { key: string; label: string; values: Set<string> }>();
+	for (const tk of [...a.tagKeys, ...b.tagKeys]) {
+		const entry = tagKeys.get(tk.key) ?? { key: tk.key, label: tk.label, values: new Set<string>() };
+		tk.values.forEach((v) => entry.values.add(v));
+		tagKeys.set(tk.key, entry);
+	}
+	return {
+		facets,
+		total: a.total + b.total,
+		silencedTotal: a.silencedTotal + b.silencedTotal,
+		tagKeys: Array.from(tagKeys.values())
+			.map((e) => ({ key: e.key, label: e.label, values: Array.from(e.values).sort() }))
+			.sort((x, y) => x.label.localeCompare(y.label)),
+	};
+};
+
 const Alerts = () => {
 	const { toast } = useToast();
-	const { data: alerts = [], isLoading, refetch } = useAlerts();
-	const { data: resolvedAlerts = [], isLoading: isLoadingResolved, refetch: refetchResolved } = useResolvedAlerts();
 	const { data: dashboards = [] } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
@@ -77,6 +131,48 @@ const Alerts = () => {
 		setInitialState,
 	} = useDashboard();
 
+	// The Resolved and All VIEWS run with the status filter suspended — not deleted
+	// (see the view notes below). The SERVER query always uses the suspended record:
+	// it's the superset of all three views, so one active query serves them all and the
+	// client pipeline narrows by status exactly as it always has.
+	const statusSuspendedFilters = useMemo(() => {
+		const { status: _status, ['!status']: _notStatus, ...rest } = dashboardState.filters;
+		return rest;
+	}, [dashboardState.filters]);
+
+	const serverQuery = useMemo(() => {
+		const window = toCoarseWindow(dashboardState.timeRange);
+		return {
+			filters: statusSuspendedFilters,
+			from: window.from,
+			to: window.to,
+			search: dashboardState.query || undefined,
+			// Newest-first regardless of the table's visual sort: when a view exceeds the
+			// page size, the page holds the most recent matches — the table re-sorts the
+			// loaded set client-side as it always has.
+			sort: 'startsAt',
+			dir: 'desc' as const,
+			limit: SERVER_PAGE_SIZE,
+		};
+	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query]);
+
+	const {
+		data: alerts = [],
+		total: activeTotal,
+		isLoading,
+		refetch,
+		fetchNextPage: fetchMoreActive,
+		hasNextPage: hasMoreActive,
+	} = useAlerts(serverQuery);
+	const {
+		data: resolvedAlerts = [],
+		total: resolvedTotal,
+		isLoading: isLoadingResolved,
+		refetch: refetchResolved,
+		fetchNextPage: fetchMoreResolved,
+		hasNextPage: hasMoreResolved,
+	} = useResolvedAlerts(serverQuery);
+
 	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -89,7 +185,31 @@ const Alerts = () => {
 	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
-	const tagKeys = useAlertTagKeys(allAlerts);
+
+	// Sidebar facets, tag keys and the silenced total come from the server, computed
+	// over the RAW dataset — the loaded page is filtered, so deriving them from it
+	// would shrink the sidebar to what's already visible. Three variants because each
+	// view facets under its own effective filters. The client derivation stays as the
+	// fallback (facets request in flight or failed).
+	const activeFacets = useAlertFacets(dashboardState.filters);
+	const suspendedActiveFacets = useAlertFacets(statusSuspendedFilters);
+	const resolvedFacets = useAlertFacets(statusSuspendedFilters, { resolved: true });
+
+	const clientTagKeys = useAlertTagKeys(allAlerts);
+	const tagKeys = useMemo(() => {
+		const active = activeFacets.data?.tagKeys;
+		const resolved = resolvedFacets.data?.tagKeys;
+		if (!active && !resolved) return clientTagKeys;
+		const merged = new Map<string, { key: string; label: string; values: Set<string> }>();
+		for (const tk of [...(active ?? []), ...(resolved ?? [])]) {
+			const entry = merged.get(tk.key) ?? { key: tk.key, label: tk.label, values: new Set<string>() };
+			tk.values.forEach((v) => entry.values.add(v));
+			merged.set(tk.key, entry);
+		}
+		return Array.from(merged.values())
+			.map((e) => ({ key: e.key, label: e.label, values: Array.from(e.values).sort() }))
+			.sort((a, b) => a.label.localeCompare(b.label));
+	}, [activeFacets.data?.tagKeys, resolvedFacets.data?.tagKeys, clientTagKeys]);
 
 	const currentAlertData =
 		activeTab === AlertTab.Active ? alerts : activeTab === AlertTab.Resolved ? resolvedAlerts : allAlerts;
@@ -209,23 +329,17 @@ const Alerts = () => {
 	// unfiltered active list — the point of the button is to reveal alerts the current
 	// filters are hiding, so it has to say how many are out there.
 	const silencedShown = areSilencedAlertsShown(dashboardState.filters);
-	const silencedCount = useMemo(() => alerts.filter((a) => a.isSilenced).length, [alerts]);
+	const silencedCount = activeFacets.data?.silencedTotal ?? alerts.filter((a) => a.isSilenced).length;
 
 	const filteredAlerts = useAlertsFiltering(alerts, {
 		filters: dashboardState.filters,
 		timeRange: dashboardState.timeRange,
 	});
-	// The Resolved and All VIEWS run with the status filter suspended — not deleted.
 	// Resolved: an active status like Firing/Silenced can never match resolved alerts,
 	// so applying it would make the view silently empty. All: the tab's promise is
 	// every alert regardless of status, so a status filter picked on Active must not
-	// follow the user there. Wiping the filter instead (the old behavior) destroyed
-	// the user's stored filter — and dirtied the dashboard — just for peeking at
-	// another tab; the stored filters stay intact and Active keeps applying them.
-	const statusSuspendedFilters = useMemo(() => {
-		const { status: _status, ['!status']: _notStatus, ...rest } = dashboardState.filters;
-		return rest;
-	}, [dashboardState.filters]);
+	// follow the user there — the stored filters stay intact and Active keeps applying
+	// them (narrowing the suspended superset the server returned).
 	const resolvedViewAlerts = useAlertsFiltering(resolvedAlerts, {
 		filters: statusSuspendedFilters,
 		timeRange: dashboardState.timeRange,
@@ -387,11 +501,39 @@ const Alerts = () => {
 			run: (comment) => void handleResolveAllSelected(comment),
 		});
 
+	// Next-page triggers per view; undefined when the loaded set is complete so the
+	// table doesn't keep firing at the bottom of a fully-loaded list.
+	const loadMoreActive = hasMoreActive ? () => void fetchMoreActive() : undefined;
+	const loadMoreResolved = hasMoreResolved ? () => void fetchMoreResolved() : undefined;
+	const loadMoreAll =
+		hasMoreActive || hasMoreResolved
+			? () => {
+					if (hasMoreActive) void fetchMoreActive();
+					if (hasMoreResolved) void fetchMoreResolved();
+				}
+			: undefined;
+
+	// Over-limit notice: the view holds the newest page of a larger match set.
+	const loadedCount =
+		activeTab === AlertTab.Active
+			? alerts.length
+			: activeTab === AlertTab.Resolved
+				? resolvedAlerts.length
+				: allAlerts.length;
+	const matchTotal =
+		activeTab === AlertTab.Active
+			? activeTotal
+			: activeTab === AlertTab.Resolved
+				? resolvedTotal
+				: activeTotal + resolvedTotal;
+	const showPartialNotice = matchTotal > loadedCount;
+
 	// Active-tab alerts table, parameterized by the alert list so it can render full-width
 	// or inside one of the split-by-assignment panes without duplicating the prop wiring.
 	const renderActiveAlertsTable = (list: Alert[]) => (
 		<AlertsTable
 			alerts={list}
+			onEndReached={loadMoreActive}
 			onSilenceAlert={confirmSilenceAlert}
 			onUnsilenceAlert={handleUnsilenceAlert}
 			onDeleteAlert={confirmResolveAlert}
@@ -501,6 +643,13 @@ const Alerts = () => {
 				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={toggleFilterPanelCollapsed}>
 					<AlertsFilterPanel
 						alerts={currentAlertData}
+						serverFacets={
+							activeTab === AlertTab.Active
+								? activeFacets.data
+								: activeTab === AlertTab.Resolved
+									? resolvedFacets.data
+									: mergeFacetsResponses(suspendedActiveFacets.data, resolvedFacets.data)
+						}
 						filters={dashboardState.filters}
 						onFilterChange={handleFilterChange}
 						collapsed={filterPanelCollapsed}
@@ -666,6 +815,13 @@ const Alerts = () => {
 							</div>
 						</div>
 
+						{showPartialNotice && (
+							<div className="shrink-0 px-4 py-1.5 text-xs text-muted-foreground bg-muted/50 border-b border-border">
+								Showing the {loadedCount.toLocaleString()} most recent of {matchTotal.toLocaleString()}{' '}
+								matching alerts — scroll to load more, or narrow the filters.
+							</div>
+						)}
+
 						{activeTab === AlertTab.Active ? (
 							<>
 								{splitByAssignment ? (
@@ -731,6 +887,7 @@ const Alerts = () => {
 							>
 								<AlertsTable
 									alerts={resolvedViewAlerts}
+									onEndReached={loadMoreResolved}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
 									onDeleteAlert={confirmDeleteResolvedAlert}
@@ -770,6 +927,7 @@ const Alerts = () => {
 							>
 								<AlertsTable
 									alerts={filteredAllAlerts}
+									onEndReached={loadMoreAll}
 									onSilenceAlert={confirmSilenceAlert}
 									onUnsilenceAlert={handleUnsilenceAlert}
 									onDeleteAlert={confirmDeleteAnyAlert}
