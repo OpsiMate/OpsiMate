@@ -313,3 +313,42 @@ export interface ZabbixWebhookPayload {
 	// Allow additional fields
 	[key: string]: string | undefined;
 }
+
+// ---------- list-query params (Phase 1: server-side filtering/paging) ----------
+
+// JSON-in-a-param: the sidebar filter record and the facet field list are structured
+// values; encoding them as JSON strings keeps the URL contract simple and lossless
+// (tag keys may contain any character, so comma-lists are not safe).
+const jsonParam = <T>(parse: (raw: unknown) => T) =>
+	z.string().transform((raw, ctx): T => {
+		try {
+			return parse(JSON.parse(raw));
+		} catch {
+			ctx.addIssue({ code: 'custom', message: 'invalid JSON parameter' });
+			return z.NEVER;
+		}
+	});
+
+const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
+const FieldsParamSchema = jsonParam((value) => z.array(z.string()).parse(value));
+
+export const AlertListQueryParamsSchema = z.object({
+	filters: FiltersParamSchema.optional(),
+	// Unparseable datetimes must be a 400, not a silently-empty 200 page.
+	from: z.iso.datetime({ offset: true }).optional(),
+	to: z.iso.datetime({ offset: true }).optional(),
+	search: z.string().optional(),
+	sort: z.string().optional(),
+	dir: z.enum(['asc', 'desc']).optional(),
+	limit: z.coerce.number().int().min(1).max(1000).optional(),
+	cursor: z.string().optional(),
+});
+
+export const AlertFacetsParamsSchema = z.object({
+	filters: FiltersParamSchema.optional(),
+	fields: FieldsParamSchema.optional(),
+});
+
+// Any of these present means the caller speaks the query contract; none means the
+// legacy full-snapshot response (older clients, playground harnesses).
+export const ALERT_QUERY_PARAM_KEYS = ['filters', 'from', 'to', 'search', 'sort', 'dir', 'limit', 'cursor'] as const;

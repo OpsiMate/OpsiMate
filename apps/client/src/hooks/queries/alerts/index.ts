@@ -1,4 +1,5 @@
 export { useAlerts } from './useAlerts';
+export { useAlertFacets } from './useAlertFacets';
 export { useResolvedAlerts } from './useResolvedAlerts';
 export { useDeleteAlert } from './useDeleteAlert';
 export { useDeleteResolvedAlert } from './useDeleteResolvedAlert';

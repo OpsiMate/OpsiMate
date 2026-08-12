@@ -1,41 +1,11 @@
-import { Alert } from '@OpsiMate/shared';
-
-// Tags kept out of every tag UI (labels section, tag columns, facets, TV cards). The
-// severity tag is an internal mirror of the first-class severity field, and the fix tag
-// backs the first-class Fix column/badge the same way — users interact with the dedicated
-// column/badges, never the raw tag.
-export const HIDDEN_TAG_KEYS = new Set(['severity', 'fix']);
-
-export const getAlertTagsArray = (alert: Alert): string[] => {
-	if (!alert.tags || typeof alert.tags !== 'object') return [];
-	return Object.entries(alert.tags)
-		.filter(([key, value]) => !HIDDEN_TAG_KEYS.has(key) && Boolean(value))
-		.map(([, value]) => value);
-};
-
-export const getAlertTagsString = (alert: Alert): string => {
-	const tags = getAlertTagsArray(alert);
-	return tags.join(', ') || '';
-};
-
-export const getAlertPrimaryTag = (alert: Alert): string | undefined => {
-	const tags = getAlertTagsArray(alert);
-	return tags[0];
-};
-
-export const hasAlertTags = (alert: Alert): boolean => {
-	return getAlertTagsArray(alert).length > 0;
-};
-
-export const alertMatchesTagFilter = (alert: Alert, filterValues: string[]): boolean => {
-	if (filterValues.length === 0) return true;
-	const tags = getAlertTagsArray(alert);
-	return tags.some((tag) => filterValues.includes(tag));
-};
-
-export const getAlertTagEntries = (alert: Alert): Array<{ key: string; value: string }> => {
-	if (!alert.tags || typeof alert.tags !== 'object') return [];
-	return Object.entries(alert.tags)
-		.filter(([key, value]) => !HIDDEN_TAG_KEYS.has(key) && Boolean(value))
-		.map(([key, value]) => ({ key, value }));
-};
+// Tag presentation logic lives in @OpsiMate/shared so the server searches and facets
+// with identical semantics (hidden keys included).
+export {
+	HIDDEN_TAG_KEYS,
+	getAlertTagsArray,
+	getAlertTagsString,
+	getAlertPrimaryTag,
+	hasAlertTags,
+	alertMatchesTagFilter,
+	getAlertTagEntries,
+} from '@OpsiMate/shared';

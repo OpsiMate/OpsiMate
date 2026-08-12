@@ -1,23 +1,14 @@
 import { TimeRange } from '@/context/DashboardContext';
 import { useUsers } from '@/hooks/queries/users';
-import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, alertMatchesFilters, applyTimeWindow } from '@OpsiMate/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { resolveTimeRange } from '../AlertsTable/TimeFilter/TimeFilter.utils';
-import { getOwnerDisplayName } from '../utils/owner.utils';
-import { getAlertSeverity, SEVERITY_LABELS } from '../utils/severity.utils';
 
 // How often a quick-preset window re-anchors to "now". This is the roll cadence: alert
 // refetches keep the same array identity when data is unchanged (react-query structural
 // sharing), so without the tick the memo would never re-evaluate the window. 10s keeps
 // even the "Last 1 minute" preset reasonably fresh at negligible recompute cost.
 const ROLLING_WINDOW_TICK_MS = 10 * 1000;
-
-const getAlertType = (alert: Alert): string => {
-	return alert.type || 'Custom';
-};
-
-const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
 interface UseAlertsFilteringOptions {
 	filters: Record<string, string[]>;
@@ -57,83 +48,18 @@ export const useAlertsFiltering = (
 	const filteredAlerts = useMemo(() => {
 		// Reference the tick so a preset window re-anchors to "now" periodically.
 		void tick;
-		let result = alerts;
-
+		// The window/filter semantics live in @OpsiMate/shared (applyTimeWindow,
+		// alertMatchesFilters) — the same functions the server runs for pushed-down
+		// queries, so the two can never disagree about what a filter shows.
 		const resolved = timeRange ? resolveTimeRange(timeRange) : { from: null, to: null };
-		if (resolved.from || resolved.to) {
-			const filterStart = resolved.from || new Date(0);
-			const filterEnd = resolved.to || new Date();
-
-			result = result.filter((alert) => {
-				const alertStartDate = new Date(alert.startsAt);
-				const alertEndDate = new Date(alert.updatedAt);
-
-				return alertStartDate <= filterEnd && alertEndDate >= filterStart;
-			});
-
-			// Inside a time window, "Started At" means when the firing episode CURRENT AS OF
-			// the window's end began: the LATEST transition into firing at or before the
-			// window closes. An alert that fired at 18:00, resolved at 19:00 and re-fired at
-			// 20:00 shows 20:00 — the 18:00 episode ended; showing it would misstate how long
-			// the alert has been burning. Transitions after the window's end belong to a
-			// later episode and are ignored; an alert that simply kept firing across the
-			// window's start keeps its real (pre-window) start.
-			result = result.map((alert) => {
-				// Numeric (epoch) comparison: startsAt can carry a timezone offset while
-				// firingTimes are normalized UTC — lexicographic order would mis-pick
-				// across formats.
-				const candidates = [alert.startsAt, ...(alert.firingTimes ?? [])]
-					.map((iso) => ({ iso, epoch: new Date(iso).getTime() }))
-					.filter(({ epoch }) => !isNaN(epoch) && epoch <= filterEnd.getTime());
-				if (candidates.length === 0) return alert;
-				const episodeStart = candidates.reduce((latest, c) => (c.epoch > latest.epoch ? c : latest));
-				return episodeStart.iso === alert.startsAt ? alert : { ...alert, startsAt: episodeStart.iso };
-			});
-		}
-
-		if (Object.keys(filters).length === 0) return result;
-
-		// The value an alert presents for a filter field; null when the field is unknown
-		// (unknown fields never constrain).
-		const getFieldValue = (alert: Alert, field: string): string | null => {
-			if (isTagKeyColumn(field)) {
-				const tagKey = extractTagKeyFromColumnId(field);
-				return tagKey ? alert.tags?.[tagKey] || '' : null;
-			}
-			switch (field) {
-				case 'status':
-					return alert.isSilenced ? 'Silenced' : alert.isMuted ? 'Muted' : capitalizeFirst(alert.status);
-				case 'severity':
-					return SEVERITY_LABELS[getAlertSeverity(alert)];
-				case 'type':
-					return getAlertType(alert);
-				case 'alertName':
-					return alert.alertName ?? '';
-				case 'owner':
-					return getOwnerDisplayName(alert.ownerId, users);
-				default:
-					return null;
-			}
-		};
-
-		return result.filter((alert) => {
-			for (const [key, values] of Object.entries(filters)) {
-				if (values.length === 0) continue;
-
-				// "!field" entries are exclusions ("filter out" in the sidebar): an alert
-				// whose value is listed is dropped. Same field-value semantics as the
-				// positive filters, same storage shape — dashboards persist them with no
-				// schema change.
-				const isExclusion = key.startsWith('!');
-				const fieldValue = getFieldValue(alert, isExclusion ? key.slice(1) : key);
-				if (fieldValue === null) continue;
-
-				if (isExclusion ? values.includes(fieldValue) : !values.includes(fieldValue)) {
-					return false;
-				}
-			}
-			return true;
+		let result = applyTimeWindow(alerts, {
+			from: resolved.from ? resolved.from.toISOString() : null,
+			to: resolved.to ? resolved.to.toISOString() : null,
 		});
+		if (Object.keys(filters).length > 0) {
+			result = result.filter((alert) => alertMatchesFilters(alert, filters, users));
+		}
+		return result;
 	}, [alerts, filters, timeRange, users, tick]);
 
 	return filteredAlerts;

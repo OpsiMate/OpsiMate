@@ -24,22 +24,83 @@ import {
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
+import crypto from 'crypto';
+import { ALERT_QUERY_PARAM_KEYS, AlertFacetsParamsSchema, AlertListQueryParamsSchema } from './models';
 import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('alerts.controller');
+
+const hasAlertQueryParams = (req: Request): boolean =>
+	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
 
 export class AlertController {
 	constructor(private alertBL: AlertBL) {}
 
 	async getAlerts(req: Request, res: Response) {
 		try {
+			if (hasAlertQueryParams(req)) {
+				const query = AlertListQueryParamsSchema.parse(req.query);
+				const page = await this.alertBL.queryAlerts(query);
+				return this.sendAlertsPage(req, res, page);
+			}
 			const snapshot = await this.alertBL.getAlertsSnapshot();
 			return this.sendAlertsSnapshot(req, res, snapshot);
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error getting alerts:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
+	}
+
+	async getAlertFacets(req: Request, res: Response) {
+		try {
+			const params = AlertFacetsParamsSchema.parse(req.query);
+			const result = await this.alertBL.getAlertFacets(params.filters ?? {}, params.fields);
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing alert facets:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getResolvedAlertFacets(req: Request, res: Response) {
+		try {
+			const params = AlertFacetsParamsSchema.parse(req.query);
+			const result = await this.alertBL.getResolvedAlertFacets(params.filters ?? {}, params.fields);
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing resolved alert facets:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// Paged responses get the same revalidation contract as the snapshot: the ETag is
+	// content-derived, so an unchanged page (the common poll) is a bodyless 304.
+	private sendAlertsPage(
+		req: Request,
+		res: Response,
+		page: { items: unknown[]; total: number; nextCursor: string | null }
+	) {
+		const body = JSON.stringify({
+			success: true,
+			data: { alerts: page.items, total: page.total, nextCursor: page.nextCursor },
+		});
+		const etag = `"${crypto.createHash('sha1').update(body).digest('hex')}"`;
+		res.set('ETag', etag);
+		res.set('Cache-Control', 'no-cache');
+		if (ifNoneMatchSatisfied(req.headers['if-none-match'], etag)) {
+			return res.status(304).end();
+		}
+		return res.type('application/json').send(body);
 	}
 
 	// The list is identical for every viewer and polled on a short interval, so the
@@ -620,9 +681,17 @@ export class AlertController {
 
 	async getResolvedAlerts(req: Request, res: Response) {
 		try {
+			if (hasAlertQueryParams(req)) {
+				const query = AlertListQueryParamsSchema.parse(req.query);
+				const page = await this.alertBL.queryResolvedAlerts(query);
+				return this.sendAlertsPage(req, res, page);
+			}
 			const snapshot = await this.alertBL.getResolvedAlertsSnapshot();
 			return this.sendAlertsSnapshot(req, res, snapshot);
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error getting resolved alerts:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}

@@ -510,10 +510,74 @@ export const integrationApi = {
 // Alert IDs are caller-supplied (custom alerts API) and may contain URL-hostile
 // characters (#, /, ?, %); any ID placed in a request path must be encoded or the
 // browser truncates/mangles the URL.
+// Server-side list query (Phase 1): the same filter record the dashboard stores, a
+// concrete time window, search, and paging. Undefined/empty params are omitted so a
+// paramless call keeps the legacy full-list response.
+export interface AlertQueryParams {
+	filters?: Record<string, string[]>;
+	from?: string | null;
+	to?: string | null;
+	search?: string;
+	sort?: string;
+	dir?: 'asc' | 'desc';
+	limit?: number;
+	cursor?: string;
+}
+
+export interface AlertListResponse {
+	alerts: SharedAlert[];
+	total?: number;
+	nextCursor?: string | null;
+}
+
+export interface AlertFacetTagKey {
+	key: string;
+	label: string;
+	values: string[];
+}
+
+export interface AlertFacetsResponse {
+	facets: Record<string, Record<string, number>>;
+	total: number;
+	silencedTotal: number;
+	tagKeys: AlertFacetTagKey[];
+}
+
+export interface AlertFacetsOptions {
+	resolved?: boolean;
+}
+
+const alertQueryString = (params?: AlertQueryParams): string => {
+	if (!params) return '';
+	const q = new URLSearchParams();
+	if (params.filters && Object.keys(params.filters).length > 0) q.set('filters', JSON.stringify(params.filters));
+	if (params.from) q.set('from', params.from);
+	if (params.to) q.set('to', params.to);
+	if (params.search?.trim()) q.set('search', params.search);
+	if (params.sort) q.set('sort', params.sort);
+	if (params.dir) q.set('dir', params.dir);
+	if (params.limit !== undefined) q.set('limit', String(params.limit));
+	if (params.cursor) q.set('cursor', params.cursor);
+	const qs = q.toString();
+	return qs ? `?${qs}` : '';
+};
+
 export const alertsApi = {
-	// Get all alerts
-	async getAllAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
-		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts');
+	// Get alerts; with params the server filters/sorts/pages, without them the full list.
+	async getAllAlerts(params?: AlertQueryParams): Promise<ApiResponse<AlertListResponse>> {
+		return await apiRequest<AlertListResponse>(`/alerts${alertQueryString(params)}`);
+	},
+
+	// Faceted sidebar counts + tag keys over the raw dataset, computed server-side.
+	async getAlertFacets(
+		filters: Record<string, string[]>,
+		options?: AlertFacetsOptions
+	): Promise<ApiResponse<AlertFacetsResponse>> {
+		const q = new URLSearchParams();
+		if (Object.keys(filters).length > 0) q.set('filters', JSON.stringify(filters));
+		const base = options?.resolved ? '/alerts/resolved/facets' : '/alerts/facets';
+		const qs = q.toString();
+		return await apiRequest<AlertFacetsResponse>(`${base}${qs ? `?${qs}` : ''}`);
 	},
 
 	// Silence an alert until `silencedUntil` (ISO; null = forever). Re-silencing overwrites
@@ -581,9 +645,9 @@ export const alertsApi = {
 		return response;
 	},
 
-	// Get all resolved alerts
-	async getAllResolvedAlerts(): Promise<ApiResponse<{ alerts: SharedAlert[] }>> {
-		return await apiRequest<{ alerts: SharedAlert[] }>('/alerts/resolved');
+	// Get resolved alerts; same query contract as the active list.
+	async getAllResolvedAlerts(params?: AlertQueryParams): Promise<ApiResponse<AlertListResponse>> {
+		return await apiRequest<AlertListResponse>(`/alerts/resolved${alertQueryString(params)}`);
 	},
 
 	// Delete an resolved alert permanently

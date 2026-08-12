@@ -26,6 +26,11 @@ export interface AlertsSelectionBarProps {
 	// Adds the same comment to every selected alert (opens the comment dialog).
 	onCommentAll?: () => void;
 	onDeleteAll?: () => void;
+	// True when the current view has matching alerts that are NOT loaded (the "N of M"
+	// banner is showing). Bulk actions apply only to the loaded selection, so the scope
+	// must be explicit — otherwise "Silence all" on a select-all reads as "silence every
+	// matching alert" when it silences only the loaded page.
+	hasUnloadedMatches?: boolean;
 }
 
 export const AlertsSelectionBar = ({
@@ -37,6 +42,7 @@ export const AlertsSelectionBar = ({
 	onResolveAll,
 	onCommentAll,
 	onDeleteAll,
+	hasUnloadedMatches,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -111,8 +117,15 @@ export const AlertsSelectionBar = ({
 				</Button>
 			</div>
 
-			<span className="text-sm font-medium whitespace-nowrap">
-				{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+			<span className="min-w-0 text-sm font-medium">
+				<span className="whitespace-nowrap">
+					{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+				</span>
+				{hasUnloadedMatches && (
+					<span className="ml-2 text-xs text-muted-foreground">
+						— actions apply to the loaded alerts only; scroll to load more first
+					</span>
+				)}
 			</span>
 
 			<AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

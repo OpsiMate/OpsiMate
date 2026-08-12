@@ -1,4 +1,4 @@
-import { AlertHistoryData, AlertHistoryEventType, AlertStatus, OncallTeam } from '@OpsiMate/shared';
+import { computeAlertFacets, AlertHistoryData, AlertHistoryEventType, AlertStatus, OncallTeam } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
 
@@ -152,6 +152,19 @@ const withLastComment = <T extends { id: string }>(alert: T): T & { lastComment:
 	return { ...alert, lastComment: newest?.comment ?? null };
 };
 
+// Mirrors the server's facets param contract: malformed JSON is a 400, and an explicit
+// fields list is honored, so the playground can't drift from production behavior.
+const parseFacetsParams = (url: URL): { filters: Record<string, string[]>; fields?: string[] } | null => {
+	try {
+		const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
+		const rawFields = url.searchParams.get('fields');
+		const fields = rawFields ? (JSON.parse(rawFields) as string[]) : undefined;
+		return { filters, fields };
+	} catch {
+		return null;
+	}
+};
+
 export const handlers = [
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, () => {
@@ -171,6 +184,28 @@ export const handlers = [
 		return HttpResponse.json({
 			success: true,
 			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment) },
+		});
+	}),
+
+	http.get(`${API_BASE}/alerts/facets`, ({ request }) => {
+		const url = new URL(request.url);
+		const params = parseFacetsParams(url);
+		if (!params) return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
+		return HttpResponse.json({
+			success: true,
+			data: computeAlertFacets(alerts, params.filters, params.fields, []),
+		});
+	}),
+
+	http.get(`${API_BASE}/alerts/resolved/facets`, ({ request }) => {
+		const url = new URL(request.url);
+		const params = parseFacetsParams(url);
+		if (!params) return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		const alerts = playgroundState.resolvedAlerts.map(withLastComment);
+		return HttpResponse.json({
+			success: true,
+			data: computeAlertFacets(alerts, params.filters, params.fields, []),
 		});
 	}),
 

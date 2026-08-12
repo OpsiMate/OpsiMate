@@ -48,6 +48,10 @@ const HEADER_ICONS: Record<string, ReactNode> = {
 
 export const AlertsTable = ({
 	alerts,
+	onEndReached,
+	sortField: controlledSortField,
+	sortDirection: controlledSortDirection,
+	onSortChange,
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
@@ -123,7 +127,12 @@ export const AlertsTable = ({
 
 	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
 
-	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
+	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(
+		filteredAlerts,
+		controlledSortField,
+		controlledSortDirection,
+		onSortChange
+	);
 	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup, expandAll, collapseAll } = useAlertGrouping(
 		sortedAlerts,
 		allColumnLabels,
@@ -174,6 +183,44 @@ export const AlertsTable = ({
 	}, [expandRows, virtualizer]);
 
 	const virtualItems = virtualizer.getVirtualItems();
+
+	// Infinite scroll. onEndReached is defined only while more pages exist (the parent
+	// passes undefined once the loaded set is complete), so its presence IS "there is
+	// more to load". Two ways to ask for the next page:
+	//
+	//  - Scrollable list: fire when the user reaches within NEAR_BOTTOM_PX of the bottom.
+	//    A render-based trigger ("last row in the virtual window") can't be used — overscan
+	//    keeps the last row permanently rendered and chain-loads to the whole dataset.
+	//
+	//  - NON-scrollable list while more pages exist: fetch the next page immediately. This
+	//    is the recovery path. The server query suspends the status filter, so status is
+	//    narrowed client-side over the loaded page; if the loaded page happens to hold only
+	//    a screenful of status-matching rows (e.g. Active pinned to Firing while the newest
+	//    500 are almost all silenced), the list can't scroll and a scroll-only trigger would
+	//    strand every matching alert past page 1. Auto-fetching pulls pages until the
+	//    viewport fills or the data is exhausted (onEndReached becomes undefined). It's
+	//    bounded — fetchNextPage dedupes, and the effect re-runs per appended page — so it
+	//    can't chain-load a scrollable list.
+	useEffect(() => {
+		if (!onEndReached) return;
+		const scroller = scrollerRef.current;
+		if (!scroller) return;
+		const NEAR_BOTTOM_PX = 400;
+		const isScrollable = () => scroller.scrollHeight > scroller.clientHeight + 1;
+		const maybeFire = () => {
+			if (!onEndReached) return;
+			if (!isScrollable()) {
+				onEndReached();
+				return;
+			}
+			if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - NEAR_BOTTOM_PX) {
+				onEndReached();
+			}
+		};
+		maybeFire();
+		scroller.addEventListener('scroll', maybeFire, { passive: true });
+		return () => scroller.removeEventListener('scroll', maybeFire);
+	}, [onEndReached, flatRows.length]);
 	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
 
 	const orderedColumns = useMemo(() => {

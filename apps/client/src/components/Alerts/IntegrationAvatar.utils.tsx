@@ -7,7 +7,10 @@ import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell } from 'lucide-react';
 import { AlertIntegrationKind, IntegrationDefinition } from './IntegrationAvatar.types';
-import { getAlertPrimaryTag } from './utils/alertTags.utils';
+
+// Resolution and labels live in @OpsiMate/shared so server-side search matches the
+// integration column exactly; this file layers the icons and styling on top.
+export { normalizeIntegration, resolveAlertIntegration, getIntegrationLabel } from '@OpsiMate/shared';
 
 export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDefinition> = {
 	grafana: {
@@ -53,27 +56,3 @@ export const integrationDefinitions: Record<AlertIntegrationKind, IntegrationDef
 		render: (iconSizeClass) => <Bell className={cn(iconSizeClass)} />,
 	},
 };
-
-export const normalizeIntegration = (value?: string | null): AlertIntegrationKind | undefined => {
-	if (!value) return undefined;
-	const normalized = value.toLowerCase();
-	if (normalized.includes('grafana')) return 'grafana';
-	if (normalized.includes('gcp') || normalized.includes('google')) return 'gcp';
-	if (normalized.includes('uptimekuma') || normalized.includes('uptime-kuma')) return 'uptimekuma';
-	if (normalized.includes('datadog')) return 'datadog';
-	if (normalized.includes('zabbix')) return 'zabbix';
-	if (normalized.includes('custom')) return 'custom';
-	return undefined;
-};
-
-export const resolveAlertIntegration = (alert: Alert): AlertIntegrationKind => {
-	return (
-		normalizeIntegration(alert.type) ||
-		normalizeIntegration(getAlertPrimaryTag(alert)) ||
-		normalizeIntegration(alert.id) ||
-		normalizeIntegration(alert.summary) ||
-		'custom'
-	);
-};
-
-export const getIntegrationLabel = (integration: AlertIntegrationKind) => integrationDefinitions[integration].label;
