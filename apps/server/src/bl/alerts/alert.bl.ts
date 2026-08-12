@@ -140,6 +140,77 @@ export class AlertBL {
 		return computeAlertGroupSummaries(items, groupBy, owners, timeZone);
 	}
 
+	// One call mutates every matching active alert. The scope is either an explicit id
+	// list (the client's loaded selection — one request instead of N) or a list query
+	// resolved server-side with the same shared engine the list endpoints use, so "act
+	// on all N matching" agrees exactly with what the view showed. Each target runs
+	// through the corresponding single-alert method — history events, ownership takeover
+	// and comment side-effects stay identical to acting one-by-one; a failure on one
+	// alert is counted and skipped, never aborting the rest of the batch.
+	async bulkAlertAction(
+		input: {
+			action: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
+			ids?: string[];
+			query?: Pick<AlertListQuery, 'filters' | 'from' | 'to' | 'search'>;
+			silencedUntil?: string | null;
+			comment?: string;
+			ownerId?: string | null;
+		},
+		actor: { id: string | null; name: string | null }
+	): Promise<{ matched: number; succeeded: number; failed: number }> {
+		let targetIds: string[];
+		if (input.ids) {
+			targetIds = [...new Set(input.ids)];
+		} else {
+			const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
+			const { items } = applyAlertListQuery(snapshot.value, owners, {
+				...(input.query ?? {}),
+				limit: undefined,
+				cursor: undefined,
+			});
+			targetIds = items.map((alert) => alert.id);
+		}
+
+		let succeeded = 0;
+		let failed = 0;
+		for (const id of targetIds) {
+			try {
+				// The single-alert methods signal "no such alert" by returning null/false
+				// rather than throwing — count that as failed too: succeeded must mean the
+				// action actually took effect.
+				let applied = true;
+				switch (input.action) {
+					case 'silence':
+						applied = (await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) != null;
+						break;
+					case 'unsilence':
+						applied = (await this.unsilenceAlert(id, actor.name)) != null;
+						break;
+					case 'resolve':
+						applied = await this.resolveAlert(id, actor, input.comment);
+						break;
+					case 'assignOwner':
+						applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
+						break;
+					case 'comment':
+						// Schema and controller guarantee a body and an acting user here.
+						await this.createComment(
+							{ alertId: id, userId: actor.id as string, comment: input.comment as string },
+							actor.name
+						);
+						break;
+				}
+				if (applied) succeeded++;
+				else failed++;
+			} catch (error) {
+				logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
+				failed++;
+			}
+		}
+		logger.info(`Bulk ${input.action}: ${succeeded}/${targetIds.length} succeeded`);
+		return { matched: targetIds.length, succeeded, failed };
+	}
+
 	// Best-effort history logging: never let a failed history write break the underlying
 	// mutation (the event is informational, not transactional).
 	private async recordHistoryEvent(
@@ -424,7 +495,7 @@ export class AlertBL {
 		activeAlertId: string,
 		manualActor?: { id: string | null; name: string | null },
 		comment?: string
-	): Promise<void> {
+	): Promise<boolean> {
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
 
@@ -432,7 +503,7 @@ export class AlertBL {
 			const alert = await this.alertRepo.getAlert(activeAlertId);
 			if (!alert) {
 				logger.warn(`Alert with id ${activeAlertId} not found, nothing to resolve`);
-				return;
+				return false;
 			}
 
 			// Insert into resolved table
@@ -465,6 +536,7 @@ export class AlertBL {
 			}
 
 			logger.info(`Resolved alert ${activeAlertId}`);
+			return true;
 		} catch (error) {
 			logger.error(`Error resolving alert ${activeAlertId}`, error);
 			throw error;

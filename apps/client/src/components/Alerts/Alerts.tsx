@@ -13,7 +13,9 @@ import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } fr
 import {
 	useAlertFacets,
 	useAlertGroupSummaries,
+	useAlertMatchCount,
 	useAlerts,
+	useBulkAlertAction,
 	useResolvedAlerts,
 	useDeleteResolvedAlert,
 	useMarkAlertRead,
@@ -30,7 +32,7 @@ import { AlertFacetsResponse } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -298,6 +300,18 @@ const Alerts = () => {
 	]);
 
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
+	// "Select all N matching" scope: when armed, bulk actions act on EVERY alert matching
+	// the Active view's query — resolved server-side against the full dataset — not just
+	// the loaded selection. Any change to the selection or to what the view shows drops
+	// the flag: the N the user confirmed is no longer what the query means.
+	const [allMatchingSelected, setAllMatchingSelected] = useState(false);
+	const handleSelectAlerts = (next: Alert[]) => {
+		setSelectedAlerts(next);
+		setAllMatchingSelected(false);
+	};
+	useEffect(() => {
+		setAllMatchingSelected(false);
+	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
@@ -447,6 +461,25 @@ const Alerts = () => {
 		updateDashboardField('filters', newFilters);
 	};
 
+	// Scope of "apply to all N matching": the Active view's FULL query — the complete
+	// filter record (status included, exactly what narrows the rows the user sees), the
+	// time window and the search — which the server resolves against the whole dataset.
+	const bulkScopeQuery = useMemo(() => {
+		const window = toCoarseWindow(dashboardState.timeRange);
+		return {
+			filters: dashboardState.filters,
+			from: window.from ?? undefined,
+			to: window.to ?? undefined,
+			search: dashboardState.query || undefined,
+		};
+	}, [dashboardState.filters, dashboardState.timeRange, dashboardState.query]);
+	// The N above, from the same server engine that will resolve the bulk action. Only
+	// fetched while an Active-tab selection is open.
+	const bulkMatchCount = useAlertMatchCount(
+		bulkScopeQuery,
+		activeTab === AlertTab.Active && selectedAlerts.length > 0
+	);
+
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
 	// unfiltered active list — the point of the button is to reveal alerts the current
@@ -485,37 +518,73 @@ const Alerts = () => {
 		[allViewActiveAlerts, resolvedViewAlerts]
 	);
 
-	const {
-		handleSilenceAlert,
-		handleUnsilenceAlert,
-		handleDeleteAlert,
-		handleUnresolveAlert,
-		handleSilenceAll,
-		handleUnsilenceAll,
-		handleAssignOwnerAll,
-		handleResolveAll,
-		handleCommentAll,
-		handleDeleteForeverAll,
-	} = useAlertActions();
+	const { handleSilenceAlert, handleUnsilenceAlert, handleDeleteAlert, handleUnresolveAlert, handleDeleteForeverAll } =
+		useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
+	const bulkAction = useBulkAlertAction();
 
-	const handleSilenceAllSelected = async (silencedUntil?: string | null, comment?: string) => {
-		await handleSilenceAll(selectedAlerts, () => setSelectedAlerts([]), silencedUntil, comment);
+	// Bulk actions run as ONE server request: over the explicit ids of the loaded
+	// selection, or — when "all matching" is armed — over the view's query, resolved
+	// server-side against the full dataset. The response counts drive the toast, so it
+	// reports what actually happened rather than what the client hoped.
+	const runBulkAction = async (
+		vars: {
+			action: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
+			silencedUntil?: string | null;
+			comment?: string;
+			ownerId?: string | null;
+		},
+		labels: { title: string; verb: string }
+	) => {
+		const scope = allMatchingSelected ? { query: bulkScopeQuery } : { ids: selectedAlerts.map((a) => a.id) };
+		try {
+			const result = await bulkAction.mutateAsync({ ...vars, ...scope });
+			toast(
+				result.failed > 0
+					? {
+							title: `Partial ${labels.title.toLowerCase()}`,
+							description: `${labels.verb} ${result.succeeded} of ${result.matched} alerts, ${result.failed} failed`,
+							variant: 'destructive',
+						}
+					: {
+							title: labels.title,
+							description: `${labels.verb} ${result.succeeded} alert${result.succeeded !== 1 ? 's' : ''}`,
+						}
+			);
+		} catch (err) {
+			toast({
+				title: 'Bulk action failed',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+		setSelectedAlerts([]);
+		setAllMatchingSelected(false);
 	};
 
-	const handleAssignOwnerAllSelected = async (ownerId: string | null) => {
-		await handleAssignOwnerAll(selectedAlerts, ownerId, () => setSelectedAlerts([]));
-	};
+	const handleSilenceAllSelected = (silencedUntil?: string | null, comment?: string) =>
+		runBulkAction(
+			{ action: 'silence', silencedUntil: silencedUntil ?? null, comment },
+			{ title: 'Alerts silenced', verb: 'Silenced' }
+		);
 
-	const handleResolveAllSelected = async (comment?: string) => {
+	const handleAssignOwnerAllSelected = (ownerId: string | null) =>
+		runBulkAction(
+			{ action: 'assignOwner', ownerId },
+			{ title: ownerId ? 'Owner assigned' : 'Owner removed', verb: 'Updated owner on' }
+		);
+
+	const handleResolveAllSelected = (comment?: string) => {
 		setSelectedAlert(null);
-		await handleResolveAll(selectedAlerts, () => setSelectedAlerts([]), comment);
+		return runBulkAction({ action: 'resolve', comment }, { title: 'Alerts resolved', verb: 'Resolved' });
 	};
 
+	// Permanent delete stays scoped to the LOADED selection on purpose: an irreversible
+	// action must never apply to alerts the user hasn't at least had the chance to see.
 	const handleDeleteAllSelected = async () => {
 		setSelectedAlert(null);
-		await handleDeleteForeverAll(selectedAlerts, () => setSelectedAlerts([]));
+		await handleDeleteForeverAll(selectedAlerts, () => handleSelectAlerts([]));
 	};
 
 	const handleDeleteResolvedAlert = async (alertId: string) => {
@@ -579,13 +648,23 @@ const Alerts = () => {
 
 	// Direct (no confirmation dialog), matching the single-row unsilence: it's
 	// non-destructive and instantly reversible by silencing again.
-	const handleUnsilenceAllSelected = () => void handleUnsilenceAll(selectedAlerts, () => setSelectedAlerts([]));
+	const handleUnsilenceAllSelected = () =>
+		void runBulkAction({ action: 'unsilence' }, { title: 'Alerts unsilenced', verb: 'Unsilenced' });
+
+	// What the confirmation dialogs promise: the loaded selection's size, or — with "all
+	// matching" armed — the server-counted total the user clicked, plus an explicit scope
+	// note so "37 alerts" is never silently "37 you can see plus 3,000 you can't".
+	const bulkCount = allMatchingSelected ? (bulkMatchCount ?? selectedAlerts.length) : selectedAlerts.length;
+	const bulkScopeNote = allMatchingSelected
+		? ' This applies to every alert matching the current filters, including ones not loaded into the list.'
+		: '';
 
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
-			title: `Silence ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
+			title: `Silence ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
 			description:
-				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer.',
+				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer.' +
+				bulkScopeNote,
 			confirmLabel: 'Silence all',
 			withSilenceDuration: true,
 			withComment: true,
@@ -594,14 +673,14 @@ const Alerts = () => {
 			run: (comment, silencedUntil) => void handleSilenceAllSelected(silencedUntil, comment),
 		});
 
-	const handleCommentAllSelected = async (comment: string) => {
-		await handleCommentAll(selectedAlerts, comment, () => setSelectedAlerts([]));
-	};
+	const handleCommentAllSelected = (comment: string) =>
+		runBulkAction({ action: 'comment', comment }, { title: 'Comment added', verb: 'Commented on' });
 
 	const confirmCommentAllSelected = () =>
 		setPendingAction({
-			title: `Comment on ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
-			description: 'The same comment is added to every selected alert, visible in its comments and history.',
+			title: `Comment on ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			description:
+				'The same comment is added to every selected alert, visible in its comments and history.' + bulkScopeNote,
 			confirmLabel: 'Comment',
 			withComment: true,
 			requireComment: true,
@@ -614,9 +693,10 @@ const Alerts = () => {
 
 	const confirmResolveAllSelected = () =>
 		setPendingAction({
-			title: `Resolve ${selectedAlerts.length} alert${selectedAlerts.length !== 1 ? 's' : ''}?`,
+			title: `Resolve ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
 			description:
-				'The selected alerts move to the Resolved list. You can unresolve them later if needed. An optional comment will be added to every resolved alert.',
+				'The selected alerts move to the Resolved list. You can unresolve them later if needed. An optional comment will be added to every resolved alert.' +
+				bulkScopeNote,
 			confirmLabel: 'Resolve',
 			withComment: true,
 			commentLabel: 'Resolve comment',
@@ -665,7 +745,7 @@ const Alerts = () => {
 			onSilenceAlert={confirmSilenceAlert}
 			onUnsilenceAlert={handleUnsilenceAlert}
 			onDeleteAlert={confirmResolveAlert}
-			onSelectAlerts={setSelectedAlerts}
+			onSelectAlerts={handleSelectAlerts}
 			selectedAlerts={selectedAlerts}
 			isLoading={isLoading}
 			visibleColumns={visibleColumns}
@@ -858,7 +938,7 @@ const Alerts = () => {
 											onValueChange={(value) => {
 												setActiveTab(value as AlertTab);
 												setSelectedAlert(null);
-												setSelectedAlerts([]);
+												handleSelectAlerts([]);
 											}}
 										>
 											{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
@@ -990,14 +1070,28 @@ const Alerts = () => {
 								<div className="shrink-0">
 									<AlertsSelectionBar
 										selectedAlerts={selectedAlerts}
-										hasUnloadedMatches={showPartialNotice}
-										onClearSelection={() => setSelectedAlerts([])}
+										hasUnloadedMatches={showPartialNotice && !allMatchingSelected}
+										matchingTotal={bulkMatchCount}
+										allMatchingSelected={allMatchingSelected}
+										// Offered Gmail-style: the whole loaded list is selected and the
+										// server counts more alerts matching this exact view.
+										onSelectAllMatching={
+											!allMatchingSelected &&
+											selectedAlerts.length >= filteredAlerts.length &&
+											bulkMatchCount !== undefined &&
+											bulkMatchCount > selectedAlerts.length
+												? () => setAllMatchingSelected(true)
+												: undefined
+										}
+										onClearSelection={() => handleSelectAlerts([])}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
 										onResolveAll={confirmResolveAllSelected}
 										onCommentAll={confirmCommentAllSelected}
-										onDeleteAll={handleDeleteAllSelected}
+										// Permanent delete never runs by-filter — it stays on the loaded
+										// selection, so it's hidden while "all matching" is armed.
+										onDeleteAll={allMatchingSelected ? undefined : handleDeleteAllSelected}
 									/>
 								</div>
 							</>

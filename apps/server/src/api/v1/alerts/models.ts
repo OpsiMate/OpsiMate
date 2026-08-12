@@ -362,3 +362,42 @@ export const AlertGroupsParamsSchema = z.object({
 // Any of these present means the caller speaks the query contract; none means the
 // legacy full-snapshot response (older clients, playground harnesses).
 export const ALERT_QUERY_PARAM_KEYS = ['filters', 'from', 'to', 'search', 'sort', 'dir', 'limit', 'cursor'] as const;
+
+// ---------- bulk actions (Phase 2b: act on every alert matching a filter) ----------
+
+// One request mutates many active alerts at once — scoped either by an explicit id list
+// (the loaded selection, one request instead of N) or by the same query shape the list
+// endpoints speak (filters + time window + search), which the server resolves against
+// the full dataset. Exactly one scope must be present: accepting both would leave it
+// ambiguous which set the caller meant to act on.
+export const AlertBulkActionSchema = z
+	.object({
+		action: z.enum(['silence', 'unsilence', 'resolve', 'assignOwner', 'comment']),
+		ids: z.array(z.string().min(1)).min(1).max(10000).optional(),
+		query: z
+			.object({
+				filters: z.record(z.string(), z.array(z.string())).optional(),
+				from: z.iso.datetime({ offset: true }).optional(),
+				to: z.iso.datetime({ offset: true }).optional(),
+				search: z.string().optional(),
+			})
+			.optional(),
+		// silence: ISO auto-expiry; null or absent silences until manually unsilenced.
+		silencedUntil: isoDateString.nullable().optional(),
+		// silence/resolve: optional note stored as a comment on every alert.
+		// comment action: the comment body itself (required there).
+		comment: z.string().trim().max(5000).optional(),
+		// assignOwner: user id to assign, null to unassign.
+		ownerId: z.string().nullable().optional(),
+	})
+	.refine((v) => (v.ids != null) !== (v.query != null), {
+		message: 'Provide exactly one of ids or query',
+	})
+	.refine((v) => v.action !== 'comment' || (v.comment != null && v.comment.length > 0), {
+		message: 'The comment action requires a non-empty comment',
+	})
+	.refine((v) => v.action !== 'assignOwner' || v.ownerId !== undefined, {
+		message: 'The assignOwner action requires ownerId (null to unassign)',
+	});
+
+export type AlertBulkAction = z.infer<typeof AlertBulkActionSchema>;

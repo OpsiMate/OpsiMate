@@ -27,6 +27,7 @@ import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import crypto from 'crypto';
 import {
 	ALERT_QUERY_PARAM_KEYS,
+	AlertBulkActionSchema,
 	AlertFacetsParamsSchema,
 	AlertGroupsParamsSchema,
 	AlertListQueryParamsSchema,
@@ -112,6 +113,30 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error computing resolved alert facets:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// One request acts on many alerts — by explicit ids (the loaded selection) or by a
+	// list query the BL resolves against the full dataset ("apply to all N matching").
+	async bulkAlertAction(req: AuthenticatedRequest, res: Response) {
+		try {
+			const body = AlertBulkActionSchema.parse(req.body ?? {});
+			// Comments must carry their author; every other action degrades to a null actor.
+			if (body.action === 'comment' && req.user == null) {
+				return res.status(401).json({ success: false, error: 'Sign in to comment on alerts' });
+			}
+			const result = await this.alertBL.bulkAlertAction(body, {
+				// String() — the JWT carries the id as a number; comments store it as TEXT.
+				id: req.user != null ? String(req.user.id) : null,
+				name: req.user?.fullName ?? null,
+			});
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error running bulk alert action:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

@@ -587,6 +587,54 @@ export const alertsApi = {
 		return await apiRequest<{ groups: AlertGroupSummaryNode[] }>(`${base}?${q.toString()}`);
 	},
 
+	// One request mutates many active alerts at once — scoped by explicit ids (the loaded
+	// selection, one request instead of N) or by a query the server resolves against the
+	// full dataset ("apply to all N matching"). Exactly one scope must be set.
+	async bulkAlertAction(body: {
+		action: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
+		ids?: string[];
+		query?: Pick<AlertQueryParams, 'filters' | 'from' | 'to' | 'search'>;
+		silencedUntil?: string | null;
+		comment?: string;
+		ownerId?: string | null;
+	}): Promise<ApiResponse<{ matched: number; succeeded: number; failed: number }>> {
+		// The server's query schema rejects null/empty members the dashboard state may
+		// carry (from/to null when "All time", empty search) — send only concrete values.
+		const query = body.query
+			? {
+					...(body.query.filters && Object.keys(body.query.filters).length > 0
+						? { filters: body.query.filters }
+						: {}),
+					...(body.query.from ? { from: body.query.from } : {}),
+					...(body.query.to ? { to: body.query.to } : {}),
+					...(body.query.search?.trim() ? { search: body.query.search } : {}),
+				}
+			: undefined;
+		// The server caps a single request at 10k ids; a deep-scrolled select-all can
+		// exceed that, so oversized id lists go up in sequential chunks with the counts
+		// summed — one logical action to the caller either way.
+		if (body.ids && body.ids.length > 10000) {
+			const totals = { matched: 0, succeeded: 0, failed: 0 };
+			for (let i = 0; i < body.ids.length; i += 10000) {
+				const chunk = body.ids.slice(i, i + 10000);
+				const response = await apiRequest<{ matched: number; succeeded: number; failed: number }>(
+					'/alerts/bulk',
+					'POST',
+					{ ...body, ids: chunk, query: undefined }
+				);
+				if (!response.success || !response.data) return response;
+				totals.matched += response.data.matched;
+				totals.succeeded += response.data.succeeded;
+				totals.failed += response.data.failed;
+			}
+			return { success: true, data: totals };
+		}
+		return await apiRequest<{ matched: number; succeeded: number; failed: number }>('/alerts/bulk', 'POST', {
+			...body,
+			query,
+		});
+	},
+
 	// Faceted sidebar counts + tag keys over the raw dataset, computed server-side.
 	async getAlertFacets(
 		filters: Record<string, string[]>,

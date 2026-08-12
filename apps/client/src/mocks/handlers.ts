@@ -198,9 +198,151 @@ const mockGroupSummaries = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+// The playground's single-alert mutations, shared by the per-alert routes and the bulk
+// route so both paths change state identically (mirrors the server, where the bulk
+// endpoint loops the same single-alert methods the individual routes use). Each returns
+// the mutated alert (or true for pure side-effects), null/false when the id is unknown.
+
+const silencePlaygroundAlert = (alertId: string, silencedUntil: string | null, comment?: string) => {
+	const alert = playgroundState.alerts.find((a) => a.id === alertId);
+	if (!alert) return null;
+	// silencedUntil is always overwritten so re-silencing restarts the timer; the
+	// optional note becomes a regular comment.
+	const silenceComment = typeof comment === 'string' ? comment.trim() : '';
+	alert.isSilenced = true;
+	alert.silencedUntil = silencedUntil;
+	alert.updatedAt = nowIso();
+	pushAlertEvent(alertId, {
+		date: nowIso(),
+		eventType: AlertHistoryEventType.SILENCED,
+		actorName: PLAYGROUND_ACTOR,
+		description: alert.silencedUntil ? `Alert silenced until ${alert.silencedUntil}` : 'Alert silenced',
+	});
+	// The silencer takes ownership of the alert (mirrors the server).
+	alert.ownerId = getPlaygroundUser().id;
+	pushAlertEvent(alertId, {
+		date: nowIso(),
+		eventType: AlertHistoryEventType.OWNER_ASSIGNED,
+		actorName: PLAYGROUND_ACTOR,
+		description: `Assigned to ${PLAYGROUND_ACTOR}`,
+	});
+	if (silenceComment) {
+		playgroundState.alertComments.push({
+			id: `comment-${randomId()}`,
+			alertId,
+			userId: getPlaygroundUser().id,
+			comment: silenceComment,
+			createdAt: nowIso(),
+			updatedAt: nowIso(),
+		});
+	}
+	return alert;
+};
+
+const unsilencePlaygroundAlert = (alertId: string) => {
+	const alert = playgroundState.alerts.find((a) => a.id === alertId);
+	if (!alert) return null;
+	alert.isSilenced = false;
+	alert.silencedUntil = null;
+	alert.updatedAt = nowIso();
+	pushAlertEvent(alertId, {
+		date: nowIso(),
+		eventType: AlertHistoryEventType.UNSILENCED,
+		actorName: PLAYGROUND_ACTOR,
+		description: 'Alert unsilenced',
+	});
+	return alert;
+};
+
+const assignPlaygroundAlertOwner = (alertId: string, ownerId: string | null) => {
+	const alert = playgroundState.alerts.find((a) => a.id === alertId);
+	if (!alert) return null;
+	alert.ownerId = ownerId;
+	alert.updatedAt = nowIso();
+	pushAlertEvent(alertId, recordOwnerEvent(ownerId));
+	return alert;
+};
+
+const resolvePlaygroundAlert = (alertId: string, comment?: string): boolean => {
+	const alertIndex = playgroundState.alerts.findIndex((a) => a.id === alertId);
+	if (alertIndex === -1) return false;
+	const resolveComment = typeof comment === 'string' ? comment.trim() : '';
+	const alert = { ...playgroundState.alerts[alertIndex] };
+	// Resolving pins the status and clears silence — an alert is either silenced or
+	// resolved, never both.
+	alert.status = AlertStatus.RESOLVED;
+	alert.isSilenced = false;
+	alert.silencedUntil = null;
+	alert.updatedAt = nowIso();
+	// The resolver takes ownership of the alert (mirrors the server).
+	alert.ownerId = getPlaygroundUser().id;
+	playgroundState.alerts.splice(alertIndex, 1);
+	playgroundState.resolvedAlerts.unshift(alert);
+	// The playground "Resolve" action is always a manual resolve by the playground user.
+	pushAlertEvent(alertId, {
+		date: nowIso(),
+		eventType: AlertHistoryEventType.RESOLVED,
+		actorName: PLAYGROUND_ACTOR,
+		description: 'Alert resolved manually',
+	});
+	if (resolveComment) {
+		playgroundState.alertComments.push({
+			id: `comment-${randomId()}`,
+			alertId,
+			userId: getPlaygroundUser().id,
+			comment: resolveComment,
+			createdAt: nowIso(),
+			updatedAt: nowIso(),
+		});
+	}
+	return true;
+};
+
+const commentPlaygroundAlert = (alertId: string, comment: string): boolean => {
+	if (!playgroundState.alerts.some((a) => a.id === alertId)) return false;
+	playgroundState.alertComments.push({
+		id: `comment-${randomId()}`,
+		alertId,
+		userId: getPlaygroundUser().id,
+		comment,
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	});
+	return true;
+};
+
+// Mirrors the server's routing: any query param present means the caller speaks the
+// list-query contract and gets a filtered/sorted/paged response with a true total;
+// none means the legacy full-list response.
+const mockAlertsList = (request: Request, alerts: Alert[]) => {
+	const url = new URL(request.url);
+	const hasQueryParams = ['filters', 'from', 'to', 'search', 'sort', 'dir', 'limit', 'cursor'].some(
+		(key) => url.searchParams.get(key) !== null
+	);
+	if (!hasQueryParams) {
+		return HttpResponse.json({ success: true, data: { alerts } });
+	}
+	try {
+		const rawLimit = url.searchParams.get('limit');
+		const { items, total, nextCursor } = applyAlertListQuery(alerts, [], {
+			filters: JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>,
+			from: url.searchParams.get('from'),
+			to: url.searchParams.get('to'),
+			search: url.searchParams.get('search') ?? undefined,
+			sort: url.searchParams.get('sort') ?? undefined,
+			dir: (url.searchParams.get('dir') as 'asc' | 'desc' | null) ?? undefined,
+			limit: rawLimit != null ? Number(rawLimit) : undefined,
+			cursor: url.searchParams.get('cursor') ?? undefined,
+		});
+		return HttpResponse.json({ success: true, data: { alerts: items, total, nextCursor } });
+	} catch {
+		return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+	}
+};
+
 export const handlers = [
 	// ==================== ALERTS ====================
-	http.get(`${API_BASE}/alerts`, () => {
+	http.get(`${API_BASE}/alerts`, ({ request }) => {
 		// Timed silences expire lazily on read (mirrors the server sweep).
 		const now = nowIso();
 		for (const alert of playgroundState.alerts) {
@@ -214,10 +356,7 @@ export const handlers = [
 				});
 			}
 		}
-		return HttpResponse.json({
-			success: true,
-			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment) },
-		});
+		return mockAlertsList(request, playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment));
 	}),
 
 	http.get(`${API_BASE}/alerts/groups`, ({ request }) =>
@@ -250,78 +389,28 @@ export const handlers = [
 		});
 	}),
 
-	http.get(`${API_BASE}/alerts/resolved`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: { alerts: playgroundState.resolvedAlerts.map(withLastComment) },
-		});
+	http.get(`${API_BASE}/alerts/resolved`, ({ request }) => {
+		return mockAlertsList(request, playgroundState.resolvedAlerts.map(withLastComment));
 	}),
 
 	http.patch(`${API_BASE}/alerts/:alertId/silence`, async ({ params, request }) => {
-		const alertId = params.alertId as string;
-		const alert = playgroundState.alerts.find((a) => a.id === alertId);
-
-		if (!alert) {
-			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
-		}
-
-		// Optional duration + note in the body (mirrors the server): silencedUntil is
-		// always overwritten so re-silencing restarts the timer; the note becomes a comment.
+		// Optional duration + note in the body (mirrors the server).
 		const body = (await request.json().catch(() => null)) as {
 			silencedUntil?: string | null;
 			comment?: string;
 		} | null;
-		const silenceComment = typeof body?.comment === 'string' ? body.comment.trim() : '';
-
-		alert.isSilenced = true;
-		alert.silencedUntil = body?.silencedUntil ?? null;
-		alert.updatedAt = nowIso();
-		pushAlertEvent(alertId, {
-			date: nowIso(),
-			eventType: AlertHistoryEventType.SILENCED,
-			actorName: PLAYGROUND_ACTOR,
-			description: alert.silencedUntil ? `Alert silenced until ${alert.silencedUntil}` : 'Alert silenced',
-		});
-		// The silencer takes ownership of the alert (mirrors the server).
-		alert.ownerId = getPlaygroundUser().id;
-		pushAlertEvent(alertId, {
-			date: nowIso(),
-			eventType: AlertHistoryEventType.OWNER_ASSIGNED,
-			actorName: PLAYGROUND_ACTOR,
-			description: `Assigned to ${PLAYGROUND_ACTOR}`,
-		});
-		if (silenceComment) {
-			playgroundState.alertComments.push({
-				id: `comment-${randomId()}`,
-				alertId,
-				userId: getPlaygroundUser().id,
-				comment: silenceComment,
-				createdAt: nowIso(),
-				updatedAt: nowIso(),
-			});
+		const alert = silencePlaygroundAlert(params.alertId as string, body?.silencedUntil ?? null, body?.comment);
+		if (!alert) {
+			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
 		}
-
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
 	http.patch(`${API_BASE}/alerts/:alertId/unsilence`, ({ params }) => {
-		const alertId = params.alertId as string;
-		const alert = playgroundState.alerts.find((a) => a.id === alertId);
-
+		const alert = unsilencePlaygroundAlert(params.alertId as string);
 		if (!alert) {
 			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
 		}
-
-		alert.isSilenced = false;
-		alert.silencedUntil = null;
-		alert.updatedAt = nowIso();
-		pushAlertEvent(alertId, {
-			date: nowIso(),
-			eventType: AlertHistoryEventType.UNSILENCED,
-			actorName: PLAYGROUND_ACTOR,
-			description: 'Alert unsilenced',
-		});
-
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
@@ -336,18 +425,11 @@ export const handlers = [
 	}),
 
 	http.patch(`${API_BASE}/alerts/:alertId/owner`, async ({ params, request }) => {
-		const alertId = params.alertId as string;
 		const body = (await request.json()) as { ownerId: string | null };
-		const alert = playgroundState.alerts.find((a) => a.id === alertId);
-
+		const alert = assignPlaygroundAlertOwner(params.alertId as string, body.ownerId);
 		if (!alert) {
 			return HttpResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
 		}
-
-		alert.ownerId = body.ownerId;
-		alert.updatedAt = nowIso();
-		pushAlertEvent(alertId, recordOwnerEvent(body.ownerId));
-
 		return HttpResponse.json({ success: true, data: { alert } });
 	}),
 
@@ -368,48 +450,64 @@ export const handlers = [
 	}),
 
 	http.delete(`${API_BASE}/alerts/:alertId`, async ({ params, request }) => {
-		const alertId = params.alertId as string;
-		const alertIndex = playgroundState.alerts.findIndex((a) => a.id === alertId);
-
-		if (alertIndex === -1) {
-			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
-		}
-
 		// Optional resolve note in the body (mirrors the server: stored as a comment).
 		const body = (await request.json().catch(() => null)) as { comment?: string } | null;
-		const resolveComment = typeof body?.comment === 'string' ? body.comment.trim() : '';
-
-		const alert = { ...playgroundState.alerts[alertIndex] };
-		// Resolving pins the status and clears silence — an alert is either silenced or
-		// resolved, never both.
-		alert.status = AlertStatus.RESOLVED;
-		alert.isSilenced = false;
-		alert.silencedUntil = null;
-		alert.updatedAt = nowIso();
-		// The resolver takes ownership of the alert (mirrors the server).
-		alert.ownerId = getPlaygroundUser().id;
-
-		playgroundState.alerts.splice(alertIndex, 1);
-		playgroundState.resolvedAlerts.unshift(alert);
-		// The playground "Resolve" action is always a manual resolve by the playground user.
-		pushAlertEvent(alertId, {
-			date: nowIso(),
-			eventType: AlertHistoryEventType.RESOLVED,
-			actorName: PLAYGROUND_ACTOR,
-			description: 'Alert resolved manually',
-		});
-		if (resolveComment) {
-			playgroundState.alertComments.push({
-				id: `comment-${randomId()}`,
-				alertId,
-				userId: getPlaygroundUser().id,
-				comment: resolveComment,
-				createdAt: nowIso(),
-				updatedAt: nowIso(),
-			});
+		if (!resolvePlaygroundAlert(params.alertId as string, body?.comment)) {
+			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
-
 		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
+	}),
+
+	// One request over many alerts — by explicit ids or by a query resolved against the
+	// full playground dataset (mirrors the server, where bulk loops the single-alert ops).
+	http.post(`${API_BASE}/alerts/bulk`, async ({ request }) => {
+		const body = (await request.json().catch(() => null)) as {
+			action?: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
+			ids?: string[];
+			query?: { filters?: Record<string, string[]>; from?: string; to?: string; search?: string };
+			silencedUntil?: string | null;
+			comment?: string;
+			ownerId?: string | null;
+		} | null;
+		// Exactly one scope, same contract the server's schema enforces.
+		if (!body?.action || (body.ids == null) === (body.query == null)) {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		let targetIds: string[];
+		if (body.ids) {
+			targetIds = [...new Set(body.ids)];
+		} else {
+			const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
+			const { items } = applyAlertListQuery(alerts, [], {
+				filters: body.query?.filters ?? {},
+				from: body.query?.from ?? null,
+				to: body.query?.to ?? null,
+				search: body.query?.search,
+			});
+			targetIds = items.map((a) => a.id);
+		}
+		let succeeded = 0;
+		for (const id of targetIds) {
+			const applied = (() => {
+				switch (body.action) {
+					case 'silence':
+						return silencePlaygroundAlert(id, body.silencedUntil ?? null, body.comment) != null;
+					case 'unsilence':
+						return unsilencePlaygroundAlert(id) != null;
+					case 'resolve':
+						return resolvePlaygroundAlert(id, body.comment);
+					case 'assignOwner':
+						return assignPlaygroundAlertOwner(id, body.ownerId ?? null) != null;
+					case 'comment':
+						return body.comment ? commentPlaygroundAlert(id, body.comment) : false;
+				}
+			})();
+			if (applied) succeeded++;
+		}
+		return HttpResponse.json({
+			success: true,
+			data: { matched: targetIds.length, succeeded, failed: targetIds.length - succeeded },
+		});
 	}),
 
 	http.patch(`${API_BASE}/alerts/resolved/:alertId/unresolve`, ({ params }) => {

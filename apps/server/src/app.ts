@@ -105,7 +105,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// open client — the highest-volume traffic this server produces, and it compresses
 	// roughly tenfold.
 	app.use(compression());
-	app.use(express.json());
+	// 2mb (default 100kb): a bulk action over an explicit selection can carry thousands
+	// of alert ids, and webhook batches (Grafana) grow with the sender's group size.
+	app.use(express.json({ limit: '2mb' }));
 
 	// Express 5 leaves req.body undefined when a request carries no body, where Express 4
 	// left an empty object. Controllers validate req.body directly, so keep the old shape

@@ -9,6 +9,10 @@ export default function createAlertRouter(controller: AlertController) {
 	router.get('/facets', controller.getAlertFacets.bind(controller));
 	router.get('/groups', controller.getAlertGroupSummaries.bind(controller));
 
+	// Bulk actions — one request over an id list or over every alert matching a query
+	// (must be before /:alertId to avoid route conflicts)
+	router.post('/bulk', controller.bulkAlertAction.bind(controller));
+
 	// Daily silence reset settings (admin; must be before /:alertId to avoid route conflicts)
 	router.get('/silence-reset', controller.getSilenceResetSettings.bind(controller));
 	router.put('/silence-reset', controller.updateSilenceResetSettings.bind(controller));

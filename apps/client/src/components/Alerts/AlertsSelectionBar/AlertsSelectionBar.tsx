@@ -31,6 +31,13 @@ export interface AlertsSelectionBarProps {
 	// must be explicit — otherwise "Silence all" on a select-all reads as "silence every
 	// matching alert" when it silences only the loaded page.
 	hasUnloadedMatches?: boolean;
+	// Total alerts matching the view's full query (server-counted), when known.
+	matchingTotal?: number;
+	// True when the bulk scope is "every matching alert", not just the loaded selection.
+	allMatchingSelected?: boolean;
+	// Offered when the whole loaded list is selected but more alerts match the query —
+	// arming it widens every bulk action to all matchingTotal alerts (Gmail's pattern).
+	onSelectAllMatching?: () => void;
 }
 
 export const AlertsSelectionBar = ({
@@ -43,6 +50,9 @@ export const AlertsSelectionBar = ({
 	onCommentAll,
 	onDeleteAll,
 	hasUnloadedMatches,
+	matchingTotal,
+	allMatchingSelected,
+	onSelectAllMatching,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -118,12 +128,33 @@ export const AlertsSelectionBar = ({
 			</div>
 
 			<span className="min-w-0 text-sm font-medium">
-				<span className="whitespace-nowrap">
-					{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
-				</span>
-				{hasUnloadedMatches && (
-					<span className="ml-2 text-xs text-muted-foreground">
-						— actions apply to the loaded alerts only; scroll to load more first
+				{allMatchingSelected ? (
+					<span className="whitespace-nowrap">
+						All {(matchingTotal ?? selectedAlerts.length).toLocaleString()} matching alert
+						{(matchingTotal ?? selectedAlerts.length) !== 1 ? 's' : ''} selected
+						<span className="ml-2 text-xs text-muted-foreground">
+							— actions apply to every match, loaded or not
+						</span>
+					</span>
+				) : (
+					<span className="whitespace-nowrap">
+						{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+						{onSelectAllMatching && matchingTotal !== undefined ? (
+							<Button
+								variant="link"
+								size="sm"
+								onClick={onSelectAllMatching}
+								className="ml-1 h-auto p-0 text-sm"
+							>
+								Select all {matchingTotal.toLocaleString()} matching
+							</Button>
+						) : (
+							hasUnloadedMatches && (
+								<span className="ml-2 text-xs text-muted-foreground">
+									— actions apply to the loaded alerts only; scroll to load more first
+								</span>
+							)
+						)}
 					</span>
 				)}
 			</span>
