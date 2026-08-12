@@ -20,7 +20,8 @@ const insertAlert = (id: string, name: string, tags: Record<string, string>, sta
 };
 
 const get = (url: string) => app.get(url).set('Authorization', `Bearer ${jwtToken}`);
-const postBulk = (body: object) => app.post('/api/v1/alerts/bulk').set('Authorization', `Bearer ${jwtToken}`).send(body);
+const postBulk = (body: object) =>
+	app.post('/api/v1/alerts/bulk').set('Authorization', `Bearer ${jwtToken}`).send(body);
 
 beforeAll(async () => {
 	db = await setupDB();
@@ -77,6 +78,14 @@ describe('POST /alerts/bulk', () => {
 		const comments = await get('/api/v1/alerts/b-06/comments');
 		const bodies = (comments.body.data.comments as Array<{ comment: string }>).map((c) => c.comment);
 		expect(bodies).toContain('bulk note');
+	});
+
+	test('comment on an unknown id counts as failed and writes no orphan row', async () => {
+		const res = await postBulk({ action: 'comment', ids: ['ghost-alert'], comment: 'orphan?' });
+		expect(res.body.data).toEqual({ matched: 1, succeeded: 0, failed: 1 });
+
+		const comments = await get('/api/v1/alerts/ghost-alert/comments');
+		expect(comments.body.data.comments).toHaveLength(0);
 	});
 
 	test('resolve by query moves every matching alert to resolved — including unloaded ones', async () => {

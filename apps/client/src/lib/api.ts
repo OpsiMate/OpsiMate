@@ -612,7 +612,10 @@ export const alertsApi = {
 			: undefined;
 		// The server caps a single request at 10k ids; a deep-scrolled select-all can
 		// exceed that, so oversized id lists go up in sequential chunks with the counts
-		// summed — one logical action to the caller either way.
+		// summed — one logical action to the caller either way. A chunk that fails must
+		// NOT discard the counts of chunks that already applied: earlier mutations are
+		// real, so the unprocessed remainder folds into `failed` and the caller's toast
+		// reports an honest partial result instead of a blanket error.
 		if (body.ids && body.ids.length > 10000) {
 			const totals = { matched: 0, succeeded: 0, failed: 0 };
 			for (let i = 0; i < body.ids.length; i += 10000) {
@@ -622,7 +625,12 @@ export const alertsApi = {
 					'POST',
 					{ ...body, ids: chunk, query: undefined }
 				);
-				if (!response.success || !response.data) return response;
+				if (!response.success || !response.data) {
+					const remaining = body.ids.length - i;
+					totals.matched += remaining;
+					totals.failed += remaining;
+					return { success: true, data: totals };
+				}
 				totals.matched += response.data.matched;
 				totals.succeeded += response.data.succeeded;
 				totals.failed += response.data.failed;

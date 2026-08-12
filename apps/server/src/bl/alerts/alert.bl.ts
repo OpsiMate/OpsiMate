@@ -181,7 +181,8 @@ export class AlertBL {
 				let applied = true;
 				switch (input.action) {
 					case 'silence':
-						applied = (await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) != null;
+						applied =
+							(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) != null;
 						break;
 					case 'unsilence':
 						applied = (await this.unsilenceAlert(id, actor.name)) != null;
@@ -193,11 +194,17 @@ export class AlertBL {
 						applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
 						break;
 					case 'comment':
-						// Schema and controller guarantee a body and an acting user here.
-						await this.createComment(
-							{ alertId: id, userId: actor.id as string, comment: input.comment as string },
-							actor.name
-						);
+						// Schema and controller guarantee a body and an acting user here. The
+						// comments table deliberately has no FK on alert_id (comments outlive
+						// resolve), so existence is checked explicitly — an unknown id must
+						// count as failed, not insert an orphan row.
+						applied = (await this.alertRepo.getAlert(id)) != null;
+						if (applied) {
+							await this.createComment(
+								{ alertId: id, userId: actor.id as string, comment: input.comment as string },
+								actor.name
+							);
+						}
 						break;
 				}
 				if (applied) succeeded++;

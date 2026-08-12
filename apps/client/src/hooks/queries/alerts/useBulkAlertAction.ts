@@ -29,10 +29,15 @@ export const useBulkAlertAction = () => {
 		},
 		onSuccess: () => {
 			// Every bulk action changes list membership, counts, or row fields — refresh
-			// the lists plus everything derived from them (facets, group summaries), all
-			// keyed under queryKeys.alerts. History/comments are per-alert panels; the open
-			// one refreshes on its own poll, and a bulk action closes the selection anyway.
+			// the active lists and everything derived from them (facets, group summaries),
+			// the resolved list (bulk resolve moves rows there; it lives under its own
+			// root key), and the per-alert history/comment panels, which have no poll of
+			// their own and would otherwise show stale content if one of the targets is
+			// open in the details panel.
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
+			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertComments });
+			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
 		},
 	});
 };

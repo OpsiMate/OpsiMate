@@ -464,7 +464,10 @@ const Alerts = () => {
 	// Scope of "apply to all N matching": the Active view's FULL query — the complete
 	// filter record (status included, exactly what narrows the rows the user sees), the
 	// time window and the search — which the server resolves against the whole dataset.
-	const bulkScopeQuery = useMemo(() => {
+	// Built as a FUNCTION so the mutation resolves the rolling window at action time: a
+	// memo would freeze "last 15 minutes" at mount (the preset's object identity never
+	// changes) and a selection left open for an hour would act on an hour-stale window.
+	const buildBulkScopeQuery = () => {
 		const window = toCoarseWindow(dashboardState.timeRange);
 		return {
 			filters: dashboardState.filters,
@@ -472,13 +475,23 @@ const Alerts = () => {
 			to: window.to ?? undefined,
 			search: dashboardState.query || undefined,
 		};
-	}, [dashboardState.filters, dashboardState.timeRange, dashboardState.query]);
-	// The N above, from the same server engine that will resolve the bulk action. Only
-	// fetched while an Active-tab selection is open.
-	const bulkMatchCount = useAlertMatchCount(
-		bulkScopeQuery,
-		activeTab === AlertTab.Active && selectedAlerts.length > 0
+	};
+	// The count query needs a STABLE object for its key, so it memoizes — with a slow
+	// tick re-resolving the rolling window, keeping the displayed N within a minute of
+	// what the action would do. The tick only runs while a selection is open.
+	const bulkCountEnabled = activeTab === AlertTab.Active && selectedAlerts.length > 0;
+	const [bulkWindowTick, setBulkWindowTick] = useState(0);
+	useEffect(() => {
+		if (!bulkCountEnabled) return;
+		const timer = setInterval(() => setBulkWindowTick((t) => t + 1), 30 * 1000);
+		return () => clearInterval(timer);
+	}, [bulkCountEnabled]);
+	const bulkCountQuery = useMemo(
+		() => buildBulkScopeQuery(),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[dashboardState.filters, dashboardState.timeRange, dashboardState.query, bulkWindowTick]
 	);
+	const bulkMatchCount = useAlertMatchCount(bulkCountQuery, bulkCountEnabled);
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -518,8 +531,13 @@ const Alerts = () => {
 		[allViewActiveAlerts, resolvedViewAlerts]
 	);
 
-	const { handleSilenceAlert, handleUnsilenceAlert, handleDeleteAlert, handleUnresolveAlert, handleDeleteForeverAll } =
-		useAlertActions();
+	const {
+		handleSilenceAlert,
+		handleUnsilenceAlert,
+		handleDeleteAlert,
+		handleUnresolveAlert,
+		handleDeleteForeverAll,
+	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
 	const bulkAction = useBulkAlertAction();
@@ -537,7 +555,9 @@ const Alerts = () => {
 		},
 		labels: { title: string; verb: string }
 	) => {
-		const scope = allMatchingSelected ? { query: bulkScopeQuery } : { ids: selectedAlerts.map((a) => a.id) };
+		// The query is built HERE, not from a memo — the rolling window must be the one
+		// the user is looking at when they confirm, not the one from when they selected.
+		const scope = allMatchingSelected ? { query: buildBulkScopeQuery() } : { ids: selectedAlerts.map((a) => a.id) };
 		try {
 			const result = await bulkAction.mutateAsync({ ...vars, ...scope });
 			toast(
@@ -659,11 +679,21 @@ const Alerts = () => {
 		? ' This applies to every alert matching the current filters, including ones not loaded into the list.'
 		: '';
 
+	// Gate for offering "Select all N matching": every VISIBLE row must be selected.
+	// Membership, not a length comparison — a filter change keeps the old selection, so
+	// a stale 10-row selection over a 3-row list must not read as "the page is selected".
+	const allVisibleSelected = useMemo(() => {
+		if (filteredAlerts.length === 0) return false;
+		const selectedIds = new Set(selectedAlerts.map((a) => a.id));
+		return filteredAlerts.every((a) => selectedIds.has(a.id));
+	}, [filteredAlerts, selectedAlerts]);
+
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
 			title: `Silence ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
 			description:
-				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer.' +
+				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer. You take ownership of every silenced alert' +
+				(allMatchingSelected ? ', and matches that are already silenced restart their timer.' : '.') +
 				bulkScopeNote,
 			confirmLabel: 'Silence all',
 			withSilenceDuration: true,
@@ -680,7 +710,8 @@ const Alerts = () => {
 		setPendingAction({
 			title: `Comment on ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
 			description:
-				'The same comment is added to every selected alert, visible in its comments and history.' + bulkScopeNote,
+				'The same comment is added to every selected alert, visible in its comments and history.' +
+				bulkScopeNote,
 			confirmLabel: 'Comment',
 			withComment: true,
 			requireComment: true,
@@ -1073,11 +1104,13 @@ const Alerts = () => {
 										hasUnloadedMatches={showPartialNotice && !allMatchingSelected}
 										matchingTotal={bulkMatchCount}
 										allMatchingSelected={allMatchingSelected}
-										// Offered Gmail-style: the whole loaded list is selected and the
-										// server counts more alerts matching this exact view.
+										// Offered Gmail-style: every VISIBLE row is selected (membership,
+										// not a length compare — a filter change can leave a stale larger
+										// selection over a smaller list) and the server counts more
+										// matching this exact view.
 										onSelectAllMatching={
 											!allMatchingSelected &&
-											selectedAlerts.length >= filteredAlerts.length &&
+											allVisibleSelected &&
 											bulkMatchCount !== undefined &&
 											bulkMatchCount > selectedAlerts.length
 												? () => setAllMatchingSelected(true)

@@ -183,7 +183,7 @@ const mockGroupSummaries = (request: Request, alerts: Alert[]) => {
 		const groupBy = JSON.parse(url.searchParams.get('groupBy') ?? '[]') as string[];
 		const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
 		const timeZone = url.searchParams.get('timeZone') ?? undefined;
-		const { items } = applyAlertListQuery(alerts, [], {
+		const { items } = applyAlertListQuery(alerts, playgroundState.users, {
 			filters,
 			from: url.searchParams.get('from'),
 			to: url.searchParams.get('to'),
@@ -191,7 +191,7 @@ const mockGroupSummaries = (request: Request, alerts: Alert[]) => {
 		});
 		return HttpResponse.json({
 			success: true,
-			data: { groups: computeAlertGroupSummaries(items, groupBy, [], timeZone) },
+			data: { groups: computeAlertGroupSummaries(items, groupBy, playgroundState.users, timeZone) },
 		});
 	} catch {
 		return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
@@ -324,7 +324,12 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 	try {
 		const rawLimit = url.searchParams.get('limit');
-		const { items, total, nextCursor } = applyAlertListQuery(alerts, [], {
+		// The server 400s on a non-numeric limit; NaN here would silently slice to an
+		// empty page instead.
+		if (rawLimit != null && !Number.isFinite(Number(rawLimit))) {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const { items, total, nextCursor } = applyAlertListQuery(alerts, playgroundState.users, {
 			filters: JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>,
 			from: url.searchParams.get('from'),
 			to: url.searchParams.get('to'),
@@ -374,7 +379,7 @@ export const handlers = [
 		const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
 		return HttpResponse.json({
 			success: true,
-			data: computeAlertFacets(alerts, params.filters, params.fields, []),
+			data: computeAlertFacets(alerts, params.filters, params.fields, playgroundState.users),
 		});
 	}),
 
@@ -385,7 +390,7 @@ export const handlers = [
 		const alerts = playgroundState.resolvedAlerts.map(withLastComment);
 		return HttpResponse.json({
 			success: true,
-			data: computeAlertFacets(alerts, params.filters, params.fields, []),
+			data: computeAlertFacets(alerts, params.filters, params.fields, playgroundState.users),
 		});
 	}),
 
@@ -478,7 +483,7 @@ export const handlers = [
 			targetIds = [...new Set(body.ids)];
 		} else {
 			const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
-			const { items } = applyAlertListQuery(alerts, [], {
+			const { items } = applyAlertListQuery(alerts, playgroundState.users, {
 				filters: body.query?.filters ?? {},
 				from: body.query?.from ?? null,
 				to: body.query?.to ?? null,
