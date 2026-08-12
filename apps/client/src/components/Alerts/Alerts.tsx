@@ -502,7 +502,14 @@ const Alerts = () => {
 	// "assigned 200 / unassigned 300" — a lie when thousands match — so each pane's count
 	// comes from a limit-1 server query over the SAME full view query, constrained by
 	// owner ('Unassigned' is the engine's display value for ownerless alerts; !owner
-	// excludes it). Only fetched while the split view is on.
+	// excludes it). Only fetched while the split view is on — and only while no explicit
+	// owner filter is set: the filter record can't express an intersection on the same
+	// key, so the pane constraint would REPLACE the user's owner filter and the header
+	// would count alerts the pane doesn't display. Under an explicit owner filter the
+	// panes fall back to loaded counts, which do match the displayed rows.
+	const hasExplicitOwnerFilter =
+		(dashboardState.filters.owner?.length ?? 0) > 0 || (dashboardState.filters['!owner']?.length ?? 0) > 0;
+	const paneCountsEnabled = splitCountsEnabled && !hasExplicitOwnerFilter;
 	const unassignedCountQuery = useMemo(
 		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, owner: ['Unassigned'] } }),
 		[bulkCountQuery]
@@ -511,8 +518,12 @@ const Alerts = () => {
 		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, ['!owner']: ['Unassigned'] } }),
 		[bulkCountQuery]
 	);
-	const unassignedTotal = useAlertMatchCount(unassignedCountQuery, splitCountsEnabled);
-	const assignedTotal = useAlertMatchCount(assignedCountQuery, splitCountsEnabled);
+	// Read through the enabled gate: a disabled query can still surface stale placeholder
+	// data from before the owner filter was applied.
+	const unassignedMatchCount = useAlertMatchCount(unassignedCountQuery, paneCountsEnabled);
+	const assignedMatchCount = useAlertMatchCount(assignedCountQuery, paneCountsEnabled);
+	const unassignedTotal = paneCountsEnabled ? unassignedMatchCount : undefined;
+	const assignedTotal = paneCountsEnabled ? assignedMatchCount : undefined;
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
