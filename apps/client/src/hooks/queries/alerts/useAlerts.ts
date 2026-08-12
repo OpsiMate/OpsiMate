@@ -5,9 +5,9 @@ import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
 
 // One infinite query serves both worlds. With a server query, each page is a filtered
-// slice and nextCursor drives the scroll; the playground's mock handler ignores the
-// params and returns the full list as a single page (nextCursor undefined), which is
-// exactly the legacy behavior — no separate code path to drift.
+// slice and nextCursor drives the scroll; the playground's mock handler speaks the same
+// query contract through the shared engine, so paging and totals behave identically —
+// no separate code path to drift.
 export const useAlerts = (query?: AlertQueryParams, options?: { refetchIntervalMs?: number }) => {
 	const playgroundMode = isPlaygroundMode();
 

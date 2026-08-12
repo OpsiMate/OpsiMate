@@ -105,6 +105,12 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// open client — the highest-volume traffic this server produces, and it compresses
 	// roughly tenfold.
 	app.use(compression());
+	// The alerts routes accept large bodies — a bulk action over an explicit selection
+	// carries thousands of ids, and webhook batches (Grafana) grow with the sender's
+	// group size. Scoped to that router so the pre-auth surface (login, register,
+	// playground) keeps the default 100kb limit; express.json skips a body it already
+	// parsed, so the fallback below doesn't double-parse alerts requests.
+	app.use('/api/v1/alerts', express.json({ limit: '2mb' }));
 	app.use(express.json());
 
 	// Express 5 leaves req.body undefined when a request carries no body, where Express 4

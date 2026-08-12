@@ -200,6 +200,33 @@ export const sortAlertsBy = (
 
 // ---------- paging ----------
 
+// ---------- bulk actions (one request mutates every alert in scope) ----------
+
+export type AlertBulkActionType = 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
+
+// The bulk-action request contract, shared by the server's endpoint, the client's api
+// layer and the playground mock so the shape is declared exactly once. Exactly one of
+// ids/query must be present (the server's schema enforces it): ids is the loaded
+// selection, query is resolved server-side against the full dataset.
+export interface AlertBulkActionRequest {
+	action: AlertBulkActionType;
+	ids?: string[];
+	query?: Pick<AlertListQuery, 'filters' | 'from' | 'to' | 'search'>;
+	// silence: ISO auto-expiry; null or absent silences until manually unsilenced.
+	silencedUntil?: string | null;
+	// silence/resolve: optional note stored as a comment; comment action: the body itself.
+	comment?: string;
+	// assignOwner: numeric user id to assign, null to unassign.
+	ownerId?: string | null;
+}
+
+// succeeded means the action actually took effect; unknown ids count as failed.
+export interface AlertBulkActionResult {
+	matched: number;
+	succeeded: number;
+	failed: number;
+}
+
 export interface AlertListQuery {
 	filters?: AlertListFilters;
 	// Concrete window — rolling presets are resolved by the CALLER at request time, so
