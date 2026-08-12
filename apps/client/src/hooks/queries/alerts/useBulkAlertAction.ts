@@ -1,17 +1,7 @@
-import { alertsApi, AlertQueryParams } from '@/lib/api';
+import { alertsApi } from '@/lib/api';
+import { AlertBulkActionRequest } from '@OpsiMate/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
-
-export interface BulkAlertActionVariables {
-	action: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
-	// Exactly one scope: the loaded selection's ids, or the view's query — the server
-	// resolves the query against the full dataset ("apply to all N matching").
-	ids?: string[];
-	query?: Pick<AlertQueryParams, 'filters' | 'from' | 'to' | 'search'>;
-	silencedUntil?: string | null;
-	comment?: string;
-	ownerId?: string | null;
-}
 
 // One request for a whole bulk action instead of a fan-out of per-alert calls. The
 // result carries how many alerts matched and how many succeeded, so callers can toast
@@ -20,7 +10,7 @@ export const useBulkAlertAction = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async (variables: BulkAlertActionVariables) => {
+		mutationFn: async (variables: AlertBulkActionRequest) => {
 			const response = await alertsApi.bulkAlertAction(variables);
 			if (!response.success || !response.data) {
 				throw new Error(response.error || 'Bulk alert action failed');

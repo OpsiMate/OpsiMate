@@ -387,8 +387,9 @@ export const AlertBulkActionSchema = z
 		// silence/resolve: optional note stored as a comment on every alert.
 		// comment action: the comment body itself (required there).
 		comment: z.string().trim().max(5000).optional(),
-		// assignOwner: user id to assign, null to unassign.
-		ownerId: z.string().nullable().optional(),
+		// assignOwner: numeric user id to assign (the DB stores owners as integers, and
+		// a non-numeric string would parseInt to NaN), null to unassign.
+		ownerId: z.string().regex(/^\d+$/, 'ownerId must be a numeric user id').nullable().optional(),
 	})
 	.refine((v) => (v.ids != null) !== (v.query != null), {
 		message: 'Provide exactly one of ids or query',

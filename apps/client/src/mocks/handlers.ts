@@ -1,5 +1,6 @@
 import {
 	Alert,
+	AlertBulkActionRequest,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -466,16 +467,17 @@ export const handlers = [
 	// One request over many alerts — by explicit ids or by a query resolved against the
 	// full playground dataset (mirrors the server, where bulk loops the single-alert ops).
 	http.post(`${API_BASE}/alerts/bulk`, async ({ request }) => {
-		const body = (await request.json().catch(() => null)) as {
-			action?: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
-			ids?: string[];
-			query?: { filters?: Record<string, string[]>; from?: string; to?: string; search?: string };
-			silencedUntil?: string | null;
-			comment?: string;
-			ownerId?: string | null;
-		} | null;
-		// Exactly one scope, same contract the server's schema enforces.
-		if (!body?.action || (body.ids == null) === (body.query == null)) {
+		const body = (await request.json().catch(() => null)) as Partial<AlertBulkActionRequest> | null;
+		// Same validation contract the server's AlertBulkActionSchema enforces: exactly
+		// one scope, a comment action needs a body, assignOwner needs a numeric-or-null
+		// ownerId — the playground must reject what production rejects.
+		if (
+			!body?.action ||
+			(body.ids == null) === (body.query == null) ||
+			(body.action === 'comment' && !body.comment?.trim()) ||
+			(body.action === 'assignOwner' &&
+				(body.ownerId === undefined || (body.ownerId !== null && !/^\d+$/.test(body.ownerId))))
+		) {
 			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
 		}
 		let targetIds: string[];

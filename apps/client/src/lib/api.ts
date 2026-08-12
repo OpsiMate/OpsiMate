@@ -1,5 +1,7 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AlertBulkActionRequest,
+	AlertBulkActionResult,
 	AlertGroupSummaryNode,
 	Action,
 	ActionConfig,
@@ -590,14 +592,7 @@ export const alertsApi = {
 	// One request mutates many active alerts at once — scoped by explicit ids (the loaded
 	// selection, one request instead of N) or by a query the server resolves against the
 	// full dataset ("apply to all N matching"). Exactly one scope must be set.
-	async bulkAlertAction(body: {
-		action: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
-		ids?: string[];
-		query?: Pick<AlertQueryParams, 'filters' | 'from' | 'to' | 'search'>;
-		silencedUntil?: string | null;
-		comment?: string;
-		ownerId?: string | null;
-	}): Promise<ApiResponse<{ matched: number; succeeded: number; failed: number }>> {
+	async bulkAlertAction(body: AlertBulkActionRequest): Promise<ApiResponse<AlertBulkActionResult>> {
 		// The server's query schema rejects null/empty members the dashboard state may
 		// carry (from/to null when "All time", empty search) — send only concrete values.
 		const query = body.query
@@ -620,11 +615,11 @@ export const alertsApi = {
 			const totals = { matched: 0, succeeded: 0, failed: 0 };
 			for (let i = 0; i < body.ids.length; i += 10000) {
 				const chunk = body.ids.slice(i, i + 10000);
-				const response = await apiRequest<{ matched: number; succeeded: number; failed: number }>(
-					'/alerts/bulk',
-					'POST',
-					{ ...body, ids: chunk, query: undefined }
-				);
+				const response = await apiRequest<AlertBulkActionResult>('/alerts/bulk', 'POST', {
+					...body,
+					ids: chunk,
+					query: undefined,
+				});
 				if (!response.success || !response.data) {
 					const remaining = body.ids.length - i;
 					totals.matched += remaining;
@@ -637,7 +632,7 @@ export const alertsApi = {
 			}
 			return { success: true, data: totals };
 		}
-		return await apiRequest<{ matched: number; succeeded: number; failed: number }>('/alerts/bulk', 'POST', {
+		return await apiRequest<AlertBulkActionResult>('/alerts/bulk', 'POST', {
 			...body,
 			query,
 		});

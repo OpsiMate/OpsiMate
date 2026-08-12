@@ -21,6 +21,8 @@ import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
 import {
+	AlertBulkActionRequest,
+	AlertBulkActionResult,
 	AlertFacetsResult,
 	AlertGroupSummaryNode,
 	AlertListPage,
@@ -148,16 +150,9 @@ export class AlertBL {
 	// and comment side-effects stay identical to acting one-by-one; a failure on one
 	// alert is counted and skipped, never aborting the rest of the batch.
 	async bulkAlertAction(
-		input: {
-			action: 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';
-			ids?: string[];
-			query?: Pick<AlertListQuery, 'filters' | 'from' | 'to' | 'search'>;
-			silencedUntil?: string | null;
-			comment?: string;
-			ownerId?: string | null;
-		},
+		input: AlertBulkActionRequest,
 		actor: { id: string | null; name: string | null }
-	): Promise<{ matched: number; succeeded: number; failed: number }> {
+	): Promise<AlertBulkActionResult> {
 		let targetIds: string[];
 		if (input.ids) {
 			targetIds = [...new Set(input.ids)];
