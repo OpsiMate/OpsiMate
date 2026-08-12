@@ -68,9 +68,12 @@ const ALERT_TAB_OPTIONS = [
 ] as const;
 
 // One page of server-filtered alerts; views under this size (the overwhelmingly common
-// case) load completely and every client-side behavior — grouping, sorting, select-all —
-// is exactly what it was before server-side querying existed.
-const SERVER_PAGE_SIZE = 500;
+// case — real deployments run 1-3k active) load completely and every client-side
+// behavior — grouping, sorting, select-all — is exactly what it was before server-side
+// querying existed. 1000 is the server schema's max, and it's near-free on the wire
+// (~33KB gzipped, ~50ms measured at 10k alerts); bigger pages also mean FEWER poll
+// requests for deep scrollers, since every loaded page refetches on each poll.
+const SERVER_PAGE_SIZE = 1000;
 
 // Grouping loads the whole matching set, so a 5s poll would re-download all of it every
 // tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
@@ -173,7 +176,7 @@ const Alerts = () => {
 	// looking at. Active alerts number in the thousands; resolved can be 50-60k, so
 	// pulling all resolved to group the active tab would be a huge wasted download.
 	// Active data feeds the Active and All views; resolved data feeds Resolved and All.
-	// The non-viewed list stays a cheap 500-row page — enough for its tab-dropdown count
+	// The non-viewed list stays a cheap one-page fetch — enough for its tab-dropdown count
 	// (the response carries the true total regardless of limit) and a ready first page.
 	// Both queries already honor the time range, so narrowing the window trims what a
 	// grouped view has to load.
