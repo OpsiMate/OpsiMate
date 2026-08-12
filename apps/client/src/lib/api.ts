@@ -530,11 +530,21 @@ export interface AlertListResponse {
 	nextCursor?: string | null;
 }
 
+export interface AlertFacetTagKey {
+	key: string;
+	label: string;
+	values: string[];
+}
+
 export interface AlertFacetsResponse {
 	facets: Record<string, Record<string, number>>;
 	total: number;
 	silencedTotal: number;
-	tagKeys: Array<{ key: string; label: string; values: string[] }>;
+	tagKeys: AlertFacetTagKey[];
+}
+
+export interface AlertFacetsOptions {
+	resolved?: boolean;
 }
 
 const alertQueryString = (params?: AlertQueryParams): string => {
@@ -561,7 +571,7 @@ export const alertsApi = {
 	// Faceted sidebar counts + tag keys over the raw dataset, computed server-side.
 	async getAlertFacets(
 		filters: Record<string, string[]>,
-		options?: { resolved?: boolean }
+		options?: AlertFacetsOptions
 	): Promise<ApiResponse<AlertFacetsResponse>> {
 		const q = new URLSearchParams();
 		if (Object.keys(filters).length > 0) q.set('filters', JSON.stringify(filters));

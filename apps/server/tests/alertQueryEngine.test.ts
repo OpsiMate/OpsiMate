@@ -47,7 +47,7 @@ describe('applyAlertListQuery paging', () => {
 		const first = applyAlertListQuery(alerts, [], { limit: 2 });
 		expect(first.items.map((a) => a.id)).toEqual(['a', 'b']);
 		expect(first.total).toBe(5);
-		expect(first.nextCursor).toBe('b');
+		expect(first.nextCursor).toBeTruthy();
 
 		const second = applyAlertListQuery(alerts, [], { limit: 2, cursor: first.nextCursor! });
 		expect(second.items.map((a) => a.id)).toEqual(['c', 'd']);
@@ -59,10 +59,29 @@ describe('applyAlertListQuery paging', () => {
 
 	test('a row disappearing between pages neither duplicates nor restarts the scroll', () => {
 		const first = applyAlertListQuery(alerts, [], { limit: 2 });
-		expect(first.nextCursor).toBe('b');
 		// 'b' resolves away before the next page is requested.
 		const remaining = alerts.filter((a) => a.id !== 'b');
-		const second = applyAlertListQuery(remaining, [], { limit: 2, cursor: 'b' });
+		const second = applyAlertListQuery(remaining, [], { limit: 2, cursor: first.nextCursor! });
+		expect(second.items.map((a) => a.id)).toEqual(['c', 'd']);
+	});
+
+	test('cursor recovery follows SORT order, not id order, when the cursor row vanished', () => {
+		// Ids deliberately disagree with the sort: startsAt desc yields z, m, a.
+		const disagreeing = [spanning('a', 10), spanning('m', 20), spanning('z', 30)];
+		const first = applyAlertListQuery(disagreeing, [], { limit: 1 });
+		expect(first.items.map((x) => x.id)).toEqual(['z']);
+
+		// 'z' disappears; a raw id comparison would restart at the top ('m' > 'z' is
+		// false for every remaining id) or skip — the comparator must land on 'm'.
+		const remaining = disagreeing.filter((x) => x.id !== 'z');
+		const second = applyAlertListQuery(remaining, [], { limit: 1, cursor: first.nextCursor! });
+		expect(second.items.map((x) => x.id)).toEqual(['m']);
+	});
+
+	test('a bare-id legacy cursor still pages when the row exists', () => {
+		const first = applyAlertListQuery(alerts, [], { limit: 2 });
+		expect(first.items.map((a) => a.id)).toEqual(['a', 'b']);
+		const second = applyAlertListQuery(alerts, [], { limit: 2, cursor: 'b' });
 		expect(second.items.map((a) => a.id)).toEqual(['c', 'd']);
 	});
 

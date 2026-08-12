@@ -43,12 +43,6 @@ export const AlertsFilterPanel = ({
 }: AlertsFilterPanelProps) => {
 	const { data: users = [] } = useUsers();
 
-	const getAlertType = (alert: Alert): string => {
-		return alert.type || 'Custom';
-	};
-
-	const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-
 	const filterConfig: FilterPanelConfig = useMemo(() => {
 		const tagKeyFields = tagKeys.map((tk) => getTagKeyColumnId(tk.key));
 		const tagKeyLabels: Record<string, string> = {};

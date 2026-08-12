@@ -139,7 +139,7 @@ export const getAlertSortValue = (alert: Alert, sortField: string, users: AlertO
 	}
 	switch (sortField) {
 		case 'alertName':
-			return alert.alertName.toLowerCase();
+			return (alert.alertName ?? '').toLowerCase();
 		case 'status':
 			return alert.isSilenced ? 'silenced' : alert.isMuted ? 'muted' : 'firing';
 		case 'severity':
@@ -210,11 +210,52 @@ export interface AlertListQuery {
 	sort?: string;
 	dir?: AlertSortDirection;
 	limit?: number;
-	// Keyset cursor: the id of the last item of the previous page. Position is recovered
-	// against the CURRENT sorted result, so rows appearing/disappearing between polls
-	// shift the boundary by data, never duplicate-or-skip by arithmetic.
+	// Opaque keyset cursor produced by a previous page (see encodeAlertCursor). Position
+	// is recovered against the CURRENT sorted result, so rows appearing/disappearing
+	// between polls shift the boundary by data, never duplicate-or-skip by arithmetic.
 	cursor?: string;
 }
+
+// The cursor carries the boundary row's sort value alongside its id: if the row itself
+// is gone by the next request, the position is recovered with the same comparator the
+// sort used — a raw id comparison would only be right when id order happens to agree
+// with the sort order.
+interface AlertCursor {
+	v: string | number | null;
+	id: string;
+}
+
+export const encodeAlertCursor = (alert: Alert, sortField: string, users: AlertOwnerInfo[]): string =>
+	JSON.stringify({ v: getAlertSortValue(alert, sortField, users), id: alert.id });
+
+const decodeAlertCursor = (cursor: string): AlertCursor => {
+	try {
+		const parsed = JSON.parse(cursor) as Partial<AlertCursor>;
+		if (typeof parsed === 'object' && parsed !== null && typeof parsed.id === 'string') {
+			return { v: parsed.v ?? null, id: parsed.id };
+		}
+	} catch {
+		// Not JSON: treat the whole string as a bare id (no sort value to anchor on).
+	}
+	return { v: null, id: cursor };
+};
+
+// Where the cursor row would sort relative to `alert`: negative when the cursor comes
+// first. Mirrors compareAlerts, with the cursor's captured value standing in for the row.
+const compareToCursor = (
+	alert: Alert,
+	cursor: AlertCursor,
+	sortField: string,
+	dir: AlertSortDirection,
+	users: AlertOwnerInfo[]
+): number => {
+	const value = getAlertSortValue(alert, sortField, users);
+	if (value !== null && cursor.v !== null) {
+		if (cursor.v < value) return dir === 'asc' ? -1 : 1;
+		if (cursor.v > value) return dir === 'asc' ? 1 : -1;
+	}
+	return cursor.id < alert.id ? -1 : cursor.id > alert.id ? 1 : 0;
+};
 
 export interface AlertListPage {
 	items: Alert[];
@@ -248,21 +289,22 @@ export const applyAlertListQuery = (alerts: Alert[], users: AlertOwnerInfo[], qu
 	const limit = Math.max(1, query.limit);
 	let start = 0;
 	if (query.cursor) {
-		const cursorIndex = result.findIndex((alert) => alert.id === query.cursor);
+		const cursor = decodeAlertCursor(query.cursor);
+		const cursorIndex = result.findIndex((alert) => alert.id === cursor.id);
 		if (cursorIndex >= 0) {
 			start = cursorIndex + 1;
 		} else {
 			// The cursor row left the result set (resolved, filtered away) between pages.
-			// Recover the position order-wise: first row that would sort after it. Without
-			// the row itself the best anchor available is the id tiebreak; this degrades
-			// gracefully to "roughly where you were" instead of restarting at the top.
-			start = result.findIndex((alert) => alert.id > query.cursor!);
+			// Recover the position order-wise with the sort comparator: the first row the
+			// cursor would sort before is where the next page starts.
+			start = result.findIndex((alert) => compareToCursor(alert, cursor, sortField, dir, users) < 0);
 			if (start < 0) start = result.length;
 		}
 	}
 
 	const items = result.slice(start, start + limit);
-	const nextCursor = start + limit < result.length ? (items[items.length - 1]?.id ?? null) : null;
+	const lastItem = items[items.length - 1];
+	const nextCursor = start + limit < result.length && lastItem ? encodeAlertCursor(lastItem, sortField, users) : null;
 	return { items, total, nextCursor };
 };
 

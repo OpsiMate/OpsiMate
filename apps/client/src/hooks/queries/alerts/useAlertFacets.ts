@@ -1,4 +1,4 @@
-import { alertsApi, AlertFacetsResponse } from '@/lib/api';
+import { alertsApi, AlertFacetsOptions, AlertFacetsResponse } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
@@ -6,7 +6,7 @@ import { queryKeys } from '../queryKeys';
 // the RAW dataset — the sidebar describes what filters WOULD show, so it must not be
 // limited to the filtered page the table loaded. The playground serves this from a
 // mock handler over the same shared engine.
-export const useAlertFacets = (filters: Record<string, string[]>, options?: { resolved?: boolean }) => {
+export const useAlertFacets = (filters: Record<string, string[]>, options?: AlertFacetsOptions) => {
 	return useQuery<AlertFacetsResponse>({
 		queryKey: [...queryKeys.alerts, 'facets', options?.resolved ? 'resolved' : 'active', filters],
 		queryFn: async () => {

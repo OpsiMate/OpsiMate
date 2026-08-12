@@ -119,3 +119,23 @@ describe('GET /alerts/facets', () => {
 		expect(res.body.data.silencedTotal).toBe(0);
 	});
 });
+
+describe('GET /alerts/resolved with query params', () => {
+	test('malformed params are a 400, not a 500', async () => {
+		const res = await get('/api/v1/alerts/resolved?filters=not-json');
+		expect(res.status).toBe(400);
+		expect(res.body.success).toBe(false);
+	});
+
+	test('unparseable from/to dates are a 400, not an empty 200', async () => {
+		const res = await get('/api/v1/alerts?from=yesterday');
+		expect(res.status).toBe(400);
+	});
+
+	test('paging envelope matches the active endpoint', async () => {
+		const res = await get('/api/v1/alerts/resolved?limit=5');
+		expect(res.status).toBe(200);
+		expect(res.body.data).toHaveProperty('total');
+		expect(res.body.data).toHaveProperty('nextCursor');
+	});
+});

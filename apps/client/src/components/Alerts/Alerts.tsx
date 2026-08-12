@@ -513,7 +513,8 @@ const Alerts = () => {
 				}
 			: undefined;
 
-	// Over-limit notice: the view holds the newest page of a larger match set.
+	// Over-limit notice: counts describe what's LOADED for the view's query — the table
+	// may show fewer rows after the client narrows by status/search on top.
 	const loadedCount =
 		activeTab === AlertTab.Active
 			? alerts.length
@@ -817,8 +818,8 @@ const Alerts = () => {
 
 						{showPartialNotice && (
 							<div className="shrink-0 px-4 py-1.5 text-xs text-muted-foreground bg-muted/50 border-b border-border">
-								Showing the {loadedCount.toLocaleString()} most recent of {matchTotal.toLocaleString()}{' '}
-								matching alerts — scroll to load more, or narrow the filters.
+								Loaded the {loadedCount.toLocaleString()} most recent of {matchTotal.toLocaleString()}{' '}
+								alerts matching this view — scroll to load more, or narrow the filters.
 							</div>
 						)}
 

@@ -689,6 +689,9 @@ export class AlertController {
 			const snapshot = await this.alertBL.getResolvedAlertsSnapshot();
 			return this.sendAlertsSnapshot(req, res, snapshot);
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error getting resolved alerts:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}

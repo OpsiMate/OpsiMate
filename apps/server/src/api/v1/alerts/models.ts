@@ -334,8 +334,9 @@ const FieldsParamSchema = jsonParam((value) => z.array(z.string()).parse(value))
 
 export const AlertListQueryParamsSchema = z.object({
 	filters: FiltersParamSchema.optional(),
-	from: z.string().optional(),
-	to: z.string().optional(),
+	// Unparseable datetimes must be a 400, not a silently-empty 200 page.
+	from: z.iso.datetime({ offset: true }).optional(),
+	to: z.iso.datetime({ offset: true }).optional(),
 	search: z.string().optional(),
 	sort: z.string().optional(),
 	dir: z.enum(['asc', 'desc']).optional(),
