@@ -40,6 +40,10 @@ export interface AlertsTableProps {
 	sortField?: AlertSortField;
 	sortDirection?: SortDirection;
 	onSortChange?: (field: AlertSortField, direction: SortDirection) => void;
+	// Server-computed group summaries (true counts + rollup status over the FULL matching
+	// set), joined onto rendered group headers by key. Provided when the grouped view is
+	// too large to load whole, so headers stay honest while rows page in progressively.
+	groupSummaryByKey?: Map<string, { count: number; status: GroupStatus }>;
 	onColumnToggle?: (column: string) => void;
 	// Persists a user-arranged base-column order (from the column settings drag list).
 	onColumnOrderChange?: (columns: string[]) => void;

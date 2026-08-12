@@ -52,6 +52,7 @@ export const AlertsTable = ({
 	sortField: controlledSortField,
 	sortDirection: controlledSortDirection,
 	onSortChange,
+	groupSummaryByKey,
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
@@ -133,12 +134,25 @@ export const AlertsTable = ({
 		controlledSortDirection,
 		onSortChange
 	);
-	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup, expandAll, collapseAll } = useAlertGrouping(
-		sortedAlerts,
-		allColumnLabels,
-		controlledGroupBy,
-		onGroupByChange
-	);
+	const {
+		groupByColumns,
+		setGroupByColumns,
+		flatRows: groupedRows,
+		toggleGroup,
+		expandAll,
+		collapseAll,
+	} = useAlertGrouping(sortedAlerts, allColumnLabels, controlledGroupBy, onGroupByChange);
+	// When server summaries are supplied, group headers show the TRUE totals over the
+	// full matching set instead of counting only the loaded page. Same length and keys,
+	// so the virtualizer and sticky headers are unaffected.
+	const flatRows = useMemo(() => {
+		if (!groupSummaryByKey || groupSummaryByKey.size === 0) return groupedRows;
+		return groupedRows.map((item) => {
+			if (item.type !== 'group') return item;
+			const summary = groupSummaryByKey.get(item.key);
+			return summary ? { ...item, count: summary.count, groupStatus: summary.status } : item;
+		});
+	}, [groupedRows, groupSummaryByKey]);
 	const { allSelected, handleSelectAll, handleSelectAlert } = useAlertSelection({
 		sortedAlerts,
 		selectedAlerts,
@@ -210,7 +224,14 @@ export const AlertsTable = ({
 		const maybeFire = () => {
 			if (!onEndReached) return;
 			if (!isScrollable()) {
-				onEndReached();
+				// Auto-fetch on a non-scrollable list is the FLAT-view recovery path
+				// (client-side status narrowing can leave a page too short to scroll).
+				// In grouped mode a short list is the NORMAL collapsed-headers state —
+				// headers carry true totals from the server summaries — and auto-fetching
+				// here would chain-load the entire dataset page by page.
+				if (groupByColumns.length === 0) {
+					onEndReached();
+				}
 				return;
 			}
 			if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - NEAR_BOTTOM_PX) {
@@ -220,7 +241,7 @@ export const AlertsTable = ({
 		maybeFire();
 		scroller.addEventListener('scroll', maybeFire, { passive: true });
 		return () => scroller.removeEventListener('scroll', maybeFire);
-	}, [onEndReached, flatRows.length]);
+	}, [onEndReached, flatRows.length, groupByColumns.length]);
 	const activeStickyHeaders = useStickyHeaders({ flatRows, groupByColumns, virtualItems, virtualizer });
 
 	const orderedColumns = useMemo(() => {

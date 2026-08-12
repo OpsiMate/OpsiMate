@@ -12,6 +12,7 @@ import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
 import {
 	useAlertFacets,
+	useAlertGroupSummaries,
 	useAlerts,
 	useResolvedAlerts,
 	useDeleteResolvedAlert,
@@ -29,7 +30,7 @@ import { AlertFacetsResponse } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
 import { Bell, BellOff, CheckCircle2, ChevronDown, Columns2, LayoutList, Palette, WrapText } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -39,7 +40,7 @@ import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
 import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
-import { AlertTab } from './AlertsTable/AlertsTable.types';
+import { AlertTab, GroupStatus } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
 import { resolveTimeRange } from './AlertsTable/TimeFilter/TimeFilter.utils';
@@ -72,6 +73,11 @@ const SERVER_PAGE_SIZE = 500;
 // Grouping loads the whole matching set, so a 5s poll would re-download all of it every
 // tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
 const GROUPED_POLL_MS = 20 * 1000;
+
+// Grouped views up to this size load whole (complete client-side grouping, the original
+// UX). Above it — resolved tabs holding 50-60k in real deployments — rows page in like a
+// flat view while group headers read TRUE totals from the server summaries endpoint.
+const GROUP_LOAD_ALL_MAX = 5000;
 
 // Rolling presets re-anchor to "now" continuously; a raw resolved window in the query
 // would mint a new cache key every tick. Rounding the window OUTWARD to the minute keeps
@@ -172,6 +178,11 @@ const Alerts = () => {
 	const activeViewed = activeTab === AlertTab.Active || activeTab === AlertTab.All;
 	const resolvedViewed = activeTab === AlertTab.Resolved || activeTab === AlertTab.All;
 
+	// Last-known per-list totals (Infinity = not yet known). Written after the queries
+	// below resolve; their arrival re-renders, so the next render reads fresh values.
+	const lastActiveTotal = useRef(Number.POSITIVE_INFINITY);
+	const lastResolvedTotal = useRef(Number.POSITIVE_INFINITY);
+
 	const baseQuery = useMemo(() => {
 		const window = toCoarseWindow(dashboardState.timeRange);
 		return {
@@ -184,13 +195,22 @@ const Alerts = () => {
 		};
 	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort]);
 
+	// Load-all is gated on the last-known total staying under GROUP_LOAD_ALL_MAX: page
+	// one's response carries the total (regardless of limit), and when it's small enough
+	// the query re-keys to unlimited and grouping is complete — the original UX, at the
+	// cost of one extra fetch when grouping turns on. Totals above the threshold keep
+	// paging; the summaries endpoint supplies true header counts instead. Unknown totals
+	// (first render) page conservatively.
+	const activeGroupLoadAll = isGrouping && activeViewed && lastActiveTotal.current <= GROUP_LOAD_ALL_MAX;
+	const resolvedGroupLoadAll = isGrouping && resolvedViewed && lastResolvedTotal.current <= GROUP_LOAD_ALL_MAX;
+
 	const activeQuery = useMemo(
-		() => ({ ...baseQuery, limit: isGrouping && activeViewed ? undefined : SERVER_PAGE_SIZE }),
-		[baseQuery, isGrouping, activeViewed]
+		() => ({ ...baseQuery, limit: activeGroupLoadAll ? undefined : SERVER_PAGE_SIZE }),
+		[baseQuery, activeGroupLoadAll]
 	);
 	const resolvedQuery = useMemo(
-		() => ({ ...baseQuery, limit: isGrouping && resolvedViewed ? undefined : SERVER_PAGE_SIZE }),
-		[baseQuery, isGrouping, resolvedViewed]
+		() => ({ ...baseQuery, limit: resolvedGroupLoadAll ? undefined : SERVER_PAGE_SIZE }),
+		[baseQuery, resolvedGroupLoadAll]
 	);
 
 	const {
@@ -211,6 +231,56 @@ const Alerts = () => {
 	} = useResolvedAlerts(resolvedQuery, {
 		refetchIntervalMs: isGrouping && resolvedViewed ? GROUPED_POLL_MS : undefined,
 	});
+	lastActiveTotal.current = activeTotal;
+	lastResolvedTotal.current = resolvedTotal;
+
+	// True group-header counts for grouped views too large to load whole. Fetched per
+	// list only when that list is grouped-but-paged; joined onto headers by group key.
+	const activeSummaries = useAlertGroupSummaries(dashboardState.groupBy, baseQuery, {
+		enabled: isGrouping && activeViewed && !activeGroupLoadAll,
+	});
+	const resolvedSummaries = useAlertGroupSummaries(dashboardState.groupBy, baseQuery, {
+		resolved: true,
+		enabled: isGrouping && resolvedViewed && !resolvedGroupLoadAll,
+	});
+
+	// The tab's summary map for header overrides. The All view renders one tree over
+	// active+resolved rows, so its buckets are the SUM of both lists' summaries.
+	const groupSummaryByKey = useMemo(() => {
+		if (!isGrouping) return undefined;
+		const wantActive = activeViewed && !activeGroupLoadAll;
+		const wantResolved = resolvedViewed && !resolvedGroupLoadAll;
+		if (!wantActive && !wantResolved) return undefined;
+		const merged = new Map<string, { count: number; status: GroupStatus }>();
+		const precedence: GroupStatus[] = ['firing', 'muted', 'resolved', 'silenced'];
+		const fold = (map?: Map<string, { count: number; status: GroupStatus }>) => {
+			map?.forEach((node, key) => {
+				const existing = merged.get(key);
+				if (!existing) {
+					merged.set(key, { count: node.count, status: node.status });
+				} else {
+					merged.set(key, {
+						count: existing.count + node.count,
+						status:
+							precedence.indexOf(node.status) < precedence.indexOf(existing.status)
+								? node.status
+								: existing.status,
+					});
+				}
+			});
+		};
+		if (wantActive) fold(activeSummaries.byKey);
+		if (wantResolved) fold(resolvedSummaries.byKey);
+		return merged.size > 0 ? merged : undefined;
+	}, [
+		isGrouping,
+		activeViewed,
+		resolvedViewed,
+		activeGroupLoadAll,
+		resolvedGroupLoadAll,
+		activeSummaries.byKey,
+		resolvedSummaries.byKey,
+	]);
 
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -573,6 +643,7 @@ const Alerts = () => {
 		<AlertsTable
 			alerts={list}
 			onEndReached={loadMoreActive}
+			groupSummaryByKey={groupSummaryByKey}
 			sortField={alertSort.field}
 			sortDirection={alertSort.dir}
 			onSortChange={(field, dir) => setAlertSort({ field, dir })}
@@ -929,6 +1000,7 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={resolvedViewAlerts}
 									onEndReached={loadMoreResolved}
+									groupSummaryByKey={groupSummaryByKey}
 									sortField={alertSort.field}
 									sortDirection={alertSort.dir}
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}
@@ -972,6 +1044,7 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={filteredAllAlerts}
 									onEndReached={loadMoreAll}
+									groupSummaryByKey={groupSummaryByKey}
 									sortField={alertSort.field}
 									sortDirection={alertSort.dir}
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}

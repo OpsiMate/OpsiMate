@@ -349,6 +349,16 @@ export const AlertFacetsParamsSchema = z.object({
 	fields: FieldsParamSchema.optional(),
 });
 
+export const AlertGroupsParamsSchema = z.object({
+	groupBy: FieldsParamSchema,
+	filters: FiltersParamSchema.optional(),
+	from: z.iso.datetime({ offset: true }).optional(),
+	to: z.iso.datetime({ offset: true }).optional(),
+	search: z.string().optional(),
+	// The viewer's IANA timezone, so date grouping buckets by THEIR day boundaries.
+	timeZone: z.string().max(64).optional(),
+});
+
 // Any of these present means the caller speaks the query contract; none means the
 // legacy full-snapshot response (older clients, playground harnesses).
 export const ALERT_QUERY_PARAM_KEYS = ['filters', 'from', 'to', 'search', 'sort', 'dir', 'limit', 'cursor'] as const;

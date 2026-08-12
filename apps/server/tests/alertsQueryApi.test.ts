@@ -139,3 +139,62 @@ describe('GET /alerts/resolved with query params', () => {
 		expect(res.body.data).toHaveProperty('nextCursor');
 	});
 });
+
+describe('GET /alerts/groups', () => {
+	test('returns group counts + rollup status over the whole matching set, no alerts', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env']));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}`);
+		expect(res.status).toBe(200);
+		const groups = res.body.data.groups;
+		expect(groups.map((g: { value: string; count: number }) => [g.value, g.count])).toEqual([
+			['prod', 10],
+			['staging', 20],
+		]);
+		expect(groups[0].status).toBe('firing');
+		expect(groups[0].key).toBe('root:prod');
+		expect(groups[0]).not.toHaveProperty('alerts');
+	});
+
+	test('nested groupBy nests counts under parent keys', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env', 'severity']));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}`);
+		const prod = res.body.data.groups.find((g: { value: string }) => g.value === 'prod');
+		expect(prod.children.length).toBeGreaterThan(0);
+		expect(prod.children[0].key.startsWith('root:prod:')).toBe(true);
+		const childSum = prod.children.reduce((n: number, c: { count: number }) => n + c.count, 0);
+		expect(childSum).toBe(prod.count);
+	});
+
+	test('filters and search constrain the summaries like the list', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env']));
+		const filters = encodeURIComponent(JSON.stringify({ 'tagKey:env': ['prod'] }));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&filters=${filters}`);
+		expect(res.body.data.groups).toHaveLength(1);
+		expect(res.body.data.groups[0].count).toBe(10);
+	});
+
+	test('date grouping honors the viewer timeZone', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['startsAt']));
+		// Fixture alerts start at 12:00 local-server days 1..30; two zones far apart
+		// must both return valid YYYY-MM-DD buckets summing to the full count.
+		for (const tz of ['Asia/Tokyo', 'America/Los_Angeles']) {
+			const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&timeZone=${tz}`);
+			expect(res.status).toBe(200);
+			const groups = res.body.data.groups;
+			expect(groups.every((g: { value: string }) => /^\d{4}-\d{2}-\d{2}$/.test(g.value))).toBe(true);
+			expect(groups.reduce((n: number, g: { count: number }) => n + g.count, 0)).toBe(30);
+		}
+	});
+
+	test('groupBy is required and malformed params are a 400', async () => {
+		expect((await get('/api/v1/alerts/groups')).status).toBe(400);
+		expect((await get('/api/v1/alerts/groups?groupBy=not-json')).status).toBe(400);
+	});
+
+	test('resolved endpoint exists with the same contract', async () => {
+		const groupBy = encodeURIComponent(JSON.stringify(['severity']));
+		const res = await get(`/api/v1/alerts/resolved/groups?groupBy=${groupBy}`);
+		expect(res.status).toBe(200);
+		expect(Array.isArray(res.body.data.groups)).toBe(true);
+	});
+});

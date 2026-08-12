@@ -22,11 +22,13 @@ import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
 import {
 	AlertFacetsResult,
+	AlertGroupSummaryNode,
 	AlertListPage,
 	AlertListQuery,
 	AlertOwnerInfo,
 	applyAlertListQuery,
 	computeAlertFacets,
+	computeAlertGroupSummaries,
 } from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
@@ -104,6 +106,38 @@ export class AlertBL {
 	async getResolvedAlertFacets(filters: Record<string, string[]>, fields?: string[]): Promise<AlertFacetsResult> {
 		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
 		return computeAlertFacets(snapshot.value, filters, fields, owners);
+	}
+
+	// Group counts + rollup status over the FULL matching set, no alerts in the payload.
+	// The list query (filters/search/time window) runs first with the same shared engine
+	// the paged rows use, then the same grouping code the client renders with — so a
+	// header count can never disagree with the rows beneath it.
+	async getAlertGroupSummaries(
+		query: AlertListQuery,
+		groupBy: string[],
+		timeZone?: string
+	): Promise<AlertGroupSummaryNode[]> {
+		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
+		const { items } = applyAlertListQuery(snapshot.value, owners, {
+			...query,
+			limit: undefined,
+			cursor: undefined,
+		});
+		return computeAlertGroupSummaries(items, groupBy, owners, timeZone);
+	}
+
+	async getResolvedAlertGroupSummaries(
+		query: AlertListQuery,
+		groupBy: string[],
+		timeZone?: string
+	): Promise<AlertGroupSummaryNode[]> {
+		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
+		const { items } = applyAlertListQuery(snapshot.value, owners, {
+			...query,
+			limit: undefined,
+			cursor: undefined,
+		});
+		return computeAlertGroupSummaries(items, groupBy, owners, timeZone);
 	}
 
 	// Best-effort history logging: never let a failed history write break the underlying

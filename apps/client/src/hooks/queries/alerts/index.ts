@@ -1,5 +1,6 @@
 export { useAlerts } from './useAlerts';
 export { useAlertFacets } from './useAlertFacets';
+export { useAlertGroupSummaries } from './useAlertGroupSummaries';
 export { useResolvedAlerts } from './useResolvedAlerts';
 export { useDeleteAlert } from './useDeleteAlert';
 export { useDeleteResolvedAlert } from './useDeleteResolvedAlert';

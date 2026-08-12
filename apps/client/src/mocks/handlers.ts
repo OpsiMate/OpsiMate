@@ -1,4 +1,12 @@
-import { computeAlertFacets, AlertHistoryData, AlertHistoryEventType, AlertStatus, OncallTeam } from '@OpsiMate/shared';
+import {
+	alertMatchesFilters,
+	computeAlertFacets,
+	computeAlertGroupSummaries,
+	AlertHistoryData,
+	AlertHistoryEventType,
+	AlertStatus,
+	OncallTeam,
+} from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
 
@@ -185,6 +193,23 @@ export const handlers = [
 			success: true,
 			data: { alerts: playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment) },
 		});
+	}),
+
+	http.get(`${API_BASE}/alerts/groups`, ({ request }) => {
+		const url = new URL(request.url);
+		try {
+			const groupBy = JSON.parse(url.searchParams.get('groupBy') ?? '[]') as string[];
+			const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
+			const timeZone = url.searchParams.get('timeZone') ?? undefined;
+			const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
+			const matching = alerts.filter((a) => alertMatchesFilters(a, filters, []));
+			return HttpResponse.json({
+				success: true,
+				data: { groups: computeAlertGroupSummaries(matching, groupBy, [], timeZone) },
+			});
+		} catch {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
 	}),
 
 	http.get(`${API_BASE}/alerts/facets`, ({ request }) => {

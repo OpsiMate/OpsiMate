@@ -7,6 +7,7 @@ export default function createAlertRouter(controller: AlertController) {
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
 	router.get('/facets', controller.getAlertFacets.bind(controller));
+	router.get('/groups', controller.getAlertGroupSummaries.bind(controller));
 
 	// Daily silence reset settings (admin; must be before /:alertId to avoid route conflicts)
 	router.get('/silence-reset', controller.getSilenceResetSettings.bind(controller));
@@ -15,6 +16,7 @@ export default function createAlertRouter(controller: AlertController) {
 	// Resolved alerts (must be before /:alertId to avoid route conflicts)
 	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
 	router.get('/resolved/facets', controller.getResolvedAlertFacets.bind(controller));
+	router.get('/resolved/groups', controller.getResolvedAlertGroupSummaries.bind(controller));
 	router.delete('/resolved/:alertId', controller.deleteResolvedAlert.bind(controller));
 	router.patch('/resolved/:id/owner', controller.setResolvedAlertOwner.bind(controller));
 	router.patch('/resolved/:id/unresolve', controller.unresolveAlert.bind(controller));
