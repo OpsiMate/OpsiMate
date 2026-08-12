@@ -49,6 +49,9 @@ const HEADER_ICONS: Record<string, ReactNode> = {
 export const AlertsTable = ({
 	alerts,
 	onEndReached,
+	sortField: controlledSortField,
+	sortDirection: controlledSortDirection,
+	onSortChange,
 	onSilenceAlert,
 	onUnsilenceAlert,
 	onDeleteAlert,
@@ -124,7 +127,12 @@ export const AlertsTable = ({
 
 	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
 
-	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(filteredAlerts);
+	const { sortField, sortDirection, sortedAlerts, handleSort } = useAlertSorting(
+		filteredAlerts,
+		controlledSortField,
+		controlledSortDirection,
+		onSortChange
+	);
 	const { groupByColumns, setGroupByColumns, flatRows, toggleGroup, expandAll, collapseAll } = useAlertGrouping(
 		sortedAlerts,
 		allColumnLabels,

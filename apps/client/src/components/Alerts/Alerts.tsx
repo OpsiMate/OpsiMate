@@ -38,7 +38,6 @@ import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
-import { filterAlerts } from './AlertsTable/AlertsTable.utils';
 import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
 import { AlertTab } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
@@ -140,6 +139,15 @@ const Alerts = () => {
 		return rest;
 	}, [dashboardState.filters]);
 
+	// Sort drives the server query: the loaded page is the top-N under this sort across
+	// ALL matching alerts, so sorting by severity surfaces the most critical in the whole
+	// dataset — not a reorder of the newest 500. Kept as view-local state (not a dashboard
+	// field) so changing it doesn't dirty the dashboard, matching the prior behaviour.
+	const [alertSort, setAlertSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({
+		field: 'startsAt',
+		dir: 'desc',
+	});
+
 	const serverQuery = useMemo(() => {
 		const window = toCoarseWindow(dashboardState.timeRange);
 		return {
@@ -147,14 +155,11 @@ const Alerts = () => {
 			from: window.from,
 			to: window.to,
 			search: dashboardState.query || undefined,
-			// Newest-first regardless of the table's visual sort: when a view exceeds the
-			// page size, the page holds the most recent matches — the table re-sorts the
-			// loaded set client-side as it always has.
-			sort: 'startsAt',
-			dir: 'desc' as const,
+			sort: alertSort.field,
+			dir: alertSort.dir,
 			limit: SERVER_PAGE_SIZE,
 		};
-	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query]);
+	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort]);
 
 	const {
 		data: alerts = [],
@@ -535,6 +540,9 @@ const Alerts = () => {
 		<AlertsTable
 			alerts={list}
 			onEndReached={loadMoreActive}
+			sortField={alertSort.field}
+			sortDirection={alertSort.dir}
+			onSortChange={(field, dir) => setAlertSort({ field, dir })}
 			onSilenceAlert={confirmSilenceAlert}
 			onUnsilenceAlert={handleUnsilenceAlert}
 			onDeleteAlert={confirmResolveAlert}
@@ -629,14 +637,19 @@ const Alerts = () => {
 	// switching isn't needed just to see how many resolved/all alerts there are. The
 	// search term is applied too — AlertsTable filters by it after the sidebar/time
 	// filters, and the counts must agree with the rows actually shown.
+	// Counts come from the SERVER totals, not the loaded page — so a search matching 1,800
+	// alerts reads "1,800", not "500". Each total already reflects that tab's filters,
+	// search and time window. Caveat: the active query suspends the status filter (it's the
+	// superset serving all three tabs), so with a status filter applied — e.g. silenced
+	// hidden — the Active count is the pre-status total. It signals "more than loaded"
+	// correctly; an exact status-aware count would need its own count query.
 	const tabCounts: Record<AlertTab, number> = useMemo(
 		() => ({
-			[AlertTab.Active]: filterAlerts(filteredAlerts, dashboardState.query).length,
-			// Resolved and All mirror their views, which suspend the status filter (see above).
-			[AlertTab.Resolved]: filterAlerts(resolvedViewAlerts, dashboardState.query).length,
-			[AlertTab.All]: filterAlerts(filteredAllAlerts, dashboardState.query).length,
+			[AlertTab.Active]: activeTotal,
+			[AlertTab.Resolved]: resolvedTotal,
+			[AlertTab.All]: activeTotal + resolvedTotal,
 		}),
-		[filteredAlerts, resolvedViewAlerts, filteredAllAlerts, dashboardState.query]
+		[activeTotal, resolvedTotal]
 	);
 	return (
 		<DashboardLayout>
@@ -889,6 +902,9 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={resolvedViewAlerts}
 									onEndReached={loadMoreResolved}
+									sortField={alertSort.field}
+									sortDirection={alertSort.dir}
+									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
 									onDeleteAlert={confirmDeleteResolvedAlert}
@@ -929,6 +945,9 @@ const Alerts = () => {
 								<AlertsTable
 									alerts={filteredAllAlerts}
 									onEndReached={loadMoreAll}
+									sortField={alertSort.field}
+									sortDirection={alertSort.dir}
+									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={confirmSilenceAlert}
 									onUnsilenceAlert={handleUnsilenceAlert}
 									onDeleteAlert={confirmDeleteAnyAlert}

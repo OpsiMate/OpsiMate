@@ -35,6 +35,11 @@ export interface AlertsTableProps {
 	tagKeyColumnLabels?: Record<string, string>;
 	groupByColumns?: string[];
 	onGroupByChange?: (cols: string[]) => void;
+	// Controlled sort — lifted to the parent so it can drive the SERVER query (the loaded
+	// page becomes the top-N under this sort across all alerts, not a reorder of the page).
+	sortField?: AlertSortField;
+	sortDirection?: SortDirection;
+	onSortChange?: (field: AlertSortField, direction: SortDirection) => void;
 	onColumnToggle?: (column: string) => void;
 	// Persists a user-arranged base-column order (from the column settings drag list).
 	onColumnOrderChange?: (columns: string[]) => void;
