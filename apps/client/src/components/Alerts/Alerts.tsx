@@ -478,20 +478,38 @@ const Alerts = () => {
 	};
 	// The count query needs a STABLE object for its key, so it memoizes — with a slow
 	// tick re-resolving the rolling window, keeping the displayed N within a minute of
-	// what the action would do. The tick only runs while a selection is open.
+	// what the action would do. The tick only runs while something consumes a count:
+	// an open selection, or the split-by-owner panes.
 	const bulkCountEnabled = activeTab === AlertTab.Active && selectedAlerts.length > 0;
+	const splitCountsEnabled = splitByAssignment === true && activeTab === AlertTab.Active;
 	const [bulkWindowTick, setBulkWindowTick] = useState(0);
 	useEffect(() => {
-		if (!bulkCountEnabled) return;
+		if (!bulkCountEnabled && !splitCountsEnabled) return;
 		const timer = setInterval(() => setBulkWindowTick((t) => t + 1), 30 * 1000);
 		return () => clearInterval(timer);
-	}, [bulkCountEnabled]);
+	}, [bulkCountEnabled, splitCountsEnabled]);
 	const bulkCountQuery = useMemo(
 		() => buildBulkScopeQuery(),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[dashboardState.filters, dashboardState.timeRange, dashboardState.query, bulkWindowTick]
 	);
 	const bulkMatchCount = useAlertMatchCount(bulkCountQuery, bulkCountEnabled);
+
+	// True totals for the split-by-owner panes. The loaded page splits 500 rows into
+	// "assigned 200 / unassigned 300" — a lie when thousands match — so each pane's count
+	// comes from a limit-1 server query over the SAME full view query, constrained by
+	// owner ('Unassigned' is the engine's display value for ownerless alerts; !owner
+	// excludes it). Only fetched while the split view is on.
+	const unassignedCountQuery = useMemo(
+		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, owner: ['Unassigned'] } }),
+		[bulkCountQuery]
+	);
+	const assignedCountQuery = useMemo(
+		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, ['!owner']: ['Unassigned'] } }),
+		[bulkCountQuery]
+	);
+	const unassignedTotal = useAlertMatchCount(unassignedCountQuery, splitCountsEnabled);
+	const assignedTotal = useAlertMatchCount(assignedCountQuery, splitCountsEnabled);
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -1067,7 +1085,10 @@ const Alerts = () => {
 										top={
 											<AssignmentPane
 												title="Unassigned"
-												count={unassignedAlerts.length}
+												// Server-counted total over the full matching set — the
+												// loaded page's split is a lie past 500 rows. Falls back
+												// to the loaded count until the first response.
+												count={unassignedTotal ?? unassignedAlerts.length}
 												tone="amber"
 												isEmpty={unassignedAlerts.length === 0 && !isLoading}
 												emptyText="Nothing waiting — all alerts are assigned."
@@ -1078,7 +1099,7 @@ const Alerts = () => {
 										bottom={
 											<AssignmentPane
 												title="Assigned"
-												count={assignedAlerts.length}
+												count={assignedTotal ?? assignedAlerts.length}
 												tone="emerald"
 												isEmpty={assignedAlerts.length === 0 && !isLoading}
 												emptyText="No alerts assigned yet."

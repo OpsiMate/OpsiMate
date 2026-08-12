@@ -1,5 +1,5 @@
 import { alertsApi, AlertFacetsOptions, AlertFacetsResponse } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
 // Faceted sidebar counts, tag keys and the silenced total, computed server-side over
@@ -18,5 +18,8 @@ export const useAlertFacets = (filters: Record<string, string[]>, options?: Aler
 		},
 		staleTime: 5 * 1000,
 		refetchInterval: 10 * 1000,
+		// A filter click re-keys this query; keeping the previous counts avoids the whole
+		// sidebar collapsing to empty for a frame.
+		placeholderData: keepPreviousData,
 	});
 };

@@ -1,5 +1,5 @@
 import { alertsApi, AlertQueryParams } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
 // How many active alerts match a query — the N in "Select all N matching". A limit-1
@@ -29,6 +29,9 @@ export const useAlertMatchCount = (
 		},
 		staleTime: 10 * 1000,
 		refetchInterval: 20 * 1000,
+		// The N in "Select all N matching" (and the split-pane totals) shouldn't blink to
+		// nothing whenever the query re-keys.
+		placeholderData: keepPreviousData,
 	});
 	return data;
 };

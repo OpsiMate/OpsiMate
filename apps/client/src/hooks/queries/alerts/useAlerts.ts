@@ -1,6 +1,6 @@
 import { alertsApi, AlertListResponse, AlertQueryParams } from '@/lib/api';
 import { isPlaygroundMode } from '@/lib/playground';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
 
@@ -26,6 +26,11 @@ export const useAlerts = (query?: AlertQueryParams, options?: { refetchIntervalM
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 5 * 1000,
 		refetchInterval: playgroundMode ? false : (options?.refetchIntervalMs ?? 5 * 1000),
+		// A changed query (typing, a filter click, a sort) mints a new key; without this
+		// the table drops to empty and repaints from scratch when the response lands —
+		// reads as "everything got deleted and re-rendered". Keeping the previous rows on
+		// screen until the new page is ready makes the transition a content swap.
+		placeholderData: keepPreviousData,
 	});
 
 	const alerts = useMemo(() => result.data?.pages.flatMap((page) => page.alerts) ?? [], [result.data]);

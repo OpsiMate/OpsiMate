@@ -1,6 +1,6 @@
 import { alertsApi, AlertQueryParams } from '@/lib/api';
 import { AlertGroupSummaryNode } from '@OpsiMate/shared';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
 
@@ -33,6 +33,9 @@ export const useAlertGroupSummaries = (
 		},
 		staleTime: 10 * 1000,
 		refetchInterval: 20 * 1000,
+		// Keep the previous header counts while a changed query refetches — group headers
+		// flashing to loaded-only counts and back reads as the data disappearing.
+		placeholderData: keepPreviousData,
 	});
 
 	// Flattened for O(1) join onto rendered group headers by key.
