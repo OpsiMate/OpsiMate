@@ -81,11 +81,11 @@ export const VirtualizedAlertList = ({
 	// as a real single-row <table> keeps that layout identical while producing valid
 	// HTML (React 19 logs <div>-in-<tbody> / <tr>-in-<div> nesting as console errors).
 	// `text-sm` replaces the removed ui/Table wrapper. Rows keep TableRow's built-in
-	// border-b, softened to a hairline (70% of the theme border color) so consecutive
-	// rows read as separate without the separators shouting.
+	// border-b at the full theme border color — clearly visible 1px separation between
+	// rows, matching the weight tables use elsewhere in the app.
 	return (
 		<div
-			className="text-sm [&_tr]:border-border/70"
+			className="text-sm [&_tr]:border-border"
 			style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}
 		>
 			{virtualItems.map((virtualRow) => {
