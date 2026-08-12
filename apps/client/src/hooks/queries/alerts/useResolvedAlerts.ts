@@ -5,7 +5,7 @@ import { queryKeys } from '../queryKeys';
 
 // Mirror of useAlerts over the resolved list — see that hook for the single-path
 // design; only the poll cadence differs (resolved alerts change less).
-export const useResolvedAlerts = (query?: AlertQueryParams) => {
+export const useResolvedAlerts = (query?: AlertQueryParams, options?: { refetchIntervalMs?: number }) => {
 	const result = useInfiniteQuery({
 		queryKey: [...queryKeys.resolvedAlerts, query ?? null],
 		queryFn: async ({ pageParam }): Promise<AlertListResponse> => {
@@ -20,7 +20,7 @@ export const useResolvedAlerts = (query?: AlertQueryParams) => {
 		initialPageParam: '',
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 30 * 1000,
-		refetchInterval: 30 * 1000,
+		refetchInterval: options?.refetchIntervalMs ?? 30 * 1000,
 	});
 
 	const alerts = useMemo(() => result.data?.pages.flatMap((page) => page.alerts) ?? [], [result.data]);

@@ -69,6 +69,10 @@ const ALERT_TAB_OPTIONS = [
 // is exactly what it was before server-side querying existed.
 const SERVER_PAGE_SIZE = 500;
 
+// Grouping loads the whole matching set, so a 5s poll would re-download all of it every
+// tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
+const GROUPED_POLL_MS = 20 * 1000;
+
 // Rolling presets re-anchor to "now" continuously; a raw resolved window in the query
 // would mint a new cache key every tick. Rounding the window OUTWARD to the minute keeps
 // the key stable for a minute at a time while the server window stays a superset — the
@@ -148,6 +152,13 @@ const Alerts = () => {
 		dir: 'desc',
 	});
 
+	// Grouping needs the WHOLE matching set, or headers count only the loaded page — a
+	// user grouping by severity must see 3,332 criticals, not "the 166 that happened to
+	// load". So when a group-by is active the query drops its limit and the server returns
+	// every matching alert (filtered/searched/time-bounded), which the client groups
+	// exactly as it always did. Flat views keep the page limit and infinite-scroll.
+	const isGrouping = dashboardState.groupBy.length > 0;
+
 	const serverQuery = useMemo(() => {
 		const window = toCoarseWindow(dashboardState.timeRange);
 		return {
@@ -157,9 +168,9 @@ const Alerts = () => {
 			search: dashboardState.query || undefined,
 			sort: alertSort.field,
 			dir: alertSort.dir,
-			limit: SERVER_PAGE_SIZE,
+			limit: isGrouping ? undefined : SERVER_PAGE_SIZE,
 		};
-	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort]);
+	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort, isGrouping]);
 
 	const {
 		data: alerts = [],
@@ -168,7 +179,7 @@ const Alerts = () => {
 		refetch,
 		fetchNextPage: fetchMoreActive,
 		hasNextPage: hasMoreActive,
-	} = useAlerts(serverQuery);
+	} = useAlerts(serverQuery, { refetchIntervalMs: isGrouping ? GROUPED_POLL_MS : undefined });
 	const {
 		data: resolvedAlerts = [],
 		total: resolvedTotal,
@@ -176,7 +187,7 @@ const Alerts = () => {
 		refetch: refetchResolved,
 		fetchNextPage: fetchMoreResolved,
 		hasNextPage: hasMoreResolved,
-	} = useResolvedAlerts(serverQuery);
+	} = useResolvedAlerts(serverQuery, { refetchIntervalMs: isGrouping ? GROUPED_POLL_MS : undefined });
 
 	const [activeTab, setActiveTab] = useState<AlertTab>(AlertTab.Active);
 	const [selectedAlerts, setSelectedAlerts] = useState<Alert[]>([]);
@@ -518,8 +529,8 @@ const Alerts = () => {
 				}
 			: undefined;
 
-	// Over-limit notice: counts describe what's LOADED for the view's query — the table
-	// may show fewer rows after the client narrows by status/search on top.
+	// Loaded vs total for the current view — drives the select-all scope note (bulk
+	// actions apply only to loaded rows). Equal in grouping mode, where everything loads.
 	const loadedCount =
 		activeTab === AlertTab.Active
 			? alerts.length
@@ -828,13 +839,6 @@ const Alerts = () => {
 								/>
 							</div>
 						</div>
-
-						{showPartialNotice && (
-							<div className="shrink-0 px-4 py-1.5 text-xs text-muted-foreground bg-muted/50 border-b border-border">
-								Loaded the {loadedCount.toLocaleString()} most recent of {matchTotal.toLocaleString()}{' '}
-								alerts matching this view — scroll to load more, or narrow the filters.
-							</div>
-						)}
 
 						{activeTab === AlertTab.Active ? (
 							<>

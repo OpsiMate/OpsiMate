@@ -8,7 +8,7 @@ import { queryKeys } from '../queryKeys';
 // slice and nextCursor drives the scroll; the playground's mock handler ignores the
 // params and returns the full list as a single page (nextCursor undefined), which is
 // exactly the legacy behavior — no separate code path to drift.
-export const useAlerts = (query?: AlertQueryParams) => {
+export const useAlerts = (query?: AlertQueryParams, options?: { refetchIntervalMs?: number }) => {
 	const playgroundMode = isPlaygroundMode();
 
 	const result = useInfiniteQuery({
@@ -25,7 +25,7 @@ export const useAlerts = (query?: AlertQueryParams) => {
 		initialPageParam: '',
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 5 * 1000,
-		refetchInterval: playgroundMode ? false : 5 * 1000,
+		refetchInterval: playgroundMode ? false : (options?.refetchIntervalMs ?? 5 * 1000),
 	});
 
 	const alerts = useMemo(() => result.data?.pages.flatMap((page) => page.alerts) ?? [], [result.data]);
