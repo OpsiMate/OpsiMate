@@ -12,6 +12,7 @@ import {
 	User,
 } from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
+import { buildAlertContext } from '../actions/actionExecutor';
 import { AuditBL } from '../audit/audit.bl';
 
 const logger = new Logger('bl/enrichment.bl');
@@ -139,11 +140,14 @@ export class EnrichmentBL {
 
 	// Templates may reference the alert's current values; enrichments chain in order, so a
 	// later rule's {{summary}} sees the previous rule's output.
-	// Templates can reference the alert's own values. Besides {{summary}}, {{name}} and
-	// {{status}}, any label/tag is available as {{label.<key>}} (alias {{tag.<key>}}), e.g.
-	// {{label.host}}. Unknown placeholders are left untouched.
+	// The canonical vocabulary is the alert.* namespace action templates use (alert.name,
+	// alert.tags.<key>, ... — see buildAlertContext, reused verbatim so the two systems
+	// cannot drift). The original un-namespaced variables — {{summary}}, {{name}},
+	// {{status}}, {{label.<key>}} (alias {{tag.<key>}}) — keep resolving so existing
+	// rules are untouched. Unknown placeholders are left as-is.
 	private static resolveTemplate(template: string, alert: Alert): string {
 		const ctx: Record<string, string> = {
+			...buildAlertContext(alert),
 			summary: alert.summary ?? '',
 			name: alert.alertName ?? '',
 			status: alert.status ?? '',

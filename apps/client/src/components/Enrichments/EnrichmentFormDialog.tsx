@@ -10,6 +10,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { TemplateVariablePicker } from '@/components/shared';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +19,7 @@ import { useAlerts } from '@/hooks/queries/alerts';
 import { useCreateEnrichment, useUpdateEnrichment } from '@/hooks/queries/enrichments';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EnrichmentPayload } from '@/lib/api';
-import { AlertEnrichment, AlertLink } from '@OpsiMate/shared';
+import { AlertEnrichment, AlertLink, ALERT_TEMPLATE_VARIABLES, alertTagTemplateVariable } from '@OpsiMate/shared';
 import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
 import { AlertLinkIcon } from '@/components/Alerts/AlertLinkIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -203,34 +204,17 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const [summaryTemplate, setSummaryTemplate] = useState('');
 	const [priority, setPriority] = useState('0');
 
-	// Label keys present on current alerts, offered as insertable placeholders.
+	// Alert data feeds both the matcher suggestions and the template-variable picker —
+	// the SAME canonical alert.* vocabulary the action forms offer (the enrichment
+	// resolver accepts it alongside the legacy un-namespaced variables).
 	const { data: alerts = [] } = useAlerts();
-	const labelKeys = useMemo(() => {
-		const keys = new Set<string>();
-		alerts.forEach((a) => Object.keys(a.tags ?? {}).forEach((k) => keys.add(k)));
-		return Array.from(keys).sort();
-	}, [alerts]);
 	const matcherSuggestions = useAlertTagKeys(alerts);
+	const templateVariables = useMemo(
+		() => [...ALERT_TEMPLATE_VARIABLES, ...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key))],
+		[matcherSuggestions]
+	);
 
 	const summaryRef = useRef<HTMLTextAreaElement>(null);
-
-	// Insert a placeholder into the summary template at the cursor (replacing any selection),
-	// then restore focus with the caret placed after the inserted text. When the textarea
-	// isn't focused its selection is 0, so append at the end instead of the start.
-	const insertIntoSummary = (placeholder: string) => {
-		const el = summaryRef.current;
-		const isFocused = el != null && document.activeElement === el;
-		const start = isFocused ? el.selectionStart : summaryTemplate.length;
-		const end = isFocused ? el.selectionEnd : summaryTemplate.length;
-		const next = summaryTemplate.slice(0, start) + placeholder + summaryTemplate.slice(end);
-		setSummaryTemplate(next);
-		requestAnimationFrame(() => {
-			if (!el) return;
-			el.focus();
-			const caret = start + placeholder.length;
-			el.setSelectionRange(caret, caret);
-		});
-	};
 
 	useEffect(() => {
 		if (!open) return;
@@ -439,38 +423,17 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 								rows={3}
 							/>
 							<p className="text-xs text-muted-foreground">
-								Replaces the alert summary. Use {'{{summary}}'} for the current summary, plus{' '}
-								{'{{name}}'}, {'{{status}}'}, and any label as {'{{label.<key>}}'}. New lines and basic
-								HTML ({'<b>'}, {'<a>'}, lists) are rendered in the alert details.
+								Replaces the alert summary. Use {'{{summary}}'} for the current summary; alert fields
+								and labels are available as the same {'{{alert.*}}'} variables action templates use (the
+								older {'{{name}}'}, {'{{status}}'} and {'{{label.<key>}}'} forms keep working). New
+								lines and basic HTML ({'<b>'}, {'<a>'}, lists) are rendered in the alert details.
 							</p>
 						</div>
 
-						{labelKeys.length > 0 && (
-							<div className="space-y-1.5">
-								<p className="text-xs text-muted-foreground">
-									Available labels (click to insert a placeholder):
-								</p>
-								<div className="flex flex-wrap gap-1.5">
-									{labelKeys.map((key) => {
-										const placeholder = `{{label.${key}}}`;
-										return (
-											<button
-												key={key}
-												type="button"
-												// Keep focus in the textarea so the caret position is preserved
-												// and the placeholder inserts where the user was typing.
-												onMouseDown={(e) => e.preventDefault()}
-												onClick={() => insertIntoSummary(placeholder)}
-												className="px-2 py-0.5 rounded-full border bg-background hover:bg-muted text-[11px] font-mono"
-												title={`Insert ${placeholder}`}
-											>
-												{placeholder}
-											</button>
-										);
-									})}
-								</div>
-							</div>
-						)}
+						<TemplateVariablePicker
+							variables={['summary', ...templateVariables]}
+							targets={[{ ref: summaryRef, value: summaryTemplate, onChange: setSummaryTemplate }]}
+						/>
 					</div>
 				</div>
 

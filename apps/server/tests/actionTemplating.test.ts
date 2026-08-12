@@ -80,6 +80,29 @@ describe('HTTP action templating over the API', () => {
 		expect(preview.body.data.body).toBe('{"alert":"Disk full","tag":"prod"}');
 	});
 
+	test('an alert with null fields previews fine — nulls must not 400 the context schema', async () => {
+		const created = await post('/api/v1/actions', {
+			name: 'Null-tolerant preview',
+			type: 'http',
+			config: { url: 'https://api.example.com/x/{{alert.id}}', method: 'POST', bodyTemplate: '{{alert.type}}' },
+		});
+		// Custom alerts carry type: null (and often null URLs); the details panel sends
+		// the alert as-is, so the schema must tolerate every nullable field.
+		const preview = await post(`/api/v1/actions/${created.body.data.id}/preview`, {
+			alert: {
+				id: 'null-1',
+				alertName: 'Custom alert',
+				type: null,
+				summary: null,
+				alertUrl: null,
+				runbookUrl: null,
+			},
+		});
+		expect(preview.status).toBe(200);
+		expect(preview.body.data.url).toBe('https://api.example.com/x/null-1');
+		expect(preview.body.data.body).toBe('');
+	});
+
 	test('unknown variables stay literal instead of resolving to empty', async () => {
 		const created = await post('/api/v1/actions', {
 			name: 'Unknown var',

@@ -21,20 +21,22 @@ export interface ExecutableAction {
 	config: ActionConfig;
 }
 
-// Minimal alert shape needed to render action templates. Mirrors the shared Alert fields we use.
+// Minimal alert shape needed to render action templates. Mirrors the shared Alert
+// fields we use; every field tolerates null — real alerts carry nulls (custom alerts
+// have type: null), and the context builder maps them to '' anyway.
 export interface AlertContextInput {
-	id?: string;
-	alertName?: string;
-	status?: string;
-	type?: string;
-	severity?: string;
+	id?: string | null;
+	alertName?: string | null;
+	status?: string | null;
+	type?: string | null;
+	severity?: string | null;
 	summary?: string | null;
-	startsAt?: string;
-	updatedAt?: string;
-	createdAt?: string;
-	alertUrl?: string;
+	startsAt?: string | null;
+	updatedAt?: string | null;
+	createdAt?: string | null;
+	alertUrl?: string | null;
 	runbookUrl?: string | null;
-	tags?: Record<string, string>;
+	tags?: Record<string, string> | null;
 }
 
 // Sample alert context used when testing an action, so templates render with realistic

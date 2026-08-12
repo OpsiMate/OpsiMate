@@ -432,20 +432,24 @@ export const ActionIdSchema = z.object({
 	}),
 });
 
-// Body for running an action against a specific alert. Lenient: extra alert fields are allowed.
+// Body for running an action against a specific alert. Lenient on BOTH axes: extra
+// alert fields pass through, and every known field tolerates null — real alerts carry
+// nulls (custom alerts have type: null, many have no URL), and the executor already
+// maps null/undefined to '' when building the template context. A strict field here
+// turns "preview an ordinary alert" into a 400.
 const alertContextSchema = z
 	.object({
-		id: z.string().optional(),
-		alertName: z.string().optional(),
-		status: z.string().optional(),
-		type: z.string().optional(),
-		summary: z.string().optional().nullable(),
-		startsAt: z.string().optional(),
-		updatedAt: z.string().optional(),
-		createdAt: z.string().optional(),
-		alertUrl: z.string().optional(),
-		runbookUrl: z.string().optional().nullable(),
-		tags: z.record(z.string(), z.string()).optional(),
+		id: z.string().nullish(),
+		alertName: z.string().nullish(),
+		status: z.string().nullish(),
+		type: z.string().nullish(),
+		summary: z.string().nullish(),
+		startsAt: z.string().nullish(),
+		updatedAt: z.string().nullish(),
+		createdAt: z.string().nullish(),
+		alertUrl: z.string().nullish(),
+		runbookUrl: z.string().nullish(),
+		tags: z.record(z.string(), z.string()).nullish(),
 	})
 	.passthrough();
 
