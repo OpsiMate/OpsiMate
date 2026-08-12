@@ -878,6 +878,7 @@ const Alerts = () => {
 								<div className="shrink-0">
 									<AlertsSelectionBar
 										selectedAlerts={selectedAlerts}
+										hasUnloadedMatches={showPartialNotice}
 										onClearSelection={() => setSelectedAlerts([])}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
