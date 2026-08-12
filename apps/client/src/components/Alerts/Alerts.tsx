@@ -234,22 +234,38 @@ const Alerts = () => {
 	lastActiveTotal.current = activeTotal;
 	lastResolvedTotal.current = resolvedTotal;
 
-	// True group-header counts for grouped views too large to load whole. Fetched per
-	// list only when that list is grouped-but-paged; joined onto headers by group key.
-	const activeSummaries = useAlertGroupSummaries(dashboardState.groupBy, baseQuery, {
-		enabled: isGrouping && activeViewed && !activeGroupLoadAll,
+	// True group-header counts for grouped views too large to load whole.
+	//
+	// Filters must match what the TAB actually renders: the Active view narrows rows by
+	// the full filter record (status included), so its summaries query the full record
+	// too — a suspended-status summary would count statuses the table excludes. The All
+	// view (and Resolved) render with status suspended, so those summaries stay on the
+	// suspended record.
+	//
+	// The All view renders ONE tree over both lists, so when it needs an override at
+	// all, BOTH lists' summaries are fetched — merging only the paged side would
+	// undercount buckets that exist in both lists.
+	const allNeedsSummaries = activeTab === AlertTab.All && (!activeGroupLoadAll || !resolvedGroupLoadAll);
+	const activeSummaryQuery = useMemo(
+		() => (activeTab === AlertTab.Active ? { ...baseQuery, filters: dashboardState.filters } : baseQuery),
+		[activeTab, baseQuery, dashboardState.filters]
+	);
+	const activeSummaries = useAlertGroupSummaries(dashboardState.groupBy, activeSummaryQuery, {
+		enabled: isGrouping && ((activeTab === AlertTab.Active && !activeGroupLoadAll) || allNeedsSummaries),
 	});
 	const resolvedSummaries = useAlertGroupSummaries(dashboardState.groupBy, baseQuery, {
 		resolved: true,
-		enabled: isGrouping && resolvedViewed && !resolvedGroupLoadAll,
+		enabled: isGrouping && ((activeTab === AlertTab.Resolved && !resolvedGroupLoadAll) || allNeedsSummaries),
 	});
 
 	// The tab's summary map for header overrides. The All view renders one tree over
 	// active+resolved rows, so its buckets are the SUM of both lists' summaries.
 	const groupSummaryByKey = useMemo(() => {
 		if (!isGrouping) return undefined;
-		const wantActive = activeViewed && !activeGroupLoadAll;
-		const wantResolved = resolvedViewed && !resolvedGroupLoadAll;
+		const onAll = activeTab === AlertTab.All;
+		const anyPagedOnAll = onAll && (!activeGroupLoadAll || !resolvedGroupLoadAll);
+		const wantActive = anyPagedOnAll || (activeTab === AlertTab.Active && !activeGroupLoadAll);
+		const wantResolved = anyPagedOnAll || (activeTab === AlertTab.Resolved && !resolvedGroupLoadAll);
 		if (!wantActive && !wantResolved) return undefined;
 		const merged = new Map<string, { count: number; status: GroupStatus }>();
 		const precedence: GroupStatus[] = ['firing', 'muted', 'resolved', 'silenced'];
@@ -274,8 +290,7 @@ const Alerts = () => {
 		return merged.size > 0 ? merged : undefined;
 	}, [
 		isGrouping,
-		activeViewed,
-		resolvedViewed,
+		activeTab,
 		activeGroupLoadAll,
 		resolvedGroupLoadAll,
 		activeSummaries.byKey,

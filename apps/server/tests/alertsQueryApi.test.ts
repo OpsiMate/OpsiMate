@@ -173,17 +173,31 @@ describe('GET /alerts/groups', () => {
 		expect(res.body.data.groups[0].count).toBe(10);
 	});
 
-	test('date grouping honors the viewer timeZone', async () => {
+	test('date grouping buckets by the VIEWER timezone, not the server clock', async () => {
+		// 20:00 UTC is the same instant but a different calendar day in Tokyo (+9,
+		// next day) vs Los Angeles (-7/-8, same day) — an implementation that ignores
+		// timeZone cannot bucket this alert differently per zone.
+		insertAlert('tz-boundary', 'TZ Boundary Alert', { env: 'prod' }, '2026-03-15T20:00:00.000Z');
 		const groupBy = encodeURIComponent(JSON.stringify(['startsAt']));
-		// Fixture alerts start at 12:00 local-server days 1..30; two zones far apart
-		// must both return valid YYYY-MM-DD buckets summing to the full count.
-		for (const tz of ['Asia/Tokyo', 'America/Los_Angeles']) {
-			const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&timeZone=${tz}`);
-			expect(res.status).toBe(200);
-			const groups = res.body.data.groups;
-			expect(groups.every((g: { value: string }) => /^\d{4}-\d{2}-\d{2}$/.test(g.value))).toBe(true);
-			expect(groups.reduce((n: number, g: { count: number }) => n + g.count, 0)).toBe(30);
-		}
+		const search = 'TZ%20Boundary';
+
+		const tokyo = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&search=${search}&timeZone=Asia/Tokyo`);
+		expect(tokyo.status).toBe(200);
+		expect(tokyo.body.data.groups.map((g: { value: string }) => g.value)).toEqual(['2026-03-16']);
+
+		const la = await get(`/api/v1/alerts/groups?groupBy=${groupBy}&search=${search}&timeZone=America/Los_Angeles`);
+		expect(la.body.data.groups.map((g: { value: string }) => g.value)).toEqual(['2026-03-15']);
+
+		db.prepare('DELETE FROM alerts WHERE id = ?').run('tz-boundary');
+	});
+
+	test('group keys are collision-safe when values contain the delimiter', async () => {
+		insertAlert('colon-tag', 'Colon Tag Alert', { env: 'a:b' }, new Date(2026, 0, 2, 12, 0, 0).toISOString());
+		const groupBy = encodeURIComponent(JSON.stringify(['tagKey:env']));
+		const res = await get(`/api/v1/alerts/groups?groupBy=${groupBy}`);
+		const colonGroup = res.body.data.groups.find((g: { value: string }) => g.value === 'a:b');
+		expect(colonGroup.key).toBe('root:a%3Ab');
+		db.prepare('DELETE FROM alerts WHERE id = ?').run('colon-tag');
 	});
 
 	test('groupBy is required and malformed params are a 400', async () => {

@@ -1,6 +1,6 @@
 import { UserInfo } from '@/hooks/queries/users';
 import { formatDateTime, formatTime, isSameLocalDay } from '@/lib/datetime';
-import { Alert, getAlertGroupValue, searchAlerts, sortAlertsBy } from '@OpsiMate/shared';
+import { Alert, getAlertGroupValue, groupKeySegment, searchAlerts, sortAlertsBy } from '@OpsiMate/shared';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { AlertSortField, FlatGroupItem, GroupNode, GroupStatus, SortDirection } from './AlertsTable.types';
 
@@ -77,7 +77,7 @@ const groupAlertsRecursive = (options: GroupAlertsRecursiveOptions): GroupNode[]
 	const sortedKeys = Object.keys(groups).sort();
 
 	return sortedKeys.map((value) => {
-		const groupKey = `${parentKey}:${value}`;
+		const groupKey = groupKeySegment(parentKey, value);
 		const groupAlertsList = groups[value];
 		const children = groupAlertsRecursive({
 			alerts: groupAlertsList,

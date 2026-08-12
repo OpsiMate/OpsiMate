@@ -80,9 +80,16 @@ export const getAlertGroupValue = (
 
 export type AlertGroupStatus = 'firing' | 'muted' | 'resolved' | 'silenced';
 
+// One path segment of a group key. Values are URI-encoded so a value containing ':'
+// (tag values like "env:prod" exist in the wild) cannot collide with a nested path —
+// 'root:a%3Ab' and 'root:a:b' stay distinct. Both group builders (this one and the
+// client's row tree) use it, so summary joins by key are unambiguous.
+export const groupKeySegment = (parentKey: string, value: string): string =>
+	`${parentKey}:${encodeURIComponent(value)}`;
+
 export interface AlertGroupSummaryNode {
-	// Same key scheme the client's group tree uses ('root:<value>:<child value>…'), so
-	// summary counts can be joined onto rendered group headers by key.
+	// Same key scheme the client's group tree uses (see groupKeySegment), so summary
+	// counts can be joined onto rendered group headers by key.
 	key: string;
 	field: string;
 	value: string;
@@ -136,7 +143,7 @@ const summarizeRecursive = (
 	return Object.keys(buckets)
 		.sort()
 		.map((value) => {
-			const groupKey = `${parentKey}:${value}`;
+			const groupKey = groupKeySegment(parentKey, value);
 			const members = buckets[value];
 			const children = summarizeRecursive(members, restFields, level + 1, groupKey, users, dayKey);
 			return {

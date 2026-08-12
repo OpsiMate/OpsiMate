@@ -1,11 +1,12 @@
 import {
-	alertMatchesFilters,
-	computeAlertFacets,
-	computeAlertGroupSummaries,
+	Alert,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
 	OncallTeam,
+	applyAlertListQuery,
+	computeAlertFacets,
+	computeAlertGroupSummaries,
 } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
@@ -173,6 +174,30 @@ const parseFacetsParams = (url: URL): { filters: Record<string, string[]>; field
 	}
 };
 
+// Mirrors the server's group-summaries contract: the FULL query (filters, time window,
+// search) constrains the summarized set — exactly what applyAlertListQuery does server-
+// side — and malformed JSON is a 400.
+const mockGroupSummaries = (request: Request, alerts: Alert[]) => {
+	const url = new URL(request.url);
+	try {
+		const groupBy = JSON.parse(url.searchParams.get('groupBy') ?? '[]') as string[];
+		const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
+		const timeZone = url.searchParams.get('timeZone') ?? undefined;
+		const { items } = applyAlertListQuery(alerts, [], {
+			filters,
+			from: url.searchParams.get('from'),
+			to: url.searchParams.get('to'),
+			search: url.searchParams.get('search') ?? undefined,
+		});
+		return HttpResponse.json({
+			success: true,
+			data: { groups: computeAlertGroupSummaries(items, groupBy, [], timeZone) },
+		});
+	} catch {
+		return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+	}
+};
+
 export const handlers = [
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, () => {
@@ -195,22 +220,13 @@ export const handlers = [
 		});
 	}),
 
-	http.get(`${API_BASE}/alerts/groups`, ({ request }) => {
-		const url = new URL(request.url);
-		try {
-			const groupBy = JSON.parse(url.searchParams.get('groupBy') ?? '[]') as string[];
-			const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
-			const timeZone = url.searchParams.get('timeZone') ?? undefined;
-			const alerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
-			const matching = alerts.filter((a) => alertMatchesFilters(a, filters, []));
-			return HttpResponse.json({
-				success: true,
-				data: { groups: computeAlertGroupSummaries(matching, groupBy, [], timeZone) },
-			});
-		} catch {
-			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
-		}
-	}),
+	http.get(`${API_BASE}/alerts/groups`, ({ request }) =>
+		mockGroupSummaries(request, playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment))
+	),
+
+	http.get(`${API_BASE}/alerts/resolved/groups`, ({ request }) =>
+		mockGroupSummaries(request, playgroundState.resolvedAlerts.map(withLastComment))
+	),
 
 	http.get(`${API_BASE}/alerts/facets`, ({ request }) => {
 		const url = new URL(request.url);
