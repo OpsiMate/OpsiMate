@@ -81,11 +81,11 @@ export const VirtualizedAlertList = ({
 	// as a real single-row <table> keeps that layout identical while producing valid
 	// HTML (React 19 logs <div>-in-<tbody> / <tr>-in-<div> nesting as console errors).
 	// `text-sm` replaces the removed ui/Table wrapper. Rows keep TableRow's built-in
-	// border-b, softened to a hairline (40% of the theme border color) so consecutive
+	// border-b, softened to a hairline (70% of the theme border color) so consecutive
 	// rows read as separate without the separators shouting.
 	return (
 		<div
-			className="text-sm [&_tr]:border-border/40"
+			className="text-sm [&_tr]:border-border/70"
 			style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}
 		>
 			{virtualItems.map((virtualRow) => {
