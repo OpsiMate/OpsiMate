@@ -66,7 +66,12 @@ export const TemplateVariablePicker = ({ variables, targets, caption }: Template
 							type="button"
 							onMouseDown={(e) => e.preventDefault()}
 							onFocus={(e) => {
-								if (e.relatedTarget) lastFieldRef.current = e.relatedTarget;
+								// Remember only REGISTERED fields: tabbing from chip to chip must
+								// not overwrite the remembered field with the previous chip.
+								const from = e.relatedTarget;
+								if (from && targets.some((t) => t.ref.current === from)) {
+									lastFieldRef.current = from;
+								}
 							}}
 							onClick={() => insert(placeholder)}
 							className="px-2 py-0.5 rounded-full border bg-background hover:bg-muted text-[11px] font-mono"
