@@ -39,48 +39,71 @@ export interface AlertContextInput {
 	tags?: Record<string, string> | null;
 }
 
-// Sample alert context used when testing an action, so templates render with realistic
-// values. Covers EVERY variable in ALERT_TEMPLATE_VARIABLES (asserted by test) — a test
-// run must resolve the same variables a real run would, or a template that works in Test
-// ships with literal {{...}} left in it.
-export const buildSampleContext = (): Record<string, string> => ({
-	'alert.name': 'Test alert from OpsiMate',
-	'alert.id': 'test-alert-1',
-	'alert.status': 'firing',
-	'alert.type': 'custom',
-	'alert.summary': 'This is a test action triggered from OpsiMate.',
-	'alert.severity': 'critical',
-	'alert.service': 'demo-service',
-	'alert.startsAt': new Date().toISOString(),
-	'alert.updatedAt': new Date().toISOString(),
-	'alert.createdAt': new Date().toISOString(),
-	'alert.url': 'https://example.com/alerts/test-alert-1',
-	'alert.runbookUrl': 'https://example.com/runbooks/demo-service',
-	'alert.tags.env': 'prod',
-	'alert.tags.team': 'platform',
-});
-
-// Context built from a real alert, used when running an action against an alert.
-export const buildAlertContext = (alert: AlertContextInput): Record<string, string> => {
-	const ctx: Record<string, string> = {
-		'alert.name': alert.alertName ?? '',
-		'alert.id': alert.id ?? '',
-		'alert.status': alert.status ?? '',
-		'alert.type': alert.type ?? '',
-		'alert.summary': alert.summary ?? '',
-		'alert.startsAt': alert.startsAt ?? '',
-		'alert.updatedAt': alert.updatedAt ?? '',
-		'alert.createdAt': alert.createdAt ?? '',
-		'alert.url': alert.alertUrl ?? '',
-		'alert.runbookUrl': alert.runbookUrl ?? '',
-		// First-class severity wins; the tag is kept as a fallback for older callers.
-		'alert.severity': alert.severity ?? alert.tags?.severity ?? '',
-		'alert.service': alert.tags?.service ?? '',
-	};
-	for (const [key, value] of Object.entries(alert.tags ?? {})) {
+// Expands a base field/tag map into the full variable context: every field under its
+// short canonical name ({{name}}) AND the alert.* alias; every tag as {{label.<key>}}
+// with {{tag.<key>}} and {{alert.tags.<key>}} aliases. Short names are what the picker
+// offers; the aliases keep every previously-written template resolving.
+const expandContext = (fields: Record<string, string>, tags: Record<string, string>): Record<string, string> => {
+	const ctx: Record<string, string> = {};
+	for (const [key, value] of Object.entries(fields)) {
+		ctx[key] = value;
+		ctx[`alert.${key}`] = value;
+	}
+	for (const [key, value] of Object.entries(tags)) {
+		ctx[`label.${key}`] = String(value);
+		ctx[`tag.${key}`] = String(value);
 		ctx[`alert.tags.${key}`] = String(value);
 	}
 	return ctx;
+};
+
+// Sample alert context used when testing an action, so templates render with realistic
+// values. Covers EVERY variable in ALERT_TEMPLATE_VARIABLES (asserted by test) — a test
+// run must resolve the same variables a real run would, or a template that works in Test
+// ships with literal {{...}} left in it. Timestamps are chronological: created/started
+// in the past, updated now.
+export const buildSampleContext = (): Record<string, string> => {
+	const now = Date.now();
+	const fiveMinutesAgo = new Date(now - 5 * 60 * 1000).toISOString();
+	return expandContext(
+		{
+			name: 'Test alert from OpsiMate',
+			id: 'test-alert-1',
+			status: 'firing',
+			type: 'custom',
+			summary: 'This is a test action triggered from OpsiMate.',
+			severity: 'critical',
+			service: 'demo-service',
+			startsAt: fiveMinutesAgo,
+			updatedAt: new Date(now).toISOString(),
+			createdAt: fiveMinutesAgo,
+			url: 'https://example.com/alerts/test-alert-1',
+			runbookUrl: 'https://example.com/runbooks/demo-service',
+		},
+		{ env: 'prod', team: 'platform' }
+	);
+};
+
+// Context built from a real alert, used when running an action against an alert.
+export const buildAlertContext = (alert: AlertContextInput): Record<string, string> => {
+	return expandContext(
+		{
+			name: alert.alertName ?? '',
+			id: alert.id ?? '',
+			status: alert.status ?? '',
+			type: alert.type ?? '',
+			summary: alert.summary ?? '',
+			startsAt: alert.startsAt ?? '',
+			updatedAt: alert.updatedAt ?? '',
+			createdAt: alert.createdAt ?? '',
+			url: alert.alertUrl ?? '',
+			runbookUrl: alert.runbookUrl ?? '',
+			// First-class severity wins; the tag is kept as a fallback for older callers.
+			severity: alert.severity ?? alert.tags?.severity ?? '',
+			service: alert.tags?.service ?? '',
+		},
+		alert.tags ?? {}
+	);
 };
 
 const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {

@@ -334,8 +334,8 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 					</DialogTitle>
 					<DialogDescription>
 						Configure a reusable action. You'll be able to run it against alerts from the alert view. Every
-						template field resolves alert variables like {'{{alert.name}}'} — for HTTP requests that
-						includes the URL and header values, so endpoints like /alerts/{'{{alert.id}}'}/ack work.
+						template field resolves alert variables like {'{{name}}'} and {'{{label.env}}'} — for HTTP
+						requests that includes the URL and header values, so endpoints like /alerts/{'{{id}}'}/ack work.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -407,7 +407,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Textarea
 										id="slack-message"
 										ref={slackMessageRef}
-										placeholder="🔔 {{alert.name}} fired on {{alert.service}}"
+										placeholder="🔔 {{name}} fired on {{service}}"
 										value={slackMessage}
 										onChange={(e) => setSlackMessage(e.target.value)}
 										rows={3}
@@ -440,7 +440,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Input
 										id="teams-title"
 										ref={teamsTitleRef}
-										placeholder="Alert: {{alert.name}}"
+										placeholder="Alert: {{name}}"
 										value={teamsTitle}
 										onChange={(e) => setTeamsTitle(e.target.value)}
 									/>
@@ -452,7 +452,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Textarea
 										id="teams-message"
 										ref={teamsMessageRef}
-										placeholder="{{alert.name}} fired on {{alert.service}}"
+										placeholder="{{name}} fired on {{service}}"
 										value={teamsMessage}
 										onChange={(e) => setTeamsMessage(e.target.value)}
 										rows={3}
@@ -538,7 +538,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Input
 										id="jira-summary"
 										ref={jiraSummaryRef}
-										placeholder="{{alert.name}} on {{alert.service}}"
+										placeholder="{{name}} on {{service}}"
 										value={jiraSummary}
 										onChange={(e) => setJiraSummary(e.target.value)}
 									/>
@@ -550,7 +550,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Textarea
 										id="jira-description"
 										ref={jiraDescriptionRef}
-										placeholder="Triggered at {{alert.startsAt}}. Details: {{alert.summary}}"
+										placeholder="Triggered at {{startsAt}}. Details: {{summary}}"
 										value={jiraDescription}
 										onChange={(e) => setJiraDescription(e.target.value)}
 										rows={3}
@@ -598,7 +598,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										<Input
 											id="http-url"
 											ref={httpUrlRef}
-											placeholder="https://api.example.com/alerts/{{alert.id}}/ack"
+											placeholder="https://api.example.com/alerts/{{id}}/ack"
 											value={httpUrl}
 											onChange={(e) => setHttpUrl(e.target.value)}
 										/>
@@ -674,7 +674,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Textarea
 										id="http-body"
 										ref={httpBodyRef}
-										placeholder={'{\n  "text": "{{alert.name}} fired"\n}'}
+										placeholder={'{\n  "text": "{{name}} fired"\n}'}
 										value={httpBody}
 										onChange={(e) => setHttpBody(e.target.value)}
 										rows={4}

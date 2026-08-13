@@ -423,15 +423,15 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 								rows={3}
 							/>
 							<p className="text-xs text-muted-foreground">
-								Replaces the alert summary. Use {'{{summary}}'} for the current summary; alert fields
-								and labels are available as the same {'{{alert.*}}'} variables action templates use (the
-								older {'{{name}}'}, {'{{status}}'} and {'{{label.<key>}}'} forms keep working). New
-								lines and basic HTML ({'<b>'}, {'<a>'}, lists) are rendered in the alert details.
+								Replaces the alert summary. Use {'{{summary}}'} for the current summary, plus alert
+								fields like {'{{name}}'} and {'{{severity}}'} and any label as {'{{label.<key>}}'} — the
+								same variables action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists)
+								are rendered in the alert details.
 							</p>
 						</div>
 
 						<TemplateVariablePicker
-							variables={['summary', ...templateVariables]}
+							variables={templateVariables}
 							targets={[{ ref: summaryRef, value: summaryTemplate, onChange: setSummaryTemplate }]}
 						/>
 					</div>

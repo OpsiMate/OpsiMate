@@ -1,4 +1,4 @@
-import { RefObject } from 'react';
+import { RefObject, useRef } from 'react';
 
 export interface TemplateFieldTarget {
 	// The input/textarea the placeholder lands in.
@@ -8,7 +8,7 @@ export interface TemplateFieldTarget {
 }
 
 export interface TemplateVariablePickerProps {
-	// Variables offered as chips, WITHOUT braces (e.g. 'alert.name').
+	// Variables offered as chips, WITHOUT braces (e.g. 'name', 'label.env').
 	variables: string[];
 	// Candidate fields, most-likely-to-be-templated first: a click inserts into the
 	// FOCUSED target, falling back to the first one when none is focused.
@@ -19,17 +19,28 @@ export interface TemplateVariablePickerProps {
 // Clickable {{variable}} chips that insert into a template field at the caret,
 // replacing any selection — the enrichments dialog's label picker, generalized to
 // multiple fields and to plain inputs as well as textareas. The chips preventDefault
-// on mousedown so the click never steals focus: whichever field the user was typing
-// in is still document.activeElement when the click handler picks its target.
+// on mousedown so a CLICK never steals focus: whichever field the user was typing in
+// is still document.activeElement when the click handler picks its target. Keyboard
+// users Tab to a chip instead, which does move focus off the field — the chip's
+// focus event remembers where focus came from (relatedTarget) so Enter still inserts
+// into the field they were editing.
 export const TemplateVariablePicker = ({ variables, targets, caption }: TemplateVariablePickerProps) => {
+	const lastFieldRef = useRef<EventTarget | null>(null);
+
 	const insert = (placeholder: string) => {
-		const focused = targets.find((t) => t.ref.current != null && t.ref.current === document.activeElement);
-		const target = focused ?? targets[0];
+		const target =
+			targets.find((t) => t.ref.current != null && t.ref.current === document.activeElement) ??
+			targets.find((t) => t.ref.current != null && t.ref.current === lastFieldRef.current) ??
+			targets[0];
 		if (!target) return;
 		const el = target.ref.current;
-		// Unfocused fields report selection 0 — append at the end instead of the start.
-		const start = focused && el ? (el.selectionStart ?? target.value.length) : target.value.length;
-		const end = focused && el ? (el.selectionEnd ?? target.value.length) : target.value.length;
+		// The caret position is only meaningful when the field is focused (click path)
+		// or is the field keyboard-focus just left (a blurred field keeps its last
+		// selection). A field the user never touched reports 0/0 — append instead of
+		// inserting at the start of existing content.
+		const caretTrusted = el != null && (document.activeElement === el || lastFieldRef.current === el);
+		const start = caretTrusted ? (el.selectionStart ?? target.value.length) : target.value.length;
+		const end = caretTrusted ? (el.selectionEnd ?? target.value.length) : target.value.length;
 		target.onChange(target.value.slice(0, start) + placeholder + target.value.slice(end));
 		requestAnimationFrame(() => {
 			if (!el) return;
@@ -54,6 +65,9 @@ export const TemplateVariablePicker = ({ variables, targets, caption }: Template
 							key={variable}
 							type="button"
 							onMouseDown={(e) => e.preventDefault()}
+							onFocus={(e) => {
+								if (e.relatedTarget) lastFieldRef.current = e.relatedTarget;
+							}}
 							onClick={() => insert(placeholder)}
 							className="px-2 py-0.5 rounded-full border bg-background hover:bg-muted text-[11px] font-mono"
 							title={`Insert ${placeholder}`}

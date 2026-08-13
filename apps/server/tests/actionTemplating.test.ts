@@ -5,9 +5,11 @@ import { ALERT_TEMPLATE_VARIABLES } from '@OpsiMate/shared';
 import { buildAlertContext, buildSampleContext } from '../src/bl/actions/actionExecutor';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
-// Template-variable contract of actions: the advertised variable list resolves in every
-// context, and the HTTP action templates its URL and body (the client's picker is built
-// on ALERT_TEMPLATE_VARIABLES, so drift here means chips that insert dead variables).
+// Template-variable contract of actions AND enrichments (both resolve through
+// buildAlertContext): the advertised short variables ({{name}}, {{label.env}}) resolve
+// in every context, the alert.*/tag.* aliases keep older templates working, and the
+// HTTP action templates its URL and body. The client's picker is built on
+// ALERT_TEMPLATE_VARIABLES, so drift here means chips that insert dead variables.
 
 let app: SuperTest<Test>;
 let db: Database.Database;
@@ -22,32 +24,48 @@ beforeAll(async () => {
 });
 
 describe('alert template variables', () => {
-	test('every advertised variable resolves in the real-alert context', () => {
-		const ctx = buildAlertContext({
-			id: 'a-1',
-			alertName: 'CPU high',
-			status: 'firing',
-			type: 'grafana',
-			severity: 'critical',
-			summary: 'CPU above 90%',
-			startsAt: '2026-01-01T00:00:00Z',
-			updatedAt: '2026-01-02T00:00:00Z',
-			createdAt: '2026-01-01T00:00:00Z',
-			alertUrl: 'https://grafana/alert/a-1',
-			runbookUrl: 'https://runbooks/cpu',
-			tags: { service: 'api', env: 'prod' },
-		});
+	const fullAlert = {
+		id: 'a-1',
+		alertName: 'CPU high',
+		status: 'firing',
+		type: 'grafana',
+		severity: 'critical',
+		summary: 'CPU above 90%',
+		startsAt: '2026-01-01T00:00:00Z',
+		updatedAt: '2026-01-02T00:00:00Z',
+		createdAt: '2026-01-01T00:00:00Z',
+		alertUrl: 'https://grafana/alert/a-1',
+		runbookUrl: 'https://runbooks/cpu',
+		tags: { service: 'api', env: 'prod' },
+	};
+
+	test('every advertised variable resolves to the alert value in the real-alert context', () => {
+		const ctx = buildAlertContext(fullAlert);
 		for (const variable of ALERT_TEMPLATE_VARIABLES) {
 			expect(ctx, `missing ${variable}`).toHaveProperty([variable]);
+			expect(ctx[variable], `${variable} resolved empty`).not.toBe('');
 		}
-		expect(ctx['alert.tags.env']).toBe('prod');
+		expect(ctx['name']).toBe('CPU high');
+		expect(ctx['severity']).toBe('critical');
+		expect(ctx['url']).toBe('https://grafana/alert/a-1');
+		expect(ctx['label.env']).toBe('prod');
 	});
 
-	test('every advertised variable resolves in the Test-button sample context', () => {
+	test('alert.* and tag.* aliases keep older templates resolving', () => {
+		const ctx = buildAlertContext(fullAlert);
+		expect(ctx['alert.name']).toBe('CPU high');
+		expect(ctx['alert.tags.env']).toBe('prod');
+		expect(ctx['tag.env']).toBe('prod');
+	});
+
+	test('every advertised variable resolves in the Test-button sample context, timestamps chronological', () => {
 		const ctx = buildSampleContext();
 		for (const variable of ALERT_TEMPLATE_VARIABLES) {
 			expect(ctx, `missing ${variable}`).toHaveProperty([variable]);
+			expect(ctx[variable], `${variable} resolved empty`).not.toBe('');
 		}
+		expect(new Date(ctx['createdAt']).getTime()).toBeLessThan(new Date(ctx['updatedAt']).getTime());
+		expect(new Date(ctx['startsAt']).getTime()).toBeLessThanOrEqual(new Date(ctx['updatedAt']).getTime());
 	});
 });
 
@@ -57,10 +75,10 @@ describe('HTTP action templating over the API', () => {
 			name: 'Ack in external system',
 			type: 'http',
 			config: {
-				url: 'https://api.example.com/alerts/{{alert.id}}/ack?sev={{alert.severity}}',
+				url: 'https://api.example.com/alerts/{{id}}/ack?sev={{severity}}',
 				method: 'POST',
-				headers: { 'X-Alert': '{{alert.name}}' },
-				bodyTemplate: '{"alert":"{{alert.name}}","tag":"{{alert.tags.env}}"}',
+				headers: { 'X-Alert': '{{name}}' },
+				bodyTemplate: '{"alert":"{{name}}","tag":"{{label.env}}"}',
 			},
 		});
 		expect(created.status).toBe(201);
@@ -84,7 +102,7 @@ describe('HTTP action templating over the API', () => {
 		const created = await post('/api/v1/actions', {
 			name: 'Null-tolerant preview',
 			type: 'http',
-			config: { url: 'https://api.example.com/x/{{alert.id}}', method: 'POST', bodyTemplate: '{{alert.type}}' },
+			config: { url: 'https://api.example.com/x/{{id}}', method: 'POST', bodyTemplate: '{{type}}' },
 		});
 		// Custom alerts carry type: null (and often null URLs); the details panel sends
 		// the alert as-is, so the schema must tolerate every nullable field.
@@ -110,12 +128,12 @@ describe('HTTP action templating over the API', () => {
 			config: {
 				url: 'https://api.example.com/x',
 				method: 'POST',
-				bodyTemplate: '{{alert.nope}}',
+				bodyTemplate: '{{nope}}',
 			},
 		});
 		const preview = await post(`/api/v1/actions/${created.body.data.id}/preview`, {
 			alert: { alertName: 'x' },
 		});
-		expect(preview.body.data.body).toBe('{{alert.nope}}');
+		expect(preview.body.data.body).toBe('{{nope}}');
 	});
 });
