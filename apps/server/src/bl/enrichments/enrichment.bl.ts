@@ -12,6 +12,7 @@ import {
 	User,
 } from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
+import { buildAlertContext } from '../actions/actionExecutor';
 import { AuditBL } from '../audit/audit.bl';
 
 const logger = new Logger('bl/enrichment.bl');
@@ -138,20 +139,13 @@ export class EnrichmentBL {
 	}
 
 	// Templates may reference the alert's current values; enrichments chain in order, so a
-	// later rule's {{summary}} sees the previous rule's output.
-	// Templates can reference the alert's own values. Besides {{summary}}, {{name}} and
-	// {{status}}, any label/tag is available as {{label.<key>}} (alias {{tag.<key>}}), e.g.
-	// {{label.host}}. Unknown placeholders are left untouched.
+	// later rule's {{summary}} sees the previous rule's output. The vocabulary is the
+	// same one action templates use — {{summary}}, {{name}}, {{status}}, {{severity}},
+	// {{label.<key>}}, ... — via buildAlertContext, reused verbatim so the two systems
+	// cannot drift (it also accepts the alert.*/tag.* aliases). Unknown placeholders are
+	// left as-is.
 	private static resolveTemplate(template: string, alert: Alert): string {
-		const ctx: Record<string, string> = {
-			summary: alert.summary ?? '',
-			name: alert.alertName ?? '',
-			status: alert.status ?? '',
-		};
-		for (const [key, value] of Object.entries(alert.tags ?? {})) {
-			ctx[`label.${key}`] = String(value);
-			ctx[`tag.${key}`] = String(value);
-		}
+		const ctx = buildAlertContext(alert);
 		return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) => (key in ctx ? ctx[key] : match));
 	}
 
