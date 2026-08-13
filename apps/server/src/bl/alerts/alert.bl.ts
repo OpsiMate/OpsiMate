@@ -15,6 +15,7 @@ import {
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
+import { alertsIngestedTotal } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
@@ -269,6 +270,9 @@ export class AlertBL {
 			// alert must never show as both firing and resolved.
 			const result = await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
 			this.invalidateSnapshots();
+			// In-memory increment; this is the single funnel every webhook source flows
+			// through, so one counter covers all of them.
+			alertsIngestedTotal.inc({ type: alert.type ?? 'unknown', severity });
 			return result;
 		} catch (error) {
 			logger.error('Error inserting alert', error);
