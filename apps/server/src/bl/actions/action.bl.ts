@@ -10,6 +10,7 @@ import {
 	User,
 } from '@OpsiMate/shared';
 import { ActionRepository, CreateActionInput, UpdateActionInput } from '../../dal/actionRepository';
+import { actionsRunTotal } from '../../metrics';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { AuditBL } from '../audit/audit.bl';
 import {
@@ -52,6 +53,7 @@ export class ActionBL {
 			buildAlertContext(alert),
 			overrides
 		);
+		actionsRunTotal.inc({ type: action.type, outcome: result.success ? 'success' : 'error' });
 
 		// Record the run on the alert's history timeline (best-effort; never block the action).
 		if (alert.id && this.alertHistoryRepo) {

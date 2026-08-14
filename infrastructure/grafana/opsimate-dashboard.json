@@ -1,0 +1,1617 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "title": "OpsiMate",
+  "uid": "opsimate-self",
+  "description": "Self-monitoring for OpsiMate: alert inventory and triage backlog, ingestion and lifecycle throughput, API latency, and server runtime health.",
+  "tags": [
+    "opsimate",
+    "alerting",
+    "self-monitoring"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "opsimate.dev",
+      "tooltip": "OpsiMate website",
+      "type": "link",
+      "url": "https://opsimate.dev"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "GitHub",
+      "tooltip": "Source, issues and docs",
+      "type": "link",
+      "url": "https://github.com/OpsiMate/OpsiMate"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Open OpsiMate",
+      "tooltip": "This OpsiMate instance",
+      "type": "link",
+      "url": "${opsimate_url}/alerts"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "instance",
+        "label": "Instance",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(opsimate_alerts, instance)",
+        "query": {
+          "query": "label_values(opsimate_alerts, instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "options": [],
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1
+      },
+      {
+        "type": "query",
+        "name": "severity",
+        "label": "Severity",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(opsimate_alerts_by_severity, severity)",
+        "query": {
+          "query": "label_values(opsimate_alerts_by_severity, severity)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "options": [],
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1
+      },
+      {
+        "type": "textbox",
+        "name": "opsimate_url",
+        "label": "OpsiMate URL",
+        "query": "http://localhost:8080",
+        "current": {
+          "text": "http://localhost:8080",
+          "value": "http://localhost:8080"
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": [],
+      "id": 1
+    },
+    {
+      "type": "stat",
+      "title": "Firing",
+      "description": "Alerts currently firing (not silenced). The headline number the on-call sees.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_alerts{state=\"firing\", instance=~\"$instance\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "Silenced",
+      "description": "Alerts still active but suppressed from notifying. A number that only grows is a smell.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_alerts{state=\"silenced\", instance=~\"$instance\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#EAB839"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#EAB839",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Resolved",
+      "description": "Alerts in the resolved archive. Grows over time and is trimmed by the retention job.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_alerts{state=\"resolved\", instance=~\"$instance\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "Unassigned",
+      "description": "Firing alerts with no owner \u2014 the untriaged backlog.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_firing_alerts_unassigned{instance=~\"$instance\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 5
+    },
+    {
+      "type": "stat",
+      "title": "Unread",
+      "description": "Firing alerts nobody has opened yet.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_firing_alerts_unread{instance=~\"$instance\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 6
+    },
+    {
+      "type": "stat",
+      "title": "Oldest firing",
+      "description": "Age of the longest-firing alert. A steadily climbing value means something is rotting unhandled.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "max(opsimate_oldest_firing_alert_age_seconds{instance=~\"$instance\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 3600
+              },
+              {
+                "color": "red",
+                "value": 86400
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 7
+    },
+    {
+      "type": "stat",
+      "title": "Ingestion rate",
+      "description": "Alerts per second arriving through the ingestion funnel, across every integration.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_alerts_ingested_total{instance=~\"$instance\"}[$__rate_interval]))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "ops",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3274D9"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#3274D9",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 8
+    },
+    {
+      "type": "stat",
+      "title": "API p95",
+      "description": "95th-percentile API latency across all routes.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(opsimate_http_request_duration_seconds_bucket{instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 9
+    },
+    {
+      "type": "timeseries",
+      "title": "Alerts by state",
+      "description": "Inventory over time. Firing and silenced are live alerts; resolved is the archive.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_alerts{instance=~\"$instance\"}) by (state)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "{{state}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 10
+    },
+    {
+      "type": "timeseries",
+      "title": "Firing alerts by severity",
+      "description": "Firing alerts split by severity \u2014 filterable with the Severity variable above.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(opsimate_alerts_by_severity{state=\"firing\", severity=~\"$severity\", instance=~\"$instance\"}) by (severity)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 35,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "links": [
+            {
+              "title": "Open OpsiMate alerts",
+              "url": "${opsimate_url}/alerts",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 11
+    },
+    {
+      "type": "row",
+      "title": "Alert activity",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "panels": [],
+      "id": 12
+    },
+    {
+      "type": "timeseries",
+      "title": "Ingestion by integration",
+      "description": "Which sources are sending alerts, and how fast. A source dropping to zero usually means a broken webhook.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_alerts_ingested_total{instance=~\"$instance\"}[$__rate_interval])) by (type)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "{{type}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 13
+    },
+    {
+      "type": "timeseries",
+      "title": "Alert lifecycle",
+      "description": "How alerts leave the firing state: manual resolves are people, auto resolves are sources reporting recovery. Silence/unsilence includes timer expiry and the daily reset.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_alerts_resolved_total{mode=\"manual\", instance=~\"$instance\"}[$__rate_interval]))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "resolved (manual)"
+        },
+        {
+          "expr": "sum(rate(opsimate_alerts_resolved_total{mode=\"auto\", instance=~\"$instance\"}[$__rate_interval]))",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "resolved (auto)"
+        },
+        {
+          "expr": "sum(rate(opsimate_alerts_silenced_total{instance=~\"$instance\"}[$__rate_interval]))",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "silenced"
+        },
+        {
+          "expr": "sum(rate(opsimate_alerts_unsilenced_total{instance=~\"$instance\"}[$__rate_interval]))",
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "unsilenced"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 14
+    },
+    {
+      "type": "timeseries",
+      "title": "Bulk operations & actions",
+      "description": "Alerts mutated per second by bulk operations, plus action executions (Slack/Teams/Jira/HTTP) with their outcome. A rising error series means an integration is failing.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_bulk_alerts_affected_total{instance=~\"$instance\"}[$__rate_interval])) by (action)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "bulk {{action}}"
+        },
+        {
+          "expr": "sum(rate(opsimate_actions_run_total{instance=~\"$instance\"}[$__rate_interval])) by (type, outcome)",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "action {{type}} \u00b7 {{outcome}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 15
+    },
+    {
+      "type": "row",
+      "title": "API & performance",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": [],
+      "id": 16
+    },
+    {
+      "type": "timeseries",
+      "title": "API p95 latency by route",
+      "description": "Per-route 95th percentile. Routes are matched patterns, never raw URLs, so alert ids can't fragment the series.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(opsimate_http_request_duration_seconds_bucket{instance=~\"$instance\"}[$__rate_interval])) by (le, route)) > 0",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 17
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests by status",
+      "description": "Request rate by HTTP status. 304s are the client's efficient revalidation path; a rise in 4xx/5xx is the thing to watch.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_http_request_duration_seconds_count{instance=~\"$instance\"}[$__rate_interval])) by (status_code)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "{{status_code}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 35,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "mappings": [],
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 18
+    },
+    {
+      "type": "row",
+      "title": "Runtime & internals",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "id": 19,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Alert snapshot recomputes",
+      "description": "The snapshot cache the whole read path sits on: how long a full recompute takes (enrichments, mute policies, comments, firing times) and how often it happens. Rising p95 is the earliest warning that the dataset is outgrowing the cache.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(opsimate_snapshot_compute_duration_seconds_bucket{instance=~\"$instance\"}[$__rate_interval])) by (le, list))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "p95 {{list}}"
+        },
+        {
+          "expr": "sum(rate(opsimate_snapshot_compute_duration_seconds_count{instance=~\"$instance\"}[$__rate_interval])) by (list)",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "recomputes/s {{list}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 1901
+    },
+    {
+      "type": "timeseries",
+      "title": "Process memory",
+      "description": "Resident set size and V8 heap usage of the OpsiMate server process.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{instance=~\"$instance\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "RSS"
+        },
+        {
+          "expr": "nodejs_heap_size_used_bytes{instance=~\"$instance\"}",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "heap used"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 1902
+    },
+    {
+      "type": "timeseries",
+      "title": "Event loop lag",
+      "description": "How long callbacks wait to run. Sustained p99 above ~100ms means the process is CPU-saturated.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "nodejs_eventloop_lag_p50_seconds{instance=~\"$instance\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "nodejs_eventloop_lag_p99_seconds{instance=~\"$instance\"}",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "lineInterpolation": "smooth",
+            "gradientMode": "opacity",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 1903
+    },
+    {
+      "type": "row",
+      "title": "Configuration & help",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "panels": [],
+      "id": 20
+    },
+    {
+      "type": "bargauge",
+      "title": "Configured resources",
+      "description": "What is configured in this OpsiMate instance. Useful for spotting rule sprawl \u2014 40 mute policies usually means somebody is papering over a noisy source.",
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 45
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "opsimate_resources{instance=~\"$instance\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "editorMode": "code",
+          "instant": true,
+          "legendFormat": "{{kind}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-BlPu"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 21
+    },
+    {
+      "type": "text",
+      "title": "About this dashboard",
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 10,
+        "y": 45
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### OpsiMate self-monitoring\n\nEvery series here comes from the OpsiMate server's own `/metrics` endpoint (Prometheus text format). Gauges are computed from cheap SQL counts at scrape time, so scraping never touches the alert snapshot cache.\n\n**Prometheus scrape config**\n\n```yaml\nscrape_configs:\n  - job_name: opsimate\n    static_configs:\n      - targets: ['opsimate:3001']\n```\n\nIf the server sets `METRICS_TOKEN`, add an `authorization` block with the token as credentials.\n\n**Links** \u2014 [Open this OpsiMate instance](${opsimate_url}/alerts) \u00b7 [opsimate.dev](https://opsimate.dev) \u00b7 [GitHub](https://github.com/OpsiMate/OpsiMate) \u00b7 [Report an issue](https://github.com/OpsiMate/OpsiMate/issues)\n\n*Set the `OpsiMate URL` variable at the top so the panel links point at your own instance.*"
+      },
+      "id": 22
+    }
+  ]
+}
