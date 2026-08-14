@@ -15,6 +15,15 @@ import {
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
+import {
+	alertsIngestedTotal,
+	alertsResolvedTotal,
+	alertsSilencedTotal,
+	alertsUnsilencedTotal,
+	bulkActionsTotal,
+	bulkAlertsAffectedTotal,
+	snapshotComputeDuration,
+} from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
@@ -210,6 +219,8 @@ export class AlertBL {
 			}
 		}
 		logger.info(`Bulk ${input.action}: ${succeeded}/${targetIds.length} succeeded`);
+		bulkActionsTotal.inc({ action: input.action });
+		if (succeeded > 0) bulkAlertsAffectedTotal.inc({ action: input.action }, succeeded);
 		return { matched: targetIds.length, succeeded, failed };
 	}
 
@@ -269,6 +280,9 @@ export class AlertBL {
 			// alert must never show as both firing and resolved.
 			const result = await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
 			this.invalidateSnapshots();
+			// In-memory increment; this is the single funnel every webhook source flows
+			// through, so one counter covers all of them.
+			alertsIngestedTotal.inc({ type: alert.type ?? 'unknown', severity });
 			return result;
 		} catch (error) {
 			logger.error('Error inserting alert', error);
@@ -281,6 +295,7 @@ export class AlertBL {
 	private async expireSilences(): Promise<void> {
 		const expiredIds = await this.alertRepo.clearExpiredSilences(new Date().toISOString());
 		if (expiredIds.length > 0) this.invalidateSnapshots();
+		if (expiredIds.length > 0) alertsUnsilencedTotal.inc(expiredIds.length);
 		await Promise.all(
 			expiredIds.map((id) =>
 				this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Silence expired', null)
@@ -316,6 +331,7 @@ export class AlertBL {
 		await this.alertRepo.markSilenceResetCleared(occurrence.toISOString());
 		const clearedIds = await this.alertRepo.clearSilencesEstablishedBy(occurrence.toISOString());
 		if (clearedIds.length > 0) this.invalidateSnapshots();
+		if (clearedIds.length > 0) alertsUnsilencedTotal.inc(clearedIds.length);
 		if (clearedIds.length > 0) {
 			logger.info(`Daily silence reset cleared ${clearedIds.length} silence(s)`);
 		}
@@ -379,6 +395,7 @@ export class AlertBL {
 	}
 
 	private async computeAllAlerts(): Promise<Alert[]> {
+		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
@@ -394,6 +411,8 @@ export class AlertBL {
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
+		} finally {
+			endTimer();
 		}
 	}
 
@@ -414,6 +433,7 @@ export class AlertBL {
 			let alert = await this.alertRepo.silenceAlert(id, normalizedSilencedUntil);
 			this.invalidateSnapshots();
 			if (alert) {
+				alertsSilencedTotal.inc();
 				const description = normalizedSilencedUntil
 					? `Alert silenced until ${normalizedSilencedUntil}`
 					: 'Alert silenced';
@@ -451,6 +471,7 @@ export class AlertBL {
 			const alert = await this.alertRepo.unsilenceAlert(id);
 			this.invalidateSnapshots();
 			if (alert) {
+				alertsUnsilencedTotal.inc();
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
 			}
 			return alert;
@@ -467,6 +488,7 @@ export class AlertBL {
 	}
 
 	private async computeAllResolvedAlerts(): Promise<Alert[]> {
+		const endTimer = snapshotComputeDuration.startTimer({ list: 'resolved' });
 		try {
 			logger.info('Fetching all resolved alerts');
 			let alerts = await this.resolvedAlertRepo.getAllResolvedAlerts();
@@ -485,6 +507,8 @@ export class AlertBL {
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;
+		} finally {
+			endTimer();
 		}
 	}
 
@@ -514,6 +538,7 @@ export class AlertBL {
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
 			this.invalidateSnapshots();
+			alertsResolvedTotal.inc({ mode: manualActor !== undefined ? 'manual' : 'auto' });
 
 			if (manualActor !== undefined) {
 				await this.recordHistoryEvent(
@@ -559,6 +584,7 @@ export class AlertBL {
 			// Delete alerts from active table
 			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
 			this.invalidateSnapshots();
+			if (alertsToResolve.length > 0) alertsResolvedTotal.inc({ mode: 'auto' }, alertsToResolve.length);
 
 			logger.info(`Resolved ${alertsToResolve.length} alerts`);
 		} catch (error) {

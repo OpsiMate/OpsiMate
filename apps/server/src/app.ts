@@ -52,6 +52,7 @@ import { RetentionJob } from './jobs/retention-job';
 import { RetentionBL } from './bl/retention/retention.bl';
 import { PlaygroundRepository } from './dal/playgroundRepository.ts';
 import { PlaygroundBL } from './bl/playground/playground.bl.ts';
+import { initMetrics, metricsHandler, metricsMiddleware } from './metrics';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -100,6 +101,12 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// SERVER mode: Create Express app and API routes
 	const app = express();
+
+	// Prometheus (issue #658): request timing on everything below, gauges resolved at
+	// scrape time from cheap SQL counts — never through the alerts snapshot. The gauge
+	// statements are prepared further down, after every table they read exists.
+	app.use(metricsMiddleware);
+	app.get('/metrics', metricsHandler);
 
 	// The alerts payload is large, repetitive JSON polled every few seconds by every
 	// open client — the highest-volume traffic this server produces, and it compresses
@@ -162,6 +169,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 	]);
+
+	// Every table the metric gauges count now exists.
+	initMetrics(db);
 
 	// BL
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
