@@ -27,7 +27,37 @@ const startBedrockMock = (): Promise<string> =>
 			let body = '';
 			req.on('data', (c) => (body += c));
 			req.on('end', () => {
-				if (receivedAuth === 'Bearer good-key') {
+				if (receivedAuth === 'Bearer good-key' && body.includes('toolConfig')) {
+					// NL->filter call: reply through the forced tool, deliberately mixing
+					// valid values with hallucinated ones the server must drop.
+					res.writeHead(200, { 'Content-Type': 'application/json' });
+					res.end(
+						JSON.stringify({
+							output: {
+								message: {
+									content: [
+										{
+											toolUse: {
+												name: 'apply_alert_filters',
+												input: {
+													filters: {
+														severity: ['critical', 'Apocalyptic'],
+														'tagKey:env': ['prod'],
+														'!status': ['Silenced'],
+														madeUpField: ['x'],
+													},
+													search: 'disk',
+													lastMinutes: 60,
+													explanation: 'Critical prod disk alerts from the last hour, excluding silenced.',
+												},
+											},
+										},
+									],
+								},
+							},
+						})
+					);
+				} else if (receivedAuth === 'Bearer good-key') {
 					res.writeHead(200, { 'Content-Type': 'application/json' });
 					res.end(JSON.stringify({ output: { message: { content: [{ text: 'ok' }] } } }));
 				} else if (receivedAuth === 'Bearer bad-model-key') {
@@ -54,6 +84,10 @@ beforeAll(async () => {
 	db = await setupDB();
 	app = await setupExpressApp(db);
 	jwtToken = await setupUserWithToken(app);
+	db.prepare(
+		`INSERT INTO alerts (id, status, severity, tags, type, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, is_dismissed)
+		 VALUES ('ai-1', 'firing', 'critical', '{"env":"prod"}', 'Custom', ?, ?, 'https://example.com', 'Disk full', 'Summary', NULL, 0)`
+	).run(new Date().toISOString(), new Date().toISOString());
 });
 
 afterAll(() => {
@@ -169,5 +203,44 @@ describe('POST /ai/test', () => {
 		const res = await post('/api/v1/ai/test');
 		expect(res.body.data.ok).toBe(false);
 		expect(res.body.data.message).toContain('No API key');
+	});
+});
+
+describe('AI status and NL->filter', () => {
+	test('status is readable by any authenticated user and reflects enablement', async () => {
+		await put('/api/v1/ai/config', { apiKey: 'good-key', modelId: 'anthropic.claude-3-5-haiku-20241022-v1:0', enabled: true });
+		const login = await app.post('/api/v1/users/login').send({ email: 'viewer@example.com', password: 'password123' });
+		const res = await app.get('/api/v1/ai/status').set('Authorization', `Bearer ${login.body.token}`);
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({ enabled: true });
+	});
+
+	test('translates a phrase into validated filters, dropping hallucinated fields and values', async () => {
+		const res = await app
+			.post('/api/v1/ai/filter')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ query: 'critical prod disk alerts from the last hour, not silenced' });
+		expect(res.status).toBe(200);
+		const data = res.body.data;
+		// 'critical' came back lowercase and hallucinated 'Apocalyptic' was dropped;
+		// canonical casing is restored from the vocabulary.
+		expect(data.filters.severity).toEqual(['Critical']);
+		expect(data.filters['tagKey:env']).toEqual(['prod']);
+		expect(data.filters['!status']).toEqual(['Silenced']);
+		expect(data.filters.madeUpField).toBeUndefined();
+		expect(data.search).toBe('disk');
+		expect(data.lastMinutes).toBe(60);
+		expect(typeof data.explanation).toBe('string');
+	});
+
+	test('while AI is disabled the filter endpoint is a 409, not a Bedrock call', async () => {
+		await put('/api/v1/ai/config', { enabled: false });
+		const res = await app
+			.post('/api/v1/ai/filter')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ query: 'anything at all' });
+		expect(res.status).toBe(409);
+		expect(res.body.error).toContain('not enabled');
+		await put('/api/v1/ai/config', { enabled: true });
 	});
 });

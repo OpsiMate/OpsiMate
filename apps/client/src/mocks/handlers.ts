@@ -371,6 +371,34 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
 	}),
 
+	http.get(`${API_BASE}/ai/status`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { enabled: aiConfigState.enabled && aiConfigState.hasApiKey && aiConfigState.modelId.length > 0 },
+		});
+	}),
+
+	// Keyword-matched stand-in for the NL->filter translation, so the playground can
+	// demo the flow without Bedrock.
+	http.post(`${API_BASE}/ai/filter`, async ({ request }) => {
+		const { query = '' } = (await request.json().catch(() => ({}))) as { query?: string };
+		const q = query.toLowerCase();
+		const filters: Record<string, string[]> = {};
+		if (q.includes('critical')) filters.severity = ['Critical'];
+		else if (q.includes('warning')) filters.severity = ['Warning'];
+		if (q.includes('unassigned') || q.includes('nobody') || q.includes('no owner')) filters.owner = ['Unassigned'];
+		if (q.includes('prod')) filters['tagKey:env'] = ['prod'];
+		const lastMinutes = q.includes('hour') ? 60 : q.includes('today') ? 1440 : undefined;
+		return HttpResponse.json({
+			success: true,
+			data: {
+				filters,
+				...(lastMinutes ? { lastMinutes } : {}),
+				explanation: 'Playground interpretation of your request.',
+			},
+		});
+	}),
+
 	http.post(`${API_BASE}/ai/test`, () => {
 		// The playground never talks to Bedrock; it demonstrates both outcomes instead.
 		const ok = aiConfigState.hasApiKey && aiConfigState.modelId.length > 0;

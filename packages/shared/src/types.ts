@@ -732,6 +732,27 @@ export interface UpdateAiConfig {
 	enabled?: boolean;
 }
 
+// Natural-language -> filter: the model translates a phrase like "critical prod
+// alerts nobody owns from the last hour" into the dashboard's own filter record.
+// The server validates every field and value against the live facet vocabulary, so a
+// hallucinated value can never reach the query engine.
+export interface AiFilterResult {
+	// The dashboard filter record shape (tagKey:<key> keys, !field exclusions).
+	filters: Record<string, string[]>;
+	// Free-text search for anything the structured filters can't express (alert names).
+	search?: string;
+	// Rolling window in minutes; the client maps it onto its nearest time preset.
+	lastMinutes?: number;
+	// One short sentence the UI shows so the user can sanity-check the interpretation.
+	explanation: string;
+}
+
+// What any authenticated user may know about AI: whether features are on. Admins get
+// the full config through /ai/config; this never carries configuration details.
+export interface AiStatus {
+	enabled: boolean;
+}
+
 // Result of the Test Connection button: one real (tiny) Converse call to Bedrock.
 export interface AiTestResult {
 	ok: boolean;

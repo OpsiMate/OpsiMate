@@ -518,6 +518,10 @@ export const UpdateAiConfigSchema = z
 	})
 	.refine((v) => Object.keys(v).length > 0, { message: 'Provide at least one field to update' });
 
+export const AiFilterQuerySchema = z.object({
+	query: z.string().trim().min(2).max(400),
+});
+
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
 });

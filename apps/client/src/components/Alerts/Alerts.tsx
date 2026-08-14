@@ -30,7 +30,7 @@ import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Alert } from '@OpsiMate/shared';
+import { AiFilterResult, Alert } from '@OpsiMate/shared';
 import {
 	Bell,
 	BellOff,
@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
+import { AiFilterPopover } from './AiFilterPopover';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActionDialog';
@@ -57,7 +58,7 @@ import { AlertTab, GroupStatus } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
 import { resolveTimeRange } from './AlertsTable/TimeFilter/TimeFilter.utils';
-import { TimeRange } from './AlertsTable/TimeFilter/TimeFilter.types';
+import { QuickPreset, TimeRange } from './AlertsTable/TimeFilter/TimeFilter.types';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import {
@@ -108,6 +109,29 @@ const toCoarseWindow = (timeRange: TimeRange | undefined) => {
 		from: resolved.from ? floorMinute(resolved.from).toISOString() : null,
 		to: resolved.to ? ceilMinute(resolved.to).toISOString() : null,
 	};
+};
+
+// Maps the AI filter's rolling window (minutes) onto the nearest existing preset —
+// rounding UP so the requested range is always fully covered.
+const PRESET_MINUTES: Array<[number, QuickPreset]> = [
+	[1, 'last1m'],
+	[2, 'last2m'],
+	[5, 'last5m'],
+	[15, 'last15m'],
+	[30, 'last30m'],
+	[60, 'last1h'],
+	[120, 'last2h'],
+	[360, 'last6h'],
+	[720, 'last12h'],
+	[1440, 'last24h'],
+	[2880, 'last2d'],
+	[4320, 'last3d'],
+	[7200, 'last5d'],
+	[10080, 'last7d'],
+];
+const minutesToTimeRange = (minutes: number): TimeRange => {
+	const preset = (PRESET_MINUTES.find(([m]) => minutes <= m) ?? PRESET_MINUTES[PRESET_MINUTES.length - 1])[1];
+	return { from: null, to: null, preset };
 };
 
 // The All view describes active + resolved together: counts add, tag keys union.
@@ -473,6 +497,17 @@ const Alerts = () => {
 
 	const handleFilterChange = (newFilters: Record<string, string[]>) => {
 		updateDashboardField('filters', newFilters);
+	};
+
+	// The AI translation REPLACES the current view (the phrase describes the complete
+	// desired state) — landing as ordinary chips/search/time controls the user can
+	// adjust, which is the whole trust story of this feature.
+	const applyAiFilter = (result: AiFilterResult) => {
+		updateDashboardField('filters', result.filters);
+		updateDashboardField('query', result.search ?? '');
+		if (result.lastMinutes !== undefined) {
+			updateDashboardField('timeRange', minutesToTimeRange(result.lastMinutes));
+		}
 	};
 
 	// Scope of "apply to all N matching": the Active view's FULL query — the complete
@@ -1034,6 +1069,8 @@ const Alerts = () => {
 										onSearchChange={(term) => updateDashboardField('query', term)}
 									/>
 								</div>
+
+								<AiFilterPopover onApply={applyAiFilter} />
 
 								{/* Silenced alerts are usually filtered out (a dashboard's status filter
 								    typically pins Firing), and digging into the sidebar to check what's

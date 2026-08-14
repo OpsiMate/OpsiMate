@@ -194,7 +194,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
-	const aiBL = new AiBL(aiConfigRepo, auditBL);
+	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
 	// Controllers (only for SERVER)
 	const dashboardController = new DashboardController(dashboardBL);

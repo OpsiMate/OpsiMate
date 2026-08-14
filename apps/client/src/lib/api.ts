@@ -1,6 +1,8 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	AiConfig,
+	AiFilterResult,
+	AiStatus,
 	AiTestResult,
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
@@ -615,6 +617,9 @@ export const aiApi = {
 	getConfig: () => apiRequest<AiConfig>('/ai/config'),
 	updateConfig: (updates: UpdateAiConfig) => apiRequest<AiConfig>('/ai/config', 'PUT', updates),
 	testConnection: () => apiRequest<AiTestResult>('/ai/test', 'POST'),
+	// Any authenticated user: drives AI feature visibility without exposing config.
+	getStatus: () => apiRequest<AiStatus>('/ai/status'),
+	filterFromText: (query: string) => apiRequest<AiFilterResult>('/ai/filter', 'POST', { query }),
 };
 
 export const silenceResetApi = {

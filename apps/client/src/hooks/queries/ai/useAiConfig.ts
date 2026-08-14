@@ -43,3 +43,33 @@ export const useTestAiConnection = () => {
 		},
 	});
 };
+
+// Whether AI features are usable at all — readable by every authenticated user, cached
+// long: it only changes when an admin edits settings.
+export const useAiStatus = () => {
+	return useQuery({
+		queryKey: [...queryKeys.ai, 'status'],
+		queryFn: async () => {
+			const response = await aiApi.getStatus();
+			if (!response.success || !response.data) {
+				throw new Error(response.error || 'Failed to fetch AI status');
+			}
+			return response.data;
+		},
+		staleTime: 60 * 1000,
+	});
+};
+
+// Natural language -> the dashboard's filter record, validated server-side against the
+// live facet vocabulary.
+export const useAiFilter = () => {
+	return useMutation({
+		mutationFn: async (query: string) => {
+			const response = await aiApi.filterFromText(query);
+			if (!response.success || !response.data) {
+				throw new Error(response.error || 'Failed to translate the request');
+			}
+			return response.data;
+		},
+	});
+};

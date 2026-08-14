@@ -1,1 +1,1 @@
-export { useAiConfig, useUpdateAiConfig, useTestAiConnection } from './useAiConfig';
+export { useAiConfig, useUpdateAiConfig, useTestAiConnection, useAiStatus, useAiFilter } from './useAiConfig';

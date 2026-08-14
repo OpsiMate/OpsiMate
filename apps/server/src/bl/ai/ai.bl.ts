@@ -1,6 +1,9 @@
 import {
 	AiConfig,
+	AiFilterResult,
+	AiStatus,
 	AiTestResult,
+	AlertFacetsResult,
 	AuditActionType,
 	AuditResourceType,
 	Logger,
@@ -28,16 +31,35 @@ const TEST_TIMEOUT_MS = 15_000;
 // layer, {"message": ...} from the runtime), and the exception class only appears in
 // the x-amzn-errortype header — read all three.
 interface BedrockConverseResponse {
-	output?: { message?: { content?: Array<{ text?: string }> } };
+	output?: { message?: { content?: Array<{ text?: string; toolUse?: { name?: string; input?: unknown } }> } };
 	message?: string;
 	Message?: string;
+}
+
+// Outcome of one Converse round trip, shared by the test button and every feature call.
+interface ConverseOutcome {
+	ok: boolean;
+	latencyMs: number;
+	status: number;
+	body: BedrockConverseResponse;
+	errorMessage: string | null;
 }
 
 export class AiBL {
 	constructor(
 		private aiConfigRepo: AiConfigRepository,
-		private auditBL: AuditBL
+		private auditBL: AuditBL,
+		// The live facet vocabulary (fields, values, tag keys) used to ground and then
+		// validate NL->filter translations. Injected so this BL stays free of alert
+		// internals.
+		private getFacets: () => Promise<AlertFacetsResult>
 	) {}
+
+	// What any authenticated user may know: whether AI features are usable at all.
+	async getStatus(): Promise<AiStatus> {
+		const row = await this.aiConfigRepo.getConfig();
+		return { enabled: row.enabled === 1 && row.api_key != null && row.model_id.length > 0 };
+	}
 
 	// The stored key never leaves the server — the config the API returns carries only
 	// whether one exists.
@@ -78,17 +100,16 @@ export class AiBL {
 		return this.getConfig();
 	}
 
-	// One real, minimal Converse round trip with the SAVED configuration — the same
-	// "Test" contract actions and integrations follow. Distinguishable outcomes: bad
-	// key (401/403), bad model id (400/404), wrong region (network error), success
-	// (the model's own reply text).
-	async testConnection(): Promise<AiTestResult> {
+	// One Converse round trip with the SAVED configuration, shared by the test button
+	// and every feature call. Never throws — errors come back as a message so callers
+	// can surface Bedrock's own diagnosis (bad key vs bad model vs wrong region).
+	private async converse(body: object): Promise<ConverseOutcome> {
 		const row = await this.aiConfigRepo.getConfig();
 		if (!row.api_key) {
-			return { ok: false, latencyMs: 0, modelId: row.model_id, message: 'No API key is configured yet.' };
+			return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: 'No API key is configured yet.' };
 		}
 		if (!row.model_id) {
-			return { ok: false, latencyMs: 0, modelId: '', message: 'No model id is configured yet.' };
+			return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: 'No model id is configured yet.' };
 		}
 
 		const url = `${bedrockEndpoint(row.region)}/model/${encodeURIComponent(row.model_id)}/converse`;
@@ -102,26 +123,23 @@ export class AiBL {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${decryptPassword(row.api_key)}`,
 				},
-				body: JSON.stringify({
-					messages: [{ role: 'user', content: [{ text: 'Reply with the single word: ok' }] }],
-					inferenceConfig: { maxTokens: 16 },
-				}),
+				body: JSON.stringify(body),
 				signal: controller.signal,
 			});
 			clearTimeout(timer);
 			const latencyMs = Date.now() - started;
-			const body = (await response.json().catch(() => ({}))) as BedrockConverseResponse;
+			const parsed = (await response.json().catch(() => ({}))) as BedrockConverseResponse;
 
 			if (!response.ok) {
+				// Bedrock error bodies are inconsistent about casing and the exception
+				// class only appears in the x-amzn-errortype header — read all three.
 				const errorType = (response.headers.get('x-amzn-errortype') ?? '').split(':')[0];
-				const detail = body.message || body.Message || '';
-				const reason =
-					[errorType, detail].filter(Boolean).join(': ') || `HTTP ${response.status}`;
-				logger.warn(`Bedrock test failed (${response.status}): ${reason}`);
-				return { ok: false, latencyMs, modelId: row.model_id, message: reason };
+				const detail = parsed.message || parsed.Message || '';
+				const reason = [errorType, detail].filter(Boolean).join(': ') || `HTTP ${response.status}`;
+				logger.warn(`Bedrock call failed (${response.status}): ${reason}`);
+				return { ok: false, latencyMs, status: response.status, body: parsed, errorMessage: reason };
 			}
-			const reply = body.output?.message?.content?.map((c) => c.text ?? '').join('') || '(empty reply)';
-			return { ok: true, latencyMs, modelId: row.model_id, message: reply.slice(0, 200) };
+			return { ok: true, latencyMs, status: response.status, body: parsed, errorMessage: null };
 		} catch (error) {
 			const latencyMs = Date.now() - started;
 			const message =
@@ -130,11 +148,175 @@ export class AiBL {
 					: error instanceof Error
 						? error.message
 						: 'Unknown error';
-			logger.warn(`Bedrock test errored: ${message}`);
-			return { ok: false, latencyMs, modelId: row.model_id, message };
+			logger.warn(`Bedrock call errored: ${message}`);
+			return { ok: false, latencyMs, status: 0, body: {}, errorMessage: message };
 		}
 	}
+
+	// The Test Connection button — same contract actions and integrations follow.
+	async testConnection(): Promise<AiTestResult> {
+		const row = await this.aiConfigRepo.getConfig();
+		const outcome = await this.converse({
+			messages: [{ role: 'user', content: [{ text: 'Reply with the single word: ok' }] }],
+			inferenceConfig: { maxTokens: 16 },
+		});
+		if (!outcome.ok) {
+			return {
+				ok: false,
+				latencyMs: outcome.latencyMs,
+				modelId: row.model_id,
+				message: outcome.errorMessage ?? 'Unknown error',
+			};
+		}
+		const reply = outcome.body.output?.message?.content?.map((c) => c.text ?? '').join('') || '(empty reply)';
+		return { ok: true, latencyMs: outcome.latencyMs, modelId: row.model_id, message: reply.slice(0, 200) };
+	}
+
+	// Natural language -> the dashboard's filter record. The model is grounded on the
+	// LIVE facet vocabulary and forced through a tool schema; afterwards every field
+	// and value is validated against that same vocabulary, so a hallucinated value can
+	// never reach the query engine — worst case a term is dropped and the user sees
+	// fewer chips than expected.
+	async filterFromText(query: string): Promise<AiFilterResult> {
+		const status = await this.getStatus();
+		if (!status.enabled) {
+			throw new AiDisabledError();
+		}
+
+		const facets = await this.getFacets();
+		const vocabulary = buildVocabulary(facets);
+
+		const outcome = await this.converse({
+			system: [
+				{
+					text:
+						'You translate a natural-language description of alerts into structured filters for an alert dashboard. ' +
+						'Use ONLY field names and values from the provided vocabulary (values are case-sensitive). ' +
+						'Anything about alert NAMES or message text belongs in `search`, not in filters. ' +
+						'Phrases like "not X" or "except X" become an exclusion: prefix the field name with "!". ' +
+						'Time phrases ("last hour", "today") become lastMinutes. ' +
+						'Unowned/unassigned alerts: owner=["Unassigned"]. ' +
+						'Keep `explanation` to one short sentence describing your interpretation.',
+				},
+			],
+			messages: [
+				{
+					role: 'user',
+					content: [{ text: `Vocabulary:\n${JSON.stringify(vocabulary)}\n\nRequest: ${query}` }],
+				},
+			],
+			toolConfig: {
+				tools: [
+					{
+						toolSpec: {
+							name: 'apply_alert_filters',
+							description: 'Apply structured filters to the alert dashboard.',
+							inputSchema: {
+								json: {
+									type: 'object',
+									properties: {
+										filters: {
+											type: 'object',
+											description:
+												'Field -> allowed values. Keys are field names from the vocabulary, optionally prefixed with "!" for exclusion.',
+											additionalProperties: { type: 'array', items: { type: 'string' } },
+										},
+										search: { type: 'string', description: 'Free-text search over alert names and messages.' },
+										lastMinutes: { type: 'integer', minimum: 1, description: 'Rolling time window in minutes.' },
+										explanation: { type: 'string' },
+									},
+									required: ['filters', 'explanation'],
+								},
+							},
+						},
+					},
+				],
+				toolChoice: { tool: { name: 'apply_alert_filters' } },
+			},
+			inferenceConfig: { maxTokens: 500 },
+		});
+
+		if (!outcome.ok) {
+			throw new Error(outcome.errorMessage ?? 'Bedrock call failed');
+		}
+		const toolUse = outcome.body.output?.message?.content?.find((c) => c.toolUse)?.toolUse;
+		const raw = (toolUse?.input ?? {}) as {
+			filters?: Record<string, unknown>;
+			search?: unknown;
+			lastMinutes?: unknown;
+			explanation?: unknown;
+		};
+
+		return {
+			filters: sanitizeFilters(raw.filters, facets),
+			search: typeof raw.search === 'string' && raw.search.trim() ? raw.search.trim().slice(0, 200) : undefined,
+			lastMinutes:
+				typeof raw.lastMinutes === 'number' && Number.isFinite(raw.lastMinutes)
+					? Math.min(Math.max(Math.round(raw.lastMinutes), 1), 7 * 24 * 60)
+					: undefined,
+			explanation:
+				typeof raw.explanation === 'string' && raw.explanation.trim()
+					? raw.explanation.trim().slice(0, 300)
+					: 'Applied the interpreted filters.',
+		};
+	}
 }
+
+// Thrown when a feature call arrives while AI is not configured/enabled — the
+// controller maps it to a 409 so the client can show "enable AI in settings".
+export class AiDisabledError extends Error {
+	constructor() {
+		super('AI features are not enabled. Configure a Bedrock key in Settings → AI.');
+	}
+}
+
+// Fields whose values are a fixed enum rather than whatever currently exists: "not
+// silenced" must validate even when nothing is silenced right now, and "resolved
+// alerts" even when the archive is empty. Everything else (tags, types, owners)
+// validates against the live vocabulary only.
+const STATIC_FIELD_VALUES: Record<string, string[]> = {
+	status: ['Firing', 'Muted', 'Silenced'],
+	severity: ['Critical', 'Warning', 'Info'],
+};
+
+// The grounding sent to the model: every filterable field with its live values (plus
+// the static enums above). Values are capped per field to keep the prompt small;
+// alertName is deliberately excluded — name matching belongs in `search`, and
+// thousands of names would bloat every call.
+const VOCAB_VALUE_CAP = 60;
+const buildVocabulary = (facets: AlertFacetsResult): Record<string, string[]> => {
+	const vocabulary: Record<string, string[]> = { ...STATIC_FIELD_VALUES };
+	for (const [field, counts] of Object.entries(facets.facets)) {
+		if (field === 'alertName') continue;
+		const merged = new Set([...(vocabulary[field] ?? []), ...Object.keys(counts)]);
+		vocabulary[field] = [...merged].slice(0, VOCAB_VALUE_CAP);
+	}
+	return vocabulary;
+};
+
+// Keep only fields that exist and, per field, only values the vocabulary actually
+// contains (case-insensitive in, canonical casing out). "!field" exclusion keys
+// validate against the same base field.
+const sanitizeFilters = (
+	raw: Record<string, unknown> | undefined,
+	facets: AlertFacetsResult
+): Record<string, string[]> => {
+	const result: Record<string, string[]> = {};
+	if (!raw) return result;
+	for (const [key, values] of Object.entries(raw)) {
+		if (!Array.isArray(values)) continue;
+		const baseField = key.startsWith('!') ? key.slice(1) : key;
+		const knownValues = [...(STATIC_FIELD_VALUES[baseField] ?? []), ...Object.keys(facets.facets[baseField] ?? {})];
+		if (knownValues.length === 0 || baseField === 'alertName') continue;
+		const canonical = new Map(knownValues.map((v) => [v.toLowerCase(), v]));
+		const kept = values
+			.filter((v): v is string => typeof v === 'string')
+			.map((v) => canonical.get(v.toLowerCase()))
+			.filter((v): v is string => v !== undefined);
+		if (kept.length > 0) result[key] = [...new Set(kept)];
+	}
+	return result;
+};
 
 // Local alias so the encrypt call site reads symmetrically with decryptPassword.
 const encrypt = (value: string): string => {
