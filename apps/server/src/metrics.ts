@@ -93,6 +93,20 @@ interface StateCountRow {
 	count: number;
 }
 
+interface TriageCountRow {
+	unassigned: number | null;
+	unread: number | null;
+}
+
+interface OldestFiringRow {
+	oldest: string | null;
+}
+
+interface ResourceCountRow {
+	kind: string;
+	count: number;
+}
+
 // Bound by initMetrics; the gauges below read through them so initMetrics stays
 // idempotent (tests build several apps in one process — a second Gauge with the same
 // name would throw on registration).
@@ -168,7 +182,7 @@ new Gauge({
 	registers: [metricsRegistry],
 	collect() {
 		if (!firingTriageCounts) return;
-		const row = firingTriageCounts.get() as { unassigned: number | null; unread: number | null };
+		const row = firingTriageCounts.get() as TriageCountRow;
 		this.set(row.unassigned ?? 0);
 	},
 });
@@ -179,7 +193,7 @@ new Gauge({
 	registers: [metricsRegistry],
 	collect() {
 		if (!firingTriageCounts) return;
-		const row = firingTriageCounts.get() as { unassigned: number | null; unread: number | null };
+		const row = firingTriageCounts.get() as TriageCountRow;
 		this.set(row.unread ?? 0);
 	},
 });
@@ -192,7 +206,7 @@ new Gauge({
 	registers: [metricsRegistry],
 	collect() {
 		if (!oldestFiringStartsAt) return;
-		const row = oldestFiringStartsAt.get() as { oldest: string | null };
+		const row = oldestFiringStartsAt.get() as OldestFiringRow;
 		const started = row.oldest ? Date.parse(row.oldest) : NaN;
 		this.set(Number.isFinite(started) ? Math.max(0, (Date.now() - started) / 1000) : 0);
 	},
@@ -207,7 +221,7 @@ new Gauge({
 	collect() {
 		if (!resourceCounts) return;
 		this.reset();
-		for (const row of resourceCounts.all() as { kind: string; count: number }[]) {
+		for (const row of resourceCounts.all() as ResourceCountRow[]) {
 			this.set({ kind: row.kind }, row.count);
 		}
 	},

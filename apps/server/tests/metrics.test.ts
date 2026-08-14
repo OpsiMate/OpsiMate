@@ -35,8 +35,11 @@ beforeAll(async () => {
 	insertResolved('m-r1', 'info');
 });
 
+// Restore rather than delete: a developer's own METRICS_TOKEN must survive the run.
+const originalMetricsToken = process.env.METRICS_TOKEN;
 afterEach(() => {
-	delete process.env.METRICS_TOKEN;
+	if (originalMetricsToken === undefined) delete process.env.METRICS_TOKEN;
+	else process.env.METRICS_TOKEN = originalMetricsToken;
 });
 
 describe('GET /metrics', () => {
@@ -66,7 +69,7 @@ describe('GET /metrics', () => {
 		expect(res.status).toBeLessThan(300);
 
 		const metrics = await app.get('/metrics');
-		expect(metrics.text).toMatch(/opsimate_alerts_ingested_total\{[^}]*severity="critical"[^}]*\} [1-9]/);
+		expect(metrics.text).toMatch(/opsimate_alerts_ingested_total\{type="Custom",severity="critical"\} [1-9]/);
 	});
 
 	test('request durations are recorded against the matched route pattern, not the raw URL', async () => {
