@@ -1,8 +1,62 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "id": null,
   "title": "OpsiMate",
   "uid": "opsimate-self",
   "description": "Self-monitoring for OpsiMate: alert inventory and triage backlog, ingestion and lifecycle throughput, API latency, and server runtime health.",
-  "tags": ["opsimate", "alerting", "self-monitoring"],
+  "tags": [
+    "opsimate",
+    "alerting",
+    "self-monitoring"
+  ],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -14,7 +68,14 @@
     "to": "now"
   },
   "timepicker": {
-    "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "1h"]
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
   },
   "links": [
     {
@@ -57,26 +118,12 @@
   "templating": {
     "list": [
       {
-        "type": "datasource",
-        "name": "datasource",
-        "label": "Data source",
-        "query": "prometheus",
-        "current": {},
-        "hide": 0,
-        "includeAll": false,
-        "multi": false,
-        "options": [],
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false
-      },
-      {
         "type": "query",
         "name": "instance",
         "label": "Instance",
         "datasource": {
           "type": "prometheus",
-          "uid": "${datasource}"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(opsimate_alerts, instance)",
         "query": {
@@ -100,7 +147,7 @@
         "label": "Severity",
         "datasource": {
           "type": "prometheus",
-          "uid": "${datasource}"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(opsimate_alerts_by_severity, severity)",
         "query": {
@@ -175,7 +222,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -183,7 +230,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -196,7 +243,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -248,7 +297,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -256,7 +305,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -269,7 +318,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -314,7 +365,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -322,7 +373,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -335,7 +386,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -380,7 +433,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -388,7 +441,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -401,7 +454,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -453,7 +508,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -461,7 +516,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -474,7 +529,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -526,7 +583,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -534,7 +591,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -547,7 +604,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -593,7 +652,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -601,7 +660,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code"
@@ -613,7 +672,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -652,7 +713,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -660,7 +721,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code"
@@ -672,7 +733,9 @@
         "justifyMode": "auto",
         "textMode": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
@@ -718,7 +781,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -726,7 +789,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -738,7 +801,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -783,7 +849,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -791,7 +857,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -803,7 +869,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -865,7 +934,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -873,7 +942,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -885,7 +954,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -924,7 +996,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -932,7 +1004,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -943,7 +1015,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -954,7 +1026,7 @@
           "refId": "C",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -965,7 +1037,7 @@
           "refId": "D",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -977,7 +1049,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1016,7 +1091,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1024,7 +1099,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1035,7 +1110,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1047,7 +1122,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1099,7 +1177,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1107,7 +1185,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1119,7 +1197,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1158,7 +1239,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1166,7 +1247,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1178,7 +1259,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1234,7 +1318,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1242,7 +1326,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1253,7 +1337,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1265,7 +1349,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1304,7 +1391,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1312,7 +1399,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1323,7 +1410,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1335,7 +1422,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1374,7 +1464,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1382,7 +1472,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1393,7 +1483,7 @@
           "refId": "B",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": true,
           "editorMode": "code",
@@ -1405,7 +1495,10 @@
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
-          "calcs": ["lastNotNull", "max"]
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1457,7 +1550,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${DS_PROMETHEUS}"
       },
       "targets": [
         {
@@ -1465,7 +1558,7 @@
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "range": false,
           "editorMode": "code",
@@ -1478,7 +1571,9 @@
         "displayMode": "gradient",
         "showUnfilled": true,
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         }
