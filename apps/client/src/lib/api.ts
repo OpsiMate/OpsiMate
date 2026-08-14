@@ -1,5 +1,7 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AiConfig,
+	AiTestResult,
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
 	AlertGroupSummaryNode,
@@ -26,6 +28,7 @@ import {
 	Alert as SharedAlert,
 	OncallTeam,
 	Tag,
+	UpdateAiConfig,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -606,6 +609,14 @@ export const retentionApi = {
 };
 
 // Org-wide daily silence reset (admin-only endpoints).
+// AI (BYOK) configuration — Bedrock key/region/model, admin-only. The key is
+// write-only: the server returns hasApiKey, never the key.
+export const aiApi = {
+	getConfig: () => apiRequest<AiConfig>('/ai/config'),
+	updateConfig: (updates: UpdateAiConfig) => apiRequest<AiConfig>('/ai/config', 'PUT', updates),
+	testConnection: () => apiRequest<AiTestResult>('/ai/test', 'POST'),
+};
+
 export const silenceResetApi = {
 	getSettings: () => apiRequest<SilenceResetSettings>('/alerts/silence-reset'),
 	updateSettings: (updates: UpdateSilenceResetSettings) =>

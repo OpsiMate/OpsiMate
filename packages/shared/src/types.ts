@@ -337,6 +337,7 @@ export enum AuditResourceType {
 	SECRET = 'SECRET',
 	ENRICHMENT = 'ENRICHMENT',
 	ACTION = 'ACTION',
+	AI = 'AI',
 	// Add more as needed
 }
 
@@ -699,6 +700,46 @@ export interface SilenceResetSettings {
 	hour: number;
 	// ISO timestamp of the reset occurrence most recently applied (null if never).
 	lastClearedAt: string | null;
+}
+
+// ---------- AI (BYOK) configuration ----------
+
+// Bedrock is the first (and so far only) provider: a single Bedrock API key sent as a
+// bearer token to the Converse REST API — no AWS SDK, no IAM keypair signing. More
+// providers/auth modes can join the union later.
+export type AiProvider = 'bedrock';
+
+// What the API returns about the AI configuration. The key itself NEVER leaves the
+// server — only whether one is stored.
+export interface AiConfig {
+	provider: AiProvider;
+	// AWS region the Bedrock runtime endpoint lives in (e.g. us-east-1).
+	region: string;
+	// Bedrock model id or inference profile (e.g. anthropic.claude-sonnet-4-5-20250929-v1:0).
+	modelId: string;
+	enabled: boolean;
+	hasApiKey: boolean;
+	updatedAt: string | null;
+}
+
+// The one update shape shared by the API layer, hooks and BL; UpdateAiConfigSchema
+// (schemas.ts) is its validating counterpart. `apiKey` semantics: undefined = keep the
+// stored key, a string = replace it, null = delete it.
+export interface UpdateAiConfig {
+	region?: string;
+	modelId?: string;
+	apiKey?: string | null;
+	enabled?: boolean;
+}
+
+// Result of the Test Connection button: one real (tiny) Converse call to Bedrock.
+export interface AiTestResult {
+	ok: boolean;
+	latencyMs: number;
+	modelId: string;
+	// On success: the model's reply text (proof the round trip worked). On failure: the
+	// error Bedrock returned, so the user can tell a bad key from a bad model id.
+	message: string;
 }
 
 export interface RetentionConfig {

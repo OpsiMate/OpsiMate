@@ -500,6 +500,24 @@ export const UpdateSilenceResetSettingsSchema = z
 		message: 'Provide enabled and/or hour',
 	});
 
+// AI (BYOK) configuration update. apiKey: string replaces the stored key, null deletes
+// it, absent keeps it. Region/model shapes are validated loosely on purpose — AWS adds
+// regions and model ids faster than any hardcoded list stays correct.
+export const UpdateAiConfigSchema = z
+	.object({
+		region: z
+			.string()
+			.trim()
+			.min(1)
+			.max(40)
+			.regex(/^[a-z0-9-]+$/, 'Expected an AWS region like us-east-1')
+			.optional(),
+		modelId: z.string().trim().min(1).max(200).optional(),
+		apiKey: z.string().min(1).max(4096).nullable().optional(),
+		enabled: z.boolean().optional(),
+	})
+	.refine((v) => Object.keys(v).length > 0, { message: 'Provide at least one field to update' });
+
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
 });

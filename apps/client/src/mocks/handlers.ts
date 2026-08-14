@@ -346,7 +346,45 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+// In-memory AI (BYOK) config for the playground: same masking contract as the server —
+// the key is write-only, GET only reports that one exists.
+const aiConfigState = { region: 'us-east-1', modelId: '', hasApiKey: false, enabled: false, updatedAt: null as string | null };
+
 export const handlers = [
+	// ==================== AI (BYOK) ====================
+	http.get(`${API_BASE}/ai/config`, () => {
+		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
+	}),
+
+	http.put(`${API_BASE}/ai/config`, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as {
+			region?: string;
+			modelId?: string;
+			apiKey?: string | null;
+			enabled?: boolean;
+		};
+		if (body.region !== undefined) aiConfigState.region = body.region;
+		if (body.modelId !== undefined) aiConfigState.modelId = body.modelId;
+		if (body.apiKey !== undefined) aiConfigState.hasApiKey = body.apiKey !== null;
+		if (body.enabled !== undefined) aiConfigState.enabled = body.enabled;
+		aiConfigState.updatedAt = nowIso();
+		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
+	}),
+
+	http.post(`${API_BASE}/ai/test`, () => {
+		// The playground never talks to Bedrock; it demonstrates both outcomes instead.
+		const ok = aiConfigState.hasApiKey && aiConfigState.modelId.length > 0;
+		return HttpResponse.json({
+			success: true,
+			data: {
+				ok,
+				latencyMs: ok ? 420 : 0,
+				modelId: aiConfigState.modelId,
+				message: ok ? 'ok (playground stub)' : 'No API key is configured yet.',
+			},
+		});
+	}),
+
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, ({ request }) => {
 		// Timed silences expire lazily on read (mirrors the server sweep).

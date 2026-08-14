@@ -53,6 +53,9 @@ import { RetentionBL } from './bl/retention/retention.bl';
 import { PlaygroundRepository } from './dal/playgroundRepository.ts';
 import { PlaygroundBL } from './bl/playground/playground.bl.ts';
 import { initMetrics, metricsHandler, metricsMiddleware } from './metrics';
+import { AiBL } from './bl/ai/ai.bl';
+import { AiConfigRepository } from './dal/aiConfigRepository';
+import { AiController } from './api/v1/ai/controller';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -151,6 +154,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const oncallRepo = new OncallRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
+	const aiConfigRepo = new AiConfigRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -168,6 +172,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		oncallRepo.initOncallTables(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
+		aiConfigRepo.initAiConfigTable(),
 	]);
 
 	// Every table the metric gauges count now exists.
@@ -189,6 +194,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
+	const aiBL = new AiBL(aiConfigRepo, auditBL);
 
 	// Controllers (only for SERVER)
 	const dashboardController = new DashboardController(dashboardBL);
@@ -205,6 +211,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
+	const aiController = new AiController(aiBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -224,7 +231,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			enrichmentController,
 			actionController,
 			retentionController,
-			oncallController
+			oncallController,
+			aiController
 		)
 	);
 
