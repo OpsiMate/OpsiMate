@@ -103,8 +103,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const app = express();
 
 	// Prometheus (issue #658): request timing on everything below, gauges resolved at
-	// scrape time from cheap SQL counts — never through the alerts snapshot.
-	initMetrics(db);
+	// scrape time from cheap SQL counts — never through the alerts snapshot. The gauge
+	// statements are prepared further down, after every table they read exists.
 	app.use(metricsMiddleware);
 	app.get('/metrics', metricsHandler);
 
@@ -169,6 +169,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 	]);
+
+	// Every table the metric gauges count now exists.
+	initMetrics(db);
 
 	// BL
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);

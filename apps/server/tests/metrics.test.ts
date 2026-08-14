@@ -83,6 +83,39 @@ describe('GET /metrics', () => {
 		expect(res.text).toContain('nodejs_eventloop_lag_seconds');
 	});
 
+	test('triage, age and resource gauges are exposed', async () => {
+		const res = await app.get('/metrics');
+		expect(res.text).toMatch(/opsimate_firing_alerts_unassigned \d+/);
+		expect(res.text).toMatch(/opsimate_firing_alerts_unread \d+/);
+		// Alerts inserted with starts_at=now: age is tiny but present and non-negative.
+		expect(res.text).toMatch(/opsimate_oldest_firing_alert_age_seconds \d+/);
+		expect(res.text).toMatch(/opsimate_resources\{kind="users"\} [1-9]/);
+		expect(res.text).toMatch(/opsimate_resources\{kind="dashboards"\} \d+/);
+	});
+
+	test('resolve and bulk operations increment their counters', async () => {
+		insertAlert('m-res', 'critical', 0);
+		await app.delete('/api/v1/alerts/m-res').set('Authorization', `Bearer ${jwtToken}`);
+
+		insertAlert('m-bulk', 'info', 0);
+		await app
+			.post('/api/v1/alerts/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ action: 'silence', ids: ['m-bulk'], silencedUntil: null });
+
+		const metrics = await app.get('/metrics');
+		expect(metrics.text).toMatch(/opsimate_alerts_resolved_total\{mode="manual"\} [1-9]/);
+		expect(metrics.text).toMatch(/opsimate_bulk_actions_total\{action="silence"\} [1-9]/);
+		expect(metrics.text).toMatch(/opsimate_bulk_alerts_affected_total\{action="silence"\} [1-9]/);
+		expect(metrics.text).toMatch(/opsimate_alerts_silenced_total [1-9]/);
+	});
+
+	test('snapshot compute duration is observed once the list is read', async () => {
+		await app.get('/api/v1/alerts?limit=1').set('Authorization', `Bearer ${jwtToken}`);
+		const metrics = await app.get('/metrics');
+		expect(metrics.text).toMatch(/opsimate_snapshot_compute_duration_seconds_count\{list="active"\} [1-9]/);
+	});
+
 	test('METRICS_TOKEN gates the endpoint when set', async () => {
 		process.env.METRICS_TOKEN = 'scrape-secret';
 		const denied = await app.get('/metrics');
