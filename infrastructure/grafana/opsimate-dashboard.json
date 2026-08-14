@@ -10,9 +10,7 @@
   ],
   "title": "OpsiMate",
   "uid": "opsimate-self",
-  "tags": [
-    "opsimate"
-  ],
+  "tags": ["opsimate"],
   "timezone": "browser",
   "schemaVersion": 39,
   "refresh": "30s",
@@ -20,13 +18,21 @@
     "from": "now-3h",
     "to": "now"
   },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 1,
   "panels": [
     {
       "type": "stat",
       "title": "Firing",
       "gridPos": {
         "h": 4,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 0
       },
@@ -37,13 +43,13 @@
       "targets": [
         {
           "expr": "opsimate_alerts{state=\"firing\"}",
-          "instant": true,
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": false
+          "range": false,
+          "instant": true
         }
       ],
       "options": {
@@ -62,7 +68,7 @@
                 "color": "green"
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
@@ -78,11 +84,91 @@
     },
     {
       "type": "stat",
+      "title": "Silenced",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "opsimate_alerts{state=\"silenced\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "yellow"
+          }
+        },
+        "overrides": []
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "Resolved",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "opsimate_alerts{state=\"resolved\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
       "title": "Unassigned firing",
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 4,
+        "w": 3,
+        "x": 9,
         "y": 0
       },
       "datasource": {
@@ -92,13 +178,13 @@
       "targets": [
         {
           "expr": "opsimate_firing_alerts_unassigned",
-          "instant": true,
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": false
+          "range": false,
+          "instant": true
         }
       ],
       "options": {
@@ -129,15 +215,70 @@
         },
         "overrides": []
       },
-      "id": 2
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "Unread firing",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "opsimate_firing_alerts_unread",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": false,
+          "instant": true
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 5
     },
     {
       "type": "stat",
       "title": "Oldest firing",
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 8,
+        "w": 3,
+        "x": 15,
         "y": 0
       },
       "datasource": {
@@ -147,13 +288,13 @@
       "targets": [
         {
           "expr": "opsimate_oldest_firing_alert_age_seconds",
-          "instant": true,
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": false
+          "range": false,
+          "instant": true
         }
       ],
       "options": {
@@ -185,15 +326,15 @@
         },
         "overrides": []
       },
-      "id": 3
+      "id": 6
     },
     {
       "type": "stat",
       "title": "Ingestion (5m)",
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 18,
         "y": 0
       },
       "datasource": {
@@ -225,15 +366,15 @@
         },
         "overrides": []
       },
-      "id": 4
+      "id": 7
     },
     {
       "type": "stat",
       "title": "API p95 (5m)",
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 16,
+        "w": 3,
+        "x": 21,
         "y": 0
       },
       "datasource": {
@@ -280,63 +421,7 @@
         },
         "overrides": []
       },
-      "id": 5
-    },
-    {
-      "type": "stat",
-      "title": "Event loop p99",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 0
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "expr": "nodejs_eventloop_lag_p99_seconds",
-          "instant": true,
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": false
-        }
-      ],
-      "options": {
-        "graphMode": "area",
-        "colorMode": "value"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "yellow",
-                "value": 0.05
-              },
-              {
-                "color": "red",
-                "value": 0.2
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 6
+      "id": 8
     },
     {
       "type": "timeseries",
@@ -354,22 +439,20 @@
       "targets": [
         {
           "expr": "opsimate_alerts",
-          "legendFormat": "{{state}}",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": true
+          "range": true,
+          "legendFormat": "{{state}}"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       },
       "fieldConfig": {
@@ -382,7 +465,7 @@
         },
         "overrides": []
       },
-      "id": 7
+      "id": 9
     },
     {
       "type": "timeseries",
@@ -400,22 +483,20 @@
       "targets": [
         {
           "expr": "opsimate_alerts_by_severity{state=\"firing\"}",
-          "legendFormat": "{{severity}}",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": true
+          "range": true,
+          "legendFormat": "{{severity}}"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       },
       "fieldConfig": {
@@ -432,7 +513,7 @@
         },
         "overrides": []
       },
-      "id": 8
+      "id": 10
     },
     {
       "type": "timeseries",
@@ -450,156 +531,20 @@
       "targets": [
         {
           "expr": "sum(rate(opsimate_alerts_ingested_total[5m])) by (type)",
-          "legendFormat": "{{type}}",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": true
+          "range": true,
+          "legendFormat": "{{type}}"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "fillOpacity": 12,
-            "lineWidth": 2,
-            "showPoints": "never"
-          },
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "id": 9
-    },
-    {
-      "type": "timeseries",
-      "title": "Alert lifecycle (5m rates)",
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 12
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(opsimate_alerts_resolved_total{mode=\"manual\"}[5m]))",
-          "legendFormat": "resolved (manual)",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        },
-        {
-          "expr": "sum(rate(opsimate_alerts_resolved_total{mode=\"auto\"}[5m]))",
-          "legendFormat": "resolved (auto)",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        },
-        {
-          "expr": "rate(opsimate_alerts_silenced_total[5m])",
-          "legendFormat": "silenced",
-          "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        },
-        {
-          "expr": "rate(opsimate_alerts_unsilenced_total[5m])",
-          "legendFormat": "unsilenced",
-          "refId": "D",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "fillOpacity": 12,
-            "lineWidth": 2,
-            "showPoints": "never"
-          },
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "id": 10
-    },
-    {
-      "type": "timeseries",
-      "title": "Bulk operations & actions",
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 12
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(opsimate_bulk_alerts_affected_total[5m])) by (action)",
-          "legendFormat": "bulk {{action}} (alerts/s)",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        },
-        {
-          "expr": "sum(rate(opsimate_actions_run_total[5m])) by (type, outcome)",
-          "legendFormat": "action {{type}} {{outcome}}",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       },
       "fieldConfig": {
@@ -617,6 +562,136 @@
     },
     {
       "type": "timeseries",
+      "title": "Alert lifecycle (5m rates)",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_alerts_resolved_total{mode=\"manual\"}[5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "resolved (manual)"
+        },
+        {
+          "expr": "sum(rate(opsimate_alerts_resolved_total{mode=\"auto\"}[5m]))",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "resolved (auto)"
+        },
+        {
+          "expr": "rate(opsimate_alerts_silenced_total[5m])",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "silenced"
+        },
+        {
+          "expr": "rate(opsimate_alerts_unsilenced_total[5m])",
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "unsilenced"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "id": 12
+    },
+    {
+      "type": "timeseries",
+      "title": "Bulk operations & actions",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_bulk_alerts_affected_total[5m])) by (action)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "bulk {{action}} (alerts/s)"
+        },
+        {
+          "expr": "sum(rate(opsimate_actions_run_total[5m])) by (type, outcome)",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "action {{type}} {{outcome}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "id": 13
+    },
+    {
+      "type": "timeseries",
       "title": "API p95 latency by route",
       "gridPos": {
         "h": 8,
@@ -631,130 +706,20 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(opsimate_http_request_duration_seconds_bucket[5m])) by (le, route)) > 0",
-          "legendFormat": "{{route}}",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": true
+          "range": true,
+          "legendFormat": "{{route}}"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "fillOpacity": 12,
-            "lineWidth": 2,
-            "showPoints": "never"
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "id": 12
-    },
-    {
-      "type": "timeseries",
-      "title": "HTTP requests by status (5m rate)",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(opsimate_http_request_duration_seconds_count[5m])) by (status_code)",
-          "legendFormat": "{{status_code}}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "fillOpacity": 35,
-            "lineWidth": 2,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "id": 13
-    },
-    {
-      "type": "timeseries",
-      "title": "Alert snapshot recomputes",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 28
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(opsimate_snapshot_compute_duration_seconds_bucket[5m])) by (le, list))",
-          "legendFormat": "p95 {{list}}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        },
-        {
-          "expr": "sum(rate(opsimate_snapshot_compute_duration_seconds_count[5m])) by (list)",
-          "legendFormat": "recomputes/s {{list}}",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "range": true
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       },
       "fieldConfig": {
@@ -772,7 +737,111 @@
     },
     {
       "type": "timeseries",
-      "title": "Process",
+      "title": "HTTP requests by status (5m rate)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(opsimate_http_request_duration_seconds_count[5m])) by (status_code)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "{{status_code}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 35,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "id": 15
+    },
+    {
+      "type": "timeseries",
+      "title": "Alert snapshot recomputes",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(opsimate_snapshot_compute_duration_seconds_bucket[5m])) by (le, list))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "p95 {{list}}"
+        },
+        {
+          "expr": "sum(rate(opsimate_snapshot_compute_duration_seconds_count[5m])) by (list)",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "recomputes/s {{list}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "id": 16
+    },
+    {
+      "type": "bargauge",
+      "title": "Configured resources",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -785,33 +854,74 @@
       },
       "targets": [
         {
-          "expr": "process_resident_memory_bytes",
-          "legendFormat": "RSS",
+          "expr": "opsimate_resources",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": true
+          "range": false,
+          "instant": true,
+          "legendFormat": "{{kind}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-BlPu"
+          }
+        },
+        "overrides": []
+      },
+      "id": 17
+    },
+    {
+      "type": "timeseries",
+      "title": "Process memory",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "RSS"
         },
         {
           "expr": "nodejs_heap_size_used_bytes",
-          "legendFormat": "heap used",
           "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "range": true
+          "range": true,
+          "legendFormat": "heap used"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       },
       "fieldConfig": {
@@ -825,15 +935,62 @@
         },
         "overrides": []
       },
-      "id": 15
+      "id": 18
+    },
+    {
+      "type": "timeseries",
+      "title": "Event loop lag",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "nodejs_eventloop_lag_p50_seconds",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "nodejs_eventloop_lag_p99_seconds",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "range": true,
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "id": 19
     }
-  ],
-  "templating": {
-    "list": []
-  },
-  "annotations": {
-    "list": []
-  },
-  "editable": true,
-  "graphTooltip": 1
+  ]
 }
