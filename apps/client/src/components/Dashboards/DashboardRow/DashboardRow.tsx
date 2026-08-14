@@ -17,7 +17,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { TagBadge } from '@/components/ui/tag-badge';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useToast } from '@/hooks/use-toast';
-import { providerApi } from '@/lib/api';
+import { tagApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { useQueryClient } from '@tanstack/react-query';
@@ -72,7 +72,7 @@ export const DashboardRow = ({
 
 		setIsSubmitting(true);
 		try {
-			const response = await providerApi.createTag({ name: newTagName.trim(), color: newTagColor });
+			const response = await tagApi.createTag({ name: newTagName.trim(), color: newTagColor });
 
 			if (response.success && response.data) {
 				onAddTag?.(response.data);

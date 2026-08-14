@@ -11,7 +11,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { providerApi } from '@/lib/api';
+import { tagApi } from '@/lib/api';
 import { Tag } from '@OpsiMate/shared';
 
 interface CreateTagDialogProps {
@@ -53,7 +53,7 @@ export const CreateTagDialog = ({ open, onClose, onTagCreated }: CreateTagDialog
 
 		setLoading(true);
 		try {
-			const response = await providerApi.createTag({ name: name.trim(), color });
+			const response = await tagApi.createTag({ name: name.trim(), color });
 
 			if (response.success && response.data) {
 				onTagCreated(response.data);

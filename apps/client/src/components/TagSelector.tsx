@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { providerApi } from '@/lib/api';
+import { tagApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { Plus, X } from 'lucide-react';
@@ -30,7 +30,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 	const fetchTags = useCallback(async () => {
 		setLoading(true);
 		try {
-			const response = await providerApi.getAllTags();
+			const response = await tagApi.getAllTags();
 			if (response.success && response.data) {
 				setAllTags(response.data);
 			}
@@ -51,7 +51,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 
 	const addTag = async (tag: Tag) => {
 		try {
-			const response = await providerApi.addTagToService(Number(serviceId), Number(tag.id));
+			const response = await tagApi.addTagToService(Number(serviceId), Number(tag.id));
 			if (response.success) {
 				onTagsChange([...selectedTags, tag]);
 			} else {
@@ -72,7 +72,7 @@ export const TagSelector = ({ selectedTags, onTagsChange, serviceId, className }
 
 	const removeTag = async (tag: Tag) => {
 		try {
-			const response = await providerApi.removeTagFromService(Number(serviceId), Number(tag.id));
+			const response = await tagApi.removeTagFromService(Number(serviceId), Number(tag.id));
 			if (response.success) {
 				onTagsChange(selectedTags.filter((t) => t.id !== tag.id));
 				toast({

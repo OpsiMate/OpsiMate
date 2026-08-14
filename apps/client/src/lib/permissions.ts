@@ -74,40 +74,6 @@ export function canManageUsers(): boolean {
 	}
 }
 
-export function canManageProviders(): boolean {
-	const userRole = getUserRole();
-
-	switch (userRole) {
-		case Role.Admin:
-			return true;
-		case Role.Editor:
-			return true;
-		case Role.Viewer:
-			return false;
-		case Role.Operation:
-			return false;
-		default:
-			return false;
-	}
-}
-
-export function canViewServices(): boolean {
-	const userRole = getUserRole();
-
-	switch (userRole) {
-		case Role.Admin:
-			return true;
-		case Role.Editor:
-			return true;
-		case Role.Viewer:
-			return true;
-		case Role.Operation:
-			return true;
-		default:
-			return false;
-	}
-}
-
 export function canManageIntegrations(): boolean {
 	if (isReadOnlyMode()) {
 		return false;

@@ -9,7 +9,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { providerApi } from '@/lib/api';
+import { tagApi } from '@/lib/api';
 import { Tag } from '@OpsiMate/shared';
 import { AlertTriangle } from 'lucide-react';
 
@@ -29,7 +29,7 @@ export const DeleteTagDialog = ({ open, onClose, tag, onTagDeleted }: DeleteTagD
 
 		setLoading(true);
 		try {
-			const response = await providerApi.deleteTag(tag.id);
+			const response = await tagApi.deleteTag(tag.id);
 
 			if (response.success) {
 				onTagDeleted(tag.id);
