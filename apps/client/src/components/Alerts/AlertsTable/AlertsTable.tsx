@@ -101,7 +101,12 @@ export const AlertsTable = ({
 	// Pending settle-commit for the observer below; cleared on re-attach so a timer
 	// from a torn-down scroller can't commit that dead element's width.
 	const settleTimerRef = useRef<number | null>(null);
-	const observeScroller = (el: HTMLDivElement | null) => {
+	// useCallback([]): a ref callback with fresh identity re-runs on EVERY render
+	// (React detaches with null, re-attaches) — which would tear down the observer
+	// and cancel the pending settle timer exactly when a sidebar toggle re-renders
+	// the table mid-animation. Stable identity limits runs to real node changes.
+	// Everything captured is a ref or a setState, so the empty deps are sound.
+	const observeScroller = useCallback((el: HTMLDivElement | null) => {
 		scrollerRef.current = el;
 		resizeObserverRef.current?.disconnect();
 		resizeObserverRef.current = null;
@@ -147,7 +152,7 @@ export const AlertsTable = ({
 			observer.observe(el);
 			resizeObserverRef.current = observer;
 		}
-	};
+	}, []);
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 

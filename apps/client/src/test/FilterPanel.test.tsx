@@ -102,4 +102,28 @@ describe('FilterPanel +/− controls', () => {
 
 		expect(screen.getByTitle('Critical')).toBeInTheDocument();
 	});
+
+	test('a seen value that later disappears from the facets stays listed with count 0', () => {
+		// Regression: the seen-value Set created on first render must be the SAME
+		// object the tracking effects mutate — if they diverge, a facet that vanishes
+		// (e.g. its last alert resolves) silently drops out instead of showing 0.
+		const onFilterChange = vi.fn();
+		const { rerender } = render(
+			<FilterPanel config={config} facets={facets} filters={{}} onFilterChange={onFilterChange} />
+		);
+		expect(screen.getByTitle('Critical')).toBeInTheDocument();
+
+		rerender(
+			<FilterPanel
+				config={config}
+				facets={{ severity: [{ value: 'Info', count: 5 }] }}
+				filters={{}}
+				onFilterChange={onFilterChange}
+			/>
+		);
+
+		const row = screen.getByTitle('Critical').closest('div');
+		expect(row).not.toBeNull();
+		expect(row?.textContent).toContain('0');
+	});
 });

@@ -104,7 +104,13 @@ export const FilterPanel = ({
 	const allSeenValues = useMemo(() => {
 		const result: Record<string, Set<string>> = {};
 		config.fields.forEach((field) => {
-			result[field] = allSeenValuesRef.current[field] || new Set();
+			// Store a created fallback back into the ref: this memo runs before the
+			// init effect on first render, and if the two made DIFFERENT Sets the
+			// tracking effects would populate the ref's copy while reads kept the
+			// memo's empty one — seen values would never surface as count-0 options.
+			const seenValues = allSeenValuesRef.current[field] ?? new Set<string>();
+			allSeenValuesRef.current[field] = seenValues;
+			result[field] = seenValues;
 		});
 		return result;
 	}, [config.fields]);

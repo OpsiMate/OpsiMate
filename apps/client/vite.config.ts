@@ -10,7 +10,11 @@ export default defineConfig(({ mode }) => ({
 		port: 8080,
 		headers: {
 			// Dev-only: lets the JS Self-Profiling API run so performance work can
-			// attribute long tasks to real stacks (new Profiler() is blocked without it).
+			// attribute long tasks to real stacks (new Profiler() is blocked without
+			// it). The spec deprecates this boolean form for js-profiling-mode=lazy,
+			// but Chrome stable (verified Aug 2026, v139) rejects the new syntax —
+			// both alone and combined with the legacy token the API stays disabled.
+			// Revisit when js-profiling-mode ships.
 			'Document-Policy': 'js-profiling',
 		},
 	},
