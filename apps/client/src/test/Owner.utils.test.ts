@@ -72,12 +72,12 @@ describe('getOwnerDisplayName and getOwnerSortKey', () => {
 		];
 
 		const results = [];
-		let key: string = '';
+		let key: string;
 
 		for (const user of testUsersForSorting) {
-			user.id === '000'
-				? (key = getOwnerSortKey('111', testUsersForSorting)) // unknown user id
-				: (key = getOwnerSortKey(user.id, testUsersForSorting));
+			if (user.id === '000')
+				key = getOwnerSortKey('111', testUsersForSorting); // unknown user id
+			else key = getOwnerSortKey(user.id, testUsersForSorting);
 
 			results.push(key);
 		}
