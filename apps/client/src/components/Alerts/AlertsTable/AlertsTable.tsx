@@ -37,6 +37,11 @@ import { StickyGroupHeader } from './StickyGroupHeader';
 import { TimeFilter, createEmptyTimeRange, isTimeRangeEmpty } from './TimeFilter';
 import { VirtualizedAlertList } from './VirtualizedAlertList';
 
+// How long the container width must hold still before columns redistribute: longer
+// than one animation frame (so a sliding sidebar coalesces into one commit), short
+// enough that the settle after the gesture reads as immediate.
+const RESIZE_SETTLE_MS = 100;
+
 // Icon-only headers for the narrow icon-only columns; the column name stays in the
 // header tooltip.
 const HEADER_ICONS: Record<string, ReactNode> = {
@@ -93,10 +98,17 @@ export const AlertsTable = ({
 	// sticks at 0/stale and the content columns silently fall back to their static
 	// classes. The callback re-attaches the observer to whichever node is current.
 	const resizeObserverRef = useRef<ResizeObserver | null>(null);
+	// Pending settle-commit for the observer below; cleared on re-attach so a timer
+	// from a torn-down scroller can't commit that dead element's width.
+	const settleTimerRef = useRef<number | null>(null);
 	const observeScroller = (el: HTMLDivElement | null) => {
 		scrollerRef.current = el;
 		resizeObserverRef.current?.disconnect();
 		resizeObserverRef.current = null;
+		if (settleTimerRef.current !== null) {
+			window.clearTimeout(settleTimerRef.current);
+			settleTimerRef.current = null;
+		}
 		if (el) {
 			// The first measurement of each observed element is always accepted:
 			// containerWidth survives in React state across scroller remounts (tab
@@ -111,13 +123,26 @@ export const AlertsTable = ({
 					setContainerWidth(width);
 					return;
 				}
-				// Damper against measure feedback: sub-scrollbar-width deltas are noise
-				// from scrollbar/border toggles, and reacting to them re-runs the
-				// content-aware column sizing for no visual gain (and can feed back:
-				// width change -> columns recompute -> overflow flips -> width change).
-				// The scroller reserves its scrollbar gutter (scrollbar-gutter: stable
-				// below) so these deltas shouldn't occur at all; this is the backstop.
-				setContainerWidth((prev) => (Math.abs(width - prev) < 16 && prev !== 0 ? prev : width));
+				// Trailing settle-debounce: a sidebar toggle animates the width over
+				// ~300ms of per-frame resize events, and committing every step
+				// re-renders every visible row once per step — the whole toggle jank.
+				// Waiting until events stop costs one re-render per gesture; until it
+				// fires the columns keep their widths and the filler column absorbs
+				// the difference.
+				if (settleTimerRef.current !== null) {
+					window.clearTimeout(settleTimerRef.current);
+				}
+				settleTimerRef.current = window.setTimeout(() => {
+					settleTimerRef.current = null;
+					// Damper against measure feedback: sub-scrollbar-width deltas are
+					// noise from scrollbar/border toggles, and reacting to them re-runs
+					// the content-aware column sizing for no visual gain (and can feed
+					// back: width change -> columns recompute -> overflow flips ->
+					// width change). The scroller reserves its scrollbar gutter
+					// (scrollbar-gutter: stable below) so these deltas shouldn't occur
+					// at all; this is the backstop.
+					setContainerWidth((prev) => (Math.abs(width - prev) < 16 && prev !== 0 ? prev : width));
+				}, RESIZE_SETTLE_MS);
 			});
 			observer.observe(el);
 			resizeObserverRef.current = observer;

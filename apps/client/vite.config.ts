@@ -8,6 +8,17 @@ export default defineConfig(({ mode }) => ({
 	server: {
 		host: '::',
 		port: 8080,
+		headers: {
+			// Dev-only: lets the JS Self-Profiling API run so performance work can
+			// attribute long tasks to real stacks (new Profiler() is blocked without it).
+			'Document-Policy': 'js-profiling',
+		},
+	},
+	preview: {
+		headers: {
+			// Same as server.headers: profiling support for `vite preview` runs.
+			'Document-Policy': 'js-profiling',
+		},
 	},
 	plugins: [react(), mode === 'development' && componentTagger()].filter(Boolean),
 	resolve: {
