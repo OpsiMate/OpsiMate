@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 import { FilterPanel, FilterPanelConfig } from '@/components/shared/FilterPanel';
 
@@ -124,6 +124,8 @@ describe('FilterPanel +/− controls', () => {
 
 		const row = screen.getByTitle('Critical').closest('div');
 		expect(row).not.toBeNull();
-		expect(row?.textContent).toContain('0');
+		// Exact match: the count badge must read exactly "0" (a substring check
+		// would also accept e.g. "10").
+		expect(within(row as HTMLElement).getByText('0')).toBeInTheDocument();
 	});
 });
