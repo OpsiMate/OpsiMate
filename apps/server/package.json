@@ -52,7 +52,7 @@
 		"@types/express": "^5.0.6",
 		"@types/js-yaml": "^4.0.9",
 		"@types/multer": "^2.2.0",
-		"@types/node": "^22.20.1",
+		"@types/node": "^26.2.0",
 		"@types/nodemailer": "^7.0.12",
 		"@types/supertest": "^7.2.1",
 		"@vitest/coverage-v8": "^4.1.10",
