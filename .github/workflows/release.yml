@@ -34,10 +34,41 @@ jobs:
           echo "Using version type: $TYPE"
           echo "type=$TYPE" >> $GITHUB_OUTPUT
 
+      # fetch-depth: 0 + tags — the version below is read from git, not from the
+      # releases API (see the next step for why).
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Get and Bump Version
         id: version
         run: |
-          LATEST=$(curl -s https://api.github.com/repos/opsimate/opsimate/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          set -euo pipefail
+
+          # Read the last released version from GIT TAGS, not from
+          # api.github.com/releases/latest. That call was unauthenticated, so it is
+          # rate limited per runner IP (60/hr, shared across GitHub's pool); on a busy
+          # day of merges it returned a body with no tag_name, `jq -r` printed the
+          # string "null", and the bump produced the image tag "null..1" — which was
+          # pushed to Docker Hub before anything noticed (run 31964001234). Tags are
+          # local, need no token, and cannot be rate limited.
+          # Full-match grammar, not a glob: the glob 'v[0-9]*.[0-9]*.[0-9]*' also
+          # matches things like v1.2.3-1, and `IFS='.' read` then leaves PATCH="3-1",
+          # which bash arithmetic evaluates as 3-1=2 — so the "next" version would come
+          # out as the CURRENT one and overwrite a published tag. Leading zeros are
+          # rejected too (1.02.4 is not semver). Sorted numerically per component.
+          LATEST=$(git tag --list 'v*' \
+            | sed 's/^v//' \
+            | grep -E '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+            | sort -t. -k1,1n -k2,2n -k3,3n \
+            | tail -n1)
+          if [ -z "$LATEST" ]; then
+            echo "::error::No strict v<major>.<minor>.<patch> tag found — cannot determine the current version."
+            exit 1
+          fi
+          echo "Last released version: $LATEST"
+
           IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST"
 
           case "${{ steps.version_type.outputs.type }}" in
@@ -56,6 +87,17 @@ jobs:
           esac
 
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          # Belt and braces: whatever the source, a version that is not strict semver
+          # must never reach `docker buildx imagetools create`. Nothing upstream fails
+          # loudly on a bad parse — curl, jq and bash arithmetic all exit 0 on garbage —
+          # so this is the gate that turns a silent mis-tag into a red build.
+          if ! [[ "$NEW_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Computed version '$NEW_VERSION' is not semver (from last tag '$LATEST')."
+            exit 1
+          fi
+
+          echo "Next version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
 

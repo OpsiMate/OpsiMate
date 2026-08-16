@@ -1,0 +1,115 @@
+name: Docker Tag Maintenance
+
+# Manual registry housekeeping: re-point a version tag at an image that is already
+# published, and delete tags that should never have been pushed. Written after run
+# 31964001234 shipped `opsimate/{backend,frontend}:null..1` and left release v0.0.104
+# with no matching image; release.yml can no longer produce a non-semver tag, but the
+# registry still needs a way to be corrected by hand.
+#
+# Dispatch only, and every input is explicit — there is no wildcard delete.
+
+on:
+  workflow_dispatch:
+    inputs:
+      images:
+        description: "Comma-separated image names under the opsimate org"
+        required: false
+        default: "backend,frontend"
+      retag_source:
+        description: "Existing tag to copy from (leave empty to skip re-tagging)"
+        required: false
+        default: ""
+      retag_target:
+        description: "New tag to point at retag_source (e.g. 0.0.104)"
+        required: false
+        default: ""
+      delete_tags:
+        description: "Comma-separated tags to DELETE (exact names, no wildcards)"
+        required: false
+        default: ""
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker Login
+        uses: docker/login-action@v4
+        with:
+          username: opsimate
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Re-tag published image
+        if: inputs.retag_source != '' && inputs.retag_target != ''
+        env:
+          IMAGES: ${{ inputs.images }}
+          SOURCE: ${{ inputs.retag_source }}
+          TARGET: ${{ inputs.retag_target }}
+        run: |
+          set -euo pipefail
+          # Same grammar gate as the delete step — the two paths must not differ in
+          # what they accept (the values only reach docker as argv, so this is about
+          # failing early with a clear error, not injection).
+          for value in "$SOURCE" "$TARGET"; do
+            if ! [[ "$value" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+              echo "::error::'$value' is not a valid Docker tag name."
+              exit 1
+            fi
+          done
+          # Copies the manifest list, so the multi-arch image keeps both architectures
+          # and the digest is unchanged — this adds a name, it does not rebuild.
+          IFS=',' read -ra LIST <<< "$IMAGES"
+          for image in "${LIST[@]}"; do
+            image=$(echo "$image" | xargs)
+            echo "::group::opsimate/$image:$SOURCE -> :$TARGET"
+            docker buildx imagetools create -t "opsimate/$image:$TARGET" "opsimate/$image:$SOURCE"
+            docker buildx imagetools inspect "opsimate/$image:$TARGET" | head -n 5
+            echo "::endgroup::"
+          done
+
+      - name: Delete tags
+        if: inputs.delete_tags != ''
+        env:
+          IMAGES: ${{ inputs.images }}
+          DELETE_TAGS: ${{ inputs.delete_tags }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          JWT=$(curl -s -H "Content-Type: application/json" \
+            -d "{\"username\": \"opsimate\", \"password\": \"${DOCKERHUB_TOKEN}\"}" \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+          if [ -z "$JWT" ] || [ "$JWT" = "null" ]; then
+            echo "::error::Could not authenticate against Docker Hub."
+            exit 1
+          fi
+
+          IFS=',' read -ra LIST <<< "$IMAGES"
+          IFS=',' read -ra TAGS <<< "$DELETE_TAGS"
+          for image in "${LIST[@]}"; do
+            image=$(echo "$image" | xargs)
+            for tag in "${TAGS[@]}"; do
+              tag=$(echo "$tag" | xargs)
+              # Validate against Docker's own tag grammar FIRST. Without this, a tag
+              # containing [] or {} is a URL glob for curl: "l[a-z]test" expands to
+              # .../tags/latest/ (plus lbtest, lctest), which sails past a literal
+              # string comparison and would delete the moving tag. --globoff below is
+              # the second lock on the same door.
+              if ! [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+                echo "::error::Refusing tag '$tag' — not a valid Docker tag name."
+                exit 1
+              fi
+              # Refuse the moving tags outright: deleting these breaks every plain
+              # `docker pull opsimate/<image>` and is never what housekeeping means.
+              if [ "$tag" = "latest" ] || [ "$tag" = "main" ]; then
+                echo "::error::Refusing to delete protected tag '$tag'."
+                exit 1
+              fi
+              code=$(curl -s --globoff -o /dev/null -w '%{http_code}' -X DELETE \
+                -H "Authorization: JWT ${JWT}" \
+                "https://hub.docker.com/v2/repositories/opsimate/${image}/tags/${tag}/")
+              case "$code" in
+                204) echo "deleted opsimate/$image:$tag" ;;
+                404) echo "opsimate/$image:$tag already absent" ;;
+                *) echo "::error::Deleting opsimate/$image:$tag failed with HTTP $code"; exit 1 ;;
+              esac
+            done
+          done
