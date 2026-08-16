@@ -31,10 +31,11 @@ mailer:
   from: "<no-reply@yourdomain.com>"
   replyTo: "ops@yourdomain.com"
   templates:
-    welcomeTemplate: {
-        subject: 'Welcome to OpsiMate!',
-        content: 'Welcome aboard! We’re happy to have you as part of the OpsiMate community.'
-    }
+    # Block style, not a multi-line flow mapping ({ ... } spanning lines): the closing
+    # brace sat at the same indent as its key, which strict YAML parsers reject.
+    welcomeTemplate:
+      subject: "Welcome to OpsiMate!"
+      content: "Welcome aboard! We're happy to have you as part of the OpsiMate community."
   auth:
     user: "your-email@domain.com"  # Replace with your SMTP username
     pass: "your-smtp-password"     # Replace with your SMTP password
