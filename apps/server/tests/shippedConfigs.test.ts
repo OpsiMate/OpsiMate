@@ -36,15 +36,9 @@ const SHIPPED_CONFIGS: ShippedConfig[] = [
 			['security', 'private_keys_path'],
 		],
 	},
-	{
-		file: 'apps/server/local-config.yml',
-		requiredPaths: [
-			['server', 'port'],
-			['database', 'path'],
-			['security', 'private_keys_path'],
-		],
-	},
 ];
+// Deliberately not listed: apps/server/local-config.yml is gitignored — a developer's
+// own file, not something we ship, so it doesn't exist on CI.
 
 const readAtPath = (root: unknown, keys: string[]): unknown =>
 	keys.reduce<unknown>((node, key) => (node as Record<string, unknown> | undefined)?.[key], root);
@@ -60,7 +54,9 @@ describe('shipped YAML configs', () => {
 			expect(parsed, `${file} parsed to nothing`).toBeTruthy();
 
 			for (const keys of requiredPaths) {
-				expect(readAtPath(parsed, keys), `${file} is missing ${keys.join('.')}`).toBeDefined();
+				// Truthy, not merely defined: loadConfig() guards with `!config.server?.port`,
+				// so null / '' / 0 are just as fatal at startup as the key being absent.
+				expect(readAtPath(parsed, keys), `${file} is missing ${keys.join('.')}`).toBeTruthy();
 			}
 		}
 	);
