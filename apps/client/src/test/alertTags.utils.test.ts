@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest';
 const mkAlert = (overrides?: Partial<Alert>): Alert =>
 	({
 		id: '1',
-		alertName: `alert 1`,
+		alertName: 'alert 1',
 		type: 'Grafana',
 		status: 'firing',
 		severity: 'info',
