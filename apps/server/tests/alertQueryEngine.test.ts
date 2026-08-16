@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { Alert, AlertStatus, applyAlertListQuery, computeAlertFacets, getTagKeyColumnId } from '@OpsiMate/shared';
+import {
+	Alert,
+	AlertStatus,
+	applyAlertListQuery,
+	computeAlertFacets,
+	getTagKeyColumnId,
+	sortAlertsBy,
+} from '@OpsiMate/shared';
 
 // The engine's own behaviors: paging, cursors, facet semantics. Filter/sort/search
 // semantics themselves are pinned by the client's test suite over the same functions.
@@ -125,5 +132,26 @@ describe('computeAlertFacets', () => {
 		const result = computeAlertFacets(alerts, {}, ['status'], []);
 		expect(result.total).toBe(5);
 		expect(result.silencedTotal).toBe(1);
+	});
+});
+
+describe('sortAlertsBy status', () => {
+	// Regression: the status sort value used to hardcode 'firing' for anything not
+	// silenced/muted, so Resolved alerts (the All view mixes them in) interleaved
+	// with Firing instead of forming their own group — sort looked broken.
+	test('every status forms its own contiguous group, resolved included', () => {
+		const mixed = [
+			mkAlert('f1'),
+			mkAlert('r1', { status: AlertStatus.RESOLVED }),
+			mkAlert('s1', { isSilenced: true }),
+			mkAlert('f2'),
+			mkAlert('m1', { isMuted: true }),
+			mkAlert('r2', { status: AlertStatus.RESOLVED }),
+		];
+		const asc = sortAlertsBy(mixed, 'status', 'asc').map((a) => a.id);
+		// Canonical values sort alphabetically: firing < muted < resolved < silenced.
+		expect(asc).toEqual(['f1', 'f2', 'm1', 'r1', 'r2', 's1']);
+		const desc = sortAlertsBy(mixed, 'status', 'desc').map((a) => a.id);
+		expect(desc).toEqual(['s1', 'r1', 'r2', 'm1', 'f1', 'f2']);
 	});
 });
