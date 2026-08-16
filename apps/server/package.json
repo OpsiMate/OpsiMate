@@ -26,7 +26,6 @@
 	"dependencies": {
 		"@OpsiMate/custom-actions": "workspace:*",
 		"@OpsiMate/shared": "workspace:*",
-		"@kubernetes/client-node": "^1.4.0",
 		"@types/cors": "^2.8.19",
 		"@types/jsonwebtoken": "^9.0.10",
 		"bcrypt": "^6.0.0",
