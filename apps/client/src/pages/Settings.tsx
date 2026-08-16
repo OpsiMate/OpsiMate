@@ -15,7 +15,19 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, formatLongDateTime } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
-import { BellOff, Check, DatabaseBackup, Edit, FileText, KeyRound, Plus, Sparkles, Trash2, Users, X } from 'lucide-react';
+import {
+	BellOff,
+	Check,
+	DatabaseBackup,
+	Edit,
+	FileText,
+	KeyRound,
+	Plus,
+	Sparkles,
+	Trash2,
+	Users,
+	X,
+} from 'lucide-react';
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
