@@ -149,6 +149,9 @@ export const CreateDashboardSchema = z.object({
 	filters: z.record(z.string(), z.unknown()),
 	visibleColumns: z.array(z.string()),
 	columnOrder: z.array(z.string()).optional(),
+	// Positive finite px per column id; a map that could carry 0/NaN would render
+	// invisible columns on every load of the saved view.
+	columnWidths: z.record(z.string(), z.number().positive().finite()).optional(),
 	// Alerts toolbar toggles. This schema validates BOTH create and update (the controller
 	// reuses it), so adding them here is enough for edits to keep them.
 	splitByAssignment: z.boolean().optional(),

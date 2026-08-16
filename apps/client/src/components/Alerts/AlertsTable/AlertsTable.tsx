@@ -15,6 +15,7 @@ import {
 	COLUMN_WIDTHS,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
+	isResizableColumn,
 	SELECT_COLUMN_WIDTH,
 	TABLE_HEAD_CLASSES,
 } from './AlertsTable.constants';
@@ -26,6 +27,7 @@ import {
 	useAlertGrouping,
 	useAlertSelection,
 	useAlertSorting,
+	useColumnResize,
 	useContentColumnWidths,
 	useDragAutoScroll,
 	useDragSelection,
@@ -75,6 +77,8 @@ export const AlertsTable = ({
 	onGroupByChange,
 	onColumnToggle,
 	onColumnOrderChange,
+	columnWidths = {},
+	onColumnWidthsChange,
 	tagKeys = [],
 	searchTerm,
 	onSearchTermChange,
@@ -279,22 +283,36 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
-	// Summary is the table's one flexible column. When it's hidden, an empty filler
-	// column before ACTIONS absorbs the leftover width instead — otherwise the browser
-	// hands the surplus to a data column (huge whitespace) or stretches every fixed
-	// column. The rows render the same filler (AlertRow) or the layouts misalign.
-	const needsFillerColumn = !orderedColumns.includes('summary');
-
 	// The actions header holds the group-by button, plus the column-settings button when
 	// enabled — the column must widen with it or the extra button overflows the fixed
 	// <th> onto the neighboring column's header text.
 	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
+
+	// User-dragged widths: the saved map plus the in-flight drag overlaid. Live drag
+	// state stays LOCAL to this table (the dashboard state gets one commit per gesture),
+	// so only the table being dragged re-renders while the mouse moves.
+	const { liveWidths, resizingColumn, startResize, resetColumn } = useColumnResize({
+		columnWidths,
+		onColumnWidthsChange,
+	});
+	const manualWidths = useMemo(() => ({ ...columnWidths, ...liveWidths }), [columnWidths, liveWidths]);
+
+	// Summary is the table's one flexible column. When it's hidden — or pinned to a
+	// manual width (live drags included), which takes it out of the flexible role — an
+	// empty filler column before ACTIONS absorbs the leftover width instead; otherwise
+	// the browser hands the surplus to a data column (huge whitespace) or stretches
+	// every fixed column. AlertRow renders the same filler under the same condition
+	// (its width map only ever carries summary when it's manually sized), or the
+	// header and row layouts misalign.
+	const needsFillerColumn = !orderedColumns.includes('summary') || manualWidths['summary'] !== undefined;
 
 	// Pixel widths for the content-sized columns (alert name + tags): wide enough that
 	// their longest value fits, no wider. Empty until the container is first measured —
 	// static width classes cover that frame. containerWidth is the scroller's content
 	// box (ResizeObserver contentRect), which already excludes any classic vertical
 	// scrollbar — so the budget is exactly the width the columns can really use.
+	// Manually-resized columns are excluded from the automatic sizing and claim their
+	// dragged pixels instead.
 	const contentColumnWidths = useContentColumnWidths({
 		alerts: sortedAlerts,
 		orderedColumns,
@@ -302,10 +320,18 @@ export const AlertsTable = ({
 		containerWidth,
 		hasSelectColumn: !!onSelectAlerts,
 		actionsColumnWidthPx: parseInt(actionsColumnWidth, 10),
+		manualWidths,
 	});
 
-	// Floor width for the table: the sum of the visible columns' minimums. Narrower
-	// panes get a horizontal scrollbar instead of columns crushing each other.
+	// One width map for header and rows: automatic widths, with manual drags on top.
+	const effectiveColumnWidths = useMemo(
+		() => ({ ...contentColumnWidths, ...manualWidths }),
+		[contentColumnWidths, manualWidths]
+	);
+
+	// Floor width for the table: the sum of the visible columns' minimums (a manually
+	// sized column's floor IS its dragged width — it must not crush). Narrower panes
+	// get a horizontal scrollbar instead of columns crushing each other.
 	const tableMinWidth = useMemo(() => {
 		const columns = onSelectAlerts ? ['select', ...orderedColumns] : orderedColumns;
 		return columns.reduce(
@@ -313,10 +339,10 @@ export const AlertsTable = ({
 				sum +
 				(col === ACTIONS_COLUMN
 					? parseInt(actionsColumnWidth, 10)
-					: (COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default)),
+					: (manualWidths[col] ?? COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default)),
 			0
 		);
-	}, [orderedColumns, onSelectAlerts, actionsColumnWidth]);
+	}, [orderedColumns, onSelectAlerts, actionsColumnWidth, manualWidths]);
 
 	const hasActiveTimeFilter = timeRange && !isTimeRangeEmpty(timeRange);
 
@@ -429,6 +455,14 @@ export const AlertsTable = ({
 																				}
 																				excludeColumns={[ACTIONS_COLUMN]}
 																				tagKeys={tagKeys}
+																				hasCustomColumnWidths={
+																					Object.keys(columnWidths).length > 0
+																				}
+																				onResetColumnWidths={
+																					onColumnWidthsChange
+																						? () => onColumnWidthsChange({})
+																						: undefined
+																				}
 																			/>
 																		)}
 																	</div>
@@ -449,10 +483,13 @@ export const AlertsTable = ({
 																onSort={handleSort}
 																className={COLUMN_WIDTHS.default}
 																style={
-																	contentColumnWidths[column]
-																		? { width: contentColumnWidths[column] }
+																	effectiveColumnWidths[column]
+																		? { width: effectiveColumnWidths[column] }
 																		: undefined
 																}
+																onResizeStart={startResize}
+																onResizeReset={resetColumn}
+																resizingColumn={resizingColumn}
 															/>
 														);
 													}
@@ -484,10 +521,15 @@ export const AlertsTable = ({
 																onSort={handleSort}
 																className={COLUMN_WIDTHS[column]}
 																style={
-																	contentColumnWidths[column]
-																		? { width: contentColumnWidths[column] }
+																	effectiveColumnWidths[column]
+																		? { width: effectiveColumnWidths[column] }
 																		: undefined
 																}
+																onResizeStart={
+																	isResizableColumn(column) ? startResize : undefined
+																}
+																onResizeReset={resetColumn}
+																resizingColumn={resizingColumn}
 															/>
 														);
 													}
@@ -535,7 +577,7 @@ export const AlertsTable = ({
 									flatRows={flatRows}
 									selectedAlerts={selectedAlerts}
 									orderedColumns={orderedColumns}
-									contentColumnWidths={contentColumnWidths}
+									contentColumnWidths={effectiveColumnWidths}
 									expandRows={expandRows}
 									onToggleGroup={toggleGroup}
 									onSelectAlert={handleSelectAlert}

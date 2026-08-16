@@ -8,10 +8,12 @@ import { Alert } from '@OpsiMate/shared';
 export interface AlertOwnerColumnProps {
 	alert: Alert;
 	className?: string;
+	// Inline width from the table\'s shared column-width map; wins over any width class.
+	style?: React.CSSProperties;
 	isResolved?: boolean;
 }
 
-export const AlertOwnerColumn = ({ alert, className, isResolved = false }: AlertOwnerColumnProps) => {
+export const AlertOwnerColumn = ({ alert, className, style, isResolved = false }: AlertOwnerColumnProps) => {
 	const { data: users = [] } = useUsers();
 	const setOwnerMutation = useSetAlertOwner();
 	const setResolvedOwnerMutation = useSetResolvedAlertOwner();
@@ -25,7 +27,7 @@ export const AlertOwnerColumn = ({ alert, className, isResolved = false }: Alert
 	};
 
 	return (
-		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell style={style} className={cn('py-1 px-2 overflow-hidden', className)}>
 			{/* PersonPicker's trigger button carries its own font-normal, which blocks the
 			    unread row's inherited font-black — re-apply it so the WHOLE line reads bold. */}
 			<div onClick={(e) => e.stopPropagation()} className={cn(alert.isRead === false && '[&_button]:font-black')}>

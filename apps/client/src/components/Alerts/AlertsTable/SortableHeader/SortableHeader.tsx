@@ -23,6 +23,14 @@ export interface SortableHeaderProps {
 	className?: string;
 	// Inline width for content-aware columns; wins over any width class.
 	style?: React.CSSProperties;
+	// When set, the header's right edge grows a drag handle: drag resizes the column,
+	// double-click returns it to automatic sizing. Absent on columns that don't resize
+	// (icon columns, actions).
+	onResizeStart?: (column: string, event: React.MouseEvent) => void;
+	onResizeReset?: (column: string) => void;
+	// The column currently mid-drag (any column): keeps THIS handle's active styling on
+	// while the pointer inevitably leaves its 8px hit zone during the gesture.
+	resizingColumn?: string | null;
 }
 
 export const SortableHeader = ({
@@ -34,6 +42,9 @@ export const SortableHeader = ({
 	onSort,
 	className,
 	style,
+	onResizeStart,
+	onResizeReset,
+	resizingColumn,
 }: SortableHeaderProps) => {
 	const getSortIcon = () => {
 		if (sortField !== column) {
@@ -62,7 +73,7 @@ export const SortableHeader = ({
 	return (
 		<TableHead
 			style={style}
-			className={cn('h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground', className)}
+			className={cn('relative h-8 py-1 px-2 text-xs cursor-pointer hover:bg-muted/50 text-foreground', className)}
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
 			tabIndex={0}
@@ -86,6 +97,34 @@ export const SortableHeader = ({
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
+			{onResizeStart && (
+				/* Resize handle on the cell's right edge. Wider hit zone (8px) than the
+				   visible 2px bar; mousedown starts the drag (the hook stops propagation
+				   so releasing doesn't count as a sort click), double-click resets the
+				   column to automatic sizing. The visible bar shows on hover and stays
+				   pinned while this column is mid-drag — the pointer leaves the hit zone
+				   on any fast drag. */
+				<span
+					role="separator"
+					aria-orientation="vertical"
+					aria-label={`Resize ${label} column`}
+					onMouseDown={(e) => onResizeStart(column, e)}
+					onDoubleClick={(e) => {
+						e.stopPropagation();
+						onResizeReset?.(column);
+					}}
+					onClick={(e) => e.stopPropagation()}
+					className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize select-none group/resize"
+				>
+					<span
+						className={cn(
+							'absolute right-0 top-1 bottom-1 w-0.5 rounded bg-primary/60 opacity-0 transition-opacity',
+							'group-hover/resize:opacity-100',
+							resizingColumn === column && 'opacity-100'
+						)}
+					/>
+				</span>
+			)}
 		</TableHead>
 	);
 };

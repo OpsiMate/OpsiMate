@@ -9,6 +9,8 @@ export interface Dashboard {
 	visibleColumns: string[];
 	// User-arranged base-column order; absent on dashboards saved before reordering shipped.
 	columnOrder?: string[];
+	// Manually-dragged column widths (px by column id); absent means all-automatic sizing.
+	columnWidths?: Record<string, number>;
 	// Alerts toolbar toggles. Absent on dashboards saved before they were persisted, which
 	// the loader treats differently from an explicit false.
 	splitByAssignment?: boolean;
@@ -26,6 +28,7 @@ export interface CreateDashboardInput {
 	filters: Record<string, string[]>;
 	visibleColumns: string[];
 	columnOrder?: string[];
+	columnWidths?: Record<string, number>;
 	splitByAssignment?: boolean;
 	severityColors?: boolean;
 	query: string;

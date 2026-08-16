@@ -181,6 +181,11 @@ export const AlertRow = ({
 								alert={alert}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.summary}
+								style={
+									contentColumnWidths['summary']
+										? { width: contentColumnWidths['summary'] }
+										: undefined
+								}
 							/>
 						);
 					case 'lastComment':
@@ -190,6 +195,11 @@ export const AlertRow = ({
 								alert={alert}
 								expanded={expandRows}
 								className={COLUMN_WIDTHS.lastComment}
+								style={
+									contentColumnWidths['lastComment']
+										? { width: contentColumnWidths['lastComment'] }
+										: undefined
+								}
 							/>
 						);
 					case 'owner':
@@ -199,18 +209,49 @@ export const AlertRow = ({
 								alert={alert}
 								className={COLUMN_WIDTHS.owner}
 								isResolved={isResolved}
+								style={
+									contentColumnWidths['owner'] ? { width: contentColumnWidths['owner'] } : undefined
+								}
 							/>
 						);
 					case 'startsAt':
-						return <AlertStartsAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.startsAt} />;
+						return (
+							<AlertStartsAtColumn
+								key={column}
+								alert={alert}
+								className={COLUMN_WIDTHS.startsAt}
+								style={
+									contentColumnWidths['startsAt']
+										? { width: contentColumnWidths['startsAt'] }
+										: undefined
+								}
+							/>
+						);
 					case 'updatedAt':
-						return <AlertUpdatedAtColumn key={column} alert={alert} className={COLUMN_WIDTHS.updatedAt} />;
+						return (
+							<AlertUpdatedAtColumn
+								key={column}
+								alert={alert}
+								className={COLUMN_WIDTHS.updatedAt}
+								style={
+									contentColumnWidths['updatedAt']
+										? { width: contentColumnWidths['updatedAt'] }
+										: undefined
+								}
+							/>
+						);
 					case ACTIONS_COLUMN:
 						return (
 							<Fragment key={column}>
 								{/* Mirrors the header's filler (see AlertsTable): when summary is
-								    hidden this empty flexible cell absorbs the leftover width. */}
-								{!orderedColumns.includes('summary') && <TableCell aria-hidden className="p-0" />}
+								    hidden — or pinned to a manual width, which appears in the width
+								    map — this empty flexible cell absorbs the leftover width. The
+								    condition MUST match the header's needsFillerColumn or the two
+								    layouts misalign. */}
+								{(!orderedColumns.includes('summary') ||
+									contentColumnWidths['summary'] !== undefined) && (
+									<TableCell aria-hidden className="p-0" />
+								)}
 								<AlertActionsColumn
 									alert={alert}
 									width={actionsColumnWidth}

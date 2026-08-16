@@ -39,6 +39,9 @@ export interface DashboardState {
 	visibleColumns: string[];
 	filters: Record<string, string[]>;
 	columnOrder: string[];
+	// Manually-resized column widths (px by column id); empty means every column
+	// keeps automatic sizing. A manual width wins until the user resets it.
+	columnWidths: Record<string, number>;
 	// Alerts toolbar toggles. Definite booleans here (the toolbar needs an on/off), unlike
 	// the API's optional fields — the "never configured" case is resolved when a dashboard
 	// is loaded or a draft is read from storage, not carried through the UI.
@@ -74,6 +77,7 @@ const defaultState: DashboardState = {
 	visibleColumns: [],
 	filters: {},
 	columnOrder: [],
+	columnWidths: {},
 	splitByAssignment: false,
 	severityColors: false,
 	groupBy: [],
@@ -120,6 +124,8 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 		const initialVisibleColumns = JSON.stringify(initialState.visibleColumns);
 		const currentColumnOrder = JSON.stringify(dashboardState.columnOrder);
 		const initialColumnOrder = JSON.stringify(initialState.columnOrder);
+		const currentColumnWidths = JSON.stringify(dashboardState.columnWidths);
+		const initialColumnWidths = JSON.stringify(initialState.columnWidths);
 		const currentQuery = dashboardState.query;
 		const initialQuery = initialState.query;
 		// serializeTimeRange fixes the property order (and turns Dates into ISO
@@ -134,6 +140,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			currentFilters !== initialFilters ||
 			currentVisibleColumns !== initialVisibleColumns ||
 			currentColumnOrder !== initialColumnOrder ||
+			currentColumnWidths !== initialColumnWidths ||
 			currentQuery !== initialQuery ||
 			currentTimeRange !== initialTimeRange ||
 			dashboardState.splitByAssignment !== initialState.splitByAssignment ||
@@ -149,6 +156,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 			'filters',
 			'visibleColumns',
 			'columnOrder',
+			'columnWidths',
 			'query',
 			'timeRange',
 			'splitByAssignment',
