@@ -23,8 +23,8 @@
     "fix": "pnpm run format-fix && pnpm run lint-fix"
   },
   "devDependencies": {
-    "@types/node": "^22.20.1",
-    "eslint": "^10.8.0",
+    "@types/node": "^26.2.0",
+    "eslint": "^10.8.1",
     "typescript": "^5.9.3",
     "vite": "^8.2.0",
     "vite-plugin-dts": "^5.0.3"

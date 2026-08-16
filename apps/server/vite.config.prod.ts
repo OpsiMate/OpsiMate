@@ -37,7 +37,6 @@ export default defineConfig({
 				'bcrypt',
 				'better-sqlite3',
 				'jsonwebtoken',
-				'@kubernetes/client-node',
 				'node-ssh',
 				'nodemailer',
 				'multer',
@@ -56,7 +55,7 @@ export default defineConfig({
 	},
 	// Optimize dependencies for production
 	optimizeDeps: {
-		exclude: ['better-sqlite3', '@kubernetes/client-node'],
+		exclude: ['better-sqlite3'],
 	},
 	define: {
 		'process.env.NODE_ENV': '"production"',

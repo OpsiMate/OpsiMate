@@ -141,7 +141,12 @@ export const getAlertSortValue = (alert: Alert, sortField: string, users: AlertO
 		case 'alertName':
 			return (alert.alertName ?? '').toLowerCase();
 		case 'status':
-			return alert.isSilenced ? 'silenced' : alert.isMuted ? 'muted' : 'firing';
+			// The same canonical value the filter/facet path presents (Silenced/Muted
+			// win over the raw status), lowercased for ordering. The raw status must
+			// flow through: views that mix active and resolved alerts (the All view)
+			// sort Resolved rows as their own group — a hardcoded 'firing' fallback
+			// used to interleave them with live alerts, which read as sort-not-working.
+			return (getAlertFilterFieldValue(alert, 'status', users) ?? '').toLowerCase();
 		case 'severity':
 			// Rank-based so desc = critical first, info last.
 			return SEVERITY_RANK[getAlertSeverity(alert)];
