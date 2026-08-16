@@ -8,7 +8,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useDashboard } from '@/context/DashboardContext';
+import { TimeRange as DashboardTimeRange, useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
 import {
 	useAlertFacets,
@@ -129,7 +129,9 @@ const PRESET_MINUTES: Array<[number, QuickPreset]> = [
 	[7200, 'last5d'],
 	[10080, 'last7d'],
 ];
-const minutesToTimeRange = (minutes: number): TimeRange => {
+// Returns the DASHBOARD state's TimeRange (structurally identical to the table's, but
+// a distinct declaration) — this feeds updateDashboardField('timeRange', ...).
+const minutesToTimeRange = (minutes: number): DashboardTimeRange => {
 	const preset = (PRESET_MINUTES.find(([m]) => minutes <= m) ?? PRESET_MINUTES[PRESET_MINUTES.length - 1])[1];
 	return { from: null, to: null, preset };
 };

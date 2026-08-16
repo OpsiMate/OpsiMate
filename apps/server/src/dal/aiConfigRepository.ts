@@ -48,11 +48,26 @@ export class AiConfigRepository {
 		});
 	}
 
-	// Full-row upsert, wrapped in a transaction so a concurrent read-merge-write from
-	// another request cannot interleave between the BL's read and this write.
-	saveConfig(row: Omit<AiConfigRow, 'updated_at'>): Promise<void> {
+	// Read-merge-write in ONE transaction. Two requests sending different partial
+	// updates would otherwise both read the same row and the second full-row upsert
+	// would silently discard the first's field — so the merge callback runs INSIDE
+	// the transaction and sees the committed row. better-sqlite3 transactions are
+	// synchronous, so the callback must be too; anything it throws (a validation
+	// failure, say) rolls the transaction back and leaves the stored config untouched.
+	mergeConfig(merge: (current: AiConfigRow) => Omit<AiConfigRow, 'updated_at'>): Promise<AiConfigRow> {
 		return runAsync(() => {
-			const write = this.db.transaction(() => {
+			const run = this.db.transaction(() => {
+				const current = (this.db.prepare(`SELECT * FROM ai_config WHERE id = 1`).get() as
+					AiConfigRow | undefined) ?? {
+					provider: 'bedrock',
+					region: 'us-east-1',
+					model_id: '',
+					api_key: null,
+					enabled: 0,
+					updated_at: null,
+				};
+				const next = merge(current);
+				const updatedAt = new Date().toISOString();
 				this.db
 					.prepare(
 						`INSERT INTO ai_config (id, provider, region, model_id, api_key, enabled, updated_at)
@@ -65,9 +80,10 @@ export class AiConfigRepository {
 							enabled = excluded.enabled,
 							updated_at = excluded.updated_at`
 					)
-					.run(row.provider, row.region, row.model_id, row.api_key, row.enabled, new Date().toISOString());
+					.run(next.provider, next.region, next.model_id, next.api_key, next.enabled, updatedAt);
+				return { ...next, updated_at: updatedAt };
 			});
-			write();
+			return run();
 		});
 	}
 }

@@ -25,6 +25,13 @@ const REGION_SUGGESTIONS = ['us-east-1', 'us-west-2', 'eu-west-1', 'eu-central-1
 // AI (beta): bring-your-own-key Bedrock configuration. The key is write-only — once
 // saved, the server only ever reports that one exists. Test Connection runs one real,
 // tiny Converse call with the SAVED settings, so what was verified is what is stored.
+// The server values the form last mirrored — a field still equal to these is untouched
+// and safe to refresh; anything else is an unsaved edit.
+interface SyncedFormValues {
+	region: string;
+	modelId: string;
+}
+
 export const AiSettings = () => {
 	const { data, isLoading, error } = useAiConfig();
 	const updateMutation = useUpdateAiConfig();
@@ -39,7 +46,7 @@ export const AiSettings = () => {
 	// Sync fields from the server WITHOUT clobbering unsaved edits: the query refreshes
 	// after every mutation (e.g. the enable toggle), and a field the user has diverged
 	// from the last-synced value must keep their text.
-	const lastSynced = useRef<{ region: string; modelId: string } | null>(null);
+	const lastSynced = useRef<SyncedFormValues | null>(null);
 	useEffect(() => {
 		if (!data) return;
 		const prev = lastSynced.current;

@@ -357,6 +357,10 @@ const aiConfigState = {
 	updatedAt: null as string | null,
 };
 
+interface AiFilterRequestBody {
+	query?: string;
+}
+
 export const handlers = [
 	// ==================== AI (BYOK) ====================
 	http.get(`${API_BASE}/ai/config`, () => {
@@ -389,7 +393,7 @@ export const handlers = [
 				{ status: 409 }
 			);
 		}
-		const { query = '' } = (await request.json().catch(() => ({}))) as { query?: string };
+		const { query = '' } = (await request.json().catch(() => ({}))) as AiFilterRequestBody;
 		const q = query.toLowerCase();
 		const filters: Record<string, string[]> = {};
 		if (q.includes('critical')) filters.severity = ['Critical'];

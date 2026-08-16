@@ -76,22 +76,31 @@ export class AiBL {
 	}
 
 	async updateConfig(updates: UpdateAiConfig, user?: User): Promise<AiConfig> {
-		const current = await this.aiConfigRepo.getConfig();
-		// apiKey: undefined keeps the stored ciphertext, null deletes, a string replaces.
-		const apiKey =
-			updates.apiKey === undefined ? current.api_key : updates.apiKey === null ? null : encrypt(updates.apiKey);
-		const enabled = updates.enabled === undefined ? current.enabled === 1 : updates.enabled;
-		// Refuse a config that claims to be enabled without a key — status would gate
-		// features anyway, but the stored config must not lie.
-		if (enabled && apiKey == null) {
-			throw new AiValidationError('Cannot enable AI without an API key.');
-		}
-		await this.aiConfigRepo.saveConfig({
-			provider: 'bedrock',
-			region: updates.region ?? current.region,
-			model_id: updates.modelId ?? current.model_id,
-			api_key: apiKey,
-			enabled: enabled ? 1 : 0,
+		// Read, merge and write in ONE transaction (see mergeConfig): two partial updates
+		// arriving together must not each read the same row and overwrite each other.
+		const saved = await this.aiConfigRepo.mergeConfig((current) => {
+			// apiKey: undefined keeps the stored ciphertext, null deletes, a string replaces.
+			const apiKey =
+				updates.apiKey === undefined
+					? current.api_key
+					: updates.apiKey === null
+						? null
+						: encrypt(updates.apiKey);
+			// Removing the key silently disables the feature rather than 400-ing: the
+			// user asked to delete a credential, and an enabled config with no key is
+			// exactly the lie this guard exists to prevent. Only an EXPLICIT
+			// `enabled: true` with no key is a client error worth rejecting.
+			const enabled = updates.enabled !== undefined ? updates.enabled : current.enabled === 1 && apiKey != null;
+			if (enabled && apiKey == null) {
+				throw new AiValidationError('Cannot enable AI without an API key.');
+			}
+			return {
+				provider: 'bedrock',
+				region: updates.region ?? current.region,
+				model_id: updates.modelId ?? current.model_id,
+				api_key: apiKey,
+				enabled: enabled ? 1 : 0,
+			};
 		});
 		// The audit trail records THAT the config changed and by whom — never key material.
 		await this.auditBL.logAction({
@@ -101,9 +110,16 @@ export class AiBL {
 			userId: user ? Number(user.id) : 0,
 			userName: user?.fullName ?? 'unknown',
 			resourceName: 'AI settings',
-			details: `${updates.apiKey !== undefined ? (updates.apiKey === null ? 'key removed, ' : 'key replaced, ') : ''}region=${updates.region ?? current.region}, model=${updates.modelId ?? current.model_id}, enabled=${updates.enabled ?? current.enabled === 1}`,
+			details: `${updates.apiKey !== undefined ? (updates.apiKey === null ? 'key removed, ' : 'key replaced, ') : ''}region=${saved.region}, model=${saved.model_id}, enabled=${saved.enabled === 1}`,
 		});
-		return this.getConfig();
+		return {
+			provider: 'bedrock',
+			region: saved.region,
+			modelId: saved.model_id,
+			enabled: saved.enabled === 1,
+			hasApiKey: saved.api_key != null,
+			updatedAt: saved.updated_at,
+		};
 	}
 
 	// One Converse round trip with the SAVED configuration, shared by the test button

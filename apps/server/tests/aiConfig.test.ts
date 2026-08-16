@@ -18,10 +18,14 @@ let jwtToken: string;
 let bedrockMock: http.Server;
 let receivedAuth: string | null = null;
 let receivedPath: string | null = null;
+// Counts every request the mock Bedrock endpoint sees, so a test can assert that a
+// rejected call never reached it (a 409 alone wouldn't prove we didn't call out first).
+let bedrockRequestCount = 0;
 
 const startBedrockMock = (): Promise<string> =>
 	new Promise((resolve) => {
 		bedrockMock = http.createServer((req, res) => {
+			bedrockRequestCount += 1;
 			receivedAuth = req.headers.authorization ?? null;
 			receivedPath = req.url ?? null;
 			let body = '';
@@ -245,13 +249,16 @@ describe('AI status and NL->filter', () => {
 	test('while AI is disabled the filter endpoint is a 409 and Bedrock is never called', async () => {
 		await put('/api/v1/ai/config', { enabled: false });
 		receivedPath = null;
+		const callsBefore = bedrockRequestCount;
 		const res = await app
 			.post('/api/v1/ai/filter')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ query: 'anything at all' });
 		expect(res.status).toBe(409);
 		expect(res.body.error).toContain('not enabled');
-		// The mock recorded no request — the 409 short-circuits before any network call.
+		// Counted, not just "no path recorded": the 409 must short-circuit BEFORE any
+		// network call, so a future refactor that calls Bedrock first still fails here.
+		expect(bedrockRequestCount).toBe(callsBefore);
 		expect(receivedPath).toBeNull();
 		await put('/api/v1/ai/config', { enabled: true });
 	});

@@ -9,21 +9,12 @@ import {
 
 export type DashboardType = 'services' | 'alerts';
 
-export type QuickPreset =
-	| 'last1m'
-	| 'last5m'
-	| 'last15m'
-	| 'last30m'
-	| 'last1h'
-	| 'last2h'
-	| 'last6h'
-	| 'last12h'
-	| 'last24h'
-	| 'today'
-	| 'last2d'
-	| 'last3d'
-	| 'last5d'
-	| 'last7d';
+// Re-exported from the time filter's own types rather than redeclared: the two copies
+// had already drifted (the context's was missing 'last2m'), which made the dashboard's
+// TimeRange structurally incompatible with the table's and produced type errors at
+// every hand-off between them.
+export type { QuickPreset } from '@/components/Alerts/AlertsTable/TimeFilter/TimeFilter.types';
+import type { QuickPreset } from '@/components/Alerts/AlertsTable/TimeFilter/TimeFilter.types';
 
 export interface TimeRange {
 	from: Date | null;
