@@ -9,14 +9,16 @@ export interface AlertSummaryColumnProps {
 	// Wrap the full summary onto new lines instead of truncating (the "expand rows" toggle).
 	expanded?: boolean;
 	className?: string;
+	// Inline width from the table\'s shared column-width map; wins over any width class.
+	style?: React.CSSProperties;
 }
 
-export const AlertSummaryColumn = ({ alert, expanded = false, className }: AlertSummaryColumnProps) => {
+export const AlertSummaryColumn = ({ alert, expanded = false, className, style }: AlertSummaryColumnProps) => {
 	// The cell renders formatted summaries as plain text; the full formatting shows in
 	// the details panel. Collapsed it is a single truncated line; expanded it wraps but
 	// is capped at 6 lines (line-clamp) so one huge summary can't fill the viewport.
 	return (
-		<TableCell className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
 			<span
 				className={cn(
 					'text-sm text-foreground block',

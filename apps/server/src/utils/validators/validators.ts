@@ -1,5 +1,8 @@
 import { Logger } from '@OpsiMate/shared';
-import yaml from 'js-yaml';
+// Namespace import, not default: js-yaml 5 dropped the ESM default export. A default
+// import still typechecks here (allowSyntheticDefaultImports) but fails to link at
+// runtime, which would take the server down at boot rather than in a test.
+import * as yaml from 'js-yaml';
 import { parseKey, Key } from 'sshpk';
 const logger: Logger = new Logger('server');
 export function validatePublicSSHKey(content: string): boolean {

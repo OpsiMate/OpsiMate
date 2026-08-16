@@ -3,6 +3,7 @@ import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
@@ -10,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getTagKeyColumnId, TagKeyInfo } from '@/types';
-import { Columns3, GripVertical, Search, X } from 'lucide-react';
+import { Columns3, GripVertical, RotateCcw, Search, X } from 'lucide-react';
 import { DragEvent, useState } from 'react';
 import { TOGGLE_COLUMNS_LABEL } from './ColumnSettingsDropdown.constants';
 
@@ -24,6 +25,10 @@ export interface ColumnSettingsDropdownProps {
 	onColumnOrderChange?: (columns: string[]) => void;
 	excludeColumns?: string[];
 	tagKeys?: TagKeyInfo[];
+	// True when any column carries a manually-dragged width; shows the reset entry.
+	hasCustomColumnWidths?: boolean;
+	// Clears every manual column width, returning the table to automatic sizing.
+	onResetColumnWidths?: () => void;
 }
 
 export const ColumnSettingsDropdown = ({
@@ -34,6 +39,8 @@ export const ColumnSettingsDropdown = ({
 	onColumnOrderChange,
 	excludeColumns = [],
 	tagKeys = [],
+	hasCustomColumnWidths = false,
+	onResetColumnWidths,
 }: ColumnSettingsDropdownProps) => {
 	const [searchQuery, setSearchQuery] = useState('');
 	// Keys, not indexes: after the first preview render, row indexes refer to the
@@ -194,6 +201,18 @@ export const ColumnSettingsDropdown = ({
 							</p>
 						)}
 					</div>
+					{/* Only offered while a manual width exists — a reset that can't change
+					    anything is noise. Individual columns reset by double-clicking their
+					    resize handle; this clears all of them at once. */}
+					{onResetColumnWidths && hasCustomColumnWidths && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onSelect={onResetColumnWidths}>
+								<RotateCcw className="h-3.5 w-3.5" />
+								Reset column widths
+							</DropdownMenuItem>
+						</>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>

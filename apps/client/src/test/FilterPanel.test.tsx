@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 import { FilterPanel, FilterPanelConfig } from '@/components/shared/FilterPanel';
 
@@ -101,5 +101,31 @@ describe('FilterPanel +/− controls', () => {
 		);
 
 		expect(screen.getByTitle('Critical')).toBeInTheDocument();
+	});
+
+	test('a seen value that later disappears from the facets stays listed with count 0', () => {
+		// Regression: the seen-value Set created on first render must be the SAME
+		// object the tracking effects mutate — if they diverge, a facet that vanishes
+		// (e.g. its last alert resolves) silently drops out instead of showing 0.
+		const onFilterChange = vi.fn();
+		const { rerender } = render(
+			<FilterPanel config={config} facets={facets} filters={{}} onFilterChange={onFilterChange} />
+		);
+		expect(screen.getByTitle('Critical')).toBeInTheDocument();
+
+		rerender(
+			<FilterPanel
+				config={config}
+				facets={{ severity: [{ value: 'Info', count: 5 }] }}
+				filters={{}}
+				onFilterChange={onFilterChange}
+			/>
+		);
+
+		const row = screen.getByTitle('Critical').closest('div');
+		expect(row).not.toBeNull();
+		// Exact match: the count badge must read exactly "0" (a substring check
+		// would also accept e.g. "10").
+		expect(within(row as HTMLElement).getByText('0')).toBeInTheDocument();
 	});
 });

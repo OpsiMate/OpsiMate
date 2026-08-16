@@ -47,6 +47,11 @@ export interface AlertsTableProps {
 	onColumnToggle?: (column: string) => void;
 	// Persists a user-arranged base-column order (from the column settings drag list).
 	onColumnOrderChange?: (columns: string[]) => void;
+	// Manually-dragged column widths (px by column id) from the dashboard state; a
+	// listed column keeps exactly that width until reset. Committed back through
+	// onColumnWidthsChange once per drag gesture (never per mousemove).
+	columnWidths?: Record<string, number>;
+	onColumnWidthsChange?: (widths: Record<string, number>) => void;
 	tagKeys?: TagKeyInfo[];
 	timeRange?: TimeRange;
 	onTimeRangeChange?: (range: TimeRange) => void;

@@ -25,6 +25,9 @@ export class DashboardRepository {
 			visibleColumns: JSON.parse(dashboardRow.visible_columns) as string[],
 			query: dashboardRow.query,
 			columnOrder: dashboardRow.column_order ? (JSON.parse(dashboardRow.column_order) as string[]) : undefined,
+			columnWidths: dashboardRow.column_widths
+				? (JSON.parse(dashboardRow.column_widths) as Record<string, number>)
+				: undefined,
 			splitByAssignment: fromDbBoolean(dashboardRow.split_by_assignment),
 			severityColors: fromDbBoolean(dashboardRow.severity_colors),
 			groupBy: JSON.parse(dashboardRow.group_by) as string[],
@@ -52,8 +55,8 @@ export class DashboardRepository {
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
-                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, split_by_assignment, severity_colors, query, group_by, time_range)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO dashboards (name, type, description, filters, visible_columns, column_order, column_widths, split_by_assignment, severity_colors, query, group_by, time_range)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 			const result = stmt.run(
 				dashboard.name,
@@ -62,6 +65,7 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
+				dashboard.columnWidths ? JSON.stringify(dashboard.columnWidths) : null,
 				toDbBoolean(dashboard.splitByAssignment),
 				toDbBoolean(dashboard.severityColors),
 				dashboard.query,
@@ -110,6 +114,10 @@ export class DashboardRepository {
 			if (!columns.some((col) => col.name === 'column_order')) {
 				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN column_order TEXT`).run();
 			}
+			// Backward compatibility: user-dragged column widths (JSON Record<string, number>).
+			if (!columns.some((col) => col.name === 'column_widths')) {
+				this.db.prepare(`ALTER TABLE dashboards ADD COLUMN column_widths TEXT`).run();
+			}
 			// Backward compatibility: alerts toolbar toggles, 0/1 with NULL meaning "saved
 			// before the toggle existed".
 			if (!columns.some((col) => col.name === 'split_by_assignment')) {
@@ -132,6 +140,7 @@ export class DashboardRepository {
                 filters = ?,
                 visible_columns = ?,
                 column_order = ?,
+                column_widths = ?,
                 split_by_assignment = ?,
                 severity_colors = ?,
                 query = ?,
@@ -147,6 +156,7 @@ export class DashboardRepository {
 				JSON.stringify(dashboard.filters),
 				JSON.stringify(dashboard.visibleColumns),
 				dashboard.columnOrder ? JSON.stringify(dashboard.columnOrder) : null,
+				dashboard.columnWidths ? JSON.stringify(dashboard.columnWidths) : null,
 				toDbBoolean(dashboard.splitByAssignment),
 				toDbBoolean(dashboard.severityColors),
 				dashboard.query,

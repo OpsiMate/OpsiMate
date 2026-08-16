@@ -450,6 +450,12 @@ const Alerts = () => {
 		);
 	};
 
+	// Persist manually-dragged column widths; one commit per drag gesture (the table
+	// keeps live drag state local), or {} from the reset entry.
+	const handleColumnWidthsChange = (widths: Record<string, number>) => {
+		updateDashboardField('columnWidths', widths);
+	};
+
 	const handleSaveDashboard = async () => {
 		const dashboardData = {
 			name: dashboardState.name || 'New Dashboard',
@@ -462,6 +468,7 @@ const Alerts = () => {
 			// on screen is not the arrangement that comes back on the next load.
 			visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
 			columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
+			columnWidths: dashboardState.columnWidths,
 			splitByAssignment: dashboardState.splitByAssignment,
 			severityColors: dashboardState.severityColors,
 			query: dashboardState.query,
@@ -862,6 +869,8 @@ const Alerts = () => {
 			isLoading={isLoading}
 			visibleColumns={visibleColumns}
 			columnOrder={columnOrder}
+			columnWidths={dashboardState.columnWidths}
+			onColumnWidthsChange={handleColumnWidthsChange}
 			onAlertClick={handleAlertClick}
 			activeAlertId={syncedSelectedAlert?.id ?? null}
 			tagKeyColumnLabels={allColumnLabels}
@@ -899,6 +908,7 @@ const Alerts = () => {
 				visibleColumns: dashboard.visibleColumns || [],
 				filters: dashboard.filters || {},
 				columnOrder: dashboard.columnOrder || [],
+				columnWidths: dashboard.columnWidths || {},
 				splitByAssignment: dashboard.splitByAssignment ?? false,
 				// ?? not ||: a dashboard saved with severity colors explicitly OFF must stay
 				// off, and only a dashboard with no opinion at all falls back to the legacy
@@ -1269,6 +1279,8 @@ const Alerts = () => {
 									isResolved={true}
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
+									columnWidths={dashboardState.columnWidths}
+									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
 									tagKeyColumnLabels={allColumnLabels}
@@ -1312,6 +1324,8 @@ const Alerts = () => {
 									isLoading={isLoading || isLoadingResolved}
 									visibleColumns={visibleColumns}
 									columnOrder={columnOrder}
+									columnWidths={dashboardState.columnWidths}
+									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
 									tagKeyColumnLabels={allColumnLabels}

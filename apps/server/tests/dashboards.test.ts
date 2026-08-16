@@ -48,6 +48,63 @@ describe('Dashboards API — column order persistence', () => {
 		expect((await listById())?.columnOrder).toEqual(['alertName', 'type', 'summary', 'owner']);
 	});
 
+	test('create and update round-trip columnWidths; absent means undefined', async () => {
+		const base = {
+			name: 'widths test',
+			type: 'alerts' as const,
+			description: '',
+			filters: {},
+			visibleColumns: ['type', 'alertName', 'summary'],
+			columnWidths: { alertName: 320, 'tagKey:env': 180 },
+			query: '',
+			groupBy: [],
+		};
+		const created = await app.post('/api/v1/dashboards').set('Authorization', `Bearer ${jwtToken}`).send(base);
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const listById = async () => {
+			const list = await app.get('/api/v1/dashboards').set('Authorization', `Bearer ${jwtToken}`);
+			return (list.body.data as { id: string | number; columnWidths?: Record<string, number> }[]).find(
+				(d) => String(d.id) === id
+			);
+		};
+		expect((await listById())?.columnWidths).toEqual({ alertName: 320, 'tagKey:env': 180 });
+
+		// Update replaces the whole map; an update WITHOUT the field clears it (the
+		// client always sends the current map, so absence is a real "no manual widths").
+		const updated = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, columnWidths: { owner: 200 } });
+		expect(updated.status).toBe(200);
+		expect((await listById())?.columnWidths).toEqual({ owner: 200 });
+
+		const cleared = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...base, columnWidths: undefined });
+		expect(cleared.status).toBe(200);
+		expect((await listById())?.columnWidths).toBeUndefined();
+	});
+
+	test('rejects non-positive column widths', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				name: 'bad widths',
+				type: 'alerts' as const,
+				description: '',
+				filters: {},
+				visibleColumns: ['type'],
+				columnWidths: { alertName: 0 },
+				query: '',
+				groupBy: [],
+			});
+		expect(res.status).toBe(400);
+	});
+
 	test('a dashboard saved without columnOrder returns it as undefined', async () => {
 		const created = await app
 			.post('/api/v1/dashboards')

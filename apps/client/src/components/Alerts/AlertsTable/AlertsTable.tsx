@@ -15,6 +15,7 @@ import {
 	COLUMN_WIDTHS,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
+	isResizableColumn,
 	SELECT_COLUMN_WIDTH,
 	TABLE_HEAD_CLASSES,
 } from './AlertsTable.constants';
@@ -26,6 +27,7 @@ import {
 	useAlertGrouping,
 	useAlertSelection,
 	useAlertSorting,
+	useColumnResize,
 	useContentColumnWidths,
 	useDragAutoScroll,
 	useDragSelection,
@@ -36,6 +38,11 @@ import { SortableHeader } from './SortableHeader';
 import { StickyGroupHeader } from './StickyGroupHeader';
 import { TimeFilter, createEmptyTimeRange, isTimeRangeEmpty } from './TimeFilter';
 import { VirtualizedAlertList } from './VirtualizedAlertList';
+
+// How long the container width must hold still before columns redistribute: longer
+// than one animation frame (so a sliding sidebar coalesces into one commit), short
+// enough that the settle after the gesture reads as immediate.
+const RESIZE_SETTLE_MS = 100;
 
 // Icon-only headers for the narrow icon-only columns; the column name stays in the
 // header tooltip.
@@ -70,6 +77,8 @@ export const AlertsTable = ({
 	onGroupByChange,
 	onColumnToggle,
 	onColumnOrderChange,
+	columnWidths = {},
+	onColumnWidthsChange,
 	tagKeys = [],
 	searchTerm,
 	onSearchTermChange,
@@ -93,10 +102,22 @@ export const AlertsTable = ({
 	// sticks at 0/stale and the content columns silently fall back to their static
 	// classes. The callback re-attaches the observer to whichever node is current.
 	const resizeObserverRef = useRef<ResizeObserver | null>(null);
-	const observeScroller = (el: HTMLDivElement | null) => {
+	// Pending settle-commit for the observer below; cleared on re-attach so a timer
+	// from a torn-down scroller can't commit that dead element's width.
+	const settleTimerRef = useRef<number | null>(null);
+	// useCallback([]): a ref callback with fresh identity re-runs on EVERY render
+	// (React detaches with null, re-attaches) — which would tear down the observer
+	// and cancel the pending settle timer exactly when a sidebar toggle re-renders
+	// the table mid-animation. Stable identity limits runs to real node changes.
+	// Everything captured is a ref or a setState, so the empty deps are sound.
+	const observeScroller = useCallback((el: HTMLDivElement | null) => {
 		scrollerRef.current = el;
 		resizeObserverRef.current?.disconnect();
 		resizeObserverRef.current = null;
+		if (settleTimerRef.current !== null) {
+			window.clearTimeout(settleTimerRef.current);
+			settleTimerRef.current = null;
+		}
 		if (el) {
 			// The first measurement of each observed element is always accepted:
 			// containerWidth survives in React state across scroller remounts (tab
@@ -111,18 +132,31 @@ export const AlertsTable = ({
 					setContainerWidth(width);
 					return;
 				}
-				// Damper against measure feedback: sub-scrollbar-width deltas are noise
-				// from scrollbar/border toggles, and reacting to them re-runs the
-				// content-aware column sizing for no visual gain (and can feed back:
-				// width change -> columns recompute -> overflow flips -> width change).
-				// The scroller reserves its scrollbar gutter (scrollbar-gutter: stable
-				// below) so these deltas shouldn't occur at all; this is the backstop.
-				setContainerWidth((prev) => (Math.abs(width - prev) < 16 && prev !== 0 ? prev : width));
+				// Trailing settle-debounce: a sidebar toggle animates the width over
+				// ~300ms of per-frame resize events, and committing every step
+				// re-renders every visible row once per step — the whole toggle jank.
+				// Waiting until events stop costs one re-render per gesture; until it
+				// fires the columns keep their widths and the filler column absorbs
+				// the difference.
+				if (settleTimerRef.current !== null) {
+					window.clearTimeout(settleTimerRef.current);
+				}
+				settleTimerRef.current = window.setTimeout(() => {
+					settleTimerRef.current = null;
+					// Damper against measure feedback: sub-scrollbar-width deltas are
+					// noise from scrollbar/border toggles, and reacting to them re-runs
+					// the content-aware column sizing for no visual gain (and can feed
+					// back: width change -> columns recompute -> overflow flips ->
+					// width change). The scroller reserves its scrollbar gutter
+					// (scrollbar-gutter: stable below) so these deltas shouldn't occur
+					// at all; this is the backstop.
+					setContainerWidth((prev) => (Math.abs(width - prev) < 16 && prev !== 0 ? prev : width));
+				}, RESIZE_SETTLE_MS);
 			});
 			observer.observe(el);
 			resizeObserverRef.current = observer;
 		}
-	};
+	}, []);
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
@@ -249,22 +283,36 @@ export const AlertsTable = ({
 		return [...filtered, ACTIONS_COLUMN];
 	}, [columnOrder, visibleColumns]);
 
-	// Summary is the table's one flexible column. When it's hidden, an empty filler
-	// column before ACTIONS absorbs the leftover width instead — otherwise the browser
-	// hands the surplus to a data column (huge whitespace) or stretches every fixed
-	// column. The rows render the same filler (AlertRow) or the layouts misalign.
-	const needsFillerColumn = !orderedColumns.includes('summary');
-
 	// The actions header holds the group-by button, plus the column-settings button when
 	// enabled — the column must widen with it or the extra button overflows the fixed
 	// <th> onto the neighboring column's header text.
 	const actionsColumnWidth = onColumnToggle ? ACTIONS_COLUMN_WIDTH_WITH_SETTINGS : ACTIONS_COLUMN_WIDTH;
+
+	// User-dragged widths: the saved map plus the in-flight drag overlaid. Live drag
+	// state stays LOCAL to this table (the dashboard state gets one commit per gesture),
+	// so only the table being dragged re-renders while the mouse moves.
+	const { liveWidths, resizingColumn, startResize, resetColumn, nudgeColumn } = useColumnResize({
+		columnWidths,
+		onColumnWidthsChange,
+	});
+	const manualWidths = useMemo(() => ({ ...columnWidths, ...liveWidths }), [columnWidths, liveWidths]);
+
+	// Summary is the table's one flexible column. When it's hidden — or pinned to a
+	// manual width (live drags included), which takes it out of the flexible role — an
+	// empty filler column before ACTIONS absorbs the leftover width instead; otherwise
+	// the browser hands the surplus to a data column (huge whitespace) or stretches
+	// every fixed column. AlertRow renders the same filler under the same condition
+	// (its width map only ever carries summary when it's manually sized), or the
+	// header and row layouts misalign.
+	const needsFillerColumn = !orderedColumns.includes('summary') || manualWidths['summary'] !== undefined;
 
 	// Pixel widths for the content-sized columns (alert name + tags): wide enough that
 	// their longest value fits, no wider. Empty until the container is first measured —
 	// static width classes cover that frame. containerWidth is the scroller's content
 	// box (ResizeObserver contentRect), which already excludes any classic vertical
 	// scrollbar — so the budget is exactly the width the columns can really use.
+	// Manually-resized columns are excluded from the automatic sizing and claim their
+	// dragged pixels instead.
 	const contentColumnWidths = useContentColumnWidths({
 		alerts: sortedAlerts,
 		orderedColumns,
@@ -272,10 +320,18 @@ export const AlertsTable = ({
 		containerWidth,
 		hasSelectColumn: !!onSelectAlerts,
 		actionsColumnWidthPx: parseInt(actionsColumnWidth, 10),
+		manualWidths,
 	});
 
-	// Floor width for the table: the sum of the visible columns' minimums. Narrower
-	// panes get a horizontal scrollbar instead of columns crushing each other.
+	// One width map for header and rows: automatic widths, with manual drags on top.
+	const effectiveColumnWidths = useMemo(
+		() => ({ ...contentColumnWidths, ...manualWidths }),
+		[contentColumnWidths, manualWidths]
+	);
+
+	// Floor width for the table: the sum of the visible columns' minimums (a manually
+	// sized column's floor IS its dragged width — it must not crush). Narrower panes
+	// get a horizontal scrollbar instead of columns crushing each other.
 	const tableMinWidth = useMemo(() => {
 		const columns = onSelectAlerts ? ['select', ...orderedColumns] : orderedColumns;
 		return columns.reduce(
@@ -283,10 +339,10 @@ export const AlertsTable = ({
 				sum +
 				(col === ACTIONS_COLUMN
 					? parseInt(actionsColumnWidth, 10)
-					: (COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default)),
+					: (manualWidths[col] ?? COLUMN_MIN_WIDTHS[col] ?? COLUMN_MIN_WIDTHS.default)),
 			0
 		);
-	}, [orderedColumns, onSelectAlerts, actionsColumnWidth]);
+	}, [orderedColumns, onSelectAlerts, actionsColumnWidth, manualWidths]);
 
 	const hasActiveTimeFilter = timeRange && !isTimeRangeEmpty(timeRange);
 
@@ -399,6 +455,14 @@ export const AlertsTable = ({
 																				}
 																				excludeColumns={[ACTIONS_COLUMN]}
 																				tagKeys={tagKeys}
+																				hasCustomColumnWidths={
+																					Object.keys(columnWidths).length > 0
+																				}
+																				onResetColumnWidths={
+																					onColumnWidthsChange
+																						? () => onColumnWidthsChange({})
+																						: undefined
+																				}
 																			/>
 																		)}
 																	</div>
@@ -419,10 +483,14 @@ export const AlertsTable = ({
 																onSort={handleSort}
 																className={COLUMN_WIDTHS.default}
 																style={
-																	contentColumnWidths[column]
-																		? { width: contentColumnWidths[column] }
+																	effectiveColumnWidths[column]
+																		? { width: effectiveColumnWidths[column] }
 																		: undefined
 																}
+																onResizeStart={startResize}
+																onResizeReset={resetColumn}
+																onResizeNudge={nudgeColumn}
+																resizingColumn={resizingColumn}
 															/>
 														);
 													}
@@ -454,10 +522,16 @@ export const AlertsTable = ({
 																onSort={handleSort}
 																className={COLUMN_WIDTHS[column]}
 																style={
-																	contentColumnWidths[column]
-																		? { width: contentColumnWidths[column] }
+																	effectiveColumnWidths[column]
+																		? { width: effectiveColumnWidths[column] }
 																		: undefined
 																}
+																onResizeStart={
+																	isResizableColumn(column) ? startResize : undefined
+																}
+																onResizeReset={resetColumn}
+																onResizeNudge={nudgeColumn}
+																resizingColumn={resizingColumn}
 															/>
 														);
 													}
@@ -505,7 +579,7 @@ export const AlertsTable = ({
 									flatRows={flatRows}
 									selectedAlerts={selectedAlerts}
 									orderedColumns={orderedColumns}
-									contentColumnWidths={contentColumnWidths}
+									contentColumnWidths={effectiveColumnWidths}
 									expandRows={expandRows}
 									onToggleGroup={toggleGroup}
 									onSelectAlert={handleSelectAlert}

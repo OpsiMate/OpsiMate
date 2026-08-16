@@ -19,6 +19,7 @@ const defaults: DashboardState = {
 	visibleColumns: [],
 	filters: {},
 	columnOrder: [],
+	columnWidths: {},
 	splitByAssignment: false,
 	severityColors: false,
 	groupBy: [],

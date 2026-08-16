@@ -32,6 +32,19 @@ export default tseslint.config(
 			// React Hooks rules
 			// TODO: lint rule is too complicated to resolve, this should be done gradually
 			...reactHooks.configs.recommended.rules,
+
+			// The React Compiler rules that arrived with eslint-plugin-react-hooks v7
+			// ship as errors and flag 36 pre-existing spots (25 of them setState-in-effect).
+			// They're real findings worth burning down, but they predate the plugin bump —
+			// erroring on them fails CI for code the previous plugin never inspected. Warn
+			// instead so they stay visible and get fixed gradually (same policy as the TODO
+			// above), then raise each back to error once its violations are clean.
+			'react-hooks/set-state-in-effect': 'warn',
+			'react-hooks/refs': 'warn',
+			'react-hooks/immutability': 'warn',
+			'react-hooks/static-components': 'warn',
+			'react-hooks/purity': 'warn',
+
 			'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
 			// TypeScript rules
