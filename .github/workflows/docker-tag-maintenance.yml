@@ -62,7 +62,11 @@ jobs:
             image=$(echo "$image" | xargs)
             echo "::group::opsimate/$image:$SOURCE -> :$TARGET"
             docker buildx imagetools create -t "opsimate/$image:$TARGET" "opsimate/$image:$SOURCE"
-            docker buildx imagetools inspect "opsimate/$image:$TARGET" | head -n 5
+            # sed reads to EOF, unlike `head`, which closes the pipe after N lines and
+            # (under pipefail) turns imagetools' resulting SIGPIPE into a job failure —
+            # AFTER the push already succeeded. That exact combination failed run
+            # 31973717163 with backend retagged and frontend never attempted.
+            docker buildx imagetools inspect "opsimate/$image:$TARGET" | sed -n '1,5p'
             echo "::endgroup::"
           done
 
