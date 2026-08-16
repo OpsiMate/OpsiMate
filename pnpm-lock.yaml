@@ -152,9 +152,6 @@ importers:
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      js-yaml:
-        specifier: ^5.2.3
-        version: 5.2.3
       jwt-decode:
         specifier: ^4.0.0
         version: 4.0.0
@@ -219,9 +216,6 @@ importers:
       '@types/d3-hierarchy':
         specifier: ^3.1.7
         version: 3.1.7
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
@@ -373,9 +367,6 @@ importers:
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
       '@types/multer':
         specifier: ^2.2.0
         version: 2.2.0
