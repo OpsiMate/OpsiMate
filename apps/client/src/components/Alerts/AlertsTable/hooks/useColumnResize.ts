@@ -2,12 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 // A column can't be dragged wider than this; past it the value is almost certainly a
 // slip of the hand, and one absurd column forces the whole table into horizontal scroll.
-const MAX_MANUAL_WIDTH_PX = 800;
+// Exported for the handle's aria-valuemax/min.
+export const MAX_MANUAL_WIDTH_PX = 800;
 // Deliberately far below COLUMN_MIN_WIDTHS: those are the floors for AUTOMATIC layout
 // (what a column gets when nobody asked), while a drag is the user explicitly trading
 // content for space — cells truncate with ellipsis, so a very narrow column is a valid
 // choice. 50px keeps the header handle grabbable and a few characters visible.
-const MIN_MANUAL_WIDTH_PX = 50;
+export const MIN_MANUAL_WIDTH_PX = 50;
+
+// Arrow-key resize step for keyboard users.
+const KEYBOARD_STEP_PX = 10;
 
 export interface UseColumnResizeOptions {
 	// The saved manual widths (dashboard state). Never mutated here.
@@ -29,6 +33,10 @@ export interface UseColumnResizeResult {
 	startResize: (column: string, event: React.MouseEvent) => void;
 	// Double-click on the handle: back to automatic sizing for that column.
 	resetColumn: (column: string) => void;
+	// Keyboard resize: one arrow press adjusts the column by a fixed step and commits
+	// immediately (there's no gesture to batch). Reads the header cell's rendered width
+	// as the base, same as startResize.
+	nudgeColumn: (column: string, direction: -1 | 1, event: React.KeyboardEvent) => void;
 }
 
 const clampWidth = (width: number): number =>
@@ -102,6 +110,15 @@ export const useColumnResize = ({
 		};
 	}, [resizingColumn]);
 
+	const nudgeColumn = useCallback((column: string, direction: -1 | 1, event: React.KeyboardEvent) => {
+		const headerCell = (event.target as HTMLElement).closest('th');
+		if (!headerCell) {
+			return;
+		}
+		const width = clampWidth(headerCell.getBoundingClientRect().width + direction * KEYBOARD_STEP_PX);
+		onChangeRef.current?.({ ...latestWidthsRef.current, [column]: width });
+	}, []);
+
 	const resetColumn = useCallback((column: string) => {
 		if (!(column in latestWidthsRef.current)) {
 			return;
@@ -111,5 +128,5 @@ export const useColumnResize = ({
 		onChangeRef.current?.(next);
 	}, []);
 
-	return { liveWidths, resizingColumn, startResize, resetColumn };
+	return { liveWidths, resizingColumn, startResize, resetColumn, nudgeColumn };
 };

@@ -5,6 +5,7 @@ import { isTagKeyColumn } from '@/types';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { ReactNode } from 'react';
 import { AlertSortField, SortDirection } from '../AlertsTable.types';
+import { MAX_MANUAL_WIDTH_PX, MIN_MANUAL_WIDTH_PX } from '../hooks/useColumnResize';
 import { BASE_SORT_FIELDS } from './SortableHeader.constants';
 
 const isValidSortField = (value: string): boolean => {
@@ -24,10 +25,12 @@ export interface SortableHeaderProps {
 	// Inline width for content-aware columns; wins over any width class.
 	style?: React.CSSProperties;
 	// When set, the header's right edge grows a drag handle: drag resizes the column,
-	// double-click returns it to automatic sizing. Absent on columns that don't resize
-	// (icon columns, actions).
+	// double-click returns it to automatic sizing, and with focus on the handle the
+	// arrow keys resize step-wise (Backspace/Delete resets). Absent on columns that
+	// don't resize (icon columns, actions).
 	onResizeStart?: (column: string, event: React.MouseEvent) => void;
 	onResizeReset?: (column: string) => void;
+	onResizeNudge?: (column: string, direction: -1 | 1, event: React.KeyboardEvent) => void;
 	// The column currently mid-drag (any column): keeps THIS handle's active styling on
 	// while the pointer inevitably leaves its 8px hit zone during the gesture.
 	resizingColumn?: string | null;
@@ -44,6 +47,7 @@ export const SortableHeader = ({
 	style,
 	onResizeStart,
 	onResizeReset,
+	onResizeNudge,
 	resizingColumn,
 }: SortableHeaderProps) => {
 	const getSortIcon = () => {
@@ -101,25 +105,43 @@ export const SortableHeader = ({
 				/* Resize handle on the cell's right edge. Wider hit zone (8px) than the
 				   visible 2px bar; mousedown starts the drag (the hook stops propagation
 				   so releasing doesn't count as a sort click), double-click resets the
-				   column to automatic sizing. The visible bar shows on hover and stays
-				   pinned while this column is mid-drag — the pointer leaves the hit zone
-				   on any fast drag. */
+				   column to automatic sizing. Keyboard: the handle is its own tab stop —
+				   arrows resize step-wise, Backspace/Delete resets. aria-valuenow only
+				   when a pixel width is actually applied (auto-sized columns have no
+				   number to report). The visible bar shows on hover, while focused, and
+				   stays pinned while this column is mid-drag — the pointer leaves the
+				   hit zone on any fast drag. */
 				<span
 					role="separator"
+					tabIndex={0}
 					aria-orientation="vertical"
 					aria-label={`Resize ${label} column`}
+					aria-valuemin={MIN_MANUAL_WIDTH_PX}
+					aria-valuemax={MAX_MANUAL_WIDTH_PX}
+					aria-valuenow={typeof style?.width === 'number' ? style.width : undefined}
 					onMouseDown={(e) => onResizeStart(column, e)}
 					onDoubleClick={(e) => {
 						e.stopPropagation();
 						onResizeReset?.(column);
 					}}
 					onClick={(e) => e.stopPropagation()}
-					className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize select-none group/resize"
+					onKeyDown={(e) => {
+						if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+							e.preventDefault();
+							e.stopPropagation();
+							onResizeNudge?.(column, e.key === 'ArrowLeft' ? -1 : 1, e);
+						} else if (e.key === 'Backspace' || e.key === 'Delete') {
+							e.preventDefault();
+							e.stopPropagation();
+							onResizeReset?.(column);
+						}
+					}}
+					className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize select-none group/resize focus-visible:outline-none"
 				>
 					<span
 						className={cn(
 							'absolute right-0 top-1 bottom-1 w-0.5 rounded bg-primary/60 opacity-0 transition-opacity',
-							'group-hover/resize:opacity-100',
+							'group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
 							resizingColumn === column && 'opacity-100'
 						)}
 					/>

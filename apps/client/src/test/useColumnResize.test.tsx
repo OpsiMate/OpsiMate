@@ -100,6 +100,29 @@ describe('useColumnResize', () => {
 		expect(onChange).toHaveBeenCalledWith({ alertName: 300, owner: 250 });
 	});
 
+	test('keyboard nudge commits a stepped width immediately, clamped at the floor', () => {
+		const onChange = vi.fn();
+		const { headerCell } = mountHeaderCell(200);
+		const { result } = renderHook(() => useColumnResize({ columnWidths: {}, onColumnWidthsChange: onChange }));
+
+		const keyEventOn = (target: HTMLElement) =>
+			({
+				target,
+				preventDefault: () => undefined,
+				stopPropagation: () => undefined,
+			}) as unknown as React.KeyboardEvent;
+
+		act(() => {
+			result.current.nudgeColumn('owner', 1, keyEventOn(headerCell));
+		});
+		expect(onChange).toHaveBeenCalledWith({ owner: 210 });
+
+		act(() => {
+			result.current.nudgeColumn('owner', -1, keyEventOn(headerCell));
+		});
+		expect(onChange).toHaveBeenLastCalledWith({ owner: 190 });
+	});
+
 	test('resetColumn removes only that column; a column with no manual width is a no-op', () => {
 		const onChange = vi.fn();
 		const { result } = renderHook(() =>

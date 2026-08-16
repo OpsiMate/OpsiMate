@@ -291,7 +291,7 @@ export const AlertsTable = ({
 	// User-dragged widths: the saved map plus the in-flight drag overlaid. Live drag
 	// state stays LOCAL to this table (the dashboard state gets one commit per gesture),
 	// so only the table being dragged re-renders while the mouse moves.
-	const { liveWidths, resizingColumn, startResize, resetColumn } = useColumnResize({
+	const { liveWidths, resizingColumn, startResize, resetColumn, nudgeColumn } = useColumnResize({
 		columnWidths,
 		onColumnWidthsChange,
 	});
@@ -489,6 +489,7 @@ export const AlertsTable = ({
 																}
 																onResizeStart={startResize}
 																onResizeReset={resetColumn}
+																onResizeNudge={nudgeColumn}
 																resizingColumn={resizingColumn}
 															/>
 														);
@@ -529,6 +530,7 @@ export const AlertsTable = ({
 																	isResizableColumn(column) ? startResize : undefined
 																}
 																onResizeReset={resetColumn}
+																onResizeNudge={nudgeColumn}
 																resizingColumn={resizingColumn}
 															/>
 														);
