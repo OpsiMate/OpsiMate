@@ -406,6 +406,10 @@ export interface Dashboard {
 	// User-arranged column order for the alerts table (base columns; tag-key columns
 	// follow the visible list). Absent on dashboards saved before reordering shipped.
 	columnOrder?: string[];
+	// User-dragged column widths in px, keyed by column id (tagKey:<key> included).
+	// Only manually-resized columns appear; the rest keep automatic sizing. A manual
+	// width wins until the user resets it. Absent on dashboards saved before resizing.
+	columnWidths?: Record<string, number>;
 	// Alerts toolbar toggles. Optional on purpose: absent means "this dashboard predates
 	// the toggle", which the client resolves differently from a saved `false` — see
 	// DashboardContext.utils' legacy severity-colors fallback.

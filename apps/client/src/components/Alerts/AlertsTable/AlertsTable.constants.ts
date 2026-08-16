@@ -68,6 +68,13 @@ export const COLUMN_WIDTHS: Record<string, string> = {
 	default: 'w-[150px]',
 };
 
+// Columns whose width the user can drag. Icon-only columns (fixed 48px squares) and the
+// structural select/actions columns are excluded — there's nothing to gain and the
+// handles would crowd headers that are barely wider than the hit zone.
+const NON_RESIZABLE_COLUMNS = new Set(['select', 'type', 'severity', 'fix', 'status', ACTIONS_COLUMN]);
+
+export const isResizableColumn = (column: string): boolean => !NON_RESIZABLE_COLUMNS.has(column);
+
 // Per-column minimums (px) summed into the table's floor width: the table never renders
 // narrower than its visible columns' minimums — below that the whole table (header and
 // body together) scrolls horizontally instead of crushing a column.
