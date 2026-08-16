@@ -36,6 +36,19 @@ interface FilterPanelProps {
 	className?: string;
 }
 
+// Everything a field's accordion section needs, assembled once per facets/filters/
+// search change instead of on every render — a facet can carry tens of thousands of
+// values (alertName on large datasets), so this assembly IS the panel's render cost.
+interface FieldSection {
+	field: string;
+	activeValues: string[];
+	excludedValues: string[];
+	// Facet values + orphaned filter values + previously-seen values (count 0),
+	// narrowed by the global search box (unfiltered when the box is empty).
+	filteredByGlobalSearch: FilterFacet[];
+	fieldMatchesSearch: boolean;
+}
+
 const SEARCHABLE_THRESHOLD = 8;
 
 export const FilterPanel = ({
@@ -91,10 +104,67 @@ export const FilterPanel = ({
 	const allSeenValues = useMemo(() => {
 		const result: Record<string, Set<string>> = {};
 		config.fields.forEach((field) => {
-			result[field] = allSeenValuesRef.current[field] || new Set();
+			// Store a created fallback back into the ref: this memo runs before the
+			// init effect on first render, and if the two made DIFFERENT Sets the
+			// tracking effects would populate the ref's copy while reads kept the
+			// memo's empty one — seen values would never surface as count-0 options.
+			const seenValues = allSeenValuesRef.current[field] ?? new Set<string>();
+			allSeenValuesRef.current[field] = seenValues;
+			result[field] = seenValues;
 		});
 		return result;
 	}, [config.fields]);
+
+	// The seen-value Sets mutate in the effects above without changing identity, but
+	// every mutation is driven by a facets or filters change — both deps here — so this
+	// memo is never stale. What it buys: unrelated re-renders (sidebar toggles, parent
+	// poll ticks with structurally-shared facets) skip the per-field Set builds and
+	// full-list scans entirely.
+	const fieldSections = useMemo<FieldSection[]>(() => {
+		const globalSearchLower = globalSearch.toLowerCase();
+		return config.fields.map((field) => {
+			const fieldFacets = facets[field] || [];
+			const activeValues = filters[field] || [];
+			const excludedValues = filters[`!${field}`] || [];
+			const seenValues = allSeenValues[field] || new Set<string>();
+
+			const existingValues = new Set(fieldFacets.map((f) => f.value));
+
+			// Active/excluded values no longer present in the facets stay listed (count 0)
+			// so the user can still un-toggle them.
+			const filteredValues = new Set([...activeValues, ...excludedValues]);
+			const orphanedFilters: FilterFacet[] = [];
+			filteredValues.forEach((value) => {
+				if (!existingValues.has(value)) {
+					orphanedFilters.push({ value, count: 0 });
+				}
+			});
+
+			const fieldLabel = config.fieldLabels[field] || field;
+			const fieldMatchesSearch = fieldLabel.toLowerCase().includes(globalSearchLower);
+
+			const missingSeenValues: FilterFacet[] = [];
+			seenValues.forEach((value) => {
+				if (!existingValues.has(value) && !filteredValues.has(value)) {
+					missingSeenValues.push({ value, count: 0 });
+				}
+			});
+
+			const allFacets = [...fieldFacets, ...orphanedFilters, ...missingSeenValues];
+
+			const matchesGlobalSearch = (facet: FilterFacet): boolean => {
+				// If the field name matches, show all facets in this section.
+				if (fieldMatchesSearch) return true;
+				return (
+					facet.value.toLowerCase().includes(globalSearchLower) ||
+					(facet.displayValue?.toLowerCase().includes(globalSearchLower) ?? false)
+				);
+			};
+			const filteredByGlobalSearch = globalSearch ? allFacets.filter(matchesGlobalSearch) : allFacets;
+
+			return { field, activeValues, excludedValues, filteredByGlobalSearch, fieldMatchesSearch };
+		});
+	}, [config.fields, config.fieldLabels, facets, filters, allSeenValues, globalSearch]);
 
 	const handleFilterToggle = (field: string, value: string) => {
 		const currentValues = filters[field] || [];
@@ -234,45 +304,9 @@ export const FilterPanel = ({
 				    controls stay hugging the visible right edge. */}
 				<div className="px-2 py-2 w-0 min-w-full">
 					<Accordion type="multiple" value={openValues} onValueChange={setOpenValues} className="w-full">
-						{config.fields.map((field) => {
-							const fieldFacets = facets[field] || [];
-							const activeValues = filters[field] || [];
-							const excludedValues = filters[`!${field}`] || [];
-							const seenValues = allSeenValues[field] || new Set();
-
-							const existingValues = new Set(fieldFacets.map((f) => f.value));
-							const orphanedFilters = [...activeValues, ...excludedValues]
-								.filter((v, i, arr) => !existingValues.has(v) && arr.indexOf(v) === i)
-								.map((value) => ({ value, count: 0 }));
-
-							// Apply global search filter
-							const globalSearchLower = globalSearch.toLowerCase();
-							const fieldLabel = config.fieldLabels[field] || field;
-							const fieldMatchesSearch = fieldLabel.toLowerCase().includes(globalSearchLower);
-
-							const matchesGlobalSearch = (facet: { value: string; displayValue?: string }) => {
-								if (!globalSearch) return true;
-								// If field name matches, show all facets in this section
-								if (fieldMatchesSearch) return true;
-								return (
-									facet.value.toLowerCase().includes(globalSearchLower) ||
-									(facet.displayValue?.toLowerCase().includes(globalSearchLower) ?? false)
-								);
-							};
-
-							const missingSeenValues = Array.from(seenValues)
-								.filter(
-									(v) =>
-										!existingValues.has(v) &&
-										!activeValues.includes(v) &&
-										!excludedValues.includes(v)
-								)
-								.map((value) => ({ value, count: 0 }));
-
-							const allFacets = [...fieldFacets, ...orphanedFilters, ...missingSeenValues];
-
-							// Filter by global search
-							const filteredByGlobalSearch = allFacets.filter(matchesGlobalSearch);
+						{fieldSections.map((section) => {
+							const { field, activeValues, excludedValues, filteredByGlobalSearch, fieldMatchesSearch } =
+								section;
 
 							// Hide entire section if no matches in global search AND field name doesn't match
 							if (globalSearch && filteredByGlobalSearch.length === 0 && !fieldMatchesSearch) {
@@ -302,10 +336,9 @@ export const FilterPanel = ({
 									<AccordionContent className="pb-2 overflow-hidden">
 										<div className="space-y-1 px-2 w-full">
 											{(() => {
-												// Use global search filtered facets
-												const facetsToShow = globalSearch ? filteredByGlobalSearch : allFacets;
+												// filteredByGlobalSearch === allFacets when the search box is empty.
 												const { filteredAndLimitedFacets, hasMore, remaining, searchTerm } =
-													getFilteredAndLimitedFacets(field, facetsToShow);
+													getFilteredAndLimitedFacets(field, filteredByGlobalSearch);
 
 												if (filteredAndLimitedFacets.length === 0) {
 													return (
