@@ -343,8 +343,8 @@ importers:
         specifier: ^13.2.1
         version: 13.2.1
       nodemailer:
-        specifier: ^7.0.13
-        version: 7.0.13
+        specifier: ^9.0.5
+        version: 9.0.5
       prom-client:
         specifier: ^15.1.3
         version: 15.1.3
@@ -4340,8 +4340,8 @@ packages:
     resolution: {integrity: sha512-rfl4GWMygQfzlExPkQ2LWyya5n2jOBm5vhEnup+4mdw7tQhNpJWbP5ldr09Jfj93k5SfY5lxcn8od5qrQ/6mBg==}
     engines: {node: '>= 10'}
 
-  nodemailer@7.0.13:
-    resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
+  nodemailer@9.0.5:
+    resolution: {integrity: sha512-wvjiKvjczmsN7U/8006JOdXubgBk2XFAbioDMbT+sM7cPs0QrhJTa6KBRX7P5REGGkDcLUz/EarWidb8G8C1jQ==}
     engines: {node: '>=6.0.0'}
 
   normalize-path@3.0.0:
@@ -9405,7 +9405,7 @@ snapshots:
       shell-escape: 0.2.0
       ssh2: 1.17.0
 
-  nodemailer@7.0.13: {}
+  nodemailer@9.0.5: {}
 
   normalize-path@3.0.0: {}
 
