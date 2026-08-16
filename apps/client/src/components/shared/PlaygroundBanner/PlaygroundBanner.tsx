@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Calendar, Github, Info } from 'lucide-react';
+import { Calendar, Info } from 'lucide-react';
 import {
 	BOOK_DEMO_BUTTON_TEXT,
 	BOOK_DEMO_URL,
@@ -51,7 +51,15 @@ export const PlaygroundBanner = ({ className }: PlaygroundBannerProps) => {
 					onClick={handleGithubClick}
 					className="h-8 gap-2 border-primary/30 hover:bg-primary/20"
 				>
-					<Github className="h-3.5 w-3.5" />
+					{/* The bundled mark, not a lucide icon: lucide v1 removed every brand
+					    icon for trademark reasons. This is the same asset the left
+					    sidebar's GitHub link already uses. */}
+					<img
+						src="/images/git.png"
+						alt=""
+						aria-hidden
+						className="h-3.5 w-3.5 object-contain invert dark:invert-0"
+					/>
 					{GITHUB_BUTTON_TEXT}
 				</Button>
 			</div>
