@@ -9,35 +9,52 @@ import {
 } from '@OpsiMate/shared';
 import { describe, it, expect } from 'vitest';
 
-describe('getAlertTagArray and getAlertTagEntries', () => {
-	const testAlert = {
+const mkAlert = (overrides?: Partial<Alert>): Alert =>
+	({
+		id: '1',
+		alertName: `alert 1`,
+		type: 'Grafana',
+		status: 'firing',
+		severity: 'info',
 		tags: {
 			severity: AlertSeverity.CRITICAL,
 			fix: AlertFix.AUTO,
 			priority: 'P1',
 		},
-	} as unknown as Alert;
+		startsAt: new Date(0).toISOString(),
+		updatedAt: new Date(0).toISOString(),
+		createdAt: new Date(0).toISOString(),
+		isSilenced: false,
+		...overrides,
+	}) as unknown as Alert;
 
-	it('filters out severity key from tag lists', () => {
-		expect(getAlertTagsArray(testAlert)).not.toContain(testAlert.tags.severity);
-		getAlertTagEntries(testAlert).forEach((tagKV) => expect(tagKV).not.toContain('severity'));
+const testAlertWithNonObjectTags = {
+	tags: 'severity: info',
+} as unknown as Alert;
+
+describe('getAlertTagArray and getAlertTagEntries', () => {
+	const testAlert = mkAlert();
+
+	it('filters out severity and fix key from tag lists', () => {
+		expect(getAlertTagsArray(testAlert)).toEqual(['P1']);
+
+		const keys = getAlertTagEntries(testAlert).map((tag) => tag.key);
+		expect(keys).toEqual(['priority']);
 	});
 
-	it('filters out fix key from tags list', () => {
-		expect(getAlertTagsArray(testAlert)).not.toContain(testAlert.tags.fix);
-		getAlertTagEntries(testAlert).forEach((tagKV) => expect(tagKV).not.toContain('fix'));
-	});
-
-	it('empty string tag values are dropped', () => {
-		const testAlertWithEmptyTags = {
+	it('drops empty string tag values', () => {
+		const testAlertWithEmptyTags = mkAlert({
 			tags: {
-				...testAlert.tags,
+				...mkAlert().tags,
 				empty: '',
 			},
-		} as unknown as Alert;
+		});
 
 		expect(getAlertTagsArray(testAlertWithEmptyTags)).not.toContain('');
-		getAlertTagEntries(testAlertWithEmptyTags).forEach((tagKV) => expect(tagKV).not.toContain(''));
+
+		const values = getAlertTagEntries(testAlertWithEmptyTags).map((tag) => tag.key);
+		expect(values).not.toContain('');
+		expect(values).toHaveLength(1);
 	});
 
 	it('returns an empty array for missing tags field', () => {
@@ -48,26 +65,21 @@ describe('getAlertTagArray and getAlertTagEntries', () => {
 	});
 
 	it('returns an empty array for non object tag field', () => {
-		const testAlertWithNonObjectTags = {
-			tags: 'severity: info',
-		} as unknown as Alert;
-
 		expect(getAlertTagsArray(testAlertWithNonObjectTags)).toEqual([]);
 		expect(getAlertTagEntries(testAlertWithNonObjectTags)).toEqual([]);
 	});
 });
 
 describe('alertMatchesTagFilter', () => {
-	const testAlert = {
-		tags: {
-			severity: AlertSeverity.CRITICAL,
-			fix: AlertFix.AUTO,
-			priority: 'P1',
-		},
-	} as unknown as Alert;
+	const testAlert = mkAlert();
+
+	it('returns true when the tag matches in the filter list', () => {
+		const fitlerValues = ['P1'];
+		expect(alertMatchesTagFilter(testAlert, fitlerValues)).toBeTruthy();
+	});
 
 	it('returns true for an empty filter list (no filter)', () => {
-		const emptyFilterValues = [];
+		const emptyFilterValues: string[] = [];
 
 		expect(alertMatchesTagFilter(testAlert, emptyFilterValues)).toBeTruthy();
 	});
@@ -81,12 +93,13 @@ describe('alertMatchesTagFilter', () => {
 
 describe('getAlertTagsString', () => {
 	it('returns alert tags as a string joined with ,', () => {
-		const testAlert = {
+		const testAlert = mkAlert({
 			tags: {
 				priority: 'P1',
 				customTag: 'ops',
 			},
-		} as unknown as Alert;
+		});
+
 		const expectedTags = [testAlert.tags.priority, testAlert.tags.customTag];
 
 		expect(getAlertTagsString(testAlert)).toEqual(expectedTags.join(', '));
