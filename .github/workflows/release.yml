@@ -53,9 +53,18 @@ jobs:
           # string "null", and the bump produced the image tag "null..1" — which was
           # pushed to Docker Hub before anything noticed (run 31964001234). Tags are
           # local, need no token, and cannot be rate limited.
-          LATEST=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 | sed 's/^v//')
+          # Full-match grammar, not a glob: the glob 'v[0-9]*.[0-9]*.[0-9]*' also
+          # matches things like v1.2.3-1, and `IFS='.' read` then leaves PATCH="3-1",
+          # which bash arithmetic evaluates as 3-1=2 — so the "next" version would come
+          # out as the CURRENT one and overwrite a published tag. Leading zeros are
+          # rejected too (1.02.4 is not semver). Sorted numerically per component.
+          LATEST=$(git tag --list 'v*' \
+            | sed 's/^v//' \
+            | grep -E '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+            | sort -t. -k1,1n -k2,2n -k3,3n \
+            | tail -n1)
           if [ -z "$LATEST" ]; then
-            echo "::error::No v<major>.<minor>.<patch> tag found — cannot determine the current version."
+            echo "::error::No strict v<major>.<minor>.<patch> tag found — cannot determine the current version."
             exit 1
           fi
           echo "Last released version: $LATEST"
@@ -83,7 +92,7 @@ jobs:
           # must never reach `docker buildx imagetools create`. Nothing upstream fails
           # loudly on a bad parse — curl, jq and bash arithmetic all exit 0 on garbage —
           # so this is the gate that turns a silent mis-tag into a red build.
-          if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if ! [[ "$NEW_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "::error::Computed version '$NEW_VERSION' is not semver (from last tag '$LATEST')."
             exit 1
           fi

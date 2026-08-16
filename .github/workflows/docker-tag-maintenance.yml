@@ -79,13 +79,22 @@ jobs:
             image=$(echo "$image" | xargs)
             for tag in "${TAGS[@]}"; do
               tag=$(echo "$tag" | xargs)
+              # Validate against Docker's own tag grammar FIRST. Without this, a tag
+              # containing [] or {} is a URL glob for curl: "l[a-z]test" expands to
+              # .../tags/latest/ (plus lbtest, lctest), which sails past a literal
+              # string comparison and would delete the moving tag. --globoff below is
+              # the second lock on the same door.
+              if ! [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+                echo "::error::Refusing tag '$tag' — not a valid Docker tag name."
+                exit 1
+              fi
               # Refuse the moving tags outright: deleting these breaks every plain
               # `docker pull opsimate/<image>` and is never what housekeeping means.
               if [ "$tag" = "latest" ] || [ "$tag" = "main" ]; then
                 echo "::error::Refusing to delete protected tag '$tag'."
                 exit 1
               fi
-              code=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE \
+              code=$(curl -s --globoff -o /dev/null -w '%{http_code}' -X DELETE \
                 -H "Authorization: JWT ${JWT}" \
                 "https://hub.docker.com/v2/repositories/opsimate/${image}/tags/${tag}/")
               case "$code" in
