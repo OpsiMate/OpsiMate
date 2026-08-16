@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
+import { splitOwnerPaneCounts } from './Alerts.utils';
 import {
 	useAlertFacets,
 	useAlertGroupSummaries,
@@ -199,6 +200,20 @@ const Alerts = () => {
 	const lastActiveTotal = useRef(Number.POSITIVE_INFINITY);
 	const lastResolvedTotal = useRef(Number.POSITIVE_INFINITY);
 
+	// The ONE clock for rolling windows. toCoarseWindow rounds to the minute so cache
+	// keys stay stable for a minute at a time — but nothing ever re-ran this memo, so
+	// the resolved window was actually frozen at the last filter/sort interaction and
+	// every server total slowly aged. Ticking once a minute delivers what the rounding
+	// promised. Every count that must agree with the list (split panes, status-aware
+	// tab count) derives its window from THIS query, never resolves its own.
+	const isRollingWindow = dashboardState.timeRange?.preset != null && dashboardState.timeRange.preset !== 'custom';
+	const [windowTick, setWindowTick] = useState(0);
+	useEffect(() => {
+		if (!isRollingWindow) return;
+		const timer = setInterval(() => setWindowTick((t) => t + 1), 60 * 1000);
+		return () => clearInterval(timer);
+	}, [isRollingWindow]);
+
 	const baseQuery = useMemo(() => {
 		const window = toCoarseWindow(dashboardState.timeRange);
 		return {
@@ -209,7 +224,9 @@ const Alerts = () => {
 			sort: alertSort.field,
 			dir: alertSort.dir,
 		};
-	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort]);
+		// windowTick re-anchors rolling presets to the current minute.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [statusSuspendedFilters, dashboardState.timeRange, dashboardState.query, alertSort, windowTick]);
 
 	// Load-all is gated on the last-known total staying under GROUP_LOAD_ALL_MAX: page
 	// one's response carries the total (regardless of limit), and when it's small enough
@@ -499,16 +516,18 @@ const Alerts = () => {
 	};
 	// The count query needs a STABLE object for its key, so it memoizes — with a slow
 	// tick re-resolving the rolling window, keeping the displayed N within a minute of
-	// what the action would do. The tick only runs while something consumes a count:
-	// an open selection, or the split-by-owner panes.
+	// what the action would do. The tick only runs while an open selection consumes the
+	// count. (The split-by-owner panes no longer ride this clock — they derive their
+	// window from baseQuery, so they can never disagree with the list total about
+	// which "now" they describe.)
 	const bulkCountEnabled = activeTab === AlertTab.Active && selectedAlerts.length > 0;
 	const splitCountsEnabled = splitByAssignment === true && activeTab === AlertTab.Active;
 	const [bulkWindowTick, setBulkWindowTick] = useState(0);
 	useEffect(() => {
-		if (!bulkCountEnabled && !splitCountsEnabled) return;
+		if (!bulkCountEnabled) return;
 		const timer = setInterval(() => setBulkWindowTick((t) => t + 1), 30 * 1000);
 		return () => clearInterval(timer);
-	}, [bulkCountEnabled, splitCountsEnabled]);
+	}, [bulkCountEnabled]);
 	const bulkCountQuery = useMemo(
 		() => buildBulkScopeQuery(),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -528,20 +547,32 @@ const Alerts = () => {
 	const hasExplicitOwnerFilter =
 		(dashboardState.filters.owner?.length ?? 0) > 0 || (dashboardState.filters['!owner']?.length ?? 0) > 0;
 	const paneCountsEnabled = splitCountsEnabled && !hasExplicitOwnerFilter;
-	const unassignedCountQuery = useMemo(
-		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, owner: ['Unassigned'] } }),
-		[bulkCountQuery]
+	// The FULL filter record over baseQuery's window: what the split panes actually
+	// render (they narrow by status client-side), anchored to the same resolved window
+	// as the list — a pane count must never freeze a different "now" than the total it
+	// sits next to.
+	const fullRecordCountQuery = useMemo(
+		() => ({
+			filters: dashboardState.filters,
+			from: baseQuery.from ?? undefined,
+			to: baseQuery.to ?? undefined,
+			search: dashboardState.query || undefined,
+		}),
+		[dashboardState.filters, baseQuery.from, baseQuery.to, dashboardState.query]
 	);
-	const assignedCountQuery = useMemo(
-		() => ({ ...bulkCountQuery, filters: { ...bulkCountQuery.filters, ['!owner']: ['Unassigned'] } }),
-		[bulkCountQuery]
-	);
+	// ONE request for BOTH panes (grouped by owner), polled at the list's own 5s
+	// cadence: the two headers can no longer disagree with each other, and against the
+	// list they are at most one poll apart instead of three independent queries
+	// describing three different moments.
+	const paneSummaries = useAlertGroupSummaries(['owner'], fullRecordCountQuery, {
+		enabled: paneCountsEnabled,
+		refetchIntervalMs: 5 * 1000,
+	});
 	// Read through the enabled gate: a disabled query can still surface stale placeholder
-	// data from before the owner filter was applied.
-	const unassignedMatchCount = useAlertMatchCount(unassignedCountQuery, paneCountsEnabled);
-	const assignedMatchCount = useAlertMatchCount(assignedCountQuery, paneCountsEnabled);
-	const unassignedTotal = paneCountsEnabled ? unassignedMatchCount : undefined;
-	const assignedTotal = paneCountsEnabled ? assignedMatchCount : undefined;
+	// data from before the split view was turned on.
+	const paneCounts = paneCountsEnabled ? splitOwnerPaneCounts(paneSummaries.groups) : undefined;
+	const unassignedTotal = paneCounts?.unassigned;
+	const assignedTotal = paneCounts?.assigned;
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -921,18 +952,25 @@ const Alerts = () => {
 	// search term is applied too — AlertsTable filters by it after the sidebar/time
 	// filters, and the counts must agree with the rows actually shown.
 	// Counts come from the SERVER totals, not the loaded page — so a search matching 1,800
-	// alerts reads "1,800", not "500". Each total already reflects that tab's filters,
-	// search and time window. Caveat: the active query suspends the status filter (it's the
-	// superset serving all three tabs), so with a status filter applied — e.g. silenced
-	// hidden — the Active count is the pre-status total. It signals "more than loaded"
-	// correctly; an exact status-aware count would need its own count query.
+	// alerts reads "1,800", not "500". The active query suspends the status filter (it's
+	// the superset serving all three tabs), so while a status filter is applied — e.g.
+	// silenced hidden — the suspended total counts statuses the table hides; a dedicated
+	// count over the FULL record supplies the exact number instead. It shares
+	// fullRecordCountQuery with the split panes, so "Active" and "Unassigned + Assigned"
+	// are the same question asked of the same window. The All tab keeps the suspended
+	// totals on purpose: that view really does show every status.
+	const hasStatusFilter =
+		(dashboardState.filters.status?.length ?? 0) > 0 || (dashboardState.filters['!status']?.length ?? 0) > 0;
+	const statusAwareActiveCount = useAlertMatchCount(fullRecordCountQuery, hasStatusFilter, {
+		refetchIntervalMs: 5 * 1000,
+	});
 	const tabCounts: Record<AlertTab, number> = useMemo(
 		() => ({
-			[AlertTab.Active]: activeTotal,
+			[AlertTab.Active]: hasStatusFilter ? (statusAwareActiveCount ?? activeTotal) : activeTotal,
 			[AlertTab.Resolved]: resolvedTotal,
 			[AlertTab.All]: activeTotal + resolvedTotal,
 		}),
-		[activeTotal, resolvedTotal]
+		[activeTotal, resolvedTotal, hasStatusFilter, statusAwareActiveCount]
 	);
 	return (
 		<DashboardLayout>

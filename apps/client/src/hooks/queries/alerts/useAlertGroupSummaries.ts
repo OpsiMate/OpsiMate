@@ -10,7 +10,7 @@ import { queryKeys } from '../queryKeys';
 export const useAlertGroupSummaries = (
 	groupBy: string[],
 	params: Omit<AlertQueryParams, 'limit' | 'cursor' | 'sort' | 'dir'>,
-	options?: { resolved?: boolean; enabled?: boolean }
+	options?: { resolved?: boolean; enabled?: boolean; refetchIntervalMs?: number }
 ) => {
 	const { data } = useQuery({
 		queryKey: [
@@ -32,7 +32,9 @@ export const useAlertGroupSummaries = (
 			return response.data.groups;
 		},
 		staleTime: 10 * 1000,
-		refetchInterval: 20 * 1000,
+		// Callers that pair these counts with the 5s alert list (the split-by-owner
+		// panes) pass a matching cadence, so the two stop describing different moments.
+		refetchInterval: options?.refetchIntervalMs ?? 20 * 1000,
 		// Keep the previous header counts while a changed query refetches — group headers
 		// flashing to loaded-only counts and back reads as the data disappearing.
 		placeholderData: keepPreviousData,

@@ -8,7 +8,8 @@ import { queryKeys } from '../queryKeys';
 // Only fetched while a selection is open (see `enabled`), so it costs nothing otherwise.
 export const useAlertMatchCount = (
 	params: Pick<AlertQueryParams, 'filters' | 'from' | 'to' | 'search'>,
-	enabled: boolean
+	enabled: boolean,
+	options?: { refetchIntervalMs?: number }
 ) => {
 	const { data } = useQuery({
 		queryKey: [
@@ -28,7 +29,7 @@ export const useAlertMatchCount = (
 			return response.data.total ?? response.data.alerts.length;
 		},
 		staleTime: 10 * 1000,
-		refetchInterval: 20 * 1000,
+		refetchInterval: options?.refetchIntervalMs ?? 20 * 1000,
 		// The N in "Select all N matching" (and the split-pane totals) shouldn't blink to
 		// nothing whenever the query re-keys.
 		placeholderData: keepPreviousData,
