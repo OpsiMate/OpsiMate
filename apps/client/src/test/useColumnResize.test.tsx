@@ -67,7 +67,7 @@ describe('useColumnResize', () => {
 		expect(result.current.liveWidths).toEqual({});
 	});
 
-	test('widths clamp to the column minimum on the way down', () => {
+	test('widths clamp to the manual floor — below the automatic layout minimums', () => {
 		const onChange = vi.fn();
 		const { headerCell } = mountHeaderCell(200);
 		const { result } = renderHook(() => useColumnResize({ columnWidths: {}, onColumnWidthsChange: onChange }));
@@ -78,11 +78,10 @@ describe('useColumnResize', () => {
 		act(() => {
 			documentMouse('mouseup', 0);
 		});
-		// COLUMN_MIN_WIDTHS.owner — dragging 500px left cannot go below it.
-		const committed = onChange.mock.calls[0][0].owner;
-		expect(committed).toBeGreaterThan(0);
-		expect(committed).toBeLessThan(200);
-		expect(onChange.mock.calls[0][0].owner).toBe(committed);
+		// Dragging 500px left floors at the manual minimum (50px) — deliberately far
+		// below COLUMN_MIN_WIDTHS.owner (120): the auto-layout floor is what a column
+		// gets by default, a drag is the user explicitly asking for less.
+		expect(onChange).toHaveBeenCalledWith({ owner: 50 });
 	});
 
 	test('commit preserves other columns already in the saved map', () => {

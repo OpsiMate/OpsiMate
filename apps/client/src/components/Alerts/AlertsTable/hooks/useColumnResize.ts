@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { COLUMN_MIN_WIDTHS } from '../AlertsTable.constants';
 
 // A column can't be dragged wider than this; past it the value is almost certainly a
 // slip of the hand, and one absurd column forces the whole table into horizontal scroll.
 const MAX_MANUAL_WIDTH_PX = 800;
+// Deliberately far below COLUMN_MIN_WIDTHS: those are the floors for AUTOMATIC layout
+// (what a column gets when nobody asked), while a drag is the user explicitly trading
+// content for space — cells truncate with ellipsis, so a very narrow column is a valid
+// choice. 50px keeps the header handle grabbable and a few characters visible.
+const MIN_MANUAL_WIDTH_PX = 50;
 
 export interface UseColumnResizeOptions {
 	// The saved manual widths (dashboard state). Never mutated here.
@@ -27,10 +31,8 @@ export interface UseColumnResizeResult {
 	resetColumn: (column: string) => void;
 }
 
-const clampWidth = (column: string, width: number): number => {
-	const min = COLUMN_MIN_WIDTHS[column] ?? COLUMN_MIN_WIDTHS.default;
-	return Math.round(Math.min(Math.max(width, min), MAX_MANUAL_WIDTH_PX));
-};
+const clampWidth = (width: number): number =>
+	Math.round(Math.min(Math.max(width, MIN_MANUAL_WIDTH_PX), MAX_MANUAL_WIDTH_PX));
 
 export const useColumnResize = ({
 	columnWidths,
@@ -60,7 +62,7 @@ export const useColumnResize = ({
 			startWidth: headerCell.getBoundingClientRect().width,
 		};
 		setResizingColumn(column);
-		setLiveWidths({ [column]: clampWidth(column, headerCell.getBoundingClientRect().width) });
+		setLiveWidths({ [column]: clampWidth(headerCell.getBoundingClientRect().width) });
 	}, []);
 
 	useEffect(() => {
@@ -72,7 +74,7 @@ export const useColumnResize = ({
 			if (!drag) {
 				return;
 			}
-			setLiveWidths({ [drag.column]: clampWidth(drag.column, drag.startWidth + event.clientX - drag.startX) });
+			setLiveWidths({ [drag.column]: clampWidth(drag.startWidth + event.clientX - drag.startX) });
 		};
 		const handleUp = (event: MouseEvent) => {
 			const drag = dragRef.current;
@@ -80,7 +82,7 @@ export const useColumnResize = ({
 			setResizingColumn(null);
 			setLiveWidths({});
 			if (drag) {
-				const width = clampWidth(drag.column, drag.startWidth + event.clientX - drag.startX);
+				const width = clampWidth(drag.startWidth + event.clientX - drag.startX);
 				onChangeRef.current?.({ ...latestWidthsRef.current, [drag.column]: width });
 			}
 		};
