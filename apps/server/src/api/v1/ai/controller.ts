@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AiFilterQuerySchema, Logger, Role, UpdateAiConfigSchema } from '@OpsiMate/shared';
-import { AiBL, AiDisabledError } from '../../../bl/ai/ai.bl';
+import { AiBL, AiDisabledError, AiValidationError, BedrockCallError } from '../../../bl/ai/ai.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
 
@@ -40,6 +40,9 @@ export class AiController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
+			if (error instanceof AiValidationError) {
+				return res.status(400).json({ success: false, error: error.message });
+			}
 			logger.error('Error updating AI config:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -70,10 +73,13 @@ export class AiController {
 			if (error instanceof AiDisabledError) {
 				return res.status(409).json({ success: false, error: error.message });
 			}
+			// Bedrock's own diagnosis (bad key, throttling, no structured reply) is
+			// user-showable — anything else stays a generic 500, never leaked.
+			if (error instanceof BedrockCallError) {
+				return res.status(502).json({ success: false, error: error.message });
+			}
 			logger.error('Error translating filter query:', error);
-			const message = error instanceof Error ? error.message : 'Internal server error';
-			// Bedrock's own diagnosis (bad key, throttling) is the useful part — pass it on.
-			return res.status(502).json({ success: false, error: message });
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 

@@ -28,7 +28,8 @@ export const AiFilterPopover = ({ onApply }: AiFilterPopoverProps) => {
 
 	const submit = async () => {
 		const trimmed = query.trim();
-		if (trimmed.length < 2) return;
+		// The Enter-key path bypasses the disabled button — guard here too.
+		if (trimmed.length < 2 || filterMutation.isPending) return;
 		try {
 			const result = await filterMutation.mutateAsync(trimmed);
 			onApply(result);
@@ -43,7 +44,12 @@ export const AiFilterPopover = ({ onApply }: AiFilterPopoverProps) => {
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button variant="outline" size="sm" className="gap-1.5 shrink-0" title="Describe a filter in plain words">
+				<Button
+					variant="outline"
+					size="sm"
+					className="gap-1.5 shrink-0"
+					title="Describe a filter in plain words"
+				>
 					<Sparkles className="h-4 w-4" />
 					<span className="hidden lg:inline">Ask AI</span>
 				</Button>
@@ -67,7 +73,11 @@ export const AiFilterPopover = ({ onApply }: AiFilterPopoverProps) => {
 					<p className="text-[11px] text-muted-foreground">
 						Only filter names and values are sent — no alert content.
 					</p>
-					<Button size="sm" onClick={() => void submit()} disabled={filterMutation.isPending || query.trim().length < 2}>
+					<Button
+						size="sm"
+						onClick={() => void submit()}
+						disabled={filterMutation.isPending || query.trim().length < 2}
+					>
 						{filterMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
 					</Button>
 				</div>

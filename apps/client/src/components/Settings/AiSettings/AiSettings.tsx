@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAiConfig, useTestAiConnection, useUpdateAiConfig } from '@/hooks/queries/ai';
 import { AiTestResult } from '@OpsiMate/shared';
 import { CheckCircle2, KeyRound, Loader2, PlugZap, XCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Common Bedrock model ids offered as suggestions; the field stays free text because
 // AWS ships new models (and cross-region inference profiles) faster than any list.
@@ -36,10 +36,16 @@ export const AiSettings = () => {
 	const [apiKey, setApiKey] = useState('');
 	const [testResult, setTestResult] = useState<AiTestResult | null>(null);
 
+	// Sync fields from the server WITHOUT clobbering unsaved edits: the query refreshes
+	// after every mutation (e.g. the enable toggle), and a field the user has diverged
+	// from the last-synced value must keep their text.
+	const lastSynced = useRef<{ region: string; modelId: string } | null>(null);
 	useEffect(() => {
 		if (!data) return;
-		setRegion(data.region);
-		setModelId(data.modelId);
+		const prev = lastSynced.current;
+		setRegion((current) => (prev === null || current === prev.region ? data.region : current));
+		setModelId((current) => (prev === null || current === prev.modelId ? data.modelId : current));
+		lastSynced.current = { region: data.region, modelId: data.modelId };
 	}, [data]);
 
 	if (isLoading) {
@@ -155,7 +161,11 @@ export const AiSettings = () => {
 							id="ai-key"
 							type="password"
 							autoComplete="off"
-							placeholder={data.hasApiKey ? '•••••••• (a key is saved — type to replace it)' : 'Paste your Bedrock API key'}
+							placeholder={
+								data.hasApiKey
+									? '•••••••• (a key is saved — type to replace it)'
+									: 'Paste your Bedrock API key'
+							}
 							value={apiKey}
 							onChange={(e) => setApiKey(e.target.value)}
 						/>
@@ -206,7 +216,9 @@ export const AiSettings = () => {
 							variant="outline"
 							onClick={() => void runTest()}
 							disabled={testMutation.isPending || !data.hasApiKey || dirty}
-							title={dirty ? 'Save your changes first — the test runs with the saved settings' : undefined}
+							title={
+								dirty ? 'Save your changes first — the test runs with the saved settings' : undefined
+							}
 							className="gap-1.5"
 						>
 							{testMutation.isPending ? (
@@ -223,7 +235,9 @@ export const AiSettings = () => {
 				</div>
 
 				{dirty && data.hasApiKey && (
-					<p className="text-xs text-muted-foreground">Unsaved changes — Test connection uses the saved settings.</p>
+					<p className="text-xs text-muted-foreground">
+						Unsaved changes — Test connection uses the saved settings.
+					</p>
 				)}
 
 				{testResult && (

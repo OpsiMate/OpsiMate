@@ -48,23 +48,26 @@ export class AiConfigRepository {
 		});
 	}
 
-	// Full-row upsert: the BL merges the update over the current row first, so partial
-	// updates never blank other fields.
+	// Full-row upsert, wrapped in a transaction so a concurrent read-merge-write from
+	// another request cannot interleave between the BL's read and this write.
 	saveConfig(row: Omit<AiConfigRow, 'updated_at'>): Promise<void> {
 		return runAsync(() => {
-			this.db
-				.prepare(
-					`INSERT INTO ai_config (id, provider, region, model_id, api_key, enabled, updated_at)
-					 VALUES (1, ?, ?, ?, ?, ?, ?)
-					 ON CONFLICT(id) DO UPDATE SET
-						provider = excluded.provider,
-						region = excluded.region,
-						model_id = excluded.model_id,
-						api_key = excluded.api_key,
-						enabled = excluded.enabled,
-						updated_at = excluded.updated_at`
-				)
-				.run(row.provider, row.region, row.model_id, row.api_key, row.enabled, new Date().toISOString());
+			const write = this.db.transaction(() => {
+				this.db
+					.prepare(
+						`INSERT INTO ai_config (id, provider, region, model_id, api_key, enabled, updated_at)
+						 VALUES (1, ?, ?, ?, ?, ?, ?)
+						 ON CONFLICT(id) DO UPDATE SET
+							provider = excluded.provider,
+							region = excluded.region,
+							model_id = excluded.model_id,
+							api_key = excluded.api_key,
+							enabled = excluded.enabled,
+							updated_at = excluded.updated_at`
+					)
+					.run(row.provider, row.region, row.model_id, row.api_key, row.enabled, new Date().toISOString());
+			});
+			write();
 		});
 	}
 }

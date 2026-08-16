@@ -1,6 +1,7 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	UpdateAiConfig,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -348,7 +349,13 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 
 // In-memory AI (BYOK) config for the playground: same masking contract as the server —
 // the key is write-only, GET only reports that one exists.
-const aiConfigState = { region: 'us-east-1', modelId: '', hasApiKey: false, enabled: false, updatedAt: null as string | null };
+const aiConfigState = {
+	region: 'us-east-1',
+	modelId: '',
+	hasApiKey: false,
+	enabled: false,
+	updatedAt: null as string | null,
+};
 
 export const handlers = [
 	// ==================== AI (BYOK) ====================
@@ -357,12 +364,7 @@ export const handlers = [
 	}),
 
 	http.put(`${API_BASE}/ai/config`, async ({ request }) => {
-		const body = (await request.json().catch(() => ({}))) as {
-			region?: string;
-			modelId?: string;
-			apiKey?: string | null;
-			enabled?: boolean;
-		};
+		const body = (await request.json().catch(() => ({}))) as UpdateAiConfig;
 		if (body.region !== undefined) aiConfigState.region = body.region;
 		if (body.modelId !== undefined) aiConfigState.modelId = body.modelId;
 		if (body.apiKey !== undefined) aiConfigState.hasApiKey = body.apiKey !== null;
@@ -381,6 +383,12 @@ export const handlers = [
 	// Keyword-matched stand-in for the NL->filter translation, so the playground can
 	// demo the flow without Bedrock.
 	http.post(`${API_BASE}/ai/filter`, async ({ request }) => {
+		if (!(aiConfigState.enabled && aiConfigState.hasApiKey && aiConfigState.modelId.length > 0)) {
+			return HttpResponse.json(
+				{ success: false, error: 'AI features are not enabled. Configure a Bedrock key in Settings → AI.' },
+				{ status: 409 }
+			);
+		}
 		const { query = '' } = (await request.json().catch(() => ({}))) as { query?: string };
 		const q = query.toLowerCase();
 		const filters: Record<string, string[]> = {};

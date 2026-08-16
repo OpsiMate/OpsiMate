@@ -48,7 +48,8 @@ const startBedrockMock = (): Promise<string> =>
 													},
 													search: 'disk',
 													lastMinutes: 60,
-													explanation: 'Critical prod disk alerts from the last hour, excluding silenced.',
+													explanation:
+														'Critical prod disk alerts from the last hour, excluding silenced.',
 												},
 											},
 										},
@@ -117,7 +118,9 @@ describe('AI config endpoints', () => {
 			.post('/api/v1/users')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ email: 'viewer@example.com', fullName: 'Viewer', password: 'password123', role: 'viewer' });
-		const login = await app.post('/api/v1/users/login').send({ email: 'viewer@example.com', password: 'password123' });
+		const login = await app
+			.post('/api/v1/users/login')
+			.send({ email: 'viewer@example.com', password: 'password123' });
 		expect(login.body.token).toBeTruthy();
 		const forbidden = await app.get('/api/v1/ai/config').set('Authorization', `Bearer ${login.body.token}`);
 		expect(forbidden.status).toBe(403);
@@ -208,8 +211,14 @@ describe('POST /ai/test', () => {
 
 describe('AI status and NL->filter', () => {
 	test('status is readable by any authenticated user and reflects enablement', async () => {
-		await put('/api/v1/ai/config', { apiKey: 'good-key', modelId: 'anthropic.claude-3-5-haiku-20241022-v1:0', enabled: true });
-		const login = await app.post('/api/v1/users/login').send({ email: 'viewer@example.com', password: 'password123' });
+		await put('/api/v1/ai/config', {
+			apiKey: 'good-key',
+			modelId: 'anthropic.claude-3-5-haiku-20241022-v1:0',
+			enabled: true,
+		});
+		const login = await app
+			.post('/api/v1/users/login')
+			.send({ email: 'viewer@example.com', password: 'password123' });
 		const res = await app.get('/api/v1/ai/status').set('Authorization', `Bearer ${login.body.token}`);
 		expect(res.status).toBe(200);
 		expect(res.body.data).toEqual({ enabled: true });
@@ -233,14 +242,26 @@ describe('AI status and NL->filter', () => {
 		expect(typeof data.explanation).toBe('string');
 	});
 
-	test('while AI is disabled the filter endpoint is a 409, not a Bedrock call', async () => {
+	test('while AI is disabled the filter endpoint is a 409 and Bedrock is never called', async () => {
 		await put('/api/v1/ai/config', { enabled: false });
+		receivedPath = null;
 		const res = await app
 			.post('/api/v1/ai/filter')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ query: 'anything at all' });
 		expect(res.status).toBe(409);
 		expect(res.body.error).toContain('not enabled');
+		// The mock recorded no request — the 409 short-circuits before any network call.
+		expect(receivedPath).toBeNull();
 		await put('/api/v1/ai/config', { enabled: true });
+	});
+
+	test('enabling without a stored key is rejected', async () => {
+		await put('/api/v1/ai/config', { apiKey: null, enabled: false });
+		const res = await put('/api/v1/ai/config', { enabled: true });
+		expect(res.status).toBe(400);
+		expect(res.body.error).toContain('without an API key');
+		// Restore the working config for any later tests.
+		await put('/api/v1/ai/config', { apiKey: 'good-key', enabled: true });
 	});
 });

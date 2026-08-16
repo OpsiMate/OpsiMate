@@ -503,6 +503,9 @@ const Alerts = () => {
 	// desired state) — landing as ordinary chips/search/time controls the user can
 	// adjust, which is the whole trust story of this feature.
 	const applyAiFilter = (result: AiFilterResult) => {
+		// A selection made under the old view must not survive into the new one (it
+		// also feeds the bulk-actions gate).
+		handleSelectAlerts([]);
 		updateDashboardField('filters', result.filters);
 		updateDashboardField('query', result.search ?? '');
 		if (result.lastMinutes !== undefined) {

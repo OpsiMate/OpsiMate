@@ -80,12 +80,18 @@ export class AiBL {
 		// apiKey: undefined keeps the stored ciphertext, null deletes, a string replaces.
 		const apiKey =
 			updates.apiKey === undefined ? current.api_key : updates.apiKey === null ? null : encrypt(updates.apiKey);
+		const enabled = updates.enabled === undefined ? current.enabled === 1 : updates.enabled;
+		// Refuse a config that claims to be enabled without a key — status would gate
+		// features anyway, but the stored config must not lie.
+		if (enabled && apiKey == null) {
+			throw new AiValidationError('Cannot enable AI without an API key.');
+		}
 		await this.aiConfigRepo.saveConfig({
 			provider: 'bedrock',
 			region: updates.region ?? current.region,
 			model_id: updates.modelId ?? current.model_id,
 			api_key: apiKey,
-			enabled: updates.enabled === undefined ? current.enabled : updates.enabled ? 1 : 0,
+			enabled: enabled ? 1 : 0,
 		});
 		// The audit trail records THAT the config changed and by whom — never key material.
 		await this.auditBL.logAction({
@@ -117,18 +123,25 @@ export class AiBL {
 		try {
 			const controller = new AbortController();
 			const timer = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS);
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${decryptPassword(row.api_key)}`,
-				},
-				body: JSON.stringify(body),
-				signal: controller.signal,
-			});
-			clearTimeout(timer);
+			let response: Awaited<ReturnType<typeof fetch>>;
+			let parsed: BedrockConverseResponse;
+			try {
+				response = await fetch(url, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${decryptPassword(row.api_key)}`,
+					},
+					body: JSON.stringify(body),
+					signal: controller.signal,
+				});
+				// The abort signal covers the BODY read too — a response that stalls
+				// mid-stream must not hang past the budget.
+				parsed = (await response.json().catch(() => ({}))) as BedrockConverseResponse;
+			} finally {
+				clearTimeout(timer);
+			}
 			const latencyMs = Date.now() - started;
-			const parsed = (await response.json().catch(() => ({}))) as BedrockConverseResponse;
 
 			if (!response.ok) {
 				// Bedrock error bodies are inconsistent about casing and the exception
@@ -221,8 +234,15 @@ export class AiBL {
 												'Field -> allowed values. Keys are field names from the vocabulary, optionally prefixed with "!" for exclusion.',
 											additionalProperties: { type: 'array', items: { type: 'string' } },
 										},
-										search: { type: 'string', description: 'Free-text search over alert names and messages.' },
-										lastMinutes: { type: 'integer', minimum: 1, description: 'Rolling time window in minutes.' },
+										search: {
+											type: 'string',
+											description: 'Free-text search over alert names and messages.',
+										},
+										lastMinutes: {
+											type: 'integer',
+											minimum: 1,
+											description: 'Rolling time window in minutes.',
+										},
 										explanation: { type: 'string' },
 									},
 									required: ['filters', 'explanation'],
@@ -237,10 +257,13 @@ export class AiBL {
 		});
 
 		if (!outcome.ok) {
-			throw new Error(outcome.errorMessage ?? 'Bedrock call failed');
+			throw new BedrockCallError(outcome.errorMessage ?? 'Bedrock call failed');
 		}
 		const toolUse = outcome.body.output?.message?.content?.find((c) => c.toolUse)?.toolUse;
-		const raw = (toolUse?.input ?? {}) as {
+		if (!toolUse || typeof toolUse.input !== 'object' || toolUse.input === null) {
+			throw new BedrockCallError('The model returned no structured filters — try rephrasing the request.');
+		}
+		const raw = toolUse.input as {
 			filters?: Record<string, unknown>;
 			search?: unknown;
 			lastMinutes?: unknown;
@@ -270,12 +293,20 @@ export class AiDisabledError extends Error {
 	}
 }
 
+// A config update that must be rejected (maps to 400).
+export class AiValidationError extends Error {}
+
+// A Bedrock round trip that failed with a user-showable reason (maps to 502).
+// Anything NOT wrapped in this stays a generic 500 — internal error text is never
+// forwarded to clients.
+export class BedrockCallError extends Error {}
+
 // Fields whose values are a fixed enum rather than whatever currently exists: "not
 // silenced" must validate even when nothing is silenced right now, and "resolved
 // alerts" even when the archive is empty. Everything else (tags, types, owners)
 // validates against the live vocabulary only.
 const STATIC_FIELD_VALUES: Record<string, string[]> = {
-	status: ['Firing', 'Muted', 'Silenced'],
+	status: ['Firing', 'Muted', 'Silenced', 'Resolved'],
 	severity: ['Critical', 'Warning', 'Info'],
 };
 
