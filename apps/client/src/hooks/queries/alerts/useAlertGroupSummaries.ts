@@ -7,10 +7,18 @@ import { queryKeys } from '../queryKeys';
 // Server-computed group counts + rollup status over the FULL matching set. Used when a
 // grouped view is too large to load whole: rows page in progressively, but the group
 // headers read these true totals — a header can never claim fewer alerts than exist.
+export interface AlertGroupSummariesOptions {
+	resolved?: boolean;
+	enabled?: boolean;
+	// Callers pairing these counts with a polled list pass that list's cadence, so the
+	// two describe the same moment (default 20s).
+	refetchIntervalMs?: number;
+}
+
 export const useAlertGroupSummaries = (
 	groupBy: string[],
 	params: Omit<AlertQueryParams, 'limit' | 'cursor' | 'sort' | 'dir'>,
-	options?: { resolved?: boolean; enabled?: boolean; refetchIntervalMs?: number }
+	options?: AlertGroupSummariesOptions
 ) => {
 	const { data } = useQuery({
 		queryKey: [

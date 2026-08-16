@@ -6,10 +6,15 @@ import { queryKeys } from '../queryKeys';
 // list request whose response carries the true total, so the count comes from the same
 // server engine that will resolve the bulk action; the one row in the payload is noise.
 // Only fetched while a selection is open (see `enabled`), so it costs nothing otherwise.
+export interface AlertMatchCountOptions {
+	// Match the cadence of whatever list this count sits next to (default 20s).
+	refetchIntervalMs?: number;
+}
+
 export const useAlertMatchCount = (
 	params: Pick<AlertQueryParams, 'filters' | 'from' | 'to' | 'search'>,
 	enabled: boolean,
-	options?: { refetchIntervalMs?: number }
+	options?: AlertMatchCountOptions
 ) => {
 	const { data } = useQuery({
 		queryKey: [

@@ -210,8 +210,20 @@ const Alerts = () => {
 	const [windowTick, setWindowTick] = useState(0);
 	useEffect(() => {
 		if (!isRollingWindow) return;
-		const timer = setInterval(() => setWindowTick((t) => t + 1), 60 * 1000);
-		return () => clearInterval(timer);
+		// Aligned to the minute boundary, not to mount time: toCoarseWindow quantizes
+		// to the minute, so a free-running interval started at :59 would keep serving
+		// the old bucket for most of the next minute. First tick at the boundary, then
+		// every minute on the minute.
+		let interval: ReturnType<typeof setInterval> | undefined;
+		const untilNextMinute = 60000 - (Date.now() % 60000);
+		const align = setTimeout(() => {
+			setWindowTick((t) => t + 1);
+			interval = setInterval(() => setWindowTick((t) => t + 1), 60 * 1000);
+		}, untilNextMinute);
+		return () => {
+			clearTimeout(align);
+			if (interval) clearInterval(interval);
+		};
 	}, [isRollingWindow]);
 
 	const baseQuery = useMemo(() => {
@@ -246,6 +258,12 @@ const Alerts = () => {
 		[baseQuery, resolvedGroupLoadAll]
 	);
 
+	// The active list's ACTUAL poll cadence, shared with every count that must stay in
+	// step with it (split panes, status-aware tab count). Grouping slows the list to
+	// GROUPED_POLL_MS; counts polling faster than the list would race ahead of the rows
+	// they describe — the exact desync this file just removed.
+	const activeListPollMs = isGrouping && activeViewed ? GROUPED_POLL_MS : 5 * 1000;
+
 	const {
 		data: alerts = [],
 		total: activeTotal,
@@ -253,7 +271,7 @@ const Alerts = () => {
 		refetch,
 		fetchNextPage: fetchMoreActive,
 		hasNextPage: hasMoreActive,
-	} = useAlerts(activeQuery, { refetchIntervalMs: isGrouping && activeViewed ? GROUPED_POLL_MS : undefined });
+	} = useAlerts(activeQuery, { refetchIntervalMs: activeListPollMs });
 	const {
 		data: resolvedAlerts = [],
 		total: resolvedTotal,
@@ -566,7 +584,7 @@ const Alerts = () => {
 	// describing three different moments.
 	const paneSummaries = useAlertGroupSummaries(['owner'], fullRecordCountQuery, {
 		enabled: paneCountsEnabled,
-		refetchIntervalMs: 5 * 1000,
+		refetchIntervalMs: activeListPollMs,
 	});
 	// Read through the enabled gate: a disabled query can still surface stale placeholder
 	// data from before the split view was turned on.
@@ -962,7 +980,7 @@ const Alerts = () => {
 	const hasStatusFilter =
 		(dashboardState.filters.status?.length ?? 0) > 0 || (dashboardState.filters['!status']?.length ?? 0) > 0;
 	const statusAwareActiveCount = useAlertMatchCount(fullRecordCountQuery, hasStatusFilter, {
-		refetchIntervalMs: 5 * 1000,
+		refetchIntervalMs: activeListPollMs,
 	});
 	const tabCounts: Record<AlertTab, number> = useMemo(
 		() => ({
