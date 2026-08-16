@@ -45,9 +45,23 @@ const toDate = (value: DateInput): Date | null => {
 	return isNaN(date.getTime()) ? null : date;
 };
 
+// One formatter per options shape, built lazily: toLocaleString constructs a new
+// Intl.DateTimeFormat on EVERY call, and that construction — not the formatting —
+// is the dominant cost. Tables format hundreds of cells per render, so the reuse
+// is the difference between formatting being free and being a profiler hotspot.
+// All options objects reaching format() are the module constants above, so keying
+// the cache by object identity is exact and its size is bounded by their count.
+const formatterCache = new Map<Intl.DateTimeFormatOptions, Intl.DateTimeFormat>();
+
 const format = (value: DateInput, options: Intl.DateTimeFormatOptions, fallback: string): string => {
 	const date = toDate(value);
-	return date ? date.toLocaleString(undefined, options) : fallback;
+	if (!date) return fallback;
+	let formatter = formatterCache.get(options);
+	if (!formatter) {
+		formatter = new Intl.DateTimeFormat(undefined, options);
+		formatterCache.set(options, formatter);
+	}
+	return formatter.format(date);
 };
 
 /** "22:53:07" — time only, for rows already scoped to today. */
