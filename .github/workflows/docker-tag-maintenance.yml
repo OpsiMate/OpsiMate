@@ -46,6 +46,15 @@ jobs:
           TARGET: ${{ inputs.retag_target }}
         run: |
           set -euo pipefail
+          # Same grammar gate as the delete step — the two paths must not differ in
+          # what they accept (the values only reach docker as argv, so this is about
+          # failing early with a clear error, not injection).
+          for value in "$SOURCE" "$TARGET"; do
+            if ! [[ "$value" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+              echo "::error::'$value' is not a valid Docker tag name."
+              exit 1
+            fi
+          done
           # Copies the manifest list, so the multi-arch image keeps both architectures
           # and the digest is unchanged — this adds a name, it does not rebuild.
           IFS=',' read -ra LIST <<< "$IMAGES"
