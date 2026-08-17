@@ -36,6 +36,10 @@ export const ViewNotice = ({ icon, children, title, actions }: ViewNoticeProps) 
 				{actions.map((action) => (
 					<Button
 						key={action.label}
+						// Explicit: the ui/Button does not force a type, so inside any future
+						// <form> ancestor these would default to submit and reload the page on
+						// a click meant to clear a filter.
+						type="button"
 						variant="ghost"
 						size="sm"
 						onClick={action.onClick}
