@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { splitOwnerPaneCounts } from './Alerts.utils';
+import { FilterChange, diffFilterChanges, splitOwnerPaneCounts } from './Alerts.utils';
+import { ViewNotice, ViewNoticeAction } from './ViewNotice';
 import {
 	useAlertFacets,
 	useAlertGroupSummaries,
@@ -38,13 +39,14 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	Columns2,
+	Filter,
 	LayoutList,
 	Palette,
 	Search,
 	WrapText,
 	X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -52,7 +54,7 @@ import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActi
 import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
-import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
 import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
 import { AlertTab, GroupStatus } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
@@ -90,6 +92,11 @@ const SERVER_PAGE_SIZE = 1000;
 // Grouping loads the whole matching set, so a 5s poll would re-download all of it every
 // tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
 const GROUPED_POLL_MS = 20 * 1000;
+
+// How many added filters the notice spells out before collapsing the rest into
+// "+N more". Keeps the strip to one line on a narrow pane without hiding that more
+// filters are on.
+const MAX_NAMED_FILTERS = 3;
 
 // Grouped views up to this size load whole (complete client-side grouping, the original
 // UX). Above it — resolved tabs holding 50-60k in real deployments — rows page in like a
@@ -140,7 +147,7 @@ const mergeFacetsResponses = (a?: AlertFacetsResponse, b?: AlertFacetsResponse):
 
 const Alerts = () => {
 	const { toast } = useToast();
-	const { data: dashboards = [] } = useGetDashboards();
+	const { data: dashboards = [], isPending: dashboardsPending } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
 	const deleteDashboardMutation = useDeleteDashboard();
@@ -591,6 +598,92 @@ const Alerts = () => {
 	const paneCounts = paneCountsEnabled ? splitOwnerPaneCounts(paneSummaries.groups) : undefined;
 	const unassignedTotal = paneCounts?.unassigned;
 	const assignedTotal = paneCounts?.assigned;
+
+	// The baseline the notice measures against: the SAVED dashboard's own filters, read
+	// from the dashboards list rather than from initialState. initialState is restored
+	// from the persisted draft on reload, so it would carry the user's unsaved filters
+	// too and the notice would vanish after a refresh — the one moment a reminder of
+	// "this view is narrowed" is most useful. With no dashboard open (a fresh draft),
+	// the baseline is empty and every filter counts as added.
+	const savedDashboard = useMemo(
+		() => (dashboardState.id ? dashboards.find((d) => String(d.id) === String(dashboardState.id)) : undefined),
+		[dashboards, dashboardState.id]
+	);
+	const savedFilters = savedDashboard?.filters ?? {};
+	// With a dashboard open, the baseline is unknown until its record arrives. Showing
+	// the notice then would report the dashboard's OWN filters as newly added, and its
+	// action would "restore" them to {} — wiping the user's view with no way back from
+	// the notice. Stay silent for that beat instead.
+	const baselineReady = !dashboardState.id || (!dashboardsPending && savedDashboard !== undefined);
+
+	// On the Resolved and All tabs the status filter is SUSPENDED (see
+	// statusSuspendedFilters), so a status value the user picked is not narrowing the
+	// table there. Announcing it would be a lie, and undoing it would silently change
+	// the Active view from a tab that never showed its effect — so those tabs diff the
+	// suspended record, and the undo below preserves the status entries untouched.
+	const noticeFilters =
+		activeViewed && activeTab === AlertTab.Active ? dashboardState.filters : statusSuspendedFilters;
+	const noticeSavedFilters = useMemo(() => {
+		if (activeViewed && activeTab === AlertTab.Active) return savedFilters;
+		// Compare like with like: with status suspended on this tab, a saved status
+		// filter isn't applied either, so counting it as "removed" would be noise.
+		const { status: _status, ['!status']: _notStatus, ...rest } = savedFilters;
+		return rest;
+	}, [activeViewed, activeTab, savedFilters]);
+	const filterChanges = useMemo(
+		() => (baselineReady ? diffFilterChanges(noticeFilters, noticeSavedFilters) : []),
+		[baselineReady, noticeFilters, noticeSavedFilters]
+	);
+	const hasSavedFilters = useMemo(
+		() => Object.values(savedFilters).some((values) => (values?.length ?? 0) > 0),
+		[savedFilters]
+	);
+	// Undo restores the saved record, but only for what the notice actually described:
+	// on a suspended-status tab the user's status choices stay exactly as they were.
+	const undoFilterChanges = useCallback(() => {
+		const statusSuspended = !(activeViewed && activeTab === AlertTab.Active);
+		const restored: Record<string, string[]> = { ...savedFilters };
+		if (statusSuspended) {
+			if (dashboardState.filters.status) restored.status = dashboardState.filters.status;
+			if (dashboardState.filters['!status']) restored['!status'] = dashboardState.filters['!status'];
+		}
+		updateDashboardField('filters', restored);
+	}, [activeViewed, activeTab, savedFilters, dashboardState.filters, updateDashboardField]);
+
+	// allColumnLabels carries only the TAG columns' labels, so base fields need
+	// COLUMN_LABELS too — without it the notice says "severity: Critical" while the
+	// sidebar right next to it says "Severity".
+	const describeChange = useCallback(
+		(entry: FilterChange) => {
+			const label = allColumnLabels[entry.field] ?? COLUMN_LABELS[entry.field] ?? entry.field;
+			// Direction is carried by a sign rather than words: the line is capped at one
+			// row, and "+"/"−" survive truncation better than "added"/"removed".
+			const sign = entry.direction === 'added' ? '+' : '−';
+			return `${sign}${label}${entry.excluded ? ' ≠ ' : ': '}${entry.value}`;
+		},
+		[allColumnLabels]
+	);
+	const namedChanges = useMemo(
+		() => filterChanges.slice(0, MAX_NAMED_FILTERS).map(describeChange).join(', '),
+		[filterChanges, describeChange]
+	);
+	const changeOverflow = Math.max(0, filterChanges.length - MAX_NAMED_FILTERS);
+	// The hover text carries every one of them, since the visible line is capped.
+	const changeSummary = useMemo(() => filterChanges.map(describeChange).join(', '), [filterChanges, describeChange]);
+	const hasSearch = dashboardState.query.trim().length > 0;
+	// One strip for both reasons. Each still gets its own way out, so merging them
+	// costs the user nothing but the second row.
+	const noticeActions = useMemo(() => {
+		const actions: ViewNoticeAction[] = [];
+		if (hasSearch) actions.push({ label: 'Clear search', onClick: () => updateDashboardField('query', '') });
+		if (filterChanges.length > 0) {
+			actions.push({
+				label: hasSavedFilters ? 'Undo filter changes' : 'Clear filters',
+				onClick: undoFilterChanges,
+			});
+		}
+		return actions;
+	}, [hasSearch, filterChanges.length, hasSavedFilters, undoFilterChanges, updateDashboardField]);
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -1168,31 +1261,51 @@ const Alerts = () => {
 							</div>
 						</div>
 
-						{/* An active free-text search silently narrows every tab, and users forget
-						    it's on and wonder where their alerts went — so it gets an unmissable
-						    strip above the table naming the term, the match count, and a one-click
-						    way out. */}
-						{dashboardState.query.trim().length > 0 && (
-							<div className="mt-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
-								<Search className="h-3.5 w-3.5 shrink-0 text-primary" />
-								<span className="min-w-0 truncate">
-									Showing only alerts matching{' '}
-									<span className="font-semibold">“{dashboardState.query}”</span>
-									<span className="text-muted-foreground">
-										{' '}
-										— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this view
-									</span>
-								</span>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => updateDashboardField('query', '')}
-									className="ml-auto h-6 shrink-0 gap-1 px-2 text-xs"
-								>
-									<X className="h-3 w-3" />
-									Clear search
-								</Button>
-							</div>
+						{/* ONE strip for every reason this view is narrower than it looks: a
+						    free-text search, filters the user changed since the dashboard was
+						    saved, or both. Two stacked notices cost twice the vertical space and
+						    read as two unrelated warnings about the same view — so they share a
+						    row, each keeping its own way out. Filter changes are shown in BOTH
+						    directions: removing a filter the dashboard was saved with widens the
+						    view just as invisibly as adding one narrows it. */}
+						{(hasSearch || filterChanges.length > 0) && (
+							<ViewNotice
+								icon={
+									hasSearch ? <Search className="h-3.5 w-3.5" /> : <Filter className="h-3.5 w-3.5" />
+								}
+								title={
+									[
+										hasSearch ? `Matching “${dashboardState.query}”` : '',
+										changeSummary ? `Filters: ${changeSummary}` : '',
+									]
+										.filter(Boolean)
+										.join(' · ') || undefined
+								}
+								actions={noticeActions}
+							>
+								{hasSearch && (
+									<>
+										Showing only alerts matching{' '}
+										<span className="font-semibold">“{dashboardState.query}”</span>
+										<span className="text-muted-foreground">
+											{' '}
+											— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this
+											view
+										</span>
+									</>
+								)}
+								{hasSearch && filterChanges.length > 0 && (
+									<span className="text-muted-foreground"> · </span>
+								)}
+								{filterChanges.length > 0 && (
+									<>
+										Filters changed <span className="font-semibold">{namedChanges}</span>
+										{changeOverflow > 0 && (
+											<span className="text-muted-foreground"> +{changeOverflow} more</span>
+										)}
+									</>
+								)}
+							</ViewNotice>
 						)}
 
 						{activeTab === AlertTab.Active ? (
