@@ -32,26 +32,35 @@ export class IntegrationController {
 	};
 
 	testIntegration = async (req: Request, res: Response) => {
-		const integrationToCreate = CreateIntegrationSchema.parse(req.body);
+		try {
+			const integrationToCreate = CreateIntegrationSchema.parse(req.body);
 
-		const integrationConnector = integrationConnectorFactory(integrationToCreate.type);
+			const integrationConnector = integrationConnectorFactory(integrationToCreate.type);
 
-		const integration: Integration = {
-			...integrationToCreate,
-			createdAt: '',
-			id: 0,
-		};
+			const integration: Integration = {
+				...integrationToCreate,
+				createdAt: '',
+				id: 0,
+			};
 
-		const testResult = await integrationConnector.testConnection(integration);
+			const testResult = await integrationConnector.testConnection(integration);
 
-		if (testResult.success) {
-			return res.status(200).json({ success: true, data: { isValidConnection: true } });
-		} else {
-			return res.status(200).json({
-				success: false,
-				error: testResult.error || 'Connection test failed',
-				data: { isValidConnection: false },
-			});
+			if (testResult.success) {
+				return res.status(200).json({ success: true, data: { isValidConnection: true } });
+			} else {
+				return res.status(200).json({
+					success: false,
+					error: testResult.error || 'Connection test failed',
+					data: { isValidConnection: false },
+				});
+			}
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else {
+				logger.error('Error testing integration:', error);
+				return res.status(500).json({ success: false, error: 'Internal server error' });
+			}
 		}
 	};
 
