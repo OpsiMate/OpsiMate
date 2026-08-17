@@ -66,3 +66,28 @@ describe('diffAddedFilters', () => {
 		expect(diffAddedFilters({ severity: ['Critical'] }, undefined)).toHaveLength(1);
 	});
 });
+
+// The notice must describe only what is actually narrowing the CURRENT tab. Resolved
+// and All run with the status filter suspended, so a status value picked there isn't
+// filtering anything and must not be announced (nor silently undone).
+describe('diffAddedFilters on suspended-status tabs', () => {
+	const suspend = (filters: Record<string, string[]>) => {
+		const { status: _s, ['!status']: _n, ...rest } = filters;
+		return rest;
+	};
+
+	test('an added status filter is announced on the Active tab', () => {
+		const added = diffAddedFilters({ status: ['Firing'] }, {});
+		expect(added).toHaveLength(1);
+	});
+
+	test('the same filter is silent once status is suspended', () => {
+		const added = diffAddedFilters(suspend({ status: ['Firing'] }), {});
+		expect(added).toEqual([]);
+	});
+
+	test('non-status additions still surface on a suspended tab', () => {
+		const added = diffAddedFilters(suspend({ status: ['Firing'], severity: ['Critical'] }), {});
+		expect(added.map((a) => a.field)).toEqual(['severity']);
+	});
+});

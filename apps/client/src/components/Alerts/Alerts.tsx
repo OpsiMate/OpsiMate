@@ -147,7 +147,7 @@ const mergeFacetsResponses = (a?: AlertFacetsResponse, b?: AlertFacetsResponse):
 
 const Alerts = () => {
 	const { toast } = useToast();
-	const { data: dashboards = [] } = useGetDashboards();
+	const { data: dashboards = [], isPending: dashboardsPending } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
 	const deleteDashboardMutation = useDeleteDashboard();
@@ -605,18 +605,43 @@ const Alerts = () => {
 	// too and the notice would vanish after a refresh — the one moment a reminder of
 	// "this view is narrowed" is most useful. With no dashboard open (a fresh draft),
 	// the baseline is empty and every filter counts as added.
-	const savedFilters = useMemo(() => {
-		if (!dashboardState.id) return {};
-		return dashboards.find((d) => String(d.id) === String(dashboardState.id))?.filters ?? {};
-	}, [dashboards, dashboardState.id]);
+	const savedDashboard = useMemo(
+		() => (dashboardState.id ? dashboards.find((d) => String(d.id) === String(dashboardState.id)) : undefined),
+		[dashboards, dashboardState.id]
+	);
+	const savedFilters = savedDashboard?.filters ?? {};
+	// With a dashboard open, the baseline is unknown until its record arrives. Showing
+	// the notice then would report the dashboard's OWN filters as newly added, and its
+	// action would "restore" them to {} — wiping the user's view with no way back from
+	// the notice. Stay silent for that beat instead.
+	const baselineReady = !dashboardState.id || (!dashboardsPending && savedDashboard !== undefined);
+
+	// On the Resolved and All tabs the status filter is SUSPENDED (see
+	// statusSuspendedFilters), so a status value the user picked is not narrowing the
+	// table there. Announcing it would be a lie, and undoing it would silently change
+	// the Active view from a tab that never showed its effect — so those tabs diff the
+	// suspended record, and the undo below preserves the status entries untouched.
+	const noticeFilters =
+		activeViewed && activeTab === AlertTab.Active ? dashboardState.filters : statusSuspendedFilters;
 	const addedFilters = useMemo(
-		() => diffAddedFilters(dashboardState.filters, savedFilters),
-		[dashboardState.filters, savedFilters]
+		() => (baselineReady ? diffAddedFilters(noticeFilters, savedFilters) : []),
+		[baselineReady, noticeFilters, savedFilters]
 	);
 	const hasSavedFilters = useMemo(
 		() => Object.values(savedFilters).some((values) => (values?.length ?? 0) > 0),
 		[savedFilters]
 	);
+	// Undo restores the saved record, but only for what the notice actually described:
+	// on a suspended-status tab the user's status choices stay exactly as they were.
+	const undoAddedFilters = useCallback(() => {
+		const statusSuspended = !(activeViewed && activeTab === AlertTab.Active);
+		const restored: Record<string, string[]> = { ...savedFilters };
+		if (statusSuspended) {
+			if (dashboardState.filters.status) restored.status = dashboardState.filters.status;
+			if (dashboardState.filters['!status']) restored['!status'] = dashboardState.filters['!status'];
+		}
+		updateDashboardField('filters', restored);
+	}, [activeViewed, activeTab, savedFilters, dashboardState.filters, updateDashboardField]);
 	// Labels for the strip: base columns keep their table labels, tagKey:<key> columns
 	// show the tag's own label — the same names the sidebar uses, so the notice and the
 	// filter panel can't describe the same filter differently.
@@ -1247,7 +1272,7 @@ const Alerts = () => {
 								icon={<Filter className="h-3.5 w-3.5" />}
 								title={addedFilterSummary}
 								actionLabel={hasSavedFilters ? 'Undo filter changes' : 'Clear filters'}
-								onAction={() => updateDashboardField('filters', savedFilters)}
+								onAction={undoAddedFilters}
 							>
 								Filtered by <span className="font-semibold">{addedFilterHeadline}</span>
 								{addedFilterOverflow > 0 && (
