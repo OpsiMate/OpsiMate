@@ -27,7 +27,6 @@ export { default as ResetPasswordByEmailSuccess } from './ResetPasswordByEmailSu
 export { ResetPasswordModal } from './ResetPasswordModal';
 export { TableSettingsModal } from './TableSettingsModal';
 export { TagSelector } from './TagSelector';
-export { ThemeToggle } from './ThemeToggle';
 export { ValidationFeedback, validationRules } from './ValidationFeedback';
 
 export * from './Profile';
