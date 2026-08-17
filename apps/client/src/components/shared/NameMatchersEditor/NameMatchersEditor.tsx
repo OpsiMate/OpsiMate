@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Fragment } from 'react';
+import { Fragment, useId } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface NameMatchersEditorProps {
@@ -14,9 +14,6 @@ interface NameMatchersEditorProps {
 	placeholder?: string;
 	disabled?: boolean;
 	label?: string;
-	// Prefix for the generated input ids, so two editors on one page (never today, but
-	// the component is shared) can't collide.
-	idPrefix?: string;
 }
 
 // Name-matcher editor shared by mute policies, enrichments and actions. Label matchers
@@ -29,8 +26,11 @@ export const NameMatchersEditor = ({
 	placeholder = 'e.g. disk',
 	disabled = false,
 	label = 'Alert name contains',
-	idPrefix = 'name-matcher',
 }: NameMatchersEditorProps) => {
+	// useId, not a prop with a default: every call site would have passed the same
+	// default and the ids would collide anyway whenever two dialogs are mounted at
+	// once. React guarantees uniqueness per instance with nothing to remember.
+	const idPrefix = useId();
 	// An empty list still shows one row: the field is the primary way to scope a rule,
 	// and hiding it behind "+ Add" would make it look unavailable.
 	const rows = values.length > 0 ? values : [''];
