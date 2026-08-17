@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { AddedFilterValue, diffAddedFilters, splitOwnerPaneCounts } from './Alerts.utils';
-import { ViewNotice } from './ViewNotice';
+import { FilterChange, diffFilterChanges, splitOwnerPaneCounts } from './Alerts.utils';
+import { ViewNotice, ViewNoticeAction } from './ViewNotice';
 import {
 	useAlertFacets,
 	useAlertGroupSummaries,
@@ -623,9 +623,16 @@ const Alerts = () => {
 	// suspended record, and the undo below preserves the status entries untouched.
 	const noticeFilters =
 		activeViewed && activeTab === AlertTab.Active ? dashboardState.filters : statusSuspendedFilters;
-	const addedFilters = useMemo(
-		() => (baselineReady ? diffAddedFilters(noticeFilters, savedFilters) : []),
-		[baselineReady, noticeFilters, savedFilters]
+	const noticeSavedFilters = useMemo(() => {
+		if (activeViewed && activeTab === AlertTab.Active) return savedFilters;
+		// Compare like with like: with status suspended on this tab, a saved status
+		// filter isn't applied either, so counting it as "removed" would be noise.
+		const { status: _status, ['!status']: _notStatus, ...rest } = savedFilters;
+		return rest;
+	}, [activeViewed, activeTab, savedFilters]);
+	const filterChanges = useMemo(
+		() => (baselineReady ? diffFilterChanges(noticeFilters, noticeSavedFilters) : []),
+		[baselineReady, noticeFilters, noticeSavedFilters]
 	);
 	const hasSavedFilters = useMemo(
 		() => Object.values(savedFilters).some((values) => (values?.length ?? 0) > 0),
@@ -633,7 +640,7 @@ const Alerts = () => {
 	);
 	// Undo restores the saved record, but only for what the notice actually described:
 	// on a suspended-status tab the user's status choices stay exactly as they were.
-	const undoAddedFilters = useCallback(() => {
+	const undoFilterChanges = useCallback(() => {
 		const statusSuspended = !(activeViewed && activeTab === AlertTab.Active);
 		const restored: Record<string, string[]> = { ...savedFilters };
 		if (statusSuspended) {
@@ -642,29 +649,41 @@ const Alerts = () => {
 		}
 		updateDashboardField('filters', restored);
 	}, [activeViewed, activeTab, savedFilters, dashboardState.filters, updateDashboardField]);
-	// Labels for the strip: base columns keep their table labels, tagKey:<key> columns
-	// show the tag's own label — the same names the sidebar uses, so the notice and the
-	// filter panel can't describe the same filter differently.
+
 	// allColumnLabels carries only the TAG columns' labels, so base fields need
 	// COLUMN_LABELS too — without it the notice says "severity: Critical" while the
 	// sidebar right next to it says "Severity".
-	const describeFilter = useCallback(
-		(entry: AddedFilterValue) =>
-			`${allColumnLabels[entry.field] ?? COLUMN_LABELS[entry.field] ?? entry.field}${entry.excluded ? ' ≠ ' : ': '}${entry.value}`,
+	const describeChange = useCallback(
+		(entry: FilterChange) => {
+			const label = allColumnLabels[entry.field] ?? COLUMN_LABELS[entry.field] ?? entry.field;
+			// Direction is carried by a sign rather than words: the line is capped at one
+			// row, and "+"/"−" survive truncation better than "added"/"removed".
+			const sign = entry.direction === 'added' ? '+' : '−';
+			return `${sign}${label}${entry.excluded ? ' ≠ ' : ': '}${entry.value}`;
+		},
 		[allColumnLabels]
 	);
-	// Only the first few are spelled out; the rest collapse into "+N more" so the strip
-	// stays one line however many filters are on (the line itself also truncates).
-	const addedFilterHeadline = useMemo(
-		() => addedFilters.slice(0, MAX_NAMED_FILTERS).map(describeFilter).join(', '),
-		[addedFilters, describeFilter]
+	const namedChanges = useMemo(
+		() => filterChanges.slice(0, MAX_NAMED_FILTERS).map(describeChange).join(', '),
+		[filterChanges, describeChange]
 	);
-	const addedFilterOverflow = Math.max(0, addedFilters.length - MAX_NAMED_FILTERS);
+	const changeOverflow = Math.max(0, filterChanges.length - MAX_NAMED_FILTERS);
 	// The hover text carries every one of them, since the visible line is capped.
-	const addedFilterSummary = useMemo(
-		() => addedFilters.map(describeFilter).join(', '),
-		[addedFilters, describeFilter]
-	);
+	const changeSummary = useMemo(() => filterChanges.map(describeChange).join(', '), [filterChanges, describeChange]);
+	const hasSearch = dashboardState.query.trim().length > 0;
+	// One strip for both reasons. Each still gets its own way out, so merging them
+	// costs the user nothing but the second row.
+	const noticeActions = useMemo(() => {
+		const actions: ViewNoticeAction[] = [];
+		if (hasSearch) actions.push({ label: 'Clear search', onClick: () => updateDashboardField('query', '') });
+		if (filterChanges.length > 0) {
+			actions.push({
+				label: hasSavedFilters ? 'Undo filter changes' : 'Clear filters',
+				onClick: undoFilterChanges,
+			});
+		}
+		return actions;
+	}, [hasSearch, filterChanges.length, hasSavedFilters, undoFilterChanges, updateDashboardField]);
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -1242,41 +1261,49 @@ const Alerts = () => {
 							</div>
 						</div>
 
-						{/* An active free-text search silently narrows every tab, and users forget
-						    it's on and wonder where their alerts went — so it gets an unmissable
-						    strip above the table naming the term, the match count, and a one-click
-						    way out. */}
-						{dashboardState.query.trim().length > 0 && (
+						{/* ONE strip for every reason this view is narrower than it looks: a
+						    free-text search, filters the user changed since the dashboard was
+						    saved, or both. Two stacked notices cost twice the vertical space and
+						    read as two unrelated warnings about the same view — so they share a
+						    row, each keeping its own way out. Filter changes are shown in BOTH
+						    directions: removing a filter the dashboard was saved with widens the
+						    view just as invisibly as adding one narrows it. */}
+						{(hasSearch || filterChanges.length > 0) && (
 							<ViewNotice
-								icon={<Search className="h-3.5 w-3.5" />}
-								actionLabel="Clear search"
-								onAction={() => updateDashboardField('query', '')}
+								icon={
+									hasSearch ? <Search className="h-3.5 w-3.5" /> : <Filter className="h-3.5 w-3.5" />
+								}
+								title={
+									[
+										hasSearch ? `Matching “${dashboardState.query}”` : '',
+										changeSummary ? `Filters: ${changeSummary}` : '',
+									]
+										.filter(Boolean)
+										.join(' · ') || undefined
+								}
+								actions={noticeActions}
 							>
-								Showing only alerts matching{' '}
-								<span className="font-semibold">“{dashboardState.query}”</span>
-								<span className="text-muted-foreground">
-									{' '}
-									— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this view
-								</span>
-							</ViewNotice>
-						)}
-
-						{/* Same strip for sidebar filters, because they hide alerts just as
-						    silently. Only the filters the user added ON TOP of the dashboard's
-						    saved ones are announced: a saved dashboard's own filters ARE the view
-						    the user chose to open, so repeating them would be noise on every
-						    visit. Clearing restores the dashboard's saved filters (not an empty
-						    record), which is what "undo my narrowing" means here. */}
-						{addedFilters.length > 0 && (
-							<ViewNotice
-								icon={<Filter className="h-3.5 w-3.5" />}
-								title={addedFilterSummary}
-								actionLabel={hasSavedFilters ? 'Undo filter changes' : 'Clear filters'}
-								onAction={undoAddedFilters}
-							>
-								Filtered by <span className="font-semibold">{addedFilterHeadline}</span>
-								{addedFilterOverflow > 0 && (
-									<span className="text-muted-foreground"> +{addedFilterOverflow} more</span>
+								{hasSearch && (
+									<>
+										Showing only alerts matching{' '}
+										<span className="font-semibold">“{dashboardState.query}”</span>
+										<span className="text-muted-foreground">
+											{' '}
+											— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this
+											view
+										</span>
+									</>
+								)}
+								{hasSearch && filterChanges.length > 0 && (
+									<span className="text-muted-foreground"> · </span>
+								)}
+								{filterChanges.length > 0 && (
+									<>
+										Filters changed <span className="font-semibold">{namedChanges}</span>
+										{changeOverflow > 0 && (
+											<span className="text-muted-foreground"> +{changeOverflow} more</span>
+										)}
+									</>
 								)}
 							</ViewNotice>
 						)}

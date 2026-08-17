@@ -1,6 +1,6 @@
 import { AlertGroupSummaryNode } from '@OpsiMate/shared';
 import { describe, expect, test } from 'vitest';
-import { diffAddedFilters, splitOwnerPaneCounts } from '@/components/Alerts/Alerts.utils';
+import { diffFilterChanges, splitOwnerPaneCounts } from '@/components/Alerts/Alerts.utils';
 
 const node = (value: string, count: number): AlertGroupSummaryNode =>
 	({
@@ -36,34 +36,49 @@ describe('splitOwnerPaneCounts', () => {
 describe('diffAddedFilters', () => {
 	test('a dashboard opened with saved filters announces nothing', () => {
 		const saved = { severity: ['Critical'], 'tagKey:env': ['prod'] };
-		expect(diffAddedFilters(saved, saved)).toEqual([]);
+		expect(diffFilterChanges(saved, saved)).toEqual([]);
 	});
 
 	test('only values added on top of the saved ones are reported', () => {
-		const added = diffAddedFilters(
+		const added = diffFilterChanges(
 			{ severity: ['Critical', 'Warning'], 'tagKey:env': ['prod'] },
 			{ severity: ['Critical'], 'tagKey:env': ['prod'] }
 		);
-		expect(added).toEqual([{ key: 'severity', field: 'severity', value: 'Warning', excluded: false }]);
+		expect(added).toEqual([
+			{ key: 'severity', field: 'severity', value: 'Warning', excluded: false, direction: 'added' },
+		]);
 	});
 
 	test('a fresh draft with no saved filters reports every active filter', () => {
-		const added = diffAddedFilters({ severity: ['Critical'], owner: ['Unassigned'] }, {});
+		const added = diffFilterChanges({ severity: ['Critical'], owner: ['Unassigned'] }, {});
 		expect(added.map((a) => a.value)).toEqual(['Critical', 'Unassigned']);
 	});
 
 	test('exclusions are reported and flagged, with the bare field for labelling', () => {
-		const added = diffAddedFilters({ '!status': ['Silenced'] }, {});
-		expect(added).toEqual([{ key: '!status', field: 'status', value: 'Silenced', excluded: true }]);
+		const added = diffFilterChanges({ '!status': ['Silenced'] }, {});
+		expect(added).toEqual([
+			{ key: '!status', field: 'status', value: 'Silenced', excluded: true, direction: 'added' },
+		]);
 	});
 
-	test('removing a saved filter is not an addition', () => {
-		expect(diffAddedFilters({ severity: [] }, { severity: ['Critical'] })).toEqual([]);
+	test('removing a filter the dashboard was saved with is reported as a removal', () => {
+		expect(diffFilterChanges({ severity: [] }, { severity: ['Critical'] })).toEqual([
+			{ key: 'severity', field: 'severity', value: 'Critical', excluded: false, direction: 'removed' },
+		]);
+	});
+
+	test('dropping the whole key still counts as a removal', () => {
+		expect(diffFilterChanges({}, { severity: ['Critical'] }).map((c) => c.direction)).toEqual(['removed']);
+	});
+
+	test('additions and removals are reported together', () => {
+		const changes = diffFilterChanges({ severity: ['Warning'] }, { severity: ['Critical'] });
+		expect(changes.map((c) => `${c.direction}:${c.value}`)).toEqual(['added:Warning', 'removed:Critical']);
 	});
 
 	test('undefined on either side is handled', () => {
-		expect(diffAddedFilters(undefined, undefined)).toEqual([]);
-		expect(diffAddedFilters({ severity: ['Critical'] }, undefined)).toHaveLength(1);
+		expect(diffFilterChanges(undefined, undefined)).toEqual([]);
+		expect(diffFilterChanges({ severity: ['Critical'] }, undefined)).toHaveLength(1);
 	});
 });
 
@@ -77,17 +92,17 @@ describe('diffAddedFilters on suspended-status tabs', () => {
 	};
 
 	test('an added status filter is announced on the Active tab', () => {
-		const added = diffAddedFilters({ status: ['Firing'] }, {});
+		const added = diffFilterChanges({ status: ['Firing'] }, {});
 		expect(added).toHaveLength(1);
 	});
 
 	test('the same filter is silent once status is suspended', () => {
-		const added = diffAddedFilters(suspend({ status: ['Firing'] }), {});
+		const added = diffFilterChanges(suspend({ status: ['Firing'] }), {});
 		expect(added).toEqual([]);
 	});
 
 	test('non-status additions still surface on a suspended tab', () => {
-		const added = diffAddedFilters(suspend({ status: ['Firing'], severity: ['Critical'] }), {});
+		const added = diffFilterChanges(suspend({ status: ['Firing'], severity: ['Critical'] }), {});
 		expect(added.map((a) => a.field)).toEqual(['severity']);
 	});
 });

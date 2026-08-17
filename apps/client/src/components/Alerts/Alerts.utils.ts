@@ -25,33 +25,45 @@ export const splitOwnerPaneCounts = (nodes: AlertGroupSummaryNode[] | undefined)
 	return { unassigned, assigned };
 };
 
-// One filter value the user added on top of whatever the dashboard was saved with.
-export interface AddedFilterValue {
+// One filter value that differs from the saved dashboard, in either direction.
+export type FilterChangeDirection = 'added' | 'removed';
+
+export interface FilterChange {
 	// Raw filter key, '!'-prefixed for exclusions.
 	key: string;
 	// The key without the '!' prefix — what the label lookup uses.
 	field: string;
 	value: string;
 	excluded: boolean;
+	direction: FilterChangeDirection;
 }
 
-// Filter values present in `current` but not in `saved`. The point is that a dashboard
-// legitimately CARRIES filters — those are the view the user opened on purpose and are
-// already described by the sidebar — so only the delta is worth announcing. A dashboard
-// with no saved filters (a fresh draft) has an empty `saved`, which makes every active
-// filter part of the delta, exactly as intended.
-export const diffAddedFilters = (
+// Every difference between the current filter record and the dashboard's saved one.
+// Both directions matter: removing a filter the dashboard was saved with widens the
+// view just as invisibly as adding one narrows it, and the user is equally entitled to
+// know their view no longer matches what they saved. A dashboard with no saved filters
+// (a fresh draft) has an empty `saved`, so every active filter reads as added.
+export const diffFilterChanges = (
 	current: Record<string, string[]> | undefined,
 	saved: Record<string, string[]> | undefined
-): AddedFilterValue[] => {
-	const added: AddedFilterValue[] = [];
+): FilterChange[] => {
+	const changes: FilterChange[] = [];
+	const describe = (key: string, value: string, direction: FilterChangeDirection): FilterChange => {
+		const excluded = key.startsWith('!');
+		return { key, field: excluded ? key.slice(1) : key, value, excluded, direction };
+	};
+
 	for (const [key, values] of Object.entries(current ?? {})) {
 		const savedValues = new Set(saved?.[key] ?? []);
-		const excluded = key.startsWith('!');
 		for (const value of values ?? []) {
-			if (savedValues.has(value)) continue;
-			added.push({ key, field: excluded ? key.slice(1) : key, value, excluded });
+			if (!savedValues.has(value)) changes.push(describe(key, value, 'added'));
 		}
 	}
-	return added;
+	for (const [key, values] of Object.entries(saved ?? {})) {
+		const currentValues = new Set(current?.[key] ?? []);
+		for (const value of values ?? []) {
+			if (!currentValues.has(value)) changes.push(describe(key, value, 'removed'));
+		}
+	}
+	return changes;
 };
