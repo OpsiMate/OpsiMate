@@ -24,3 +24,34 @@ export const splitOwnerPaneCounts = (nodes: AlertGroupSummaryNode[] | undefined)
 	}
 	return { unassigned, assigned };
 };
+
+// One filter value the user added on top of whatever the dashboard was saved with.
+export interface AddedFilterValue {
+	// Raw filter key, '!'-prefixed for exclusions.
+	key: string;
+	// The key without the '!' prefix — what the label lookup uses.
+	field: string;
+	value: string;
+	excluded: boolean;
+}
+
+// Filter values present in `current` but not in `saved`. The point is that a dashboard
+// legitimately CARRIES filters — those are the view the user opened on purpose and are
+// already described by the sidebar — so only the delta is worth announcing. A dashboard
+// with no saved filters (a fresh draft) has an empty `saved`, which makes every active
+// filter part of the delta, exactly as intended.
+export const diffAddedFilters = (
+	current: Record<string, string[]> | undefined,
+	saved: Record<string, string[]> | undefined
+): AddedFilterValue[] => {
+	const added: AddedFilterValue[] = [];
+	for (const [key, values] of Object.entries(current ?? {})) {
+		const savedValues = new Set(saved?.[key] ?? []);
+		const excluded = key.startsWith('!');
+		for (const value of values ?? []) {
+			if (savedValues.has(value)) continue;
+			added.push({ key, field: excluded ? key.slice(1) : key, value, excluded });
+		}
+	}
+	return added;
+};

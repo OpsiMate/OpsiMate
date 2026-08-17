@@ -1,0 +1,1 @@
+export { ViewNotice } from './ViewNotice';

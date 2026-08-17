@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { splitOwnerPaneCounts } from './Alerts.utils';
+import { AddedFilterValue, diffAddedFilters, splitOwnerPaneCounts } from './Alerts.utils';
+import { ViewNotice } from './ViewNotice';
 import {
 	useAlertFacets,
 	useAlertGroupSummaries,
@@ -38,13 +39,14 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	Columns2,
+	Filter,
 	LayoutList,
 	Palette,
 	Search,
 	WrapText,
 	X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
@@ -52,7 +54,7 @@ import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActi
 import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
-import { ACTIONS_COLUMN } from './AlertsTable/AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
 import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
 import { AlertTab, GroupStatus } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
@@ -90,6 +92,11 @@ const SERVER_PAGE_SIZE = 1000;
 // Grouping loads the whole matching set, so a 5s poll would re-download all of it every
 // tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
 const GROUPED_POLL_MS = 20 * 1000;
+
+// How many added filters the notice spells out before collapsing the rest into
+// "+N more". Keeps the strip to one line on a narrow pane without hiding that more
+// filters are on.
+const MAX_NAMED_FILTERS = 3;
 
 // Grouped views up to this size load whole (complete client-side grouping, the original
 // UX). Above it — resolved tabs holding 50-60k in real deployments — rows page in like a
@@ -591,6 +598,48 @@ const Alerts = () => {
 	const paneCounts = paneCountsEnabled ? splitOwnerPaneCounts(paneSummaries.groups) : undefined;
 	const unassignedTotal = paneCounts?.unassigned;
 	const assignedTotal = paneCounts?.assigned;
+
+	// The baseline the notice measures against: the SAVED dashboard's own filters, read
+	// from the dashboards list rather than from initialState. initialState is restored
+	// from the persisted draft on reload, so it would carry the user's unsaved filters
+	// too and the notice would vanish after a refresh — the one moment a reminder of
+	// "this view is narrowed" is most useful. With no dashboard open (a fresh draft),
+	// the baseline is empty and every filter counts as added.
+	const savedFilters = useMemo(() => {
+		if (!dashboardState.id) return {};
+		return dashboards.find((d) => String(d.id) === String(dashboardState.id))?.filters ?? {};
+	}, [dashboards, dashboardState.id]);
+	const addedFilters = useMemo(
+		() => diffAddedFilters(dashboardState.filters, savedFilters),
+		[dashboardState.filters, savedFilters]
+	);
+	const hasSavedFilters = useMemo(
+		() => Object.values(savedFilters).some((values) => (values?.length ?? 0) > 0),
+		[savedFilters]
+	);
+	// Labels for the strip: base columns keep their table labels, tagKey:<key> columns
+	// show the tag's own label — the same names the sidebar uses, so the notice and the
+	// filter panel can't describe the same filter differently.
+	// allColumnLabels carries only the TAG columns' labels, so base fields need
+	// COLUMN_LABELS too — without it the notice says "severity: Critical" while the
+	// sidebar right next to it says "Severity".
+	const describeFilter = useCallback(
+		(entry: AddedFilterValue) =>
+			`${allColumnLabels[entry.field] ?? COLUMN_LABELS[entry.field] ?? entry.field}${entry.excluded ? ' ≠ ' : ': '}${entry.value}`,
+		[allColumnLabels]
+	);
+	// Only the first few are spelled out; the rest collapse into "+N more" so the strip
+	// stays one line however many filters are on (the line itself also truncates).
+	const addedFilterHeadline = useMemo(
+		() => addedFilters.slice(0, MAX_NAMED_FILTERS).map(describeFilter).join(', '),
+		[addedFilters, describeFilter]
+	);
+	const addedFilterOverflow = Math.max(0, addedFilters.length - MAX_NAMED_FILTERS);
+	// The hover text carries every one of them, since the visible line is capped.
+	const addedFilterSummary = useMemo(
+		() => addedFilters.map(describeFilter).join(', '),
+		[addedFilters, describeFilter]
+	);
 
 	// Derived from the filters themselves rather than tracked separately, so the button and
 	// the sidebar's Status section always describe the same thing. The count comes from the
@@ -1173,26 +1222,38 @@ const Alerts = () => {
 						    strip above the table naming the term, the match count, and a one-click
 						    way out. */}
 						{dashboardState.query.trim().length > 0 && (
-							<div className="mt-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
-								<Search className="h-3.5 w-3.5 shrink-0 text-primary" />
-								<span className="min-w-0 truncate">
-									Showing only alerts matching{' '}
-									<span className="font-semibold">“{dashboardState.query}”</span>
-									<span className="text-muted-foreground">
-										{' '}
-										— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this view
-									</span>
+							<ViewNotice
+								icon={<Search className="h-3.5 w-3.5" />}
+								actionLabel="Clear search"
+								onAction={() => updateDashboardField('query', '')}
+							>
+								Showing only alerts matching{' '}
+								<span className="font-semibold">“{dashboardState.query}”</span>
+								<span className="text-muted-foreground">
+									{' '}
+									— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this view
 								</span>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => updateDashboardField('query', '')}
-									className="ml-auto h-6 shrink-0 gap-1 px-2 text-xs"
-								>
-									<X className="h-3 w-3" />
-									Clear search
-								</Button>
-							</div>
+							</ViewNotice>
+						)}
+
+						{/* Same strip for sidebar filters, because they hide alerts just as
+						    silently. Only the filters the user added ON TOP of the dashboard's
+						    saved ones are announced: a saved dashboard's own filters ARE the view
+						    the user chose to open, so repeating them would be noise on every
+						    visit. Clearing restores the dashboard's saved filters (not an empty
+						    record), which is what "undo my narrowing" means here. */}
+						{addedFilters.length > 0 && (
+							<ViewNotice
+								icon={<Filter className="h-3.5 w-3.5" />}
+								title={addedFilterSummary}
+								actionLabel={hasSavedFilters ? 'Undo filter changes' : 'Clear filters'}
+								onAction={() => updateDashboardField('filters', savedFilters)}
+							>
+								Filtered by <span className="font-semibold">{addedFilterHeadline}</span>
+								{addedFilterOverflow > 0 && (
+									<span className="text-muted-foreground"> +{addedFilterOverflow} more</span>
+								)}
+							</ViewNotice>
 						)}
 
 						{activeTab === AlertTab.Active ? (

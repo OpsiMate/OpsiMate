@@ -1,6 +1,6 @@
 import { AlertGroupSummaryNode } from '@OpsiMate/shared';
 import { describe, expect, test } from 'vitest';
-import { splitOwnerPaneCounts } from '@/components/Alerts/Alerts.utils';
+import { diffAddedFilters, splitOwnerPaneCounts } from '@/components/Alerts/Alerts.utils';
 
 const node = (value: string, count: number): AlertGroupSummaryNode =>
 	({
@@ -30,5 +30,39 @@ describe('splitOwnerPaneCounts', () => {
 
 	test('empty response is a real zero, not a fallback', () => {
 		expect(splitOwnerPaneCounts([])).toEqual({ unassigned: 0, assigned: 0 });
+	});
+});
+
+describe('diffAddedFilters', () => {
+	test('a dashboard opened with saved filters announces nothing', () => {
+		const saved = { severity: ['Critical'], 'tagKey:env': ['prod'] };
+		expect(diffAddedFilters(saved, saved)).toEqual([]);
+	});
+
+	test('only values added on top of the saved ones are reported', () => {
+		const added = diffAddedFilters(
+			{ severity: ['Critical', 'Warning'], 'tagKey:env': ['prod'] },
+			{ severity: ['Critical'], 'tagKey:env': ['prod'] }
+		);
+		expect(added).toEqual([{ key: 'severity', field: 'severity', value: 'Warning', excluded: false }]);
+	});
+
+	test('a fresh draft with no saved filters reports every active filter', () => {
+		const added = diffAddedFilters({ severity: ['Critical'], owner: ['Unassigned'] }, {});
+		expect(added.map((a) => a.value)).toEqual(['Critical', 'Unassigned']);
+	});
+
+	test('exclusions are reported and flagged, with the bare field for labelling', () => {
+		const added = diffAddedFilters({ '!status': ['Silenced'] }, {});
+		expect(added).toEqual([{ key: '!status', field: 'status', value: 'Silenced', excluded: true }]);
+	});
+
+	test('removing a saved filter is not an addition', () => {
+		expect(diffAddedFilters({ severity: [] }, { severity: ['Critical'] })).toEqual([]);
+	});
+
+	test('undefined on either side is handled', () => {
+		expect(diffAddedFilters(undefined, undefined)).toEqual([]);
+		expect(diffAddedFilters({ severity: ['Critical'] }, undefined)).toHaveLength(1);
 	});
 });
