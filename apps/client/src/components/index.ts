@@ -19,7 +19,6 @@ export { default as ForgotPasswordForm } from './ForgotPasswordForm';
 export { default as ForgotPasswordSuccess } from './ForgotPasswordSuccess';
 export { IntegrationDashboardDropdown } from './IntegrationDashboardDropdown';
 export { LeftSidebar } from './LeftSidebar';
-export { LogoutButton } from './LogoutButton';
 export { MobileWebOverlay } from './MobileWebOverlay';
 export { ProfileButton } from './ProfileButton';
 export { default as ResetPasswordByEmailForm } from './ResetPasswordByEmailForm';
