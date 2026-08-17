@@ -21,6 +21,7 @@ import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-polic
 import { getLabelMatcherGroups, MutePolicy, getNameNeedles } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
@@ -153,6 +154,18 @@ const MutePolicies: React.FC = () => {
 		});
 	}, [mutePolicies, search]);
 
+	// Status sorts by lifecycle (active first, then scheduled, then expired) rather than
+	// alphabetically — "what is muting things right now" is the question the column
+	// answers. Window sorts by end time, with indefinite policies last: they never end,
+	// so they are not "soonest".
+	const STATUS_ORDER: Record<MutePolicyStatus, number> = { active: 0, scheduled: 1, expired: 2 };
+	const { sorted, sortKey, direction, toggle } = useTableSort(filtered, {
+		name: (s: MutePolicy) => s.name,
+		status: (s: MutePolicy) => STATUS_ORDER[getStatus(s)],
+		match: (s: MutePolicy) => (s.matchAll ? 'All alerts' : getNameNeedles(s).join(', ')),
+		window: (s: MutePolicy) => (s.endsAt ? new Date(s.endsAt).getTime() : null),
+	});
+
 	const handleDelete = async () => {
 		if (!deleting) return;
 		try {
@@ -213,10 +226,38 @@ const MutePolicies: React.FC = () => {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Match</TableHead>
-									<TableHead>Window</TableHead>
+									<SortableTableHead
+										sortKey="name"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Name
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="status"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Status
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="match"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Match
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="window"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Window
+									</SortableTableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -257,7 +298,7 @@ const MutePolicies: React.FC = () => {
 										</TableCell>
 									</TableRow>
 								) : (
-									filtered.map((s) => {
+									sorted.map((s) => {
 										const status = getStatus(s);
 										return (
 											<TableRow key={s.id} className="align-top">
