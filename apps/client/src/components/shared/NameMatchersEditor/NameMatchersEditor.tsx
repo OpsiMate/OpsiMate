@@ -14,6 +14,9 @@ interface NameMatchersEditorProps {
 	placeholder?: string;
 	disabled?: boolean;
 	label?: string;
+	// Prefix for the generated input ids, so two editors on one page (never today, but
+	// the component is shared) can't collide.
+	idPrefix?: string;
 }
 
 // Name-matcher editor shared by mute policies, enrichments and actions. Label matchers
@@ -26,6 +29,7 @@ export const NameMatchersEditor = ({
 	placeholder = 'e.g. disk',
 	disabled = false,
 	label = 'Alert name contains',
+	idPrefix = 'name-matcher',
 }: NameMatchersEditorProps) => {
 	// An empty list still shows one row: the field is the primary way to scope a rule,
 	// and hiding it behind "+ Add" would make it look unavailable.
@@ -46,7 +50,13 @@ export const NameMatchersEditor = ({
 
 	return (
 		<div className="space-y-2">
-			<Label className="text-sm font-medium">{label}</Label>
+			{/* Bound to the FIRST row so the visible label is the accessible name of the
+			    field a user lands on; the alternatives below carry their own aria-label,
+			    since "Alert name contains" repeated four times tells a screen-reader user
+			    nothing about which row they are in. */}
+			<Label htmlFor={`${idPrefix}-0`} className="text-sm font-medium">
+				{label}
+			</Label>
 			{rows.map((value, index) => (
 				<Fragment key={index}>
 					{index > 0 && (
@@ -59,10 +69,12 @@ export const NameMatchersEditor = ({
 					)}
 					<div className="flex items-center gap-2">
 						<Input
+							id={`${idPrefix}-${index}`}
 							value={value}
 							onChange={(e) => update(index, e.target.value)}
 							placeholder={placeholder}
 							disabled={disabled}
+							aria-label={index === 0 ? label : `${label}, alternative ${index + 1}`}
 						/>
 						{rows.length > 1 && (
 							<Button

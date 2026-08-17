@@ -38,7 +38,7 @@ const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 			</Badge>
 		)}
 		{!enrichment.matchAll && <MatcherGroupBadges criteria={enrichment} />}
-		{!enrichment.matchAll && !enrichment.nameContains && !hasMatcherCriteria(enrichment) && (
+		{!enrichment.matchAll && getNameNeedles(enrichment).length === 0 && !hasMatcherCriteria(enrichment) && (
 			<span className="text-xs text-muted-foreground italic">no matchers</span>
 		)}
 	</div>
@@ -95,7 +95,7 @@ const Enrichments: React.FC = () => {
 		const q = search.toLowerCase();
 		return ranked.filter((e) => {
 			if (e.name.toLowerCase().includes(q)) return true;
-			if (e.nameContains?.toLowerCase().includes(q)) return true;
+			if (getNameNeedles(e).some((n) => n.toLowerCase().includes(q))) return true;
 			if (e.summaryTemplate?.toLowerCase().includes(q)) return true;
 			if (
 				getLabelMatcherGroups(e)
