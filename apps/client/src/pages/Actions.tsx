@@ -24,6 +24,7 @@ import {
 	JiraActionConfig,
 	SlackActionConfig,
 	TeamsActionConfig,
+	getNameNeedles,
 } from '@OpsiMate/shared';
 import { Globe, Loader2, MessageSquare, Pencil, Play, Plus, Search, Ticket, Trash2, Zap } from 'lucide-react';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
@@ -66,7 +67,8 @@ const TypeBadge = ({ type }: { type: ActionType }) => {
 };
 
 const AppliesTo = ({ action }: { action: Action }) => {
-	const hasName = !!action.nameContains && action.nameContains.trim().length > 0;
+	const needles = getNameNeedles(action);
+	const hasName = needles.length > 0;
 	if (!hasName && !hasMatcherCriteria(action)) {
 		return (
 			<Badge variant="secondary" className="text-xs">
@@ -78,7 +80,7 @@ const AppliesTo = ({ action }: { action: Action }) => {
 		<div className="flex flex-wrap gap-1">
 			{hasName && (
 				<Badge variant="outline" className="font-mono text-xs">
-					name ~ "{action.nameContains}"
+					name ~ {needles.map((n) => `"${n}"`).join(' or ')}
 				</Badge>
 			)}
 			<MatcherGroupBadges criteria={action} />

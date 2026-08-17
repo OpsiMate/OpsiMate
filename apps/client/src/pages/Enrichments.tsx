@@ -17,16 +17,19 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
-import { AlertEnrichment, getLabelMatcherGroups } from '@OpsiMate/shared';
+import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 	<div className="flex flex-wrap gap-1.5">
-		{enrichment.nameContains && (
+		{getNameNeedles(enrichment).length > 0 && (
 			<Badge variant="secondary" className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md">
-				name ~ "{enrichment.nameContains}"
+				name ~{' '}
+				{getNameNeedles(enrichment)
+					.map((n) => `"${n}"`)
+					.join(' or ')}
 			</Badge>
 		)}
 		{enrichment.matchAll && (

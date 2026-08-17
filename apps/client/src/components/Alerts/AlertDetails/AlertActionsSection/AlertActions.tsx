@@ -1,7 +1,7 @@
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Button } from '@/components/ui/button';
 import { useActions } from '@/hooks/queries/actions';
-import { anyMatcherGroupMatchesTags, getLabelMatcherGroups, Action, Alert } from '@OpsiMate/shared';
+import { Action, Alert, criteriaMatchesAlert } from '@OpsiMate/shared';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -12,18 +12,12 @@ interface AlertActionsProps {
 }
 
 // An action shows on an alert when it has no filter, or when its filter matches:
-// the alert name contains nameContains (if set) AND any matcher GROUP fully matches
-// (OR between groups, AND within a group; a legacy flat matcher list is one group).
-const actionMatchesAlert = (action: Action, alert: Alert): boolean => {
-	const hasName = !!action.nameContains && action.nameContains.trim().length > 0;
-	const groups = getLabelMatcherGroups(action);
-	if (!hasName && groups.length === 0) return true;
-	if (hasName && !alert.alertName?.toLowerCase().includes(action.nameContains!.trim().toLowerCase())) {
-		return false;
-	}
-	if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
-	return true;
-};
+// An action is offered on an alert when the shared matcher says so (see
+// criteriaMatchesAlert in @OpsiMate/shared): name substrings OR together, label groups
+// OR together, and the two AND. Unlike mute policies and enrichments, an action with NO
+// criteria is offered everywhere — that is the "applies to all alerts" case.
+const actionMatchesAlert = (action: Action, alert: Alert): boolean =>
+	criteriaMatchesAlert(action, alert, { emptyCriteriaMatches: true });
 
 export const AlertActions = ({ alert }: AlertActionsProps) => {
 	const { data: allActions = [], isLoading } = useActions();

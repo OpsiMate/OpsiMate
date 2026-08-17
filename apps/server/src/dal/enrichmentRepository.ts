@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { AlertEnrichment, AlertEnrichmentField, AlertLink } from '@OpsiMate/shared';
-import { parseMatcherColumn, serializeMatcherColumn } from './matcherColumn';
+import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 import { runAsync } from './db';
 
 interface EnrichmentRow {
@@ -38,7 +38,7 @@ export class EnrichmentRepository {
 	private toShared = (row: EnrichmentRow): AlertEnrichment => ({
 		id: row.id,
 		name: row.name,
-		nameContains: row.name_contains,
+		...parseNameColumn(row.name_contains),
 		...parseMatcherColumn(row.label_matchers),
 		matchAll: !!row.match_all,
 		addFields: parseJsonArray<AlertEnrichmentField>(row.add_fields),
@@ -104,7 +104,7 @@ export class EnrichmentRepository {
 			);
 			const result = stmt.run(
 				data.name,
-				data.nameContains ?? null,
+				serializeNameColumn(data),
 				serializeMatcherColumn(data),
 				data.matchAll ? 1 : 0,
 				JSON.stringify(data.addFields ?? []),
@@ -144,9 +144,9 @@ export class EnrichmentRepository {
 				updates.push('name = ?');
 				values.push(data.name);
 			}
-			if (data.nameContains !== undefined) {
+			if (data.nameContains !== undefined || data.nameContainsAny !== undefined) {
 				updates.push('name_contains = ?');
-				values.push(data.nameContains);
+				values.push(serializeNameColumn(data));
 			}
 			if (data.labelMatchers !== undefined || data.labelMatcherGroups !== undefined) {
 				updates.push('label_matchers = ?');

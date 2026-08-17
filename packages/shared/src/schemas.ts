@@ -221,12 +221,15 @@ const labelMatcherGroupsSchema = z.array(z.array(labelMatcherSchema).min(1).max(
 
 const mutePolicyMatchersRefinement = (data: {
 	nameContains?: string | null;
+	nameContainsAny?: string[] | null;
 	labelMatchers?: unknown[];
 	labelMatcherGroups?: unknown[];
 	matchAll?: boolean;
 }) => {
 	if (data.matchAll) return true;
-	const hasName = !!data.nameContains && data.nameContains.trim().length > 0;
+	const hasName =
+		(!!data.nameContains && data.nameContains.trim().length > 0) ||
+		(data.nameContainsAny ?? []).some((n) => (n ?? '').trim().length > 0);
 	const hasMatchers = Array.isArray(data.labelMatchers) && data.labelMatchers.length > 0;
 	const hasGroups = Array.isArray(data.labelMatcherGroups) && data.labelMatcherGroups.length > 0;
 	return hasName || hasMatchers || hasGroups;
@@ -245,6 +248,8 @@ export const CreateMutePolicySchema = z
 	.object({
 		name: z.string().min(1, 'Name is required').max(200),
 		nameContains: z.string().max(500).optional().nullable(),
+		// Name substrings ORed together; supersedes nameContains when present.
+		nameContainsAny: z.array(z.string().min(1).max(500)).max(20).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
 		labelMatcherGroups: labelMatcherGroupsSchema.optional(),
 		matchAll: z.boolean().optional().default(false),
@@ -267,6 +272,8 @@ export const UpdateMutePolicySchema = z
 	.object({
 		name: z.string().min(1).max(200).optional(),
 		nameContains: z.string().max(500).optional().nullable(),
+		// Name substrings ORed together; supersedes nameContains when present.
+		nameContainsAny: z.array(z.string().min(1).max(500)).max(20).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
 		labelMatcherGroups: labelMatcherGroupsSchema.optional(),
 		matchAll: z.boolean().optional(),
@@ -322,6 +329,8 @@ export const CreateAlertEnrichmentSchema = z
 	.object({
 		name: z.string().min(1, 'Name is required').max(200),
 		nameContains: z.string().max(500).optional().nullable(),
+		// Name substrings ORed together; supersedes nameContains when present.
+		nameContainsAny: z.array(z.string().min(1).max(500)).max(20).optional().nullable(),
 		labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
 		labelMatcherGroups: labelMatcherGroupsSchema.optional(),
 		matchAll: z.boolean().optional().default(false),
@@ -344,6 +353,8 @@ export const CreateAlertEnrichmentSchema = z
 export const UpdateAlertEnrichmentSchema = z.object({
 	name: z.string().min(1).max(200).optional(),
 	nameContains: z.string().max(500).optional().nullable(),
+	// Name substrings ORed together; supersedes nameContains when present.
+	nameContainsAny: z.array(z.string().min(1).max(500)).max(20).optional().nullable(),
 	labelMatchers: z.array(labelMatcherSchema).max(20).optional(),
 	labelMatcherGroups: labelMatcherGroupsSchema.optional(),
 	matchAll: z.boolean().optional(),
@@ -401,6 +412,8 @@ const httpActionConfigSchema = z.object({
 // Optional alert filter shared by every action type. Empty = applies to all alerts.
 const actionMatchFields = {
 	nameContains: z.string().max(500).optional().nullable(),
+	// Name substrings ORed together; supersedes nameContains when present.
+	nameContainsAny: z.array(z.string().min(1).max(500)).max(20).optional().nullable(),
 	labelMatchers: z.array(labelMatcherSchema).max(20).optional().default([]),
 	labelMatcherGroups: labelMatcherGroupsSchema.optional(),
 };

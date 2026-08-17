@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
-import { getLabelMatcherGroups, MutePolicy } from '@OpsiMate/shared';
+import { getLabelMatcherGroups, MutePolicy, getNameNeedles } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { useMemo, useState } from 'react';
@@ -145,7 +145,7 @@ const MutePolicies: React.FC = () => {
 		const q = search.toLowerCase();
 		return mutePolicies.filter((s) => {
 			if (s.name.toLowerCase().includes(q)) return true;
-			if (s.nameContains?.toLowerCase().includes(q)) return true;
+			if (getNameNeedles(s).some((n) => n.toLowerCase().includes(q))) return true;
 			if (s.reason?.toLowerCase().includes(q)) return true;
 			return getLabelMatcherGroups(s)
 				.flat()
@@ -274,9 +274,12 @@ const MutePolicies: React.FC = () => {
 												</TableCell>
 												<TableCell className="max-w-[260px]">
 													<div className="flex flex-wrap gap-1.5">
-														{s.nameContains && (
+														{getNameNeedles(s).length > 0 && (
 															<Badge variant="secondary" className="font-mono text-xs">
-																name ~ "{s.nameContains}"
+																name ~{' '}
+																{getNameNeedles(s)
+																	.map((n) => `"${n}"`)
+																	.join(' or ')}
 															</Badge>
 														)}
 														{s.matchAll && (
@@ -285,11 +288,13 @@ const MutePolicies: React.FC = () => {
 															</Badge>
 														)}
 														{!s.matchAll && <MatcherGroupBadges criteria={s} />}
-														{!s.matchAll && !s.nameContains && !hasMatcherCriteria(s) && (
-															<span className="text-xs text-muted-foreground italic">
-																no matchers
-															</span>
-														)}
+														{!s.matchAll &&
+															getNameNeedles(s).length === 0 &&
+															!hasMatcherCriteria(s) && (
+																<span className="text-xs text-muted-foreground italic">
+																	no matchers
+																</span>
+															)}
 													</div>
 												</TableCell>
 												<TableCell className="whitespace-nowrap">
