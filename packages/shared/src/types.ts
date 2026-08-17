@@ -448,6 +448,13 @@ export type LabelMatcherGroups = MutePolicyLabelMatcher[][];
 export interface MatcherCriteria {
 	labelMatchers?: MutePolicyLabelMatcher[] | null;
 	labelMatcherGroups?: LabelMatcherGroups | null;
+	// Substring to look for in the alert name. Kept for rules saved before name
+	// matching could be a list; superseded by nameContainsAny when that is present.
+	nameContains?: string | null;
+	// Name substrings ORed together: the name criterion passes when the alert name
+	// contains ANY of them. Label matchers already supported OR via groups, so a rule
+	// could say "env=prod OR env=staging" but never "name contains disk OR cpu".
+	nameContainsAny?: string[] | null;
 }
 
 // The entity's effective OR groups: explicit groups win; a legacy flat list folds into
@@ -472,6 +479,43 @@ export const anyMatcherGroupMatchesTags = (
 	tags: Record<string, string> | undefined
 ): boolean => groups.some((group) => group.every((m) => matcherMatchesTagValue(m, tags?.[m.key])));
 
+// The entity's effective name substrings: the OR list wins; a rule saved with the
+// single legacy value folds into a one-item list; blanks are dropped so an empty editor
+// row never blocks a match (mirrors getLabelMatcherGroups).
+export const getNameNeedles = (criteria: MatcherCriteria): string[] => {
+	const any = (criteria.nameContainsAny ?? []).map((n) => (n ?? '').trim()).filter((n) => n.length > 0);
+	if (any.length > 0) return any;
+	const single = (criteria.nameContains ?? '').trim();
+	return single.length > 0 ? [single] : [];
+};
+
+// Does the alert's name satisfy the name criterion? No needles = no name constraint.
+export const nameMatchesNeedles = (alertName: string | undefined, needles: string[]): boolean => {
+	if (needles.length === 0) return true;
+	const name = (alertName ?? '').toLowerCase();
+	return needles.some((needle) => name.includes(needle.toLowerCase()));
+};
+
+// THE matcher for mute policies, enrichments and actions. All three had their own copy
+// of this and drifted only in what an EMPTY rule means — a mute policy or enrichment
+// with no criteria matches nothing (it would otherwise silently apply to everything),
+// while an action with no criteria is offered on every alert. That difference is the
+// one parameter; everything else is shared so name/label semantics cannot diverge
+// between the three features again.
+export const criteriaMatchesAlert = (
+	criteria: MatcherCriteria & { matchAll?: boolean },
+	alert: { alertName?: string; tags?: Record<string, string> },
+	options: { emptyCriteriaMatches: boolean }
+): boolean => {
+	if (criteria.matchAll) return true;
+	const needles = getNameNeedles(criteria);
+	const groups = getLabelMatcherGroups(criteria);
+	if (needles.length === 0 && groups.length === 0) return options.emptyCriteriaMatches;
+	if (!nameMatchesNeedles(alert.alertName, needles)) return false;
+	if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
+	return true;
+};
+
 // Recurring weekly schedule, evaluated in server local time.
 // daysOfWeek: 0=Sunday … 6=Saturday (matches Date.prototype.getDay()).
 // startTime/endTime: "HH:MM" 24h. endTime must be strictly greater than startTime
@@ -486,6 +530,8 @@ export interface MutePolicy {
 	id: number;
 	name: string;
 	nameContains?: string | null;
+	// Name substrings ORed together (see getNameNeedles); supersedes nameContains.
+	nameContainsAny?: string[] | null;
 	labelMatchers: MutePolicyLabelMatcher[];
 	// OR groups (see LabelMatcherGroups); when present they supersede labelMatchers,
 	// which then carries the first group for backward compatibility.
@@ -513,6 +559,8 @@ export interface AlertEnrichment {
 	id: number;
 	name: string;
 	nameContains?: string | null;
+	// Name substrings ORed together (see getNameNeedles); supersedes nameContains.
+	nameContainsAny?: string[] | null;
 	labelMatchers: MutePolicyLabelMatcher[];
 	// OR groups (see LabelMatcherGroups); when present they supersede labelMatchers.
 	labelMatcherGroups?: LabelMatcherGroups;

@@ -510,6 +510,8 @@ export const alertsApi = {
 export type MutePolicyPayload = {
 	name: string;
 	nameContains?: string | null;
+	// Name substrings ORed together; supersedes nameContains when present.
+	nameContainsAny?: string[] | null;
 	labelMatchers?: { key: string; value: string }[];
 	labelMatcherGroups?: { key: string; value: string }[][];
 	matchAll?: boolean;
@@ -547,6 +549,8 @@ export const oncallApi = {
 export type EnrichmentPayload = {
 	name: string;
 	nameContains?: string | null;
+	// Name substrings ORed together; supersedes nameContains when present.
+	nameContainsAny?: string[] | null;
 	labelMatchers?: { key: string; value: string }[];
 	labelMatcherGroups?: { key: string; value: string }[][];
 	matchAll?: boolean;
@@ -570,6 +574,8 @@ export type ActionPayload = {
 	type: ActionType;
 	config: ActionConfig;
 	nameContains?: string | null;
+	// Name substrings ORed together; supersedes nameContains when present.
+	nameContainsAny?: string[] | null;
 	labelMatchers?: { key: string; value: string }[];
 	labelMatcherGroups?: { key: string; value: string }[][];
 };

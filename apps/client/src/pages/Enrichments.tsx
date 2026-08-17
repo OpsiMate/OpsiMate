@@ -17,16 +17,19 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
-import { AlertEnrichment, getLabelMatcherGroups } from '@OpsiMate/shared';
+import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
 import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 	<div className="flex flex-wrap gap-1.5">
-		{enrichment.nameContains && (
+		{getNameNeedles(enrichment).length > 0 && (
 			<Badge variant="secondary" className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md">
-				name ~ "{enrichment.nameContains}"
+				name ~{' '}
+				{getNameNeedles(enrichment)
+					.map((n) => `"${n}"`)
+					.join(' or ')}
 			</Badge>
 		)}
 		{enrichment.matchAll && (
@@ -35,7 +38,7 @@ const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 			</Badge>
 		)}
 		{!enrichment.matchAll && <MatcherGroupBadges criteria={enrichment} />}
-		{!enrichment.matchAll && !enrichment.nameContains && !hasMatcherCriteria(enrichment) && (
+		{!enrichment.matchAll && getNameNeedles(enrichment).length === 0 && !hasMatcherCriteria(enrichment) && (
 			<span className="text-xs text-muted-foreground italic">no matchers</span>
 		)}
 	</div>
@@ -92,7 +95,7 @@ const Enrichments: React.FC = () => {
 		const q = search.toLowerCase();
 		return ranked.filter((e) => {
 			if (e.name.toLowerCase().includes(q)) return true;
-			if (e.nameContains?.toLowerCase().includes(q)) return true;
+			if (getNameNeedles(e).some((n) => n.toLowerCase().includes(q))) return true;
 			if (e.summaryTemplate?.toLowerCase().includes(q)) return true;
 			if (
 				getLabelMatcherGroups(e)
