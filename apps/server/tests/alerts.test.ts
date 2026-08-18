@@ -1768,6 +1768,7 @@ describe('Alerts API', () => {
 
 				expect(response.statusCode).toBe(401);
 				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Unauthorized');
 			});
 		});
 
@@ -1779,6 +1780,7 @@ describe('Alerts API', () => {
 
 				expect(response.statusCode).toBe(401);
 				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Unauthorized');
 			});
 		});
 
@@ -1790,6 +1792,7 @@ describe('Alerts API', () => {
 
 				expect(response.statusCode).toBe(401);
 				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Unauthorized');
 			});
 		});
 	});
