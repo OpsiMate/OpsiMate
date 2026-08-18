@@ -45,6 +45,21 @@ const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 	</div>
 );
 
+// The Enrichment column's badges as one string, in render order and with the same
+// wording the badges use ("+key=value", the link label, "summary: …"). The column sorts
+// by this, so it has to mirror EffectBadges below: anything the key adds that the badge
+// omits (or vice versa) makes the order disagree with what the row shows. Keep the two
+// together — the last drift here was a key that fell back to a link's url while the
+// badge rendered only its label.
+export const describeEnrichmentEffects = (enrichment: AlertEnrichment): string =>
+	[
+		...(enrichment.addFields ?? []).map((f) => `+${f.key}=${f.value}`),
+		...(enrichment.addLinks ?? []).map((l) => l.label),
+		enrichment.summaryTemplate ? `summary: ${enrichment.summaryTemplate}` : '',
+	]
+		.filter(Boolean)
+		.join(' ');
+
 const EffectBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 	<div className="flex flex-wrap gap-1.5">
 		{(enrichment.addFields ?? []).map((f, idx) => (
@@ -119,16 +134,7 @@ const Enrichments: React.FC = () => {
 			name: (e: AlertEnrichment) => e.name,
 			priority: (e: AlertEnrichment) => e.priority,
 			match: (e: AlertEnrichment) => describeCriteriaScope(e, e.matchAll),
-			// Everything the Enrichment column renders — fields, links and the summary
-			// template — so two rules showing different effects never compare as equal.
-			enrichment: (e: AlertEnrichment) =>
-				[
-					(e.addFields ?? []).map((f) => `${f.key}=${f.value}`).join(', '),
-					(e.addLinks ?? []).map((l) => l.label || l.url).join(', '),
-					e.summaryTemplate ?? '',
-				]
-					.filter(Boolean)
-					.join(' '),
+			enrichment: describeEnrichmentEffects,
 		},
 		{ initialKey: 'priority', initialDirection: 'desc' }
 	);
