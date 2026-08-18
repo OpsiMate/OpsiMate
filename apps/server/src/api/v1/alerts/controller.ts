@@ -878,7 +878,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			if (!req.user) {
-				return res.status(401).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			const { comment } = CreateCommentSchema.parse(req.body);
@@ -909,7 +909,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
 			if (!req.user) {
-				return res.status(401).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			const { comment } = UpdateCommentSchema.parse(req.body);
@@ -936,7 +936,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
 			if (!req.user) {
-				return res.status(401).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			await this.alertBL.deleteComment(commentId, req.user.id);
