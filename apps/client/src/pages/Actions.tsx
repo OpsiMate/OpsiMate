@@ -27,7 +27,8 @@ import {
 	getNameNeedles,
 } from '@OpsiMate/shared';
 import { Globe, Loader2, MessageSquare, Pencil, Play, Plus, Search, Ticket, Trash2, Zap } from 'lucide-react';
-import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
 const TYPE_META: Record<
@@ -152,6 +153,19 @@ const Actions: React.FC = () => {
 		);
 	}, [actions, search]);
 
+	// Every column sorts by the text its cell shows, so the order is explainable by
+	// reading the column.
+	const { sorted, sortKey, direction, toggle } = useTableSort(filtered, {
+		name: (a: Action) => a.name,
+		type: (a: Action) => a.type,
+		target: (a: Action) => summarize(a),
+		// The scope text exactly as the cell renders it. A shared literal for every
+		// label-matcher rule would make them all compare equal despite showing different
+		// matchers. An action with no name and no matchers renders the "All alerts"
+		// badge, so that is what it sorts by — same rule as the other two pages.
+		appliesTo: (a: Action) => describeCriteriaScope(a) || 'All alerts',
+	});
+
 	const handleDelete = async () => {
 		if (!deleting) return;
 		try {
@@ -206,10 +220,38 @@ const Actions: React.FC = () => {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Type</TableHead>
-									<TableHead>Target</TableHead>
-									<TableHead>Applies to</TableHead>
+									<SortableTableHead
+										sortKey="name"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Name
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="type"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Type
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="target"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Target
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="appliesTo"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Applies to
+									</SortableTableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -250,7 +292,7 @@ const Actions: React.FC = () => {
 										</TableCell>
 									</TableRow>
 								) : (
-									filtered.map((a) => (
+									sorted.map((a) => (
 										<TableRow key={a.id} className="align-top">
 											<TableCell className="max-w-[260px]">
 												<div className="font-medium truncate">{a.name}</div>

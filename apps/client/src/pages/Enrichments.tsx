@@ -18,7 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
 import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
-import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -43,6 +44,21 @@ const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 		)}
 	</div>
 );
+
+// The Enrichment column's badges as one string, in render order and with the same
+// wording the badges use ("+key=value", the link label, "summary: …"). The column sorts
+// by this, so it has to mirror EffectBadges below: anything the key adds that the badge
+// omits (or vice versa) makes the order disagree with what the row shows. Keep the two
+// together — the last drift here was a key that fell back to a link's url while the
+// badge rendered only its label.
+export const describeEnrichmentEffects = (enrichment: AlertEnrichment): string =>
+	[
+		...(enrichment.addFields ?? []).map((f) => `+${f.key}=${f.value}`),
+		...(enrichment.addLinks ?? []).map((l) => l.label),
+		enrichment.summaryTemplate ? `summary: ${enrichment.summaryTemplate}` : '',
+	]
+		.filter(Boolean)
+		.join(' ');
 
 const EffectBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 	<div className="flex flex-wrap gap-1.5">
@@ -109,6 +125,20 @@ const Enrichments: React.FC = () => {
 		});
 	}, [enrichments, search]);
 
+	// Priority is the column that decides which rule wins a conflict, so it starts the
+	// table sorted the way enrichments actually execute: highest first. The other
+	// columns sort as text.
+	const { sorted, sortKey, direction, toggle } = useTableSort(
+		filtered,
+		{
+			name: (e: AlertEnrichment) => e.name,
+			priority: (e: AlertEnrichment) => e.priority,
+			match: (e: AlertEnrichment) => describeCriteriaScope(e, e.matchAll),
+			enrichment: describeEnrichmentEffects,
+		},
+		{ initialKey: 'priority', initialDirection: 'desc' }
+	);
+
 	const handleDelete = async () => {
 		if (!deleting) return;
 		try {
@@ -164,10 +194,39 @@ const Enrichments: React.FC = () => {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead className="w-[90px]">Priority</TableHead>
-									<TableHead>Match</TableHead>
-									<TableHead>Enrichment</TableHead>
+									<SortableTableHead
+										sortKey="name"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Name
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="priority"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+										className="w-[90px]"
+									>
+										Priority
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="match"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Match
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="enrichment"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Enrichment
+									</SortableTableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -208,7 +267,7 @@ const Enrichments: React.FC = () => {
 										</TableCell>
 									</TableRow>
 								) : (
-									filtered.map((e) => (
+									sorted.map((e) => (
 										<TableRow key={e.id} className="align-top">
 											<TableCell className="max-w-[220px]">
 												<div className="font-medium truncate">{e.name}</div>
