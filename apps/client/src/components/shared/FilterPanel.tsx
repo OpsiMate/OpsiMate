@@ -320,7 +320,7 @@ export const FilterPanel = ({
 								    so the chevron and the counts form one aligned column. */}
 									<AccordionTrigger className="pl-2 pr-3 py-1.5 hover:no-underline hover:bg-muted/50 text-foreground">
 										<div className="flex items-center justify-between w-full pr-2">
-											<span className="text-xs font-medium text-foreground">
+											<span className="text-xs font-semibold text-foreground">
 												{config.fieldLabels[field] || field}
 											</span>
 											{activeValues.length + excludedValues.length > 0 && (
