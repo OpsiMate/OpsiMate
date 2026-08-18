@@ -12,9 +12,19 @@ interface UseAlertKeyboardNavOptions {
 	scrollerRef: RefObject<HTMLDivElement | null>;
 }
 
+// A leaf row paired with its index in flatRows: stepping walks alerts only, but the
+// virtualizer is addressed by flatRows position (group headers included).
+interface IndexedAlertRow {
+	rowIndex: number;
+	alert: Alert;
+}
+
 // One registered entry per mounted AlertsTable (split-by-assignment renders several).
 interface NavInstance {
 	getScroller: () => HTMLDivElement | null;
+	// False when the table has no alert rows or no click handler — the keypress is then
+	// left to its default (scrolling) instead of being swallowed by preventDefault.
+	canNavigate: () => boolean;
 	containsActive: () => boolean;
 	navigate: (delta: 1 | -1) => void;
 }
@@ -57,7 +67,7 @@ const handleWindowKeyDown = (e: KeyboardEvent) => {
 	if (isTextEntry(e.target)) return;
 	if (e.target instanceof HTMLElement && e.target.closest(OVERLAY_SELECTOR)) return;
 	const owner = resolveOwner();
-	if (!owner) return;
+	if (!owner || !owner.canNavigate()) return;
 	// Also claims the boundary press (first/last row): the key is "spent" on row
 	// navigation either way, rather than falling through to a surprise page scroll.
 	e.preventDefault();
@@ -176,6 +186,10 @@ export const useAlertKeyboardNav = ({
 
 		const instance: NavInstance = {
 			getScroller: () => scrollerRef.current,
+			canNavigate: () => {
+				const { flatRows: rows, onAlertClick: open } = latest.current;
+				return open !== undefined && rows.some((r) => r.type === 'leaf');
+			},
 			containsActive: () => {
 				const { flatRows: rows, activeAlertId: id } = latest.current;
 				return id !== null && rows.some((r) => r.type === 'leaf' && r.alert.id === id);
@@ -183,18 +197,20 @@ export const useAlertKeyboardNav = ({
 			navigate: (delta) => {
 				const { flatRows: rows, activeAlertId: id, onAlertClick: open, virtualizer: v } = latest.current;
 				if (!open) return;
-				const alertRowIndices = rows.flatMap((r, i) => (r.type === 'leaf' ? [i] : []));
-				if (alertRowIndices.length === 0) return;
-				const currentPos =
-					id === null ? -1 : alertRowIndices.findIndex((i) => (rows[i] as { alert: Alert }).alert.id === id);
+				// Leaf rows with their flatRows index, so scrollToIndex can address the
+				// virtualizer while stepping skips the group headers.
+				const alertRows: IndexedAlertRow[] = rows.flatMap((r, i) =>
+					r.type === 'leaf' ? [{ rowIndex: i, alert: r.alert }] : []
+				);
+				if (alertRows.length === 0) return;
+				const currentPos = id === null ? -1 : alertRows.findIndex((r) => r.alert.id === id);
 				const nextPos =
 					currentPos === -1
 						? delta === 1
 							? 0
-							: alertRowIndices.length - 1
-						: Math.min(Math.max(currentPos + delta, 0), alertRowIndices.length - 1);
-				const rowIndex = alertRowIndices[nextPos];
-				const alert = (rows[rowIndex] as { alert: Alert }).alert;
+							: alertRows.length - 1
+						: Math.min(Math.max(currentPos + delta, 0), alertRows.length - 1);
+				const { rowIndex, alert } = alertRows[nextPos];
 				v.scrollToIndex(rowIndex, { align: 'auto' });
 				const wasPinned = pendingScrollIndex !== null;
 				pendingScrollIndex = rowIndex;

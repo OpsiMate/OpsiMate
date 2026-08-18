@@ -24,11 +24,15 @@ const group = (key: string): FlatGroupItem =>
 		groupStatus: 'firing',
 	}) as FlatGroupItem;
 
+interface HookProps {
+	activeAlertId: string | null;
+}
+
 interface HookSetup {
 	onAlertClick: ReturnType<typeof vi.fn>;
 	scrollToIndex: ReturnType<typeof vi.fn>;
 	unmount: () => void;
-	rerender: (next: { activeAlertId: string | null }) => void;
+	rerender: (next: HookProps) => void;
 }
 
 const setup = (rows: FlatGroupItem[], activeAlertId: string | null = null): HookSetup => {
@@ -37,7 +41,7 @@ const setup = (rows: FlatGroupItem[], activeAlertId: string | null = null): Hook
 	const virtualizer = { scrollToIndex } as unknown as Virtualizer<HTMLDivElement, Element>;
 	const scrollerRef = { current: document.createElement('div') };
 	const view = renderHook(
-		(props: { activeAlertId: string | null }) =>
+		(props: HookProps) =>
 			useAlertKeyboardNav({
 				flatRows: rows,
 				activeAlertId: props.activeAlertId,
