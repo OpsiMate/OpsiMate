@@ -30,15 +30,26 @@ interface UseTableSortOptions<TKey extends string> {
 	initialDirection?: SortDirection;
 }
 
+// NaN counts as missing. A date accessor is the usual way it turns up —
+// new Date('nonsense').getTime() is NaN — and NaN fails every comparison, so leaving it
+// in the numeric path makes compare(a,b) and compare(b,a) BOTH claim "a first". That
+// breaks the contract Array.sort relies on and the resulting order is arbitrary, not
+// merely odd. Parking it with the other absent values keeps the comparator consistent.
+const isMissing = (v: SortValue): boolean =>
+	v === null || v === undefined || v === '' || (typeof v === 'number' && Number.isNaN(v));
+
 const compareValues = (a: SortValue, b: SortValue): number => {
-	const aMissing = a === null || a === undefined || a === '';
-	const bMissing = b === null || b === undefined || b === '';
+	const aMissing = isMissing(a);
+	const bMissing = isMissing(b);
 	if (aMissing && bMissing) return 0;
 	// Missing sorts last regardless of direction (see SortValue) — the caller's
 	// direction flip is applied only to the comparison below.
 	if (aMissing) return Number.POSITIVE_INFINITY;
 	if (bMissing) return Number.NEGATIVE_INFINITY;
-	if (typeof a === 'number' && typeof b === 'number') return a - b;
+	// Math.sign, not a - b: the difference of two large timestamps can overflow to
+	// ±Infinity, which the caller reads as the "missing" sentinel and so never flips
+	// with direction. A sign is all the caller needs.
+	if (typeof a === 'number' && typeof b === 'number') return Math.sign(a - b);
 	if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b);
 	// localeCompare, not <: rule names are human text, so "Éxpiry" must sort next to
 	// "Expiry" rather than after "Zzz", and numeric:true keeps "policy 2" before

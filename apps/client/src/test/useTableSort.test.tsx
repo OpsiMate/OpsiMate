@@ -80,6 +80,23 @@ describe('useTableSort', () => {
 		expect(result.current.sorted.map((r) => r.priority)).toEqual([10, 2, 1, 1]);
 	});
 
+	// new Date('nonsense').getTime() is NaN, and NaN loses every comparison, so an
+	// unguarded comparator claims "a first" for BOTH (a,b) and (b,a). Array.sort is
+	// entitled to produce any order from that, so the assertion is that the good rows
+	// stay correctly ordered and the bad one is treated as absent rather than that the
+	// bad row lands anywhere in particular.
+	test('an unparseable date sorts as missing instead of scrambling the order', () => {
+		const withBadDate = [...rows, { name: 'broken', priority: 3, endsAt: 'not-a-date' }];
+		const { result } = renderHook(() => useTableSort(withBadDate, accessors));
+		act(() => result.current.toggle('window'));
+
+		const order = result.current.sorted.map((r) => r.name);
+		const dated = order.filter((n) => n === 'policy 10' || n === 'policy 2' || n === 'beta');
+		expect(dated).toEqual(['policy 10', 'policy 2', 'beta']);
+		// Both value-less rows park at the end, in either order.
+		expect(order.slice(-2).sort()).toEqual(['Alpha', 'broken']);
+	});
+
 	test('an initial key sorts on first render without a click', () => {
 		const { result } = setup({ initialKey: 'priority', initialDirection: 'desc' });
 		expect(result.current.sorted.map((r) => r.priority)).toEqual([10, 2, 1, 1]);
