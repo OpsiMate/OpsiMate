@@ -27,11 +27,7 @@ import {
 	getNameNeedles,
 } from '@OpsiMate/shared';
 import { Globe, Loader2, MessageSquare, Pencil, Play, Plus, Search, Ticket, Trash2, Zap } from 'lucide-react';
-import {
-	describeMatcherCriteria,
-	hasMatcherCriteria,
-	MatcherGroupBadges,
-} from '@/components/shared/MatcherGroupsEditor';
+import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
@@ -157,20 +153,17 @@ const Actions: React.FC = () => {
 		);
 	}, [actions, search]);
 
-	// "Applies to" sorts by the rule's own scope text; an action with no criteria (it
-	// runs on every alert) has no scope to compare, so it parks at the end.
+	// Every column sorts by the text its cell shows, so the order is explainable by
+	// reading the column.
 	const { sorted, sortKey, direction, toggle } = useTableSort(filtered, {
 		name: (a: Action) => a.name,
 		type: (a: Action) => a.type,
 		target: (a: Action) => summarize(a),
-		// The scope text as displayed. A shared literal for every label-matcher rule
-		// would make them all compare equal despite showing different matchers; an
-		// action with no criteria at all runs everywhere and has no scope to compare,
-		// so it stays absent and parks at the end.
-		appliesTo: (a: Action) => {
-			const scope = [getNameNeedles(a).join(', '), describeMatcherCriteria(a)].filter(Boolean).join(' ');
-			return scope.length > 0 ? scope : null;
-		},
+		// The scope text exactly as the cell renders it. A shared literal for every
+		// label-matcher rule would make them all compare equal despite showing different
+		// matchers. An action with no name and no matchers renders the "All alerts"
+		// badge, so that is what it sorts by — same rule as the other two pages.
+		appliesTo: (a: Action) => describeCriteriaScope(a) || 'All alerts',
 	});
 
 	const handleDelete = async () => {

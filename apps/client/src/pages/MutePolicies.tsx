@@ -20,11 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
 import { getLabelMatcherGroups, MutePolicy, getNameNeedles, MutePolicySchedule } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
-import {
-	describeMatcherCriteria,
-	hasMatcherCriteria,
-	MatcherGroupBadges,
-} from '@/components/shared/MatcherGroupsEditor';
+import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
@@ -190,10 +186,7 @@ const MutePolicies: React.FC = () => {
 		status: (s: MutePolicy) => STATUS_ORDER[getStatus(s)],
 		// Everything the Match column renders, in the order it renders it: comparing
 		// only part of it would make rows with visibly different criteria sort as equal.
-		match: (s: MutePolicy) =>
-			s.matchAll
-				? 'All alerts'
-				: [getNameNeedles(s).join(', '), describeMatcherCriteria(s)].filter(Boolean).join(' '),
+		match: (s: MutePolicy) => describeCriteriaScope(s, s.matchAll),
 		// A recurring policy shows a real end time, so it sorts by when its window next
 		// closes — not as "no end". Only a genuinely indefinite policy is absent here.
 		window: (s: MutePolicy) => {
