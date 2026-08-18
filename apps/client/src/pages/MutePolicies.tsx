@@ -18,9 +18,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
-import { getLabelMatcherGroups, MutePolicy, getNameNeedles } from '@OpsiMate/shared';
+import { getLabelMatcherGroups, MutePolicy, getNameNeedles, MutePolicySchedule } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
-import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import {
+	describeMatcherCriteria,
+	hasMatcherCriteria,
+	MatcherGroupBadges,
+} from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
@@ -68,6 +72,28 @@ const relativeFromNow = (iso?: string | null): string => {
 	if (hours < 24) return future ? `in ${hours}h` : `${hours}h ago`;
 	const days = Math.round(hours / 24);
 	return future ? `in ${days}d` : `${days}d ago`;
+};
+
+// When a recurring window next closes, as an absolute timestamp. Schedules are weekly
+// (daysOfWeek + HH:MM in server-local time), so the next end is the soonest upcoming
+// occurrence across the policy's days; today counts only if its end time hasn't passed.
+const nextScheduleEnd = (schedule: MutePolicySchedule): number | null => {
+	if (!schedule.daysOfWeek?.length) return null;
+	const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+	if (!Number.isFinite(endHour) || !Number.isFinite(endMinute)) return null;
+	const now = new Date();
+	let soonest: number | null = null;
+	for (const day of schedule.daysOfWeek) {
+		const candidate = new Date(now);
+		candidate.setHours(endHour, endMinute, 0, 0);
+		const dayDelta = (day - now.getDay() + 7) % 7;
+		candidate.setDate(candidate.getDate() + dayDelta);
+		// Same weekday but already past today: that occurrence is next week.
+		if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 7);
+		const time = candidate.getTime();
+		if (soonest === null || time < soonest) soonest = time;
+	}
+	return soonest;
 };
 
 const StatusBadge = ({ status }: { status: MutePolicyStatus }) => {
@@ -162,8 +188,18 @@ const MutePolicies: React.FC = () => {
 	const { sorted, sortKey, direction, toggle } = useTableSort(filtered, {
 		name: (s: MutePolicy) => s.name,
 		status: (s: MutePolicy) => STATUS_ORDER[getStatus(s)],
-		match: (s: MutePolicy) => (s.matchAll ? 'All alerts' : getNameNeedles(s).join(', ')),
-		window: (s: MutePolicy) => (s.endsAt ? new Date(s.endsAt).getTime() : null),
+		// Everything the Match column renders, in the order it renders it: comparing
+		// only part of it would make rows with visibly different criteria sort as equal.
+		match: (s: MutePolicy) =>
+			s.matchAll
+				? 'All alerts'
+				: [getNameNeedles(s).join(', '), describeMatcherCriteria(s)].filter(Boolean).join(' '),
+		// A recurring policy shows a real end time, so it sorts by when its window next
+		// closes — not as "no end". Only a genuinely indefinite policy is absent here.
+		window: (s: MutePolicy) => {
+			if (s.endsAt) return new Date(s.endsAt).getTime();
+			return s.schedule ? nextScheduleEnd(s.schedule) : null;
+		},
 	});
 
 	const handleDelete = async () => {

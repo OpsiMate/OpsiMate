@@ -27,7 +27,11 @@ import {
 	getNameNeedles,
 } from '@OpsiMate/shared';
 import { Globe, Loader2, MessageSquare, Pencil, Play, Plus, Search, Ticket, Trash2, Zap } from 'lucide-react';
-import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import {
+	describeMatcherCriteria,
+	hasMatcherCriteria,
+	MatcherGroupBadges,
+} from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
@@ -159,10 +163,13 @@ const Actions: React.FC = () => {
 		name: (a: Action) => a.name,
 		type: (a: Action) => a.type,
 		target: (a: Action) => summarize(a),
+		// The scope text as displayed. A shared literal for every label-matcher rule
+		// would make them all compare equal despite showing different matchers; an
+		// action with no criteria at all runs everywhere and has no scope to compare,
+		// so it stays absent and parks at the end.
 		appliesTo: (a: Action) => {
-			const needles = getNameNeedles(a);
-			if (needles.length > 0) return needles.join(', ');
-			return hasMatcherCriteria(a) ? 'labels' : null;
+			const scope = [getNameNeedles(a).join(', '), describeMatcherCriteria(a)].filter(Boolean).join(' ');
+			return scope.length > 0 ? scope : null;
 		},
 	});
 

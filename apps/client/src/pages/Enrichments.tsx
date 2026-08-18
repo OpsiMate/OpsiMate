@@ -18,7 +18,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments';
 import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
-import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import {
+	describeMatcherCriteria,
+	hasMatcherCriteria,
+	MatcherGroupBadges,
+} from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -118,9 +122,20 @@ const Enrichments: React.FC = () => {
 		{
 			name: (e: AlertEnrichment) => e.name,
 			priority: (e: AlertEnrichment) => e.priority,
-			match: (e: AlertEnrichment) => (e.matchAll ? 'All alerts' : getNameNeedles(e).join(', ')),
+			match: (e: AlertEnrichment) =>
+				e.matchAll
+					? 'All alerts'
+					: [getNameNeedles(e).join(', '), describeMatcherCriteria(e)].filter(Boolean).join(' '),
+			// Everything the Enrichment column renders — fields, links and the summary
+			// template — so two rules showing different effects never compare as equal.
 			enrichment: (e: AlertEnrichment) =>
-				(e.addFields ?? []).map((f) => `${f.key}=${f.value}`).join(', ') || e.summaryTemplate || '',
+				[
+					(e.addFields ?? []).map((f) => `${f.key}=${f.value}`).join(', '),
+					(e.addLinks ?? []).map((l) => l.label || l.url).join(', '),
+					e.summaryTemplate ?? '',
+				]
+					.filter(Boolean)
+					.join(' '),
 		},
 		{ initialKey: 'priority', initialDirection: 'desc' }
 	);

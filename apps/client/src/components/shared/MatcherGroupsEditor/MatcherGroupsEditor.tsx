@@ -233,3 +233,12 @@ export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) 
 
 // True when the entity has any complete matcher (used by the pages' empty-state checks).
 export const hasMatcherCriteria = (criteria: MatcherCriteria): boolean => getLabelMatcherGroups(criteria).length > 0;
+
+// The matcher groups as the text a user reads in the badges ("env=prod AND team~db OR
+// …"). Sorting a Match column has to compare what the column SHOWS — comparing only
+// part of it (say the name needles) makes rows with visibly different matchers sort as
+// equal, which reads as the sort being broken.
+export const describeMatcherCriteria = (criteria: MatcherCriteria): string =>
+	getLabelMatcherGroups(criteria)
+		.map((group) => group.map((m) => `${m.key}${m.op === 'contains' ? '~' : '='}${m.value}`).join(' AND '))
+		.join(' OR ');

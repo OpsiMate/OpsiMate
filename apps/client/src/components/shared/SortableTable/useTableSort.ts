@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -6,6 +6,15 @@ export type SortDirection = 'asc' | 'desc';
 // directions: "no priority" or "no window" is absence, not a small value, and flipping
 // direction shouldn't drag a blank row to the top.
 export type SortValue = string | number | boolean | null | undefined;
+
+// Key and direction live in ONE state value: they change together, and updating one
+// from inside the other's updater would be an impure updater — React may invoke it more
+// than once (it does in StrictMode), which double-toggles the direction back to where
+// it started.
+interface SortSelection<TKey extends string> {
+	key: TKey | null;
+	direction: SortDirection;
+}
 
 export interface TableSortState<TKey extends string> {
 	sortKey: TKey | null;
@@ -59,9 +68,15 @@ export const useTableSort = <TRow, TKey extends string>(
 		});
 	}, []);
 
+	// Callers build the accessor map inline, so it has a new identity every render;
+	// putting it in the memo's deps would defeat the memo entirely. A ref keeps the
+	// CURRENT accessors available without making identity a recompute trigger.
+	const accessorsRef = useRef(accessors);
+	accessorsRef.current = accessors;
+
 	const sorted = useMemo(() => {
 		if (!sortKey) return rows;
-		const accessor = accessors[sortKey];
+		const accessor = accessorsRef.current[sortKey];
 		if (!accessor) return rows;
 		// Copy before sorting: the incoming array is the memoized filter result, and
 		// sorting in place would mutate it (and reorder the caller's list on every
@@ -74,9 +89,6 @@ export const useTableSort = <TRow, TKey extends string>(
 			if (!Number.isFinite(result)) return result === Number.POSITIVE_INFINITY ? 1 : -1;
 			return result * factor;
 		});
-		// accessors is a literal rebuilt each render by callers; keying the memo on it
-		// would defeat it entirely, and its behaviour only changes with rows/sortKey.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [rows, sortKey, direction]);
 
 	return { sortKey, direction, toggle, sorted };

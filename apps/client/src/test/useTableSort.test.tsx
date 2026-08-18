@@ -58,11 +58,11 @@ describe('useTableSort', () => {
 	test('missing values park at the end in BOTH directions', () => {
 		const { result } = setup();
 		act(() => result.current.toggle('window'));
-		expect(result.current.sorted.at(-1)?.name).toBe('Alpha');
+		expect(result.current.sorted[result.current.sorted.length - 1]?.name).toBe('Alpha');
 		act(() => result.current.toggle('window'));
 		expect(result.current.direction).toBe('desc');
 		// Still last: "no end date" is absence, not a small value.
-		expect(result.current.sorted.at(-1)?.name).toBe('Alpha');
+		expect(result.current.sorted[result.current.sorted.length - 1]?.name).toBe('Alpha');
 	});
 
 	test('an initial key sorts on first render without a click', () => {
