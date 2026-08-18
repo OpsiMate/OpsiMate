@@ -118,8 +118,14 @@ const resolveStyle = (item: AlertHistoryData): EventStyle => {
 // MAIN_X / SIDE_X; DOT_CENTER_Y is where a row's dot center lands vertically (mt-1 on an
 // h-2.5 dot). Everything is drawn from these so the curves stay attached to the dots.
 const MAIN_X = 5;
-const SIDE_X = 21;
+const SIDE_X = 33;
 const DOT_CENTER_Y = 9;
+
+// The side branch is drawn in its own color, like a branch in a git graph — offset
+// alone was too subtle to read as a second lane. Rails/corners split into vertical and
+// horizontal pieces so both can carry the tint.
+const SIDE_BRANCH_BORDER = 'border-sky-400/70 dark:border-sky-500/60';
+const SIDE_BRANCH_BG = 'bg-sky-400/70 dark:bg-sky-500/60';
 
 // The event's text block, identical for both branches.
 const EventBody = ({ item, style }: { item: AlertHistoryData; style: EventStyle }) => {
@@ -194,26 +200,26 @@ export const AlertHistoryTimeline = ({ data, isFiltered, laneFilter = 'all' }: A
 								   into this dot — border-l is the vertical part on the main
 								   rail, border-b the horizontal run into the dot. */
 								<span
-									className="absolute border-l border-b border-border rounded-bl-[10px]"
+									className={`absolute border-l-2 border-b-2 ${SIDE_BRANCH_BORDER} rounded-bl-[14px]`}
 									style={{
 										left: MAIN_X,
 										width: SIDE_X - MAIN_X + 4,
-										top: -8,
-										height: DOT_CENTER_Y + 8,
+										top: -10,
+										height: DOT_CENTER_Y + 10,
 									}}
 								/>
 							)}
 							{side && !row.sideRunStart && (
 								/* Side rail from the previous (newer) side entry down to this dot. */
 								<span
-									className="absolute w-px bg-border"
-									style={{ left: SIDE_X, top: -8, height: DOT_CENTER_Y + 8 }}
+									className={`absolute w-0.5 ${SIDE_BRANCH_BG}`}
+									style={{ left: SIDE_X, top: -10, height: DOT_CENTER_Y + 10 }}
 								/>
 							)}
 							{side && !row.sideRunEnd && (
 								/* Side rail onward to the next (older) side entry. */
 								<span
-									className="absolute w-px bg-border"
+									className={`absolute w-0.5 ${SIDE_BRANCH_BG}`}
 									style={{ left: SIDE_X, top: DOT_CENTER_Y, bottom: 0 }}
 								/>
 							)}
@@ -221,18 +227,22 @@ export const AlertHistoryTimeline = ({ data, isFiltered, laneFilter = 'all' }: A
 								/* Merge-back corner: curves left out of this dot and joins the
 								   main rail below — the run's closing bracket. */
 								<span
-									className="absolute border-t border-l border-border rounded-tl-[10px]"
+									className={`absolute border-t-2 border-l-2 ${SIDE_BRANCH_BORDER} rounded-tl-[14px]`}
 									style={{
 										left: MAIN_X,
 										width: SIDE_X - MAIN_X + 4,
 										top: DOT_CENTER_Y,
-										height: 16,
+										height: 18,
 									}}
 								/>
 							)}
-							{/* Dot, on whichever rail this row belongs to. */}
+							{/* Dot, on whichever rail this row belongs to. Main-branch dots are a
+							    size up: the alert's own story carries more visual weight than
+							    the activity around it. */}
 							<span
-								className={`relative z-10 mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background ${style.dotClass}`}
+								className={`relative z-10 shrink-0 rounded-full ring-2 ring-background ${style.dotClass} ${
+									side ? 'mt-1 h-2.5 w-2.5' : 'mt-[3px] h-3 w-3'
+								}`}
 								style={{ marginLeft: dotX - MAIN_X }}
 							/>
 							<EventBody item={row.entry} style={style} />
