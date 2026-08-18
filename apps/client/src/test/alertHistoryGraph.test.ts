@@ -117,8 +117,8 @@ describe('export serializers', () => {
 				description: '@SUM(1,1) and -2+3',
 			}),
 		]);
-		expect(hostile).toContain(`"'=HYPERLINK(""http://evil"",""x"")"`);
-		expect(hostile).toContain(`"'@SUM(1,1) and -2+3"`);
+		expect(hostile).toContain('"\'=HYPERLINK(""http://evil"",""x"")"');
+		expect(hostile).toContain('"\'@SUM(1,1) and -2+3"');
 		// JSON stays raw: it is data interchange, nothing executes cells.
 		const json = historyToJson([entry(AlertHistoryEventType.COMMENT_ADDED, { actorName: '=x' })]);
 		expect(JSON.parse(json)[0].actor).toBe('=x');
