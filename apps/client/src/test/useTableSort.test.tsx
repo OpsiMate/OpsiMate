@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, expect, test } from 'vitest';
 import { useTableSort } from '@/components/shared/SortableTable';
 
@@ -63,6 +64,20 @@ describe('useTableSort', () => {
 		expect(result.current.direction).toBe('desc');
 		// Still last: "no end date" is absence, not a small value.
 		expect(result.current.sorted[result.current.sorted.length - 1]?.name).toBe('Alpha');
+	});
+
+	// StrictMode double-invokes state updaters. An updater that sets OTHER state from
+	// inside itself therefore toggles twice and lands back where it started, so the
+	// second click on a column appears to do nothing — only in a StrictMode build,
+	// which is how the app actually runs. Every other test here passes against that
+	// bug; this one is the reason the hook keeps key and direction in one state value.
+	test('reversing works under StrictMode, where updaters run twice', () => {
+		const { result } = renderHook(() => useTableSort(rows, accessors), { wrapper: StrictMode });
+		act(() => result.current.toggle('priority'));
+		expect(result.current.direction).toBe('asc');
+		act(() => result.current.toggle('priority'));
+		expect(result.current.direction).toBe('desc');
+		expect(result.current.sorted.map((r) => r.priority)).toEqual([10, 2, 1, 1]);
 	});
 
 	test('an initial key sorts on first render without a click', () => {

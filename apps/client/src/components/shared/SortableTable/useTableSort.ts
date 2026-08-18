@@ -54,18 +54,18 @@ export const useTableSort = <TRow, TKey extends string>(
 	accessors: Record<TKey, (row: TRow) => SortValue>,
 	options: UseTableSortOptions<TKey> = {}
 ): TableSortState<TKey> & { sorted: TRow[] } => {
-	const [sortKey, setSortKey] = useState<TKey | null>(options.initialKey ?? null);
-	const [direction, setDirection] = useState<SortDirection>(options.initialDirection ?? 'asc');
+	const [selection, setSelection] = useState<SortSelection<TKey>>({
+		key: options.initialKey ?? null,
+		direction: options.initialDirection ?? 'asc',
+	});
+	const { key: sortKey, direction } = selection;
 
 	const toggle = useCallback((key: TKey) => {
-		setSortKey((currentKey) => {
-			if (currentKey === key) {
-				setDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
-				return currentKey;
-			}
-			setDirection('asc');
-			return key;
-		});
+		setSelection((current) =>
+			current.key === key
+				? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+				: { key, direction: 'asc' }
+		);
 	}, []);
 
 	// Callers build the accessor map inline, so it has a new identity every render;
