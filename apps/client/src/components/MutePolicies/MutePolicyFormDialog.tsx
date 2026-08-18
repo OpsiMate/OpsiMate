@@ -11,6 +11,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { NameMatchersEditor } from '@/components/shared/NameMatchersEditor';
+import { cleanNameMatchers } from '@/components/shared/NameMatchersEditor/cleanNameMatchers';
 import { useAlerts } from '@/hooks/queries/alerts';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
@@ -19,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateMutePolicy, useUpdateMutePolicy } from '@/hooks/queries/mute-policies';
 import { MutePolicyPayload } from '@/lib/api';
-import { MutePolicy } from '@OpsiMate/shared';
+import { MutePolicy, getNameNeedles } from '@OpsiMate/shared';
 import { BellOff, Tag } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -71,7 +73,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 	const updateMutation = useUpdateMutePolicy();
 
 	const [name, setName] = useState('');
-	const [nameContains, setNameContains] = useState('');
+	const [nameContainsAny, setNameContainsAny] = useState<string[]>([]);
 	const [matcherGroups, setMatcherGroups] = useState<Matcher[][]>([]);
 	const [matchAll, setMatchAll] = useState(false);
 	const { data: alerts = [] } = useAlerts();
@@ -90,7 +92,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 		if (!open) return;
 		if (mutePolicy) {
 			setName(mutePolicy.name);
-			setNameContains(mutePolicy.nameContains ?? '');
+			setNameContainsAny(getNameNeedles(mutePolicy));
 			setMatcherGroups(
 				mutePolicy.labelMatcherGroups?.length
 					? mutePolicy.labelMatcherGroups.map((g) => g.map((m) => ({ ...m })))
@@ -121,7 +123,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 			}
 		} else {
 			setName('');
-			setNameContains('');
+			setNameContainsAny([]);
 			setMatcherGroups([]);
 			setMatchAll(false);
 			setReason('');
@@ -145,7 +147,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
-		const hasNameMatcher = nameContains.trim().length > 0;
+		const hasNameMatcher = nameContainsAny.some((n) => n.trim().length > 0);
 		const hasLabelMatchers = matcherGroups.some((g) => g.some((m) => m.key.trim() && m.value.trim()));
 		if (!matchAll && !hasNameMatcher && !hasLabelMatchers) return false;
 		if (mode === 'recurring') {
@@ -160,7 +162,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 		return true;
 	}, [
 		name,
-		nameContains,
+		nameContainsAny,
 		matcherGroups,
 		matchAll,
 		mode,
@@ -190,7 +192,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 			mode === 'recurring'
 				? {
 						name: name.trim(),
-						nameContains: matchAll ? null : nameContains.trim() || null,
+						nameContainsAny: matchAll ? null : cleanNameMatchers(nameContainsAny),
 						labelMatchers: cleanedGroups[0] ?? [],
 						labelMatcherGroups: cleanedGroups,
 						matchAll,
@@ -205,7 +207,7 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 					}
 				: {
 						name: name.trim(),
-						nameContains: matchAll ? null : nameContains.trim() || null,
+						nameContainsAny: matchAll ? null : cleanNameMatchers(nameContainsAny),
 						labelMatchers: cleanedGroups[0] ?? [],
 						labelMatcherGroups: cleanedGroups,
 						matchAll,
@@ -278,15 +280,11 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 						</label>
 
 						<div className={matchAll ? 'space-y-2 opacity-50 pointer-events-none' : 'space-y-2'}>
-							<Label htmlFor="mute-policy-nameContains" className="text-xs">
-								Alert name contains
-							</Label>
-							<Input
-								id="mute-policy-nameContains"
+							<NameMatchersEditor
+								values={nameContainsAny}
+								onChange={setNameContainsAny}
 								placeholder="e.g. HighCPU, prod-db, latency"
-								value={nameContains}
 								disabled={matchAll}
-								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>
 

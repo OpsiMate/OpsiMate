@@ -48,6 +48,7 @@ export class EnrichmentController {
 				{
 					name: data.name,
 					nameContains: data.nameContains ?? null,
+					nameContainsAny: data.nameContainsAny ?? null,
 					labelMatchers: data.labelMatchers ?? [],
 					labelMatcherGroups: data.labelMatcherGroups,
 					matchAll: data.matchAll ?? false,

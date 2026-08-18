@@ -1,9 +1,8 @@
 import {
+	criteriaMatchesAlert,
 	Alert,
 	AlertEnrichment,
 	AlertLink,
-	anyMatcherGroupMatchesTags,
-	getLabelMatcherGroups,
 	AppliedEnrichment,
 	AuditActionType,
 	AuditResourceType,
@@ -120,22 +119,10 @@ export class EnrichmentBL {
 	// Same matching semantics as mute policies: nameContains is a case-insensitive substring match
 	// on the alert name, and every label matcher must equal the alert's tag value.
 	static enrichmentMatchesAlert(enrichment: AlertEnrichment, alert: Alert): boolean {
-		// A match-all rule decorates every alert.
-		if (enrichment.matchAll) return true;
-
-		const hasName = !!enrichment.nameContains && enrichment.nameContains.trim().length > 0;
-		// OR groups: any group fully matching suffices; a legacy flat matcher list is one group.
-		const groups = getLabelMatcherGroups(enrichment);
-
-		if (!hasName && groups.length === 0) return false;
-
-		if (hasName) {
-			const needle = enrichment.nameContains!.trim().toLowerCase();
-			if (!alert.alertName?.toLowerCase().includes(needle)) return false;
-		}
-
-		if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
-		return true;
+		// Shared with mute policies and actions (see criteriaMatchesAlert): name
+		// substrings OR together, label groups OR together, and the two AND. A rule with
+		// no criteria decorates nothing rather than everything.
+		return criteriaMatchesAlert(enrichment, alert, { emptyCriteriaMatches: false });
 	}
 
 	// Templates may reference the alert's current values; enrichments chain in order, so a

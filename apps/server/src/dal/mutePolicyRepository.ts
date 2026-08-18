@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { MutePolicy, MutePolicySchedule } from '@OpsiMate/shared';
-import { parseMatcherColumn, serializeMatcherColumn } from './matcherColumn';
+import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 import { runAsync } from './db';
 
 interface MutePolicyRow {
@@ -45,7 +45,7 @@ export class MutePolicyRepository {
 		return {
 			id: row.id,
 			name: row.name,
-			nameContains: row.name_contains,
+			...parseNameColumn(row.name_contains),
 			labelMatchers,
 			labelMatcherGroups,
 			matchAll: !!row.match_all,
@@ -107,7 +107,7 @@ export class MutePolicyRepository {
 			);
 			const result = stmt.run(
 				data.name,
-				data.nameContains ?? null,
+				serializeNameColumn(data),
 				serializeMatcherColumn(data),
 				data.matchAll ? 1 : 0,
 				data.startsAt ?? null,
@@ -145,9 +145,9 @@ export class MutePolicyRepository {
 				updates.push('name = ?');
 				values.push(data.name);
 			}
-			if (data.nameContains !== undefined) {
+			if (data.nameContains !== undefined || data.nameContainsAny !== undefined) {
 				updates.push('name_contains = ?');
-				values.push(data.nameContains);
+				values.push(serializeNameColumn(data));
 			}
 			if (data.labelMatchers !== undefined || data.labelMatcherGroups !== undefined) {
 				updates.push('label_matchers = ?');

@@ -1,4 +1,4 @@
-import { anyMatcherGroupMatchesTags, getLabelMatcherGroups, Alert, MutePolicy, Logger } from '@OpsiMate/shared';
+import { Alert, criteriaMatchesAlert, MutePolicy, Logger } from '@OpsiMate/shared';
 import { MutePolicyRepository, CreateMutePolicyInput, UpdateMutePolicyInput } from '../../dal/mutePolicyRepository';
 
 const logger = new Logger('bl/mutePolicy.bl');
@@ -64,22 +64,11 @@ export class MutePolicyBL {
 	}
 
 	static mutePolicyMatchesAlert(mutePolicy: MutePolicy, alert: Alert): boolean {
-		// A match-all policy mutes every alert (subject to its active window).
-		if (mutePolicy.matchAll) return true;
-
-		const hasName = !!mutePolicy.nameContains && mutePolicy.nameContains.trim().length > 0;
-		// OR groups: any group fully matching suffices; a legacy flat matcher list is one group.
-		const groups = getLabelMatcherGroups(mutePolicy);
-
-		if (!hasName && groups.length === 0) return false;
-
-		if (hasName) {
-			const needle = mutePolicy.nameContains!.trim().toLowerCase();
-			if (!alert.alertName?.toLowerCase().includes(needle)) return false;
-		}
-
-		if (groups.length > 0 && !anyMatcherGroupMatchesTags(groups, alert.tags)) return false;
-		return true;
+		// One shared matcher for mute policies, enrichments and actions (see
+		// criteriaMatchesAlert): name substrings OR together, label groups OR together,
+		// and the two AND. A policy with no criteria at all matches nothing — muting
+		// everything by accident is the failure mode worth preventing.
+		return criteriaMatchesAlert(mutePolicy, alert, { emptyCriteriaMatches: false });
 	}
 
 	async markMuted(alerts: Alert[]): Promise<Alert[]> {

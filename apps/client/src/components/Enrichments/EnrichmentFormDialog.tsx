@@ -10,6 +10,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { cleanNameMatchers, NameMatchersEditor } from '@/components/shared/NameMatchersEditor';
 import { TemplateVariablePicker } from '@/components/shared';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
@@ -19,7 +20,13 @@ import { useAlerts } from '@/hooks/queries/alerts';
 import { useCreateEnrichment, useUpdateEnrichment } from '@/hooks/queries/enrichments';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EnrichmentPayload } from '@/lib/api';
-import { AlertEnrichment, AlertLink, ALERT_TEMPLATE_VARIABLES, alertTagTemplateVariable } from '@OpsiMate/shared';
+import {
+	AlertEnrichment,
+	AlertLink,
+	ALERT_TEMPLATE_VARIABLES,
+	alertTagTemplateVariable,
+	getNameNeedles,
+} from '@OpsiMate/shared';
 import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
 import { AlertLinkIcon } from '@/components/Alerts/AlertLinkIcon';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -196,7 +203,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const updateMutation = useUpdateEnrichment();
 
 	const [name, setName] = useState('');
-	const [nameContains, setNameContains] = useState('');
+	const [nameContainsAny, setNameContainsAny] = useState<string[]>([]);
 	const [matcherGroups, setMatcherGroups] = useState<KeyValue[][]>([]);
 	const [matchAll, setMatchAll] = useState(false);
 	const [addFields, setAddFields] = useState<KeyValue[]>([]);
@@ -222,7 +229,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		const source = enrichment ?? duplicateFrom;
 		if (source) {
 			setName(enrichment ? source.name : `${source.name} (copy)`);
-			setNameContains(source.nameContains ?? '');
+			setNameContainsAny(getNameNeedles(source));
 			setMatcherGroups(
 				source.labelMatcherGroups?.length
 					? source.labelMatcherGroups.map((g) => g.map((m) => ({ ...m })))
@@ -237,7 +244,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 			setPriority(String(source.priority ?? 0));
 		} else {
 			setName('');
-			setNameContains('');
+			setNameContainsAny([]);
 			setMatcherGroups([]);
 			setMatchAll(false);
 			setAddFields([]);
@@ -250,14 +257,14 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
-		const hasNameMatcher = nameContains.trim().length > 0;
+		const hasNameMatcher = nameContainsAny.some((n) => n.trim().length > 0);
 		const hasLabelMatchers = matcherGroups.some((g) => g.some((m) => m.key.trim() && m.value.trim()));
 		if (!matchAll && !hasNameMatcher && !hasLabelMatchers) return false;
 		const hasFields = addFields.some((f) => f.key.trim() && f.value.trim());
 		const hasLinks = addLinks.some((l) => l.label.trim() && l.url.trim());
 		const hasSummary = summaryTemplate.trim().length > 0;
 		return hasFields || hasLinks || hasSummary;
-	}, [name, nameContains, matcherGroups, matchAll, addFields, addLinks, summaryTemplate]);
+	}, [name, nameContainsAny, matcherGroups, matchAll, addFields, addLinks, summaryTemplate]);
 
 	const submit = async () => {
 		const clean = (rows: KeyValue[]) =>
@@ -266,7 +273,7 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		const cleanedGroups = matchAll ? [] : cleanMatcherGroups(matcherGroups);
 		const payload: EnrichmentPayload = {
 			name: name.trim(),
-			nameContains: matchAll ? null : nameContains.trim() || null,
+			nameContainsAny: matchAll ? null : cleanNameMatchers(nameContainsAny),
 			labelMatchers: cleanedGroups[0] ?? [],
 			labelMatcherGroups: cleanedGroups,
 			matchAll,
@@ -359,15 +366,11 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 						</label>
 
 						<div className={matchAll ? 'space-y-2 opacity-50 pointer-events-none' : 'space-y-2'}>
-							<Label htmlFor="enrichment-nameContains" className="text-xs">
-								Alert name contains
-							</Label>
-							<Input
-								id="enrichment-nameContains"
+							<NameMatchersEditor
+								values={nameContainsAny}
+								onChange={setNameContainsAny}
 								placeholder="e.g. Disk, HighCPU, prod-db"
-								value={nameContains}
 								disabled={matchAll}
-								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>
 
