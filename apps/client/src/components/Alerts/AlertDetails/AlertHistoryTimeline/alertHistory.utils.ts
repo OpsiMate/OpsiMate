@@ -112,9 +112,21 @@ const exportEventLabel = (entry: AlertHistoryData): string => {
 	return EXPORT_LABELS[eventType] ?? String(eventType);
 };
 
-// RFC 4180: quote every field, double any quotes inside. Excel and Sheets both accept
-// this without sniffing ambiguity from commas/newlines in descriptions.
-const csvField = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+// Spreadsheets execute cells that begin with a formula trigger even when the field is
+// properly quoted — and actor names and descriptions carry user-typed text, so a user
+// named "=HYPERLINK(...)" would become a live formula in an exported file. The standard
+// neutralization is a leading apostrophe, which spreadsheets read as "literal text".
+// Applied to EVERY field (not just actorName): benign fields never start with a trigger,
+// so the guard is invisible where it isn't needed.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+const neutralizeFormula = (value: string): string => (FORMULA_TRIGGER.test(value) ? `'${value}` : value);
+
+// RFC 4180: quote every field, double any quotes inside, and normalize embedded line
+// breaks to CRLF so a multi-line description stays one record for strict parsers.
+const csvField = (value: string): string =>
+	`"${neutralizeFormula(value)
+		.replace(/\r\n|\r|\n/g, '\r\n')
+		.replace(/"/g, '""')}"`;
 
 export const historyToCsv = (data: AlertHistoryData[]): string => {
 	const header = ['date', 'event', 'branch', 'status', 'actor', 'description'];
@@ -130,7 +142,9 @@ export const historyToCsv = (data: AlertHistoryData[]): string => {
 			.map(csvField)
 			.join(',')
 	);
-	return [header.map(csvField).join(','), ...rows].join('\n');
+	// CRLF record separator per RFC 4180 (embedded breaks are normalized to CRLF too,
+	// but stay inside their quotes).
+	return [header.map(csvField).join(','), ...rows].join('\r\n');
 };
 
 export const historyToJson = (data: AlertHistoryData[]): string =>

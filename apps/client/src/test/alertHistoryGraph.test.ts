@@ -95,15 +95,33 @@ describe('export serializers', () => {
 		}),
 	];
 
-	test('CSV quotes every field and doubles embedded quotes', () => {
+	test('CSV quotes every field, doubles embedded quotes, and separates records with CRLF', () => {
 		const csv = historyToCsv(data);
-		const lines = csv.split('\n');
+		const lines = csv.split('\r\n');
 		expect(lines[0]).toBe('"date","event","branch","status","actor","description"');
 		expect(lines[1]).toContain('"Firing"');
 		expect(lines[1]).toContain('"lifecycle"');
-		// The embedded quotes are doubled, and the newline stays INSIDE the quoted field.
-		expect(csv).toContain('said ""hello, world""');
+		// The embedded quotes are doubled, and the embedded line break is normalized to
+		// CRLF but stays INSIDE the quoted field — so the record count is exact.
+		expect(csv).toContain('said ""hello, world""\r\nsecond line');
 		expect(csv).toContain('"idan"');
+		expect(lines).toHaveLength(4); // header + 2 records, one of them split by its embedded CRLF
+	});
+
+	// A user named "=HYPERLINK(...)" must arrive in Excel as text, not as a formula —
+	// quoting alone does NOT stop spreadsheets from executing a leading trigger.
+	test('CSV neutralizes formula-leading user text with a literal-text apostrophe', () => {
+		const hostile = historyToCsv([
+			entry(AlertHistoryEventType.COMMENT_ADDED, {
+				actorName: '=HYPERLINK("http://evil","x")',
+				description: '@SUM(1,1) and -2+3',
+			}),
+		]);
+		expect(hostile).toContain(`"'=HYPERLINK(""http://evil"",""x"")"`);
+		expect(hostile).toContain(`"'@SUM(1,1) and -2+3"`);
+		// JSON stays raw: it is data interchange, nothing executes cells.
+		const json = historyToJson([entry(AlertHistoryEventType.COMMENT_ADDED, { actorName: '=x' })]);
+		expect(JSON.parse(json)[0].actor).toBe('=x');
 	});
 
 	test('JSON carries the same fields with nulls for absences', () => {
