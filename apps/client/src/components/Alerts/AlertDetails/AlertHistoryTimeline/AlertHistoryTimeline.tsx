@@ -149,9 +149,21 @@ const EventBody = ({ item, style }: { item: AlertHistoryData; style: EventStyle 
 // When a single lane is filtered, that lane renders as a flat one-rail timeline.
 export const AlertHistoryTimeline = ({ data, isFiltered, laneFilter = 'all' }: AlertHistoryTimelineProps) => {
 	if (!data.length) {
+		// Name what is actually missing: with a lane isolated, "no history available"
+		// would read as a bug when the OTHER lane visibly has entries.
+		const laneNoun =
+			laneFilter === 'lifecycle'
+				? 'status changes'
+				: laneFilter === 'activity'
+					? 'user activity'
+					: 'history events';
 		return (
 			<div className="px-4 py-6 text-center text-sm text-muted-foreground">
-				{isFiltered ? 'No history events in the selected time range' : 'No alert history available'}
+				{isFiltered
+					? `No ${laneNoun} in the selected time range`
+					: laneFilter === 'all'
+						? 'No alert history available'
+						: `No ${laneNoun} for this alert`}
 			</div>
 		);
 	}
