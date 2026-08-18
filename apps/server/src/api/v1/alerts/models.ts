@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-export interface GcpAlertWebhook {
-	version?: string | number;
-	incident: GcpIncident;
-}
-
 export interface GcpIncident {
 	policy_user_labels?: Record<string, string>;
 	incident_id: string;
@@ -20,6 +15,35 @@ export interface GcpIncident {
 		content?: string;
 	};
 }
+
+export const GcpIncidentSchema = z.object({
+  policy_user_labels: z.record(z.string(), z.string()).optional(),
+  incident_id: z.string(),
+  resource_id: z.string().optional(),
+  resource_name: z.string().optional(),
+  policy_name: z.string().optional(),
+  condition_name: z.string().optional(),
+  state: z.enum(["open", "acknowledged", "closed"]),
+  started_at: z.union([z.string(), z.number()]),
+  url: z.string(),
+  summary: z.string().optional(),
+  documentation: z
+    .object({
+      content: z.string().optional(),
+    })
+    .optional(),
+});
+
+export interface GcpAlertWebhook {
+	version?: string | number;
+	incident: GcpIncident;
+}
+
+export const GcpAlertWebhookSchema = z
+	.object({
+		version: z.union([z.string(), z.number()]).optional(),
+		incident: GcpIncidentSchema,
+	});
 
 const isoDateString = z.string().refine(
 	(s) => {
@@ -175,11 +199,30 @@ export interface UptimeKumaHeartbeat {
 	localDateTime: string;
 }
 
+export const UptimeKumaHeartbeatSchema = z
+	.object({
+		monitorID: z.number(),
+		status: z.enum([0, 1, 2]), // 0 = down, 1 = up, 2 = pending
+		time: z.string(), // "2025-11-29 15:20:31.368"
+		msg: z.string(),
+		important: z.boolean(),
+		retries: z.number(),
+		timezone: z.string(),
+		timezoneOffset: z.string(),
+		localDateTime: z.string(),
+	});
+
 export interface UptimeKumaTag {
 	id: number;
 	name: string;
 	value?: string;
 }
+
+export const UptimeKumaTagSchema = z.object({
+	id: z.number(),
+	name: z.string(),
+	value: z.string().optional(),
+});
 
 export interface UptimeKumaMonitor {
 	tags: UptimeKumaTag[];
@@ -255,11 +298,93 @@ export interface UptimeKumaMonitor {
 	includeSensitiveData: boolean;
 }
 
+export const UptimeKumaMonitorSchema = z
+	.object({
+	tags: z.array(UptimeKumaTagSchema),
+	id: z.number(),
+	name: z.string(),
+	description: z.string().nullable(),
+	path: z.array(z.string()),
+	pathName: z.string(),
+	parent: z.number().nullable(),
+	childrenIDs: z.array(z.number()),
+	url: z.string().nullable(),
+	method: z.string().nullable(),
+	hostname: z.string().nullable(),
+	port: z.number().nullable(),
+	maxretries: z.number(),
+	weight: z.number(),
+	active: z.boolean(),
+	forceInactive: z.boolean(),
+	type: z.string(),
+	timeout: z.number(),
+	interval: z.number(),
+	retryInterval: z.number(),
+	resendInterval: z.number(),
+	keyword: z.string().nullable(),
+	invertKeyword: z.boolean(),
+	expiryNotification: z.boolean(),
+	ignoreTls: z.boolean(),
+	upsideDown: z.boolean(),
+	packetSize: z.number(),
+	maxredirects: z.number(),
+	accepted_statuscodes: z.array(z.string()),
+	dns_resolve_type: z.string(),
+	dns_resolve_server: z.string(),
+	dns_last_result: z.string().nullable(),
+	docker_container: z.string(),
+	docker_host: z.string().nullable(),
+	proxyId: z.number().nullable(),
+	notificationIDList: z.record(z.string(), z.boolean()),
+	maintenance: z.boolean(),
+	mqttTopic: z.string(),
+	mqttSuccessMessage: z.string(),
+	mqttCheckType: z.string(),
+	databaseQuery: z.string().nullable(),
+	authMethod: z.string().nullable(),
+	grpcUrl: z.string().nullable(),
+	grpcProtobuf: z.string().nullable(),
+	grpcMethod: z.string().nullable(),
+	grpcServiceName: z.string().nullable(),
+	grpcEnableTls: z.boolean(),
+	radiusCalledStationId: z.string().nullable(),
+	radiusCallingStationId: z.string().nullable(),
+	game: z.string().nullable(),
+	gamedigGivenPortOnly: z.boolean(),
+	httpBodyEncoding: z.string().nullable(),
+	jsonPath: z.string().nullable(),
+	expectedValue: z.string().nullable(),
+	kafkaProducerTopic: z.string().nullable(),
+	kafkaProducerBrokers: z.array(z.string()),
+	kafkaProducerSsl: z.boolean(),
+	kafkaProducerAllowAutoTopicCreation: z.boolean(),
+	kafkaProducerMessage: z.string().nullable(),
+	screenshot: z.string().nullable(),
+	cacheBust: z.boolean(),
+	remote_browser: z.string().nullable(),
+	snmpOid: z.string().nullable(),
+	jsonPathOperator: z.string().nullable(),
+	snmpVersion: z.string(),
+	smtpSecurity: z.string().nullable(),
+	ipFamily: z.number().nullable(),
+	ping_numeric: z.boolean(),
+	ping_count: z.number(),
+	ping_per_request_timeout: z.number(),
+	includeSensitiveData: z.boolean(),
+	});
+
 export interface UptimeKumaWebhookPayload {
 	heartbeat: UptimeKumaHeartbeat;
 	monitor: UptimeKumaMonitor;
 	msg: string;
 }
+
+export const UptimeKumaWebhookPayloadSchema = z
+	.object({
+		heartbeat: UptimeKumaHeartbeatSchema,
+		monitor: UptimeKumaMonitorSchema,
+		msg: z.string(),
+	});
 
 /**
  * Zabbix webhook payload
@@ -313,6 +438,30 @@ export interface ZabbixWebhookPayload {
 	// Allow additional fields
 	[key: string]: string | undefined;
 }
+
+export const ZabbixWebhookPayloadSchema = z
+  .object({
+    event_id: z.string().optional(),
+    event_name: z.string().optional(),
+    host_name: z.string().optional(),
+    host_ip: z.string().optional(),
+    trigger_id: z.string().optional(),
+    trigger_name: z.string().optional(),
+    trigger_severity: z.string().optional(),
+    trigger_status: z.string().optional(), // "PROBLEM" or "OK"
+    event_date: z.string().optional(),
+    event_time: z.string().optional(),
+    event_value: z.string().optional(), // "1" for problem, "0" for resolved
+    event_tags: z.string().optional(),
+    item_name: z.string().optional(),
+    item_value: z.string().optional(),
+    alert_message: z.string().optional(),
+    event_recovery_date: z.string().optional(),
+    event_recovery_time: z.string().optional(),
+    zabbix_url: z.string().optional(), // Base URL of the Zabbix server
+    trigger_url: z.string().optional(), // Direct URL to the trigger (from {TRIGGER.URL} macro)
+  })
+  .catchall(z.string().optional());
 
 // ---------- list-query params (Phase 1: server-side filtering/paging) ----------
 
