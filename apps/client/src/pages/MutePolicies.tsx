@@ -18,9 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
-import { getLabelMatcherGroups, MutePolicy } from '@OpsiMate/shared';
+import { getLabelMatcherGroups, MutePolicy, getNameNeedles, MutePolicySchedule } from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
-import { hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
+import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
@@ -67,6 +68,28 @@ const relativeFromNow = (iso?: string | null): string => {
 	if (hours < 24) return future ? `in ${hours}h` : `${hours}h ago`;
 	const days = Math.round(hours / 24);
 	return future ? `in ${days}d` : `${days}d ago`;
+};
+
+// When a recurring window next closes, as an absolute timestamp. Schedules are weekly
+// (daysOfWeek + HH:MM in server-local time), so the next end is the soonest upcoming
+// occurrence across the policy's days; today counts only if its end time hasn't passed.
+const nextScheduleEnd = (schedule: MutePolicySchedule): number | null => {
+	if (!schedule.daysOfWeek?.length) return null;
+	const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+	if (!Number.isFinite(endHour) || !Number.isFinite(endMinute)) return null;
+	const now = new Date();
+	let soonest: number | null = null;
+	for (const day of schedule.daysOfWeek) {
+		const candidate = new Date(now);
+		candidate.setHours(endHour, endMinute, 0, 0);
+		const dayDelta = (day - now.getDay() + 7) % 7;
+		candidate.setDate(candidate.getDate() + dayDelta);
+		// Same weekday but already past today: that occurrence is next week.
+		if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 7);
+		const time = candidate.getTime();
+		if (soonest === null || time < soonest) soonest = time;
+	}
+	return soonest;
 };
 
 const StatusBadge = ({ status }: { status: MutePolicyStatus }) => {
@@ -145,13 +168,32 @@ const MutePolicies: React.FC = () => {
 		const q = search.toLowerCase();
 		return mutePolicies.filter((s) => {
 			if (s.name.toLowerCase().includes(q)) return true;
-			if (s.nameContains?.toLowerCase().includes(q)) return true;
+			if (getNameNeedles(s).some((n) => n.toLowerCase().includes(q))) return true;
 			if (s.reason?.toLowerCase().includes(q)) return true;
 			return getLabelMatcherGroups(s)
 				.flat()
 				.some((m) => m.key.toLowerCase().includes(q) || m.value.toLowerCase().includes(q));
 		});
 	}, [mutePolicies, search]);
+
+	// Status sorts by lifecycle (active first, then scheduled, then expired) rather than
+	// alphabetically — "what is muting things right now" is the question the column
+	// answers. Window sorts by end time, with indefinite policies last: they never end,
+	// so they are not "soonest".
+	const STATUS_ORDER: Record<MutePolicyStatus, number> = { active: 0, scheduled: 1, expired: 2 };
+	const { sorted, sortKey, direction, toggle } = useTableSort(filtered, {
+		name: (s: MutePolicy) => s.name,
+		status: (s: MutePolicy) => STATUS_ORDER[getStatus(s)],
+		// Everything the Match column renders, in the order it renders it: comparing
+		// only part of it would make rows with visibly different criteria sort as equal.
+		match: (s: MutePolicy) => describeCriteriaScope(s, s.matchAll),
+		// A recurring policy shows a real end time, so it sorts by when its window next
+		// closes — not as "no end". Only a genuinely indefinite policy is absent here.
+		window: (s: MutePolicy) => {
+			if (s.endsAt) return new Date(s.endsAt).getTime();
+			return s.schedule ? nextScheduleEnd(s.schedule) : null;
+		},
+	});
 
 	const handleDelete = async () => {
 		if (!deleting) return;
@@ -213,10 +255,38 @@ const MutePolicies: React.FC = () => {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Match</TableHead>
-									<TableHead>Window</TableHead>
+									<SortableTableHead
+										sortKey="name"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Name
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="status"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Status
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="match"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Match
+									</SortableTableHead>
+									<SortableTableHead
+										sortKey="window"
+										activeKey={sortKey}
+										direction={direction}
+										onToggle={toggle}
+									>
+										Window
+									</SortableTableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -257,7 +327,7 @@ const MutePolicies: React.FC = () => {
 										</TableCell>
 									</TableRow>
 								) : (
-									filtered.map((s) => {
+									sorted.map((s) => {
 										const status = getStatus(s);
 										return (
 											<TableRow key={s.id} className="align-top">
@@ -274,9 +344,12 @@ const MutePolicies: React.FC = () => {
 												</TableCell>
 												<TableCell className="max-w-[260px]">
 													<div className="flex flex-wrap gap-1.5">
-														{s.nameContains && (
+														{getNameNeedles(s).length > 0 && (
 															<Badge variant="secondary" className="font-mono text-xs">
-																name ~ "{s.nameContains}"
+																name ~{' '}
+																{getNameNeedles(s)
+																	.map((n) => `"${n}"`)
+																	.join(' or ')}
 															</Badge>
 														)}
 														{s.matchAll && (
@@ -285,11 +358,13 @@ const MutePolicies: React.FC = () => {
 															</Badge>
 														)}
 														{!s.matchAll && <MatcherGroupBadges criteria={s} />}
-														{!s.matchAll && !s.nameContains && !hasMatcherCriteria(s) && (
-															<span className="text-xs text-muted-foreground italic">
-																no matchers
-															</span>
-														)}
+														{!s.matchAll &&
+															getNameNeedles(s).length === 0 &&
+															!hasMatcherCriteria(s) && (
+																<span className="text-xs text-muted-foreground italic">
+																	no matchers
+																</span>
+															)}
 													</div>
 												</TableCell>
 												<TableCell className="whitespace-nowrap">

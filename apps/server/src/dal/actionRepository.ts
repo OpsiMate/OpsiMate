@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { Action, ActionConfig, ActionType } from '@OpsiMate/shared';
 import { runAsync } from './db';
-import { parseMatcherColumn, serializeMatcherColumn } from './matcherColumn';
+import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 
 interface ActionRow {
 	id: number;
@@ -36,7 +36,7 @@ export class ActionRepository {
 			name: row.name,
 			type: row.type as ActionType,
 			config,
-			nameContains: row.name_contains,
+			...parseNameColumn(row.name_contains),
 			labelMatchers,
 			labelMatcherGroups,
 			createdAt: row.created_at,
@@ -83,7 +83,7 @@ export class ActionRepository {
 				data.name,
 				data.type,
 				JSON.stringify(data.config ?? {}),
-				data.nameContains ?? null,
+				serializeNameColumn(data),
 				serializeMatcherColumn(data)
 			);
 			return { lastID: result.lastInsertRowid as number };
@@ -116,7 +116,7 @@ export class ActionRepository {
 					data.name,
 					data.type,
 					JSON.stringify(data.config ?? {}),
-					data.nameContains ?? null,
+					serializeNameColumn(data),
 					serializeMatcherColumn(data),
 					id
 				);

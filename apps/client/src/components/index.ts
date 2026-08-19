@@ -19,7 +19,6 @@ export { default as ForgotPasswordForm } from './ForgotPasswordForm';
 export { default as ForgotPasswordSuccess } from './ForgotPasswordSuccess';
 export { IntegrationDashboardDropdown } from './IntegrationDashboardDropdown';
 export { LeftSidebar } from './LeftSidebar';
-export { LogoutButton } from './LogoutButton';
 export { MobileWebOverlay } from './MobileWebOverlay';
 export { ProfileButton } from './ProfileButton';
 export { default as ResetPasswordByEmailForm } from './ResetPasswordByEmailForm';
@@ -28,8 +27,6 @@ export { default as ResetPasswordByEmailSuccess } from './ResetPasswordByEmailSu
 export { ResetPasswordModal } from './ResetPasswordModal';
 export { TableSettingsModal } from './TableSettingsModal';
 export { TagSelector } from './TagSelector';
-export { ThemeButton } from './ThemeButton';
-export { ThemeToggle } from './ThemeToggle';
 export { ValidationFeedback, validationRules } from './ValidationFeedback';
 
 export * from './Profile';

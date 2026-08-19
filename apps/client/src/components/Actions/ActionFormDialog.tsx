@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
+import { cleanNameMatchers, NameMatchersEditor } from '@/components/shared/NameMatchersEditor';
 import { TemplateVariablePicker } from '@/components/shared';
 import { useAlerts } from '@/hooks/queries/alerts';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
@@ -29,6 +30,7 @@ import {
 	JiraActionConfig,
 	SlackActionConfig,
 	TeamsActionConfig,
+	getNameNeedles,
 } from '@OpsiMate/shared';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
@@ -74,7 +76,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	const [type, setType] = useState<ActionType>('slack');
 
 	// Alert filter (empty = applies to all alerts)
-	const [nameContains, setNameContains] = useState('');
+	const [nameContainsAny, setNameContainsAny] = useState<string[]>([]);
 	const [matcherGroups, setMatcherGroups] = useState<HeaderRow[][]>([]);
 	const { data: alerts = [] } = useAlerts();
 	const matcherSuggestions = useAlertTagKeys(alerts);
@@ -147,7 +149,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		if (action) {
 			setName(action.name);
 			setType(action.type);
-			setNameContains(action.nameContains ?? '');
+			setNameContainsAny(getNameNeedles(action));
 			setMatcherGroups(
 				action.labelMatcherGroups?.length
 					? action.labelMatcherGroups.map((g) => g.map((m) => ({ ...m })))
@@ -184,7 +186,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		} else {
 			setName('');
 			setType('slack');
-			setNameContains('');
+			setNameContainsAny([]);
 			setMatcherGroups([]);
 		}
 	}, [open, action]);
@@ -226,7 +228,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		const trimmedName = name.trim();
 		const cleanedGroups = cleanMatcherGroups(matcherGroups);
 		const match = {
-			nameContains: nameContains.trim() || null,
+			nameContainsAny: cleanNameMatchers(nameContainsAny),
 			labelMatchers: cleanedGroups[0] ?? [],
 			labelMatcherGroups: cleanedGroups,
 		};
@@ -708,14 +710,10 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						</p>
 
 						<div className="space-y-2">
-							<Label htmlFor="action-nameContains" className="text-xs">
-								Alert name contains
-							</Label>
-							<Input
-								id="action-nameContains"
+							<NameMatchersEditor
+								values={nameContainsAny}
+								onChange={setNameContainsAny}
 								placeholder="e.g. HighCPU, prod-db, latency"
-								value={nameContains}
-								onChange={(e) => setNameContains(e.target.value)}
 							/>
 						</div>
 

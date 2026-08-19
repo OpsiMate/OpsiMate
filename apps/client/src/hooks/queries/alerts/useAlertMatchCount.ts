@@ -6,9 +6,15 @@ import { queryKeys } from '../queryKeys';
 // list request whose response carries the true total, so the count comes from the same
 // server engine that will resolve the bulk action; the one row in the payload is noise.
 // Only fetched while a selection is open (see `enabled`), so it costs nothing otherwise.
+export interface AlertMatchCountOptions {
+	// Match the cadence of whatever list this count sits next to (default 20s).
+	refetchIntervalMs?: number;
+}
+
 export const useAlertMatchCount = (
 	params: Pick<AlertQueryParams, 'filters' | 'from' | 'to' | 'search'>,
-	enabled: boolean
+	enabled: boolean,
+	options?: AlertMatchCountOptions
 ) => {
 	const { data } = useQuery({
 		queryKey: [
@@ -28,7 +34,7 @@ export const useAlertMatchCount = (
 			return response.data.total ?? response.data.alerts.length;
 		},
 		staleTime: 10 * 1000,
-		refetchInterval: 20 * 1000,
+		refetchInterval: options?.refetchIntervalMs ?? 20 * 1000,
 		// The N in "Select all N matching" (and the split-pane totals) shouldn't blink to
 		// nothing whenever the query re-keys.
 		placeholderData: keepPreviousData,

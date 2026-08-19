@@ -4,7 +4,7 @@ import { AutocompleteInput } from './AutocompleteInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { getLabelMatcherGroups, MatcherCriteria } from '@OpsiMate/shared';
+import { getLabelMatcherGroups, getNameNeedles, MatcherCriteria } from '@OpsiMate/shared';
 import { Fragment, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -233,3 +233,32 @@ export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) 
 
 // True when the entity has any complete matcher (used by the pages' empty-state checks).
 export const hasMatcherCriteria = (criteria: MatcherCriteria): boolean => getLabelMatcherGroups(criteria).length > 0;
+
+// The matcher groups as the text a user reads in the badges ("env=prod AND team~db OR
+// …"). Sorting a Match column has to compare what the column SHOWS — comparing only
+// part of it (say the name needles) makes rows with visibly different matchers sort as
+// equal, which reads as the sort being broken.
+export const describeMatcherCriteria = (criteria: MatcherCriteria): string =>
+	getLabelMatcherGroups(criteria)
+		.map((group) => group.map((m) => `${m.key}${m.op === 'contains' ? '~' : '='}${m.value}`).join(' AND '))
+		.join(' OR ');
+
+// The name needles in the badge's own wording, so a sort key built from this reads in
+// the same order as the cell.
+const describeNameNeedles = (criteria: MatcherCriteria): string => {
+	const needles = getNameNeedles(criteria);
+	return needles.length > 0 ? `name ~ ${needles.map((n) => `"${n}"`).join(' or ')}` : '';
+};
+
+// The WHOLE scope cell as one string: name badge first, then either "All alerts" or the
+// matcher badges — the order the pages render them in.
+//
+// Built from the rendered wording rather than the raw fields on purpose. Any other key
+// produces an order that looks wrong to someone reading the column, and the two can
+// drift apart silently: matchAll is not exclusive with name needles, so a policy that
+// shows `name ~ "foo"` AND `All alerts` previously sorted as bare "All alerts" —
+// indistinguishable from every other match-all rule.
+export const describeCriteriaScope = (criteria: MatcherCriteria, matchAll = false): string =>
+	[describeNameNeedles(criteria), matchAll ? 'All alerts' : describeMatcherCriteria(criteria)]
+		.filter(Boolean)
+		.join(' ');
