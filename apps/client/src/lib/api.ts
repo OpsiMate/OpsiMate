@@ -26,6 +26,7 @@ import {
 	Alert as SharedAlert,
 	OncallTeam,
 	Tag,
+	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -440,6 +441,15 @@ export const alertsApi = {
 
 	getAlertHistory: (alertId: string) => {
 		return apiRequest<AlertHistory>(`/alerts/${encodeURIComponent(alertId)}/history`, 'GET');
+	},
+
+	// Insights aggregates; from=null means all time, tz buckets days/hours in the
+	// requester's timezone.
+	getAlertAnalytics: (from: string | null, timeZone: string) => {
+		const params = new URLSearchParams();
+		if (from) params.set('from', from);
+		params.set('tz', timeZone);
+		return apiRequest<AlertAnalytics>(`/alerts/analytics?${params.toString()}`);
 	},
 
 	// Get alerts by tag
