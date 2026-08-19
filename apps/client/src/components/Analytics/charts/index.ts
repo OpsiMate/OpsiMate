@@ -1,5 +1,6 @@
 export { HourBarChart } from './HourBarChart';
-export { MttrTrendChart } from './MttrTrendChart';
+export { DurationTrendChart } from './DurationTrendChart';
+export type { TrendMetric } from './DurationTrendChart';
 export { SeverityDonut } from './SeverityDonut';
 export { TopList } from './TopList';
 export { VolumeAreaChart } from './VolumeAreaChart';

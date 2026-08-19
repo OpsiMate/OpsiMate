@@ -9,7 +9,7 @@ import { Tag as TagIcon } from 'lucide-react';
 import { formatDurationMs, formatPercent } from './analytics.utils';
 import { TagVolumeChart } from './charts/TagVolumeChart';
 import { KpiCard } from './KpiCard';
-import { TopList } from './charts';
+import { DurationTrendChart, TopList } from './charts';
 
 interface TagResearchTabProps {
 	availableTagKeys: string[];
@@ -105,13 +105,32 @@ export const TagResearchTab = ({
 						/>
 					</div>
 
-					{insights.volumeByDay.length > 0 && (
-						<TagVolumeChart
-							topValues={insights.topValues}
-							data={insights.volumeByDay}
-							tagKey={insights.key}
+					<div className="grid gap-4 lg:grid-cols-2">
+						{insights.volumeByDay.length > 0 && (
+							<TagVolumeChart
+								topValues={insights.topValues}
+								data={insights.volumeByDay}
+								tagKey={insights.key}
+							/>
+						)}
+						<DurationTrendChart
+							title={`Response trend — ${insights.key}`}
+							metrics={[
+								{
+									key: 'mttr',
+									label: 'MTTR',
+									hint: `Mean time to restore per day, over episodes tagged with "${insights.key}"`,
+									data: insights.mttrByDay,
+								},
+								{
+									key: 'mtta',
+									label: 'MTTA',
+									hint: `Mean time to first human touch per day, over episodes tagged with "${insights.key}"`,
+									data: insights.mttaByDay,
+								},
+							]}
 						/>
-					)}
+					</div>
 
 					<div className="grid gap-4 lg:grid-cols-2">
 						<TopList

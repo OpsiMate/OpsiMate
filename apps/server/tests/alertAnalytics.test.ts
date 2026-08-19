@@ -379,6 +379,38 @@ describe('computeAlertAnalytics', () => {
 		expect(result.byName[0].mtbfMs).toBe(8 * DAY);
 	});
 
+	test('MTTA trend buckets by the day the first touch happened; untouched days break', () => {
+		// Fires Aug 19, first touched Aug 20 (24h later): the sample lands on the
+		// touch day, and the firing day carries a null mean so the line breaks.
+		const result = compute({
+			episodes: [firing('a', NOW - 26 * HOUR)],
+			events: [{ alertId: 'a', at: iso(NOW - 2 * HOUR), actorName: 'idan' }],
+			activeAlerts: [alert('a', 'A', 'warning')],
+		});
+		expect(result.reliability.mttaByDay).toEqual([
+			{ date: '2026-08-19', meanMs: null, count: 0 },
+			{ date: '2026-08-20', meanMs: 24 * HOUR, count: 1 },
+		]);
+	});
+
+	test('tag research carries MTTR/MTTA trends over tagged episodes only', () => {
+		// Tagged episode: fires -6h, touched -5h (1h MTTA), resolved -2h (4h MTTR).
+		// The untagged alert resolves faster and must not dilute either trend.
+		const result = compute({
+			episodes: [
+				firing('a', NOW - 6 * HOUR),
+				resolved('a', NOW - 2 * HOUR),
+				firing('b', NOW - 3 * HOUR),
+				resolved('b', NOW - 2 * HOUR),
+			],
+			events: [{ alertId: 'a', at: iso(NOW - 5 * HOUR), actorName: 'idan' }],
+			resolvedAlerts: [alert('a', 'Tagged', 'warning', { service: 'db' }), alert('b', 'Untagged', 'warning')],
+			tagKey: 'service',
+		});
+		expect(result.tagInsights?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 }]);
+		expect(result.tagInsights?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
+	});
+
 	test('a tag key of __proto__ reads as absent, not as Object.prototype', () => {
 		const result = compute({
 			episodes: [firing('a', NOW - HOUR)],

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalyticsReliability } from '@OpsiMate/shared';
 import { Activity, CheckCheck, Flame, Gauge, RotateCcw, Timer } from 'lucide-react';
-import { MttrTrendChart } from './charts';
+import { DurationTrendChart } from './charts';
 import { formatDurationMs, formatPercent } from './analytics.utils';
 import { KpiCard } from './KpiCard';
 
@@ -16,7 +16,23 @@ export const ReliabilityTab = ({ reliability }: ReliabilityTabProps) => {
 	const { mttr, mtta, mtbf, refireRate, ackCoverage, episodesPerDay } = reliability;
 	return (
 		<div className="space-y-4">
-			<MttrTrendChart data={reliability.mttrByDay} />
+			<DurationTrendChart
+				title="Response trend"
+				metrics={[
+					{
+						key: 'mttr',
+						label: 'MTTR',
+						hint: "Mean time to restore per day, over that day's resolutions",
+						data: reliability.mttrByDay,
+					},
+					{
+						key: 'mtta',
+						label: 'MTTA',
+						hint: "Mean time to first human touch per day, over that day's acknowledgements",
+						data: reliability.mttaByDay,
+					},
+				]}
+			/>
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
 				<KpiCard
 					label="MTTR (mean)"

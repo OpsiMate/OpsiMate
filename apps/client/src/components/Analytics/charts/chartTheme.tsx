@@ -15,13 +15,18 @@ export const axisTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' };
 interface ChartCardProps {
 	title: string;
 	hint?: string;
+	// Header-right controls (e.g. a metric toggle); the title keeps the left side.
+	actions?: ReactNode;
 	children: ReactNode;
 }
 
-export const ChartCard = ({ title, hint, children }: ChartCardProps) => (
+export const ChartCard = ({ title, hint, actions, children }: ChartCardProps) => (
 	<Card>
 		<CardHeader className="pb-2">
-			<CardTitle className="text-sm font-semibold">{title}</CardTitle>
+			<div className="flex items-start justify-between gap-2">
+				<CardTitle className="text-sm font-semibold">{title}</CardTitle>
+				{actions}
+			</div>
 			{hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
 		</CardHeader>
 		<CardContent className="pt-0">{children}</CardContent>

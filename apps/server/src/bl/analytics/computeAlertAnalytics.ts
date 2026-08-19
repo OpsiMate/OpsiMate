@@ -7,6 +7,7 @@ import {
 	AlertNameStats,
 	AnalyticsKpi,
 	DayVolumePoint,
+	DurationDayPoint,
 	DurationStats,
 	HourVolumePoint,
 	NamedCount,
@@ -63,10 +64,32 @@ interface AlertMeta {
 	tags: Record<string, string>;
 }
 
-interface MttrDayAccumulator {
+interface DurationDayAccumulator {
 	total: number;
 	count: number;
 }
+
+const addDurationSample = (acc: Map<string, DurationDayAccumulator>, day: string, durationMs: number): void => {
+	const entry = acc.get(day);
+	if (entry) {
+		entry.total += durationMs;
+		entry.count += 1;
+	} else {
+		acc.set(day, { total: durationMs, count: 1 });
+	}
+};
+
+// Every day in `days` gets a point; days with no samples carry meanMs null so the
+// trend line BREAKS there instead of bridging the gap with a made-up slope.
+const durationTrend = (days: Iterable<string>, acc: Map<string, DurationDayAccumulator>): DurationDayPoint[] =>
+	[...new Set([...days, ...acc.keys()])]
+		.map((date) => {
+			const entry = acc.get(date);
+			return entry
+				? { date, meanMs: Math.round(entry.total / entry.count), count: entry.count }
+				: { date, meanMs: null, count: 0 };
+		})
+		.sort((a, b) => a.date.localeCompare(b.date));
 
 // "The fix didn't hold": a resolution followed by the same alert re-firing within
 // this window counts as a failed resolution (change-failure-rate's alert analog).
@@ -272,7 +295,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 
 	// Resolutions overlay + per-day MTTR trend, bucketed by the local day the
 	// resolution LANDED on (that is when the work happened).
-	const mttrDayAcc = new Map<string, MttrDayAccumulator>();
+	const mttrDayAcc = new Map<string, DurationDayAccumulator>();
 	for (const episode of resolutionsInRange) {
 		const resolvedMs = episode.resolvedMs as number;
 		const day = local.day(resolvedMs);
@@ -282,14 +305,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			dayPoints.set(day, point);
 		}
 		point.resolved += 1;
-		const acc = mttrDayAcc.get(day);
-		const duration = resolvedMs - episode.startMs;
-		if (acc) {
-			acc.total += duration;
-			acc.count += 1;
-		} else {
-			mttrDayAcc.set(day, { total: duration, count: 1 });
-		}
+		addDurationSample(mttrDayAcc, day, resolvedMs - episode.startMs);
+	}
+
+	// MTTA trend: same episodes as the headline MTTA, bucketed by the local day the
+	// first human touch happened (that is when the response happened).
+	const mttaDayAcc = new Map<string, DurationDayAccumulator>();
+	for (const episode of windowEpisodes) {
+		if (episode.firstTouchMs === null) continue;
+		addDurationSample(mttaDayAcc, local.day(episode.firstTouchMs), episode.firstTouchMs - episode.startMs);
 	}
 
 	// Top responders: user actions in the window, counted by actor. Only episodes'
@@ -448,6 +472,11 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		const byValue = new Map<string, TagValueAccumulator>();
 		let taggedEpisodes = 0;
 		let untaggedEpisodes = 0;
+		// MTTR/MTTA trends over TAGGED episodes (any value of the key), same day
+		// semantics as the reliability trends; tagDays anchors the shared x-axis.
+		const tagDays = new Set<string>();
+		const tagMttrAcc = new Map<string, DurationDayAccumulator>();
+		const tagMttaAcc = new Map<string, DurationDayAccumulator>();
 		for (const episode of windowEpisodes) {
 			const tags = meta.get(episode.alertId)?.tags;
 			// hasOwnProperty, not plain lookup: a key like "__proto__" must read as
@@ -466,9 +495,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			acc.episodes += 1;
 			acc.alertIds.add(episode.alertId);
 			// Window rule matches the headline MTTR: resolutions past `to` don't count.
-			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs))
+			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs)) {
 				acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
+				addDurationSample(tagMttrAcc, local.day(episode.resolvedMs), episode.resolvedMs - episode.startMs);
+			}
+			if (episode.firstTouchMs !== null) {
+				addDurationSample(tagMttaAcc, local.day(episode.firstTouchMs), episode.firstTouchMs - episode.startMs);
+			}
 			const day = local.day(episode.startMs);
+			tagDays.add(day);
 			acc.dayCounts.set(day, (acc.dayCounts.get(day) ?? 0) + 1);
 		}
 
@@ -515,6 +550,8 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			untaggedEpisodes,
 			topValues,
 			volumeByDay: [...dayPointsByDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+			mttrByDay: durationTrend(tagDays, tagMttrAcc),
+			mttaByDay: durationTrend(tagDays, tagMttaAcc),
 		};
 	}
 
@@ -555,17 +592,10 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 				episodes: windowEpisodes.length,
 			},
 			episodesPerDay,
-			// Every day the volume chart shows gets a point; days without resolutions
-			// carry meanMs null so the trend line BREAKS there instead of bridging the
-			// gap with a made-up slope.
-			mttrByDay: [...new Set([...dayPoints.keys(), ...mttrDayAcc.keys()])]
-				.map((date) => {
-					const acc = mttrDayAcc.get(date);
-					return acc
-						? { date, meanMs: Math.round(acc.total / acc.count), count: acc.count }
-						: { date, meanMs: null, count: 0 };
-				})
-				.sort((a, b) => a.date.localeCompare(b.date)),
+			// Both trends span every day the volume chart shows (plus their own sample
+			// days), so the two metrics line up on the same x-axis.
+			mttrByDay: durationTrend(dayPoints.keys(), mttrDayAcc),
+			mttaByDay: durationTrend(dayPoints.keys(), mttaDayAcc),
 		},
 		byName,
 		tagInsights,
