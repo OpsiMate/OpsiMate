@@ -22,7 +22,14 @@ import {
 	useDeleteResolvedAlert,
 	useMarkAlertRead,
 } from '@/hooks/queries/alerts';
-import { useIncidents } from '@/hooks/queries/incidents';
+import {
+	useCreateIncident,
+	useDeleteIncident,
+	useIncidents,
+	useRemoveIncidentAlerts,
+	useUpdateIncident,
+} from '@/hooks/queries/incidents';
+import { CreateIncidentDialog, EditIncidentDialog } from './IncidentDialogs';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -736,6 +743,12 @@ const Alerts = () => {
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
 	const { incidentsById } = useIncidents();
+	const createIncidentMutation = useCreateIncident();
+	const updateIncidentMutation = useUpdateIncident();
+	const deleteIncidentMutation = useDeleteIncident();
+	const removeIncidentAlertsMutation = useRemoveIncidentAlerts();
+	const [showCreateIncident, setShowCreateIncident] = useState(false);
+	const [editingIncidentId, setEditingIncidentId] = useState<number | null>(null);
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -984,6 +997,9 @@ const Alerts = () => {
 			incidentsById={incidentsById}
 			onOpenIncident={handleOpenIncident}
 			activeIncidentId={selectedIncidentId}
+			onEditIncident={setEditingIncidentId}
+			onUngroupIncident={handleUngroupIncident}
+			onRemoveFromIncident={handleRemoveFromIncident}
 			tagKeyColumnLabels={allColumnLabels}
 			groupByColumns={dashboardState.groupBy}
 			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1060,6 +1076,73 @@ const Alerts = () => {
 		// details and vice versa (see handleAlertClick).
 		setSelectedAlert(null);
 		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
+	};
+
+	const handleCreateIncident = async (name: string, description: string) => {
+		try {
+			const incident = await createIncidentMutation.mutateAsync({
+				name: name || undefined,
+				description: description || undefined,
+				alertIds: selectedAlerts.map((a) => a.id),
+			});
+			toast({ title: 'Incident created', description: incident.name });
+			setShowCreateIncident(false);
+			handleSelectAlerts([]);
+		} catch (err) {
+			toast({
+				title: 'Failed to create incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleSaveIncident = async (id: number, name: string, description: string) => {
+		try {
+			await updateIncidentMutation.mutateAsync({ id, name, description: description || null });
+			toast({ title: 'Incident updated', description: name });
+			setEditingIncidentId(null);
+		} catch (err) {
+			toast({
+				title: 'Failed to update incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleUngroupIncident = async (incidentId: number) => {
+		const incident = incidentsById.get(incidentId);
+		try {
+			await deleteIncidentMutation.mutateAsync(incidentId);
+			toast({ title: 'Incident ungrouped', description: incident?.name ?? `#${incidentId}` });
+			if (selectedIncidentId === incidentId) setSelectedIncidentId(null);
+		} catch (err) {
+			toast({
+				title: 'Failed to ungroup incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleRemoveFromIncident = async (alertId: string) => {
+		const incidentId = allAlerts.find((a) => a.id === alertId)?.incidentId;
+		if (incidentId == null) return;
+		try {
+			const result = await removeIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: [alertId] });
+			toast({
+				title: result.dissolved ? 'Incident dissolved' : 'Removed from incident',
+				description: result.dissolved ? 'Its last member was removed' : undefined,
+			});
+			if (result.dissolved && selectedIncidentId === incidentId) setSelectedIncidentId(null);
+		} catch (err) {
+			toast({
+				title: 'Failed to remove from incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
 	};
 
 	const handleAlertClick = (alert: Alert) => {
@@ -1384,6 +1467,7 @@ const Alerts = () => {
 												: undefined
 										}
 										onClearSelection={() => handleSelectAlerts([])}
+										onGroupIntoIncident={() => setShowCreateIncident(true)}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
@@ -1430,6 +1514,9 @@ const Alerts = () => {
 									incidentsById={incidentsById}
 									onOpenIncident={handleOpenIncident}
 									activeIncidentId={selectedIncidentId}
+									onEditIncident={setEditingIncidentId}
+									onUngroupIncident={handleUngroupIncident}
+									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1478,6 +1565,9 @@ const Alerts = () => {
 									incidentsById={incidentsById}
 									onOpenIncident={handleOpenIncident}
 									activeIncidentId={selectedIncidentId}
+									onEditIncident={setEditingIncidentId}
+									onUngroupIncident={handleUngroupIncident}
+									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1519,6 +1609,21 @@ const Alerts = () => {
 			</div>
 
 			<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
+			<CreateIncidentDialog
+				open={showCreateIncident}
+				onOpenChange={setShowCreateIncident}
+				alerts={selectedAlerts}
+				onCreate={handleCreateIncident}
+				isCreating={createIncidentMutation.isPending}
+			/>
+			<EditIncidentDialog
+				incident={editingIncidentId != null ? (incidentsById.get(editingIncidentId) ?? null) : null}
+				onOpenChange={(open) => {
+					if (!open) setEditingIncidentId(null);
+				}}
+				onSave={handleSaveIncident}
+				isSaving={updateIncidentMutation.isPending}
+			/>
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}

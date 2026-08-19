@@ -36,6 +36,10 @@ export interface AlertsTableProps {
 	// Opens the incident details panel (folder-row name click).
 	onOpenIncident?: (incidentId: number) => void;
 	activeIncidentId?: number | null;
+	onEditIncident?: (incidentId: number) => void;
+	onUngroupIncident?: (incidentId: number) => void;
+	// Removes one alert from its incident (member rows' ⋮ menu).
+	onRemoveFromIncident?: (alertId: string) => void;
 	// Alert currently open in the details panel; its row is highlighted.
 	activeAlertId?: string | null;
 	tagKeyColumnLabels?: Record<string, string>;

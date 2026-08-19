@@ -82,6 +82,9 @@ export const AlertsTable = ({
 	incidentsById,
 	onOpenIncident,
 	activeIncidentId = null,
+	onEditIncident,
+	onUngroupIncident,
+	onRemoveFromIncident,
 	tagKeyColumnLabels = {},
 	groupByColumns: controlledGroupBy,
 	onGroupByChange,
@@ -608,6 +611,9 @@ export const AlertsTable = ({
 									onToggleIncident={toggleIncident}
 									onOpenIncident={onOpenIncident}
 									activeIncidentId={activeIncidentId}
+									onEditIncident={onEditIncident}
+									onUngroupIncident={onUngroupIncident}
+									onRemoveFromIncident={onRemoveFromIncident}
 									onSelectAlert={handleSelectAlert}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}

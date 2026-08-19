@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert } from '@OpsiMate/shared';
-import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
+import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2, FolderMinus } from 'lucide-react';
 import { AlertLinkIcon } from '../../../AlertLinkIcon';
 import { getAlertLinks } from '../../../utils/links.utils';
 
@@ -17,6 +17,8 @@ export interface RowActionsProps {
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onUnresolveAlert?: (alertId: string) => void;
+	// Present only on rows rendered under an incident folder.
+	onRemoveFromIncident?: (alertId: string) => void;
 }
 
 // All row actions live in the three-dots menu — no standalone quick buttons.
@@ -26,6 +28,7 @@ export const RowActions = ({
 	onUnsilenceAlert,
 	onDeleteAlert,
 	onUnresolveAlert,
+	onRemoveFromIncident,
 }: RowActionsProps) => {
 	const { isSilenced } = alert;
 	const links = getAlertLinks(alert);
@@ -120,6 +123,17 @@ export const RowActions = ({
 									Delete
 								</>
 							)}
+						</DropdownMenuItem>
+					)}
+					{onRemoveFromIncident && (
+						<DropdownMenuItem
+							onClick={(event) => {
+								event.stopPropagation();
+								onRemoveFromIncident(alert.id);
+							}}
+						>
+							<FolderMinus className="mr-2 h-3 w-3" />
+							Remove from incident
 						</DropdownMenuItem>
 					)}
 					{canToggleSilence && (

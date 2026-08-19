@@ -2,8 +2,15 @@ import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
 import { Badge } from '@/components/ui/badge';
 import { formatShortDateTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { IncidentSummary } from '@OpsiMate/shared';
-import { ChevronDown, ChevronRight, FolderOpen, Folder } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderOpen, Folder, MoreVertical, Pencil, Ungroup } from 'lucide-react';
 
 interface IncidentRowProps {
 	incident: IncidentSummary;
@@ -13,6 +20,10 @@ interface IncidentRowProps {
 	onToggle: (incidentId: number) => void;
 	// Opens the incident details panel (separate from expand/collapse).
 	onOpen?: (incidentId: number) => void;
+	// Rename/edit-details dialog.
+	onEdit?: (incidentId: number) => void;
+	// Deletes the incident, leaving its alerts untouched.
+	onUngroup?: (incidentId: number) => void;
 	isActive?: boolean;
 }
 
@@ -20,7 +31,16 @@ interface IncidentRowProps {
 // expansion — the same gesture as group headers — and the name opens the incident
 // panel. Roll-ups show worst severity and the firing/resolved split so a CLOSED
 // folder still tells the story.
-export const IncidentRow = ({ incident, shownCount, isExpanded, onToggle, onOpen, isActive }: IncidentRowProps) => {
+export const IncidentRow = ({
+	incident,
+	shownCount,
+	isExpanded,
+	onToggle,
+	onOpen,
+	onEdit,
+	onUngroup,
+	isActive,
+}: IncidentRowProps) => {
 	const partial = shownCount < incident.alertCount;
 	return (
 		<div
@@ -73,6 +93,46 @@ export const IncidentRow = ({ incident, shownCount, isExpanded, onToggle, onOpen
 			<span className="ml-auto text-xs text-muted-foreground shrink-0">
 				{incident.latestUpdatedAt ? formatShortDateTime(incident.latestUpdatedAt, '') : ''}
 			</span>
+			{(onEdit || onUngroup) && (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button
+							type="button"
+							aria-label="Incident actions"
+							className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<MoreVertical className="h-3.5 w-3.5" />
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						{onEdit && (
+							<DropdownMenuItem
+								onClick={(e) => {
+									e.stopPropagation();
+									onEdit(incident.id);
+								}}
+							>
+								<Pencil className="mr-2 h-3 w-3" />
+								Rename / edit details
+							</DropdownMenuItem>
+						)}
+						{onEdit && onUngroup && <DropdownMenuSeparator />}
+						{onUngroup && (
+							<DropdownMenuItem
+								className="text-destructive focus:text-destructive"
+								onClick={(e) => {
+									e.stopPropagation();
+									onUngroup(incident.id);
+								}}
+							>
+								<Ungroup className="mr-2 h-3 w-3" />
+								Ungroup (keep alerts)
+							</DropdownMenuItem>
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
 		</div>
 	);
 };

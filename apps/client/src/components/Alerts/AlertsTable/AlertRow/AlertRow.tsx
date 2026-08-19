@@ -34,6 +34,8 @@ export interface AlertRowProps {
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onUnresolveAlert?: (alertId: string) => void;
+	// Set on rows rendered under an incident folder; adds "Remove from incident".
+	onRemoveFromIncident?: (alertId: string) => void;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	isResolved?: boolean;
 	isDragging?: boolean;
@@ -60,6 +62,7 @@ export const AlertRow = ({
 	onUnsilenceAlert,
 	onDeleteAlert,
 	onUnresolveAlert,
+	onRemoveFromIncident,
 	onSelectAlerts,
 	isResolved = false,
 	isDragging = false,
@@ -259,6 +262,7 @@ export const AlertRow = ({
 									onUnsilenceAlert={onUnsilenceAlert}
 									onDeleteAlert={onDeleteAlert}
 									onUnresolveAlert={onUnresolveAlert}
+									onRemoveFromIncident={onRemoveFromIncident}
 								/>
 							</Fragment>
 						);

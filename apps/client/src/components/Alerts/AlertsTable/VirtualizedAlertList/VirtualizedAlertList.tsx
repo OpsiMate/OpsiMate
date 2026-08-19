@@ -17,6 +17,10 @@ interface VirtualizedAlertListProps {
 	onToggleIncident?: (incidentId: number) => void;
 	onOpenIncident?: (incidentId: number) => void;
 	activeIncidentId?: number | null;
+	onEditIncident?: (incidentId: number) => void;
+	onUngroupIncident?: (incidentId: number) => void;
+	// Offered on member rows (rendered under a folder) only.
+	onRemoveFromIncident?: (alertId: string) => void;
 	onSelectAlert: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	activeAlertId?: string | null;
@@ -49,6 +53,9 @@ export const VirtualizedAlertList = ({
 	onToggleIncident,
 	onOpenIncident,
 	activeIncidentId = null,
+	onEditIncident,
+	onUngroupIncident,
+	onRemoveFromIncident,
 	onSelectAlert,
 	onAlertClick,
 	activeAlertId = null,
@@ -137,6 +144,8 @@ export const VirtualizedAlertList = ({
 								isExpanded={item.isExpanded}
 								onToggle={onToggleIncident ?? (() => undefined)}
 								onOpen={onOpenIncident}
+								onEdit={onEditIncident}
+								onUngroup={onUngroupIncident}
 								isActive={item.incident.id === activeIncidentId}
 							/>
 						</div>
@@ -181,6 +190,7 @@ export const VirtualizedAlertList = ({
 								onUnsilenceAlert={onUnsilenceAlert}
 								onDeleteAlert={onDeleteAlert}
 								onUnresolveAlert={onUnresolveAlert}
+								onRemoveFromIncident={item.incidentMember ? onRemoveFromIncident : undefined}
 								onSelectAlerts={onSelectAlerts}
 								isResolved={isResolved}
 								severityColors={severityColors}
