@@ -30,6 +30,7 @@ import {
 	useUpdateIncident,
 } from '@/hooks/queries/incidents';
 import { CreateIncidentDialog, EditIncidentDialog } from './IncidentDialogs';
+import { IncidentPanel } from './IncidentPanel';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -388,6 +389,9 @@ const Alerts = () => {
 	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
+	// Members of an open incident resolve to alert objects through this (loaded rows
+	// only; the panel notes how many members the current view has not fetched).
+	const loadedAlertsById = useMemo(() => new Map(allAlerts.map((a) => [a.id, a])), [allAlerts]);
 
 	// Sidebar facets, tag keys and the silenced total come from the server, computed
 	// over the RAW dataset — the loaded page is filtered, so deriving them from it
@@ -1586,6 +1590,16 @@ const Alerts = () => {
 						)}
 					</div>
 
+					{selectedIncidentId != null && incidentsById.has(selectedIncidentId) && (
+						<IncidentPanel
+							incident={incidentsById.get(selectedIncidentId)!}
+							alertsById={loadedAlertsById}
+							onClose={() => setSelectedIncidentId(null)}
+							onOpenAlert={handleAlertClick}
+							onEdit={setEditingIncidentId}
+							onUngroup={handleUngroupIncident}
+						/>
+					)}
 					{syncedSelectedAlert &&
 						(() => {
 							// Data-driven (not tab-driven): resolving an alert while its panel is
