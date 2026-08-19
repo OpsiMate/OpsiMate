@@ -12,6 +12,7 @@ import {
 	normalizeAlertSeverity,
 	SilenceResetSettings,
 	UpdateSilenceResetSettings,
+	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
@@ -26,6 +27,7 @@ import {
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
+import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
@@ -651,6 +653,32 @@ export class AlertBL {
 		}
 	}
 	// endregion
+
+	// Aggregates for the Insights page, computed over the FULL history and reduced
+	// server-side — the client never receives per-alert rows, so page cost does not
+	// grow with installation size. The pure computation lives in
+	// bl/analytics/computeAlertAnalytics for direct testing.
+	async getAlertAnalytics(from: string | null, to: string, timeZone?: string): Promise<AlertAnalytics> {
+		const [activeSnapshot, resolvedSnapshot, historyRows, eventRows] = await Promise.all([
+			this.activeSnapshot.get(),
+			this.resolvedSnapshot.get(),
+			this.resolvedAlertRepo.getAllHistoryRows(),
+			this.alertHistoryRepo.getAllEventTimes(),
+		]);
+		return computeAlertAnalytics({
+			episodes: historyRows.map((row) => ({
+				alertId: row.alert_id,
+				status: row.status,
+				at: toIsoUtc(row.archived_at),
+			})),
+			events: eventRows.map((row) => ({ alertId: row.alert_id, at: toIsoUtc(row.created_at) })),
+			activeAlerts: activeSnapshot.value,
+			resolvedAlerts: resolvedSnapshot.value,
+			from,
+			to,
+			timeZone,
+		});
+	}
 
 	// region history
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {

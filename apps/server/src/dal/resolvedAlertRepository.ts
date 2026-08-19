@@ -236,6 +236,19 @@ export class ResolvedAlertRepository {
 		});
 	}
 
+	// Every status row for every alert, for the analytics aggregates. Compact columns
+	// only; on large installations this is tens of thousands of small rows, which the
+	// analytics module reduces to a few hundred bytes of aggregates.
+	async getAllHistoryRows(): Promise<{ alert_id: string; status: string; archived_at: string }[]> {
+		return runAsync(() => {
+			return this.db.prepare(`SELECT alert_id, status, archived_at FROM alerts_history`).all() as {
+				alert_id: string;
+				status: string;
+				archived_at: string;
+			}[];
+		});
+	}
+
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {
 		const history: { archived_at: string; status: string }[] = await runAsync(() => {
 			return this.db

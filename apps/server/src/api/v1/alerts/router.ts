@@ -7,6 +7,7 @@ export default function createAlertRouter(controller: AlertController) {
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
 	router.get('/facets', controller.getAlertFacets.bind(controller));
+	router.get('/analytics', controller.getAlertAnalytics.bind(controller));
 	router.get('/groups', controller.getAlertGroupSummaries.bind(controller));
 
 	// Bulk actions — one request over an id list or over every alert matching a query

@@ -91,6 +91,16 @@ export class AlertHistoryRepository {
 		});
 	}
 
+	// Every user action's (alert, moment) pair, for time-to-acknowledge analytics.
+	async getAllEventTimes(): Promise<{ alert_id: string; created_at: string }[]> {
+		return runAsync(() => {
+			return this.db.prepare(`SELECT alert_id, created_at FROM alert_history_events`).all() as {
+				alert_id: string;
+				created_at: string;
+			}[];
+		});
+	}
+
 	async getEvents(alertId: string): Promise<AlertHistoryEventRow[]> {
 		return runAsync(() => {
 			return this.db

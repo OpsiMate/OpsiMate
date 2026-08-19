@@ -789,6 +789,32 @@ export class AlertController {
 		}
 	}
 
+	// Aggregates for the Insights page. from/to are ISO bounds (from absent = all
+	// time); tz is the requester's IANA timezone so day/hour bucketing matches what
+	// the user's clock says.
+	async getAlertAnalytics(req: Request, res: Response) {
+		try {
+			const fromRaw = typeof req.query.from === 'string' ? req.query.from : null;
+			const toRaw = typeof req.query.to === 'string' ? req.query.to : null;
+			const timeZone = typeof req.query.tz === 'string' ? req.query.tz : undefined;
+			if (fromRaw !== null && Number.isNaN(Date.parse(fromRaw))) {
+				return res.status(400).json({ success: false, error: 'Invalid from timestamp' });
+			}
+			if (toRaw !== null && Number.isNaN(Date.parse(toRaw))) {
+				return res.status(400).json({ success: false, error: 'Invalid to timestamp' });
+			}
+			const analytics = await this.alertBL.getAlertAnalytics(
+				fromRaw,
+				toRaw ?? new Date().toISOString(),
+				timeZone
+			);
+			return res.json({ success: true, data: analytics });
+		} catch (error) {
+			logger.error('Error computing alert analytics', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	async getAlertHistory(req: Request, res: Response) {
 		try {
 			const alertId = req.params.alertId;
