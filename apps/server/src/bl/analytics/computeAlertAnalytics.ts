@@ -397,10 +397,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		// the window count — the table must not contradict the Reliability tab.
 		const resolved = acc.episodes.filter((e) => e.resolvedMs !== null && inWindow(e.resolvedMs));
 		const mttr = durationStats(resolved.map((e) => (e.resolvedMs as number) - e.startMs));
+		// Same gap rule as the headline MTBF: a gap counts when its LATER firing is in
+		// the window, even if the earlier one precedes `from` — pre-window starts may
+		// open gaps, never be dropped before pairing.
 		const gaps: number[] = [];
 		for (const alertId of acc.alertIds) {
-			const starts = (startsByAlert.get(alertId) ?? []).filter((s) => inWindow(s)).sort((a, b) => a - b);
-			for (let i = 1; i < starts.length; i++) gaps.push(starts[i] - starts[i - 1]);
+			const starts = [...(startsByAlert.get(alertId) ?? [])].sort((a, b) => a - b);
+			for (let i = 1; i < starts.length; i++) {
+				if (inWindow(starts[i])) gaps.push(starts[i] - starts[i - 1]);
+			}
 		}
 		let nameRefired = 0;
 		for (const e of resolved) {

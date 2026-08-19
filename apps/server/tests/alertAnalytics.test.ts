@@ -368,6 +368,17 @@ describe('computeAlertAnalytics', () => {
 		expect(result.tagInsights?.values[0]).toMatchObject({ value: 'db', resolvedCount: 0, mttrMs: null });
 	});
 
+	test('per-name MTBF pairs a pre-window firing with an in-window one, like the headline', () => {
+		// Fired 10 days ago (before the 7-day window) and again 2 days ago: one 8-day
+		// gap, and the By-alert row must agree with the Reliability headline about it.
+		const result = compute({
+			episodes: [firing('a', NOW - 10 * DAY), firing('a', NOW - 2 * DAY)],
+			activeAlerts: [alert('a', 'Flappy', 'warning')],
+		});
+		expect(result.reliability.mtbf.meanMs).toBe(8 * DAY);
+		expect(result.byName[0].mtbfMs).toBe(8 * DAY);
+	});
+
 	test('a tag key of __proto__ reads as absent, not as Object.prototype', () => {
 		const result = compute({
 			episodes: [firing('a', NOW - HOUR)],
