@@ -419,6 +419,32 @@ describe('computeAlertAnalytics', () => {
 		expect(web?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: null, count: 0 }]);
 	});
 
+	test('every tag value covers every sampled day, even days it has no samples on', () => {
+		// db fires and resolves on Aug 18; web fires Aug 19 and resolves Aug 20.
+		// All three days must appear in BOTH values' trends (null where unmeasured).
+		const result = compute({
+			episodes: [
+				firing('a', NOW - 2 * DAY - 4 * HOUR),
+				resolved('a', NOW - 2 * DAY - 2 * HOUR),
+				firing('b', NOW - 1 * DAY - 2 * HOUR),
+				resolved('b', NOW - 2 * HOUR),
+			],
+			resolvedAlerts: [
+				alert('a', 'DB', 'warning', { service: 'db' }),
+				alert('b', 'Web', 'warning', { service: 'web' }),
+			],
+			tagKey: 'service',
+		});
+		const days = (value: string) =>
+			result.tagInsights?.trends.find((t) => t.value === value)?.mttrByDay.map((p) => p.date);
+		expect(days('db')).toEqual(['2026-08-18', '2026-08-19', '2026-08-20']);
+		expect(days('web')).toEqual(['2026-08-18', '2026-08-19', '2026-08-20']);
+		const webOnDbDay = result.tagInsights?.trends
+			.find((t) => t.value === 'web')
+			?.mttrByDay.find((p) => p.date === '2026-08-18');
+		expect(webOnDbDay).toEqual({ date: '2026-08-18', meanMs: null, count: 0 });
+	});
+
 	test('a tag key of __proto__ reads as absent, not as Object.prototype', () => {
 		const result = compute({
 			episodes: [firing('a', NOW - HOUR)],

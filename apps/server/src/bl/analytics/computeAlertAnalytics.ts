@@ -502,16 +502,18 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			acc.episodes += 1;
 			acc.alertIds.add(episode.alertId);
 			// Window rule matches the headline MTTR: resolutions past `to` don't count.
+			// Sample days (resolution/touch) go into tagDays too, so EVERY value's trend
+			// covers them — one value's sample day must not be absent from another's line.
 			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs)) {
+				const resolvedDay = local.day(episode.resolvedMs);
 				acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
-				addDurationSample(acc.mttrDayAcc, local.day(episode.resolvedMs), episode.resolvedMs - episode.startMs);
+				tagDays.add(resolvedDay);
+				addDurationSample(acc.mttrDayAcc, resolvedDay, episode.resolvedMs - episode.startMs);
 			}
 			if (episode.firstTouchMs !== null) {
-				addDurationSample(
-					acc.mttaDayAcc,
-					local.day(episode.firstTouchMs),
-					episode.firstTouchMs - episode.startMs
-				);
+				const touchDay = local.day(episode.firstTouchMs);
+				tagDays.add(touchDay);
+				addDurationSample(acc.mttaDayAcc, touchDay, episode.firstTouchMs - episode.startMs);
 			}
 			const day = local.day(episode.startMs);
 			tagDays.add(day);
