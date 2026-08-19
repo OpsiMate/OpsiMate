@@ -298,6 +298,42 @@ export const MutePolicyIdSchema = z.object({
 	}),
 });
 
+// ---------------------------------------------------------------------------
+// Incidents
+// ---------------------------------------------------------------------------
+
+export const CreateIncidentSchema = z.object({
+	// Optional on the wire: the server defaults to "Incident #<id>" so the create
+	// dialog can be skipped through without typing.
+	name: z.string().trim().max(200).optional(),
+	description: z.string().trim().max(2000).optional(),
+	// Two alerts make a group; one alert is just an alert.
+	alertIds: z.array(z.string().min(1)).min(2, 'An incident needs at least two alerts'),
+});
+
+export const UpdateIncidentSchema = z
+	.object({
+		name: z.string().trim().min(1).max(200).optional(),
+		description: z.string().trim().max(2000).nullable().optional(),
+	})
+	.refine((data) => data.name !== undefined || data.description !== undefined, {
+		message: 'Nothing to update',
+	});
+
+export const IncidentAlertIdsSchema = z.object({
+	alertIds: z.array(z.string().min(1)).min(1),
+});
+
+export const IncidentIdSchema = z.object({
+	incidentId: z.string().transform((val) => {
+		const parsed = parseInt(val);
+		if (isNaN(parsed)) {
+			throw new Error('Invalid incident ID');
+		}
+		return parsed;
+	}),
+});
+
 // ---- Alert enrichments ----
 
 const enrichmentFieldSchema = z.object({

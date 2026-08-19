@@ -13,6 +13,7 @@ import { IntegrationController } from './api/v1/integrations/controller';
 import { PlaygroundController } from './api/v1/playground/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { EnrichmentController } from './api/v1/enrichments/controller';
+import { IncidentController } from './api/v1/incidents/controller';
 import { MutePolicyController } from './api/v1/mute-policies/controller';
 import { OncallController } from './api/v1/oncall/controller';
 import { TagController } from './api/v1/tags/controller';
@@ -26,6 +27,7 @@ import { DashboardBL } from './bl/dashboards/dashboard.bl.ts';
 import { IntegrationBL } from './bl/integrations/integration.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
+import { IncidentBL } from './bl/incidents/incident.bl';
 import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
@@ -44,6 +46,7 @@ import { PasswordResetsRepository } from './dal/passwordResetsRepository';
 import { SecretsMetadataRepository } from './dal/secretsMetadataRepository';
 import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository';
 import { EnrichmentRepository } from './dal/enrichmentRepository';
+import { IncidentRepository } from './dal/incidentRepository';
 import { MutePolicyRepository } from './dal/mutePolicyRepository';
 import { OncallRepository } from './dal/oncallRepository';
 import { TagRepository } from './dal/tagRepository';
@@ -148,6 +151,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
 	const mutePolicyRepo = new MutePolicyRepository(db);
+	const incidentRepo = new IncidentRepository(db);
 	const oncallRepo = new OncallRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
@@ -165,6 +169,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		passwordResetsRepo.initPasswordResetsTable(),
 		playgroundRepo.initPlaygroundTable(),
 		mutePolicyRepo.initMutePoliciesTable(),
+		incidentRepo.initIncidentsTables(),
 		oncallRepo.initOncallTables(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
@@ -189,6 +194,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
+	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, () => alertBL.invalidateSnapshots());
+	alertBL.setIncidentRepo(incidentRepo);
+	// Permanent deletion (delete-forever) must not leave dangling incident memberships.
+	alertBL.setOnAlertsPermanentlyDeleted((alertIds) => incidentBL.handleAlertsDeleted(alertIds));
 
 	// Controllers (only for SERVER)
 	const dashboardController = new DashboardController(dashboardBL);
@@ -205,6 +214,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
+	const incidentController = new IncidentController(incidentBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -224,7 +234,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			enrichmentController,
 			actionController,
 			retentionController,
-			oncallController
+			oncallController,
+			incidentController
 		)
 	);
 

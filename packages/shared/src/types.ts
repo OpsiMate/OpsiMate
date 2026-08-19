@@ -269,6 +269,9 @@ export interface Alert {
 	// Transient: set client-side in the combined "All" view so a row knows it came from the
 	// resolved list and can route its own actions. Not persisted.
 	isResolved?: boolean;
+	// The incident this alert belongs to, attached at fetch time from the membership
+	// table (exclusive: at most one). Null/undefined for ungrouped alerts.
+	incidentId?: number | null;
 	ownerId?: string | null;
 }
 
@@ -281,6 +284,36 @@ export interface AppliedEnrichment {
 export interface AlertHistory {
 	alertId: string;
 	data: AlertHistoryData[];
+}
+
+// An incident groups related alerts under one named umbrella. Membership is exclusive —
+// an alert belongs to at most one incident — and everything about an incident's state
+// (severity, firing/resolved split, time bounds) is DERIVED from its members at read
+// time, never stored: alerts keep behaving individually, the incident is a lens.
+export interface Incident {
+	id: number;
+	name: string;
+	description: string | null;
+	createdBy: number | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+// An incident plus the roll-ups the list UI renders on a closed folder. Computed over
+// BOTH the active and resolved copies of members, so a fully-resolved incident still
+// reports its true state.
+export interface IncidentSummary extends Incident {
+	alertCount: number;
+	firingCount: number;
+	resolvedCount: number;
+	// Worst severity across members (critical > warning > info); null for an incident
+	// whose members all vanished (shouldn't persist — empty incidents dissolve).
+	worstSeverity: AlertSeverity | null;
+	// Earliest member startsAt and latest member updatedAt, ISO strings.
+	earliestStartsAt: string | null;
+	latestUpdatedAt: string | null;
+	// Member alert ids, so the client can fold loaded rows without a second request.
+	alertIds: string[];
 }
 
 // The kinds of events recorded in an alert's history timeline. STATUS_CHANGED covers the
@@ -303,6 +336,10 @@ export enum AlertHistoryEventType {
 	// derived from updated_at at read time. Guarantees a visible alert always has at
 	// least one history entry inside any time window that shows it.
 	UPDATED = 'updated',
+	// The alert was grouped into / removed from an incident (grouping is a user act,
+	// so these live on the activity branch of the history graph).
+	INCIDENT_ADDED = 'incident_added',
+	INCIDENT_REMOVED = 'incident_removed',
 }
 
 export interface AlertHistoryData {

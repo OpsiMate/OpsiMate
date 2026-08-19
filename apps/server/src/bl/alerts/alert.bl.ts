@@ -1,4 +1,5 @@
 import { AlertRepository } from '../../dal/alertRepository';
+import { IncidentRepository } from '../../dal/incidentRepository';
 import { ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
@@ -53,6 +54,7 @@ const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
+	private incidentRepo: IncidentRepository | null = null;
 
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
@@ -258,6 +260,30 @@ export class AlertBL {
 		this.enrichmentBL = enrichmentBL;
 	}
 
+	setIncidentRepo(incidentRepo: IncidentRepository): void {
+		this.incidentRepo = incidentRepo;
+	}
+
+	// Invoked with ids of alerts that were PERMANENTLY deleted (not resolved — resolve
+	// keeps the id alive in alerts_resolved and membership must survive it).
+	private onAlertsPermanentlyDeleted: ((alertIds: string[]) => Promise<void>) | null = null;
+	setOnAlertsPermanentlyDeleted(handler: (alertIds: string[]) => Promise<void>): void {
+		this.onAlertsPermanentlyDeleted = handler;
+	}
+
+	// Stamps each alert with the incident it belongs to (or null), in one pass over the
+	// membership table. Applied to BOTH snapshots: membership follows the alert id, so a
+	// resolved member still folds under its incident in the Resolved/All views.
+	private async attachIncidentIds(alerts: Alert[]): Promise<Alert[]> {
+		if (!this.incidentRepo) return alerts;
+		const membership = await this.incidentRepo.getMembershipMap();
+		if (membership.size === 0) return alerts;
+		return alerts.map((alert) => {
+			const incidentId = membership.get(alert.id);
+			return incidentId !== undefined ? { ...alert, incidentId } : alert;
+		});
+	}
+
 	// region active
 	// Severity is resolved here — the single funnel for every ingestion endpoint: an explicit
 	// severity field wins, then a `severity` tag (Zabbix/Grafana/Datadog labels), then the
@@ -407,7 +433,7 @@ export class AlertBL {
 			if (this.mutePolicyBL) {
 				alerts = await this.mutePolicyBL.markMuted(alerts);
 			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			return await this.attachIncidentIds(await this.attachLastComments(await this.attachFiringTimes(alerts)));
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
@@ -503,7 +529,7 @@ export class AlertBL {
 			if (this.enrichmentBL) {
 				alerts = await this.enrichmentBL.applyEnrichments(alerts);
 			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			return await this.attachIncidentIds(await this.attachLastComments(await this.attachFiringTimes(alerts)));
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;
@@ -644,6 +670,7 @@ export class AlertBL {
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
 			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			if (this.onAlertsPermanentlyDeleted) await this.onAlertsPermanentlyDeleted([alertId]);
 			this.invalidateSnapshots();
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
