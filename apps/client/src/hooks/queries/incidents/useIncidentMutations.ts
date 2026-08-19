@@ -1,4 +1,5 @@
-import { CreateIncidentPayload, incidentsApi, UpdateIncidentPayload } from '@/lib/api';
+import { incidentsApi } from '@/lib/api';
+import { CreateIncidentPayload, UpdateIncidentPayload } from '@OpsiMate/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
@@ -10,6 +11,9 @@ const useInvalidateIncidentData = () => {
 		void queryClient.invalidateQueries({ queryKey: queryKeys.incidents });
 		void queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
 		void queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
+		// Membership changes write per-alert history events; an OPEN alert panel (or
+		// incident panel) must show them without being reopened.
+		void queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
 	};
 };
 

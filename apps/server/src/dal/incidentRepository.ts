@@ -36,6 +36,13 @@ export interface UpdateIncidentInput {
 	description?: string | null;
 }
 
+// Per-alert outcome of an addAlerts call: where the alert WAS before the move (null =
+// ungrouped; equal to the target incident = no-op re-add).
+export interface MembershipTransition {
+	alertId: string;
+	previousIncidentId: number | null;
+}
+
 // Worst-first; members carry free-text severity in theory, so anything unrecognized
 // ranks below the known three and never masks a real critical.
 const SEVERITY_RANK: Record<string, number> = {
@@ -200,19 +207,16 @@ export class IncidentRepository {
 		});
 	}
 
-	// Re-homing on purpose: INSERT OR REPLACE moves an alert already grouped elsewhere
-	// into this incident (the UNIQUE on alert_id makes REPLACE delete the old row).
-	// Returns the incidents the moved alerts came FROM, so the caller can dissolve any
-	// that this move emptied and write accurate history.
-	async addAlerts(incidentId: number, alertIds: string[]): Promise<{ previousIncidentIds: number[] }> {
+	// What actually happened to each requested alert, so history reflects TRANSITIONS
+	// rather than requests: re-adding an existing member is not an "added" event, and
+	// a re-homed alert owes a "removed" event to the incident it left.
+	async addAlerts(incidentId: number, alertIds: string[]): Promise<{ transitions: MembershipTransition[] }> {
 		return runAsync(() => {
 			const placeholders = alertIds.map(() => '?').join(', ');
-			const previous = this.db
-				.prepare(
-					`SELECT DISTINCT incident_id FROM incident_alerts
-					 WHERE alert_id IN (${placeholders}) AND incident_id != ?`
-				)
-				.all(...alertIds, incidentId) as { incident_id: number }[];
+			const previousRows = this.db
+				.prepare(`SELECT alert_id, incident_id FROM incident_alerts WHERE alert_id IN (${placeholders})`)
+				.all(...alertIds) as { alert_id: string; incident_id: number }[];
+			const previousByAlert = new Map(previousRows.map((r) => [r.alert_id, r.incident_id]));
 			const insert = this.db.prepare(
 				`INSERT OR REPLACE INTO incident_alerts (incident_id, alert_id) VALUES (?, ?)`
 			);
@@ -221,19 +225,47 @@ export class IncidentRepository {
 				for (const alertId of alertIds) insert.run(incidentId, alertId);
 				touch.run(incidentId);
 			})();
-			return { previousIncidentIds: previous.map((p) => p.incident_id) };
+			return {
+				transitions: alertIds.map((alertId) => ({
+					alertId,
+					previousIncidentId: previousByAlert.get(alertId) ?? null,
+				})),
+			};
 		});
 	}
 
-	async removeAlerts(incidentId: number, alertIds: string[]): Promise<void> {
+	// Returns the alerts whose membership row this call actually deleted — removing a
+	// non-member is a no-op, not a "removed" event.
+	async removeAlerts(incidentId: number, alertIds: string[]): Promise<{ removedAlertIds: string[] }> {
 		return runAsync(() => {
 			const placeholders = alertIds.map(() => '?').join(', ');
+			const members = this.db
+				.prepare(`SELECT alert_id FROM incident_alerts WHERE incident_id = ? AND alert_id IN (${placeholders})`)
+				.all(incidentId, ...alertIds) as { alert_id: string }[];
 			this.db.transaction(() => {
 				this.db
 					.prepare(`DELETE FROM incident_alerts WHERE incident_id = ? AND alert_id IN (${placeholders})`)
 					.run(incidentId, ...alertIds);
 				this.db.prepare(`UPDATE incidents SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(incidentId);
 			})();
+			return { removedAlertIds: members.map((m) => m.alert_id) };
+		});
+	}
+
+	// Which of the given ids name a real alert (active or resolved). Grouping a
+	// nonexistent id would mint a phantom membership that inflates counts until the
+	// prune sweep; rejecting up front keeps the API honest.
+	async filterExistingAlertIds(alertIds: string[]): Promise<Set<string>> {
+		if (alertIds.length === 0) return new Set();
+		return runAsync(() => {
+			const placeholders = alertIds.map(() => '?').join(', ');
+			const rows = this.db
+				.prepare(
+					`SELECT id FROM alerts WHERE id IN (${placeholders})
+					 UNION SELECT id FROM alerts_resolved WHERE id IN (${placeholders})`
+				)
+				.all(...alertIds, ...alertIds) as { id: string }[];
+			return new Set(rows.map((r) => r.id));
 		});
 	}
 

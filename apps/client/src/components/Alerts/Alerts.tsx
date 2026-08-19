@@ -29,7 +29,8 @@ import {
 	useRemoveIncidentAlerts,
 	useUpdateIncident,
 } from '@/hooks/queries/incidents';
-import { CreateIncidentDialog, EditIncidentDialog } from './IncidentDialogs';
+import { CreateIncidentDialog } from './CreateIncidentDialog';
+import { EditIncidentDialog } from './EditIncidentDialog';
 import { IncidentPanel } from './IncidentPanel';
 import {
 	useCreateDashboard,
@@ -1471,7 +1472,14 @@ const Alerts = () => {
 												: undefined
 										}
 										onClearSelection={() => handleSelectAlerts([])}
-										onGroupIntoIncident={() => setShowCreateIncident(true)}
+										// Hidden when "all N matching" is armed but only a page is
+										// loaded: grouping would silently take the loaded subset
+										// while the bar claims the whole match set is selected.
+										onGroupIntoIncident={
+											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
+												? undefined
+												: () => setShowCreateIncident(true)
+										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}

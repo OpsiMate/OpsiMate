@@ -2,14 +2,12 @@ import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
 import { StatusBadge } from '@/components/Alerts/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { queryKeys } from '@/hooks/queries/queryKeys';
-import { alertsApi } from '@/lib/api';
 import { formatLongDateTime } from '@/lib/datetime';
-import { Alert, AlertHistory, AlertHistoryData, IncidentSummary } from '@OpsiMate/shared';
-import { useQueries } from '@tanstack/react-query';
+import { Alert, IncidentSummary } from '@OpsiMate/shared';
 import { Folder, History, Pencil, Ungroup, X } from 'lucide-react';
 import { AlertHistoryTimeline } from '../AlertDetails/AlertHistoryTimeline';
 import { CollapsibleSection } from '../AlertDetails/CollapsibleSection';
+import { useMergedIncidentHistory } from './useMergedIncidentHistory';
 
 interface IncidentPanelProps {
 	incident: IncidentSummary;
@@ -23,26 +21,12 @@ interface IncidentPanelProps {
 	onUngroup: (incidentId: number) => void;
 }
 
-// The merged history of every member, one timeline, newest first. Merged and sorted
-// inline on each render — a handful of member histories is a few hundred entries at
-// worst, far below memoization territory (and useQueries hands back fresh array
-// identities every render anyway, which defeats naive deps).
-const useMergedIncidentHistory = (alertIds: string[]): AlertHistoryData[] => {
-	const results = useQueries({
-		queries: alertIds.map((alertId) => ({
-			queryKey: queryKeys.alertHistory(alertId),
-			queryFn: async (): Promise<AlertHistory | null> => {
-				const response = await alertsApi.getAlertHistory(alertId);
-				if (!response.success) throw new Error(response.error || 'Failed to fetch history');
-				return response.data ?? null;
-			},
-		})),
-	});
-	const merged: AlertHistoryData[] = [];
-	for (const result of results) {
-		if (result.data) merged.push(...result.data.data);
-	}
-	return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+// Mounted only while the History section is expanded — CollapsibleSection renders its
+// children only when open, so the N per-member history requests wait for the user to
+// actually ask for the timeline.
+const IncidentMergedHistory = ({ alertIds }: { alertIds: string[] }) => {
+	const mergedHistory = useMergedIncidentHistory(alertIds);
+	return <AlertHistoryTimeline data={mergedHistory} />;
 };
 
 // Right-side details panel for an incident: identity, roll-ups, the member list (each
@@ -59,7 +43,6 @@ export const IncidentPanel = ({
 		.map((id) => alertsById.get(id))
 		.filter((alert): alert is Alert => alert !== undefined);
 	const unloadedCount = incident.alertIds.length - members.length;
-	const mergedHistory = useMergedIncidentHistory(incident.alertIds);
 
 	return (
 		<div className="relative shrink-0 border-l bg-background flex flex-col h-full overflow-hidden w-[400px]">
@@ -140,13 +123,8 @@ export const IncidentPanel = ({
 					</div>
 				</CollapsibleSection>
 
-				<CollapsibleSection
-					title="History"
-					icon={<History className="h-3.5 w-3.5" />}
-					badge={mergedHistory.length}
-					defaultOpen={false}
-				>
-					<AlertHistoryTimeline data={mergedHistory} />
+				<CollapsibleSection title="History" icon={<History className="h-3.5 w-3.5" />} defaultOpen={false}>
+					<IncidentMergedHistory alertIds={incident.alertIds} />
 				</CollapsibleSection>
 			</div>
 

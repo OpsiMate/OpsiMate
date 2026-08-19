@@ -50,13 +50,21 @@ export const IncidentRow = ({
 			)}
 			onClick={() => onToggle(incident.id)}
 			role="row"
-			aria-expanded={isExpanded}
 		>
-			{isExpanded ? (
-				<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-			) : (
-				<ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-			)}
+			{/* A real button, not just the clickable row: keyboard users need a focusable
+			    toggle, and aria-expanded belongs on the control that toggles. */}
+			<button
+				type="button"
+				aria-expanded={isExpanded}
+				aria-label={isExpanded ? 'Collapse incident' : 'Expand incident'}
+				className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+				onClick={(e) => {
+					e.stopPropagation();
+					onToggle(incident.id);
+				}}
+			>
+				{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+			</button>
 			{isExpanded ? (
 				<FolderOpen className="h-4 w-4 shrink-0 text-primary" />
 			) : (

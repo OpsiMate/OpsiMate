@@ -42,7 +42,9 @@ export const RowActions = ({
 	// Only resolved rows can be moved back to firing (isActive is false on the Resolved tab
 	// and on resolved rows in the All view).
 	const canUnresolve = !isActive && Boolean(onUnresolveAlert);
-	const hasActions = Boolean(links.length > 0 || onDeleteAlert || canToggleSilence || canUnresolve);
+	const hasActions = Boolean(
+		links.length > 0 || onDeleteAlert || canToggleSilence || canUnresolve || onRemoveFromIncident
+	);
 
 	const handleToggleSilence = (event: React.MouseEvent) => {
 		event.stopPropagation();

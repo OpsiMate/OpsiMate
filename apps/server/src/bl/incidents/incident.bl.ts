@@ -1,6 +1,6 @@
 import { AlertHistoryEventType, Incident, IncidentSummary, Logger } from '@OpsiMate/shared';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
-import { IncidentRepository, UpdateIncidentInput } from '../../dal/incidentRepository';
+import { IncidentRepository, MembershipTransition, UpdateIncidentInput } from '../../dal/incidentRepository';
 
 const logger = new Logger('bl/incidents');
 
@@ -13,6 +13,15 @@ export interface CreateIncidentRequest {
 	name?: string;
 	description?: string;
 	alertIds: string[];
+}
+
+// Thrown when a request names alerts that do not exist (in either table); the
+// controller maps it to a 400 with the offending ids.
+export class UnknownAlertIdsError extends Error {
+	constructor(public readonly unknownIds: string[]) {
+		super(`Unknown alert ids: ${unknownIds.join(', ')}`);
+		this.name = 'UnknownAlertIdsError';
+	}
 }
 
 export class IncidentBL {
@@ -45,6 +54,48 @@ export class IncidentBL {
 		);
 	}
 
+	// History reflects what CHANGED, not what was requested: a no-op re-add records
+	// nothing, and a re-homed alert gets a "removed" event on the incident it left
+	// before its "added" event on the new one.
+	private async recordAddTransitions(
+		transitions: MembershipTransition[],
+		targetIncidentId: number,
+		targetName: string,
+		actor: IncidentActor
+	): Promise<void> {
+		const genuinelyAdded = transitions.filter((t) => t.previousIncidentId !== targetIncidentId);
+		const rehomedByPrevious = new Map<number, string[]>();
+		for (const t of genuinelyAdded) {
+			if (t.previousIncidentId === null) continue;
+			const list = rehomedByPrevious.get(t.previousIncidentId);
+			if (list) list.push(t.alertId);
+			else rehomedByPrevious.set(t.previousIncidentId, [t.alertId]);
+		}
+		for (const [previousId, alertIds] of rehomedByPrevious) {
+			// The previous incident may already be dissolved by the time we look; its id
+			// is still an honest name for the history line.
+			const previous = await this.incidentRepo.getIncidentById(previousId);
+			await this.recordMembershipEvents(
+				alertIds,
+				AlertHistoryEventType.INCIDENT_REMOVED,
+				previous?.name ?? `#${previousId}`,
+				actor
+			);
+		}
+		await this.recordMembershipEvents(
+			genuinelyAdded.map((t) => t.alertId),
+			AlertHistoryEventType.INCIDENT_ADDED,
+			targetName,
+			actor
+		);
+	}
+
+	private async assertAlertsExist(alertIds: string[]): Promise<void> {
+		const existing = await this.incidentRepo.filterExistingAlertIds(alertIds);
+		const unknown = alertIds.filter((id) => !existing.has(id));
+		if (unknown.length > 0) throw new UnknownAlertIdsError(unknown);
+	}
+
 	// Dissolve incidents that a re-homing or a delete-forever emptied. An empty incident
 	// is invisible in the alerts table (no members to fold under it), so keeping the row
 	// would strand it un-deletable from the UI.
@@ -59,6 +110,7 @@ export class IncidentBL {
 	}
 
 	async create(request: CreateIncidentRequest, actor: IncidentActor): Promise<IncidentSummary> {
+		await this.assertAlertsExist(request.alertIds);
 		// The default name needs the id, so create first and rename when unnamed.
 		const { lastID } = await this.incidentRepo.createIncident({
 			name: request.name?.trim() || 'pending',
@@ -68,12 +120,16 @@ export class IncidentBL {
 		if (!request.name?.trim()) {
 			await this.incidentRepo.updateIncident(lastID, { name: `Incident #${lastID}` });
 		}
-		const { previousIncidentIds } = await this.incidentRepo.addAlerts(lastID, request.alertIds);
-		await this.dissolveIfEmpty(previousIncidentIds);
+		const { transitions } = await this.incidentRepo.addAlerts(lastID, request.alertIds);
 
 		const summary = await this.incidentRepo.getIncidentSummaryById(lastID);
 		if (!summary) throw new Error(`Incident ${lastID} vanished right after creation`);
-		await this.recordMembershipEvents(request.alertIds, AlertHistoryEventType.INCIDENT_ADDED, summary.name, actor);
+		// Removal events for re-homed alerts must be written BEFORE the emptied source
+		// incidents dissolve, while their names are still readable.
+		await this.recordAddTransitions(transitions, lastID, summary.name, actor);
+		await this.dissolveIfEmpty(
+			transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null)
+		);
 		this.invalidateAlertSnapshots();
 		return summary;
 	}
@@ -97,9 +153,12 @@ export class IncidentBL {
 	async addAlerts(id: number, alertIds: string[], actor: IncidentActor): Promise<IncidentSummary | undefined> {
 		const incident = await this.incidentRepo.getIncidentById(id);
 		if (!incident) return undefined;
-		const { previousIncidentIds } = await this.incidentRepo.addAlerts(id, alertIds);
-		await this.dissolveIfEmpty(previousIncidentIds);
-		await this.recordMembershipEvents(alertIds, AlertHistoryEventType.INCIDENT_ADDED, incident.name, actor);
+		await this.assertAlertsExist(alertIds);
+		const { transitions } = await this.incidentRepo.addAlerts(id, alertIds);
+		await this.recordAddTransitions(transitions, id, incident.name, actor);
+		await this.dissolveIfEmpty(
+			transitions.map((t) => t.previousIncidentId).filter((prev): prev is number => prev !== null)
+		);
 		this.invalidateAlertSnapshots();
 		return this.incidentRepo.getIncidentSummaryById(id);
 	}
@@ -113,8 +172,13 @@ export class IncidentBL {
 	): Promise<{ dissolved: boolean } | undefined> {
 		const incident = await this.incidentRepo.getIncidentById(id);
 		if (!incident) return undefined;
-		await this.incidentRepo.removeAlerts(id, alertIds);
-		await this.recordMembershipEvents(alertIds, AlertHistoryEventType.INCIDENT_REMOVED, incident.name, actor);
+		const { removedAlertIds } = await this.incidentRepo.removeAlerts(id, alertIds);
+		await this.recordMembershipEvents(
+			removedAlertIds,
+			AlertHistoryEventType.INCIDENT_REMOVED,
+			incident.name,
+			actor
+		);
 		const remaining = await this.incidentRepo.getMemberCount(id);
 		if (remaining === 0) {
 			await this.incidentRepo.deleteIncident(id);

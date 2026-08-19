@@ -149,6 +149,52 @@ describe('incidents', () => {
 		expect(byId.get('inc-a')?.incidentId ?? null).toBeNull();
 	});
 
+	test('unknown, duplicate and malformed inputs are rejected up front', async () => {
+		const unknown = await post('/api/v1/incidents', { alertIds: ['inc-a', 'no-such-alert'] });
+		expect(unknown.status).toBe(400);
+		expect(unknown.body.error).toContain('no-such-alert');
+
+		// [a, a] must not satisfy the two-alert minimum — that groups a single alert.
+		const dupes = await post('/api/v1/incidents', { alertIds: ['inc-a', 'inc-a'] });
+		expect(dupes.status).toBe(400);
+
+		// parseInt('12abc') is 12; the id param must be strictly digits.
+		const sloppy = await get('/api/v1/incidents/12abc');
+		expect(sloppy.status).toBe(400);
+	});
+
+	test('history records transitions, not requests', async () => {
+		insertAlert('tr-a', 'Transit A', 'warning', '2026-08-11T10:00:00.000Z');
+		insertAlert('tr-b', 'Transit B', 'warning', '2026-08-11T10:00:00.000Z');
+		insertAlert('tr-c', 'Transit C', 'warning', '2026-08-11T10:00:00.000Z');
+		const first = await post('/api/v1/incidents', { name: 'First home', alertIds: ['tr-a', 'tr-b'] });
+		const firstId = first.body.data.id as number;
+
+		const historyOf = async (alertId: string) => {
+			const res = await get(`/api/v1/alerts/${alertId}/history`);
+			return (res.body.data.data as { eventType?: string; description?: string }[]).filter((e) =>
+				e.eventType?.startsWith('incident')
+			);
+		};
+
+		// Re-adding an existing member is a no-op, not another "added" event.
+		await post(`/api/v1/incidents/${firstId}/alerts`, { alertIds: ['tr-a'] });
+		expect(await historyOf('tr-a')).toHaveLength(1);
+
+		// Re-homing writes a "removed from First home" AND an "added to Second".
+		const second = await post('/api/v1/incidents', { name: 'Second home', alertIds: ['tr-a', 'tr-c'] });
+		expect(second.status).toBe(201);
+		const rehomed = await historyOf('tr-a');
+		expect(rehomed).toHaveLength(3);
+		const descriptions = rehomed.map((e) => `${e.eventType}: ${e.description}`);
+		expect(descriptions).toContain('incident_removed: Removed from incident "First home"');
+		expect(descriptions).toContain('incident_added: Grouped into incident "Second home"');
+
+		// Removing a non-member records nothing.
+		await post(`/api/v1/incidents/${second.body.data.id}/alerts/remove`, { alertIds: ['tr-b'] });
+		expect(await historyOf('tr-b')).toHaveLength(1);
+	});
+
 	test('delete-forever of a member cleans its membership and dissolves an emptied incident', async () => {
 		insertResolvedAlert('inc-r2', 'Old spike 2', 'warning');
 		insertResolvedAlert('inc-r3', 'Old spike 3', 'warning');

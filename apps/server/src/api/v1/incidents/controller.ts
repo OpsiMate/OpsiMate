@@ -6,7 +6,7 @@ import {
 	UpdateIncidentSchema,
 } from '@OpsiMate/shared';
 import { Response } from 'express';
-import { IncidentActor, IncidentBL } from '../../../bl/incidents/incident.bl';
+import { IncidentActor, IncidentBL, UnknownAlertIdsError } from '../../../bl/incidents/incident.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
 
@@ -53,6 +53,9 @@ export class IncidentController {
 			const incident = await this.incidentBL.create(data, actorFrom(req));
 			return res.status(201).json({ success: true, data: incident, message: 'Incident created' });
 		} catch (error) {
+			if (error instanceof UnknownAlertIdsError) {
+				return res.status(400).json({ success: false, error: error.message });
+			}
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
@@ -89,6 +92,9 @@ export class IncidentController {
 			}
 			return res.json({ success: true, data: summary, message: 'Alerts added to incident' });
 		} catch (error) {
+			if (error instanceof UnknownAlertIdsError) {
+				return res.status(400).json({ success: false, error: error.message });
+			}
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}

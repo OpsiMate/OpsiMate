@@ -302,13 +302,20 @@ export const MutePolicyIdSchema = z.object({
 // Incidents
 // ---------------------------------------------------------------------------
 
+// Duplicate ids would let [a, a] satisfy the two-alert minimum while grouping a single
+// alert — distinctness is part of "two alerts make a group".
+const distinctAlertIds = (alertIds: string[]): boolean => new Set(alertIds).size === alertIds.length;
+
 export const CreateIncidentSchema = z.object({
 	// Optional on the wire: the server defaults to "Incident #<id>" so the create
 	// dialog can be skipped through without typing.
 	name: z.string().trim().max(200).optional(),
 	description: z.string().trim().max(2000).optional(),
 	// Two alerts make a group; one alert is just an alert.
-	alertIds: z.array(z.string().min(1)).min(2, 'An incident needs at least two alerts'),
+	alertIds: z
+		.array(z.string().min(1))
+		.min(2, 'An incident needs at least two alerts')
+		.refine(distinctAlertIds, 'Duplicate alert ids'),
 });
 
 export const UpdateIncidentSchema = z
@@ -321,18 +328,21 @@ export const UpdateIncidentSchema = z
 	});
 
 export const IncidentAlertIdsSchema = z.object({
-	alertIds: z.array(z.string().min(1)).min(1),
+	alertIds: z.array(z.string().min(1)).min(1).refine(distinctAlertIds, 'Duplicate alert ids'),
 });
 
 export const IncidentIdSchema = z.object({
-	incidentId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid incident ID');
-		}
-		return parsed;
-	}),
+	// Strict digits, not parseInt: parseInt('12abc') is 12, silently targeting an
+	// incident the caller never named.
+	incidentId: z
+		.string()
+		.regex(/^\d+$/, 'Invalid incident ID')
+		.transform((val) => parseInt(val, 10)),
 });
+
+// Wire payload types, inferred from the schemas so client and server cannot drift.
+export type CreateIncidentPayload = z.infer<typeof CreateIncidentSchema>;
+export type UpdateIncidentPayload = z.infer<typeof UpdateIncidentSchema>;
 
 // ---- Alert enrichments ----
 

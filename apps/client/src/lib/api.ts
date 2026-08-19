@@ -26,8 +26,10 @@ import {
 	Alert as SharedAlert,
 	OncallTeam,
 	Tag,
+	CreateIncidentPayload,
 	Incident,
 	IncidentSummary,
+	UpdateIncidentPayload,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -531,17 +533,6 @@ export const mutePoliciesApi = {
 		apiRequest<MutePolicy>(`/mute-policies/${id}`, 'PUT', payload),
 	deleteMutePolicy: (id: number) => apiRequest<void>(`/mute-policies/${id}`, 'DELETE'),
 };
-
-export interface CreateIncidentPayload {
-	name?: string;
-	description?: string;
-	alertIds: string[];
-}
-
-export interface UpdateIncidentPayload {
-	name?: string;
-	description?: string | null;
-}
 
 export interface RemoveIncidentAlertsResult {
 	dissolved: boolean;
