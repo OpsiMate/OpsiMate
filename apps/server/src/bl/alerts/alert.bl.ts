@@ -1,5 +1,5 @@
 import { AlertRepository } from '../../dal/alertRepository';
-import { ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
+import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
 	AlertComment,
@@ -15,7 +15,7 @@ import {
 	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
-import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
+import { AlertHistoryRepository, EventTimeRow } from '../../dal/alertHistoryRepository';
 import {
 	alertsIngestedTotal,
 	alertsResolvedTotal,
@@ -54,6 +54,17 @@ const logger = new Logger('bl/alert.bl');
 // assigns the env var after imports are evaluated but before the app is constructed.
 const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
 
+// The analytics request after validation: the window, the requester's timezone,
+// an optional dashboard scope (filters + search) and an optional tag key to research.
+export interface AlertAnalyticsQuery {
+	from: string | null;
+	to: string;
+	timeZone?: string;
+	filters?: Record<string, string[]>;
+	search?: string;
+	tagKey?: string;
+}
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -69,12 +80,14 @@ export class AlertBL {
 	// Analytics inputs: two full-table scans (history rows, event times) that must not
 	// run per request. Same TTL and invalidation as the alert snapshots — every write
 	// path that changes them already calls invalidateSnapshots().
-	private readonly historyRowsSnapshot = new SnapshotCache<
-		{ alert_id: string; status: string; archived_at: string }[]
-	>(() => this.resolvedAlertRepo.getAllHistoryRows(), snapshotTtlMs());
-	private readonly eventTimesSnapshot = new SnapshotCache<
-		{ alert_id: string; created_at: string; actor_name: string | null }[]
-	>(() => this.alertHistoryRepo.getAllEventTimes(), snapshotTtlMs());
+	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
+		() => this.resolvedAlertRepo.getAllHistoryRows(),
+		snapshotTtlMs()
+	);
+	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
+		() => this.alertHistoryRepo.getAllEventTimes(),
+		snapshotTtlMs()
+	);
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -249,6 +262,10 @@ export class AlertBL {
 	): Promise<void> {
 		try {
 			await this.alertHistoryRepo.recordEvent({ alertId, eventType, actorName, description });
+			// Only the events table changed; the analytics MTTA/responder numbers read it
+			// through this snapshot, so it must drop even when no alert-list write follows
+			// (e.g. an action run records an event without touching either alert table).
+			this.eventTimesSnapshot.invalidate();
 		} catch (error) {
 			logger.error(`Failed to record alert history event (${eventType}) for ${alertId}`, error);
 		}
@@ -678,14 +695,8 @@ export class AlertBL {
 	// would change results. The full scans are amortized by the snapshot caches
 	// below; revisit with incremental episode materialization if history tables
 	// reach the millions of rows where reconstruction itself becomes the cost.
-	async getAlertAnalytics(
-		from: string | null,
-		to: string,
-		timeZone?: string,
-		filters?: Record<string, string[]>,
-		search?: string,
-		tagKey?: string
-	): Promise<AlertAnalytics> {
+	async getAlertAnalytics(query: AlertAnalyticsQuery): Promise<AlertAnalytics> {
+		const { from, to, timeZone, filters, search, tagKey } = query;
 		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, owners] = await Promise.all([
 			this.activeSnapshot.get(),
 			this.resolvedSnapshot.get(),

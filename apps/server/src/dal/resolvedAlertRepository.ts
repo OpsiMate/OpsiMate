@@ -4,6 +4,13 @@ import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ResolvedAlertRow, TableInfoRow } from './models';
 
+// The compact projection getAllHistoryRows returns for the analytics aggregates.
+export interface HistoryStatusRow {
+	alert_id: string;
+	status: string;
+	archived_at: string;
+}
+
 export class ResolvedAlertRepository {
 	private db: Database.Database;
 
@@ -239,13 +246,11 @@ export class ResolvedAlertRepository {
 	// Every status row for every alert, for the analytics aggregates. Compact columns
 	// only; on large installations this is tens of thousands of small rows, which the
 	// analytics module reduces to a few hundred bytes of aggregates.
-	async getAllHistoryRows(): Promise<{ alert_id: string; status: string; archived_at: string }[]> {
+	async getAllHistoryRows(): Promise<HistoryStatusRow[]> {
 		return runAsync(() => {
-			return this.db.prepare(`SELECT alert_id, status, archived_at FROM alerts_history`).all() as {
-				alert_id: string;
-				status: string;
-				archived_at: string;
-			}[];
+			return this.db
+				.prepare(`SELECT alert_id, status, archived_at FROM alerts_history`)
+				.all() as HistoryStatusRow[];
 		});
 	}
 

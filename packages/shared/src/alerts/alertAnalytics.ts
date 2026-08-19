@@ -90,22 +90,44 @@ export interface AnalyticsOverview {
 	availableTagKeys: string[];
 }
 
+// Restore-time stats plus the previous window's mean, for the headline delta.
+export interface MttrStats extends DurationStats {
+	previousMeanMs: number | null;
+}
+
+// Mean gap between consecutive firing episodes of the same alert.
+export interface MtbfStats {
+	meanMs: number | null;
+	alertsMeasured: number;
+}
+
+// Change-failure-rate analog: share of resolutions followed by the same alert
+// re-firing within 24h — "the fix didn't hold".
+export interface RefireRateStats {
+	rate: number | null;
+	refired: number;
+	resolutions: number;
+}
+
+// Share of episodes that received ANY human action while firing.
+export interface AckCoverageStats {
+	rate: number | null;
+	acked: number;
+	episodes: number;
+}
+
 // The reliability tab: DORA's restore-time metric plus the alert-world adaptations
 // of its siblings. Deployment-centric DORA metrics (deployment frequency, lead
 // time) have no alert analog and are deliberately absent.
 export interface AnalyticsReliability {
 	// DORA "time to restore service": firing -> resolved, per episode resolved in
 	// the window.
-	mttr: DurationStats & { previousMeanMs: number | null };
+	mttr: MttrStats;
 	// Time to first human touch (own/silence/comment/action/resolve) after firing.
 	mtta: DurationStats;
-	// Mean gap between consecutive firing episodes of the same alert.
-	mtbf: { meanMs: number | null; alertsMeasured: number };
-	// Change-failure-rate analog: share of resolutions followed by the same alert
-	// re-firing within 24h — "the fix didn't hold".
-	refireRate: { rate: number | null; refired: number; resolutions: number };
-	// Share of episodes that received ANY human action while firing.
-	ackCoverage: { rate: number | null; acked: number; episodes: number };
+	mtbf: MtbfStats;
+	refireRate: RefireRateStats;
+	ackCoverage: AckCoverageStats;
 	// Episodes per day over the window — the alert-world "how often does it burn".
 	episodesPerDay: AnalyticsKpi;
 	// Restore-time trend, per local day — the chart behind the MTTR headline.

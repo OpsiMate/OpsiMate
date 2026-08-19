@@ -18,10 +18,18 @@ interface FlatPoint {
 	[value: string]: string | number;
 }
 
+// Series keys are namespaced so a tag value can never collide with the x-axis
+// field — a value literally named "date" must not clobber it.
+const seriesKey = (value: string): string => `v:${value}`;
+
 // Daily volume stacked by tag VALUE for the researched key — which value of
 // `service` (say) is generating the load, and when.
 export const TagVolumeChart = ({ topValues, data, tagKey }: TagVolumeChartProps) => {
-	const flat: FlatPoint[] = data.map((point) => ({ date: point.date, ...point.counts }));
+	const flat: FlatPoint[] = data.map((point) => {
+		const row: FlatPoint = { date: point.date };
+		for (const [value, count] of Object.entries(point.counts)) row[seriesKey(value)] = count;
+		return row;
+	});
 	return (
 		<ChartCard
 			title={`Volume by ${tagKey}`}
@@ -37,7 +45,8 @@ export const TagVolumeChart = ({ topValues, data, tagKey }: TagVolumeChartProps)
 						<Area
 							key={value}
 							type="monotone"
-							dataKey={value}
+							name={value}
+							dataKey={seriesKey(value)}
 							stackId="t"
 							stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
 							fill={SERIES_COLORS[index % SERIES_COLORS.length]}

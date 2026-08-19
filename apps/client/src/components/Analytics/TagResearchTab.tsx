@@ -20,6 +20,11 @@ interface TagResearchTabProps {
 	isFetching: boolean;
 }
 
+// keepPreviousData holds the PREVIOUS payload while a new key loads — render only
+// insights that actually belong to the selected key, never another key's numbers.
+const insightsForKey = (insights: TagInsights | undefined, selectedKey: string | null): TagInsights | undefined =>
+	insights && insights.key === selectedKey ? insights : undefined;
+
 // Research one tag key: pick "service" and see which values generate the load, how
 // fast each resolves, and what's burning right now — the tag-level view of the same
 // window/scope the rest of the page uses.
@@ -27,9 +32,10 @@ export const TagResearchTab = ({
 	availableTagKeys,
 	selectedKey,
 	onSelectKey,
-	insights,
+	insights: rawInsights,
 	isFetching,
 }: TagResearchTabProps) => {
+	const insights = insightsForKey(rawInsights, selectedKey);
 	const rows = insights?.values ?? [];
 	const { sorted, sortKey, direction, toggle } = useTableSort(
 		rows,

@@ -799,14 +799,14 @@ export class AlertController {
 			// semantics as the alerts list endpoints, so a dashboard means the same
 			// thing here as there. The schema also rejects an inverted from/to window.
 			const params = AlertAnalyticsParamsSchema.parse(req.query);
-			const analytics = await this.alertBL.getAlertAnalytics(
-				params.from ?? null,
-				params.to ?? new Date().toISOString(),
-				params.tz,
-				params.filters,
-				params.search,
-				params.tagKey
-			);
+			const analytics = await this.alertBL.getAlertAnalytics({
+				from: params.from ?? null,
+				to: params.to ?? new Date().toISOString(),
+				timeZone: params.tz,
+				filters: params.filters,
+				search: params.search,
+				tagKey: params.tagKey,
+			});
 			return res.json({ success: true, data: analytics });
 		} catch (error) {
 			if (isZodError(error)) {

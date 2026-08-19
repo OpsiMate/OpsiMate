@@ -1,4 +1,4 @@
-import { Alert } from '@OpsiMate/shared';
+import { Alert, NamedCount } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { SuperTest, Test } from 'supertest';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -76,9 +76,7 @@ describe('GET /alerts/analytics', () => {
 			.set('Authorization', `Bearer ${jwtToken}`);
 		expect(res.status).toBe(200);
 		expect(res.body.data.range.filtered).toBe(true);
-		expect(res.body.data.overview.topAlertNames.every((n: { name: string }) => n.name === 'Analytics probe')).toBe(
-			true
-		);
+		expect(res.body.data.overview.topAlertNames.every((n: NamedCount) => n.name === 'Analytics probe')).toBe(true);
 	});
 });
 
@@ -329,5 +327,55 @@ describe('computeAlertAnalytics', () => {
 		});
 		const nonZero = result.overview.volumeByHour.filter((h) => h.count > 0);
 		expect(nonZero).toEqual([{ hour: 2, count: 1 }]);
+	});
+
+	test('an event exactly at a re-fire boundary acknowledges ONE episode, not two', () => {
+		// Unresolved firing at -10h, re-fire at -5h, one human action exactly at -5h:
+		// that action belongs to the NEW episode and must count once.
+		const result = compute({
+			episodes: [firing('a', NOW - 10 * HOUR), firing('a', NOW - 5 * HOUR)],
+			events: [{ alertId: 'a', at: iso(NOW - 5 * HOUR), actorName: 'idan' }],
+			activeAlerts: [alert('a', 'Flappy', 'warning')],
+		});
+		expect(result.reliability.ackCoverage.acked).toBe(1);
+		expect(result.reliability.mtta.count).toBe(1);
+		expect(result.reliability.mtta.meanMs).toBe(0);
+	});
+
+	test('episodes/day is a RATE on All time, derived from the data span', () => {
+		// 3 episodes over the last 30 days with from=null must not read as "3/day".
+		const result = compute({
+			episodes: [firing('a', NOW - 30 * DAY), firing('a', NOW - 15 * DAY), firing('a', NOW - 1 * DAY)],
+			activeAlerts: [alert('a', 'A', 'warning')],
+			from: null,
+		});
+		expect(result.reliability.episodesPerDay.value).toBe(0.1);
+		expect(result.reliability.episodesPerDay.previous).toBeNull();
+	});
+
+	test('byName and tag MTTR obey the `to` bound like the headline MTTR', () => {
+		// Episode fires at -5d and resolves at -1d; queried with to = -3d the resolution
+		// is OUTSIDE the window — no table may count it while the headline says zero.
+		const result = compute({
+			episodes: [firing('a', NOW - 5 * DAY), resolved('a', NOW - 1 * DAY)],
+			resolvedAlerts: [alert('a', 'DB latency', 'warning', { service: 'db' })],
+			from: iso(NOW - 7 * DAY),
+			to: iso(NOW - 3 * DAY),
+			tagKey: 'service',
+		});
+		expect(result.reliability.mttr.count).toBe(0);
+		expect(result.byName[0].mttrMs).toBeNull();
+		expect(result.tagInsights?.values[0]).toMatchObject({ value: 'db', resolvedCount: 0, mttrMs: null });
+	});
+
+	test('a tag key of __proto__ reads as absent, not as Object.prototype', () => {
+		const result = compute({
+			episodes: [firing('a', NOW - HOUR)],
+			activeAlerts: [alert('a', 'A', 'warning', { service: 'db' })],
+			tagKey: '__proto__',
+		});
+		expect(result.tagInsights?.values).toEqual([]);
+		expect(result.tagInsights?.taggedEpisodes).toBe(0);
+		expect(result.tagInsights?.untaggedEpisodes).toBe(1);
 	});
 });

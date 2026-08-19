@@ -11,6 +11,13 @@ export interface AlertHistoryEventRow {
 	created_at: string;
 }
 
+// The compact projection getAllEventTimes returns for the analytics aggregates.
+export interface EventTimeRow {
+	alert_id: string;
+	created_at: string;
+	actor_name: string | null;
+}
+
 export interface RecordAlertEventInput {
 	alertId: string;
 	eventType: AlertHistoryEventType;
@@ -93,13 +100,11 @@ export class AlertHistoryRepository {
 
 	// Every user action's (alert, moment, actor) triple, for time-to-acknowledge and
 	// top-responder analytics.
-	async getAllEventTimes(): Promise<{ alert_id: string; created_at: string; actor_name: string | null }[]> {
+	async getAllEventTimes(): Promise<EventTimeRow[]> {
 		return runAsync(() => {
-			return this.db.prepare(`SELECT alert_id, created_at, actor_name FROM alert_history_events`).all() as {
-				alert_id: string;
-				created_at: string;
-				actor_name: string | null;
-			}[];
+			return this.db
+				.prepare(`SELECT alert_id, created_at, actor_name FROM alert_history_events`)
+				.all() as EventTimeRow[];
 		});
 	}
 

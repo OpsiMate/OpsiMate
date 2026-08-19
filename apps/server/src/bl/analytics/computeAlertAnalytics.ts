@@ -63,6 +63,11 @@ interface AlertMeta {
 	tags: Record<string, string>;
 }
 
+interface MttrDayAccumulator {
+	total: number;
+	count: number;
+}
+
 // "The fix didn't hold": a resolution followed by the same alert re-firing within
 // this window counts as a failed resolution (change-failure-rate's alert analog).
 const REFIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -143,10 +148,18 @@ const buildEpisodes = (rows: EpisodeRow[], events: UserEventRow[]): Episode[] =>
 		for (let i = 0; i < alertEpisodes.length; i++) {
 			const episode = alertEpisodes[i];
 			const nextStart = i + 1 < alertEpisodes.length ? alertEpisodes[i + 1].startMs : Number.POSITIVE_INFINITY;
-			const spanEnd = Math.min(episode.resolvedMs ?? Number.POSITIVE_INFINITY, nextStart);
 			while (eventCursor < alertEvents.length && alertEvents[eventCursor] < episode.startMs) eventCursor++;
-			if (eventCursor < alertEvents.length && alertEvents[eventCursor] <= spanEnd) {
-				episode.firstTouchMs = alertEvents[eventCursor];
+			if (eventCursor >= alertEvents.length) break;
+			const eventMs = alertEvents[eventCursor];
+			// Inclusive of the resolution moment, but strictly BEFORE the next firing:
+			// an event landing exactly when the next episode starts belongs to it, and
+			// one human action must never acknowledge two episodes — so a consumed
+			// event also advances the cursor.
+			const withinEpisode =
+				episode.resolvedMs !== null ? eventMs <= Math.min(episode.resolvedMs, nextStart) : eventMs < nextStart;
+			if (withinEpisode) {
+				episode.firstTouchMs = eventMs;
+				eventCursor++;
 			}
 		}
 		episodes.push(...alertEpisodes);
@@ -259,7 +272,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 
 	// Resolutions overlay + per-day MTTR trend, bucketed by the local day the
 	// resolution LANDED on (that is when the work happened).
-	const mttrDayAcc = new Map<string, { total: number; count: number }>();
+	const mttrDayAcc = new Map<string, MttrDayAccumulator>();
 	for (const episode of resolutionsInRange) {
 		const resolvedMs = episode.resolvedMs as number;
 		const day = local.day(resolvedMs);
@@ -344,10 +357,19 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 
 	const acked = windowEpisodes.filter((e) => e.firstTouchMs !== null).length;
 
-	const windowDays = fromMs !== null ? Math.max(1, (toMs - fromMs) / (24 * 60 * 60 * 1000)) : null;
+	// On All time the span comes from the data (oldest episode to now) — the label
+	// says "per day", so the value must be a rate on every window.
+	const DAY_MS = 24 * 60 * 60 * 1000;
+	const earliestStartMs = windowEpisodes.reduce((min, e) => Math.min(min, e.startMs), Number.POSITIVE_INFINITY);
+	const windowDays =
+		fromMs !== null
+			? Math.max(1, (toMs - fromMs) / DAY_MS)
+			: windowEpisodes.length > 0
+				? Math.max(1, (toMs - earliestStartMs) / DAY_MS)
+				: null;
 	const episodesPerDay = kpi(
-		windowDays !== null ? Number((windowEpisodes.length / windowDays).toFixed(2)) : windowEpisodes.length,
-		windowDays !== null ? Number((previousEpisodes.length / windowDays).toFixed(2)) : null
+		windowDays !== null ? Number((windowEpisodes.length / windowDays).toFixed(2)) : 0,
+		fromMs !== null && windowDays !== null ? Number((previousEpisodes.length / windowDays).toFixed(2)) : null
 	);
 
 	// ---- per-name table -------------------------------------------------------
@@ -371,7 +393,9 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		acc.alertIds.add(episode.alertId);
 	}
 	const byName: AlertNameStats[] = [...byNameAcc.entries()].map(([name, acc]) => {
-		const resolved = acc.episodes.filter((e) => e.resolvedMs !== null);
+		// Same window rule as the headline MTTR: only resolutions that LANDED inside
+		// the window count — the table must not contradict the Reliability tab.
+		const resolved = acc.episodes.filter((e) => e.resolvedMs !== null && inWindow(e.resolvedMs));
 		const mttr = durationStats(resolved.map((e) => (e.resolvedMs as number) - e.startMs));
 		const gaps: number[] = [];
 		for (const alertId of acc.alertIds) {
@@ -420,7 +444,10 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		let taggedEpisodes = 0;
 		let untaggedEpisodes = 0;
 		for (const episode of windowEpisodes) {
-			const value = meta.get(episode.alertId)?.tags[key];
+			const tags = meta.get(episode.alertId)?.tags;
+			// hasOwnProperty, not plain lookup: a key like "__proto__" must read as
+			// absent, not as Object.prototype.
+			const value = tags && Object.prototype.hasOwnProperty.call(tags, key) ? tags[key] : undefined;
 			if (value === undefined) {
 				untaggedEpisodes += 1;
 				continue;
@@ -433,7 +460,9 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			}
 			acc.episodes += 1;
 			acc.alertIds.add(episode.alertId);
-			if (episode.resolvedMs !== null) acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
+			// Window rule matches the headline MTTR: resolutions past `to` don't count.
+			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs))
+				acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
 			const day = local.day(episode.startMs);
 			acc.dayCounts.set(day, (acc.dayCounts.get(day) ?? 0) + 1);
 		}
