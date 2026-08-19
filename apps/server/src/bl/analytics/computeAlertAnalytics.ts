@@ -563,10 +563,11 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			volumeByDay: [...dayPointsByDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
 			trends: topValues.map((value) => {
 				const acc = byValue.get(value);
+				const empty = new Map<string, DurationDayAccumulator>();
 				return {
 					value,
-					mttrByDay: durationTrend(tagDays, acc?.mttrDayAcc ?? new Map()),
-					mttaByDay: durationTrend(tagDays, acc?.mttaDayAcc ?? new Map()),
+					mttrByDay: durationTrend(tagDays, acc?.mttrDayAcc ?? empty),
+					mttaByDay: durationTrend(tagDays, acc?.mttaDayAcc ?? empty),
 				};
 			}),
 		};
