@@ -2,6 +2,7 @@
 export const queryKeys = {
 	services: ['services'] as const,
 	alerts: ['alerts'] as const,
+	incidents: ['incidents'] as const,
 	resolvedAlerts: ['resolvedAlerts'] as const,
 	alertComments: ['alertComments'] as const,
 	alertHistory: (alertId: string) => ['alertHistory', alertId] as const,

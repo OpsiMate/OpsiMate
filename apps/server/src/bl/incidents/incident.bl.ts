@@ -73,12 +73,7 @@ export class IncidentBL {
 
 		const summary = await this.incidentRepo.getIncidentSummaryById(lastID);
 		if (!summary) throw new Error(`Incident ${lastID} vanished right after creation`);
-		await this.recordMembershipEvents(
-			request.alertIds,
-			AlertHistoryEventType.INCIDENT_ADDED,
-			summary.name,
-			actor
-		);
+		await this.recordMembershipEvents(request.alertIds, AlertHistoryEventType.INCIDENT_ADDED, summary.name, actor);
 		this.invalidateAlertSnapshots();
 		return summary;
 	}
@@ -133,12 +128,7 @@ export class IncidentBL {
 		const incident = await this.incidentRepo.getIncidentById(id);
 		if (!incident) return false;
 		const { memberAlertIds } = await this.incidentRepo.deleteIncident(id);
-		await this.recordMembershipEvents(
-			memberAlertIds,
-			AlertHistoryEventType.INCIDENT_REMOVED,
-			incident.name,
-			actor
-		);
+		await this.recordMembershipEvents(memberAlertIds, AlertHistoryEventType.INCIDENT_REMOVED, incident.name, actor);
 		this.invalidateAlertSnapshots();
 		return true;
 	}

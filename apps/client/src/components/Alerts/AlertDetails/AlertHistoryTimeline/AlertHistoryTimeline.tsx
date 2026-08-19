@@ -3,6 +3,8 @@ import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/
 import {
 	Activity,
 	Bell,
+	FolderInput,
+	FolderMinus,
 	BellOff,
 	CheckCircle2,
 	Flame,
@@ -92,6 +94,18 @@ const EVENT_STYLES: Record<Exclude<AlertHistoryEventType, AlertHistoryEventType.
 		dotClass: 'bg-sky-500',
 		textClass: 'text-sky-600 dark:text-sky-400',
 		Icon: MessageSquare,
+	},
+	[AlertHistoryEventType.INCIDENT_ADDED]: {
+		label: 'Grouped into incident',
+		dotClass: 'bg-indigo-500',
+		textClass: 'text-indigo-600 dark:text-indigo-400',
+		Icon: FolderInput,
+	},
+	[AlertHistoryEventType.INCIDENT_REMOVED]: {
+		label: 'Removed from incident',
+		dotClass: 'bg-slate-400',
+		textClass: 'text-slate-600 dark:text-slate-300',
+		Icon: FolderMinus,
 	},
 };
 

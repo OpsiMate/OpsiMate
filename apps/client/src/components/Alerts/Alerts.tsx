@@ -22,6 +22,7 @@ import {
 	useDeleteResolvedAlert,
 	useMarkAlertRead,
 } from '@/hooks/queries/alerts';
+import { useIncidents } from '@/hooks/queries/incidents';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -369,6 +370,8 @@ const Alerts = () => {
 		setAllMatchingSelected(false);
 	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+	// Incident whose details panel is open; null = alert details (or nothing) shown.
+	const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
@@ -732,6 +735,7 @@ const Alerts = () => {
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
+	const { incidentsById } = useIncidents();
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -977,6 +981,9 @@ const Alerts = () => {
 			onColumnWidthsChange={handleColumnWidthsChange}
 			onAlertClick={handleAlertClick}
 			activeAlertId={syncedSelectedAlert?.id ?? null}
+			incidentsById={incidentsById}
+			onOpenIncident={handleOpenIncident}
+			activeIncidentId={selectedIncidentId}
 			tagKeyColumnLabels={allColumnLabels}
 			groupByColumns={dashboardState.groupBy}
 			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1048,7 +1055,15 @@ const Alerts = () => {
 		}
 	};
 
+	const handleOpenIncident = (incidentId: number) => {
+		// The two right-side panels are exclusive: opening an incident closes the alert
+		// details and vice versa (see handleAlertClick).
+		setSelectedAlert(null);
+		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
+	};
+
 	const handleAlertClick = (alert: Alert) => {
+		setSelectedIncidentId(null);
 		// Opening an unread (active) alert marks it as read, un-bolding its row. The transient
 		// isResolved flag (set on resolved rows in the All view) is the guard here — an id-based
 		// check would wrongly skip active alerts that were resolved once and re-fired.
@@ -1412,6 +1427,9 @@ const Alerts = () => {
 									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
+									incidentsById={incidentsById}
+									onOpenIncident={handleOpenIncident}
+									activeIncidentId={selectedIncidentId}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1457,6 +1475,9 @@ const Alerts = () => {
 									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
+									incidentsById={incidentsById}
+									onOpenIncident={handleOpenIncident}
+									activeIncidentId={selectedIncidentId}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}

@@ -250,9 +250,9 @@ export class IncidentRepository {
 	// ids so the caller can write per-alert history.
 	async deleteIncident(id: number): Promise<{ memberAlertIds: string[] }> {
 		return runAsync(() => {
-			const members = this.db
-				.prepare(`SELECT alert_id FROM incident_alerts WHERE incident_id = ?`)
-				.all(id) as { alert_id: string }[];
+			const members = this.db.prepare(`SELECT alert_id FROM incident_alerts WHERE incident_id = ?`).all(id) as {
+				alert_id: string;
+			}[];
 			this.db.transaction(() => {
 				this.db.prepare(`DELETE FROM incident_alerts WHERE incident_id = ?`).run(id);
 				this.db.prepare(`DELETE FROM incidents WHERE id = ?`).run(id);

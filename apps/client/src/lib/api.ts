@@ -26,6 +26,8 @@ import {
 	Alert as SharedAlert,
 	OncallTeam,
 	Tag,
+	Incident,
+	IncidentSummary,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -528,6 +530,34 @@ export const mutePoliciesApi = {
 	updateMutePolicy: (id: number, payload: Partial<MutePolicyPayload>) =>
 		apiRequest<MutePolicy>(`/mute-policies/${id}`, 'PUT', payload),
 	deleteMutePolicy: (id: number) => apiRequest<void>(`/mute-policies/${id}`, 'DELETE'),
+};
+
+export interface CreateIncidentPayload {
+	name?: string;
+	description?: string;
+	alertIds: string[];
+}
+
+export interface UpdateIncidentPayload {
+	name?: string;
+	description?: string | null;
+}
+
+export interface RemoveIncidentAlertsResult {
+	dissolved: boolean;
+}
+
+export const incidentsApi = {
+	listIncidents: () => apiRequest<IncidentSummary[]>('/incidents'),
+	getIncident: (id: number) => apiRequest<IncidentSummary>(`/incidents/${id}`),
+	createIncident: (payload: CreateIncidentPayload) => apiRequest<IncidentSummary>('/incidents', 'POST', payload),
+	updateIncident: (id: number, payload: UpdateIncidentPayload) =>
+		apiRequest<Incident>(`/incidents/${id}`, 'PATCH', payload),
+	addIncidentAlerts: (id: number, alertIds: string[]) =>
+		apiRequest<IncidentSummary>(`/incidents/${id}/alerts`, 'POST', { alertIds }),
+	removeIncidentAlerts: (id: number, alertIds: string[]) =>
+		apiRequest<RemoveIncidentAlertsResult>(`/incidents/${id}/alerts/remove`, 'POST', { alertIds }),
+	deleteIncident: (id: number) => apiRequest<void>(`/incidents/${id}`, 'DELETE'),
 };
 
 export type OncallTeamPayload = {
