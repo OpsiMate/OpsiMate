@@ -10,25 +10,35 @@ import { cn } from '@/lib/utils';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { AnalyticsScope, useAlertAnalytics } from '@/hooks/queries/useAlertAnalytics';
 import { BarChart3, BellOff, CheckCircle2, Flame, Loader2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // The Insights page: aggregate analytics over the alert history, scoped by a time
 // window and split into three views — Overview (volume and distributions),
 // Reliability (DORA-style restore metrics), and By alert (per-name breakdown).
 // All numbers come pre-aggregated from one endpoint; the page renders the same
 // whether the installation has a hundred alerts or a million.
+// The window's "now" anchor advances in 5-minute steps: fine-grained enough that a
+// page left open stays honest, coarse enough that the query key (and cache) doesn't
+// churn per render.
+const NOW_BUCKET_MS = 5 * 60 * 1000;
+
 const AlertInsights = () => {
 	const [preset, setPreset] = useState('7d');
 	const [scopeDashboard, setScopeDashboard] = useState<Dashboard | null>(null);
 	const scope: AnalyticsScope | undefined = scopeDashboard
 		? { filters: scopeDashboard.filters, search: scopeDashboard.query || undefined }
 		: undefined;
+	const [nowBucket, setNowBucket] = useState(() => Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
+	useEffect(() => {
+		const timer = window.setInterval(() => {
+			setNowBucket(Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
+		}, NOW_BUCKET_MS);
+		return () => window.clearInterval(timer);
+	}, []);
 	const from = useMemo(() => {
 		const hours = TIME_PRESETS.find((p) => p.key === preset)?.hours ?? null;
-		return hours === null ? null : new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-		// Recompute when the preset changes; "now" drift between clicks is irrelevant
-		// at these window sizes.
-	}, [preset]);
+		return hours === null ? null : new Date(nowBucket - hours * 60 * 60 * 1000).toISOString();
+	}, [preset, nowBucket]);
 
 	const { data, isLoading, isError } = useAlertAnalytics(from, scope);
 
@@ -74,14 +84,13 @@ const AlertInsights = () => {
 					</div>
 				</div>
 
-				{isLoading && (
+				{isLoading ? (
 					<div className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground">
 						<Loader2 className="h-4 w-4 animate-spin" /> Crunching the history…
 					</div>
-				)}
-				{isError && <div className="py-24 text-center text-sm text-destructive">Failed to load analytics</div>}
-
-				{data && (
+				) : isError ? (
+					<div className="py-24 text-center text-sm text-destructive">Failed to load analytics</div>
+				) : data ? (
 					<Tabs defaultValue="overview">
 						<TabsList>
 							<TabsTrigger value="overview">Overview</TabsTrigger>
@@ -157,7 +166,7 @@ const AlertInsights = () => {
 							<ByNameTab rows={data.byName} />
 						</TabsContent>
 					</Tabs>
-				)}
+				) : null}
 			</div>
 		</DashboardLayout>
 	);

@@ -12,7 +12,7 @@ import {
 } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
-	FiltersParamSchema,
+	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhook,
 	GrafanaWebhookSchema,
@@ -795,35 +795,22 @@ export class AlertController {
 	// the user's clock says.
 	async getAlertAnalytics(req: Request, res: Response) {
 		try {
-			const fromRaw = typeof req.query.from === 'string' ? req.query.from : null;
-			const toRaw = typeof req.query.to === 'string' ? req.query.to : null;
-			const timeZone = typeof req.query.tz === 'string' ? req.query.tz : undefined;
-			if (fromRaw !== null && Number.isNaN(Date.parse(fromRaw))) {
-				return res.status(400).json({ success: false, error: 'Invalid from timestamp' });
-			}
-			if (toRaw !== null && Number.isNaN(Date.parse(toRaw))) {
-				return res.status(400).json({ success: false, error: 'Invalid to timestamp' });
-			}
-			// Dashboard scoping: same JSON `filters` format and `search` semantics as the
-			// alerts list endpoints, so a dashboard means the same thing here as there.
-			let filters: Record<string, string[]> | undefined;
-			if (typeof req.query.filters === 'string') {
-				try {
-					filters = FiltersParamSchema.parse(req.query.filters);
-				} catch {
-					return res.status(400).json({ success: false, error: 'Invalid filters' });
-				}
-			}
-			const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+			// Dashboard scoping (`filters` + `search`) uses the same JSON format and
+			// semantics as the alerts list endpoints, so a dashboard means the same
+			// thing here as there. The schema also rejects an inverted from/to window.
+			const params = AlertAnalyticsParamsSchema.parse(req.query);
 			const analytics = await this.alertBL.getAlertAnalytics(
-				fromRaw,
-				toRaw ?? new Date().toISOString(),
-				timeZone,
-				filters,
-				search
+				params.from ?? null,
+				params.to ?? new Date().toISOString(),
+				params.tz,
+				params.filters,
+				params.search
 			);
 			return res.json({ success: true, data: analytics });
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error computing alert analytics', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}

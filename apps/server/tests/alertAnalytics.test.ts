@@ -1,6 +1,9 @@
 import { Alert } from '@OpsiMate/shared';
-import { describe, expect, test } from 'vitest';
+import Database from 'better-sqlite3';
+import { SuperTest, Test } from 'supertest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { AnalyticsInputs, computeAlertAnalytics, EpisodeRow } from '../src/bl/analytics/computeAlertAnalytics';
+import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // Pure-function tests over hand-built histories: episode pairing, window scoping,
 // previous-period deltas, and each reliability metric's exact semantics.
@@ -28,6 +31,56 @@ const compute = (partial: Partial<AnalyticsInputs>) =>
 		timeZone: 'UTC',
 		...partial,
 	});
+
+// HTTP contract: the endpoint exists behind auth, parses its params through zod, and
+// rejects an inverted window. (A unit-only suite once missed an unimported schema
+// symbol that compiled but threw at request time — this is the guard against that.)
+describe('GET /alerts/analytics', () => {
+	let app: SuperTest<Test>;
+	let db: Database.Database;
+	let jwtToken: string;
+
+	beforeAll(async () => {
+		db = await setupDB();
+		app = await setupExpressApp(db);
+		jwtToken = await setupUserWithToken(app);
+		db.prepare(
+			`INSERT INTO alerts (id, status, severity, tags, starts_at, updated_at, alert_url, alert_name, summary, is_dismissed)
+			 VALUES ('an-1', 'firing', 'warning', '{}', '2026-08-10T00:00:00.000Z', '2026-08-10T00:00:00.000Z', 'https://x', 'Analytics probe', 'S', 0)`
+		).run();
+	});
+
+	test('returns the aggregate payload', async () => {
+		const res = await app.get('/api/v1/alerts/analytics?tz=UTC').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(200);
+		expect(res.body.data.overview.totalEpisodes.value).toBeGreaterThanOrEqual(1);
+		expect(res.body.data.reliability).toBeDefined();
+		expect(Array.isArray(res.body.data.byName)).toBe(true);
+	});
+
+	test('rejects an inverted window and malformed timestamps with 400', async () => {
+		const inverted = await app
+			.get('/api/v1/alerts/analytics?from=2026-08-19T00:00:00.000Z&to=2026-08-01T00:00:00.000Z')
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(inverted.status).toBe(400);
+		const garbage = await app
+			.get('/api/v1/alerts/analytics?from=not-a-date')
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(garbage.status).toBe(400);
+	});
+
+	test('filters scope the aggregates', async () => {
+		const filters = encodeURIComponent(JSON.stringify({ alertName: ['Analytics probe'] }));
+		const res = await app
+			.get(`/api/v1/alerts/analytics?tz=UTC&filters=${filters}`)
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(200);
+		expect(res.body.data.range.filtered).toBe(true);
+		expect(res.body.data.overview.topAlertNames.every((n: { name: string }) => n.name === 'Analytics probe')).toBe(
+			true
+		);
+	});
+});
 
 describe('computeAlertAnalytics', () => {
 	test('episodes pair firing with the next resolution; MTTR measures exactly that span', () => {
@@ -161,6 +214,21 @@ describe('computeAlertAnalytics', () => {
 		expect(row.episodes).toBe(2);
 		expect(row.mttrMs).toBe(3 * HOUR);
 		expect(row.worstSeverity).toBe('critical');
+	});
+
+	test('an event after a NEXT episode started never attributes to an earlier unresolved episode', () => {
+		const result = compute({
+			episodes: [
+				firing('a', NOW - 10 * HOUR), // unresolved episode 1
+				firing('a', NOW - 5 * HOUR), // episode 2
+			],
+			// The only event happened during episode 2; episode 1 must stay untouched.
+			events: [{ alertId: 'a', at: iso(NOW - 4 * HOUR) }],
+			activeAlerts: [alert('a', 'A', 'warning')],
+		});
+		expect(result.reliability.ackCoverage.acked).toBe(1);
+		expect(result.reliability.mtta.count).toBe(1);
+		expect(result.reliability.mtta.meanMs).toBe(1 * HOUR);
 	});
 
 	test('a dashboard filter scopes everything to the allowed alerts', () => {

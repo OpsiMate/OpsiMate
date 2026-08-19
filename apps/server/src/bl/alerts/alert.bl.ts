@@ -66,6 +66,15 @@ export class AlertBL {
 		() => this.computeAllResolvedAlerts(),
 		snapshotTtlMs()
 	);
+	// Analytics inputs: two full-table scans (history rows, event times) that must not
+	// run per request. Same TTL and invalidation as the alert snapshots — every write
+	// path that changes them already calls invalidateSnapshots().
+	private readonly historyRowsSnapshot = new SnapshotCache<
+		{ alert_id: string; status: string; archived_at: string }[]
+	>(() => this.resolvedAlertRepo.getAllHistoryRows(), snapshotTtlMs());
+	private readonly eventTimesSnapshot = new SnapshotCache<
+		{ alert_id: string; created_at: string; actor_name: string | null }[]
+	>(() => this.alertHistoryRepo.getAllEventTimes(), snapshotTtlMs());
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -81,6 +90,8 @@ export class AlertBL {
 	invalidateSnapshots(): void {
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
+		this.historyRowsSnapshot.invalidate();
+		this.eventTimesSnapshot.invalidate();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
@@ -667,13 +678,15 @@ export class AlertBL {
 		filters?: Record<string, string[]>,
 		search?: string
 	): Promise<AlertAnalytics> {
-		const [activeSnapshot, resolvedSnapshot, historyRows, eventRows, owners] = await Promise.all([
+		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, owners] = await Promise.all([
 			this.activeSnapshot.get(),
 			this.resolvedSnapshot.get(),
-			this.resolvedAlertRepo.getAllHistoryRows(),
-			this.alertHistoryRepo.getAllEventTimes(),
+			this.historyRowsSnapshot.get(),
+			this.eventTimesSnapshot.get(),
 			this.getOwnerInfos(),
 		]);
+		const historyRows = historySnapshot.value;
+		const eventRows = eventsSnapshot.value;
 
 		// Dashboard scoping: the SAME filter/search semantics the alerts list uses, so
 		// the Insights numbers agree with what that dashboard shows. Alerts deleted from

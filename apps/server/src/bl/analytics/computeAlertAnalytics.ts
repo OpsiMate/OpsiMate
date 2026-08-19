@@ -113,26 +113,35 @@ const buildEpisodes = (rows: EpisodeRow[], events: UserEventRow[]): Episode[] =>
 			.sort((a, b) => a.ms - b.ms);
 		const alertEvents = (eventsByAlert.get(alertId) ?? []).sort((a, b) => a - b);
 
+		const alertEpisodes: Episode[] = [];
 		let open: Episode | null = null;
 		for (const row of timeline) {
 			if (row.status === 'firing') {
 				// A new firing always starts a new episode; an unclosed previous one
 				// (unresolve, or the resolved row was purged) just ends unresolved.
-				if (open) episodes.push(open);
+				if (open) alertEpisodes.push(open);
 				open = { alertId, startMs: row.ms, resolvedMs: null, firstTouchMs: null };
 			} else if (row.status === 'resolved' && open && open.resolvedMs === null && row.ms >= open.startMs) {
 				open.resolvedMs = row.ms;
 			}
 		}
-		if (open) episodes.push(open);
+		if (open) alertEpisodes.push(open);
 
-		// Attach the first human touch inside each episode's span.
-		for (const episode of episodes) {
-			if (episode.alertId !== alertId) continue;
-			const spanEnd = episode.resolvedMs ?? Number.POSITIVE_INFINITY;
-			const touch = alertEvents.find((ms) => ms >= episode.startMs && ms <= spanEnd);
-			episode.firstTouchMs = touch ?? null;
+		// Attach the first human touch inside each episode. The span is bounded by the
+		// resolution OR the next episode's start — an unresolved episode must not
+		// swallow events that belong to the one after it. Events and episodes are both
+		// time-sorted, so one forward cursor keeps this linear.
+		let eventCursor = 0;
+		for (let i = 0; i < alertEpisodes.length; i++) {
+			const episode = alertEpisodes[i];
+			const nextStart = i + 1 < alertEpisodes.length ? alertEpisodes[i + 1].startMs : Number.POSITIVE_INFINITY;
+			const spanEnd = Math.min(episode.resolvedMs ?? Number.POSITIVE_INFINITY, nextStart);
+			while (eventCursor < alertEvents.length && alertEvents[eventCursor] < episode.startMs) eventCursor++;
+			if (eventCursor < alertEvents.length && alertEvents[eventCursor] <= spanEnd) {
+				episode.firstTouchMs = alertEvents[eventCursor];
+			}
 		}
+		episodes.push(...alertEpisodes);
 	}
 	return episodes;
 };
@@ -379,7 +388,9 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			mtbfMs: gaps.length > 0 ? Math.round(gaps.reduce((sum, v) => sum + v, 0) / gaps.length) : null,
 			refireRate: resolved.length > 0 ? Number((nameRefired / resolved.length).toFixed(3)) : null,
 			worstSeverity: worst,
-			lastSeen: new Date(Math.max(...acc.episodes.map((e) => e.startMs))).toISOString(),
+			// reduce, not Math.max(...spread): a name with tens of thousands of episodes
+			// would blow the argument-count limit and throw a RangeError.
+			lastSeen: new Date(acc.episodes.reduce((max, e) => Math.max(max, e.startMs), 0)).toISOString(),
 		};
 	});
 	byName.sort((a, b) => b.episodes - a.episodes || a.name.localeCompare(b.name));

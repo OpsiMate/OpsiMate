@@ -344,6 +344,20 @@ export const AlertListQueryParamsSchema = z.object({
 	cursor: z.string().optional(),
 });
 
+// Insights endpoint params. from<=to is enforced here so the handler never sees an
+// inverted window.
+export const AlertAnalyticsParamsSchema = z
+	.object({
+		from: z.iso.datetime({ offset: true }).optional(),
+		to: z.iso.datetime({ offset: true }).optional(),
+		tz: z.string().max(64).optional(),
+		filters: FiltersParamSchema.optional(),
+		search: z.string().optional(),
+	})
+	.refine((params) => !params.from || !params.to || Date.parse(params.from) <= Date.parse(params.to), {
+		message: 'from must not be after to',
+	});
+
 export const AlertFacetsParamsSchema = z.object({
 	filters: FiltersParamSchema.optional(),
 	fields: FieldsParamSchema.optional(),
