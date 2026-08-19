@@ -444,11 +444,14 @@ export const alertsApi = {
 	},
 
 	// Insights aggregates; from=null means all time, tz buckets days/hours in the
-	// requester's timezone.
-	getAlertAnalytics: (from: string | null, timeZone: string) => {
+	// requester's timezone. filters/search use the SAME format as the list endpoints,
+	// so a dashboard scopes Insights exactly as it scopes the alerts table.
+	getAlertAnalytics: (from: string | null, timeZone: string, filters?: Record<string, string[]>, search?: string) => {
 		const params = new URLSearchParams();
 		if (from) params.set('from', from);
 		params.set('tz', timeZone);
+		if (filters && Object.keys(filters).length > 0) params.set('filters', JSON.stringify(filters));
+		if (search?.trim()) params.set('search', search);
 		return apiRequest<AlertAnalytics>(`/alerts/analytics?${params.toString()}`);
 	},
 

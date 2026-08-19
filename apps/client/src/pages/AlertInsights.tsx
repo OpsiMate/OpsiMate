@@ -1,12 +1,14 @@
 import { ByNameTab } from '@/components/Analytics/ByNameTab';
-import { HourBarChart, SeverityDonut, TopList, VolumeAreaChart } from '@/components/Analytics/charts';
+import { DashboardScopePicker } from '@/components/Analytics/DashboardScopePicker';
+import { HourBarChart, SeverityDonut, TopList, VolumeAreaChart, WeekdayBarChart } from '@/components/Analytics/charts';
 import { KpiCard } from '@/components/Analytics/KpiCard';
 import { ReliabilityTab } from '@/components/Analytics/ReliabilityTab';
 import { formatPercent, TIME_PRESETS } from '@/components/Analytics/analytics.utils';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { useAlertAnalytics } from '@/hooks/queries/useAlertAnalytics';
+import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
+import { AnalyticsScope, useAlertAnalytics } from '@/hooks/queries/useAlertAnalytics';
 import { BarChart3, BellOff, CheckCircle2, Flame, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -17,6 +19,10 @@ import { useMemo, useState } from 'react';
 // whether the installation has a hundred alerts or a million.
 const AlertInsights = () => {
 	const [preset, setPreset] = useState('7d');
+	const [scopeDashboard, setScopeDashboard] = useState<Dashboard | null>(null);
+	const scope: AnalyticsScope | undefined = scopeDashboard
+		? { filters: scopeDashboard.filters, search: scopeDashboard.query || undefined }
+		: undefined;
 	const from = useMemo(() => {
 		const hours = TIME_PRESETS.find((p) => p.key === preset)?.hours ?? null;
 		return hours === null ? null : new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
@@ -24,7 +30,7 @@ const AlertInsights = () => {
 		// at these window sizes.
 	}, [preset]);
 
-	const { data, isLoading, isError } = useAlertAnalytics(from);
+	const { data, isLoading, isError } = useAlertAnalytics(from, scope);
 
 	return (
 		<DashboardLayout>
@@ -40,23 +46,31 @@ const AlertInsights = () => {
 							keep coming back.
 						</p>
 					</div>
-					<div className="flex items-center rounded-lg border border-border p-0.5">
-						{TIME_PRESETS.map((option) => (
-							<button
-								key={option.key}
-								type="button"
-								onClick={() => setPreset(option.key)}
-								aria-pressed={preset === option.key}
-								className={cn(
-									'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-									preset === option.key
-										? 'bg-primary text-primary-foreground'
-										: 'text-muted-foreground hover:text-foreground'
-								)}
-							>
-								{option.label}
-							</button>
-						))}
+					<div className="flex flex-col items-end gap-2">
+						<div className="flex flex-wrap items-center gap-2">
+							<DashboardScopePicker
+								selectedId={scopeDashboard?.id ?? null}
+								onSelect={setScopeDashboard}
+							/>
+							<div className="flex items-center rounded-lg border border-border p-0.5">
+								{TIME_PRESETS.map((option) => (
+									<button
+										key={option.key}
+										type="button"
+										onClick={() => setPreset(option.key)}
+										aria-pressed={preset === option.key}
+										className={cn(
+											'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+											preset === option.key
+												? 'bg-primary text-primary-foreground'
+												: 'text-muted-foreground hover:text-foreground'
+										)}
+									>
+										{option.label}
+									</button>
+								))}
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -111,9 +125,10 @@ const AlertInsights = () => {
 							<VolumeAreaChart data={data.overview.volumeByDay} />
 							<div className="grid gap-4 lg:grid-cols-2">
 								<HourBarChart data={data.overview.volumeByHour} />
-								<SeverityDonut data={data.overview.severity} />
+								<WeekdayBarChart data={data.overview.volumeByWeekday} />
 							</div>
-							<div className="grid gap-4 lg:grid-cols-2">
+							<div className="grid gap-4 lg:grid-cols-3">
+								<SeverityDonut data={data.overview.severity} />
 								<TopList
 									title="Top alerts"
 									hint="Most frequent alert names in the window"
@@ -123,6 +138,13 @@ const AlertInsights = () => {
 									title="Common tags"
 									hint="Most frequent tag values across alerting alerts"
 									items={data.overview.topTags}
+								/>
+							</div>
+							<div className="grid gap-4 lg:grid-cols-2">
+								<TopList
+									title="Top responders"
+									hint="Alert actions by user in the window"
+									items={data.overview.topResponders}
 								/>
 							</div>
 						</TabsContent>

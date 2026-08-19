@@ -163,6 +163,47 @@ describe('computeAlertAnalytics', () => {
 		expect(row.worstSeverity).toBe('critical');
 	});
 
+	test('a dashboard filter scopes everything to the allowed alerts', () => {
+		const result = compute({
+			episodes: [firing('a', NOW - 2 * HOUR), resolved('a', NOW - HOUR), firing('b', NOW - 3 * HOUR)],
+			events: [
+				{ alertId: 'a', at: iso(NOW - 90 * 60 * 1000), actorName: 'idan' },
+				{ alertId: 'b', at: iso(NOW - 2 * HOUR), actorName: 'someone-else' },
+			],
+			activeAlerts: [alert('b', 'Excluded', 'critical')],
+			resolvedAlerts: [alert('a', 'Included', 'warning')],
+			allowedAlertIds: new Set(['a']),
+		});
+		expect(result.overview.totalEpisodes.value).toBe(1);
+		expect(result.overview.topAlertNames).toEqual([{ name: 'Included', count: 1 }]);
+		// firingNow counts only allowed active alerts; b is filtered out.
+		expect(result.overview.firingNow).toBe(0);
+		// Responders scoped too: someone-else acted on the excluded alert.
+		expect(result.overview.topResponders).toEqual([{ name: 'idan', count: 1 }]);
+		expect(result.range.filtered).toBe(true);
+	});
+
+	test('resolutions land on their local day as the volume overlay and the MTTR trend', () => {
+		const start = Date.parse('2026-08-19T10:00:00.000Z');
+		const result = compute({
+			episodes: [firing('a', start), resolved('a', start + 2 * HOUR)],
+			resolvedAlerts: [alert('a', 'A', 'warning')],
+		});
+		const day = result.overview.volumeByDay.find((d) => d.date === '2026-08-19');
+		expect(day?.resolved).toBe(1);
+		expect(result.reliability.mttrByDay).toEqual([{ date: '2026-08-19', meanMs: 2 * HOUR, count: 1 }]);
+	});
+
+	test('weekday histogram buckets episodes by local day of week', () => {
+		// 2026-08-19 is a Wednesday (UTC).
+		const result = compute({
+			episodes: [firing('a', Date.parse('2026-08-19T10:00:00.000Z'))],
+			activeAlerts: [alert('a', 'A', 'warning')],
+		});
+		const nonZero = result.overview.volumeByWeekday.filter((w) => w.count > 0);
+		expect(nonZero).toEqual([{ weekday: 3, count: 1 }]);
+	});
+
 	test('hour histogram buckets in the requested timezone', () => {
 		// 23:30 UTC = 02:30 in Athens summer time (UTC+3) — the histogram must say hour 2, not 23.
 		const at = Date.parse('2026-08-19T23:30:00.000Z');

@@ -91,12 +91,14 @@ export class AlertHistoryRepository {
 		});
 	}
 
-	// Every user action's (alert, moment) pair, for time-to-acknowledge analytics.
-	async getAllEventTimes(): Promise<{ alert_id: string; created_at: string }[]> {
+	// Every user action's (alert, moment, actor) triple, for time-to-acknowledge and
+	// top-responder analytics.
+	async getAllEventTimes(): Promise<{ alert_id: string; created_at: string; actor_name: string | null }[]> {
 		return runAsync(() => {
-			return this.db.prepare(`SELECT alert_id, created_at FROM alert_history_events`).all() as {
+			return this.db.prepare(`SELECT alert_id, created_at, actor_name FROM alert_history_events`).all() as {
 				alert_id: string;
 				created_at: string;
+				actor_name: string | null;
 			}[];
 		});
 	}

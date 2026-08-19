@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { formatShortDateTime } from '@/lib/datetime';
 import { AlertNameStats, AlertSeverity } from '@OpsiMate/shared';
+import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { formatDurationMs, formatPercent } from './analytics.utils';
@@ -18,6 +19,7 @@ interface ByNameTabProps {
 // and which ones flap. Reuses the shared click-to-sort header the rule tables use.
 export const ByNameTab = ({ rows }: ByNameTabProps) => {
 	const [search, setSearch] = useState('');
+	const maxEpisodes = useMemo(() => Math.max(...rows.map((r) => r.episodes), 1), [rows]);
 	const filtered = useMemo(() => {
 		const query = search.trim().toLowerCase();
 		if (!query) return rows;
@@ -126,10 +128,31 @@ export const ByNameTab = ({ rows }: ByNameTabProps) => {
 											)}
 										</div>
 									</TableCell>
-									<TableCell className="tabular-nums">{row.episodes}</TableCell>
+									<TableCell>
+										{/* Proportional bar behind the number: scanning the column
+										    shows the distribution without reading every value. */}
+										<div className="relative min-w-[70px] rounded px-1.5 py-0.5">
+											<div
+												className="absolute inset-y-0 left-0 rounded bg-primary/15"
+												style={{ width: `${(row.episodes / maxEpisodes) * 100}%` }}
+											/>
+											<span className="relative z-10 tabular-nums">{row.episodes}</span>
+										</div>
+									</TableCell>
 									<TableCell className="tabular-nums">{formatDurationMs(row.mttrMs)}</TableCell>
 									<TableCell className="tabular-nums">{formatDurationMs(row.mtbfMs)}</TableCell>
-									<TableCell className="tabular-nums">{formatPercent(row.refireRate)}</TableCell>
+									<TableCell
+										className={cn(
+											'tabular-nums',
+											row.refireRate !== null && row.refireRate > 0.5
+												? 'font-medium text-red-600 dark:text-red-400'
+												: row.refireRate !== null && row.refireRate > 0.2
+													? 'text-amber-600 dark:text-amber-400'
+													: ''
+										)}
+									>
+										{formatPercent(row.refireRate)}
+									</TableCell>
 									<TableCell className="whitespace-nowrap text-muted-foreground">
 										{formatShortDateTime(row.lastSeen, row.lastSeen)}
 									</TableCell>

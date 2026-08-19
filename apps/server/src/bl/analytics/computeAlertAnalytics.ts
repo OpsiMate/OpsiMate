@@ -22,6 +22,8 @@ export interface EpisodeRow {
 export interface UserEventRow {
 	alertId: string;
 	at: string;
+	// Who did it; null for system-recorded events. Feeds the Top responders list.
+	actorName?: string | null;
 }
 
 export interface AnalyticsInputs {
@@ -34,6 +36,10 @@ export interface AnalyticsInputs {
 	to: string;
 	// IANA timezone for day/hour bucketing — peak hours must be the USER's hours.
 	timeZone?: string;
+	// When present (a dashboard's filters are active), only these alerts' episodes
+	// count. Alerts deleted from both tables can never match a filter, so they are
+	// naturally excluded.
+	allowedAlertIds?: Set<string>;
 }
 
 // A reconstructed firing episode: started, maybe resolved, maybe first-touched.
@@ -144,9 +150,17 @@ const makeLocalParts = (timeZone: string | undefined) => {
 		dayFormat = new Intl.DateTimeFormat('en-CA', { dateStyle: 'short' });
 		hourFormat = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23' });
 	}
+	const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	let weekdayFormat: Intl.DateTimeFormat;
+	try {
+		weekdayFormat = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' });
+	} catch {
+		weekdayFormat = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
+	}
 	return {
 		day: (ms: number): string => dayFormat.format(ms),
 		hour: (ms: number): number => parseInt(hourFormat.format(ms), 10),
+		weekday: (ms: number): number => Math.max(0, WEEKDAYS.indexOf(weekdayFormat.format(ms))),
 	};
 };
 
@@ -169,7 +183,10 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		});
 	}
 
-	const episodes = buildEpisodes(inputs.episodes, inputs.events);
+	const allowed = inputs.allowedAlertIds;
+	const isAllowed = (alertId: string): boolean => !allowed || allowed.has(alertId);
+
+	const episodes = buildEpisodes(inputs.episodes, inputs.events).filter((e) => isAllowed(e.alertId));
 	const windowEpisodes = episodes.filter((e) => inWindow(e.startMs));
 	const previousEpisodes = episodes.filter((e) => inPreviousWindow(e.startMs));
 
@@ -178,6 +195,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 
 	const dayPoints = new Map<string, DayVolumePoint>();
 	const hourCounts = new Array<number>(24).fill(0);
+	const weekdayCounts = new Array<number>(7).fill(0);
 	const severityCounts = new Map<string, number>();
 	const nameCounts = new Map<string, number>();
 	for (const episode of windowEpisodes) {
@@ -186,7 +204,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		const day = local.day(episode.startMs);
 		let point = dayPoints.get(day);
 		if (!point) {
-			point = { date: day, critical: 0, warning: 0, info: 0, total: 0 };
+			point = { date: day, critical: 0, warning: 0, info: 0, total: 0, resolved: 0 };
 			dayPoints.set(day, point);
 		}
 		if (severity === 'critical') point.critical += 1;
@@ -194,6 +212,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		else point.warning += 1;
 		point.total += 1;
 		hourCounts[local.hour(episode.startMs)] += 1;
+		weekdayCounts[local.weekday(episode.startMs)] += 1;
 		severityCounts.set(severity, (severityCounts.get(severity) ?? 0) + 1);
 		if (m) nameCounts.set(m.name, (nameCounts.get(m.name) ?? 0) + 1);
 	}
@@ -215,8 +234,42 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 			.slice(0, limit);
 
-	const silencedNow = inputs.activeAlerts.filter((a) => a.isSilenced || a.isMuted).length;
+	const activeAllowed = inputs.activeAlerts.filter((a) => isAllowed(a.id));
+	const silencedNow = activeAllowed.filter((a) => a.isSilenced || a.isMuted).length;
 	const resolutionsInRange = episodes.filter((e) => e.resolvedMs !== null && inWindow(e.resolvedMs));
+
+	// Resolutions overlay + per-day MTTR trend, bucketed by the local day the
+	// resolution LANDED on (that is when the work happened).
+	const mttrDayAcc = new Map<string, { total: number; count: number }>();
+	for (const episode of resolutionsInRange) {
+		const resolvedMs = episode.resolvedMs as number;
+		const day = local.day(resolvedMs);
+		let point = dayPoints.get(day);
+		if (!point) {
+			point = { date: day, critical: 0, warning: 0, info: 0, total: 0, resolved: 0 };
+			dayPoints.set(day, point);
+		}
+		point.resolved += 1;
+		const acc = mttrDayAcc.get(day);
+		const duration = resolvedMs - episode.startMs;
+		if (acc) {
+			acc.total += duration;
+			acc.count += 1;
+		} else {
+			mttrDayAcc.set(day, { total: duration, count: 1 });
+		}
+	}
+
+	// Top responders: user actions in the window, counted by actor. Only episodes'
+	// alerts count when a filter is active — the list must match the scope.
+	const responderCounts = new Map<string, number>();
+	for (const event of inputs.events) {
+		if (!event.actorName) continue;
+		if (!isAllowed(event.alertId)) continue;
+		const ms = Date.parse(event.at);
+		if (Number.isNaN(ms) || !inWindow(ms)) continue;
+		responderCounts.set(event.actorName, (responderCounts.get(event.actorName) ?? 0) + 1);
+	}
 	const previousResolutions = episodes.filter((e) => e.resolvedMs !== null && inPreviousWindow(e.resolvedMs)).length;
 
 	const severitySlices: SeveritySlice[] = [...severityCounts.entries()]
@@ -336,19 +389,21 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			from: inputs.from,
 			to: inputs.to,
 			previousFrom: previousFromMs !== null ? new Date(previousFromMs).toISOString() : null,
+			filtered: !!allowed,
 		},
 		overview: {
 			totalEpisodes: kpi(windowEpisodes.length, fromMs !== null ? previousEpisodes.length : null),
 			resolvedInRange: kpi(resolutionsInRange.length, fromMs !== null ? previousResolutions : null),
-			firingNow: inputs.activeAlerts.length,
+			firingNow: activeAllowed.length,
 			silencedNow,
-			noiseRatio:
-				inputs.activeAlerts.length > 0 ? Number((silencedNow / inputs.activeAlerts.length).toFixed(3)) : null,
+			noiseRatio: activeAllowed.length > 0 ? Number((silencedNow / activeAllowed.length).toFixed(3)) : null,
 			volumeByDay: [...dayPoints.values()].sort((a, b) => a.date.localeCompare(b.date)),
 			volumeByHour: hourCounts.map((count, hour): HourVolumePoint => ({ hour, count })),
+			volumeByWeekday: weekdayCounts.map((count, weekday) => ({ weekday, count })),
 			severity: severitySlices,
 			topAlertNames: topOf(nameCounts, TOP_NAMES),
 			topTags: topOf(tagCounts, TOP_TAGS),
+			topResponders: topOf(responderCounts, TOP_NAMES),
 		},
 		reliability: {
 			mttr: { ...durationStats(mttrSamples), previousMeanMs: previousMeanMs },
@@ -365,6 +420,9 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 				episodes: windowEpisodes.length,
 			},
 			episodesPerDay,
+			mttrByDay: [...mttrDayAcc.entries()]
+				.map(([date, acc]) => ({ date, meanMs: Math.round(acc.total / acc.count), count: acc.count }))
+				.sort((a, b) => a.date.localeCompare(b.date)),
 		},
 		byName,
 	};

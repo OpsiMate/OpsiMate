@@ -42,6 +42,8 @@ import {
 	applyAlertListQuery,
 	computeAlertFacets,
 	computeAlertGroupSummaries,
+	alertMatchesFilters,
+	searchAlerts,
 } from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
@@ -658,25 +660,55 @@ export class AlertBL {
 	// server-side — the client never receives per-alert rows, so page cost does not
 	// grow with installation size. The pure computation lives in
 	// bl/analytics/computeAlertAnalytics for direct testing.
-	async getAlertAnalytics(from: string | null, to: string, timeZone?: string): Promise<AlertAnalytics> {
-		const [activeSnapshot, resolvedSnapshot, historyRows, eventRows] = await Promise.all([
+	async getAlertAnalytics(
+		from: string | null,
+		to: string,
+		timeZone?: string,
+		filters?: Record<string, string[]>,
+		search?: string
+	): Promise<AlertAnalytics> {
+		const [activeSnapshot, resolvedSnapshot, historyRows, eventRows, owners] = await Promise.all([
 			this.activeSnapshot.get(),
 			this.resolvedSnapshot.get(),
 			this.resolvedAlertRepo.getAllHistoryRows(),
 			this.alertHistoryRepo.getAllEventTimes(),
+			this.getOwnerInfos(),
 		]);
+
+		// Dashboard scoping: the SAME filter/search semantics the alerts list uses, so
+		// the Insights numbers agree with what that dashboard shows. Alerts deleted from
+		// both tables cannot match a filter and drop out with it.
+		let allowedAlertIds: Set<string> | undefined;
+		const hasFilters = filters && Object.keys(filters).length > 0;
+		const hasSearch = !!search?.trim();
+		if (hasFilters || hasSearch) {
+			let candidates = [...activeSnapshot.value, ...resolvedSnapshot.value];
+			if (hasFilters) {
+				candidates = candidates.filter((alert) => alertMatchesFilters(alert, filters, owners));
+			}
+			if (hasSearch) {
+				candidates = searchAlerts(candidates, search as string);
+			}
+			allowedAlertIds = new Set(candidates.map((alert) => alert.id));
+		}
+
 		return computeAlertAnalytics({
 			episodes: historyRows.map((row) => ({
 				alertId: row.alert_id,
 				status: row.status,
 				at: toIsoUtc(row.archived_at),
 			})),
-			events: eventRows.map((row) => ({ alertId: row.alert_id, at: toIsoUtc(row.created_at) })),
+			events: eventRows.map((row) => ({
+				alertId: row.alert_id,
+				at: toIsoUtc(row.created_at),
+				actorName: row.actor_name,
+			})),
 			activeAlerts: activeSnapshot.value,
 			resolvedAlerts: resolvedSnapshot.value,
 			from,
 			to,
 			timeZone,
+			allowedAlertIds,
 		});
 	}
 

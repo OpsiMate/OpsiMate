@@ -329,7 +329,7 @@ const jsonParam = <T>(parse: (raw: unknown) => T) =>
 		}
 	});
 
-const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
+export const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
 const FieldsParamSchema = jsonParam((value) => z.array(z.string()).parse(value));
 
 export const AlertListQueryParamsSchema = z.object({

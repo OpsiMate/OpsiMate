@@ -12,6 +12,7 @@ import {
 } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
+	FiltersParamSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhook,
 	GrafanaWebhookSchema,
@@ -803,10 +804,23 @@ export class AlertController {
 			if (toRaw !== null && Number.isNaN(Date.parse(toRaw))) {
 				return res.status(400).json({ success: false, error: 'Invalid to timestamp' });
 			}
+			// Dashboard scoping: same JSON `filters` format and `search` semantics as the
+			// alerts list endpoints, so a dashboard means the same thing here as there.
+			let filters: Record<string, string[]> | undefined;
+			if (typeof req.query.filters === 'string') {
+				try {
+					filters = FiltersParamSchema.parse(req.query.filters);
+				} catch {
+					return res.status(400).json({ success: false, error: 'Invalid filters' });
+				}
+			}
+			const search = typeof req.query.search === 'string' ? req.query.search : undefined;
 			const analytics = await this.alertBL.getAlertAnalytics(
 				fromRaw,
 				toRaw ?? new Date().toISOString(),
-				timeZone
+				timeZone,
+				filters,
+				search
 			);
 			return res.json({ success: true, data: analytics });
 		} catch (error) {

@@ -34,6 +34,21 @@ export interface DayVolumePoint {
 	warning: number;
 	info: number;
 	total: number;
+	// Resolutions that landed on this day — the "are we keeping up" overlay.
+	resolved: number;
+}
+
+// Day-of-week histogram (0=Sunday … 6=Saturday, matching Date.getDay()).
+export interface WeekdayVolumePoint {
+	weekday: number;
+	count: number;
+}
+
+// MTTR trend: mean restore time per local day, over resolutions on that day.
+export interface MttrDayPoint {
+	date: string;
+	meanMs: number | null;
+	count: number;
 }
 
 // Hour-of-day histogram (0-23) in the requester's timezone — "when do alerts hit us".
@@ -64,10 +79,13 @@ export interface AnalyticsOverview {
 	noiseRatio: number | null;
 	volumeByDay: DayVolumePoint[];
 	volumeByHour: HourVolumePoint[];
+	volumeByWeekday: WeekdayVolumePoint[];
 	severity: SeveritySlice[];
 	topAlertNames: NamedCount[];
 	// "key=value" strings, most frequent across alerts seen in the window.
 	topTags: NamedCount[];
+	// Who touches alerts the most: user-action counts by actor in the window.
+	topResponders: NamedCount[];
 }
 
 // The reliability tab: DORA's restore-time metric plus the alert-world adaptations
@@ -88,6 +106,8 @@ export interface AnalyticsReliability {
 	ackCoverage: { rate: number | null; acked: number; episodes: number };
 	// Episodes per day over the window — the alert-world "how often does it burn".
 	episodesPerDay: AnalyticsKpi;
+	// Restore-time trend, per local day — the chart behind the MTTR headline.
+	mttrByDay: MttrDayPoint[];
 }
 
 // One row of the per-alert-name breakdown table.
@@ -107,6 +127,8 @@ export interface AnalyticsRange {
 	to: string;
 	// Start of the equally-long window immediately before `from`; null on All time.
 	previousFrom: string | null;
+	// True when a dashboard's filters/search narrowed the scope.
+	filtered: boolean;
 }
 
 export interface AlertAnalytics {
