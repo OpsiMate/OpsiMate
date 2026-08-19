@@ -3,7 +3,11 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { SEVERITY_COLORS } from '../analytics.utils';
 import { ChartCard, tooltipStyle } from './chartTheme';
 
-export const SeverityDonut = ({ data }: { data: SeveritySlice[] }) => {
+interface SeverityDonutProps {
+	data: SeveritySlice[];
+}
+
+export const SeverityDonut = ({ data }: SeverityDonutProps) => {
 	const total = data.reduce((sum, s) => sum + s.count, 0);
 	return (
 		<ChartCard title="Severity split" hint="Episodes in the window by severity">

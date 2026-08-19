@@ -3,9 +3,14 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { formatDurationMs } from '../analytics.utils';
 import { axisTick, ChartCard, tooltipStyle } from './chartTheme';
 
-// Mean restore time per day — the trend behind the MTTR headline. Null-mean days
-// (nothing resolved) simply have no point, which recharts renders as a gap.
-export const MttrTrendChart = ({ data }: { data: MttrDayPoint[] }) => (
+// Mean restore time per day — the trend behind the MTTR headline. Days without
+// resolutions carry a null mean and BREAK the line: bridging them would draw a
+// made-up slope through days where nothing was measured.
+interface MttrTrendChartProps {
+	data: MttrDayPoint[];
+}
+
+export const MttrTrendChart = ({ data }: MttrTrendChartProps) => (
 	<ChartCard title="MTTR trend" hint="Mean time to restore per day, over that day's resolutions">
 		<ResponsiveContainer width="100%" height={220}>
 			<LineChart data={data} margin={{ top: 4, right: 8, left: 2, bottom: 0 }}>
@@ -28,7 +33,6 @@ export const MttrTrendChart = ({ data }: { data: MttrDayPoint[] }) => (
 					stroke="hsl(var(--primary))"
 					strokeWidth={2}
 					dot={{ r: 2.5, strokeWidth: 0, fill: 'hsl(var(--primary))' }}
-					connectNulls
 				/>
 			</LineChart>
 		</ResponsiveContainer>

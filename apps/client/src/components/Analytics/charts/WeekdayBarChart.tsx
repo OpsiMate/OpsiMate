@@ -5,7 +5,11 @@ import { axisTick, ChartCard, tooltipStyle } from './chartTheme';
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // Day-of-week histogram — "is Monday really the worst".
-export const WeekdayBarChart = ({ data }: { data: WeekdayVolumePoint[] }) => {
+interface WeekdayBarChartProps {
+	data: WeekdayVolumePoint[];
+}
+
+export const WeekdayBarChart = ({ data }: WeekdayBarChartProps) => {
 	const max = Math.max(...data.map((d) => d.count), 1);
 	return (
 		<ChartCard title="Busiest days" hint="Firing episodes by day of week (your timezone)">

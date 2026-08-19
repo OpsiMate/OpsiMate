@@ -3,7 +3,11 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { axisTick, ChartCard, tooltipStyle } from './chartTheme';
 
 // Hour-of-day histogram: "when do alerts hit us", in the viewer's timezone.
-export const HourBarChart = ({ data }: { data: HourVolumePoint[] }) => {
+interface HourBarChartProps {
+	data: HourVolumePoint[];
+}
+
+export const HourBarChart = ({ data }: HourBarChartProps) => {
 	const max = Math.max(...data.map((d) => d.count), 1);
 	return (
 		<ChartCard title="Peak hours" hint="Firing episodes by hour of day (your timezone)">

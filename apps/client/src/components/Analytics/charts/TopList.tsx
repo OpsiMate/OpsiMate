@@ -3,7 +3,13 @@ import { ChartCard } from './chartTheme';
 
 // Ranked list with proportional bars — reads faster than a rotated bar chart for
 // name-length labels, and needs no chart plumbing.
-export const TopList = ({ title, hint, items }: { title: string; hint?: string; items: NamedCount[] }) => {
+interface TopListProps {
+	title: string;
+	hint?: string;
+	items: NamedCount[];
+}
+
+export const TopList = ({ title, hint, items }: TopListProps) => {
 	const max = Math.max(...items.map((i) => i.count), 1);
 	return (
 		<ChartCard title={title} hint={hint}>

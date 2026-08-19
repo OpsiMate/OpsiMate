@@ -671,6 +671,13 @@ export class AlertBL {
 	// server-side — the client never receives per-alert rows, so page cost does not
 	// grow with installation size. The pure computation lives in
 	// bl/analytics/computeAlertAnalytics for direct testing.
+	//
+	// Deliberately NOT range-limited at the SQL layer: episodes must include
+	// pre-window rows (MTBF gaps and re-fire checks cross the boundary) and every
+	// window needs its previous-period twin for deltas, so a naive WHERE clause
+	// would change results. The full scans are amortized by the snapshot caches
+	// below; revisit with incremental episode materialization if history tables
+	// reach the millions of rows where reconstruction itself becomes the cost.
 	async getAlertAnalytics(
 		from: string | null,
 		to: string,

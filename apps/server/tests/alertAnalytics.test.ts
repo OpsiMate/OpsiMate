@@ -139,8 +139,8 @@ describe('computeAlertAnalytics', () => {
 		const result = compute({
 			episodes: [firing('a', NOW - 10 * HOUR), resolved('a', NOW - 8 * HOUR), firing('b', NOW - 4 * HOUR)],
 			events: [
-				{ alertId: 'a', at: iso(NOW - 9 * HOUR) }, // 1h after a's start — counts
-				{ alertId: 'b', at: iso(NOW - 20 * HOUR) }, // BEFORE b started — must not count
+				{ alertId: 'a', at: iso(NOW - 9 * HOUR), actorName: 'idan' }, // 1h after a's start — counts
+				{ alertId: 'b', at: iso(NOW - 20 * HOUR), actorName: 'idan' }, // BEFORE b started — must not count
 			],
 			activeAlerts: [alert('b', 'B', 'warning')],
 			resolvedAlerts: [alert('a', 'A', 'warning')],
@@ -149,6 +149,17 @@ describe('computeAlertAnalytics', () => {
 		expect(result.reliability.mtta.meanMs).toBe(1 * HOUR);
 		expect(result.reliability.ackCoverage.acked).toBe(1);
 		expect(result.reliability.ackCoverage.episodes).toBe(2);
+	});
+
+	test('system events (no actor) never count as acknowledgement', () => {
+		const result = compute({
+			episodes: [firing('a', NOW - 10 * HOUR)],
+			// A silence expiring writes an event with no actor — that is not a human touch.
+			events: [{ alertId: 'a', at: iso(NOW - 9 * HOUR), actorName: null }],
+			activeAlerts: [alert('a', 'A', 'warning')],
+		});
+		expect(result.reliability.mtta.count).toBe(0);
+		expect(result.reliability.ackCoverage.acked).toBe(0);
 	});
 
 	test('re-fire rate counts resolutions the same alert re-fired within 24h of', () => {
@@ -223,7 +234,7 @@ describe('computeAlertAnalytics', () => {
 				firing('a', NOW - 5 * HOUR), // episode 2
 			],
 			// The only event happened during episode 2; episode 1 must stay untouched.
-			events: [{ alertId: 'a', at: iso(NOW - 4 * HOUR) }],
+			events: [{ alertId: 'a', at: iso(NOW - 4 * HOUR), actorName: 'idan' }],
 			activeAlerts: [alert('a', 'A', 'warning')],
 		});
 		expect(result.reliability.ackCoverage.acked).toBe(1);

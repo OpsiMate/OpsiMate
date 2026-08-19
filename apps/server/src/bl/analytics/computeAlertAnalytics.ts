@@ -103,6 +103,9 @@ const buildEpisodes = (rows: EpisodeRow[], events: UserEventRow[]): Episode[] =>
 	}
 	const eventsByAlert = new Map<string, number[]>();
 	for (const event of events) {
+		// "First touch" means a HUMAN touched it: system-recorded events (no actor —
+		// e.g. an expiring silence) must not count as acknowledgement.
+		if (!event.actorName) continue;
 		const ms = Date.parse(event.at);
 		if (Number.isNaN(ms)) continue;
 		const list = eventsByAlert.get(event.alertId);
@@ -518,8 +521,16 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 				episodes: windowEpisodes.length,
 			},
 			episodesPerDay,
-			mttrByDay: [...mttrDayAcc.entries()]
-				.map(([date, acc]) => ({ date, meanMs: Math.round(acc.total / acc.count), count: acc.count }))
+			// Every day the volume chart shows gets a point; days without resolutions
+			// carry meanMs null so the trend line BREAKS there instead of bridging the
+			// gap with a made-up slope.
+			mttrByDay: [...new Set([...dayPoints.keys(), ...mttrDayAcc.keys()])]
+				.map((date) => {
+					const acc = mttrDayAcc.get(date);
+					return acc
+						? { date, meanMs: Math.round(acc.total / acc.count), count: acc.count }
+						: { date, meanMs: null, count: 0 };
+				})
 				.sort((a, b) => a.date.localeCompare(b.date)),
 		},
 		byName,
