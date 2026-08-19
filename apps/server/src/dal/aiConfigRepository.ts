@@ -9,6 +9,7 @@ export interface AiConfigRow {
 	provider: string;
 	region: string;
 	model_id: string;
+	base_url: string;
 	api_key: string | null;
 	enabled: number;
 	updated_at: string | null;
@@ -25,11 +26,17 @@ export class AiConfigRepository {
 					provider TEXT NOT NULL DEFAULT 'bedrock',
 					region TEXT NOT NULL DEFAULT 'us-east-1',
 					model_id TEXT NOT NULL DEFAULT '',
+					base_url TEXT NOT NULL DEFAULT '',
 					api_key TEXT,
 					enabled INTEGER NOT NULL DEFAULT 0,
 					updated_at TEXT
 				);
 			`);
+			// Migration: add base_url column for existing databases.
+			const cols = this.db.pragma('table_info(ai_config)') as Array<{ name: string }>;
+			if (!cols.some((c) => c.name === 'base_url')) {
+				this.db.exec(`ALTER TABLE ai_config ADD COLUMN base_url TEXT NOT NULL DEFAULT ''`);
+			}
 		});
 	}
 
@@ -62,6 +69,7 @@ export class AiConfigRepository {
 					provider: 'bedrock',
 					region: 'us-east-1',
 					model_id: '',
+					base_url: '',
 					api_key: null,
 					enabled: 0,
 					updated_at: null,
@@ -70,17 +78,18 @@ export class AiConfigRepository {
 				const updatedAt = new Date().toISOString();
 				this.db
 					.prepare(
-						`INSERT INTO ai_config (id, provider, region, model_id, api_key, enabled, updated_at)
-						 VALUES (1, ?, ?, ?, ?, ?, ?)
+						`INSERT INTO ai_config (id, provider, region, model_id, base_url, api_key, enabled, updated_at)
+						 VALUES (1, ?, ?, ?, ?, ?, ?, ?)
 						 ON CONFLICT(id) DO UPDATE SET
 							provider = excluded.provider,
 							region = excluded.region,
 							model_id = excluded.model_id,
+							base_url = excluded.base_url,
 							api_key = excluded.api_key,
 							enabled = excluded.enabled,
 							updated_at = excluded.updated_at`
 					)
-					.run(next.provider, next.region, next.model_id, next.api_key, next.enabled, updatedAt);
+					.run(next.provider, next.region, next.model_id, next.base_url, next.api_key, next.enabled, updatedAt);
 				return { ...next, updated_at: updatedAt };
 			});
 			return run();

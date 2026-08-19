@@ -721,6 +721,9 @@ export interface AiConfig {
 	region: string;
 	// Bedrock model id or inference profile (e.g. anthropic.claude-sonnet-4-5-20250929-v1:0).
 	modelId: string;
+	// Custom endpoint URL (e.g. a LiteLLM proxy). When set, overrides the default
+	// Bedrock runtime URL derived from the region.
+	baseUrl: string;
 	enabled: boolean;
 	hasApiKey: boolean;
 	updatedAt: string | null;
@@ -732,6 +735,7 @@ export interface AiConfig {
 export interface UpdateAiConfig {
 	region?: string;
 	modelId?: string;
+	baseUrl?: string;
 	apiKey?: string | null;
 	enabled?: boolean;
 }

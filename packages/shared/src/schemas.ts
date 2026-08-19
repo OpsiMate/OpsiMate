@@ -516,6 +516,7 @@ export const UpdateAiConfigSchema = z
 			.regex(/^[a-z0-9-]+$/, 'Expected an AWS region like us-east-1')
 			.optional(),
 		modelId: z.string().trim().min(1).max(200).optional(),
+		baseUrl: z.string().trim().max(500).optional(),
 		apiKey: z.string().min(1).max(4096).nullable().optional(),
 		enabled: z.boolean().optional(),
 	})

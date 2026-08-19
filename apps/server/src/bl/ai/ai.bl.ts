@@ -17,10 +17,11 @@ import { AuditBL } from '../audit/audit.bl';
 const logger = new Logger('bl/ai.bl');
 
 // Bedrock API keys authenticate with a plain bearer token against the Converse REST
-// API, so no AWS SDK or SigV4 signing is needed. Overridable for tests, which point it
-// at a local mock server.
-const bedrockEndpoint = (region: string): string =>
-	process.env.AI_BEDROCK_ENDPOINT ?? `https://bedrock-runtime.${region}.amazonaws.com`;
+// API, so no AWS SDK or SigV4 signing is needed. A custom base URL (e.g. a LiteLLM
+// proxy) stored in the config takes priority; the env var is a last-resort override
+// for tests that point it at a local mock server.
+const bedrockEndpoint = (region: string, baseUrl?: string): string =>
+	baseUrl || process.env.AI_BEDROCK_ENDPOINT || `https://bedrock-runtime.${region}.amazonaws.com`;
 
 // Same budget the actions executor gives outbound calls: slow enough for a cold model,
 // fast enough that a wrong region (connection black-holes) fails while the user is
@@ -69,6 +70,7 @@ export class AiBL {
 			provider: 'bedrock',
 			region: row.region,
 			modelId: row.model_id,
+			baseUrl: row.base_url,
 			enabled: row.enabled === 1,
 			hasApiKey: row.api_key != null,
 			updatedAt: row.updated_at,
@@ -98,6 +100,7 @@ export class AiBL {
 				provider: 'bedrock',
 				region: updates.region ?? current.region,
 				model_id: updates.modelId ?? current.model_id,
+				base_url: updates.baseUrl ?? current.base_url,
 				api_key: apiKey,
 				enabled: enabled ? 1 : 0,
 			};
@@ -116,6 +119,7 @@ export class AiBL {
 			provider: 'bedrock',
 			region: saved.region,
 			modelId: saved.model_id,
+			baseUrl: saved.base_url,
 			enabled: saved.enabled === 1,
 			hasApiKey: saved.api_key != null,
 			updatedAt: saved.updated_at,
@@ -134,7 +138,7 @@ export class AiBL {
 			return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: 'No model id is configured yet.' };
 		}
 
-		const url = `${bedrockEndpoint(row.region)}/model/${encodeURIComponent(row.model_id)}/converse`;
+		const url = `${bedrockEndpoint(row.region, row.base_url || undefined)}/model/${encodeURIComponent(row.model_id)}/converse`;
 		const started = Date.now();
 		try {
 			const controller = new AbortController();

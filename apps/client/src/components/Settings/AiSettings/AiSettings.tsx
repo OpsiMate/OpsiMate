@@ -30,6 +30,7 @@ const REGION_SUGGESTIONS = ['us-east-1', 'us-west-2', 'eu-west-1', 'eu-central-1
 interface SyncedFormValues {
 	region: string;
 	modelId: string;
+	baseUrl: string;
 }
 
 export const AiSettings = () => {
@@ -40,6 +41,7 @@ export const AiSettings = () => {
 
 	const [region, setRegion] = useState('');
 	const [modelId, setModelId] = useState('');
+	const [baseUrl, setBaseUrl] = useState('');
 	const [apiKey, setApiKey] = useState('');
 	const [testResult, setTestResult] = useState<AiTestResult | null>(null);
 
@@ -52,7 +54,8 @@ export const AiSettings = () => {
 		const prev = lastSynced.current;
 		setRegion((current) => (prev === null || current === prev.region ? data.region : current));
 		setModelId((current) => (prev === null || current === prev.modelId ? data.modelId : current));
-		lastSynced.current = { region: data.region, modelId: data.modelId };
+		setBaseUrl((current) => (prev === null || current === prev.baseUrl ? data.baseUrl : current));
+		lastSynced.current = { region: data.region, modelId: data.modelId, baseUrl: data.baseUrl };
 	}, [data]);
 
 	if (isLoading) {
@@ -72,13 +75,14 @@ export const AiSettings = () => {
 		);
 	}
 
-	const dirty = region !== data.region || modelId !== data.modelId || apiKey.length > 0;
+	const dirty = region !== data.region || modelId !== data.modelId || baseUrl !== data.baseUrl || apiKey.length > 0;
 
 	const save = async () => {
 		try {
 			await updateMutation.mutateAsync({
 				region: region.trim(),
 				modelId: modelId.trim(),
+				baseUrl: baseUrl.trim(),
 				// Empty field = keep the stored key; only a typed value replaces it.
 				...(apiKey.length > 0 ? { apiKey } : {}),
 			});
@@ -157,6 +161,22 @@ export const AiSettings = () => {
 							))}
 						</datalist>
 					</div>
+				</div>
+
+				<div className="space-y-2">
+					<Label htmlFor="ai-base-url" className="text-xs">
+						Endpoint URL (optional)
+					</Label>
+					<Input
+						id="ai-base-url"
+						placeholder="https://bedrock-runtime.us-east-1.amazonaws.com"
+						value={baseUrl}
+						onChange={(e) => setBaseUrl(e.target.value)}
+					/>
+					<p className="text-xs text-muted-foreground">
+						Custom endpoint for proxied setups (e.g. LiteLLM). Leave empty to use the default Bedrock
+						endpoint for the selected region.
+					</p>
 				</div>
 
 				<div className="space-y-2">
