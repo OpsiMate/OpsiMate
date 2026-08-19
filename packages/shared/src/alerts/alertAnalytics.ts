@@ -176,6 +176,13 @@ export interface TagValueDayPoint {
 	counts: Record<string, number>;
 }
 
+// One tag VALUE's duration trends — its own MTTR/MTTA line on the tag trend chart.
+export interface TagValueTrend {
+	value: string;
+	mttrByDay: DurationDayPoint[];
+	mttaByDay: DurationDayPoint[];
+}
+
 // The tag-research section: everything about ONE tag key, computed only when the
 // request names a key — the tab pays for what it looks at, nothing more.
 export interface TagInsights {
@@ -186,10 +193,9 @@ export interface TagInsights {
 	untaggedEpisodes: number;
 	topValues: string[];
 	volumeByDay: TagValueDayPoint[];
-	// MTTR/MTTA trends over TAGGED episodes only (any value of the key) — the same
-	// day semantics as the reliability trends, scoped to this key.
-	mttrByDay: DurationDayPoint[];
-	mttaByDay: DurationDayPoint[];
+	// Per-VALUE MTTR/MTTA trends (top values only, `topValues` order) — the same day
+	// semantics as the reliability trends, one line per value.
+	trends: TagValueTrend[];
 }
 
 export interface AlertAnalytics {

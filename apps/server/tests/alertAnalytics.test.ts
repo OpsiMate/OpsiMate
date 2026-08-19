@@ -393,9 +393,10 @@ describe('computeAlertAnalytics', () => {
 		]);
 	});
 
-	test('tag research carries MTTR/MTTA trends over tagged episodes only', () => {
-		// Tagged episode: fires -6h, touched -5h (1h MTTA), resolved -2h (4h MTTR).
-		// The untagged alert resolves faster and must not dilute either trend.
+	test('tag research carries per-VALUE MTTR/MTTA trends on a shared day axis', () => {
+		// db: fires -6h, touched -5h (1h MTTA), resolved -2h (4h MTTR).
+		// web: fires -3h, resolved -2h (1h MTTR), never touched.
+		// Each value gets its own line; the untouched value's MTTA day is null.
 		const result = compute({
 			episodes: [
 				firing('a', NOW - 6 * HOUR),
@@ -404,11 +405,18 @@ describe('computeAlertAnalytics', () => {
 				resolved('b', NOW - 2 * HOUR),
 			],
 			events: [{ alertId: 'a', at: iso(NOW - 5 * HOUR), actorName: 'idan' }],
-			resolvedAlerts: [alert('a', 'Tagged', 'warning', { service: 'db' }), alert('b', 'Untagged', 'warning')],
+			resolvedAlerts: [
+				alert('a', 'DB', 'warning', { service: 'db' }),
+				alert('b', 'Web', 'warning', { service: 'web' }),
+			],
 			tagKey: 'service',
 		});
-		expect(result.tagInsights?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 }]);
-		expect(result.tagInsights?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
+		const db = result.tagInsights?.trends.find((t) => t.value === 'db');
+		const web = result.tagInsights?.trends.find((t) => t.value === 'web');
+		expect(db?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 }]);
+		expect(db?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
+		expect(web?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
+		expect(web?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: null, count: 0 }]);
 	});
 
 	test('a tag key of __proto__ reads as absent, not as Object.prototype', () => {

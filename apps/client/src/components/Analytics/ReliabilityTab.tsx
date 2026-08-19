@@ -23,13 +23,13 @@ export const ReliabilityTab = ({ reliability }: ReliabilityTabProps) => {
 						key: 'mttr',
 						label: 'MTTR',
 						hint: "Mean time to restore per day, over that day's resolutions",
-						data: reliability.mttrByDay,
+						series: [{ name: 'MTTR', data: reliability.mttrByDay }],
 					},
 					{
 						key: 'mtta',
 						label: 'MTTA',
 						hint: "Mean time to first human touch per day, over that day's acknowledgements",
-						data: reliability.mttaByDay,
+						series: [{ name: 'MTTA', data: reliability.mttaByDay }],
 					},
 				]}
 			/>

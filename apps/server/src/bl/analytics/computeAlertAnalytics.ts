@@ -468,15 +468,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			resolvedDurations: number[];
 			alertIds: Set<string>;
 			dayCounts: Map<string, number>;
+			mttrDayAcc: Map<string, DurationDayAccumulator>;
+			mttaDayAcc: Map<string, DurationDayAccumulator>;
 		}
 		const byValue = new Map<string, TagValueAccumulator>();
 		let taggedEpisodes = 0;
 		let untaggedEpisodes = 0;
-		// MTTR/MTTA trends over TAGGED episodes (any value of the key), same day
-		// semantics as the reliability trends; tagDays anchors the shared x-axis.
+		// Per-VALUE MTTR/MTTA trends, same day semantics as the reliability trends;
+		// tagDays anchors a shared x-axis so every value's line covers the same days.
 		const tagDays = new Set<string>();
-		const tagMttrAcc = new Map<string, DurationDayAccumulator>();
-		const tagMttaAcc = new Map<string, DurationDayAccumulator>();
 		for (const episode of windowEpisodes) {
 			const tags = meta.get(episode.alertId)?.tags;
 			// hasOwnProperty, not plain lookup: a key like "__proto__" must read as
@@ -489,7 +489,14 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			taggedEpisodes += 1;
 			let acc = byValue.get(value);
 			if (!acc) {
-				acc = { episodes: 0, resolvedDurations: [], alertIds: new Set(), dayCounts: new Map() };
+				acc = {
+					episodes: 0,
+					resolvedDurations: [],
+					alertIds: new Set(),
+					dayCounts: new Map(),
+					mttrDayAcc: new Map(),
+					mttaDayAcc: new Map(),
+				};
 				byValue.set(value, acc);
 			}
 			acc.episodes += 1;
@@ -497,10 +504,14 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			// Window rule matches the headline MTTR: resolutions past `to` don't count.
 			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs)) {
 				acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
-				addDurationSample(tagMttrAcc, local.day(episode.resolvedMs), episode.resolvedMs - episode.startMs);
+				addDurationSample(acc.mttrDayAcc, local.day(episode.resolvedMs), episode.resolvedMs - episode.startMs);
 			}
 			if (episode.firstTouchMs !== null) {
-				addDurationSample(tagMttaAcc, local.day(episode.firstTouchMs), episode.firstTouchMs - episode.startMs);
+				addDurationSample(
+					acc.mttaDayAcc,
+					local.day(episode.firstTouchMs),
+					episode.firstTouchMs - episode.startMs
+				);
 			}
 			const day = local.day(episode.startMs);
 			tagDays.add(day);
@@ -550,8 +561,14 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			untaggedEpisodes,
 			topValues,
 			volumeByDay: [...dayPointsByDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
-			mttrByDay: durationTrend(tagDays, tagMttrAcc),
-			mttaByDay: durationTrend(tagDays, tagMttaAcc),
+			trends: topValues.map((value) => {
+				const acc = byValue.get(value);
+				return {
+					value,
+					mttrByDay: durationTrend(tagDays, acc?.mttrDayAcc ?? new Map()),
+					mttaByDay: durationTrend(tagDays, acc?.mttaDayAcc ?? new Map()),
+				};
+			}),
 		};
 	}
 
