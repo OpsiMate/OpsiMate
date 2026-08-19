@@ -23,6 +23,16 @@ import {
 	useMarkAlertRead,
 } from '@/hooks/queries/alerts';
 import {
+	useCreateIncident,
+	useDeleteIncident,
+	useIncidents,
+	useRemoveIncidentAlerts,
+	useUpdateIncident,
+} from '@/hooks/queries/incidents';
+import { CreateIncidentDialog } from './CreateIncidentDialog';
+import { EditIncidentDialog } from './EditIncidentDialog';
+import { IncidentPanel } from './IncidentPanel';
+import {
 	useCreateDashboard,
 	useDeleteDashboard,
 	useGetDashboards,
@@ -369,6 +379,8 @@ const Alerts = () => {
 		setAllMatchingSelected(false);
 	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+	// Incident whose details panel is open; null = alert details (or nothing) shown.
+	const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
@@ -378,6 +390,9 @@ const Alerts = () => {
 	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
+	// Members of an open incident resolve to alert objects through this (loaded rows
+	// only; the panel notes how many members the current view has not fetched).
+	const loadedAlertsById = useMemo(() => new Map(allAlerts.map((a) => [a.id, a])), [allAlerts]);
 
 	// Sidebar facets, tag keys and the silenced total come from the server, computed
 	// over the RAW dataset — the loaded page is filtered, so deriving them from it
@@ -732,6 +747,13 @@ const Alerts = () => {
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
+	const { incidentsById } = useIncidents();
+	const createIncidentMutation = useCreateIncident();
+	const updateIncidentMutation = useUpdateIncident();
+	const deleteIncidentMutation = useDeleteIncident();
+	const removeIncidentAlertsMutation = useRemoveIncidentAlerts();
+	const [showCreateIncident, setShowCreateIncident] = useState(false);
+	const [editingIncidentId, setEditingIncidentId] = useState<number | null>(null);
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -977,6 +999,12 @@ const Alerts = () => {
 			onColumnWidthsChange={handleColumnWidthsChange}
 			onAlertClick={handleAlertClick}
 			activeAlertId={syncedSelectedAlert?.id ?? null}
+			incidentsById={incidentsById}
+			onOpenIncident={handleOpenIncident}
+			activeIncidentId={selectedIncidentId}
+			onEditIncident={setEditingIncidentId}
+			onUngroupIncident={handleUngroupIncident}
+			onRemoveFromIncident={handleRemoveFromIncident}
 			tagKeyColumnLabels={allColumnLabels}
 			groupByColumns={dashboardState.groupBy}
 			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1048,7 +1076,82 @@ const Alerts = () => {
 		}
 	};
 
+	const handleOpenIncident = (incidentId: number) => {
+		// The two right-side panels are exclusive: opening an incident closes the alert
+		// details and vice versa (see handleAlertClick).
+		setSelectedAlert(null);
+		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
+	};
+
+	const handleCreateIncident = async (name: string, description: string) => {
+		try {
+			const incident = await createIncidentMutation.mutateAsync({
+				name: name || undefined,
+				description: description || undefined,
+				alertIds: selectedAlerts.map((a) => a.id),
+			});
+			toast({ title: 'Incident created', description: incident.name });
+			setShowCreateIncident(false);
+			handleSelectAlerts([]);
+		} catch (err) {
+			toast({
+				title: 'Failed to create incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleSaveIncident = async (id: number, name: string, description: string) => {
+		try {
+			await updateIncidentMutation.mutateAsync({ id, name, description: description || null });
+			toast({ title: 'Incident updated', description: name });
+			setEditingIncidentId(null);
+		} catch (err) {
+			toast({
+				title: 'Failed to update incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleUngroupIncident = async (incidentId: number) => {
+		const incident = incidentsById.get(incidentId);
+		try {
+			await deleteIncidentMutation.mutateAsync(incidentId);
+			toast({ title: 'Incident ungrouped', description: incident?.name ?? `#${incidentId}` });
+			if (selectedIncidentId === incidentId) setSelectedIncidentId(null);
+		} catch (err) {
+			toast({
+				title: 'Failed to ungroup incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleRemoveFromIncident = async (alertId: string) => {
+		const incidentId = allAlerts.find((a) => a.id === alertId)?.incidentId;
+		if (incidentId == null) return;
+		try {
+			const result = await removeIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: [alertId] });
+			toast({
+				title: result.dissolved ? 'Incident dissolved' : 'Removed from incident',
+				description: result.dissolved ? 'Its last member was removed' : undefined,
+			});
+			if (result.dissolved && selectedIncidentId === incidentId) setSelectedIncidentId(null);
+		} catch (err) {
+			toast({
+				title: 'Failed to remove from incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
 	const handleAlertClick = (alert: Alert) => {
+		setSelectedIncidentId(null);
 		// Opening an unread (active) alert marks it as read, un-bolding its row. The transient
 		// isResolved flag (set on resolved rows in the All view) is the guard here — an id-based
 		// check would wrongly skip active alerts that were resolved once and re-fired.
@@ -1369,6 +1472,14 @@ const Alerts = () => {
 												: undefined
 										}
 										onClearSelection={() => handleSelectAlerts([])}
+										// Hidden when "all N matching" is armed but only a page is
+										// loaded: grouping would silently take the loaded subset
+										// while the bar claims the whole match set is selected.
+										onGroupIntoIncident={
+											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
+												? undefined
+												: () => setShowCreateIncident(true)
+										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
@@ -1412,6 +1523,12 @@ const Alerts = () => {
 									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
+									incidentsById={incidentsById}
+									onOpenIncident={handleOpenIncident}
+									activeIncidentId={selectedIncidentId}
+									onEditIncident={setEditingIncidentId}
+									onUngroupIncident={handleUngroupIncident}
+									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1457,6 +1574,12 @@ const Alerts = () => {
 									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
+									incidentsById={incidentsById}
+									onOpenIncident={handleOpenIncident}
+									activeIncidentId={selectedIncidentId}
+									onEditIncident={setEditingIncidentId}
+									onUngroupIncident={handleUngroupIncident}
+									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1475,6 +1598,16 @@ const Alerts = () => {
 						)}
 					</div>
 
+					{selectedIncidentId != null && incidentsById.has(selectedIncidentId) && (
+						<IncidentPanel
+							incident={incidentsById.get(selectedIncidentId)!}
+							alertsById={loadedAlertsById}
+							onClose={() => setSelectedIncidentId(null)}
+							onOpenAlert={handleAlertClick}
+							onEdit={setEditingIncidentId}
+							onUngroup={handleUngroupIncident}
+						/>
+					)}
 					{syncedSelectedAlert &&
 						(() => {
 							// Data-driven (not tab-driven): resolving an alert while its panel is
@@ -1498,6 +1631,21 @@ const Alerts = () => {
 			</div>
 
 			<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
+			<CreateIncidentDialog
+				open={showCreateIncident}
+				onOpenChange={setShowCreateIncident}
+				alerts={selectedAlerts}
+				onCreate={handleCreateIncident}
+				isCreating={createIncidentMutation.isPending}
+			/>
+			<EditIncidentDialog
+				incident={editingIncidentId != null ? (incidentsById.get(editingIncidentId) ?? null) : null}
+				onOpenChange={(open) => {
+					if (!open) setEditingIncidentId(null);
+				}}
+				onSave={handleSaveIncident}
+				isSaving={updateIncidentMutation.isPending}
+			/>
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}

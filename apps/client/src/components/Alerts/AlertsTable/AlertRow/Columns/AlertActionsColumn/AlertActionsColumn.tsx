@@ -12,6 +12,7 @@ export interface AlertActionsColumnProps {
 	onUnsilenceAlert?: (alertId: string) => void;
 	onDeleteAlert?: (alertId: string) => void;
 	onUnresolveAlert?: (alertId: string) => void;
+	onRemoveFromIncident?: (alertId: string) => void;
 }
 
 export const AlertActionsColumn = ({
@@ -21,6 +22,7 @@ export const AlertActionsColumn = ({
 	onUnsilenceAlert,
 	onDeleteAlert,
 	onUnresolveAlert,
+	onRemoveFromIncident,
 }: AlertActionsColumnProps) => {
 	return (
 		<TableCell className={ACTIONS_COLUMN_PADDING} style={{ width, minWidth: width, maxWidth: width }}>
@@ -30,6 +32,7 @@ export const AlertActionsColumn = ({
 				onUnsilenceAlert={onUnsilenceAlert}
 				onDeleteAlert={onDeleteAlert}
 				onUnresolveAlert={onUnresolveAlert}
+				onRemoveFromIncident={onRemoveFromIncident}
 			/>
 		</TableCell>
 	);

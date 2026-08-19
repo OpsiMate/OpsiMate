@@ -18,6 +18,8 @@ import { SecretsController } from './secrets/controller';
 import createSecretsRouter from './secrets/router';
 import { EnrichmentController } from './enrichments/controller';
 import createEnrichmentRouter from './enrichments/router';
+import { IncidentController } from './incidents/controller';
+import createIncidentRouter from './incidents/router';
 import { MutePolicyController } from './mute-policies/controller';
 import createMutePolicyRouter from './mute-policies/router';
 import { OncallController } from './oncall/controller';
@@ -43,7 +45,8 @@ export default function createV1Router(
 	enrichmentController: EnrichmentController,
 	actionController: ActionController,
 	retentionController: RetentionController,
-	oncallController: OncallController
+	oncallController: OncallController,
+	incidentController: IncidentController
 ) {
 	const router = Router();
 
@@ -67,6 +70,7 @@ export default function createV1Router(
 	router.use('/secrets', createSecretsRouter(secretsController));
 	router.use('/custom-fields', createCustomFieldsRouter(customFieldsController));
 	router.use('/mute-policies', createMutePolicyRouter(mutePolicyController));
+	router.use('/incidents', createIncidentRouter(incidentController));
 	router.use('/oncall', createOncallRouter(oncallController));
 	router.use('/enrichments', createEnrichmentRouter(enrichmentController));
 	router.use('/actions', createActionRouter(actionController));
