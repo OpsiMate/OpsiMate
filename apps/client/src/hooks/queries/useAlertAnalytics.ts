@@ -27,13 +27,13 @@ export const useAlertAnalytics = (from: string | null, scope?: AnalyticsScope) =
 			scope?.tagKey ?? null,
 		],
 		queryFn: async (): Promise<AlertAnalytics> => {
-			const response = await alertsApi.getAlertAnalytics(
+			const response = await alertsApi.getAlertAnalytics({
 				from,
 				timeZone,
-				scope?.filters,
-				scope?.search,
-				scope?.tagKey
-			);
+				filters: scope?.filters,
+				search: scope?.search,
+				tagKey: scope?.tagKey,
+			});
 			if (!response.success || !response.data) {
 				throw new Error(response.error || 'Failed to fetch analytics');
 			}
