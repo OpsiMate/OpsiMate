@@ -1,6 +1,9 @@
 import {
 	Alert,
 	AlertAnalytics,
+	TagInsights,
+	TagValueDayPoint,
+	TagValueStats,
 	AlertNameStats,
 	AnalyticsKpi,
 	DayVolumePoint,
@@ -40,6 +43,8 @@ export interface AnalyticsInputs {
 	// count. Alerts deleted from both tables can never match a filter, so they are
 	// naturally excluded.
 	allowedAlertIds?: Set<string>;
+	// Tag key to research; adds the tagInsights section to the result.
+	tagKey?: string;
 }
 
 // A reconstructed firing episode: started, maybe resolved, maybe first-touched.
@@ -227,11 +232,13 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	}
 
 	const tagCounts = new Map<string, number>();
+	const tagKeySet = new Set<string>();
 	const alertIdsInWindow = new Set(windowEpisodes.map((e) => e.alertId));
 	for (const alertId of alertIdsInWindow) {
 		const m = meta.get(alertId);
 		if (!m) continue;
 		for (const [key, value] of Object.entries(m.tags)) {
+			tagKeySet.add(key);
 			const pair = `${key}=${value}`;
 			tagCounts.set(pair, (tagCounts.get(pair) ?? 0) + 1);
 		}
@@ -395,6 +402,85 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	});
 	byName.sort((a, b) => b.episodes - a.episodes || a.name.localeCompare(b.name));
 
+	// ---- tag research -----------------------------------------------------------
+	// Everything about one tag key: per-value stats and a top-values volume split.
+	let tagInsights: TagInsights | undefined;
+	if (inputs.tagKey) {
+		const key = inputs.tagKey;
+		interface TagValueAccumulator {
+			episodes: number;
+			resolvedDurations: number[];
+			alertIds: Set<string>;
+			dayCounts: Map<string, number>;
+		}
+		const byValue = new Map<string, TagValueAccumulator>();
+		let taggedEpisodes = 0;
+		let untaggedEpisodes = 0;
+		for (const episode of windowEpisodes) {
+			const value = meta.get(episode.alertId)?.tags[key];
+			if (value === undefined) {
+				untaggedEpisodes += 1;
+				continue;
+			}
+			taggedEpisodes += 1;
+			let acc = byValue.get(value);
+			if (!acc) {
+				acc = { episodes: 0, resolvedDurations: [], alertIds: new Set(), dayCounts: new Map() };
+				byValue.set(value, acc);
+			}
+			acc.episodes += 1;
+			acc.alertIds.add(episode.alertId);
+			if (episode.resolvedMs !== null) acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
+			const day = local.day(episode.startMs);
+			acc.dayCounts.set(day, (acc.dayCounts.get(day) ?? 0) + 1);
+		}
+
+		const activeIdSet = new Set(activeAllowed.map((a) => a.id));
+		const values: TagValueStats[] = [...byValue.entries()]
+			.map(([value, acc]) => {
+				let worst: string | null = null;
+				for (const alertId of acc.alertIds) {
+					const severity = meta.get(alertId)?.severity ?? null;
+					if (severity && (worst === null || (SEVERITY_RANK[severity] ?? 9) < (SEVERITY_RANK[worst] ?? 9)))
+						worst = severity;
+				}
+				return {
+					value,
+					episodes: acc.episodes,
+					resolvedCount: acc.resolvedDurations.length,
+					mttrMs: durationStats(acc.resolvedDurations).meanMs,
+					firingNow: [...acc.alertIds].filter((id) => activeIdSet.has(id)).length,
+					worstSeverity: worst,
+				};
+			})
+			.sort((a, b) => b.episodes - a.episodes || a.value.localeCompare(b.value));
+
+		// Volume split over the TOP values only — a 40-series chart reads as noise.
+		const topValues = values.slice(0, 5).map((v) => v.value);
+		const dayPointsByDate = new Map<string, TagValueDayPoint>();
+		for (const value of topValues) {
+			const acc = byValue.get(value);
+			if (!acc) continue;
+			for (const [date, count] of acc.dayCounts) {
+				let point = dayPointsByDate.get(date);
+				if (!point) {
+					point = { date, counts: {} };
+					dayPointsByDate.set(date, point);
+				}
+				point.counts[value] = count;
+			}
+		}
+
+		tagInsights = {
+			key,
+			values: values.slice(0, 12),
+			taggedEpisodes,
+			untaggedEpisodes,
+			topValues,
+			volumeByDay: [...dayPointsByDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+		};
+	}
+
 	return {
 		range: {
 			from: inputs.from,
@@ -415,6 +501,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			topAlertNames: topOf(nameCounts, TOP_NAMES),
 			topTags: topOf(tagCounts, TOP_TAGS),
 			topResponders: topOf(responderCounts, TOP_NAMES),
+			availableTagKeys: [...tagKeySet].sort((a, b) => a.localeCompare(b)),
 		},
 		reliability: {
 			mttr: { ...durationStats(mttrSamples), previousMeanMs: previousMeanMs },
@@ -436,5 +523,6 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 				.sort((a, b) => a.date.localeCompare(b.date)),
 		},
 		byName,
+		tagInsights,
 	};
 };

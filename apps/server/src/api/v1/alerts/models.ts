@@ -353,6 +353,8 @@ export const AlertAnalyticsParamsSchema = z
 		tz: z.string().max(64).optional(),
 		filters: FiltersParamSchema.optional(),
 		search: z.string().optional(),
+		// Tag key to research; adds the tagInsights section to the response.
+		tagKey: z.string().max(200).optional(),
 	})
 	.refine((params) => !params.from || !params.to || Date.parse(params.from) <= Date.parse(params.to), {
 		message: 'from must not be after to',

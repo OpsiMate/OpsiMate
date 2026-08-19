@@ -86,6 +86,8 @@ export interface AnalyticsOverview {
 	topTags: NamedCount[];
 	// Who touches alerts the most: user-action counts by actor in the window.
 	topResponders: NamedCount[];
+	// Tag keys present on alerts seen in the window — feeds the tag-research picker.
+	availableTagKeys: string[];
 }
 
 // The reliability tab: DORA's restore-time metric plus the alert-world adaptations
@@ -131,9 +133,39 @@ export interface AnalyticsRange {
 	filtered: boolean;
 }
 
+// One tag VALUE's aggregate row inside the tag-research view.
+export interface TagValueStats {
+	value: string;
+	episodes: number;
+	resolvedCount: number;
+	mttrMs: number | null;
+	firingNow: number;
+	worstSeverity: string | null;
+}
+
+// Daily volume split by tag value (top values only; series order in `topValues`).
+export interface TagValueDayPoint {
+	date: string;
+	counts: Record<string, number>;
+}
+
+// The tag-research section: everything about ONE tag key, computed only when the
+// request names a key — the tab pays for what it looks at, nothing more.
+export interface TagInsights {
+	key: string;
+	values: TagValueStats[];
+	// Episodes whose alert carries the key vs not — how meaningful this breakdown is.
+	taggedEpisodes: number;
+	untaggedEpisodes: number;
+	topValues: string[];
+	volumeByDay: TagValueDayPoint[];
+}
+
 export interface AlertAnalytics {
 	range: AnalyticsRange;
 	overview: AnalyticsOverview;
 	reliability: AnalyticsReliability;
 	byName: AlertNameStats[];
+	// Present only when the request asked to research a tag key.
+	tagInsights?: TagInsights;
 }

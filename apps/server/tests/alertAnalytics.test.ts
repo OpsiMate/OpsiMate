@@ -272,6 +272,42 @@ describe('computeAlertAnalytics', () => {
 		expect(nonZero).toEqual([{ weekday: 3, count: 1 }]);
 	});
 
+	test('tag research aggregates per value and splits volume across top values', () => {
+		const result = compute({
+			episodes: [
+				firing('a', NOW - 10 * HOUR),
+				resolved('a', NOW - 8 * HOUR), // service=db, 2h
+				firing('b', NOW - 6 * HOUR), // service=db, unresolved
+				firing('c', NOW - 4 * HOUR), // service=web
+				firing('d', NOW - 3 * HOUR), // no service tag
+			],
+			activeAlerts: [
+				alert('b', 'B', 'critical', { service: 'db' }),
+				alert('c', 'C', 'info', { service: 'web' }),
+				alert('d', 'D', 'warning', {}),
+			],
+			resolvedAlerts: [alert('a', 'A', 'warning', { service: 'db' })],
+			tagKey: 'service',
+		});
+		expect(result.overview.availableTagKeys).toContain('service');
+		const insights = result.tagInsights;
+		expect(insights?.key).toBe('service');
+		expect(insights?.taggedEpisodes).toBe(3);
+		expect(insights?.untaggedEpisodes).toBe(1);
+		const db = insights?.values.find((v) => v.value === 'db');
+		expect(db).toMatchObject({ episodes: 2, resolvedCount: 1, mttrMs: 2 * HOUR, firingNow: 1 });
+		expect(db?.worstSeverity).toBe('critical');
+		expect(insights?.topValues).toEqual(['db', 'web']);
+		// Every day point carries per-value counts for the chart.
+		const total = (insights?.volumeByDay ?? []).flatMap((p) => Object.values(p.counts)).reduce((s, n) => s + n, 0);
+		expect(total).toBe(3);
+	});
+
+	test('tagInsights is absent when no tag key is requested', () => {
+		const result = compute({ episodes: [firing('a', NOW - HOUR)], activeAlerts: [alert('a', 'A', 'warning')] });
+		expect(result.tagInsights).toBeUndefined();
+	});
+
 	test('hour histogram buckets in the requested timezone', () => {
 		// 23:30 UTC = 02:30 in Athens summer time (UTC+3) — the histogram must say hour 2, not 23.
 		const at = Date.parse('2026-08-19T23:30:00.000Z');

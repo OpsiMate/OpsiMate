@@ -285,6 +285,14 @@ export interface AlertQueryParams {
 	cursor?: string;
 }
 
+export interface AlertAnalyticsRequest {
+	from: string | null;
+	timeZone: string;
+	filters?: Record<string, string[]>;
+	search?: string;
+	tagKey?: string;
+}
+
 export interface AlertListResponse {
 	alerts: SharedAlert[];
 	total?: number;
@@ -446,12 +454,14 @@ export const alertsApi = {
 	// Insights aggregates; from=null means all time, tz buckets days/hours in the
 	// requester's timezone. filters/search use the SAME format as the list endpoints,
 	// so a dashboard scopes Insights exactly as it scopes the alerts table.
-	getAlertAnalytics: (from: string | null, timeZone: string, filters?: Record<string, string[]>, search?: string) => {
+	getAlertAnalytics: (query: AlertAnalyticsRequest) => {
 		const params = new URLSearchParams();
-		if (from) params.set('from', from);
-		params.set('tz', timeZone);
-		if (filters && Object.keys(filters).length > 0) params.set('filters', JSON.stringify(filters));
-		if (search?.trim()) params.set('search', search);
+		if (query.from) params.set('from', query.from);
+		params.set('tz', query.timeZone);
+		if (query.filters && Object.keys(query.filters).length > 0)
+			params.set('filters', JSON.stringify(query.filters));
+		if (query.search?.trim()) params.set('search', query.search);
+		if (query.tagKey) params.set('tagKey', query.tagKey);
 		return apiRequest<AlertAnalytics>(`/alerts/analytics?${params.toString()}`);
 	},
 

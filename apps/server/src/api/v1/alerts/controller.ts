@@ -804,7 +804,8 @@ export class AlertController {
 				params.to ?? new Date().toISOString(),
 				params.tz,
 				params.filters,
-				params.search
+				params.search,
+				params.tagKey
 			);
 			return res.json({ success: true, data: analytics });
 		} catch (error) {

@@ -3,6 +3,7 @@ import { DashboardScopePicker } from '@/components/Analytics/DashboardScopePicke
 import { HourBarChart, SeverityDonut, TopList, VolumeAreaChart, WeekdayBarChart } from '@/components/Analytics/charts';
 import { KpiCard } from '@/components/Analytics/KpiCard';
 import { ReliabilityTab } from '@/components/Analytics/ReliabilityTab';
+import { TagResearchTab } from '@/components/Analytics/TagResearchTab';
 import { formatPercent, TIME_PRESETS } from '@/components/Analytics/analytics.utils';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,9 +26,14 @@ const NOW_BUCKET_MS = 5 * 60 * 1000;
 const AlertInsights = () => {
 	const [preset, setPreset] = useState('7d');
 	const [scopeDashboard, setScopeDashboard] = useState<Dashboard | null>(null);
-	const scope: AnalyticsScope | undefined = scopeDashboard
-		? { filters: scopeDashboard.filters, search: scopeDashboard.query || undefined }
-		: undefined;
+	const [tagKey, setTagKey] = useState<string | null>(null);
+	const scope: AnalyticsScope = {
+		filters: scopeDashboard?.filters,
+		search: scopeDashboard?.query || undefined,
+		// The tag key rides the same request: the response then carries tagInsights
+		// computed under the SAME window and dashboard scope as everything else.
+		tagKey: tagKey ?? undefined,
+	};
 	const [nowBucket, setNowBucket] = useState(() => Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
 	useEffect(() => {
 		const timer = window.setInterval(() => {
@@ -40,7 +46,7 @@ const AlertInsights = () => {
 		return hours === null ? null : new Date(nowBucket - hours * 60 * 60 * 1000).toISOString();
 	}, [preset, nowBucket]);
 
-	const { data, isLoading, isError } = useAlertAnalytics(from, scope);
+	const { data, isLoading, isError, isFetching } = useAlertAnalytics(from, scope);
 
 	return (
 		<DashboardLayout>
@@ -96,6 +102,7 @@ const AlertInsights = () => {
 							<TabsTrigger value="overview">Overview</TabsTrigger>
 							<TabsTrigger value="reliability">Reliability</TabsTrigger>
 							<TabsTrigger value="byName">By alert</TabsTrigger>
+							<TabsTrigger value="tags">Tags</TabsTrigger>
 						</TabsList>
 
 						<TabsContent value="overview" className="mt-4 space-y-4">
@@ -136,8 +143,15 @@ const AlertInsights = () => {
 								<HourBarChart data={data.overview.volumeByHour} />
 								<WeekdayBarChart data={data.overview.volumeByWeekday} />
 							</div>
-							<div className="grid gap-4 lg:grid-cols-3">
+							<div className="grid gap-4 lg:grid-cols-2">
 								<SeverityDonut data={data.overview.severity} />
+								<TopList
+									title="Top responders"
+									hint="Alert actions by user in the window"
+									items={data.overview.topResponders}
+								/>
+							</div>
+							<div className="grid gap-4 lg:grid-cols-2">
 								<TopList
 									title="Top alerts"
 									hint="Most frequent alert names in the window"
@@ -149,13 +163,6 @@ const AlertInsights = () => {
 									items={data.overview.topTags}
 								/>
 							</div>
-							<div className="grid gap-4 lg:grid-cols-2">
-								<TopList
-									title="Top responders"
-									hint="Alert actions by user in the window"
-									items={data.overview.topResponders}
-								/>
-							</div>
 						</TabsContent>
 
 						<TabsContent value="reliability" className="mt-4">
@@ -164,6 +171,16 @@ const AlertInsights = () => {
 
 						<TabsContent value="byName" className="mt-4">
 							<ByNameTab rows={data.byName} />
+						</TabsContent>
+
+						<TabsContent value="tags" className="mt-4">
+							<TagResearchTab
+								availableTagKeys={data.overview.availableTagKeys}
+								selectedKey={tagKey}
+								onSelectKey={setTagKey}
+								insights={data.tagInsights}
+								isFetching={isFetching}
+							/>
 						</TabsContent>
 					</Tabs>
 				) : null}

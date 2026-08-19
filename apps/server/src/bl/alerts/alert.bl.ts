@@ -676,7 +676,8 @@ export class AlertBL {
 		to: string,
 		timeZone?: string,
 		filters?: Record<string, string[]>,
-		search?: string
+		search?: string,
+		tagKey?: string
 	): Promise<AlertAnalytics> {
 		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, owners] = await Promise.all([
 			this.activeSnapshot.get(),
@@ -722,6 +723,7 @@ export class AlertBL {
 			to,
 			timeZone,
 			allowedAlertIds,
+			tagKey,
 		});
 	}
 
