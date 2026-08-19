@@ -73,16 +73,15 @@ export const AlertHistorySection = ({ historyData, timeRange }: AlertHistorySect
 	// enough to tell exports apart without opening them.
 	const handleExport = (format: 'csv' | 'json') => {
 		const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+		// Alert ids come from external sources and can contain characters that are
+		// path separators or otherwise illegal in filenames.
+		const safeId = historyData.alertId.replace(/[^\w.-]+/g, '_');
 		const suffix = lane === 'all' ? '' : `-${lane}`;
 		if (format === 'csv') {
-			triggerDownload(
-				`alert-history-${historyData.alertId}${suffix}-${stamp}.csv`,
-				'text/csv',
-				historyToCsv(visible)
-			);
+			triggerDownload(`alert-history-${safeId}${suffix}-${stamp}.csv`, 'text/csv', historyToCsv(visible));
 		} else {
 			triggerDownload(
-				`alert-history-${historyData.alertId}${suffix}-${stamp}.json`,
+				`alert-history-${safeId}${suffix}-${stamp}.json`,
 				'application/json',
 				historyToJson(visible)
 			);
