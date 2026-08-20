@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAiFilter, useAiStatus } from '@/hooks/queries/ai';
 import { AiFilterResult } from '@OpsiMate/shared';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkle } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AiFilterPopoverProps {
@@ -50,7 +50,7 @@ export const AiFilterPopover = ({ onApply }: AiFilterPopoverProps) => {
 					className="gap-1.5 shrink-0"
 					title="Describe a filter in plain words"
 				>
-					<Sparkles className="h-4 w-4" />
+					<Sparkle className="h-4 w-4" />
 					<span className="hidden lg:inline">Ask AI</span>
 				</Button>
 			</PopoverTrigger>

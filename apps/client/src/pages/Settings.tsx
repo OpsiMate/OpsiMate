@@ -23,7 +23,7 @@ import {
 	FileText,
 	KeyRound,
 	Plus,
-	Sparkles,
+	Sparkle,
 	Trash2,
 	Users,
 	X,
@@ -267,7 +267,7 @@ const Settings: React.FC = () => {
 											Alert Silences
 										</TabsTrigger>
 										<TabsTrigger value="ai" className="justify-start gap-2">
-											<Sparkles className="h-4 w-4" />
+											<Sparkle className="h-4 w-4" />
 											AI (Beta)
 										</TabsTrigger>
 									</TabsList>

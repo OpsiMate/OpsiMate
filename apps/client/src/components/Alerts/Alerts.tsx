@@ -48,7 +48,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertsFilterPanel } from '.';
-import { AiFilterPopover } from './AiFilterPopover';
 import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActionDialog';
@@ -1231,10 +1230,9 @@ const Alerts = () => {
 									<SearchBar
 										searchTerm={dashboardState.query}
 										onSearchChange={(term) => updateDashboardField('query', term)}
+										onAiFilter={applyAiFilter}
 									/>
 								</div>
-
-								<AiFilterPopover onApply={applyAiFilter} />
 
 								{/* Silenced alerts are usually filtered out (a dashboard's status filter
 								    typically pins Firing), and digging into the sidebar to check what's
