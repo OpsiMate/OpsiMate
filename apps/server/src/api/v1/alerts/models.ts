@@ -329,7 +329,7 @@ const jsonParam = <T>(parse: (raw: unknown) => T) =>
 		}
 	});
 
-const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
+export const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
 const FieldsParamSchema = jsonParam((value) => z.array(z.string()).parse(value));
 
 export const AlertListQueryParamsSchema = z.object({
@@ -343,6 +343,22 @@ export const AlertListQueryParamsSchema = z.object({
 	limit: z.coerce.number().int().min(1).max(1000).optional(),
 	cursor: z.string().optional(),
 });
+
+// Insights endpoint params. from<=to is enforced here so the handler never sees an
+// inverted window.
+export const AlertAnalyticsParamsSchema = z
+	.object({
+		from: z.iso.datetime({ offset: true }).optional(),
+		to: z.iso.datetime({ offset: true }).optional(),
+		tz: z.string().max(64).optional(),
+		filters: FiltersParamSchema.optional(),
+		search: z.string().optional(),
+		// Tag key to research; adds the tagInsights section to the response.
+		tagKey: z.string().max(200).optional(),
+	})
+	.refine((params) => !params.from || !params.to || Date.parse(params.from) <= Date.parse(params.to), {
+		message: 'from must not be after to',
+	});
 
 export const AlertFacetsParamsSchema = z.object({
 	filters: FiltersParamSchema.optional(),

@@ -1,5 +1,5 @@
 import { AlertRepository } from '../../dal/alertRepository';
-import { ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
+import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
 	AlertComment,
@@ -12,9 +12,10 @@ import {
 	normalizeAlertSeverity,
 	SilenceResetSettings,
 	UpdateSilenceResetSettings,
+	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
-import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
+import { AlertHistoryRepository, EventTimeRow } from '../../dal/alertHistoryRepository';
 import {
 	alertsIngestedTotal,
 	alertsResolvedTotal,
@@ -26,6 +27,7 @@ import {
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
+import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
@@ -40,6 +42,8 @@ import {
 	applyAlertListQuery,
 	computeAlertFacets,
 	computeAlertGroupSummaries,
+	alertMatchesFilters,
+	searchAlerts,
 } from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
@@ -49,6 +53,17 @@ const logger = new Logger('bl/alert.bl');
 // which is why this is read per instance rather than at module level: the test setup
 // assigns the env var after imports are evaluated but before the app is constructed.
 const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
+
+// The analytics request after validation: the window, the requester's timezone,
+// an optional dashboard scope (filters + search) and an optional tag key to research.
+export interface AlertAnalyticsQuery {
+	from: string | null;
+	to: string;
+	timeZone?: string;
+	filters?: Record<string, string[]>;
+	search?: string;
+	tagKey?: string;
+}
 
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
@@ -60,6 +75,17 @@ export class AlertBL {
 	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
+		snapshotTtlMs()
+	);
+	// Analytics inputs: two full-table scans (history rows, event times) that must not
+	// run per request. Same TTL and invalidation as the alert snapshots — every write
+	// path that changes them already calls invalidateSnapshots().
+	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
+		() => this.resolvedAlertRepo.getAllHistoryRows(),
+		snapshotTtlMs()
+	);
+	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
+		() => this.alertHistoryRepo.getAllEventTimes(),
 		snapshotTtlMs()
 	);
 
@@ -77,6 +103,8 @@ export class AlertBL {
 	invalidateSnapshots(): void {
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
+		this.historyRowsSnapshot.invalidate();
+		this.eventTimesSnapshot.invalidate();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
@@ -234,6 +262,10 @@ export class AlertBL {
 	): Promise<void> {
 		try {
 			await this.alertHistoryRepo.recordEvent({ alertId, eventType, actorName, description });
+			// Only the events table changed; the analytics MTTA/responder numbers read it
+			// through this snapshot, so it must drop even when no alert-list write follows
+			// (e.g. an action run records an event without touching either alert table).
+			this.eventTimesSnapshot.invalidate();
 		} catch (error) {
 			logger.error(`Failed to record alert history event (${eventType}) for ${alertId}`, error);
 		}
@@ -651,6 +683,67 @@ export class AlertBL {
 		}
 	}
 	// endregion
+
+	// Aggregates for the Insights page, computed over the FULL history and reduced
+	// server-side — the client never receives per-alert rows, so page cost does not
+	// grow with installation size. The pure computation lives in
+	// bl/analytics/computeAlertAnalytics for direct testing.
+	//
+	// Deliberately NOT range-limited at the SQL layer: episodes must include
+	// pre-window rows (MTBF gaps and re-fire checks cross the boundary) and every
+	// window needs its previous-period twin for deltas, so a naive WHERE clause
+	// would change results. The full scans are amortized by the snapshot caches
+	// below; revisit with incremental episode materialization if history tables
+	// reach the millions of rows where reconstruction itself becomes the cost.
+	async getAlertAnalytics(query: AlertAnalyticsQuery): Promise<AlertAnalytics> {
+		const { from, to, timeZone, filters, search, tagKey } = query;
+		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, owners] = await Promise.all([
+			this.activeSnapshot.get(),
+			this.resolvedSnapshot.get(),
+			this.historyRowsSnapshot.get(),
+			this.eventTimesSnapshot.get(),
+			this.getOwnerInfos(),
+		]);
+		const historyRows = historySnapshot.value;
+		const eventRows = eventsSnapshot.value;
+
+		// Dashboard scoping: the SAME filter/search semantics the alerts list uses, so
+		// the Insights numbers agree with what that dashboard shows. Alerts deleted from
+		// both tables cannot match a filter and drop out with it.
+		let allowedAlertIds: Set<string> | undefined;
+		const hasFilters = filters && Object.keys(filters).length > 0;
+		const hasSearch = !!search?.trim();
+		if (hasFilters || hasSearch) {
+			let candidates = [...activeSnapshot.value, ...resolvedSnapshot.value];
+			if (hasFilters) {
+				candidates = candidates.filter((alert) => alertMatchesFilters(alert, filters, owners));
+			}
+			if (hasSearch) {
+				candidates = searchAlerts(candidates, search as string);
+			}
+			allowedAlertIds = new Set(candidates.map((alert) => alert.id));
+		}
+
+		return computeAlertAnalytics({
+			episodes: historyRows.map((row) => ({
+				alertId: row.alert_id,
+				status: row.status,
+				at: toIsoUtc(row.archived_at),
+			})),
+			events: eventRows.map((row) => ({
+				alertId: row.alert_id,
+				at: toIsoUtc(row.created_at),
+				actorName: row.actor_name,
+			})),
+			activeAlerts: activeSnapshot.value,
+			resolvedAlerts: resolvedSnapshot.value,
+			from,
+			to,
+			timeZone,
+			allowedAlertIds,
+			tagKey,
+		});
+	}
 
 	// region history
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {

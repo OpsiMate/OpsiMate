@@ -1,6 +1,7 @@
 // src/App.tsx
 import { Alerts, AuthGuard, MobileWebOverlay, Profile, ThemeProvider } from '@/components';
 import { Dashboards } from '@/components/Dashboards';
+import AlertInsights from './pages/AlertInsights';
 import { ErrorBoundary, ErrorBoundaryInner } from '@/components/ErrorBoundary';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { UnsavedChangesDialog } from '@/components/shared';
@@ -61,6 +62,7 @@ const App: React.FC = () => {
 										<Routes>
 											<Route path="/" element={<Alerts />} />
 											<Route path="/dashboards" element={<Dashboards />} />
+											<Route path="/insights" element={<AlertInsights />} />
 											<Route path="/integrations" element={<Integrations />} />
 											<Route path="/settings" element={<Settings />} />
 											<Route path="/profile" element={<Profile />} />
