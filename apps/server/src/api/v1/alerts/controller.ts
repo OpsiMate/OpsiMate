@@ -12,6 +12,7 @@ import {
 } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
+	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhook,
 	GrafanaWebhookSchema,
@@ -785,6 +786,33 @@ export class AlertController {
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// Aggregates for the Insights page. from/to are ISO bounds (from absent = all
+	// time); tz is the requester's IANA timezone so day/hour bucketing matches what
+	// the user's clock says.
+	async getAlertAnalytics(req: Request, res: Response) {
+		try {
+			// Dashboard scoping (`filters` + `search`) uses the same JSON format and
+			// semantics as the alerts list endpoints, so a dashboard means the same
+			// thing here as there. The schema also rejects an inverted from/to window.
+			const params = AlertAnalyticsParamsSchema.parse(req.query);
+			const analytics = await this.alertBL.getAlertAnalytics({
+				from: params.from ?? null,
+				to: params.to ?? new Date().toISOString(),
+				timeZone: params.tz,
+				filters: params.filters,
+				search: params.search,
+				tagKey: params.tagKey,
+			});
+			return res.json({ success: true, data: analytics });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing alert analytics', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}

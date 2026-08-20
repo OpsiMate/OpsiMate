@@ -25,6 +25,7 @@ import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
 import {
 	useAlertGrouping,
+	useAlertKeyboardNav,
 	useAlertSelection,
 	useAlertSorting,
 	useColumnResize,
@@ -230,6 +231,9 @@ export const AlertsTable = ({
 		virtualizer.measure();
 	}, [expandRows, virtualizer]);
 
+	// ArrowUp/ArrowDown move the details-sidebar selection through the rows.
+	useAlertKeyboardNav({ flatRows, activeAlertId, onAlertClick, virtualizer, scrollerRef });
+
 	const virtualItems = virtualizer.getVirtualItems();
 
 	// Infinite scroll. onEndReached is defined only while more pages exist (the parent
@@ -392,7 +396,10 @@ export const AlertsTable = ({
 							    an overflow-auto div, which turned the header into a second,
 							    independently scrollable region with its own scrollbar. Opaque
 							    background because rows now scroll underneath it. */}
-							<div className="sticky top-0 z-10">
+							{/* data-table-sticky-header: keyboard navigation measures this (and the
+							    hanging group copies below) to know how much of the scroller's top is
+							    occluded — the virtualizer's own scroll math can't see sticky overlays. */}
+							<div className="sticky top-0 z-10" data-table-sticky-header>
 								<div className="border-b bg-background">
 									<table className="table-fixed w-full text-sm">
 										<TableHeader>
@@ -552,7 +559,7 @@ export const AlertsTable = ({
 								    bg-muted/50, and at rest the pinned copy sits exactly on the real
 								    group row — without this backing the two translucent layers stack
 								    and the first group renders darker than every other one. */}
-									<div className="absolute left-0 right-0 top-0 bg-background">
+									<div className="absolute left-0 right-0 top-0 bg-background" data-table-sticky-hang>
 										{activeStickyHeaders.map((item) => (
 											<StickyGroupHeader
 												key={`sticky-${item.type === 'group' ? item.key : ''}`}
