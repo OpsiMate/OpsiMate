@@ -4,4 +4,5 @@ export * from './types';
 export * from './alerts/alertView';
 export * from './alerts/alertQuery';
 export * from './alerts/alertAnalytics';
+export * from './alerts/computeAlertAnalytics';
 export * from './alerts/alertGroups';
