@@ -7,6 +7,7 @@ import {
 	AlertNameStats,
 	AnalyticsKpi,
 	DayVolumePoint,
+	DurationDayPoint,
 	DurationStats,
 	HourVolumePoint,
 	NamedCount,
@@ -63,10 +64,32 @@ interface AlertMeta {
 	tags: Record<string, string>;
 }
 
-interface MttrDayAccumulator {
+interface DurationDayAccumulator {
 	total: number;
 	count: number;
 }
+
+const addDurationSample = (acc: Map<string, DurationDayAccumulator>, day: string, durationMs: number): void => {
+	const entry = acc.get(day);
+	if (entry) {
+		entry.total += durationMs;
+		entry.count += 1;
+	} else {
+		acc.set(day, { total: durationMs, count: 1 });
+	}
+};
+
+// Every day in `days` gets a point; days with no samples carry meanMs null so the
+// trend line BREAKS there instead of bridging the gap with a made-up slope.
+const durationTrend = (days: Iterable<string>, acc: Map<string, DurationDayAccumulator>): DurationDayPoint[] =>
+	[...new Set([...days, ...acc.keys()])]
+		.map((date) => {
+			const entry = acc.get(date);
+			return entry
+				? { date, meanMs: Math.round(entry.total / entry.count), count: entry.count }
+				: { date, meanMs: null, count: 0 };
+		})
+		.sort((a, b) => a.date.localeCompare(b.date));
 
 // "The fix didn't hold": a resolution followed by the same alert re-firing within
 // this window counts as a failed resolution (change-failure-rate's alert analog).
@@ -272,7 +295,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 
 	// Resolutions overlay + per-day MTTR trend, bucketed by the local day the
 	// resolution LANDED on (that is when the work happened).
-	const mttrDayAcc = new Map<string, MttrDayAccumulator>();
+	const mttrDayAcc = new Map<string, DurationDayAccumulator>();
 	for (const episode of resolutionsInRange) {
 		const resolvedMs = episode.resolvedMs as number;
 		const day = local.day(resolvedMs);
@@ -282,14 +305,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			dayPoints.set(day, point);
 		}
 		point.resolved += 1;
-		const acc = mttrDayAcc.get(day);
-		const duration = resolvedMs - episode.startMs;
-		if (acc) {
-			acc.total += duration;
-			acc.count += 1;
-		} else {
-			mttrDayAcc.set(day, { total: duration, count: 1 });
-		}
+		addDurationSample(mttrDayAcc, day, resolvedMs - episode.startMs);
+	}
+
+	// MTTA trend: same episodes as the headline MTTA, bucketed by the local day the
+	// first human touch happened (that is when the response happened).
+	const mttaDayAcc = new Map<string, DurationDayAccumulator>();
+	for (const episode of windowEpisodes) {
+		if (episode.firstTouchMs === null) continue;
+		addDurationSample(mttaDayAcc, local.day(episode.firstTouchMs), episode.firstTouchMs - episode.startMs);
 	}
 
 	// Top responders: user actions in the window, counted by actor. Only episodes'
@@ -444,10 +468,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			resolvedDurations: number[];
 			alertIds: Set<string>;
 			dayCounts: Map<string, number>;
+			mttrDayAcc: Map<string, DurationDayAccumulator>;
+			mttaDayAcc: Map<string, DurationDayAccumulator>;
 		}
 		const byValue = new Map<string, TagValueAccumulator>();
 		let taggedEpisodes = 0;
 		let untaggedEpisodes = 0;
+		// Per-VALUE MTTR/MTTA trends, same day semantics as the reliability trends;
+		// tagDays anchors a shared x-axis so every value's line covers the same days.
+		const tagDays = new Set<string>();
 		for (const episode of windowEpisodes) {
 			const tags = meta.get(episode.alertId)?.tags;
 			// hasOwnProperty, not plain lookup: a key like "__proto__" must read as
@@ -460,15 +489,34 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			taggedEpisodes += 1;
 			let acc = byValue.get(value);
 			if (!acc) {
-				acc = { episodes: 0, resolvedDurations: [], alertIds: new Set(), dayCounts: new Map() };
+				acc = {
+					episodes: 0,
+					resolvedDurations: [],
+					alertIds: new Set(),
+					dayCounts: new Map(),
+					mttrDayAcc: new Map(),
+					mttaDayAcc: new Map(),
+				};
 				byValue.set(value, acc);
 			}
 			acc.episodes += 1;
 			acc.alertIds.add(episode.alertId);
 			// Window rule matches the headline MTTR: resolutions past `to` don't count.
-			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs))
+			// Sample days (resolution/touch) go into tagDays too, so EVERY value's trend
+			// covers them — one value's sample day must not be absent from another's line.
+			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs)) {
+				const resolvedDay = local.day(episode.resolvedMs);
 				acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
+				tagDays.add(resolvedDay);
+				addDurationSample(acc.mttrDayAcc, resolvedDay, episode.resolvedMs - episode.startMs);
+			}
+			if (episode.firstTouchMs !== null) {
+				const touchDay = local.day(episode.firstTouchMs);
+				tagDays.add(touchDay);
+				addDurationSample(acc.mttaDayAcc, touchDay, episode.firstTouchMs - episode.startMs);
+			}
 			const day = local.day(episode.startMs);
+			tagDays.add(day);
 			acc.dayCounts.set(day, (acc.dayCounts.get(day) ?? 0) + 1);
 		}
 
@@ -515,6 +563,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			untaggedEpisodes,
 			topValues,
 			volumeByDay: [...dayPointsByDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+			trends: topValues.map((value) => {
+				const acc = byValue.get(value);
+				const empty = new Map<string, DurationDayAccumulator>();
+				return {
+					value,
+					mttrByDay: durationTrend(tagDays, acc?.mttrDayAcc ?? empty),
+					mttaByDay: durationTrend(tagDays, acc?.mttaDayAcc ?? empty),
+				};
+			}),
 		};
 	}
 
@@ -555,17 +612,10 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 				episodes: windowEpisodes.length,
 			},
 			episodesPerDay,
-			// Every day the volume chart shows gets a point; days without resolutions
-			// carry meanMs null so the trend line BREAKS there instead of bridging the
-			// gap with a made-up slope.
-			mttrByDay: [...new Set([...dayPoints.keys(), ...mttrDayAcc.keys()])]
-				.map((date) => {
-					const acc = mttrDayAcc.get(date);
-					return acc
-						? { date, meanMs: Math.round(acc.total / acc.count), count: acc.count }
-						: { date, meanMs: null, count: 0 };
-				})
-				.sort((a, b) => a.date.localeCompare(b.date)),
+			// Both trends span every day the volume chart shows (plus their own sample
+			// days), so the two metrics line up on the same x-axis.
+			mttrByDay: durationTrend(dayPoints.keys(), mttrDayAcc),
+			mttaByDay: durationTrend(dayPoints.keys(), mttaDayAcc),
 		},
 		byName,
 		tagInsights,
