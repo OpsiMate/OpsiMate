@@ -31,11 +31,21 @@ function getEncryptionKey(): string {
 export function warnIfEncryptionKeyInsecure(env: NodeJS.ProcessEnv = process.env): void {
 	if (env.NODE_ENV !== 'production') return;
 	const key = env.ENCRYPTION_KEY;
-	if (!key || key.trim().length === 0) {
+	// Cases are kept distinct because getEncryptionKey() uses `|| fallback`: an unset or
+	// EMPTY value resolves to the fallback, but a whitespace-only value is truthy and is
+	// used verbatim as the key — the warning must say which is actually protecting data.
+	if (!key) {
 		logger.warn(
 			'ENCRYPTION_KEY is not set. Stored credentials are being encrypted with the built-in ' +
 				'fallback key, which is PUBLIC (it ships in this repo). We highly recommend setting ' +
 				'ENCRYPTION_KEY to a strong, private secret. Continuing with the insecure default.'
+		);
+		return;
+	}
+	if (key.trim().length === 0) {
+		logger.warn(
+			'ENCRYPTION_KEY is set to a whitespace-only value, which is used verbatim as a weak, ' +
+				'easily-guessed encryption key. We highly recommend setting it to a strong, private secret.'
 		);
 		return;
 	}
