@@ -49,3 +49,6 @@ apps/server/local-config.yml
 .vercel
 .env*
 issue-backlog.md
+# Local package-manager config (may point at a private/internal registry that CI
+# can't reach) — keep it out of the repo so installs use the default registry.
+.npmrc

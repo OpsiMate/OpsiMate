@@ -1,6 +1,7 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	UpdateAiConfig,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -393,7 +394,84 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+// In-memory AI (BYOK) config for the playground: same masking contract as the server —
+// the key is write-only, GET only reports that one exists.
+const aiConfigState = {
+	region: 'us-east-1',
+	modelId: '',
+	hasApiKey: false,
+	enabled: false,
+	updatedAt: null as string | null,
+};
+
+interface AiFilterRequestBody {
+	query?: string;
+}
+
 export const handlers = [
+	// ==================== AI (BYOK) ====================
+	http.get(`${API_BASE}/ai/config`, () => {
+		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
+	}),
+
+	http.put(`${API_BASE}/ai/config`, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as UpdateAiConfig;
+		if (body.region !== undefined) aiConfigState.region = body.region;
+		if (body.modelId !== undefined) aiConfigState.modelId = body.modelId;
+		if (body.apiKey !== undefined) aiConfigState.hasApiKey = body.apiKey !== null;
+		if (body.enabled !== undefined) aiConfigState.enabled = body.enabled;
+		aiConfigState.updatedAt = nowIso();
+		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
+	}),
+
+	http.get(`${API_BASE}/ai/status`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { enabled: aiConfigState.enabled && aiConfigState.hasApiKey && aiConfigState.modelId.length > 0 },
+		});
+	}),
+
+	// Keyword-matched stand-in for the NL->filter translation, so the playground can
+	// demo the flow without Bedrock.
+	http.post(`${API_BASE}/ai/filter`, async ({ request }) => {
+		if (!(aiConfigState.enabled && aiConfigState.hasApiKey && aiConfigState.modelId.length > 0)) {
+			return HttpResponse.json(
+				{ success: false, error: 'AI features are not enabled. Configure a Bedrock key in Settings → AI.' },
+				{ status: 409 }
+			);
+		}
+		const { query = '' } = (await request.json().catch(() => ({}))) as AiFilterRequestBody;
+		const q = query.toLowerCase();
+		const filters: Record<string, string[]> = {};
+		if (q.includes('critical')) filters.severity = ['Critical'];
+		else if (q.includes('warning')) filters.severity = ['Warning'];
+		if (q.includes('unassigned') || q.includes('nobody') || q.includes('no owner')) filters.owner = ['Unassigned'];
+		if (q.includes('prod')) filters['tagKey:env'] = ['prod'];
+		const lastMinutes = q.includes('hour') ? 60 : q.includes('today') ? 1440 : undefined;
+		return HttpResponse.json({
+			success: true,
+			data: {
+				filters,
+				...(lastMinutes ? { lastMinutes } : {}),
+				explanation: 'Playground interpretation of your request.',
+			},
+		});
+	}),
+
+	http.post(`${API_BASE}/ai/test`, () => {
+		// The playground never talks to Bedrock; it demonstrates both outcomes instead.
+		const ok = aiConfigState.hasApiKey && aiConfigState.modelId.length > 0;
+		return HttpResponse.json({
+			success: true,
+			data: {
+				ok,
+				latencyMs: ok ? 420 : 0,
+				modelId: aiConfigState.modelId,
+				message: ok ? 'ok (playground stub)' : 'No API key is configured yet.',
+			},
+		});
+	}),
+
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, ({ request }) => {
 		// Timed silences expire lazily on read (mirrors the server sweep).

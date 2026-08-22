@@ -337,6 +337,7 @@ export enum AuditResourceType {
 	SECRET = 'SECRET',
 	ENRICHMENT = 'ENRICHMENT',
 	ACTION = 'ACTION',
+	AI = 'AI',
 	MUTE_POLICY = 'MUTE_POLICY',
 	// Add more as needed
 }
@@ -752,6 +753,71 @@ export interface SilenceResetSettings {
 	hour: number;
 	// ISO timestamp of the reset occurrence most recently applied (null if never).
 	lastClearedAt: string | null;
+}
+
+// ---------- AI (BYOK) configuration ----------
+
+// Bedrock is the first (and so far only) provider: a single Bedrock API key sent as a
+// bearer token to the Converse REST API — no AWS SDK, no IAM keypair signing. More
+// providers/auth modes can join the union later.
+export type AiProvider = 'bedrock';
+
+// What the API returns about the AI configuration. The key itself NEVER leaves the
+// server — only whether one is stored.
+export interface AiConfig {
+	provider: AiProvider;
+	// AWS region the Bedrock runtime endpoint lives in (e.g. us-east-1).
+	region: string;
+	// Bedrock model id or inference profile (e.g. anthropic.claude-sonnet-4-5-20250929-v1:0).
+	modelId: string;
+	// Custom endpoint URL (e.g. a LiteLLM proxy). When set, overrides the default
+	// Bedrock runtime URL derived from the region.
+	baseUrl: string;
+	enabled: boolean;
+	hasApiKey: boolean;
+	updatedAt: string | null;
+}
+
+// The one update shape shared by the API layer, hooks and BL; UpdateAiConfigSchema
+// (schemas.ts) is its validating counterpart. `apiKey` semantics: undefined = keep the
+// stored key, a string = replace it, null = delete it.
+export interface UpdateAiConfig {
+	region?: string;
+	modelId?: string;
+	baseUrl?: string;
+	apiKey?: string | null;
+	enabled?: boolean;
+}
+
+// Natural-language -> filter: the model translates a phrase like "critical prod
+// alerts nobody owns from the last hour" into the dashboard's own filter record.
+// The server validates every field and value against the live facet vocabulary, so a
+// hallucinated value can never reach the query engine.
+export interface AiFilterResult {
+	// The dashboard filter record shape (tagKey:<key> keys, !field exclusions).
+	filters: Record<string, string[]>;
+	// Free-text search for anything the structured filters can't express (alert names).
+	search?: string;
+	// Rolling window in minutes; the client maps it onto its nearest time preset.
+	lastMinutes?: number;
+	// One short sentence the UI shows so the user can sanity-check the interpretation.
+	explanation: string;
+}
+
+// What any authenticated user may know about AI: whether features are on. Admins get
+// the full config through /ai/config; this never carries configuration details.
+export interface AiStatus {
+	enabled: boolean;
+}
+
+// Result of the Test Connection button: one real (tiny) Converse call to Bedrock.
+export interface AiTestResult {
+	ok: boolean;
+	latencyMs: number;
+	modelId: string;
+	// On success: the model's reply text (proof the round trip worked). On failure: the
+	// error Bedrock returned, so the user can tell a bad key from a bad model id.
+	message: string;
 }
 
 export interface RetentionConfig {
