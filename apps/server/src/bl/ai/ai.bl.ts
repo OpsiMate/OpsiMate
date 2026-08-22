@@ -10,6 +10,7 @@ import {
 	UpdateAiConfig,
 	User,
 } from '@OpsiMate/shared';
+import { lookup as dnsLookup } from 'node:dns/promises';
 import { AiConfigRepository } from '../../dal/aiConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
@@ -43,6 +44,19 @@ const parseIPv4 = (host: string): number[] | null => {
 	return octets.every((n) => n >= 0 && n <= 255) ? octets : null;
 };
 
+// The tail of an IPv4-mapped IPv6 literal. The URL parser canonicalizes these to HEX
+// hextets ("[::ffff:127.0.0.1]" becomes "::ffff:7f00:1"), so the mapped address must
+// parse in BOTH spellings — dotted-quad and 1-2 hex groups — before the v4 rules run.
+const parseMappedTail = (tail: string): number[] | null => {
+	const dotted = parseIPv4(tail);
+	if (dotted) return dotted;
+	const groups = tail.split(':');
+	if (groups.length < 1 || groups.length > 2) return null;
+	if (groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
+	const value = groups.reduce((acc, g) => acc * 0x10000 + parseInt(g, 16), 0);
+	return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
+};
+
 // IPv6 loopback (::1), unspecified (::), unique-local (fc00::/7), link-local
 // (fe80::/10), and IPv4-mapped forms that smuggle a blocked v4 address in.
 const isBlockedIPv6 = (host: string): boolean => {
@@ -50,8 +64,9 @@ const isBlockedIPv6 = (host: string): boolean => {
 	if (host === '::1' || host === '::') return true;
 	if (host.startsWith('fc') || host.startsWith('fd') || /^fe[89ab]/.test(host)) return true;
 	if (host.startsWith('::ffff:')) {
-		const mapped = parseIPv4(host.slice('::ffff:'.length));
-		return mapped ? isBlockedIPv4(mapped) : false;
+		const mapped = parseMappedTail(host.slice('::ffff:'.length));
+		// Fail closed: an ::ffff: form this parser cannot read must not get the key.
+		return mapped ? isBlockedIPv4(mapped) : true;
 	}
 	return false;
 };
@@ -85,6 +100,46 @@ export const assertSafeAiEndpoint = (rawBaseUrl: string): void => {
 	const v4 = parseIPv4(host);
 	if (blockedName || (v4 && isBlockedIPv4(v4)) || isBlockedIPv6(host)) {
 		throw new AiValidationError('Endpoint host is not allowed.');
+	}
+};
+
+// One resolved address of an endpoint host — the shape a resolver must return.
+export interface ResolvedAddress {
+	address: string;
+}
+
+export type EndpointResolver = (host: string) => Promise<ResolvedAddress[]>;
+
+const defaultResolver: EndpointResolver = async (host) => dnsLookup(host, { all: true, verbatim: true });
+
+// Request-path guard: the literal checks above, PLUS resolving a DNS name and holding
+// every address it maps to against the same rules — a name like internal.corp.example
+// pointing at 10.0.0.5 (or an attacker record at 169.254.169.254) must not receive the
+// key either. Save-time validation stays literal-only (an endpoint may be configured
+// before it resolves); the request path is where the decrypted key is at stake.
+// Residual risk, accepted: this lookup and fetch's own lookup are two queries, so a
+// rebinding DNS server could race them — but the key never survives a cross-origin
+// redirect (fetch strips Authorization), and a denylist can't fully solve rebinding.
+export const assertSafeAiEndpointResolved = async (
+	rawBaseUrl: string,
+	resolve: EndpointResolver = defaultResolver
+): Promise<void> => {
+	assertSafeAiEndpoint(rawBaseUrl);
+	const host = new URL(rawBaseUrl).hostname.toLowerCase().replace(/^\[|\]$/g, '');
+	// IP literals were fully vetted by the literal checks.
+	if (parseIPv4(host) || host.includes(':')) return;
+	let addresses: ResolvedAddress[];
+	try {
+		addresses = await resolve(host);
+	} catch {
+		throw new AiValidationError('Endpoint host could not be resolved.');
+	}
+	for (const { address } of addresses) {
+		const candidate = address.toLowerCase();
+		const v4 = parseIPv4(candidate);
+		if ((v4 && isBlockedIPv4(v4)) || isBlockedIPv6(candidate)) {
+			throw new AiValidationError('Endpoint host is not allowed.');
+		}
 	}
 };
 
@@ -209,11 +264,12 @@ export class AiBL {
 			return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: 'No model id is configured yet.' };
 		}
 		// Defense in depth: save-time validation keeps stored endpoints safe, but re-check a
-		// user-supplied base URL before every call so a row that predates this guard (or was
-		// written another way) still can't leak the key. The env override is exempt.
+		// user-supplied base URL before every call — WITH DNS resolution, so a name mapping
+		// to an internal or metadata address can't leak the key either. Also covers rows
+		// that predate this guard. The env override is exempt.
 		if (row.base_url) {
 			try {
-				assertSafeAiEndpoint(row.base_url);
+				await assertSafeAiEndpointResolved(row.base_url);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Endpoint is not allowed.';
 				return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: message };

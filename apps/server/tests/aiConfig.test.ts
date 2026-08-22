@@ -3,6 +3,7 @@ import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
+import { assertSafeAiEndpointResolved, EndpointResolver } from '../src/bl/ai/ai.bl';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // The AI (BYOK/Bedrock) configuration endpoints: admin gating, key masking and
@@ -191,9 +192,35 @@ describe('AI config endpoints', () => {
 		['link-local / metadata', 'https://169.254.169.254'],
 		['embedded credentials', 'https://user:pass@bedrock-runtime.us-east-1.amazonaws.com'],
 		['query string', 'https://bedrock-runtime.us-east-1.amazonaws.com/?x=1'],
+		// The URL parser canonicalizes these to hex hextets ("::ffff:7f00:1") — the
+		// guard must catch the mapped address in that spelling too.
+		['IPv4-mapped IPv6 loopback', 'https://[::ffff:127.0.0.1]/'],
+		['IPv4-mapped IPv6 metadata', 'https://[::ffff:169.254.169.254]/'],
+		['IPv4-mapped IPv6 private', 'https://[::ffff:10.0.0.5]/'],
 	])('validation: an unsafe baseUrl (%s) is a 400', async (_label, baseUrl) => {
 		const res = await put('/api/v1/ai/config', { baseUrl });
 		expect(res.status).toBe(400);
+	});
+
+	// Request-path DNS guard: a NAME resolving to a blocked address must not receive
+	// the key, even though the literal checks pass it. Resolver injected — no network.
+	test.each([
+		['private IPv4', '10.0.0.5'],
+		['metadata IPv4', '169.254.169.254'],
+		['loopback IPv6', '::1'],
+		['mapped loopback IPv6', '::ffff:127.0.0.1'],
+	])('resolved endpoint check rejects a host resolving to %s', async (_label, address) => {
+		const resolver: EndpointResolver = async () => [{ address }];
+		await expect(assertSafeAiEndpointResolved('https://bedrock-proxy.corp.example.com', resolver)).rejects.toThrow(
+			'Endpoint host is not allowed.'
+		);
+	});
+
+	test('resolved endpoint check passes a host resolving to public addresses only', async () => {
+		const resolver: EndpointResolver = async () => [{ address: '52.94.133.131' }, { address: '2600:1f18::1' }];
+		await expect(
+			assertSafeAiEndpointResolved('https://bedrock-proxy.corp.example.com', resolver)
+		).resolves.toBeUndefined();
 	});
 
 	test('validation: a public https baseUrl is accepted', async () => {
@@ -300,5 +327,23 @@ describe('AI status and NL->filter', () => {
 		expect(res.body.error).toContain('without an API key');
 		// Restore the working config for any later tests.
 		await put('/api/v1/ai/config', { apiKey: 'good-key', enabled: true });
+	});
+
+	// LAST in the suite: hammering the per-user window would starve every /ai/filter
+	// test that ran after it. Runs with AI disabled so the 429 must come from the
+	// rate limiter itself and Bedrock is never touched.
+	test('the filter endpoint rate-limits a hammering user with 429', async () => {
+		await put('/api/v1/ai/config', { enabled: false });
+		const callsBefore = bedrockRequestCount;
+		let lastStatus = 0;
+		for (let i = 0; i < 20 && lastStatus !== 429; i++) {
+			const res = await app
+				.post('/api/v1/ai/filter')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ query: 'spam' });
+			lastStatus = res.status;
+		}
+		expect(lastStatus).toBe(429);
+		expect(bedrockRequestCount).toBe(callsBefore);
 	});
 });

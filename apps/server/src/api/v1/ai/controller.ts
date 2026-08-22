@@ -6,8 +6,33 @@ import { isZodError } from '../../../utils/isZodError.ts';
 
 const logger = new Logger('ai.controller');
 
+// Every /ai/filter call is a real, billed Bedrock request available to ANY
+// authenticated user — a fixed per-user window keeps a loop (or a stuck client)
+// from draining the org's Bedrock spend.
+const FILTER_RATE_LIMIT = 15;
+const FILTER_RATE_WINDOW_MS = 60_000;
+
+interface FilterRateWindow {
+	windowStart: number;
+	count: number;
+}
+
 export class AiController {
 	constructor(private aiBL: AiBL) {}
+
+	private filterRates = new Map<string, FilterRateWindow>();
+
+	private allowFilterCall(actorKey: string): boolean {
+		const now = Date.now();
+		const window = this.filterRates.get(actorKey);
+		if (!window || now - window.windowStart >= FILTER_RATE_WINDOW_MS) {
+			this.filterRates.set(actorKey, { windowStart: now, count: 1 });
+			return true;
+		}
+		if (window.count >= FILTER_RATE_LIMIT) return false;
+		window.count += 1;
+		return true;
+	}
 
 	// Org-wide configuration holding a credential — admin-only, same gate the
 	// retention and silence-reset settings use.
@@ -62,6 +87,9 @@ export class AiController {
 
 	// Any authenticated user: translating a phrase into filters is a read operation.
 	filterHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!this.allowFilterCall(String(req.user?.id ?? 'anonymous'))) {
+			return res.status(429).json({ success: false, error: 'Too many AI requests — try again in a minute.' });
+		}
 		try {
 			const { query } = AiFilterQuerySchema.parse(req.body ?? {});
 			const result = await this.aiBL.filterFromText(query);

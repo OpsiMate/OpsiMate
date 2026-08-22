@@ -48,6 +48,7 @@ export class AiConfigRepository {
 				provider: 'bedrock',
 				region: 'us-east-1',
 				model_id: '',
+				base_url: '',
 				api_key: null,
 				enabled: 0,
 				updated_at: null,

@@ -120,7 +120,8 @@ export const AiSettings = () => {
 				<h2 className="text-lg font-semibold text-foreground">AI (beta)</h2>
 				<p className="text-sm text-muted-foreground">
 					Bring your own Amazon Bedrock API key to power upcoming AI features. The key is stored encrypted on
-					your OpsiMate server, is only ever sent to Bedrock, and can be removed at any time. No alert data
+					your OpsiMate server, never reaches the browser, and is sent only to the endpoint configured here
+					(Amazon Bedrock unless you set a custom one). It can be removed at any time, and no alert data
 					leaves your server until an AI feature is explicitly used.
 				</p>
 			</div>
