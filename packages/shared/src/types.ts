@@ -337,6 +337,7 @@ export enum AuditResourceType {
 	SECRET = 'SECRET',
 	ENRICHMENT = 'ENRICHMENT',
 	ACTION = 'ACTION',
+	MUTE_POLICY = 'MUTE_POLICY',
 	// Add more as needed
 }
 
