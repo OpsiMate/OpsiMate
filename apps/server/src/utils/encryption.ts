@@ -9,11 +9,39 @@ const KEY_LENGTH = 32;
 
 const logger = new Logger('encryption-');
 
+// The built-in key is a PUBLIC constant (it ships in this repo). It exists so local dev
+// and the test suite work with zero config — it must never protect real data.
+const DEV_FALLBACK_KEY = 'test-key-should-be-changed';
+
 /**
  * Get encryption key from environment variable or use default
  */
 function getEncryptionKey(): string {
-	return process.env.ENCRYPTION_KEY || 'test-key-should-be-changed';
+	return process.env.ENCRYPTION_KEY || DEV_FALLBACK_KEY;
+}
+
+/**
+ * Called once at server boot. In production, an unset (or blank) ENCRYPTION_KEY means
+ * every stored credential is encrypted under the public fallback key — no real
+ * protection. We only WARN (loudly, and every boot) rather than refuse to start, so
+ * existing deployments upgrade without downtime; setting ENCRYPTION_KEY silences it.
+ * No-op outside production, where the zero-config fallback is expected. Env is injected
+ * so tests never mutate the shared process.env.
+ */
+export function warnIfEncryptionKeyInsecure(env: NodeJS.ProcessEnv = process.env): void {
+	if (env.NODE_ENV !== 'production') return;
+	const key = env.ENCRYPTION_KEY;
+	if (!key || key.trim().length === 0) {
+		logger.warn(
+			'ENCRYPTION_KEY is not set. Stored credentials are being encrypted with the built-in ' +
+				'fallback key, which is PUBLIC (it ships in this repo). We highly recommend setting ' +
+				'ENCRYPTION_KEY to a strong, private secret. Continuing with the insecure default.'
+		);
+		return;
+	}
+	if (key === DEV_FALLBACK_KEY) {
+		logger.warn('ENCRYPTION_KEY is set to the public fallback value — we highly recommend rotating it.');
+	}
 }
 
 /**
