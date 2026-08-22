@@ -89,7 +89,15 @@ export class AiConfigRepository {
 							enabled = excluded.enabled,
 							updated_at = excluded.updated_at`
 					)
-					.run(next.provider, next.region, next.model_id, next.base_url, next.api_key, next.enabled, updatedAt);
+					.run(
+						next.provider,
+						next.region,
+						next.model_id,
+						next.base_url,
+						next.api_key,
+						next.enabled,
+						updatedAt
+					);
 				return { ...next, updated_at: updatedAt };
 			});
 			return run();

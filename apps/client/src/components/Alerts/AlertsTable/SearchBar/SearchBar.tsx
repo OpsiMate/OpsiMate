@@ -103,10 +103,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 					<Sparkle className="ml-2 h-3.5 w-3.5 shrink-0 text-violet-500" />
 				) : (
 					<Search
-						className={cn(
-							'ml-2 h-3 w-3 shrink-0',
-							isActive ? 'text-primary' : 'text-muted-foreground'
-						)}
+						className={cn('ml-2 h-3 w-3 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')}
 					/>
 				)}
 
@@ -115,7 +112,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 					type="text"
 					placeholder={aiMode ? 'Describe what you want to see...' : 'Search alerts...'}
 					value={aiMode ? aiQuery : value}
-					onChange={(e) => aiMode ? setAiQuery(e.target.value) : setValue(e.target.value)}
+					onChange={(e) => (aiMode ? setAiQuery(e.target.value) : setValue(e.target.value))}
 					onKeyDown={handleKeyDown}
 					className={cn(
 						'flex-1 h-7 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground',
@@ -164,16 +161,10 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 										: 'text-muted-foreground hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30'
 								)}
 							>
-								{aiMode ? (
-									<Search className="h-3.5 w-3.5" />
-								) : (
-									<Sparkle className="h-3.5 w-3.5" />
-								)}
+								{aiMode ? <Search className="h-3.5 w-3.5" /> : <Sparkle className="h-3.5 w-3.5" />}
 							</button>
 						</TooltipTrigger>
-						<TooltipContent>
-							{aiMode ? 'Back to search' : 'Ask AI to filter'}
-						</TooltipContent>
+						<TooltipContent>{aiMode ? 'Back to search' : 'Ask AI to filter'}</TooltipContent>
 					</Tooltip>
 				)}
 			</div>
