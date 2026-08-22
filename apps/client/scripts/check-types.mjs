@@ -9,13 +9,20 @@
 
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const clientDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const baselineFile = join(clientDir, 'type-errors-baseline.txt');
+// Some error messages embed absolute paths (e.g. a type printed as
+// import("<repo>/packages/shared/dist/types")). That prefix differs by machine
+// (/Users/... locally vs /home/runner/... on CI), so collapse it or the baseline
+// would never match across environments.
+const repoRoot = resolve(clientDir, '..', '..');
 
-// tsc exits non-zero when it finds errors; its report is on stdout either way.
+// tsc exits 1 (or 2) when it reports diagnostics — expected. Any OTHER failure means
+// tsc never actually ran (binary missing, bad config path), which must fail the gate
+// loudly instead of looking like "no errors".
 const runTsc = () => {
 	try {
 		execSync('pnpm exec tsc -p tsconfig.app.json --noEmit', {
@@ -25,17 +32,31 @@ const runTsc = () => {
 		});
 		return '';
 	} catch (error) {
-		return `${error.stdout ?? ''}${error.stderr ?? ''}`;
+		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+		if (error.status !== 1 && error.status !== 2) {
+			console.error(`Could not run tsc — the client typecheck gate did not execute:\n${output}`);
+			process.exit(2);
+		}
+		return output;
 	}
 };
 
-// "path(line,col): error TSxxxx: message" -> "path: error TSxxxx: message". Dropping
-// line/column keeps the baseline stable when unrelated edits shift line numbers.
+// Normalize each diagnostic to a machine- and line-stable identity:
+//   "path(line,col): error TSxxxx: message" -> "path: error TSxxxx: message"
+//   "error TSxxxx: message" (global, no position) -> kept as-is
+// Global diagnostics (e.g. TS5058 "specified path does not exist") must be captured or
+// a broken invocation would normalize to nothing and pass green.
 const normalize = (output) => {
 	const ids = new Set();
-	for (const line of output.split('\n')) {
-		const match = line.match(/^(.*?)\(\d+,\d+\): (error TS\d+: .*)$/);
-		if (match) ids.add(`${match[1]}: ${match[2]}`.trim());
+	for (const rawLine of output.split('\n')) {
+		const line = rawLine.split(repoRoot).join('<repo>');
+		const positioned = line.match(/^(.*?)\(\d+,\d+\): (error TS\d+: .*)$/);
+		if (positioned) {
+			ids.add(`${positioned[1]}: ${positioned[2]}`.trim());
+			continue;
+		}
+		const global = line.match(/^(error TS\d+: .*)$/);
+		if (global) ids.add(global[1].trim());
 	}
 	return [...ids].sort();
 };

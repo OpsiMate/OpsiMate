@@ -16,7 +16,7 @@ src/mocks/mockAlerts.ts: error TS2739: Type '{ UptimeKuma: number; Grafana: numb
 src/mocks/mockAlerts.utils.ts: error TS2739: Type '{ Grafana: number; GCP: number; UptimeKuma: number; Custom: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
 src/pages/Integrations.tsx: error TS2339: Property 'toLowerCase' does not exist on type 'never'.
 src/pages/Integrations.tsx: error TS2345: Argument of type '{ name: string; type: IntegrationType; externalUrl: string; credentials: {}; }' is not assignable to parameter of type '{ name: string; type: IntegrationType; externalUrl: string; credentials: Record<string, string>; }'.
-src/pages/Integrations.tsx: error TS2367: This comparison appears to be unintentional because the types 'IntegrationType' and 'import("/Users/idanlodzki/OpsiMate/packages/shared/dist/types").IntegrationType' have no overlap.
+src/pages/Integrations.tsx: error TS2367: This comparison appears to be unintentional because the types 'IntegrationType' and 'import("<repo>/packages/shared/dist/types").IntegrationType' have no overlap.
 src/pages/Login.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
 src/pages/NotFound.tsx: error TS2559: Type 'string' has no properties in common with type 'LogOptions'.
 src/pages/Register.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.

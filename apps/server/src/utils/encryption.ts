@@ -7,6 +7,12 @@ const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 
+// Provenance marker prepended to everything we encrypt. Its presence means "this value
+// was produced by encryptPassword", so a decryption failure on it is a real problem
+// (changed key / corruption) rather than possibly-legacy-plaintext. It removes the need
+// to GUESS provenance from a value's shape.
+const CIPHERTEXT_PREFIX = 'gcm1:';
+
 const logger = new Logger('encryption-');
 
 // The built-in key is a PUBLIC constant (it ships in this repo). It exists so local
@@ -40,7 +46,9 @@ function getEncryptionKey(): string {
 export function assertEncryptionKeyConfigured(env: NodeJS.ProcessEnv = process.env): void {
 	if (env.NODE_ENV !== 'production') return;
 	const key = env.ENCRYPTION_KEY;
-	if (!key) {
+	// Whitespace-only counts as unset: getEncryptionKey would otherwise use " " as a
+	// trivially guessable master key.
+	if (!key || key.trim().length === 0) {
 		throw new Error(
 			'ENCRYPTION_KEY is not set. OpsiMate encrypts stored credentials with it and refuses ' +
 				'to start in production using the built-in fallback key (which is public). Set ' +
@@ -83,16 +91,34 @@ export function encryptPassword(password: string | undefined): string | undefine
 	// Combine salt + iv + authTag + encrypted data
 	const combined = Buffer.concat([salt, iv, authTag, Buffer.from(encrypted, 'hex')]);
 
-	return combined.toString('base64');
+	return CIPHERTEXT_PREFIX + combined.toString('base64');
 }
 
-// encryptPassword emits base64 of salt(64)+iv(16)+tag(16)+data(>=1). A value that is
-// not strict base64 of at least that length was never produced by us, so it is legacy
-// plaintext (e.g. a credential stored before encryption existed) — decryption must not
-// be attempted on it. Real ciphertext ALWAYS satisfies this, so nothing encrypted is
-// ever misrouted here.
+// Decrypt a bare (unprefixed) base64 blob. Throws on any structural or auth failure.
+function decryptBlob(blob: string): string {
+	const masterKey = getEncryptionKey();
+	const combined = Buffer.from(blob, 'base64');
+
+	const salt = combined.subarray(0, SALT_LENGTH);
+	const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+	const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+	const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+
+	const key = deriveKey(masterKey, salt);
+	const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+	decipher.setAuthTag(authTag);
+
+	let decrypted = decipher.update(encrypted, undefined, 'utf8');
+	decrypted += decipher.final('utf8');
+	return decrypted;
+}
+
+// A pre-prefix (legacy-format) ciphertext: strict base64 of at least salt+iv+tag+data.
+// Only consulted for UNPREFIXED values, where we cannot be certain of provenance and so
+// never throw — a false positive here just means a failed decrypt returns the value
+// unchanged, exactly the long-standing backward-compatibility behavior.
 const MIN_CIPHERTEXT_BYTES = SALT_LENGTH + IV_LENGTH + TAG_LENGTH + 1;
-function looksLikeCiphertext(value: string): boolean {
+function looksLikeLegacyCiphertext(value: string): boolean {
 	if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
 		return false;
 	}
@@ -107,39 +133,30 @@ export function decryptPassword(encryptedPassword: string | undefined): string |
 		return encryptedPassword;
 	}
 
-	// Legacy plaintext (anything not in our exact ciphertext shape) passes through
-	// unchanged — the backward-compatibility path for pre-encryption data.
-	if (!looksLikeCiphertext(encryptedPassword)) {
-		return encryptedPassword;
+	// Prefixed: unambiguously ours. A failure here is a changed ENCRYPTION_KEY or
+	// corruption — surface it rather than silently hand a broken secret downstream
+	// (a caller would otherwise use base64 garbage as a live credential).
+	if (encryptedPassword.startsWith(CIPHERTEXT_PREFIX)) {
+		try {
+			return decryptBlob(encryptedPassword.slice(CIPHERTEXT_PREFIX.length));
+		} catch (error) {
+			logger.error('Failed to decrypt a stored secret (ENCRYPTION_KEY changed or data corrupted):', error);
+			throw new DecryptionError('Failed to decrypt a stored secret; ENCRYPTION_KEY may have changed.');
+		}
 	}
 
-	try {
-		const masterKey = getEncryptionKey();
-		const combined = Buffer.from(encryptedPassword, 'base64');
-
-		// Extract components
-		const salt = combined.subarray(0, SALT_LENGTH);
-		const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-		const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
-		const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
-
-		const key = deriveKey(masterKey, salt);
-
-		const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-		decipher.setAuthTag(authTag);
-
-		let decrypted = decipher.update(encrypted, undefined, 'utf8');
-		decrypted += decipher.final('utf8');
-
-		return decrypted;
-	} catch (error) {
-		// Shaped exactly like our ciphertext but undecryptable: a changed ENCRYPTION_KEY
-		// or corrupted storage. The old code returned this base64 blob unchanged, so the
-		// caller silently used it as a live credential (or JSON.parsed garbage). Surface
-		// it instead of leaking a broken secret downstream.
-		logger.error('Failed to decrypt a stored secret (ENCRYPTION_KEY changed or data corrupted):', error);
-		throw new DecryptionError('Failed to decrypt a stored secret; ENCRYPTION_KEY may have changed.');
+	// Unprefixed: legacy plaintext, OR ciphertext written before the provenance prefix
+	// existed. Provenance is unknowable, so NEVER throw. Try to decrypt values shaped
+	// like the old ciphertext; on any failure return the value unchanged (this is why a
+	// legacy plaintext value — even a long, base64-looking one — is always preserved).
+	if (looksLikeLegacyCiphertext(encryptedPassword)) {
+		try {
+			return decryptBlob(encryptedPassword);
+		} catch {
+			return encryptedPassword;
+		}
 	}
+	return encryptedPassword;
 }
 
 /**
