@@ -1,0 +1,25 @@
+src/App.tsx: error TS2322: Type '{ children: Element; future: { v7_startTransition: boolean; v7_relativeSplatPath: boolean; }; }' is not assignable to type 'IntrinsicAttributes & BrowserRouterProps'.
+src/components/Alerts/AlertsTable/AlertRow/CopyCellButton.tsx: error TS2554: Expected 1 arguments, but got 0.
+src/components/Dashboards/Dashboards.tsx: error TS2345: Argument of type '{ id: string; name: string; type: "services" | "alerts"; description: string; visibleColumns: string[]; filters: Record<string, string[]>; columnOrder: string[]; groupBy: string[]; query: string; timeRange: TimeRange; }' is not assignable to parameter of type 'DashboardState'.
+src/components/shared/FormattedText.tsx: error TS2503: Cannot find namespace 'DOMPurify'.
+src/hooks/queries/integrations/useIntegrationUrls.ts: error TS2559: Type 'string' has no properties in common with type 'LogOptions'.
+src/hooks/useFormErrors.ts: error TS2559: Type '{ success: boolean; error?: string; errors?: Record<string, string>; }' has no properties in common with type 'LogOptions'.
+src/lib/errorMapper.ts: error TS2339: Property 'details' does not exist on type 'unknown'.
+src/lib/errorMapper.ts: error TS2339: Property 'error' does not exist on type 'unknown'.
+src/lib/errorMapper.ts: error TS2339: Property 'success' does not exist on type 'unknown'.
+src/lib/sslKeys.ts: error TS2322: Type '{ id: string; name: string; value: string; }[]' is not assignable to type 'SecretMetadata[]'.
+src/mocks/handlers.ts: error TS2352: Conversion of type 'ActionConfig' to type 'Record<string, string>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/mocks/mockAlerts.ts: error TS2322: Type '{ alertTypes: { Grafana: number; GCP: number; UptimeKuma: number; Custom: number; }; statuses: { firing: number; resolved: number; pending: number; suppressed: number; inhibited: number; }; tags: { production: number; ... 8 more ...; warning: number; }; alertNames: {}; }' is not assignable to type '{ alertTypes?: Record<AlertType, number>; statuses?: Record<string, number>; tags?: Record<string, number>; alertNames?: Record<string, number>; }'.
+src/mocks/mockAlerts.ts: error TS2561: Object literal may only specify known properties, but 'tag' does not exist in type 'Alert'. Did you mean to write 'tags'?
+src/mocks/mockAlerts.ts: error TS2739: Type '{ GCP: number; Grafana: number; Custom: number; UptimeKuma: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
+src/mocks/mockAlerts.ts: error TS2739: Type '{ UptimeKuma: number; Grafana: number; GCP: number; Custom: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
+src/mocks/mockAlerts.utils.ts: error TS2739: Type '{ Grafana: number; GCP: number; UptimeKuma: number; Custom: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
+src/pages/Integrations.tsx: error TS2339: Property 'toLowerCase' does not exist on type 'never'.
+src/pages/Integrations.tsx: error TS2345: Argument of type '{ name: string; type: IntegrationType; externalUrl: string; credentials: {}; }' is not assignable to parameter of type '{ name: string; type: IntegrationType; externalUrl: string; credentials: Record<string, string>; }'.
+src/pages/Integrations.tsx: error TS2367: This comparison appears to be unintentional because the types 'IntegrationType' and 'import("/Users/idanlodzki/OpsiMate/packages/shared/dist/types").IntegrationType' have no overlap.
+src/pages/Login.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/pages/NotFound.tsx: error TS2559: Type 'string' has no properties in common with type 'LogOptions'.
+src/pages/Register.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/pages/Settings.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<number>'.
+src/test/severity.utils.test.ts: error TS2550: Property 'hasOwn' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2022' or later.
+src/test/useColumnManagement.test.tsx: error TS2741: Property 'values' is missing in type '{ key: string; label: string; }' but required in type 'TagKeyInfo'.
