@@ -1,15 +1,15 @@
 import { initializeDb } from './dal/db';
 import { createApp, AppMode } from './app';
 import { getServerConfig } from './config/config';
-import { assertEncryptionKeyConfigured } from './utils/encryption';
+import { warnIfEncryptionKeyInsecure } from './utils/encryption';
 import { Logger } from '@OpsiMate/shared';
 
 const logger = new Logger('server');
 
 await (async () => {
-	// Fail fast before touching the DB: a production boot with no ENCRYPTION_KEY would
-	// otherwise encrypt every credential under the public fallback key.
-	assertEncryptionKeyConfigured();
+	// Nudge, don't block: a production boot with no ENCRYPTION_KEY encrypts credentials
+	// under the public fallback key — warn loudly but keep existing deployments running.
+	warnIfEncryptionKeyInsecure();
 
 	const serverConfig = getServerConfig();
 
