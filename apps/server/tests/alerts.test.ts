@@ -3,6 +3,7 @@ import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { log } from 'node:console';
 
 const logger = new Logger('test-alerts');
 
@@ -1756,6 +1757,42 @@ describe('Alerts API', () => {
 
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);
+			});
+		});
+
+		describe('POST /api/v1/alerts/:alertId/comments', () => {
+			test('should return 401 for request without authentication', async () => {
+				const alertId = testAlerts[0].id;
+
+				const response = await app.post(`/api/v1/alerts/${alertId}/comments`);
+
+				expect(response.statusCode).toBe(401);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Unauthorized');
+			});
+		});
+
+		describe('PATCH /api/v1/alerts/comments/:commentId', () => {
+			test('should return 401 for request without authentication', async () => {
+				const testCommentId = 'comment-1';
+
+				const response = await app.patch(`/api/v1/alerts/comments/${testCommentId}`);
+
+				expect(response.statusCode).toBe(401);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Unauthorized');
+			});
+		});
+
+		describe('DELETE /api/v1/alerts/comments/:commentId', () => {
+			test('should return 401 for request without authentication', async () => {
+				const testCommentId = 'comment-1';
+
+				const response = await app.delete(`/api/v1/alerts/comments/${testCommentId}`);
+
+				expect(response.statusCode).toBe(401);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Unauthorized');
 			});
 		});
 	});
