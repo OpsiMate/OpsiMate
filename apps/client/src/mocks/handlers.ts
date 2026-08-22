@@ -451,12 +451,25 @@ export const handlers = [
 	// and metric behaves exactly like production.
 	http.get(`${API_BASE}/alerts/analytics`, ({ request }) => {
 		const url = new URL(request.url);
+		// Mirror the server's zod schema: a PRESENT but malformed bound (or an
+		// inverted window) is a 400, never silently patched; only an ABSENT `to`
+		// defaults to now.
 		const from = url.searchParams.get('from');
-		const to = url.searchParams.get('to') ?? nowIso();
+		const toParam = url.searchParams.get('to');
+		const invalidBound = (value: string | null) => value !== null && Number.isNaN(Date.parse(value));
+		if (invalidBound(from) || invalidBound(toParam)) {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const to = toParam ?? nowIso();
+		if (from && Date.parse(from) > Date.parse(to)) {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
 		const timeZone = url.searchParams.get('tz') ?? undefined;
 		const tagKey = url.searchParams.get('tagKey') ?? undefined;
-		const activeAlerts = playgroundState.alerts.map(withAppliedEnrichments);
-		const resolvedAlerts = playgroundState.resolvedAlerts;
+		// lastComment rides along like on the server's snapshots, so a dashboard
+		// whose search matches only a comment scopes analytics like the lists.
+		const activeAlerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
+		const resolvedAlerts = playgroundState.resolvedAlerts.map(withLastComment);
 
 		// Dashboard scoping: same filter/search semantics as the list endpoints.
 		let allowedAlertIds: Set<string> | undefined;
