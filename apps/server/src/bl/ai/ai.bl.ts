@@ -23,6 +23,71 @@ const logger = new Logger('bl/ai.bl');
 const bedrockEndpoint = (region: string, baseUrl?: string): string =>
 	baseUrl || process.env.AI_BEDROCK_ENDPOINT || `https://bedrock-runtime.${region}.amazonaws.com`;
 
+// Does an IPv4 literal fall in a range we must never send the key to? Covers loopback,
+// the RFC1918 private blocks, link-local (which includes the 169.254.169.254 cloud
+// metadata address), CGNAT, and the "this host" 0.0.0.0/8.
+const isBlockedIPv4 = ([a, b]: number[]): boolean =>
+	a === 0 ||
+	a === 10 ||
+	a === 127 ||
+	(a === 169 && b === 254) ||
+	(a === 172 && b >= 16 && b <= 31) ||
+	(a === 192 && b === 168) ||
+	(a === 100 && b >= 64 && b <= 127);
+
+// Parse a strict dotted-quad; returns null for anything that isn't four 0-255 octets.
+const parseIPv4 = (host: string): number[] | null => {
+	const parts = host.split('.');
+	if (parts.length !== 4) return null;
+	const octets = parts.map((p) => (/^\d{1,3}$/.test(p) ? Number(p) : NaN));
+	return octets.every((n) => n >= 0 && n <= 255) ? octets : null;
+};
+
+// IPv6 loopback (::1), unspecified (::), unique-local (fc00::/7), link-local
+// (fe80::/10), and IPv4-mapped forms that smuggle a blocked v4 address in.
+const isBlockedIPv6 = (host: string): boolean => {
+	if (!host.includes(':')) return false;
+	if (host === '::1' || host === '::') return true;
+	if (host.startsWith('fc') || host.startsWith('fd') || /^fe[89ab]/.test(host)) return true;
+	if (host.startsWith('::ffff:')) {
+		const mapped = parseIPv4(host.slice('::ffff:'.length));
+		return mapped ? isBlockedIPv4(mapped) : false;
+	}
+	return false;
+};
+
+// A user-supplied base URL becomes the request target that receives the DECRYPTED API
+// key as a bearer token. Left unchecked, an admin (or a hijacked admin session) could
+// point it at an internal or attacker-controlled host and exfiltrate the write-only
+// key, or reach the cloud metadata service. Require https, forbid embedded credentials
+// and query/fragment, and block loopback / private / link-local / metadata hosts.
+// The AI_BEDROCK_ENDPOINT env override is operator-controlled (not request input), so it
+// is intentionally exempt — that is how tests point at a local mock.
+export const assertSafeAiEndpoint = (rawBaseUrl: string): void => {
+	let url: URL;
+	try {
+		url = new URL(rawBaseUrl);
+	} catch {
+		throw new AiValidationError('Endpoint must be a valid absolute URL.');
+	}
+	if (url.protocol !== 'https:') {
+		throw new AiValidationError('Endpoint must use https.');
+	}
+	if (url.username || url.password) {
+		throw new AiValidationError('Endpoint must not embed credentials.');
+	}
+	if (url.search || url.hash) {
+		throw new AiValidationError('Endpoint must not include a query string or fragment.');
+	}
+	const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+	const blockedName =
+		host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal');
+	const v4 = parseIPv4(host);
+	if (blockedName || (v4 && isBlockedIPv4(v4)) || isBlockedIPv6(host)) {
+		throw new AiValidationError('Endpoint host is not allowed.');
+	}
+};
+
 // Same budget the actions executor gives outbound calls: slow enough for a cold model,
 // fast enough that a wrong region (connection black-holes) fails while the user is
 // still looking at the button.
@@ -78,6 +143,12 @@ export class AiBL {
 	}
 
 	async updateConfig(updates: UpdateAiConfig, user?: User): Promise<AiConfig> {
+		// A custom endpoint receives the decrypted key as a bearer token — vet it before it
+		// is ever stored. An empty string means "fall back to the default", so only a
+		// non-empty value is checked.
+		if (updates.baseUrl) {
+			assertSafeAiEndpoint(updates.baseUrl);
+		}
 		// Read, merge and write in ONE transaction (see mergeConfig): two partial updates
 		// arriving together must not each read the same row and overwrite each other.
 		const saved = await this.aiConfigRepo.mergeConfig((current) => {
@@ -136,6 +207,17 @@ export class AiBL {
 		}
 		if (!row.model_id) {
 			return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: 'No model id is configured yet.' };
+		}
+		// Defense in depth: save-time validation keeps stored endpoints safe, but re-check a
+		// user-supplied base URL before every call so a row that predates this guard (or was
+		// written another way) still can't leak the key. The env override is exempt.
+		if (row.base_url) {
+			try {
+				assertSafeAiEndpoint(row.base_url);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Endpoint is not allowed.';
+				return { ok: false, latencyMs: 0, status: 0, body: {}, errorMessage: message };
+			}
 		}
 
 		const url = `${bedrockEndpoint(row.region, row.base_url || undefined)}/model/${encodeURIComponent(row.model_id)}/converse`;

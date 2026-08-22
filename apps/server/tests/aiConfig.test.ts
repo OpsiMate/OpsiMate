@@ -175,6 +175,36 @@ describe('AI config endpoints', () => {
 		const res = await put('/api/v1/ai/config', { region: 'Not A Region!' });
 		expect(res.status).toBe(400);
 	});
+
+	test('validation: a whitespace-only API key is a 400, not a stored blank key', async () => {
+		const res = await put('/api/v1/ai/config', { apiKey: '   ' });
+		expect(res.status).toBe(400);
+	});
+
+	// The endpoint receives the decrypted key as a bearer token, so an admin must not be
+	// able to aim it at an internal / metadata / attacker host or downgrade to http.
+	test.each([
+		['http (not https)', 'http://bedrock-runtime.us-east-1.amazonaws.com'],
+		['loopback', 'https://127.0.0.1'],
+		['localhost name', 'https://localhost:8443'],
+		['private RFC1918 host', 'https://10.0.0.5'],
+		['link-local / metadata', 'https://169.254.169.254'],
+		['embedded credentials', 'https://user:pass@bedrock-runtime.us-east-1.amazonaws.com'],
+		['query string', 'https://bedrock-runtime.us-east-1.amazonaws.com/?x=1'],
+	])('validation: an unsafe baseUrl (%s) is a 400', async (_label, baseUrl) => {
+		const res = await put('/api/v1/ai/config', { baseUrl });
+		expect(res.status).toBe(400);
+	});
+
+	test('validation: a public https baseUrl is accepted', async () => {
+		const res = await put('/api/v1/ai/config', {
+			baseUrl: 'https://bedrock.mycompany.example.com',
+		});
+		expect(res.status).toBe(200);
+		expect(res.body.data.baseUrl).toBe('https://bedrock.mycompany.example.com');
+		// Clear it again so the Test Connection suite below still uses the env-var mock.
+		await put('/api/v1/ai/config', { baseUrl: '' });
+	});
 });
 
 describe('POST /ai/test', () => {

@@ -530,7 +530,15 @@ export const UpdateAiConfigSchema = z
 			.optional(),
 		modelId: z.string().trim().min(1).max(200).optional(),
 		baseUrl: z.string().trim().max(500).optional(),
-		apiKey: z.string().min(1).max(4096).nullable().optional(),
+		// Don't trim the key itself (a real key never has surrounding space), but reject a
+		// value that is only whitespace — otherwise it encrypts to a non-null "key" that
+		// enables AI while sending an invalid bearer token.
+		apiKey: z
+			.string()
+			.max(4096)
+			.refine((value) => value.trim().length > 0, 'API key cannot be blank')
+			.nullable()
+			.optional(),
 		enabled: z.boolean().optional(),
 	})
 	.refine((v) => Object.keys(v).length > 0, { message: 'Provide at least one field to update' });
