@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useAiFilter, useAiStatus } from '@/hooks/queries/ai';
@@ -171,7 +170,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 
 			{aiMode && (
 				<p className="absolute -bottom-4 left-0 text-[10px] text-muted-foreground">
-					Only filter names and values are sent — no alert content.
+					Your request and the filter vocabulary are sent — no alert content.
 				</p>
 			)}
 		</div>
