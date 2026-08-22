@@ -1,4 +1,9 @@
-import { encryptPassword, decryptPassword } from '../src/utils/encryption';
+import {
+	assertEncryptionKeyConfigured,
+	DecryptionError,
+	decryptPassword,
+	encryptPassword,
+} from '../src/utils/encryption';
 
 describe('Password Encryption', () => {
 	test('should encrypt and decrypt password correctly', () => {
@@ -35,10 +40,32 @@ describe('Password Encryption', () => {
 		expect(decryptPassword(encrypted2)).toBe(password);
 	});
 
-	test('should handle decryption failure gracefully', () => {
-		const invalidEncrypted = 'invalidBase64String';
-		const result = decryptPassword(invalidEncrypted);
-		// Should return the original value if decryption fails
-		expect(result).toBe(invalidEncrypted);
+	test('passes legacy plaintext (not our ciphertext shape) through unchanged', () => {
+		// These were never produced by encryptPassword — the backward-compat path.
+		expect(decryptPassword('invalidBase64String')).toBe('invalidBase64String');
+		expect(decryptPassword('{"user":"admin","pass":"hunter2"}')).toBe('{"user":"admin","pass":"hunter2"}');
+	});
+
+	test('throws when a value shaped like our ciphertext cannot be decrypted', () => {
+		// Corrupt one byte of a real ciphertext so GCM auth fails but the shape stays.
+		const encrypted = encryptPassword('a-real-secret')!;
+		const buffer = Buffer.from(encrypted, 'base64');
+		buffer[buffer.length - 1] ^= 0xff;
+		const tampered = buffer.toString('base64');
+		expect(() => decryptPassword(tampered)).toThrow(DecryptionError);
+	});
+
+	// Env injected, never mutating the shared process.env, so these can't leak into
+	// test files running in the same worker.
+	test('assertEncryptionKeyConfigured refuses a production boot with no key', () => {
+		expect(() => assertEncryptionKeyConfigured({ NODE_ENV: 'production' })).toThrow(/ENCRYPTION_KEY/);
+		expect(() =>
+			assertEncryptionKeyConfigured({ NODE_ENV: 'production', ENCRYPTION_KEY: 'a-strong-private-secret' })
+		).not.toThrow();
+	});
+
+	test('assertEncryptionKeyConfigured is a no-op outside production', () => {
+		expect(() => assertEncryptionKeyConfigured({ NODE_ENV: 'test' })).not.toThrow();
+		expect(() => assertEncryptionKeyConfigured({ NODE_ENV: 'development' })).not.toThrow();
 	});
 });
