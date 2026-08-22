@@ -26,4 +26,5 @@ export const queryKeys = {
 	actions: ['actions'] as const,
 	retention: ['retention'] as const,
 	silenceReset: ['silenceReset'] as const,
+	ai: ['ai'] as const,
 };
