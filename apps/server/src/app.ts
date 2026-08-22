@@ -185,7 +185,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const tagBL = new TagBL(tagRepo);
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
-	const mutePolicyBL = new MutePolicyBL(mutePolicyRepo);
+	const mutePolicyBL = new MutePolicyBL(mutePolicyRepo, auditBL);
 	const oncallBL = new OncallBL(oncallRepo);
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);

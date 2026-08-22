@@ -44,8 +44,10 @@ export interface WeekdayVolumePoint {
 	count: number;
 }
 
-// MTTR trend: mean restore time per local day, over resolutions on that day.
-export interface MttrDayPoint {
+// One duration metric's mean per local day (MTTR over that day's resolutions,
+// MTTA over that day's first touches). meanMs is null on days where nothing was
+// measured, so trend lines BREAK there instead of bridging the gap.
+export interface DurationDayPoint {
 	date: string;
 	meanMs: number | null;
 	count: number;
@@ -131,7 +133,10 @@ export interface AnalyticsReliability {
 	// Episodes per day over the window — the alert-world "how often does it burn".
 	episodesPerDay: AnalyticsKpi;
 	// Restore-time trend, per local day — the chart behind the MTTR headline.
-	mttrByDay: MttrDayPoint[];
+	mttrByDay: DurationDayPoint[];
+	// Time-to-first-human-touch trend, per local day (bucketed by the day the
+	// touch happened) — the MTTA view of the same chart.
+	mttaByDay: DurationDayPoint[];
 }
 
 // One row of the per-alert-name breakdown table.
@@ -171,6 +176,13 @@ export interface TagValueDayPoint {
 	counts: Record<string, number>;
 }
 
+// One tag VALUE's duration trends — its own MTTR/MTTA line on the tag trend chart.
+export interface TagValueTrend {
+	value: string;
+	mttrByDay: DurationDayPoint[];
+	mttaByDay: DurationDayPoint[];
+}
+
 // The tag-research section: everything about ONE tag key, computed only when the
 // request names a key — the tab pays for what it looks at, nothing more.
 export interface TagInsights {
@@ -181,6 +193,9 @@ export interface TagInsights {
 	untaggedEpisodes: number;
 	topValues: string[];
 	volumeByDay: TagValueDayPoint[];
+	// Per-VALUE MTTR/MTTA trends (top values only, `topValues` order) — the same day
+	// semantics as the reliability trends, one line per value.
+	trends: TagValueTrend[];
 }
 
 export interface AlertAnalytics {
