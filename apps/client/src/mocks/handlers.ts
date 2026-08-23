@@ -1,13 +1,17 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	UpdateAiConfig,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
 	OncallTeam,
 	applyAlertListQuery,
+	computeAlertAnalytics,
 	computeAlertFacets,
 	computeAlertGroupSummaries,
+	EpisodeRow,
+	UserEventRow,
 } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
@@ -72,6 +76,50 @@ const generateBaseHistory = (alertId: string): AlertHistoryData[] => {
 			description: 'Alert resolved',
 		},
 	];
+};
+
+// Deterministic episode history per alert for the Insights demo: a few past
+// firing→resolved cycles spread over the last ~10 weeks (hash-staggered durations
+// and gaps so MTTR/MTBF/peak-hours have real variety), ending in the alert's
+// CURRENT state so the analytics agree with what the table shows.
+const generateEpisodeRows = (alert: Alert, active: boolean): EpisodeRow[] => {
+	const h = hashAlertId(alert.id);
+	const now = Date.now();
+	const rows: EpisodeRow[] = [];
+	let cursor = now - (30 + (h % 40)) * DAY;
+	const cycles = 2 + (h % 4);
+	for (let i = 0; i < cycles && cursor < now - 2 * DAY; i++) {
+		const durationMs = (20 + ((h >> (i + 2)) % 420)) * MINUTE;
+		rows.push({ alertId: alert.id, status: 'firing', at: new Date(cursor).toISOString() });
+		rows.push({ alertId: alert.id, status: 'resolved', at: new Date(cursor + durationMs).toISOString() });
+		cursor += (2 + ((h >> i) % 8)) * DAY + (h % 24) * HOUR;
+	}
+	if (active) {
+		rows.push({ alertId: alert.id, status: 'firing', at: alert.startsAt });
+	} else {
+		const start = now - (1 + (h % 5)) * DAY;
+		rows.push({ alertId: alert.id, status: 'firing', at: new Date(start).toISOString() });
+		rows.push({
+			alertId: alert.id,
+			status: 'resolved',
+			at: new Date(start + (30 + (h % 300)) * MINUTE).toISOString(),
+		});
+	}
+	return rows;
+};
+
+// Human actions feeding MTTA/top-responders: the generated base history's actor
+// events plus everything the user did live in the sandbox.
+const analyticsEvents = (alerts: Alert[]): UserEventRow[] => {
+	const rows: UserEventRow[] = [];
+	for (const alert of alerts) {
+		const events = [...generateBaseHistory(alert.id), ...(playgroundState.alertHistoryEvents[alert.id] ?? [])];
+		for (const event of events) {
+			if (!event.actorName) continue;
+			rows.push({ alertId: alert.id, at: event.date, actorName: event.actorName });
+		}
+	}
+	return rows;
 };
 
 // Appends a live event to an alert's history (newest first).
@@ -346,7 +394,84 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+// In-memory AI (BYOK) config for the playground: same masking contract as the server —
+// the key is write-only, GET only reports that one exists.
+const aiConfigState = {
+	region: 'us-east-1',
+	modelId: '',
+	hasApiKey: false,
+	enabled: false,
+	updatedAt: null as string | null,
+};
+
+interface AiFilterRequestBody {
+	query?: string;
+}
+
 export const handlers = [
+	// ==================== AI (BYOK) ====================
+	http.get(`${API_BASE}/ai/config`, () => {
+		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
+	}),
+
+	http.put(`${API_BASE}/ai/config`, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as UpdateAiConfig;
+		if (body.region !== undefined) aiConfigState.region = body.region;
+		if (body.modelId !== undefined) aiConfigState.modelId = body.modelId;
+		if (body.apiKey !== undefined) aiConfigState.hasApiKey = body.apiKey !== null;
+		if (body.enabled !== undefined) aiConfigState.enabled = body.enabled;
+		aiConfigState.updatedAt = nowIso();
+		return HttpResponse.json({ success: true, data: { provider: 'bedrock', ...aiConfigState } });
+	}),
+
+	http.get(`${API_BASE}/ai/status`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { enabled: aiConfigState.enabled && aiConfigState.hasApiKey && aiConfigState.modelId.length > 0 },
+		});
+	}),
+
+	// Keyword-matched stand-in for the NL->filter translation, so the playground can
+	// demo the flow without Bedrock.
+	http.post(`${API_BASE}/ai/filter`, async ({ request }) => {
+		if (!(aiConfigState.enabled && aiConfigState.hasApiKey && aiConfigState.modelId.length > 0)) {
+			return HttpResponse.json(
+				{ success: false, error: 'AI features are not enabled. Configure a Bedrock key in Settings → AI.' },
+				{ status: 409 }
+			);
+		}
+		const { query = '' } = (await request.json().catch(() => ({}))) as AiFilterRequestBody;
+		const q = query.toLowerCase();
+		const filters: Record<string, string[]> = {};
+		if (q.includes('critical')) filters.severity = ['Critical'];
+		else if (q.includes('warning')) filters.severity = ['Warning'];
+		if (q.includes('unassigned') || q.includes('nobody') || q.includes('no owner')) filters.owner = ['Unassigned'];
+		if (q.includes('prod')) filters['tagKey:env'] = ['prod'];
+		const lastMinutes = q.includes('hour') ? 60 : q.includes('today') ? 1440 : undefined;
+		return HttpResponse.json({
+			success: true,
+			data: {
+				filters,
+				...(lastMinutes ? { lastMinutes } : {}),
+				explanation: 'Playground interpretation of your request.',
+			},
+		});
+	}),
+
+	http.post(`${API_BASE}/ai/test`, () => {
+		// The playground never talks to Bedrock; it demonstrates both outcomes instead.
+		const ok = aiConfigState.hasApiKey && aiConfigState.modelId.length > 0;
+		return HttpResponse.json({
+			success: true,
+			data: {
+				ok,
+				latencyMs: ok ? 420 : 0,
+				modelId: aiConfigState.modelId,
+				message: ok ? 'ok (playground stub)' : 'No API key is configured yet.',
+			},
+		});
+	}),
+
 	// ==================== ALERTS ====================
 	http.get(`${API_BASE}/alerts`, ({ request }) => {
 		// Timed silences expire lazily on read (mirrors the server sweep).
@@ -397,6 +522,67 @@ export const handlers = [
 
 	http.get(`${API_BASE}/alerts/resolved`, ({ request }) => {
 		return mockAlertsList(request, playgroundState.resolvedAlerts.map(withLastComment));
+	}),
+
+	// The Insights page: the REAL analytics engine (shared with the server) over
+	// deterministic episode histories derived from the mock alerts, so every chart
+	// and metric behaves exactly like production.
+	http.get(`${API_BASE}/alerts/analytics`, ({ request }) => {
+		const url = new URL(request.url);
+		// Mirror the server's zod schema: a PRESENT but malformed bound (or an
+		// inverted window) is a 400, never silently patched; only an ABSENT `to`
+		// defaults to now.
+		const from = url.searchParams.get('from');
+		const toParam = url.searchParams.get('to');
+		const invalidBound = (value: string | null) => value !== null && Number.isNaN(Date.parse(value));
+		if (invalidBound(from) || invalidBound(toParam)) {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const to = toParam ?? nowIso();
+		if (from && Date.parse(from) > Date.parse(to)) {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const timeZone = url.searchParams.get('tz') ?? undefined;
+		const tagKey = url.searchParams.get('tagKey') ?? undefined;
+		// lastComment rides along like on the server's snapshots, so a dashboard
+		// whose search matches only a comment scopes analytics like the lists.
+		const activeAlerts = playgroundState.alerts.map(withAppliedEnrichments).map(withLastComment);
+		const resolvedAlerts = playgroundState.resolvedAlerts.map(withLastComment);
+
+		// Dashboard scoping: same filter/search semantics as the list endpoints.
+		let allowedAlertIds: Set<string> | undefined;
+		try {
+			const filters = JSON.parse(url.searchParams.get('filters') ?? '{}') as Record<string, string[]>;
+			const search = url.searchParams.get('search') ?? undefined;
+			if (Object.keys(filters).length > 0 || search?.trim()) {
+				const { items } = applyAlertListQuery([...activeAlerts, ...resolvedAlerts], playgroundState.users, {
+					filters,
+					search,
+				});
+				allowedAlertIds = new Set(items.map((a) => a.id));
+			}
+		} catch {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+
+		const episodes = [
+			...activeAlerts.flatMap((alert) => generateEpisodeRows(alert, true)),
+			...resolvedAlerts.flatMap((alert) => generateEpisodeRows(alert, false)),
+		];
+		return HttpResponse.json({
+			success: true,
+			data: computeAlertAnalytics({
+				episodes,
+				events: analyticsEvents([...activeAlerts, ...resolvedAlerts]),
+				activeAlerts,
+				resolvedAlerts,
+				from,
+				to,
+				timeZone,
+				allowedAlertIds,
+				tagKey,
+			}),
+		});
 	}),
 
 	http.patch(`${API_BASE}/alerts/:alertId/silence`, async ({ params, request }) => {
