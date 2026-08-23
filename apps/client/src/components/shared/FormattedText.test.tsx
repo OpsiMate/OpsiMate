@@ -110,6 +110,17 @@ describe('FormattedText — security', () => {
 		expect(out.toLowerCase()).not.toContain('border-image');
 	});
 
+	test('drops disallowed CSS properties by NAME, independent of the value guard', () => {
+		// Innocent values (no url()/escape to trip DANGEROUS_CSS_VALUE), so this proves the
+		// property allow-list itself blocks URL-capable properties — the one allow-listed
+		// property on the same element survives.
+		const out = html('<span style="background: red; cursor: auto; position: static; color: green">x</span>');
+		expect(out).not.toContain('background');
+		expect(out).not.toContain('cursor');
+		expect(out).not.toContain('position');
+		expect(out).toContain('color: green');
+	});
+
 	test('neutralizes mutation-XSS via svg/style nesting', () => {
 		const out = html('<svg><style><img src=x onerror=alert(1)></style></svg>');
 		expect(out.toLowerCase()).not.toContain('onerror');
