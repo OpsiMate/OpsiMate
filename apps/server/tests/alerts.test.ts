@@ -3,7 +3,6 @@ import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
-import { log } from 'node:console';
 
 const logger = new Logger('test-alerts');
 
@@ -1768,7 +1767,7 @@ describe('Alerts API', () => {
 
 				expect(response.statusCode).toBe(401);
 				expect(response.body.success).toBe(false);
-				expect(response.body.error).toBe('Unauthorized');
+				expect(response.body.error).toBe('Missing Authorization header or API token');
 			});
 		});
 
@@ -1780,7 +1779,7 @@ describe('Alerts API', () => {
 
 				expect(response.statusCode).toBe(401);
 				expect(response.body.success).toBe(false);
-				expect(response.body.error).toBe('Unauthorized');
+				expect(response.body.error).toBe('Missing Authorization header or API token');
 			});
 		});
 
@@ -1792,7 +1791,7 @@ describe('Alerts API', () => {
 
 				expect(response.statusCode).toBe(401);
 				expect(response.body.success).toBe(false);
-				expect(response.body.error).toBe('Unauthorized');
+				expect(response.body.error).toBe('Missing Authorization header or API token');
 			});
 		});
 	});
