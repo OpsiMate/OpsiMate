@@ -42,6 +42,13 @@ const AlertInsights = () => {
 		return () => window.clearInterval(timer);
 	}, []);
 	const from = useMemo(() => {
+		if (preset === 'today') {
+			// Start of the current LOCAL day → now (a short window, so the server buckets
+			// it hourly). Re-anchors with nowBucket, so it rolls over at local midnight.
+			const midnight = new Date(nowBucket);
+			midnight.setHours(0, 0, 0, 0);
+			return midnight.toISOString();
+		}
 		const hours = TIME_PRESETS.find((p) => p.key === preset)?.hours ?? null;
 		return hours === null ? null : new Date(nowBucket - hours * 60 * 60 * 1000).toISOString();
 	}, [preset, nowBucket]);
@@ -138,7 +145,7 @@ const AlertInsights = () => {
 									icon={<BellOff className="h-3.5 w-3.5" />}
 								/>
 							</div>
-							<VolumeAreaChart data={data.overview.volumeByDay} />
+							<VolumeAreaChart data={data.overview.volumeByDay} granularity={data.range.granularity} />
 							<div className="grid gap-4 lg:grid-cols-2">
 								<HourBarChart data={data.overview.volumeByHour} />
 								<WeekdayBarChart data={data.overview.volumeByWeekday} />
@@ -166,7 +173,7 @@ const AlertInsights = () => {
 						</TabsContent>
 
 						<TabsContent value="reliability" className="mt-4">
-							<ReliabilityTab reliability={data.reliability} />
+							<ReliabilityTab reliability={data.reliability} granularity={data.range.granularity} />
 						</TabsContent>
 
 						<TabsContent value="byName" className="mt-4">
@@ -180,6 +187,7 @@ const AlertInsights = () => {
 								onSelectKey={setTagKey}
 								insights={data.tagInsights}
 								isFetching={isFetching}
+								granularity={data.range.granularity}
 							/>
 						</TabsContent>
 					</Tabs>

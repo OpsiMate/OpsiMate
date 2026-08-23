@@ -268,7 +268,36 @@ describe('computeAlertAnalytics', () => {
 		});
 		const day = result.overview.volumeByDay.find((d) => d.date === '2026-08-19');
 		expect(day?.resolved).toBe(1);
-		expect(result.reliability.mttrByDay).toEqual([{ date: '2026-08-19', meanMs: 2 * HOUR, count: 1 }]);
+		// The trend is dense over the (day-granularity) window: the resolution day carries
+		// the mean, every other bucket is present but null so the line breaks there.
+		const mttrDay = result.reliability.mttrByDay.find((d) => d.date === '2026-08-19');
+		expect(mttrDay).toEqual({ date: '2026-08-19', meanMs: 2 * HOUR, count: 1 });
+		expect(result.reliability.mttrByDay.every((d) => d.date === '2026-08-19' || d.meanMs === null)).toBe(true);
+	});
+
+	test('a short (<=48h) window buckets the time series by HOUR, densely', () => {
+		// 24h window with two episodes 3h apart: hourly buckets, one continuous curve.
+		const result = compute({
+			from: iso(NOW - 24 * HOUR),
+			episodes: [firing('a', NOW - 5 * HOUR), firing('a', NOW - 2 * HOUR)],
+			activeAlerts: [alert('a', 'A', 'warning')],
+			timeZone: 'UTC',
+		});
+		expect(result.range.granularity).toBe('hour');
+		// Hour-bucket keys, e.g. "2026-08-20 07:00".
+		expect(result.overview.volumeByDay.every((p) => /^\d{4}-\d{2}-\d{2} \d{2}:00$/.test(p.date))).toBe(true);
+		// Dense: ~25 hourly buckets spanning the window (not just the 2 with data).
+		expect(result.overview.volumeByDay.length).toBeGreaterThanOrEqual(24);
+		expect(result.overview.volumeByDay.filter((p) => p.total > 0)).toHaveLength(2);
+		// Sorted ascending by bucket key.
+		const dates = result.overview.volumeByDay.map((p) => p.date);
+		expect(dates).toEqual([...dates].sort());
+	});
+
+	test('a long window keeps DAY granularity', () => {
+		const result = compute({ from: iso(NOW - 7 * DAY), episodes: [firing('a', NOW - HOUR)] });
+		expect(result.range.granularity).toBe('day');
+		expect(result.overview.volumeByDay.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date))).toBe(true);
 	});
 
 	test('weekday histogram buckets episodes by local day of week', () => {
@@ -387,10 +416,11 @@ describe('computeAlertAnalytics', () => {
 			events: [{ alertId: 'a', at: iso(NOW - 2 * HOUR), actorName: 'idan' }],
 			activeAlerts: [alert('a', 'A', 'warning')],
 		});
-		expect(result.reliability.mttaByDay).toEqual([
-			{ date: '2026-08-19', meanMs: null, count: 0 },
-			{ date: '2026-08-20', meanMs: 24 * HOUR, count: 1 },
-		]);
+		// Dense over the day-granularity window: the touch day carries the mean, every
+		// other bucket (including the firing day) is present but null.
+		const touchDay = result.reliability.mttaByDay.find((d) => d.date === '2026-08-20');
+		expect(touchDay).toEqual({ date: '2026-08-20', meanMs: 24 * HOUR, count: 1 });
+		expect(result.reliability.mttaByDay.every((d) => d.date === '2026-08-20' || d.meanMs === null)).toBe(true);
 	});
 
 	test('tag research carries per-VALUE MTTR/MTTA trends on a shared day axis', () => {

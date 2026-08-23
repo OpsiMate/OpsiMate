@@ -1,3 +1,5 @@
+import { BucketGranularity } from '@OpsiMate/shared';
+
 // Formatting helpers for the Insights page. Durations are stored in ms and read in
 // human units — "2h 14m" beats "8040000ms" on a KPI card.
 
@@ -31,12 +33,30 @@ export interface TimePresetOption {
 }
 
 export const TIME_PRESETS: TimePresetOption[] = [
+	// "Today" is start-of-local-day to now (its `from` is computed specially, not from
+	// `hours`); every other preset is a rolling window of `hours`.
+	{ key: 'today', label: 'Today', hours: null },
 	{ key: '24h', label: '24h', hours: 24 },
 	{ key: '7d', label: '7 days', hours: 7 * 24 },
 	{ key: '30d', label: '30 days', hours: 30 * 24 },
 	{ key: '90d', label: '90 days', hours: 90 * 24 },
 	{ key: 'all', label: 'All time', hours: null },
 ];
+
+// x-axis tick for a time-series bucket key. Hour buckets ("YYYY-MM-DD HH:00") show just
+// the time, except at midnight where the short date marks the day change; day buckets
+// ("YYYY-MM-DD") show "MMM D".
+export const formatBucketTick = (value: string, granularity: BucketGranularity): string => {
+	if (granularity === 'hour') {
+		const time = value.slice(11); // "HH:00"
+		if (time !== '00:00') return time;
+		return new Date(`${value.slice(0, 10)}T00:00`).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+		});
+	}
+	return new Date(`${value}T00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
 
 // Severity palette shared by every chart on the page (CSS-var free: recharts needs
 // concrete colors, and these read correctly on both themes).

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { AlertSeverity, TagInsights, TagValueStats } from '@OpsiMate/shared';
+import { AlertSeverity, BucketGranularity, TagInsights, TagValueStats } from '@OpsiMate/shared';
 import { Tag as TagIcon } from 'lucide-react';
 import { formatDurationMs, formatPercent } from './analytics.utils';
 import { SERIES_COLORS, TagVolumeChart } from './charts/TagVolumeChart';
@@ -18,6 +18,7 @@ interface TagResearchTabProps {
 	// Present once a key is selected and the (refetched) payload carries it.
 	insights?: TagInsights;
 	isFetching: boolean;
+	granularity: BucketGranularity;
 }
 
 // keepPreviousData holds the PREVIOUS payload while a new key loads — render only
@@ -34,6 +35,7 @@ export const TagResearchTab = ({
 	onSelectKey,
 	insights: rawInsights,
 	isFetching,
+	granularity,
 }: TagResearchTabProps) => {
 	const insights = insightsForKey(rawInsights, selectedKey);
 	const rows = insights?.values ?? [];
@@ -111,9 +113,11 @@ export const TagResearchTab = ({
 								topValues={insights.topValues}
 								data={insights.volumeByDay}
 								tagKey={insights.key}
+								granularity={granularity}
 							/>
 						)}
 						<DurationTrendChart
+							granularity={granularity}
 							title={`Response trend by ${insights.key}`}
 							metrics={[
 								{
