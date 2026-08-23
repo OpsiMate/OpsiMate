@@ -17,6 +17,8 @@
 		"test:coverage": "vitest run --coverage",
 		"lint": "eslint .",
 		"lint-fix": "eslint . --fix",
+		"typecheck": "node scripts/check-types.mjs",
+		"typecheck:update": "node scripts/check-types.mjs --update",
 		"format": "prettier --check .",
 		"check": "npm run format && npm run lint",
 		"fix": "npm run format-fix && npm run lint-fix"
