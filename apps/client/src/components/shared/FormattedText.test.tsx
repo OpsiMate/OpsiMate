@@ -25,6 +25,12 @@ describe('FormattedText — allowed formatting', () => {
 		expect(out).toContain('background-color: yellow');
 	});
 
+	test('keeps rgb() and hex colors (the value guard must not eat function syntax)', () => {
+		const out = html('<span style="color: rgb(255, 0, 0); background-color: #c8f7c5">alert</span>');
+		expect(out).toContain('rgb(255, 0, 0)');
+		expect(out).toContain('#c8f7c5');
+	});
+
 	test('keeps presentational bgcolor/colspan on table cells', () => {
 		const out = html('<table><tr><td colspan="2" bgcolor="#ffcc00">x</td></tr></table>');
 		expect(out).toContain('colspan="2"');
@@ -77,6 +83,43 @@ describe('FormattedText — security', () => {
 	test('strips iframes', () => {
 		const out = html('<iframe src="https://evil.example"></iframe>');
 		expect(out.toLowerCase()).not.toContain('<iframe');
+	});
+
+	test('rejects CSS-escaped url() that dodges a literal match', () => {
+		// \\28/\\29 are escaped parens; \\75 is an escaped "u" — a naive /url\(/ guard
+		// would miss these, so the value guard rejects any backslash or "url" substring.
+		const out = html(
+			'<span style="background-color:url\\28 https://evil.example\\29">a</span>' +
+				'<span style="color:\\75rl(https://evil.example)">b</span>'
+		);
+		expect(out.toLowerCase()).not.toContain('evil.example');
+		expect(out).not.toContain('\\28');
+		expect(out).not.toContain('75rl');
+	});
+
+	test('drops URL-fetching CSS properties even if someone crafts them', () => {
+		// These are not in the allow-list; a value that fetches must never survive.
+		const out = html(
+			'<span style="background-image:url(https://evil.example/a)">a</span>' +
+				'<span style="background:url(https://evil.example/b)">b</span>' +
+				'<span style="border-image:url(https://evil.example/c)">c</span>' +
+				'<span style="cursor:url(https://evil.example/d),auto">d</span>'
+		);
+		expect(out.toLowerCase()).not.toContain('evil.example');
+		expect(out.toLowerCase()).not.toContain('background-image');
+		expect(out.toLowerCase()).not.toContain('border-image');
+	});
+
+	test('neutralizes mutation-XSS via svg/style nesting', () => {
+		const out = html('<svg><style><img src=x onerror=alert(1)></style></svg>');
+		expect(out.toLowerCase()).not.toContain('onerror');
+		expect(out.toLowerCase()).not.toContain('<svg');
+	});
+
+	test('forces target=_blank even when the input sets target=_self', () => {
+		const out = html('<a href="https://x.example" target="_self">x</a>');
+		expect(out).toContain('target="_blank"');
+		expect(out).not.toContain('_self');
 	});
 });
 

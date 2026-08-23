@@ -46,6 +46,12 @@ const SANITIZE_CONFIG: DOMPurify.Config = {
 // The only CSS properties an inline style may set. Anything else — layout/positioning
 // (position, display, z-index, width, height, margin), which could overlay or hide UI —
 // is dropped. Colors and basic text/table styling are what integrations actually use.
+//
+// SECURITY INVARIANT: never add a property that can RESOLVE A URL (`background`,
+// `background-image`, `border-image`, `cursor`, `content`, `list-style-image`, `mask`,
+// `filter`, ...). This content is attacker-controlled; such a property turns an inline
+// style into an SSRF / tracking / exfiltration vector. The value guard below is
+// defense-in-depth, not a substitute for keeping this list URL-free.
 const ALLOWED_STYLE_PROPERTIES = new Set([
 	'color',
 	'background-color',
@@ -61,9 +67,11 @@ const ALLOWED_STYLE_PROPERTIES = new Set([
 ]);
 
 // Value-level guard, independent of the property allow-list: reject anything that could
-// smuggle a fetch or script — url(), expression(), javascript:, @import, CSS comments, or
-// angle brackets.
-const DANGEROUS_CSS_VALUE = /url\(|expression|javascript:|@import|[<>]|\/\*/i;
+// smuggle a fetch, script, or at-rule. `url` (in any form), `expression`, `javascript:`,
+// angle brackets, CSS comments — plus any backslash (a CSS escape, which could spell
+// `\75rl(...)` past a literal match) and any `@` (at-rules). None of the allow-listed
+// properties above ever legitimately need these, so rejecting them breaks no real color.
+const DANGEROUS_CSS_VALUE = /url|expression|javascript:|[<>]|\/\*|\\|@/i;
 
 // Keep only allow-listed, safe-valued declarations from a style attribute.
 const sanitizeStyle = (raw: string): string =>
