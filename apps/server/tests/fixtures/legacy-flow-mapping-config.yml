@@ -1,0 +1,40 @@
+# A user config in the format this project shipped before #854 reformatted
+# default-config.yml to block style.
+#
+# Do NOT "fix" the indentation below. The multi-line flow mapping under
+# mailer.templates is the entire point of this fixture: js-yaml 4 accepts it,
+# js-yaml 5 rejects it with "deficient indentation", and configs in exactly
+# this shape are sitting on disk in existing installs. They are mounted into
+# the container, so upgrading the image does not rewrite them -- if the parser
+# stops accepting this, those deployments crash at startup.
+
+server:
+  port: 3001
+  host: "0.0.0.0"
+
+database:
+  path: "/app/data/database/opsimate.db"
+
+security:
+  private_keys_path: "/app/data/private-keys"
+  api_token: "opsimate"
+
+mailer:
+  enabled: false
+  default_encoding: "UTF-8"
+  host: "smtp.gmail.com"
+  port: 587
+  secure: false
+  mailLinkBaseUrl: "http://localhost:8080"
+  from: "<no-reply@yourdomain.com>"
+  replyTo: "ops@yourdomain.com"
+  templates:
+    welcomeTemplate: {
+        subject: 'Welcome to OpsiMate!',
+        content: 'Welcome aboard! We are happy to have you as part of the OpsiMate community.'
+    }
+  auth:
+    user: "your-email@domain.com"
+    pass: "your-smtp-password"
+  tls:
+    rejectUnauthorized: true
