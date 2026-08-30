@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { AlertSeverity, TagInsights, TagValueStats } from '@OpsiMate/shared';
+import { AlertSeverity, BucketGranularity, TagInsights, TagValueStats } from '@OpsiMate/shared';
 import { Tag as TagIcon } from 'lucide-react';
 import { formatDurationMs, formatPercent } from './analytics.utils';
 import { SERIES_COLORS, TagVolumeChart } from './charts/TagVolumeChart';
@@ -18,6 +18,7 @@ interface TagResearchTabProps {
 	// Present once a key is selected and the (refetched) payload carries it.
 	insights?: TagInsights;
 	isFetching: boolean;
+	granularity: BucketGranularity;
 }
 
 // keepPreviousData holds the PREVIOUS payload while a new key loads — render only
@@ -34,6 +35,7 @@ export const TagResearchTab = ({
 	onSelectKey,
 	insights: rawInsights,
 	isFetching,
+	granularity,
 }: TagResearchTabProps) => {
 	const insights = insightsForKey(rawInsights, selectedKey);
 	const rows = insights?.values ?? [];
@@ -111,15 +113,17 @@ export const TagResearchTab = ({
 								topValues={insights.topValues}
 								data={insights.volumeByDay}
 								tagKey={insights.key}
+								granularity={granularity}
 							/>
 						)}
 						<DurationTrendChart
+							granularity={granularity}
 							title={`Response trend by ${insights.key}`}
 							metrics={[
 								{
 									key: 'mttr',
 									label: 'MTTR',
-									hint: `Mean time to restore per day, one line per "${insights.key}" value`,
+									hint: `Mean time to restore per ${granularity}, one line per "${insights.key}" value`,
 									series: insights.trends.map((trend, index) => ({
 										name: trend.value,
 										color: SERIES_COLORS[index % SERIES_COLORS.length],
@@ -129,7 +133,7 @@ export const TagResearchTab = ({
 								{
 									key: 'mtta',
 									label: 'MTTA',
-									hint: `Mean time to first human touch per day, one line per "${insights.key}" value`,
+									hint: `Mean time to first human touch per ${granularity}, one line per "${insights.key}" value`,
 									series: insights.trends.map((trend, index) => ({
 										name: trend.value,
 										color: SERIES_COLORS[index % SERIES_COLORS.length],

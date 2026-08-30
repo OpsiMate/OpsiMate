@@ -36,12 +36,28 @@ const AlertInsights = () => {
 	};
 	const [nowBucket, setNowBucket] = useState(() => Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
 	useEffect(() => {
-		const timer = window.setInterval(() => {
-			setNowBucket(Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
-		}, NOW_BUCKET_MS);
-		return () => window.clearInterval(timer);
+		const roll = () => setNowBucket(Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
+		// Align the first tick to the next bucket boundary, then tick every bucket. Without
+		// this the interval fires at mount+5min, so "Today" could lag the midnight rollover.
+		let interval: number | undefined;
+		const msToBoundary = NOW_BUCKET_MS - (Date.now() % NOW_BUCKET_MS);
+		const timeout = window.setTimeout(() => {
+			roll();
+			interval = window.setInterval(roll, NOW_BUCKET_MS);
+		}, msToBoundary);
+		return () => {
+			window.clearTimeout(timeout);
+			if (interval !== undefined) window.clearInterval(interval);
+		};
 	}, []);
 	const from = useMemo(() => {
+		if (preset === 'today') {
+			// Start of the current LOCAL day → now (a short window, so the server buckets
+			// it hourly). Re-anchors with nowBucket, so it rolls over at local midnight.
+			const midnight = new Date(nowBucket);
+			midnight.setHours(0, 0, 0, 0);
+			return midnight.toISOString();
+		}
 		const hours = TIME_PRESETS.find((p) => p.key === preset)?.hours ?? null;
 		return hours === null ? null : new Date(nowBucket - hours * 60 * 60 * 1000).toISOString();
 	}, [preset, nowBucket]);
@@ -138,7 +154,7 @@ const AlertInsights = () => {
 									icon={<BellOff className="h-3.5 w-3.5" />}
 								/>
 							</div>
-							<VolumeAreaChart data={data.overview.volumeByDay} />
+							<VolumeAreaChart data={data.overview.volumeByDay} granularity={data.range.granularity} />
 							<div className="grid gap-4 lg:grid-cols-2">
 								<HourBarChart data={data.overview.volumeByHour} />
 								<WeekdayBarChart data={data.overview.volumeByWeekday} />
@@ -166,7 +182,7 @@ const AlertInsights = () => {
 						</TabsContent>
 
 						<TabsContent value="reliability" className="mt-4">
-							<ReliabilityTab reliability={data.reliability} />
+							<ReliabilityTab reliability={data.reliability} granularity={data.range.granularity} />
 						</TabsContent>
 
 						<TabsContent value="byName" className="mt-4">
@@ -180,6 +196,7 @@ const AlertInsights = () => {
 								onSelectKey={setTagKey}
 								insights={data.tagInsights}
 								isFetching={isFetching}
+								granularity={data.range.granularity}
 							/>
 						</TabsContent>
 					</Tabs>

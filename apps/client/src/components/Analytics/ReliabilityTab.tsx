@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AnalyticsReliability } from '@OpsiMate/shared';
+import { AnalyticsReliability, BucketGranularity } from '@OpsiMate/shared';
 import { Activity, CheckCheck, Flame, Gauge, RotateCcw, Timer } from 'lucide-react';
 import { DurationTrendChart } from './charts';
 import { formatDurationMs, formatPercent } from './analytics.utils';
@@ -7,28 +7,30 @@ import { KpiCard } from './KpiCard';
 
 interface ReliabilityTabProps {
 	reliability: AnalyticsReliability;
+	granularity: BucketGranularity;
 }
 
 // DORA's "time to restore service" plus the alert-world adaptations of its siblings.
 // Every card says what it measures in plain words — these numbers get quoted in
 // reviews, so their definitions must travel with them.
-export const ReliabilityTab = ({ reliability }: ReliabilityTabProps) => {
+export const ReliabilityTab = ({ reliability, granularity }: ReliabilityTabProps) => {
 	const { mttr, mtta, mtbf, refireRate, ackCoverage, episodesPerDay } = reliability;
 	return (
 		<div className="space-y-4">
 			<DurationTrendChart
+				granularity={granularity}
 				title="Response trend"
 				metrics={[
 					{
 						key: 'mttr',
 						label: 'MTTR',
-						hint: "Mean time to restore per day, over that day's resolutions",
+						hint: `Mean time to restore per ${granularity}, over that ${granularity}'s resolutions`,
 						series: [{ name: 'MTTR', data: reliability.mttrByDay }],
 					},
 					{
 						key: 'mtta',
 						label: 'MTTA',
-						hint: "Mean time to first human touch per day, over that day's acknowledgements",
+						hint: `Mean time to first human touch per ${granularity}, over that ${granularity}'s acknowledgements`,
 						series: [{ name: 'MTTA', data: reliability.mttaByDay }],
 					},
 				]}

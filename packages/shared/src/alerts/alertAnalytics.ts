@@ -27,8 +27,13 @@ export interface DurationStats {
 	count: number;
 }
 
+// Time-series bucket size. Short windows (<= 48h) bucket by hour so a 24h view reads
+// as a real curve instead of a single point; longer windows bucket by day.
+export type BucketGranularity = 'hour' | 'day';
+
 export interface DayVolumePoint {
-	// Local calendar date (YYYY-MM-DD) in the requester's timezone.
+	// Bucket key in the requester's timezone: "YYYY-MM-DD" for day granularity, or
+	// "YYYY-MM-DD HH:00" for hour granularity. See AnalyticsRange.granularity.
 	date: string;
 	critical: number;
 	warning: number;
@@ -158,6 +163,9 @@ export interface AnalyticsRange {
 	previousFrom: string | null;
 	// True when a dashboard's filters/search narrowed the scope.
 	filtered: boolean;
+	// Bucket size of the time-series fields (volumeByDay, mttrByDay, ...) so the client
+	// formats the x-axis accordingly.
+	granularity: BucketGranularity;
 }
 
 // One tag VALUE's aggregate row inside the tag-research view.

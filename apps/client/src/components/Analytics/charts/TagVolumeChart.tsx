@@ -1,5 +1,6 @@
-import { TagValueDayPoint } from '@OpsiMate/shared';
+import { BucketGranularity, TagValueDayPoint } from '@OpsiMate/shared';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { formatBucketTick } from '../analytics.utils';
 import { axisTick, ChartCard, tooltipStyle } from './chartTheme';
 
 interface TagVolumeChartProps {
@@ -7,6 +8,7 @@ interface TagVolumeChartProps {
 	topValues: string[];
 	data: TagValueDayPoint[];
 	tagKey: string;
+	granularity: BucketGranularity;
 }
 
 // A stable qualitative palette for dynamic series (tag values aren't severities, so
@@ -24,7 +26,7 @@ const seriesKey = (value: string): string => `v:${value}`;
 
 // Daily volume stacked by tag VALUE for the researched key — which value of
 // `service` (say) is generating the load, and when.
-export const TagVolumeChart = ({ topValues, data, tagKey }: TagVolumeChartProps) => {
+export const TagVolumeChart = ({ topValues, data, tagKey, granularity }: TagVolumeChartProps) => {
 	const flat: FlatPoint[] = data.map((point) => {
 		const row: FlatPoint = { date: point.date };
 		for (const [value, count] of Object.entries(point.counts)) row[seriesKey(value)] = count;
@@ -33,12 +35,19 @@ export const TagVolumeChart = ({ topValues, data, tagKey }: TagVolumeChartProps)
 	return (
 		<ChartCard
 			title={`Volume by ${tagKey}`}
-			hint={`Firing episodes per day, split across the top ${topValues.length} values`}
+			hint={`Firing episodes per ${granularity}, split across the top ${topValues.length} values`}
 		>
 			<ResponsiveContainer width="100%" height={240}>
 				<AreaChart data={flat} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
 					<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-					<XAxis dataKey="date" tick={axisTick} tickLine={false} axisLine={false} minTickGap={24} />
+					<XAxis
+						dataKey="date"
+						tick={axisTick}
+						tickLine={false}
+						axisLine={false}
+						minTickGap={24}
+						tickFormatter={(v: string) => formatBucketTick(v, granularity)}
+					/>
 					<YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
 					<Tooltip contentStyle={tooltipStyle} />
 					{topValues.map((value, index) => (

@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
-import { DurationDayPoint } from '@OpsiMate/shared';
+import { BucketGranularity, DurationDayPoint } from '@OpsiMate/shared';
 import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { formatDurationMs } from '../analytics.utils';
+import { formatBucketTick, formatDurationMs } from '../analytics.utils';
 import { axisTick, ChartCard, tooltipStyle } from './chartTheme';
 
 // One line on the trend chart (e.g. a tag value, or the single headline series).
@@ -24,6 +24,7 @@ export interface TrendMetric {
 interface DurationTrendChartProps {
 	title: string;
 	metrics: TrendMetric[];
+	granularity: BucketGranularity;
 }
 
 interface FlatRow {
@@ -38,7 +39,7 @@ const seriesKey = (name: string): string => `s:${name}`;
 // Mean duration per day, switchable between metrics (MTTR ⇄ MTTA) and split into
 // one line per series. Days without samples carry a null mean and BREAK the line:
 // bridging them would draw a made-up slope through days where nothing was measured.
-export const DurationTrendChart = ({ title, metrics }: DurationTrendChartProps) => {
+export const DurationTrendChart = ({ title, metrics, granularity }: DurationTrendChartProps) => {
 	const [selectedKey, setSelectedKey] = useState(metrics[0]?.key);
 	const active = metrics.find((metric) => metric.key === selectedKey) ?? metrics[0];
 	if (!active) return null;
@@ -83,7 +84,14 @@ export const DurationTrendChart = ({ title, metrics }: DurationTrendChartProps) 
 			<ResponsiveContainer width="100%" height={220}>
 				<LineChart data={rows} margin={{ top: 4, right: 8, left: 2, bottom: 0 }}>
 					<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-					<XAxis dataKey="date" tick={axisTick} tickLine={false} axisLine={false} minTickGap={24} />
+					<XAxis
+						dataKey="date"
+						tick={axisTick}
+						tickLine={false}
+						axisLine={false}
+						minTickGap={24}
+						tickFormatter={(v: string) => formatBucketTick(v, granularity)}
+					/>
 					<YAxis
 						tick={axisTick}
 						tickLine={false}
