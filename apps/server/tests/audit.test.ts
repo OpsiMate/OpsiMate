@@ -54,10 +54,11 @@ describe('Audit Logs API', () => {
 
 		const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
 		expect(auditRes.status).toBe(200);
-		expect(Array.isArray(auditRes.body.logs)).toBe(true);
-		expect(auditRes.body.logs.length).toBe(1);
+		expect(auditRes.body.success).toBe(true);
+		expect(Array.isArray(auditRes.body.data.logs)).toBe(true);
+		expect(auditRes.body.data.logs.length).toBe(1);
 
-		const log: AuditLog = auditRes.body.logs[0];
+		const log: AuditLog = auditRes.body.data.logs[0];
 		expect(log.actionType).toBe(AuditActionType.CREATE);
 		expect(log.resourceType).toBe(AuditResourceType.ENRICHMENT);
 		expect(log.resourceId).toBe(String(createRes.body.data.id));
@@ -100,7 +101,7 @@ describe('Audit Logs API', () => {
 		const auditRes = await app.get('/api/v1/audit?page=1&pageSize=10').set('Authorization', `Bearer ${jwtToken}`);
 		expect(auditRes.status).toBe(200);
 
-		const logs = auditRes.body.logs as AuditLog[];
+		const logs = auditRes.body.data.logs as AuditLog[];
 		const enrichmentLogs = logs.filter(
 			(log) => log.resourceType === AuditResourceType.ENRICHMENT && log.resourceId === resourceId
 		);
@@ -144,7 +145,7 @@ describe('Audit Logs API', () => {
 
 		const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
 		expect(auditRes.status).toBe(200);
-		expect(auditRes.body.logs).toHaveLength(0);
+		expect(auditRes.body.data.logs).toHaveLength(0);
 	});
 
 	test('should log mute policy create, update and delete audit entries', async () => {
@@ -176,7 +177,7 @@ describe('Audit Logs API', () => {
 		const auditRes = await app.get('/api/v1/audit?page=1&pageSize=10').set('Authorization', `Bearer ${jwtToken}`);
 		expect(auditRes.status).toBe(200);
 
-		const logs = (auditRes.body.logs as AuditLog[]).filter(
+		const logs = (auditRes.body.data.logs as AuditLog[]).filter(
 			(log) => log.resourceType === AuditResourceType.MUTE_POLICY && log.resourceId === resourceId
 		);
 		const createLog = logs.find((log) => log.actionType === AuditActionType.CREATE);
@@ -295,19 +296,82 @@ describe('Audit Logs API', () => {
 		// Fetch first page
 		const res1 = await app.get('/api/v1/audit?page=1&pageSize=3').set('Authorization', `Bearer ${jwtToken}`);
 		expect(res1.status).toBe(200);
-		expect(res1.body.logs.length).toBe(3);
-		expect(res1.body.total).toBe(5);
+		expect(res1.body.data.logs.length).toBe(3);
+		expect(res1.body.data.total).toBe(5);
 		// Fetch second page
 		const res2 = await app.get('/api/v1/audit?page=2&pageSize=3').set('Authorization', `Bearer ${jwtToken}`);
 		expect(res2.status).toBe(200);
-		expect(res2.body.logs.length).toBe(2);
+		expect(res2.body.data.logs.length).toBe(2);
 	});
 
 	test('should return empty logs if none exist', async () => {
 		db.exec('DELETE FROM audit_logs');
 		const res = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
 		expect(res.status).toBe(200);
-		expect(Array.isArray(res.body.logs)).toBe(true);
-		expect(res.body.logs.length).toBe(0);
+		expect(Array.isArray(res.body.data.logs)).toBe(true);
+		expect(res.body.data.logs.length).toBe(0);
+	});
+
+	test('should wrap the response in the standard success envelope', async () => {
+		const res = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(200);
+		expect(res.body).toEqual(
+			expect.objectContaining({
+				success: true,
+				data: expect.objectContaining({
+					logs: expect.any(Array),
+					total: expect.any(Number),
+				}),
+			})
+		);
+	});
+
+	test('should default to page 1 / pageSize 20 when params are omitted', async () => {
+		// The default is only observable when MORE than a page of rows exist: against a
+		// short table every page size looks alike, so an upper-bound assertion would pass
+		// for any default. 25 rows pin both halves — the size of page 1, and that it is
+		// page 1 rather than some later slice.
+		db.exec('DELETE FROM audit_logs');
+		const insert = db.prepare(
+			`INSERT INTO audit_logs (id, action_type, resource_type, resource_id, user_id, user_name, timestamp, details)
+			 VALUES (?, 'CREATE', 'ENRICHMENT', ?, 1, 'tester', ?, '{}')`
+		);
+		// Descending timestamps so row id 1 is newest — the endpoint returns newest first,
+		// which makes page 1 exactly ids 1..20.
+		for (let i = 1; i <= 25; i++) {
+			insert.run(i, String(i), `2026-08-${String(31 - i).padStart(2, '0')} 12:00:00`);
+		}
+
+		const res = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.total).toBe(25);
+		expect(res.body.data.logs).toHaveLength(20);
+		// Page 1, not a later slice: the newest row is present and the 21st is not.
+		const ids = res.body.data.logs.map((log: AuditLog) => Number(log.resourceId));
+		expect(ids).toContain(1);
+		expect(ids).not.toContain(21);
+	});
+
+	test('should reject a zero or negative page number', async () => {
+		const zeroRes = await app.get('/api/v1/audit?page=0').set('Authorization', `Bearer ${jwtToken}`);
+		expect(zeroRes.status).toBe(400);
+		expect(zeroRes.body.success).toBe(false);
+
+		const negativeRes = await app.get('/api/v1/audit?page=-1').set('Authorization', `Bearer ${jwtToken}`);
+		expect(negativeRes.status).toBe(400);
+		expect(negativeRes.body.success).toBe(false);
+	});
+
+	test('should reject a pageSize over the cap', async () => {
+		const res = await app.get('/api/v1/audit?pageSize=1000000').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(400);
+		expect(res.body.success).toBe(false);
+	});
+
+	test('should reject a zero or negative pageSize', async () => {
+		const res = await app.get('/api/v1/audit?pageSize=0').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(400);
+		expect(res.body.success).toBe(false);
 	});
 });

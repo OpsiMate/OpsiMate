@@ -46,10 +46,10 @@ describe('Action Audit Logs', () => {
 
 		const auditRes = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
 		expect(auditRes.status).toBe(200);
-		expect(Array.isArray(auditRes.body.logs)).toBe(true);
-		expect(auditRes.body.logs.length).toBe(1);
+		expect(Array.isArray(auditRes.body.data.logs)).toBe(true);
+		expect(auditRes.body.data.logs.length).toBe(1);
 
-		const log: AuditLog = auditRes.body.logs[0];
+		const log: AuditLog = auditRes.body.data.logs[0];
 		expect(log.actionType).toBe(AuditActionType.CREATE);
 		expect(log.resourceType).toBe(AuditResourceType.ACTION);
 		expect(log.resourceId).toBe(String(createRes.body.data.id));
@@ -80,7 +80,7 @@ describe('Action Audit Logs', () => {
 		const auditRes = await app.get('/api/v1/audit?page=1&pageSize=10').set('Authorization', `Bearer ${jwtToken}`);
 		expect(auditRes.status).toBe(200);
 
-		const logs = auditRes.body.logs as AuditLog[];
+		const logs = auditRes.body.data.logs as AuditLog[];
 		const actionLogs = logs.filter(
 			(log) => log.resourceType === AuditResourceType.ACTION && log.resourceId === resourceId
 		);
