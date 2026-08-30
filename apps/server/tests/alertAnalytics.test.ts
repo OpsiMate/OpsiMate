@@ -1,4 +1,4 @@
-import { Alert, NamedCount } from '@OpsiMate/shared';
+import { Alert, DurationDayPoint, NamedCount } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { SuperTest, Test } from 'supertest';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -300,6 +300,26 @@ describe('computeAlertAnalytics', () => {
 		expect(result.overview.volumeByDay.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date))).toBe(true);
 	});
 
+	// A local day is only 23 hours long on the spring-forward date, so seeding the dense
+	// axis with a fixed 24h step jumps clean over it and the day goes missing from the
+	// chart — precisely the gap the dense axis exists to fill.
+	test('the dense day axis keeps the DST spring-forward day', () => {
+		// Europe/Berlin 2026: clocks go 02:00 -> 03:00 on Sun Mar 29.
+		const from = Date.parse('2026-03-28T22:30:00.000Z'); // Sat Mar 28, 23:30 Berlin
+		const to = Date.parse('2026-04-01T10:00:00.000Z'); // Wed Apr 1, 12:00 Berlin
+		const result = compute({
+			from: iso(from),
+			to: iso(to),
+			timeZone: 'Europe/Berlin',
+			episodes: [firing('a', Date.parse('2026-03-31T09:00:00.000Z'))],
+			activeAlerts: [alert('a', 'A', 'warning')],
+		});
+		expect(result.range.granularity).toBe('day');
+		const dates = result.overview.volumeByDay.map((p) => p.date);
+		expect(dates).toContain('2026-03-29');
+		expect(dates).toEqual(['2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31', '2026-04-01']);
+	});
+
 	test('weekday histogram buckets episodes by local day of week', () => {
 		// 2026-08-19 is a Wednesday (UTC).
 		const result = compute({
@@ -443,7 +463,7 @@ describe('computeAlertAnalytics', () => {
 		});
 		const db = result.tagInsights?.trends.find((t) => t.value === 'db');
 		const web = result.tagInsights?.trends.find((t) => t.value === 'web');
-		const at = (trend: { date: string }[] | undefined, date: string) => trend?.find((p) => p.date === date);
+		const at = (trend: DurationDayPoint[] | undefined, date: string) => trend?.find((p) => p.date === date);
 		expect(at(db?.mttrByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 });
 		expect(at(db?.mttaByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 });
 		expect(at(web?.mttrByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 });

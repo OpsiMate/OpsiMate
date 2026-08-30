@@ -271,10 +271,15 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	};
 	// Dense axis for bounded windows: pre-seed every bucket in [from, to] with zeros so
 	// quiet hours/days render as part of the curve instead of being dropped. All-time
-	// stays sparse (unbounded). Duplicate keys around a DST boundary collapse in the Map.
+	// stays sparse (unbounded).
+	//
+	// Always step by the HOUR, even for day buckets. Stepping a day at a time skips the
+	// spring-forward date outright — that local day is only 23 hours long, so `t += 24h`
+	// from a late-evening `from` lands two calendar days later and the DST day never gets
+	// seeded. Hourly steps repeat keys instead of missing them, and repeats collapse in
+	// the Map. Costs ~14ms of Intl formatting over a two-year window, all cache hits.
 	if (fromMs !== null) {
-		const stepMs = granularity === 'hour' ? HOUR_MS : DAY_MS;
-		for (let t = fromMs; t <= toMs; t += stepMs) seedBucket(local.bucket(t));
+		for (let t = fromMs; t <= toMs; t += HOUR_MS) seedBucket(local.bucket(t));
 		seedBucket(local.bucket(toMs));
 	}
 
