@@ -3,3 +3,10 @@ dist/
 coverage/
 pnpm-lock.yaml
 package-lock.json
+
+# Regression fixture for the js-yaml 4 -> 5 breakage. Its whole purpose is a
+# multi-line flow mapping whose closing brace sits at its key's indent -- the
+# shape js-yaml 5 rejects and older user configs contain. Prettier reformats it
+# to indent the continuation lines past the key, which is precisely the shape
+# js-yaml 5 accepts, so formatting this file would silently defeat the test.
+tests/fixtures/legacy-flow-mapping-config.yml
