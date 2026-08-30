@@ -327,12 +327,30 @@ describe('Audit Logs API', () => {
 	});
 
 	test('should default to page 1 / pageSize 20 when params are omitted', async () => {
+		// The default is only observable when MORE than a page of rows exist: against a
+		// short table every page size looks alike, so an upper-bound assertion would pass
+		// for any default. 25 rows pin both halves — the size of page 1, and that it is
+		// page 1 rather than some later slice.
+		db.exec('DELETE FROM audit_logs');
+		const insert = db.prepare(
+			`INSERT INTO audit_logs (id, action_type, resource_type, resource_id, user_id, user_name, timestamp, details)
+			 VALUES (?, 'CREATE', 'ENRICHMENT', ?, 1, 'tester', ?, '{}')`
+		);
+		// Descending timestamps so row id 1 is newest — the endpoint returns newest first,
+		// which makes page 1 exactly ids 1..20.
+		for (let i = 1; i <= 25; i++) {
+			insert.run(i, String(i), `2026-08-${String(31 - i).padStart(2, '0')} 12:00:00`);
+		}
+
 		const res = await app.get('/api/v1/audit').set('Authorization', `Bearer ${jwtToken}`);
 		expect(res.status).toBe(200);
 		expect(res.body.success).toBe(true);
-		// No way to observe page/pageSize directly, so assert on the resulting page shape:
-		// at most the default pageSize of logs come back, and the request doesn't error out.
-		expect(res.body.data.logs.length).toBeLessThanOrEqual(20);
+		expect(res.body.data.total).toBe(25);
+		expect(res.body.data.logs).toHaveLength(20);
+		// Page 1, not a later slice: the newest row is present and the 21st is not.
+		const ids = res.body.data.logs.map((log: AuditLog) => Number(log.resourceId));
+		expect(ids).toContain(1);
+		expect(ids).not.toContain(21);
 	});
 
 	test('should reject a zero or negative page number', async () => {
