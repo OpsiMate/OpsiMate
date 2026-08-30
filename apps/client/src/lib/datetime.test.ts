@@ -1,5 +1,12 @@
-import { describe, expect, test } from 'vitest';
-import { formatDateTime, formatLongDateTime, formatShortDateTime, formatTime, isSameLocalDay } from './datetime';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+	formatDateTime,
+	formatLongDateTime,
+	formatRelativeTime,
+	formatShortDateTime,
+	formatTime,
+	isSameLocalDay,
+} from './datetime';
 
 // Every formatter here is 24-hour by contract. MERIDIEM is asserted against directly
 // rather than checking for an exact string, so these stay honest under any locale.
@@ -101,6 +108,61 @@ describe('input handling', () => {
 	test('callers can supply their own fallback', () => {
 		expect(formatDateTime(null, 'never')).toBe('never');
 		expect(formatShortDateTime('not-a-date', 'not-a-date')).toBe('not-a-date');
+	});
+});
+
+describe('formatRelativeTime', () => {
+	const now = new Date(2026, 7, 11, 12, 0, 0); // Aug 11 2026, 12:00:00
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test('a moment ago reads as "just now"', () => {
+		expect(formatRelativeTime(new Date(now.getTime() - 30_000))).toBe('just now');
+	});
+
+	test('a moment from now reads as "in <1m"', () => {
+		expect(formatRelativeTime(new Date(now.getTime() + 30_000))).toBe('in <1m');
+	});
+
+	test('minutes, past and future', () => {
+		expect(formatRelativeTime(new Date(now.getTime() - 5 * 60_000))).toBe('5m ago');
+		expect(formatRelativeTime(new Date(now.getTime() + 5 * 60_000))).toBe('in 5m');
+	});
+
+	test('hours, past and future', () => {
+		expect(formatRelativeTime(new Date(now.getTime() - 3 * 3_600_000))).toBe('3h ago');
+		expect(formatRelativeTime(new Date(now.getTime() + 3 * 3_600_000))).toBe('in 3h');
+	});
+
+	test('days under a week, past and future', () => {
+		expect(formatRelativeTime(new Date(now.getTime() - 3 * 86_400_000))).toBe('3d ago');
+		expect(formatRelativeTime(new Date(now.getTime() + 3 * 86_400_000))).toBe('in 3d');
+	});
+
+	test('falls back to an absolute short date-time at a week or beyond', () => {
+		const eightDaysAgo = new Date(now.getTime() - 8 * 86_400_000);
+		expect(formatRelativeTime(eightDaysAgo)).toBe(formatShortDateTime(eightDaysAgo));
+
+		const eightDaysAhead = new Date(now.getTime() + 8 * 86_400_000);
+		expect(formatRelativeTime(eightDaysAhead)).toBe(formatShortDateTime(eightDaysAhead));
+	});
+
+	test('empty and unparseable values fall back rather than rendering "Invalid Date"', () => {
+		expect(formatRelativeTime(null)).toBe('—');
+		expect(formatRelativeTime(undefined)).toBe('—');
+		expect(formatRelativeTime('')).toBe('—');
+		expect(formatRelativeTime('not-a-date')).toBe('—');
+	});
+
+	test('callers can supply their own fallback', () => {
+		expect(formatRelativeTime(null, 'no end')).toBe('no end');
 	});
 });
 

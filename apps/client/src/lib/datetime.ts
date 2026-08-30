@@ -77,6 +77,35 @@ export const formatLongDateTime = (value: DateInput, fallback = '—'): string =
 /** "08/11/2026, 22:53:07" — full precision, for tooltips and copy-to-clipboard. */
 export const formatDateTime = (value: DateInput, fallback = '—'): string => format(value, NUMERIC_DATE_TIME, fallback);
 
+/**
+ * "5m ago" / "in 5m" — coarse relative time for comment threads, mute-policy
+ * windows and the audit log. Handles future timestamps (mute-policy schedules
+ * look forward as often as back) alongside the usual past ones. Falls back to
+ * formatShortDateTime once the gap reaches a week, so old rows don't render
+ * as "34d ago".
+ */
+export const formatRelativeTime = (value: DateInput, fallback = '—'): string => {
+	const date = toDate(value);
+	if (!date) return fallback;
+
+	const diffMs = date.getTime() - Date.now();
+	const future = diffMs > 0;
+	const absMs = Math.abs(diffMs);
+
+	const minutes = Math.floor(absMs / 60_000);
+	if (minutes < 1) return future ? 'in <1m' : 'just now';
+
+	const hours = Math.floor(minutes / 60);
+	if (hours < 1) return future ? `in ${minutes}m` : `${minutes}m ago`;
+
+	const days = Math.floor(hours / 24);
+	if (days < 1) return future ? `in ${hours}h` : `${hours}h ago`;
+
+	if (days < 7) return future ? `in ${days}d` : `${days}d ago`;
+
+	return formatShortDateTime(date);
+};
+
 /** True when the timestamp falls on the viewer's current calendar day. */
 export const isSameLocalDay = (value: DateInput, reference: Date = new Date()): boolean => {
 	const date = toDate(value);

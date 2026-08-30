@@ -12,7 +12,7 @@ import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { formatDateTime, formatLongDateTime } from '@/lib/datetime';
+import { formatDateTime, formatLongDateTime, formatRelativeTime } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
 import {
@@ -679,20 +679,11 @@ const Settings: React.FC = () => {
 
 export default Settings;
 
-// Helper to parse SQLite UTC timestamp as ISO 8601
+// The audit-log endpoint still returns SQLite's bare "YYYY-MM-DD HH:MM:SS" (UTC with
+// no marker), which `new Date()` would otherwise read as local time. Comment
+// timestamps were fixed server-side in #824; audit logs were not, so this stays.
 function parseUTCDate(dateString: string) {
 	return new Date(dateString.replace(' ', 'T') + 'Z');
-}
-
-function formatRelativeTime(dateString: string) {
-	const now = new Date();
-	const date = parseUTCDate(dateString);
-	const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // in seconds
-	if (diff < 60) return 'just now';
-	if (diff < 3600) return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) === 1 ? '' : 's'} ago`;
-	if (diff < 86400) return `${Math.floor(diff / 3600)} hour${Math.floor(diff / 3600) === 1 ? '' : 's'} ago`;
-	if (diff < 604800) return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) === 1 ? '' : 's'} ago`;
-	return date.toLocaleDateString();
 }
 
 const AuditLogTable: React.FC = () => {
@@ -826,7 +817,7 @@ const AuditLogTable: React.FC = () => {
 									<TableRow key={log.id}>
 										<TableCell>
 											<span title={formatDateTime(parseUTCDate(log.timestamp))}>
-												{formatRelativeTime(log.timestamp)}
+												{formatRelativeTime(parseUTCDate(log.timestamp))}
 											</span>
 										</TableCell>
 										<TableCell>

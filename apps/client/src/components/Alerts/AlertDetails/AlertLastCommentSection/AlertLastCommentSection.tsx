@@ -1,5 +1,6 @@
 import { useAlertComments } from '@/hooks/queries/alertComments';
 import { useUsers } from '@/hooks/queries/users';
+import { formatRelativeTime } from '@/lib/datetime';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 import { CollapsibleSection } from '../CollapsibleSection';
@@ -9,18 +10,6 @@ interface AlertLastCommentSectionProps {
 	// Switches the panel to the Comments tab; omitted in container variants without tabs.
 	onViewAll?: () => void;
 }
-
-const relativeTime = (iso: string): string => {
-	const diff = Date.now() - new Date(iso).getTime();
-	const m = Math.floor(diff / 60000);
-	if (m < 1) return 'just now';
-	if (m < 60) return `${m}m ago`;
-	const h = Math.floor(m / 60);
-	if (h < 24) return `${h}h ago`;
-	const d = Math.floor(h / 24);
-	if (d < 7) return `${d}d ago`;
-	return new Date(iso).toLocaleDateString();
-};
 
 const initials = (name: string): string =>
 	name
@@ -72,7 +61,7 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 							{initials(authorName)}
 						</span>
 						<span className="text-xs font-medium truncate">{authorName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">{relativeTime(latest.createdAt)}</span>
+						<span className="text-xs text-muted-foreground shrink-0">{formatRelativeTime(latest.createdAt)}</span>
 					</div>
 					<p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word line-clamp-4">
 						{latest.comment}
