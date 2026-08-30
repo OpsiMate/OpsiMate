@@ -123,7 +123,7 @@ export const TagResearchTab = ({
 								{
 									key: 'mttr',
 									label: 'MTTR',
-									hint: `Mean time to restore per day, one line per "${insights.key}" value`,
+									hint: `Mean time to restore per ${granularity}, one line per "${insights.key}" value`,
 									series: insights.trends.map((trend, index) => ({
 										name: trend.value,
 										color: SERIES_COLORS[index % SERIES_COLORS.length],
@@ -133,7 +133,7 @@ export const TagResearchTab = ({
 								{
 									key: 'mtta',
 									label: 'MTTA',
-									hint: `Mean time to first human touch per day, one line per "${insights.key}" value`,
+									hint: `Mean time to first human touch per ${granularity}, one line per "${insights.key}" value`,
 									series: insights.trends.map((trend, index) => ({
 										name: trend.value,
 										color: SERIES_COLORS[index % SERIES_COLORS.length],

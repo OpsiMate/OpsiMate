@@ -36,10 +36,19 @@ const AlertInsights = () => {
 	};
 	const [nowBucket, setNowBucket] = useState(() => Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
 	useEffect(() => {
-		const timer = window.setInterval(() => {
-			setNowBucket(Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
-		}, NOW_BUCKET_MS);
-		return () => window.clearInterval(timer);
+		const roll = () => setNowBucket(Math.floor(Date.now() / NOW_BUCKET_MS) * NOW_BUCKET_MS);
+		// Align the first tick to the next bucket boundary, then tick every bucket. Without
+		// this the interval fires at mount+5min, so "Today" could lag the midnight rollover.
+		let interval: number | undefined;
+		const msToBoundary = NOW_BUCKET_MS - (Date.now() % NOW_BUCKET_MS);
+		const timeout = window.setTimeout(() => {
+			roll();
+			interval = window.setInterval(roll, NOW_BUCKET_MS);
+		}, msToBoundary);
+		return () => {
+			window.clearTimeout(timeout);
+			if (interval !== undefined) window.clearInterval(interval);
+		};
 	}, []);
 	const from = useMemo(() => {
 		if (preset === 'today') {

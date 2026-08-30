@@ -494,9 +494,10 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		const byValue = new Map<string, TagValueAccumulator>();
 		let taggedEpisodes = 0;
 		let untaggedEpisodes = 0;
-		// Per-VALUE MTTR/MTTA trends, same day semantics as the reliability trends;
-		// tagDays anchors a shared x-axis so every value's line covers the same days.
-		const tagDays = new Set<string>();
+		// Per-VALUE MTTR/MTTA trends, same bucket semantics as the reliability trends.
+		// Seed from the overview's (dense, for bounded windows) buckets so tag charts get
+		// the SAME continuous x-axis — a 24h tag view is a curve, not a lone point.
+		const tagDays = new Set<string>(dayPoints.keys());
 		for (const episode of windowEpisodes) {
 			const tags = meta.get(episode.alertId)?.tags;
 			// hasOwnProperty, not plain lookup: a key like "__proto__" must read as
@@ -563,6 +564,13 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		// Volume split over the TOP values only — a 40-series chart reads as noise.
 		const topValues = values.slice(0, 5).map((v) => v.value);
 		const dayPointsByDate = new Map<string, TagValueDayPoint>();
+		// Dense seed: every bucket carries a zero for each top value, so the stacked tag
+		// volume spans the whole window instead of collapsing to buckets that had data.
+		for (const date of tagDays) {
+			const counts: Record<string, number> = {};
+			for (const value of topValues) counts[value] = 0;
+			dayPointsByDate.set(date, { date, counts });
+		}
 		for (const value of topValues) {
 			const acc = byValue.get(value);
 			if (!acc) continue;

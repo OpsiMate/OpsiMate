@@ -24,13 +24,13 @@ export const ReliabilityTab = ({ reliability, granularity }: ReliabilityTabProps
 					{
 						key: 'mttr',
 						label: 'MTTR',
-						hint: "Mean time to restore per day, over that day's resolutions",
+						hint: `Mean time to restore per ${granularity}, over that ${granularity}'s resolutions`,
 						series: [{ name: 'MTTR', data: reliability.mttrByDay }],
 					},
 					{
 						key: 'mtta',
 						label: 'MTTA',
-						hint: "Mean time to first human touch per day, over that day's acknowledgements",
+						hint: `Mean time to first human touch per ${granularity}, over that ${granularity}'s acknowledgements`,
 						series: [{ name: 'MTTA', data: reliability.mttaByDay }],
 					},
 				]}

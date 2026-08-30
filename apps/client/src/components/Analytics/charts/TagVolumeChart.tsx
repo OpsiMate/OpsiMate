@@ -35,7 +35,7 @@ export const TagVolumeChart = ({ topValues, data, tagKey, granularity }: TagVolu
 	return (
 		<ChartCard
 			title={`Volume by ${tagKey}`}
-			hint={`Firing episodes per day, split across the top ${topValues.length} values`}
+			hint={`Firing episodes per ${granularity}, split across the top ${topValues.length} values`}
 		>
 			<ResponsiveContainer width="100%" height={240}>
 				<AreaChart data={flat} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>

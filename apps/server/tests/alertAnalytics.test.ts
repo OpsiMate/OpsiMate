@@ -443,10 +443,14 @@ describe('computeAlertAnalytics', () => {
 		});
 		const db = result.tagInsights?.trends.find((t) => t.value === 'db');
 		const web = result.tagInsights?.trends.find((t) => t.value === 'web');
-		expect(db?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 }]);
-		expect(db?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
-		expect(web?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
-		expect(web?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: null, count: 0 }]);
+		const at = (trend: { date: string }[] | undefined, date: string) => trend?.find((p) => p.date === date);
+		expect(at(db?.mttrByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 });
+		expect(at(db?.mttaByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 });
+		expect(at(web?.mttrByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 });
+		expect(at(web?.mttaByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: null, count: 0 });
+		// Dense over the shared window axis: both values span the same buckets, others null.
+		expect(db?.mttrByDay.map((p) => p.date)).toEqual(web?.mttrByDay.map((p) => p.date));
+		expect(db?.mttrByDay.every((p) => p.date === '2026-08-20' || p.meanMs === null)).toBe(true);
 	});
 
 	test('every tag value covers every sampled day, even days it has no samples on', () => {
@@ -466,9 +470,10 @@ describe('computeAlertAnalytics', () => {
 			tagKey: 'service',
 		});
 		const days = (value: string) =>
-			result.tagInsights?.trends.find((t) => t.value === value)?.mttrByDay.map((p) => p.date);
-		expect(days('db')).toEqual(['2026-08-18', '2026-08-19', '2026-08-20']);
-		expect(days('web')).toEqual(['2026-08-18', '2026-08-19', '2026-08-20']);
+			result.tagInsights?.trends.find((t) => t.value === value)?.mttrByDay.map((p) => p.date) ?? [];
+		// Both values share the same (dense) axis, which includes every sampled day.
+		expect(days('db')).toEqual(days('web'));
+		for (const d of ['2026-08-18', '2026-08-19', '2026-08-20']) expect(days('db')).toContain(d);
 		const webOnDbDay = result.tagInsights?.trends
 			.find((t) => t.value === 'web')
 			?.mttrByDay.find((p) => p.date === '2026-08-18');
