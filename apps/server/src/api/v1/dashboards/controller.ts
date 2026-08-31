@@ -36,11 +36,11 @@ export class DashboardController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error saving dashboard:', error);
-			const message = error instanceof Error ? error.message : String(error);
-			return res.status(500).json({
-				success: false,
-				error: message || 'Failed to save dashboard',
-			});
+			const message = error instanceof Error ? error.message : 'Internal server error';
+			if (message.includes('not found')) {
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
+			}
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 
@@ -62,11 +62,11 @@ export class DashboardController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error Updating dashboard:', error);
-			const message = error instanceof Error ? error.message : String(error);
-			return res.status(500).json({
-				success: false,
-				error: message || 'Failed to update dashboard',
-			});
+			const message = error instanceof Error ? error.message : 'Internal server error';
+			if (message.includes('not found')) {
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
+			}
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 
@@ -82,8 +82,11 @@ export class DashboardController {
 			return res.json({ success: true, message: 'dashboards deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting dashboards:', error);
-			const message = error instanceof Error ? error.message : String(error);
-			return res.status(500).json({ success: false, error: message || 'Failed to delete dashboard' });
+			const message = error instanceof Error ? error.message : 'Internal server error';
+			if (message.includes('not found')) {
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
+			}
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 
