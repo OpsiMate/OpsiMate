@@ -118,6 +118,11 @@ describe('query result cache over HTTP', () => {
 		).run(id, new Date().toISOString(), new Date().toISOString(), `https://example.com/${id}`, name);
 	};
 
+	interface ResponseAlert {
+		id: string;
+		isSilenced?: boolean;
+	}
+
 	const query = () =>
 		app.get('/api/v1/alerts?limit=10&sort=alertName&dir=asc').set('Authorization', `Bearer ${jwtToken}`);
 
@@ -149,7 +154,7 @@ describe('query result cache over HTTP', () => {
 		expect(silence.status).toBe(200);
 
 		const after = await query();
-		const silenced = after.body.data.alerts.find((a: { id: string }) => a.id === 'qc-1');
+		const silenced = after.body.data.alerts.find((a: ResponseAlert) => a.id === 'qc-1');
 		expect(silenced.isSilenced).toBe(true);
 		expect(after.headers['etag']).not.toBe(before.headers['etag']);
 	});

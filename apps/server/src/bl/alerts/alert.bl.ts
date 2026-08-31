@@ -76,9 +76,17 @@ const analyticsCacheTtlMs = () =>
 
 // The analytics request after validation: the window, the requester's timezone,
 // an optional dashboard scope (filters + search) and an optional tag key to research.
+// One cached analytics response with its compute time, for the TTL check.
+interface AnalyticsCacheEntry {
+	value: AlertAnalytics;
+	computedAt: number;
+}
+
 export interface AlertAnalyticsQuery {
 	from: string | null;
-	to: string;
+	// null = "now", stamped per call below. Kept null in the cache key so default-window
+	// requests share entries (bounded by the TTL); an EXPLICIT to keys its own entry.
+	to: string | null;
 	timeZone?: string;
 	filters?: Record<string, string[]>;
 	search?: string;
@@ -120,7 +128,7 @@ export class AlertBL {
 	private readonly listQueryCache = new QueryResultCache<AlertListPage>(128);
 	private readonly facetsCache = new QueryResultCache<AlertFacetsResult>(64);
 	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
-	private readonly analyticsCache = new QueryResultCache<{ value: AlertAnalytics; computedAt: number }>(32);
+	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -759,7 +767,8 @@ export class AlertBL {
 	// below; revisit with incremental episode materialization if history tables
 	// reach the millions of rows where reconstruction itself becomes the cost.
 	async getAlertAnalytics(query: AlertAnalyticsQuery): Promise<AlertAnalytics> {
-		const { from, to, timeZone, filters, search, tagKey } = query;
+		const { from, timeZone, filters, search, tagKey } = query;
+		const to = query.to ?? new Date().toISOString();
 		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, ownersSnapshot] = await Promise.all([
 			this.activeSnapshot.get(),
 			this.resolvedSnapshot.get(),
@@ -769,17 +778,18 @@ export class AlertBL {
 		]);
 		const owners = ownersSnapshot.value;
 
-		// Content-keyed on every input snapshot plus the params EXCEPT `to`, which the
-		// controller stamps with "now" per request: with unchanged inputs the episode
-		// content under a moving `to` is identical, and the TTL bounds the only real
-		// drift (a new empty trailing bucket on the dense axis). ttl <= 0 bypasses.
+		// Content-keyed on every input snapshot plus the params. `to` enters the key AS
+		// REQUESTED: an explicit end time keys its own entry, while the default (null =
+		// now, stamped just above) shares one — with unchanged inputs the episode content
+		// under a moving now is identical, and the TTL bounds the only real drift (a new
+		// empty trailing bucket on the dense axis). ttl <= 0 bypasses.
 		const cacheTtl = analyticsCacheTtlMs();
 		const cacheKey = [
 			activeSnapshot.etag,
 			resolvedSnapshot.etag,
 			historySnapshot.etag,
 			eventsSnapshot.etag,
-			stableQueryKey({ from, timeZone, filters, search, tagKey }),
+			stableQueryKey({ from, to: query.to, timeZone, filters, search, tagKey }),
 		].join('|');
 		if (cacheTtl > 0) {
 			const cached = this.analyticsCache.get(cacheKey);
