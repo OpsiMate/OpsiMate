@@ -801,7 +801,7 @@ export class AlertController {
 			const params = AlertAnalyticsParamsSchema.parse(req.query);
 			const analytics = await this.alertBL.getAlertAnalytics({
 				from: params.from ?? null,
-				to: params.to ?? new Date().toISOString(),
+				to: params.to ?? null,
 				timeZone: params.tz,
 				filters: params.filters,
 				search: params.search,
