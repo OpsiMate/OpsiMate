@@ -159,6 +159,37 @@ describe('query result cache over HTTP', () => {
 		expect(after.headers['etag']).not.toBe(before.headers['etag']);
 	});
 
+	test('a user rename reaches owner facets on the immediate next request', async () => {
+		// Assign the admin as owner through the API (invalidates the alert snapshot),
+		// then rename them through the profile endpoint. The owners snapshot must
+		// invalidate on the write — a TTL-only cache would keep serving the old name
+		// from the cached facet entry for up to the full TTL.
+		const assign = await app
+			.post('/api/v1/alerts/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ids: ['qc-2'], action: 'assignOwner', ownerId: '1' });
+		expect(assign.status).toBe(200);
+
+		const before = await app
+			.get('/api/v1/alerts/facets?fields=%5B%22owner%22%5D')
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(before.status).toBe(200);
+		expect(JSON.stringify(before.body)).toContain('Provider User');
+
+		const rename = await app
+			.patch('/api/v1/users/profile')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ fullName: 'Renamed Provider' });
+		expect(rename.status).toBe(200);
+
+		const after = await app
+			.get('/api/v1/alerts/facets?fields=%5B%22owner%22%5D')
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(after.status).toBe(200);
+		expect(JSON.stringify(after.body)).toContain('Renamed Provider');
+		expect(JSON.stringify(after.body)).not.toContain('Provider User');
+	});
+
 	test('facets reflect a mutation immediately as well', async () => {
 		const before = await app.get('/api/v1/alerts/facets').set('Authorization', `Bearer ${jwtToken}`);
 		expect(before.status).toBe(200);

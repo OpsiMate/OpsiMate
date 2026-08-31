@@ -118,9 +118,10 @@ export class AlertBL {
 		resolvedSnapshotTtlMs()
 	);
 	// Owners feed sort keys, filter matching and facet labels on every list read; the
-	// users table changes rarely. Cached with the base TTL so the etag can content-key
-	// the query cache below (user edits surface within one TTL window, same bound the
-	// alert lists already live with).
+	// users table changes rarely. Cached with the base TTL, and every name-affecting
+	// user write invalidates it via UserBL.setOnUsersChanged (wired in app.ts) — so a
+	// rename is visible on the immediate next refetch, and the TTL only bounds writes
+	// from OTHER processes, exactly like the alert snapshots.
 	private readonly ownersSnapshot = new SnapshotCache<AlertOwnerInfo[]>(() => this.getOwnerInfos(), snapshotTtlMs());
 	// Per-query results (pages / facets / group summaries) computed over a snapshot.
 	// Content-addressed on the source snapshots' etags — see QueryResultCache. Pages
@@ -141,6 +142,13 @@ export class AlertBL {
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
 	// affect both, so both drop together — a second compute per edit is far cheaper than
 	// reasoning about which list a given write touched.
+	// Wired to UserBL's users-changed callback in app.ts: a rename/create/delete of a
+	// user must reach owner columns, sort, facets and the query caches (which key on
+	// this snapshot's etag) on the very next request, not after a TTL window.
+	invalidateOwners(): void {
+		this.ownersSnapshot.invalidate();
+	}
+
 	invalidateSnapshots(): void {
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
@@ -789,6 +797,8 @@ export class AlertBL {
 			resolvedSnapshot.etag,
 			historySnapshot.etag,
 			eventsSnapshot.etag,
+			// Owners participate: dashboard scopes can filter by owner display name.
+			ownersSnapshot.etag,
 			stableQueryKey({ from, to: query.to, timeZone, filters, search, tagKey }),
 		].join('|');
 		if (cacheTtl > 0) {
