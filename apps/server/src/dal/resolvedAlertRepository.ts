@@ -67,6 +67,16 @@ export class ResolvedAlertRepository {
 																	  status TEXT NOT NULL
 						);
 
+						-- Every hot read of this table probes by alert_id:
+						-- getFiringTimesByAlert runs inside EVERY active-snapshot recompute
+						-- (feeding the alerts list, facets and groups) and getAlertHistory
+						-- backs the per-alert history drawer. Without the index both were
+						-- full scans, so main-page latency grew with TOTAL history size —
+						-- history a user never looks at taxed every poll. archived_at as the
+						-- second column keeps the drawer's time-ordered read index-only.
+						CREATE INDEX IF NOT EXISTS idx_alerts_history_alert
+							ON alerts_history (alert_id, archived_at);
+
 						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_update
 							BEFORE UPDATE ON alerts_resolved
 							FOR EACH ROW
