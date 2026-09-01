@@ -1,4 +1,4 @@
-import { Alert, NamedCount } from '@OpsiMate/shared';
+import { Alert, DurationDayPoint, NamedCount } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { SuperTest, Test } from 'supertest';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -268,7 +268,56 @@ describe('computeAlertAnalytics', () => {
 		});
 		const day = result.overview.volumeByDay.find((d) => d.date === '2026-08-19');
 		expect(day?.resolved).toBe(1);
-		expect(result.reliability.mttrByDay).toEqual([{ date: '2026-08-19', meanMs: 2 * HOUR, count: 1 }]);
+		// The trend is dense over the (day-granularity) window: the resolution day carries
+		// the mean, every other bucket is present but null so the line breaks there.
+		const mttrDay = result.reliability.mttrByDay.find((d) => d.date === '2026-08-19');
+		expect(mttrDay).toEqual({ date: '2026-08-19', meanMs: 2 * HOUR, count: 1 });
+		expect(result.reliability.mttrByDay.every((d) => d.date === '2026-08-19' || d.meanMs === null)).toBe(true);
+	});
+
+	test('a short (<=48h) window buckets the time series by HOUR, densely', () => {
+		// 24h window with two episodes 3h apart: hourly buckets, one continuous curve.
+		const result = compute({
+			from: iso(NOW - 24 * HOUR),
+			episodes: [firing('a', NOW - 5 * HOUR), firing('a', NOW - 2 * HOUR)],
+			activeAlerts: [alert('a', 'A', 'warning')],
+			timeZone: 'UTC',
+		});
+		expect(result.range.granularity).toBe('hour');
+		// Hour-bucket keys, e.g. "2026-08-20 07:00".
+		expect(result.overview.volumeByDay.every((p) => /^\d{4}-\d{2}-\d{2} \d{2}:00$/.test(p.date))).toBe(true);
+		// Dense: ~25 hourly buckets spanning the window (not just the 2 with data).
+		expect(result.overview.volumeByDay.length).toBeGreaterThanOrEqual(24);
+		expect(result.overview.volumeByDay.filter((p) => p.total > 0)).toHaveLength(2);
+		// Sorted ascending by bucket key.
+		const dates = result.overview.volumeByDay.map((p) => p.date);
+		expect(dates).toEqual([...dates].sort());
+	});
+
+	test('a long window keeps DAY granularity', () => {
+		const result = compute({ from: iso(NOW - 7 * DAY), episodes: [firing('a', NOW - HOUR)] });
+		expect(result.range.granularity).toBe('day');
+		expect(result.overview.volumeByDay.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date))).toBe(true);
+	});
+
+	// A local day is only 23 hours long on the spring-forward date, so seeding the dense
+	// axis with a fixed 24h step jumps clean over it and the day goes missing from the
+	// chart — precisely the gap the dense axis exists to fill.
+	test('the dense day axis keeps the DST spring-forward day', () => {
+		// Europe/Berlin 2026: clocks go 02:00 -> 03:00 on Sun Mar 29.
+		const from = Date.parse('2026-03-28T22:30:00.000Z'); // Sat Mar 28, 23:30 Berlin
+		const to = Date.parse('2026-04-01T10:00:00.000Z'); // Wed Apr 1, 12:00 Berlin
+		const result = compute({
+			from: iso(from),
+			to: iso(to),
+			timeZone: 'Europe/Berlin',
+			episodes: [firing('a', Date.parse('2026-03-31T09:00:00.000Z'))],
+			activeAlerts: [alert('a', 'A', 'warning')],
+		});
+		expect(result.range.granularity).toBe('day');
+		const dates = result.overview.volumeByDay.map((p) => p.date);
+		expect(dates).toContain('2026-03-29');
+		expect(dates).toEqual(['2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31', '2026-04-01']);
 	});
 
 	test('weekday histogram buckets episodes by local day of week', () => {
@@ -387,10 +436,11 @@ describe('computeAlertAnalytics', () => {
 			events: [{ alertId: 'a', at: iso(NOW - 2 * HOUR), actorName: 'idan' }],
 			activeAlerts: [alert('a', 'A', 'warning')],
 		});
-		expect(result.reliability.mttaByDay).toEqual([
-			{ date: '2026-08-19', meanMs: null, count: 0 },
-			{ date: '2026-08-20', meanMs: 24 * HOUR, count: 1 },
-		]);
+		// Dense over the day-granularity window: the touch day carries the mean, every
+		// other bucket (including the firing day) is present but null.
+		const touchDay = result.reliability.mttaByDay.find((d) => d.date === '2026-08-20');
+		expect(touchDay).toEqual({ date: '2026-08-20', meanMs: 24 * HOUR, count: 1 });
+		expect(result.reliability.mttaByDay.every((d) => d.date === '2026-08-20' || d.meanMs === null)).toBe(true);
 	});
 
 	test('tag research carries per-VALUE MTTR/MTTA trends on a shared day axis', () => {
@@ -413,10 +463,14 @@ describe('computeAlertAnalytics', () => {
 		});
 		const db = result.tagInsights?.trends.find((t) => t.value === 'db');
 		const web = result.tagInsights?.trends.find((t) => t.value === 'web');
-		expect(db?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 }]);
-		expect(db?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
-		expect(web?.mttrByDay).toEqual([{ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 }]);
-		expect(web?.mttaByDay).toEqual([{ date: '2026-08-20', meanMs: null, count: 0 }]);
+		const at = (trend: DurationDayPoint[] | undefined, date: string) => trend?.find((p) => p.date === date);
+		expect(at(db?.mttrByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 4 * HOUR, count: 1 });
+		expect(at(db?.mttaByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 });
+		expect(at(web?.mttrByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: 1 * HOUR, count: 1 });
+		expect(at(web?.mttaByDay, '2026-08-20')).toEqual({ date: '2026-08-20', meanMs: null, count: 0 });
+		// Dense over the shared window axis: both values span the same buckets, others null.
+		expect(db?.mttrByDay.map((p) => p.date)).toEqual(web?.mttrByDay.map((p) => p.date));
+		expect(db?.mttrByDay.every((p) => p.date === '2026-08-20' || p.meanMs === null)).toBe(true);
 	});
 
 	test('every tag value covers every sampled day, even days it has no samples on', () => {
@@ -436,9 +490,10 @@ describe('computeAlertAnalytics', () => {
 			tagKey: 'service',
 		});
 		const days = (value: string) =>
-			result.tagInsights?.trends.find((t) => t.value === value)?.mttrByDay.map((p) => p.date);
-		expect(days('db')).toEqual(['2026-08-18', '2026-08-19', '2026-08-20']);
-		expect(days('web')).toEqual(['2026-08-18', '2026-08-19', '2026-08-20']);
+			result.tagInsights?.trends.find((t) => t.value === value)?.mttrByDay.map((p) => p.date) ?? [];
+		// Both values share the same (dense) axis, which includes every sampled day.
+		expect(days('db')).toEqual(days('web'));
+		for (const d of ['2026-08-18', '2026-08-19', '2026-08-20']) expect(days('db')).toContain(d);
 		const webOnDbDay = result.tagInsights?.trends
 			.find((t) => t.value === 'web')
 			?.mttrByDay.find((p) => p.date === '2026-08-18');

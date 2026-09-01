@@ -9,6 +9,17 @@ import { describe, expect, test } from 'vitest';
 // when no config is mounted — had a multi-line flow mapping whose closing brace sat at
 // its key's indent. Every Docker user without a mounted config crashed on upgrade with
 // "deficient indentation", and nothing in the suite noticed.
+//
+// That happened twice. #854 reverted js-yaml to 4.x and reformatted the shipped files
+// to block style; dependabot #879 bumped it back to 5.x eight days later and 0.0.108
+// shipped the crash again. These tests stayed green through it, because reformatting
+// our own files is exactly what makes them parse under the strict parser.
+//
+// So the cases below split in two:
+//   - the shipped configs, which we control and keep in block style, and
+//   - a fixture in the OLD format, which we do NOT control. Users' configs are mounted
+//     into the container, so an image upgrade never rewrites them. Any parser we ship
+//     has to keep reading them, and that is the case a version bump can actually break.
 
 const repoRoot = path.resolve(__dirname, '../../..');
 
@@ -74,5 +85,30 @@ describe('shipped YAML configs', () => {
 				).toBe(false);
 			});
 		}
+	});
+
+	// The case that #879 slipped past. This fixture is a user config in the pre-#854
+	// format; it is deliberately NOT in SHIPPED_CONFIGS, because the flow-mapping check
+	// above would (correctly) reject it. Nothing rewrites a mounted config on upgrade,
+	// so if this stops parsing, existing installs crash at startup on the new image.
+	test('a legacy user config with a multi-line flow mapping still parses', () => {
+		const fixture = path.join(__dirname, 'fixtures/legacy-flow-mapping-config.yml');
+		expect(fs.existsSync(fixture), 'legacy config fixture is missing').toBe(true);
+
+		const raw = fs.readFileSync(fixture, 'utf8');
+		// Guard the fixture itself: if someone tidies the indentation away, the test
+		// would keep passing while covering nothing.
+		expect(
+			raw.split('\n').some((line) => line.split('#')[0].trimEnd().endsWith('{')),
+			'fixture no longer contains a multi-line flow mapping — it must, or it tests nothing'
+		).toBe(true);
+
+		const parsed = yaml.load(raw) as Record<string, any>;
+		expect(parsed, 'legacy config parsed to nothing').toBeTruthy();
+		expect(parsed.mailer?.templates?.welcomeTemplate?.subject).toBe('Welcome to OpsiMate!');
+		// The fields loadConfig() needs, same as the shipped configs.
+		expect(parsed.server?.port).toBeTruthy();
+		expect(parsed.database?.path).toBeTruthy();
+		expect(parsed.security?.private_keys_path).toBeTruthy();
 	});
 });

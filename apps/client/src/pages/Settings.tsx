@@ -701,9 +701,9 @@ const AuditLogTable: React.FC = () => {
 
 		auditApi.getAuditLogs(page, pageSize).then((res) => {
 			if (mounted) {
-				if (res && Array.isArray(res.logs)) {
-					setLogs(res.logs);
-					setTotal(res.total || 0);
+				if (res?.success && res.data && Array.isArray(res.data.logs)) {
+					setLogs(res.data.logs);
+					setTotal(res.data.total || 0);
 					setError(null);
 				} else {
 					setError(res?.error || 'Failed to fetch audit logs');

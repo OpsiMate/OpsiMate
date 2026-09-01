@@ -9,6 +9,17 @@ import { decryptPassword, generatePasswordResetInfo, hashString } from '../../ut
 const logger = new Logger('bl/users/user.bl');
 
 export class UserBL {
+	// Notified after any write that changes who the users are or what they are called.
+	// Wired in app.ts to invalidate AlertBL's owners snapshot (same pattern as the
+	// mute/enrichment rule-change callbacks), so a rename or a new user is visible to
+	// the alerts list's owner column, sort, and facets on the immediate next refetch
+	// instead of after a TTL window. Password-only writes do not notify.
+	private onUsersChanged: (() => void) | null = null;
+
+	setOnUsersChanged(callback: () => void): void {
+		this.onUsersChanged = callback;
+	}
+
 	constructor(
 		private userRepo: UserRepository,
 		private mailClient: MailClient,
@@ -25,6 +36,7 @@ export class UserBL {
 		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
+		this.onUsersChanged?.();
 
 		// Send welcome email
 		void this.mailClient.sendMail({
@@ -41,6 +53,7 @@ export class UserBL {
 		const result = await this.userRepo.createUser(email, hash, fullName, role);
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
+		this.onUsersChanged?.();
 		return user;
 	}
 
@@ -71,6 +84,7 @@ export class UserBL {
 		if (!updatedUser) {
 			throw new Error('User not found');
 		}
+		this.onUsersChanged?.();
 		return updatedUser;
 	}
 
@@ -80,6 +94,7 @@ export class UserBL {
 
 	async deleteUser(id: number): Promise<void> {
 		await this.userRepo.deleteUser(id);
+		this.onUsersChanged?.();
 	}
 
 	async getUserById(id: number): Promise<User | null> {
@@ -110,6 +125,7 @@ export class UserBL {
 		if (!updatedUser) {
 			throw new Error('User not found');
 		}
+		this.onUsersChanged?.();
 		return updatedUser;
 	}
 

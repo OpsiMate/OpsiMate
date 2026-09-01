@@ -1,6 +1,7 @@
 import { Alert } from '../types';
 import {
 	AlertAnalytics,
+	BucketGranularity,
 	TagInsights,
 	TagValueDayPoint,
 	TagValueStats,
@@ -93,7 +94,11 @@ const durationTrend = (days: Iterable<string>, acc: Map<string, DurationDayAccum
 
 // "The fix didn't hold": a resolution followed by the same alert re-firing within
 // this window counts as a failed resolution (change-failure-rate's alert analog).
-const REFIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const REFIRE_WINDOW_MS = DAY_MS;
+// Windows this short or shorter bucket the time series by hour, not day.
+const HOURLY_MAX_SPAN_MS = 48 * HOUR_MS;
 const TOP_NAMES = 10;
 const TOP_TAGS = 12;
 
@@ -192,7 +197,7 @@ const buildEpisodes = (rows: EpisodeRow[], events: UserEventRow[]): Episode[] =>
 
 // Day (YYYY-MM-DD) and hour-of-day in the requester's timezone. Cached formatter —
 // building Intl.DateTimeFormat per timestamp is 100x the cost of formatting.
-const makeLocalParts = (timeZone: string | undefined) => {
+const makeLocalParts = (timeZone: string | undefined, granularity: BucketGranularity) => {
 	let dayFormat: Intl.DateTimeFormat;
 	let hourFormat: Intl.DateTimeFormat;
 	try {
@@ -210,10 +215,16 @@ const makeLocalParts = (timeZone: string | undefined) => {
 	} catch {
 		weekdayFormat = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
 	}
+	const day = (ms: number): string => dayFormat.format(ms);
+	const hour = (ms: number): number => parseInt(hourFormat.format(ms), 10);
 	return {
-		day: (ms: number): string => dayFormat.format(ms),
-		hour: (ms: number): number => parseInt(hourFormat.format(ms), 10),
+		day,
+		hour,
 		weekday: (ms: number): number => Math.max(0, WEEKDAYS.indexOf(weekdayFormat.format(ms))),
+		// Time-series bucket key. Both forms sort lexically (date is YYYY-MM-DD, hour is
+		// zero-padded), so downstream sorting stays a plain string compare.
+		bucket: (ms: number): string =>
+			granularity === 'hour' ? `${day(ms)} ${String(hour(ms)).padStart(2, '0')}:00` : day(ms),
 	};
 };
 
@@ -244,9 +255,34 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	const previousEpisodes = episodes.filter((e) => inPreviousWindow(e.startMs));
 
 	// ---- overview -------------------------------------------------------------
-	const local = makeLocalParts(inputs.timeZone);
+	// Short bounded windows bucket by hour so a 24h view is a real curve, not one dot.
+	const spanMs = fromMs !== null ? toMs - fromMs : null;
+	const granularity: BucketGranularity = spanMs !== null && spanMs <= HOURLY_MAX_SPAN_MS ? 'hour' : 'day';
+	const local = makeLocalParts(inputs.timeZone, granularity);
 
 	const dayPoints = new Map<string, DayVolumePoint>();
+	const seedBucket = (key: string): DayVolumePoint => {
+		let point = dayPoints.get(key);
+		if (!point) {
+			point = { date: key, critical: 0, warning: 0, info: 0, total: 0, resolved: 0 };
+			dayPoints.set(key, point);
+		}
+		return point;
+	};
+	// Dense axis for bounded windows: pre-seed every bucket in [from, to] with zeros so
+	// quiet hours/days render as part of the curve instead of being dropped. All-time
+	// stays sparse (unbounded).
+	//
+	// Always step by the HOUR, even for day buckets. Stepping a day at a time skips the
+	// spring-forward date outright — that local day is only 23 hours long, so `t += 24h`
+	// from a late-evening `from` lands two calendar days later and the DST day never gets
+	// seeded. Hourly steps repeat keys instead of missing them, and repeats collapse in
+	// the Map. Costs ~14ms of Intl formatting over a two-year window, all cache hits.
+	if (fromMs !== null) {
+		for (let t = fromMs; t <= toMs; t += HOUR_MS) seedBucket(local.bucket(t));
+		seedBucket(local.bucket(toMs));
+	}
+
 	const hourCounts = new Array<number>(24).fill(0);
 	const weekdayCounts = new Array<number>(7).fill(0);
 	const severityCounts = new Map<string, number>();
@@ -254,12 +290,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	for (const episode of windowEpisodes) {
 		const m = meta.get(episode.alertId);
 		const severity = m?.severity ?? 'warning';
-		const day = local.day(episode.startMs);
-		let point = dayPoints.get(day);
-		if (!point) {
-			point = { date: day, critical: 0, warning: 0, info: 0, total: 0, resolved: 0 };
-			dayPoints.set(day, point);
-		}
+		const point = seedBucket(local.bucket(episode.startMs));
 		if (severity === 'critical') point.critical += 1;
 		else if (severity === 'info') point.info += 1;
 		else point.warning += 1;
@@ -293,19 +324,14 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	const silencedNow = activeAllowed.filter((a) => a.isSilenced || a.isMuted).length;
 	const resolutionsInRange = episodes.filter((e) => e.resolvedMs !== null && inWindow(e.resolvedMs));
 
-	// Resolutions overlay + per-day MTTR trend, bucketed by the local day the
-	// resolution LANDED on (that is when the work happened).
+	// Resolutions overlay + per-bucket MTTR trend, bucketed by when the resolution
+	// LANDED (that is when the work happened).
 	const mttrDayAcc = new Map<string, DurationDayAccumulator>();
 	for (const episode of resolutionsInRange) {
 		const resolvedMs = episode.resolvedMs as number;
-		const day = local.day(resolvedMs);
-		let point = dayPoints.get(day);
-		if (!point) {
-			point = { date: day, critical: 0, warning: 0, info: 0, total: 0, resolved: 0 };
-			dayPoints.set(day, point);
-		}
-		point.resolved += 1;
-		addDurationSample(mttrDayAcc, day, resolvedMs - episode.startMs);
+		const bucket = local.bucket(resolvedMs);
+		seedBucket(bucket).resolved += 1;
+		addDurationSample(mttrDayAcc, bucket, resolvedMs - episode.startMs);
 	}
 
 	// MTTA trend: same episodes as the headline MTTA, bucketed by the local day the
@@ -313,7 +339,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	const mttaDayAcc = new Map<string, DurationDayAccumulator>();
 	for (const episode of windowEpisodes) {
 		if (episode.firstTouchMs === null) continue;
-		addDurationSample(mttaDayAcc, local.day(episode.firstTouchMs), episode.firstTouchMs - episode.startMs);
+		addDurationSample(mttaDayAcc, local.bucket(episode.firstTouchMs), episode.firstTouchMs - episode.startMs);
 	}
 
 	// Top responders: user actions in the window, counted by actor. Only episodes'
@@ -383,7 +409,6 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 
 	// On All time the span comes from the data (oldest episode to now) — the label
 	// says "per day", so the value must be a rate on every window.
-	const DAY_MS = 24 * 60 * 60 * 1000;
 	const earliestStartMs = windowEpisodes.reduce((min, e) => Math.min(min, e.startMs), Number.POSITIVE_INFINITY);
 	const windowDays =
 		fromMs !== null
@@ -474,9 +499,10 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		const byValue = new Map<string, TagValueAccumulator>();
 		let taggedEpisodes = 0;
 		let untaggedEpisodes = 0;
-		// Per-VALUE MTTR/MTTA trends, same day semantics as the reliability trends;
-		// tagDays anchors a shared x-axis so every value's line covers the same days.
-		const tagDays = new Set<string>();
+		// Per-VALUE MTTR/MTTA trends, same bucket semantics as the reliability trends.
+		// Seed from the overview's (dense, for bounded windows) buckets so tag charts get
+		// the SAME continuous x-axis — a 24h tag view is a curve, not a lone point.
+		const tagDays = new Set<string>(dayPoints.keys());
 		for (const episode of windowEpisodes) {
 			const tags = meta.get(episode.alertId)?.tags;
 			// hasOwnProperty, not plain lookup: a key like "__proto__" must read as
@@ -505,17 +531,17 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			// Sample days (resolution/touch) go into tagDays too, so EVERY value's trend
 			// covers them — one value's sample day must not be absent from another's line.
 			if (episode.resolvedMs !== null && inWindow(episode.resolvedMs)) {
-				const resolvedDay = local.day(episode.resolvedMs);
+				const resolvedDay = local.bucket(episode.resolvedMs);
 				acc.resolvedDurations.push(episode.resolvedMs - episode.startMs);
 				tagDays.add(resolvedDay);
 				addDurationSample(acc.mttrDayAcc, resolvedDay, episode.resolvedMs - episode.startMs);
 			}
 			if (episode.firstTouchMs !== null) {
-				const touchDay = local.day(episode.firstTouchMs);
+				const touchDay = local.bucket(episode.firstTouchMs);
 				tagDays.add(touchDay);
 				addDurationSample(acc.mttaDayAcc, touchDay, episode.firstTouchMs - episode.startMs);
 			}
-			const day = local.day(episode.startMs);
+			const day = local.bucket(episode.startMs);
 			tagDays.add(day);
 			acc.dayCounts.set(day, (acc.dayCounts.get(day) ?? 0) + 1);
 		}
@@ -543,6 +569,13 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		// Volume split over the TOP values only — a 40-series chart reads as noise.
 		const topValues = values.slice(0, 5).map((v) => v.value);
 		const dayPointsByDate = new Map<string, TagValueDayPoint>();
+		// Dense seed: every bucket carries a zero for each top value, so the stacked tag
+		// volume spans the whole window instead of collapsing to buckets that had data.
+		for (const date of tagDays) {
+			const counts: Record<string, number> = {};
+			for (const value of topValues) counts[value] = 0;
+			dayPointsByDate.set(date, { date, counts });
+		}
 		for (const value of topValues) {
 			const acc = byValue.get(value);
 			if (!acc) continue;
@@ -581,6 +614,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 			to: inputs.to,
 			previousFrom: previousFromMs !== null ? new Date(previousFromMs).toISOString() : null,
 			filtered: !!allowed,
+			granularity,
 		},
 		overview: {
 			totalEpisodes: kpi(windowEpisodes.length, fromMs !== null ? previousEpisodes.length : null),

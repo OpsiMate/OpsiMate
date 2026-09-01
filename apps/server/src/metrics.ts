@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { NextFunction, Request, Response } from 'express';
+import { performance } from 'node:perf_hooks';
 import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
 
 // Prometheus metrics (issue #658). Everything here is deliberately OUTSIDE the hot
@@ -12,6 +13,24 @@ export const metricsRegistry = new Registry();
 
 // Process/runtime metrics: memory, CPU, event loop lag, GC, open handles.
 collectDefaultMetrics({ register: metricsRegistry });
+
+// Event-loop utilization: the fraction of time the loop was actively executing (vs
+// idle in epoll) since the previous scrape. The lag histograms above say when the
+// loop is BLOCKED; this says how BUSY it is — the single-core saturation signal for
+// a Node process. 0.7+ sustained means requests are queueing behind compute and it
+// is time to shed work or add processes. Delta-based so each scrape reads its own
+// interval, whatever the scrape cadence.
+let lastElu = performance.eventLoopUtilization();
+new Gauge({
+	name: 'opsimate_event_loop_utilization',
+	help: 'Fraction of time the event loop was busy since the previous scrape (0-1)',
+	registers: [metricsRegistry],
+	collect() {
+		const current = performance.eventLoopUtilization();
+		this.set(performance.eventLoopUtilization(current, lastElu).utilization);
+		lastElu = current;
+	},
+});
 
 // Incremented in the single ingestion funnel (AlertBL.insertOrUpdateAlert), so every
 // webhook source counts the same way. Label cardinality is bounded: a handful of

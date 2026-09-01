@@ -193,6 +193,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// Rule edits change what the cached alerts snapshot would serve.
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
+	// User renames/creates/deletes change owner names in columns, sort and facets.
+	userBL.setOnUsersChanged(() => alertBL.invalidateOwners());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
 	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
