@@ -73,7 +73,9 @@ export class ResolvedAlertRepository {
 						-- backs the per-alert history drawer. Without the index both were
 						-- full scans, so main-page latency grew with TOTAL history size —
 						-- history a user never looks at taxed every poll. archived_at as the
-						-- second column keeps the drawer's time-ordered read index-only.
+						-- second column serves the drawer's ORDER BY straight off the index
+						-- (status still comes from the row — a covering index isn't worth
+						-- the write cost on the trigger-driven insert path).
 						CREATE INDEX IF NOT EXISTS idx_alerts_history_alert
 							ON alerts_history (alert_id, archived_at);
 
