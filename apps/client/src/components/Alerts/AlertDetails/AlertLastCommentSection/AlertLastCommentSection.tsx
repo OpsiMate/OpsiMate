@@ -61,7 +61,9 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 							{initials(authorName)}
 						</span>
 						<span className="text-xs font-medium truncate">{authorName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">{formatRelativeTime(latest.createdAt)}</span>
+						<span className="text-xs text-muted-foreground shrink-0">
+							{formatRelativeTime(latest.createdAt)}
+						</span>
 					</div>
 					<p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word line-clamp-4">
 						{latest.comment}

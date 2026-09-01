@@ -6,6 +6,7 @@ import {
 	formatShortDateTime,
 	formatTime,
 	isSameLocalDay,
+	parseUTCDate,
 } from './datetime';
 
 // Every formatter here is 24-hour by contract. MERIDIEM is asserted against directly
@@ -163,6 +164,88 @@ describe('formatRelativeTime', () => {
 
 	test('callers can supply their own fallback', () => {
 		expect(formatRelativeTime(null, 'no end')).toBe('no end');
+	});
+});
+
+// MutePolicies renders the absolute window on the line directly above the relative one,
+// so capping at a week would leave the two saying the same thing in the same shape.
+describe('formatRelativeTime, with the week cap moved', () => {
+	const now = new Date(2026, 7, 11, 12, 0, 0);
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test('Infinity keeps counting days past a week', () => {
+		expect(formatRelativeTime(new Date(now.getTime() + 30 * 86_400_000), '—', Infinity)).toBe('in 30d');
+		expect(formatRelativeTime(new Date(now.getTime() - 30 * 86_400_000), '—', Infinity)).toBe('30d ago');
+	});
+
+	test('a finite value sets where the absolute fallback starts', () => {
+		const twoDaysOut = new Date(now.getTime() + 2 * 86_400_000);
+		expect(formatRelativeTime(twoDaysOut, '—', 3)).toBe('in 2d');
+		expect(formatRelativeTime(twoDaysOut, '—', 2)).toBe(formatShortDateTime(twoDaysOut));
+	});
+});
+
+// MutePolicies' relativeFromNow, verbatim. A caller separating "no timestamp" from
+// "corrupt timestamp" passes `value || fallback`: the first gets the worded fallback, the
+// second falls through to its raw text. Stating a wrong fact about the data ("ends no
+// end") is worse than showing what actually arrived.
+describe('formatRelativeTime, told to separate an absent value from an unparseable one', () => {
+	const now = new Date(2026, 7, 11, 12, 0, 0);
+	const relativeFromNow = (iso?: string | null): string => formatRelativeTime(iso, iso || 'no end', Infinity);
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test('an absent timestamp gets the worded fallback', () => {
+		expect(relativeFromNow(null)).toBe('no end');
+		expect(relativeFromNow(undefined)).toBe('no end');
+		expect(relativeFromNow('')).toBe('no end');
+	});
+
+	test('an unparseable timestamp falls through to its raw text', () => {
+		expect(relativeFromNow('garbage')).toBe('garbage');
+	});
+
+	test('a valid timestamp still formats, uncapped', () => {
+		expect(relativeFromNow(new Date(now.getTime() + 30 * 86_400_000).toISOString())).toBe('in 30d');
+	});
+});
+
+// The audit log is the only caller reading SQLite's bare "YYYY-MM-DD HH:MM:SS", and
+// nothing in the component pins it to this helper — passing log.timestamp straight to a
+// formatter still type-checks and still renders, just silently shifted by the viewer's
+// UTC offset. These assertions are what fails if that "simplification" is ever made.
+describe('parseUTCDate', () => {
+	test('reads a bare SQLite timestamp as UTC, not local time', () => {
+		expect(parseUTCDate('2026-08-11 12:00:00').getTime()).toBe(Date.UTC(2026, 7, 11, 12, 0, 0));
+		expect(parseUTCDate('2026-08-11 12:00:00').toISOString()).toBe('2026-08-11T12:00:00.000Z');
+	});
+
+	test('a bare timestamp two minutes old reads as "2m ago" in any zone', () => {
+		vi.useFakeTimers();
+		try {
+			const nowUtc = Date.UTC(2026, 7, 11, 12, 0, 0);
+			vi.setSystemTime(new Date(nowUtc));
+			// What the endpoint would return for a row written two minutes ago.
+			const sqliteTimestamp = new Date(nowUtc - 2 * 60_000).toISOString().slice(0, 19).replace('T', ' ');
+			expect(formatRelativeTime(parseUTCDate(sqliteTimestamp))).toBe('2m ago');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 

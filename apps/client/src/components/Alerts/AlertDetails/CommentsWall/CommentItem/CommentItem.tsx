@@ -59,7 +59,9 @@ export const CommentItem = ({
 				<div className="flex items-center justify-between gap-2 mb-1">
 					<div className="flex items-center gap-2 min-w-0">
 						<span className="font-medium text-sm text-foreground truncate">{displayName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">{formatRelativeTime(comment.createdAt)}</span>
+						<span className="text-xs text-muted-foreground shrink-0">
+							{formatRelativeTime(comment.createdAt)}
+						</span>
 						{comment.updatedAt !== comment.createdAt && (
 							<span className="text-xs text-muted-foreground italic shrink-0">(edited)</span>
 						)}

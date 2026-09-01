@@ -12,7 +12,7 @@ import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { formatDateTime, formatLongDateTime, formatRelativeTime } from '@/lib/datetime';
+import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
 import {
@@ -678,13 +678,6 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
-
-// The audit-log endpoint still returns SQLite's bare "YYYY-MM-DD HH:MM:SS" (UTC with
-// no marker), which `new Date()` would otherwise read as local time. Comment
-// timestamps were fixed server-side in #824; audit logs were not, so this stays.
-function parseUTCDate(dateString: string) {
-	return new Date(dateString.replace(' ', 'T') + 'Z');
-}
 
 const AuditLogTable: React.FC = () => {
 	const [logs, setLogs] = useState<AuditLog[]>([]);

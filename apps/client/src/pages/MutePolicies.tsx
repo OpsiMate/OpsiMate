@@ -54,7 +54,12 @@ const formatDaysOfWeek = (days: number[]): string => {
 
 const formatDateTime = (iso?: string | null): string => formatShortDateTime(iso, iso ?? '—');
 
-const relativeFromNow = (iso?: string | null): string => formatRelativeTime(iso, 'no end');
+// The absolute window renders directly above this line, so the relative form opts out
+// of the week cap: "in 30d" still says something, where the capped "Sep 10, 12:00" would
+// just repeat the line above verbatim. A missing endsAt reads as "no end"; an unparseable
+// one falls through to its raw value rather than claiming the policy runs forever, which
+// would contradict the sibling "indefinite" branch.
+const relativeFromNow = (iso?: string | null): string => formatRelativeTime(iso, iso || 'no end', Infinity);
 
 // When a recurring window next closes, as an absolute timestamp. Schedules are weekly
 // (daysOfWeek + HH:MM in server-local time), so the next end is the soonest upcoming
