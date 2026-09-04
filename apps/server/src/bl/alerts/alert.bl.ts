@@ -761,8 +761,12 @@ export class AlertBL {
 	async deleteResolvedAlert(alertId: string): Promise<void> {
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
-			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
-			await this.onAlertPermanentlyDeleted?.(alertId);
+			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			// Only a row that actually left the resolved table counts as permanent
+			// deletion — an id naming a still-active alert must not shed its satellites.
+			if (deleted > 0) {
+				await this.onAlertPermanentlyDeleted?.(alertId);
+			}
 			this.invalidateSnapshots();
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);

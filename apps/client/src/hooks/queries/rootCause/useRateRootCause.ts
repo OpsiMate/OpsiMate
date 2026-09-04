@@ -18,8 +18,9 @@ export const useRateRootCause = () => {
 			}
 			return response.data;
 		},
-		onSuccess: (_data, { alertId }) => {
-			void queryClient.invalidateQueries({ queryKey: queryKeys.alertRootCause(alertId) });
-		},
+		// Returning the promise keeps isPending true until the refetched rating is in
+		// the cache — the buttons re-enable only once they reflect the stored verdict.
+		onSuccess: (_data, { alertId }) =>
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertRootCause(alertId) }),
 	});
 };

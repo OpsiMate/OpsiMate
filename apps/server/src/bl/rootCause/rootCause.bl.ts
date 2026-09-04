@@ -84,14 +84,21 @@ export class RootCauseBL {
 			throw new RootCauseNotFoundError(`No root cause for alert ${alertId}`);
 		}
 
-		await this.auditBL.logAction({
-			actionType: AuditActionType.UPDATE,
-			resourceType: AuditResourceType.ROOT_CAUSE,
-			resourceId: alertId,
-			userId: Number(user.id),
-			userName: user.fullName,
-			resourceName: `root cause rated ${rating}`,
-		});
+		// Best-effort, like the callback below: the rating committed above and must not
+		// be reported as failed (a 500 here would push the operator into re-rating,
+		// duplicating callbacks) because the audit insert hiccuped.
+		try {
+			await this.auditBL.logAction({
+				actionType: AuditActionType.UPDATE,
+				resourceType: AuditResourceType.ROOT_CAUSE,
+				resourceId: alertId,
+				userId: Number(user.id),
+				userName: user.fullName,
+				resourceName: `root cause rated ${rating}`,
+			});
+		} catch (error) {
+			logger.error('Failed to audit-log a root-cause rating (rating stored)', error);
+		}
 
 		const callbackUrl = rating === 'up' ? updated.feedbackUpUrl : updated.feedbackDownUrl;
 		let callbackDelivered: boolean | null = null;

@@ -208,6 +208,15 @@ describe('root cause API', () => {
 		expect((await getRootCause('rc-cascade')).body.data.rootCause).toBeNull();
 	});
 
+	test('deleting a RESOLVED id that is actually active does not shed the root cause', async () => {
+		// rc-2 is active. DELETE /alerts/resolved/:id against it removes zero resolved
+		// rows — the permanent-deletion cascade must not fire.
+		await putRootCause('rc-2', { content: 'must survive a no-op resolved delete' });
+		const del = await app.delete('/api/v1/alerts/resolved/rc-2').set('Authorization', `Bearer ${jwtToken}`);
+		expect(del.status).toBe(200);
+		expect((await getRootCause('rc-2')).body.data.rootCause).not.toBeNull();
+	});
+
 	test('an analysis can be pushed for an already-resolved alert', async () => {
 		db.prepare(
 			`INSERT INTO alerts_resolved (id, status, starts_at, updated_at, alert_url, alert_name, created_at)

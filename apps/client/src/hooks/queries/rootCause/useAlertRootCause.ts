@@ -16,6 +16,9 @@ export const useAlertRootCause = (alertId: string) => {
 			return response.data?.rootCause ?? null;
 		},
 		enabled: alertId.length > 0,
+		// Fresh on every drawer open (a sender may have re-pushed), while the 30s
+		// staleTime still dedupes fetches within one mounted drawer.
 		staleTime: 30 * 1000,
+		refetchOnMount: 'always',
 	});
 };
