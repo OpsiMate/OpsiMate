@@ -746,6 +746,23 @@ export const handlers = [
 	}),
 
 	// ==================== ALERT COMMENTS ====================
+	http.get(`${API_BASE}/alerts/:alertId/root-cause`, ({ params }) => {
+		const rootCause = playgroundState.rootCauses.find((rc) => rc.alertId === params.alertId) ?? null;
+		return HttpResponse.json({ success: true, data: { rootCause } });
+	}),
+
+	http.post(`${API_BASE}/alerts/:alertId/root-cause/rating`, async ({ params, request }) => {
+		const body = (await request.json()) as { rating: 'up' | 'down' };
+		const rootCause = playgroundState.rootCauses.find((rc) => rc.alertId === params.alertId);
+		if (!rootCause) {
+			return HttpResponse.json({ success: false, error: 'No root cause for this alert' }, { status: 404 });
+		}
+		rootCause.rating = body.rating;
+		rootCause.ratedBy = getPlaygroundUser().fullName;
+		rootCause.ratedAt = new Date().toISOString();
+		return HttpResponse.json({ success: true, data: { rootCause, callbackDelivered: null } });
+	}),
+
 	http.get(`${API_BASE}/alerts/:alertId/comments`, ({ params }) => {
 		const alertId = params.alertId as string;
 		const comments = playgroundState.alertComments.filter((c) => c.alertId === alertId);

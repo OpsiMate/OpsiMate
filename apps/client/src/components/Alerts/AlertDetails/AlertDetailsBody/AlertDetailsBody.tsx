@@ -6,6 +6,7 @@ import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLastCommentSection } from '../AlertLastCommentSection';
+import { AlertRootCauseSection } from '../AlertRootCauseSection';
 import { AlertLinksSection } from '../AlertLinksSection';
 import { getAlertLinks } from '../../utils/links.utils';
 import { AlertSummarySection } from '../AlertSummarySection';
@@ -42,6 +43,8 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 					<AlertTeamSection team={alert.team} />
 				</CollapsibleSection>
 			)}
+
+			<AlertRootCauseSection alertId={alert.id} />
 
 			<AlertLastCommentSection alertId={alert.id} onViewAll={onViewAllComments} />
 

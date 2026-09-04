@@ -547,6 +547,21 @@ export const AiFilterQuerySchema = z.object({
 	query: z.string().trim().min(2).max(400),
 });
 
+// "Bring your own" root cause, pushed by an external system (authenticated with the
+// API token) after it learns the alertId from the ingest response. Callback URLs are
+// hit server-side when an operator rates the analysis; they may point at internal
+// hosts (self-hosted reality) but are validated against the metadata/link-local range
+// before use. Content is capped so a webhook can't bloat the DB.
+export const UpsertRootCauseSchema = z.object({
+	content: z.string().min(1).max(65536),
+	feedbackUpUrl: z.string().url().max(2048).optional(),
+	feedbackDownUrl: z.string().url().max(2048).optional(),
+});
+
+export const RateRootCauseSchema = z.object({
+	rating: z.enum(['up', 'down']),
+});
+
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
 });
