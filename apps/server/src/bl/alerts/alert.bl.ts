@@ -96,6 +96,13 @@ export interface AlertAnalyticsQuery {
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
+	// Notified when an alert is deleted for good (resolve is NOT deletion — an alert's
+	// root cause must survive it). Wired in app.ts to drop per-alert satellite rows.
+	private onAlertPermanentlyDeleted: ((alertId: string) => Promise<void>) | null = null;
+
+	setOnAlertPermanentlyDeleted(callback: (alertId: string) => Promise<void>): void {
+		this.onAlertPermanentlyDeleted = callback;
+	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
@@ -754,7 +761,12 @@ export class AlertBL {
 	async deleteResolvedAlert(alertId: string): Promise<void> {
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
-			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			// Only a row that actually left the resolved table counts as permanent
+			// deletion — an id naming a still-active alert must not shed its satellites.
+			if (deleted > 0) {
+				await this.onAlertPermanentlyDeleted?.(alertId);
+			}
 			this.invalidateSnapshots();
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
