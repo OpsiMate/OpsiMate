@@ -106,8 +106,7 @@ export class RootCauseRepository {
 	async getByAlertId(alertId: string): Promise<RootCauseRecord | null> {
 		return runAsync(() => {
 			const row = this.db.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`).get(alertId) as
-				| RootCauseRow
-				| undefined;
+				RootCauseRow | undefined;
 			return row ? toRecord(row) : null;
 		});
 	}
@@ -118,7 +117,9 @@ export class RootCauseRepository {
 				.prepare(`UPDATE alert_root_causes SET rating = ?, rated_by = ?, rated_at = ? WHERE alert_id = ?`)
 				.run(rating, ratedBy, new Date().toISOString(), alertId);
 			if (result.changes === 0) return null;
-			const row = this.db.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`).get(alertId) as RootCauseRow;
+			const row = this.db
+				.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`)
+				.get(alertId) as RootCauseRow;
 			return toRecord(row);
 		});
 	}

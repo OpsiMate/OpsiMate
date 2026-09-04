@@ -102,7 +102,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const rootCauseBL = new RootCauseBL(
 		rootCauseRepo,
 		auditBL,
-		async (alertId) => !!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
+		async (alertId) =>
+			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
 	);
 	// Resolve keeps the root cause; only permanent deletion drops it.
 	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));

@@ -73,7 +73,12 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 								rated by {rootCause.ratedBy} {formatRelativeTime(rootCause.ratedAt)}
 							</span>
 						)}
-						<RatingButton rating="up" active={rootCause.rating === 'up'} disabled={rate.isPending} onRate={onRate} />
+						<RatingButton
+							rating="up"
+							active={rootCause.rating === 'up'}
+							disabled={rate.isPending}
+							onRate={onRate}
+						/>
 						<RatingButton
 							rating="down"
 							active={rootCause.rating === 'down'}

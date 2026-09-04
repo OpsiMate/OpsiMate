@@ -125,7 +125,9 @@ export class RootCauseBL {
 			});
 			return response.ok;
 		} catch (error) {
-			logger.warn(`Root-cause feedback callback failed: ${error instanceof Error ? error.message : String(error)}`);
+			logger.warn(
+				`Root-cause feedback callback failed: ${error instanceof Error ? error.message : String(error)}`
+			);
 			return false;
 		}
 	}
