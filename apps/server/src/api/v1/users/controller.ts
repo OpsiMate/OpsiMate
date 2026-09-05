@@ -43,9 +43,6 @@ export class UsersController {
 	};
 
 	createUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
-			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-		}
 		try {
 			const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
 			const result = await this.userBL.createUser(email, fullName, password, role);
@@ -62,9 +59,6 @@ export class UsersController {
 	};
 
 	updateUserRoleHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
-			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-		}
 		try {
 			const { email, newRole } = UpdateUserRoleSchema.parse(req.body);
 			await this.userBL.updateUserRole(email, newRole);
@@ -96,6 +90,9 @@ export class UsersController {
 	};
 
 	getAllUsersHandler = async (req: AuthenticatedRequest, res: Response) => {
+		// Not admin-gated on purpose: the alerts UI resolves owner and comment-author
+		// names for every role. This rejects API-token callers only, which carry no
+		// user identity. (Message kept as-is for backward compatibility.)
 		if (!req.user) {
 			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
 		}
@@ -108,9 +105,6 @@ export class UsersController {
 	};
 
 	deleteUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
-			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-		}
 		const userId = parseInt(req.params.id);
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
@@ -200,10 +194,6 @@ export class UsersController {
 	};
 
 	updateUserPasswordHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
-			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-		}
-
 		const userId = parseInt(req.params.id);
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
@@ -219,8 +209,9 @@ export class UsersController {
 				});
 			}
 
-			// Don't allow admin to reset their own password this way
-			if (userId === parseInt(req.user.id, 10)) {
+			// Don't allow admin to reset their own password this way.
+			// requireAdmin (users/router.ts) guarantees req.user is present.
+			if (req.user && userId === parseInt(req.user.id, 10)) {
 				return res.status(400).json({
 					success: false,
 					error: 'Cannot reset your own password. Use profile settings instead.',
@@ -245,10 +236,6 @@ export class UsersController {
 	};
 
 	updateUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!req.user || req.user.role !== Role.Admin) {
-			return res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-		}
-
 		const userId = parseInt(req.params.id);
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });

@@ -1,4 +1,4 @@
-import { Logger, OncallTeamMembersSchema, OncallTeamSchema, Role } from '@OpsiMate/shared';
+import { Logger, OncallTeamMembersSchema, OncallTeamSchema } from '@OpsiMate/shared';
 import { Response } from 'express';
 import { DuplicateTeamNameError, OncallBL } from '../../../bl/oncall/oncall.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
@@ -8,16 +8,6 @@ const logger = new Logger('api/v1/oncall/controller');
 
 export class OncallController {
 	constructor(private oncallBL: OncallBL) {}
-
-	// Reading the schedule is open to any authenticated user (the NOC needs it);
-	// changing it is admins only.
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
 
 	private parseTeamId(req: AuthenticatedRequest, res: Response): number | null {
 		const teamId = parseInt(req.params.teamId, 10);
@@ -39,7 +29,6 @@ export class OncallController {
 	};
 
 	createTeamHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const { name, rotationIntervalDays } = OncallTeamSchema.parse(req.body);
 			const team = await this.oncallBL.createTeam(name, rotationIntervalDays ?? null);
@@ -57,7 +46,6 @@ export class OncallController {
 	};
 
 	updateTeamHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
@@ -80,7 +68,6 @@ export class OncallController {
 	};
 
 	deleteTeamHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
@@ -93,7 +80,6 @@ export class OncallController {
 	};
 
 	setTeamMembersHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
