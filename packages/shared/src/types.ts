@@ -339,6 +339,7 @@ export enum AuditResourceType {
 	ACTION = 'ACTION',
 	AI = 'AI',
 	MUTE_POLICY = 'MUTE_POLICY',
+	ROOT_CAUSE = 'ROOT_CAUSE',
 	// Add more as needed
 }
 
@@ -430,6 +431,37 @@ export interface AlertComment {
 	comment: string;
 	createdAt: string;
 	updatedAt: string;
+}
+
+// Who produced a root-cause analysis: an external system pushing through the API
+// ("bring your own"), or the built-in AI agent (phase 2).
+export type RootCauseSource = 'api' | 'ai';
+
+export type RootCauseRating = 'up' | 'down';
+
+// The root-cause analysis for one alert, as the UI reads it. At most one per alert —
+// a re-push replaces the content and clears the previous rating, since a verdict on
+// the old analysis says nothing about the new one. Feedback callback URLs are
+// deliberately ABSENT from this shape: they may embed sender tokens and belong to the
+// server only.
+export interface AlertRootCause {
+	alertId: string;
+	source: RootCauseSource;
+	content: string;
+	rating: RootCauseRating | null;
+	// Who rated (full name from the JWT) and when; null until someone rates.
+	ratedBy: string | null;
+	ratedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+// Result of rating: the stored analysis plus whether the sender's feedback callback
+// (if one was provided for that verdict) was delivered. The rating is stored
+// regardless — the operator's verdict must not depend on the sender's uptime.
+export interface RateRootCauseResult {
+	rootCause: AlertRootCause;
+	callbackDelivered: boolean | null;
 }
 
 export interface MutePolicyLabelMatcher {
@@ -727,6 +759,7 @@ export enum RetentionResource {
 	ActiveAlerts = 'active_alerts',
 	ResolvedAlerts = 'archived_alerts',
 	AlertComments = 'alert_comments',
+	RootCauses = 'alert_root_causes',
 }
 
 export interface RetentionPolicy {

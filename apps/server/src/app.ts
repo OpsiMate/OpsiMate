@@ -5,6 +5,8 @@ import express from 'express';
 import healthRouter from './api/health';
 import { ActionController } from './api/v1/actions/controller';
 import { AlertController } from './api/v1/alerts/controller';
+import { RootCauseBL } from './bl/rootCause/rootCause.bl';
+import { RootCauseRepository } from './dal/rootCauseRepository';
 import { AuditController } from './api/v1/audit/controller';
 import { RetentionController } from './api/v1/retention/controller';
 import { CustomFieldsController } from './api/v1/custom-fields/controller';
@@ -71,6 +73,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
 	const resolvedAlertRepo = new ResolvedAlertRepository(db);
 	const alertHistoryRepo = new AlertHistoryRepository(db);
+	const rootCauseRepo = new RootCauseRepository(db);
 	const retentionRepo = new RetentionRepository(db);
 	// Needed by AlertBL (to resolve owner names for history); constructed here so it is also
 	// available in WORKER mode where AlertBL is used.
@@ -83,6 +86,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		alertRepo.initAlertsTable(),
 		alertCommentsRepo.initAlertCommentsTable(),
 		alertHistoryRepo.initAlertHistoryEventsTable(),
+		rootCauseRepo.initRootCausesTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
 		retentionRepo.initRetentionTables(),
@@ -92,6 +96,17 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const auditBL = new AuditBL(auditLogRepo);
 	const alertBL = new AlertBL(alertRepo, resolvedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
+	// Root causes live in their own table read only on drawer-open — never through the
+	// alerts snapshot. Existence check spans both alert stores: an analysis may arrive
+	// after the alert already resolved.
+	const rootCauseBL = new RootCauseBL(
+		rootCauseRepo,
+		auditBL,
+		async (alertId) =>
+			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
+	);
+	// Resolve keeps the root cause; only permanent deletion drops it.
+	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
@@ -202,7 +217,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const dashboardController = new DashboardController(dashboardBL);
 	const tagController = new TagController(tagRepo);
 	const integrationController = new IntegrationController(integrationBL);
-	const alertController = new AlertController(alertBL);
+	const alertController = new AlertController(alertBL, rootCauseBL);
 	const usersController = new UsersController(userBL);
 	const auditController = new AuditController(auditBL);
 	const secretController = new SecretsController(secretMetadataBL);

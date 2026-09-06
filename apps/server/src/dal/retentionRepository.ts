@@ -12,6 +12,7 @@ const RESOURCE_TABLE: Record<RetentionResource, { table: string; column: string 
 	[RetentionResource.ActiveAlerts]: { table: 'alerts', column: 'updated_at' },
 	[RetentionResource.ResolvedAlerts]: { table: 'alerts_resolved', column: 'archived_at' },
 	[RetentionResource.AlertComments]: { table: 'alert_comments', column: 'created_at' },
+	[RetentionResource.RootCauses]: { table: 'alert_root_causes', column: 'updated_at' },
 };
 
 // Sensible, conservative defaults. Everything starts DISABLED so upgrading never deletes data
@@ -23,6 +24,7 @@ const DEFAULT_POLICIES: { resource: RetentionResource; days: number }[] = [
 	{ resource: RetentionResource.ActiveAlerts, days: 30 },
 	{ resource: RetentionResource.ResolvedAlerts, days: 180 },
 	{ resource: RetentionResource.AlertComments, days: 365 },
+	{ resource: RetentionResource.RootCauses, days: 365 },
 ];
 
 const DEFAULT_CLEANUP_INTERVAL_HOURS = 24;
