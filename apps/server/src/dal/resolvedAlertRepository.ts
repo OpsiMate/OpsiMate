@@ -227,10 +227,13 @@ export class ResolvedAlertRepository {
 		});
 	}
 
-	async deleteResolvedAlert(alertId: string): Promise<void> {
+	// Returns the number of rows removed so callers can tell a real deletion from a
+	// no-op (an id that names an ACTIVE alert deletes nothing here — and must not
+	// trigger permanent-deletion side effects like root-cause cleanup).
+	async deleteResolvedAlert(alertId: string): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
-			stmt.run(alertId);
+			return stmt.run(alertId).changes;
 		});
 	}
 

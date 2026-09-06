@@ -746,6 +746,28 @@ export const handlers = [
 	}),
 
 	// ==================== ALERT COMMENTS ====================
+	http.get(`${API_BASE}/alerts/:alertId/root-cause`, ({ params }) => {
+		const rootCause = playgroundState.rootCauses.find((rc) => rc.alertId === params.alertId) ?? null;
+		return HttpResponse.json({ success: true, data: { rootCause } });
+	}),
+
+	http.post(`${API_BASE}/alerts/:alertId/root-cause/rating`, async ({ params, request }) => {
+		// Mirror the server's zod validation: only 'up'/'down' mutate state.
+		const body = (await request.json().catch(() => null)) as { rating?: unknown } | null;
+		const rating = body?.rating;
+		if (rating !== 'up' && rating !== 'down') {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const rootCause = playgroundState.rootCauses.find((rc) => rc.alertId === params.alertId);
+		if (!rootCause) {
+			return HttpResponse.json({ success: false, error: 'No root cause for this alert' }, { status: 404 });
+		}
+		rootCause.rating = rating;
+		rootCause.ratedBy = getPlaygroundUser().fullName;
+		rootCause.ratedAt = new Date().toISOString();
+		return HttpResponse.json({ success: true, data: { rootCause, callbackDelivered: null } });
+	}),
+
 	http.get(`${API_BASE}/alerts/:alertId/comments`, ({ params }) => {
 		const alertId = params.alertId as string;
 		const comments = playgroundState.alertComments.filter((c) => c.alertId === alertId);

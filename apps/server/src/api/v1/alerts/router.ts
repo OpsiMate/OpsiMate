@@ -46,6 +46,12 @@ export default function createAlertRouter(controller: AlertController) {
 	// Alert History
 	router.get('/:alertId/history', controller.getAlertHistory.bind(controller));
 
+	// Root cause: pushed by external systems (PUT), read on drawer-open (GET), rated
+	// by operators (POST) — see AlertController's root-cause region.
+	router.put('/:alertId/root-cause', controller.upsertRootCause.bind(controller));
+	router.get('/:alertId/root-cause', controller.getRootCause.bind(controller));
+	router.post('/:alertId/root-cause/rating', controller.rateRootCause.bind(controller));
+
 	// Create custom alerts
 	router.post('/custom/datadog', controller.createCustomDatadogAlert.bind(controller));
 	router.post('/custom/grafana', controller.createCustomGrafanaAlert.bind(controller));
