@@ -686,7 +686,6 @@ const AuditLogTable: React.FC = () => {
 	const [pageSize, setPageSize] = useState(10);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [filter, setFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL');
 
 	useEffect(() => {
 		let mounted = true;
@@ -711,7 +710,6 @@ const AuditLogTable: React.FC = () => {
 	}, [page, pageSize]);
 
 	const totalPages = Math.ceil(total / pageSize);
-	const filteredLogs = logs.filter((log) => (filter === 'ALL' ? true : log.actionType === filter));
 
 	const getActionBadgeProps = (action: string) => {
 		switch (action) {
@@ -788,52 +786,53 @@ const AuditLogTable: React.FC = () => {
 				<div className="py-8 text-center">Loading audit logs...</div>
 			) : error ? (
 				<ErrorAlert message={error} className="mb-4" />
-			) : filteredLogs.length === 0 ? (
-				<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
 			) : (
 				<>
-					{/* Table */}
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Time</TableHead>
-								<TableHead>Action</TableHead>
-								<TableHead>Resource</TableHead>
-								<TableHead>Resource Name</TableHead>
-								<TableHead>User</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredLogs.map((log) => {
-								const actionProps = getActionBadgeProps(log.actionType);
-								return (
-									<TableRow key={log.id}>
-										<TableCell>
-											<span title={formatDateTime(parseUTCDate(log.timestamp))}>
-												{formatRelativeTime(parseUTCDate(log.timestamp))}
-											</span>
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													actionProps.variant as
-														'default' | 'destructive' | 'outline' | 'secondary'
-												}
-												className={actionProps.className}
-											>
-												{log.actionType}
-											</Badge>
-										</TableCell>
-										<TableCell>
-											<Badge variant="secondary">{log.resourceType}</Badge>
-										</TableCell>
-										<TableCell>{log.resourceName || '-'}</TableCell>
-										<TableCell>{log.userName || '-'}</TableCell>
-									</TableRow>
-								);
-							})}
-						</TableBody>
-					</Table>
+					{logs.length === 0 ? (
+						<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
+					) : (
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Time</TableHead>
+									<TableHead>Action</TableHead>
+									<TableHead>Resource</TableHead>
+									<TableHead>Resource Name</TableHead>
+									<TableHead>User</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{logs.map((log) => {
+									const actionProps = getActionBadgeProps(log.actionType);
+									return (
+										<TableRow key={log.id}>
+											<TableCell>
+												<span title={formatDateTime(parseUTCDate(log.timestamp))}>
+													{formatRelativeTime(parseUTCDate(log.timestamp))}
+												</span>
+											</TableCell>
+											<TableCell>
+												<Badge
+													variant={
+														actionProps.variant as
+															'default' | 'destructive' | 'outline' | 'secondary'
+													}
+													className={actionProps.className}
+												>
+													{log.actionType}
+												</Badge>
+											</TableCell>
+											<TableCell>
+												<Badge variant="secondary">{log.resourceType}</Badge>
+											</TableCell>
+											<TableCell>{log.resourceName || '-'}</TableCell>
+											<TableCell>{log.userName || '-'}</TableCell>
+										</TableRow>
+									);
+								})}
+							</TableBody>
+						</Table>
+					)}
 
 					{totalPages > 1 && (
 						<div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t">
