@@ -2,7 +2,7 @@ import { useAlertRootCause, useRateRootCause } from '@/hooks/queries/rootCause';
 import { formatRelativeTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import { RootCauseRating } from '@OpsiMate/shared';
-import { Sparkle, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { SearchCheck, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertRootCauseSectionProps {
@@ -61,7 +61,7 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 	return (
 		<CollapsibleSection
 			title="Root cause"
-			icon={<Sparkle className="h-3.5 w-3.5 text-violet-500" />}
+			icon={<SearchCheck className="h-3.5 w-3.5 text-violet-500" />}
 			headerClassName="text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
 			defaultOpen
 		>
