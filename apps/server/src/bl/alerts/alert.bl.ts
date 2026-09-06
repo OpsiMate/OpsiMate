@@ -764,8 +764,16 @@ export class AlertBL {
 			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 			// Only a row that actually left the resolved table counts as permanent
 			// deletion — an id naming a still-active alert must not shed its satellites.
+			// Satellite cleanup is BEST-EFFORT: the alert row is already gone, so a
+			// cleanup failure must not fail the request or — worse — skip the snapshot
+			// invalidation below and keep serving the deleted alert from cache. A row
+			// orphaned by a failed cleanup is bounded by the retention policy.
 			if (deleted > 0) {
-				await this.onAlertPermanentlyDeleted?.(alertId);
+				try {
+					await this.onAlertPermanentlyDeleted?.(alertId);
+				} catch (cleanupError) {
+					logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
+				}
 			}
 			this.invalidateSnapshots();
 		} catch (error) {
