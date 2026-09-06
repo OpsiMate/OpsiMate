@@ -57,19 +57,23 @@ export const DashboardHeader = ({
 			inputRef.current.select();
 		}
 	}, [isEditingName]);
-	
+
+	useEffect(() => {
+		setActiveIndex(-1);
+	}, [filteredDashboards]);
+
 	useEffect(() => {
 		if (!isSearchFocused) return;
-	
+
 		const handleClickAway = (e: MouseEvent) => {
 			if (!searchContainerRef.current?.contains(e.target as Node)) {
 				setIsSearchFocused(false);
 				setActiveIndex(-1);
 			}
 		};
-	
+
 		document.addEventListener('mousedown', handleClickAway);
-	
+
 		return () => {
 			document.removeEventListener('mousedown', handleClickAway);
 		};
@@ -107,11 +111,12 @@ export const DashboardHeader = ({
 
 			const dashboard = filteredDashboards[activeIndex];
 
-			onDashboardSelect?.(dashboard);
-			setSearchQuery('');
-			setIsSearchFocused(false);
-			setActiveIndex(-1);
-			searchInputRef.current?.blur();
+			if (dashboard) {
+				onDashboardSelect?.(dashboard);
+				setSearchQuery('');
+				setIsSearchFocused(false);
+				setActiveIndex(-1);
+			}
 		}
 		if (e.key === 'Escape') {
 			e.preventDefault();
@@ -186,22 +191,25 @@ export const DashboardHeader = ({
 						role="combobox"
 						aria-expanded={isSearchFocused && filteredDashboards.length > 0}
 						aria-controls="dashboard-search-results"
+						aria-activedescendant={
+							activeIndex >= 0 ? `dashboard-option-${filteredDashboards[activeIndex]?.id}` : undefined
+						}
 						value={searchQuery}
 						onChange={(e) => {
 							setSearchQuery(e.target.value);
 							setActiveIndex(-1);
 						}}
 						onFocus={() => setIsSearchFocused(true)}
-						onBlur={() => {}}
 						onKeyDown={handleSearchKeyDown}
 					/>
 				</div>
 				{isSearchFocused && filteredDashboards.length > 0 && (
 					<div className="absolute left-0 top-10 z-50 w-full max-w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
-						<ul id="dashboard-search-results" role="listbox">
+						<ul className="max-h-[300px] overflow-y-auto py-1" id="dashboard-search-results" role="listbox">
 							{filteredDashboards.map((dashboard, index) => (
 								<li
 									key={dashboard.id}
+									id={`dashboard-option-${dashboard.id}`}
 									role="option"
 									aria-selected={index === activeIndex}
 									className={cn(
