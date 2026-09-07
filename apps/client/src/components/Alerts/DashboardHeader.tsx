@@ -181,7 +181,16 @@ export const DashboardHeader = ({
 			</div>
 
 			{/* Search (grows to fill the row) */}
-			<div ref={searchContainerRef} className="relative flex-1 min-w-0">
+			<div
+				ref={searchContainerRef}
+				className="relative flex-1 min-w-0"
+				onBlur={(e) => {
+					if (!searchContainerRef.current?.contains(e.relatedTarget as Node | null)) {
+						setIsSearchFocused(false);
+						setActiveIndex(-1);
+					}
+				}}
+			>
 				<div className="flex items-center h-8 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
 					<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
 					<input
