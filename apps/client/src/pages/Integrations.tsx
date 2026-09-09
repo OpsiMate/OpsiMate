@@ -332,7 +332,7 @@ const Integrations = () => {
 	};
 
 	const handleIntegrationButtonClick = () => {
-		window.open('https://github.com/OpsiMate/OpsiMate/issues', '_blank');
+		window.open('https://github.com/OpsiMate/OpsiMate/issues', '_blank', 'noopener,noreferrer');
 	};
 
 	return (
@@ -456,7 +456,13 @@ const Integrations = () => {
 												variant="ghost"
 												size="icon"
 												className="rounded-full h-8 w-8"
-												onClick={() => window.open(integration.documentationUrl, '_blank')}
+												onClick={() =>
+													window.open(
+														integration.documentationUrl,
+														'_blank',
+														'noopener,noreferrer'
+													)
+												}
 											>
 												<ExternalLink className="h-4 w-4" />
 											</Button>
@@ -1001,7 +1007,11 @@ const Integrations = () => {
 													variant="outline"
 													className="w-full justify-start gap-2"
 													onClick={() =>
-														window.open(selectedIntegration.documentationUrl, '_blank')
+														window.open(
+															selectedIntegration.documentationUrl,
+															'_blank',
+															'noopener,noreferrer'
+														)
 													}
 												>
 													<ExternalLink className="h-4 w-4" />

@@ -100,7 +100,13 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 										<Button
 											variant="link"
 											className="p-0 h-auto text-blue-600 hover:text-blue-700"
-											onClick={() => window.open('https://console.cloud.google.com/', '_blank')}
+											onClick={() =>
+												window.open(
+													'https://console.cloud.google.com/',
+													'_blank',
+													'noopener,noreferrer'
+												)
+											}
 										>
 											<span>Open Google Cloud Console</span>
 											<ExternalLink className="ml-1 h-3 w-3" />
@@ -116,7 +122,8 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 											onClick={() =>
 												window.open(
 													'https://console.cloud.google.com/monitoring/alerting/notifications',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -149,7 +156,8 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 											onClick={() =>
 												window.open(
 													'https://console.cloud.google.com/monitoring/alerting/policies',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -214,7 +222,8 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 							onClick={() =>
 								window.open(
 									'https://cloud.google.com/monitoring/support/notification-options',
-									'_blank'
+									'_blank',
+									'noopener,noreferrer'
 								)
 							}
 							className="gap-2"
