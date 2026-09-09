@@ -483,7 +483,11 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<Button
 							variant="outline"
 							onClick={() =>
-								window.open('https://docs.opsimate.dev/docs/integrations/custom-alerts', '_blank')
+								window.open(
+									'https://docs.opsimate.dev/docs/integrations/custom-alerts',
+									'_blank',
+									'noopener,noreferrer'
+								)
 							}
 							className="gap-2"
 						>

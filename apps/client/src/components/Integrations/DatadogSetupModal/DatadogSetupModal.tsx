@@ -142,7 +142,8 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 											onClick={() =>
 												window.open(
 													'https://app.datadoghq.com/account/settings#integrations/webhooks',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -245,7 +246,9 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 								<Button
 									variant="link"
 									className="p-0 h-auto text-blue-600 hover:text-blue-700"
-									onClick={() => window.open(DATADOG_WEBHOOK_DOCS_URL, '_blank')}
+									onClick={() =>
+										window.open(DATADOG_WEBHOOK_DOCS_URL, '_blank', 'noopener,noreferrer')
+									}
 								>
 									<span>Open Datadog Webhooks documentation</span>
 									<ExternalLink className="ml-1 h-3 w-3" />

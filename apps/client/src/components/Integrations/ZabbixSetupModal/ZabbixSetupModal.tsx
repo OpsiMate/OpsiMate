@@ -520,7 +520,8 @@ fi`;
 						onClick={() =>
 							window.open(
 								'https://www.zabbix.com/documentation/current/en/manual/config/notifications/media/webhook',
-								'_blank'
+								'_blank',
+								'noopener,noreferrer'
 							)
 						}
 						className="gap-2"
