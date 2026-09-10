@@ -260,9 +260,7 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
-
-			if (!payload?.heartbeat || !payload?.monitor) {
+			if (!req.body?.heartbeat || !req.body?.monitor) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),
@@ -279,6 +277,8 @@ export class AlertController {
 
 				return res.status(200).json({ success: true, data: null });
 			}
+
+			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
 
 			const { heartbeat, monitor } = payload;
 			const monitorId = `UPTIMEKUMA_${String(monitor.id)}`;
