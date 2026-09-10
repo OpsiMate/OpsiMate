@@ -24,7 +24,6 @@ import {
 	SilenceAlertBodySchema,
 	UptimeKumaWebhookPayloadSchema,
 	ZabbixWebhookPayloadSchema,
-	UptimeKumaWebhookTestPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
@@ -268,13 +267,17 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			const body = req.body as UptimeKumaWebhookTestPayload;
-
 			// Uptime Kuma's "Test" notification sends NEITHER heartbeat nor monitor. Only
-			// that shape bypasses validation; a payload carrying one but not the other is
-			// a malformed real alert and must fall through to the strict parse (400), not
-			// be persisted as a phantom "Test Alert".
-			if (!body?.heartbeat && !body?.monitor) {
+			// that shape bypasses validation; anything else — one field but not the other,
+			// or a field present but null/invalid — is a malformed real alert and must fall
+			// through to the strict parse (400), not be persisted as a phantom "Test
+			// Alert". Hence PRESENCE, not truthiness: `{ heartbeat: null }` is not a test.
+			const raw: unknown = req.body;
+			const isTestRequest =
+				raw === undefined ||
+				raw === null ||
+				(typeof raw === 'object' && !('heartbeat' in raw) && !('monitor' in raw));
+			if (isTestRequest) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),

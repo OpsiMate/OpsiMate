@@ -1352,6 +1352,25 @@ describe('Alerts API', () => {
 			expect(after).toBe(before);
 		});
 
+		test('a present-but-null heartbeat or monitor is a 400, not a phantom test alert', async () => {
+			const count = () =>
+				(db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number })
+					.c;
+			const before = count();
+			for (const payload of [
+				{ heartbeat: null, monitor: baseMonitor, msg: 'x' },
+				{ heartbeat: baseHeartbeat, monitor: null, msg: 'x' },
+				{ heartbeat: null, monitor: null, msg: 'x' },
+			]) {
+				const response = await app
+					.post('/api/v1/alerts/custom/uptimekuma')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(payload);
+				expect(response.status, JSON.stringify(payload)).toBe(400);
+			}
+			expect(count()).toBe(before);
+		});
+
 		test('should create a test alert for an empty request body', async () => {
 			const response = await app
 				.post('/api/v1/alerts/custom/uptimekuma')
