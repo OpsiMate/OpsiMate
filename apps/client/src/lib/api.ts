@@ -1,5 +1,9 @@
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AiConfig,
+	AiFilterResult,
+	AiStatus,
+	AiTestResult,
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
 	AlertGroupSummaryNode,
@@ -26,6 +30,8 @@ import {
 	Alert as SharedAlert,
 	OncallTeam,
 	Tag,
+	UpdateAiConfig,
+	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -284,6 +290,14 @@ export interface AlertQueryParams {
 	cursor?: string;
 }
 
+export interface AlertAnalyticsRequest {
+	from: string | null;
+	timeZone: string;
+	filters?: Record<string, string[]>;
+	search?: string;
+	tagKey?: string;
+}
+
 export interface AlertListResponse {
 	alerts: SharedAlert[];
 	total?: number;
@@ -440,6 +454,20 @@ export const alertsApi = {
 
 	getAlertHistory: (alertId: string) => {
 		return apiRequest<AlertHistory>(`/alerts/${encodeURIComponent(alertId)}/history`, 'GET');
+	},
+
+	// Insights aggregates; from=null means all time, tz buckets days/hours in the
+	// requester's timezone. filters/search use the SAME format as the list endpoints,
+	// so a dashboard scopes Insights exactly as it scopes the alerts table.
+	getAlertAnalytics: (query: AlertAnalyticsRequest) => {
+		const params = new URLSearchParams();
+		if (query.from) params.set('from', query.from);
+		params.set('tz', query.timeZone);
+		if (query.filters && Object.keys(query.filters).length > 0)
+			params.set('filters', JSON.stringify(query.filters));
+		if (query.search?.trim()) params.set('search', query.search);
+		if (query.tagKey) params.set('tagKey', query.tagKey);
+		return apiRequest<AlertAnalytics>(`/alerts/analytics?${params.toString()}`);
 	},
 
 	// Get alerts by tag
@@ -612,6 +640,17 @@ export const retentionApi = {
 };
 
 // Org-wide daily silence reset (admin-only endpoints).
+// AI (BYOK) configuration — Bedrock key/region/model, admin-only. The key is
+// write-only: the server returns hasApiKey, never the key.
+export const aiApi = {
+	getConfig: () => apiRequest<AiConfig>('/ai/config'),
+	updateConfig: (updates: UpdateAiConfig) => apiRequest<AiConfig>('/ai/config', 'PUT', updates),
+	testConnection: () => apiRequest<AiTestResult>('/ai/test', 'POST'),
+	// Any authenticated user: drives AI feature visibility without exposing config.
+	getStatus: () => apiRequest<AiStatus>('/ai/status'),
+	filterFromText: (query: string) => apiRequest<AiFilterResult>('/ai/filter', 'POST', { query }),
+};
+
 export const silenceResetApi = {
 	getSettings: () => apiRequest<SilenceResetSettings>('/alerts/silence-reset'),
 	updateSettings: (updates: UpdateSilenceResetSettings) =>

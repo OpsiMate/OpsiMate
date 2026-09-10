@@ -9,9 +9,12 @@ import {
 	Role,
 	UpdateCommentSchema,
 	UpdateSilenceResetSettingsSchema,
+	UpsertRootCauseSchema,
+	RateRootCauseSchema,
 } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
+	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
@@ -24,6 +27,7 @@ import {
 	UptimeKumaWebhookTestPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import crypto from 'crypto';
 import {
@@ -42,7 +46,10 @@ const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
 
 export class AlertController {
-	constructor(private alertBL: AlertBL) {}
+	constructor(
+		private alertBL: AlertBL,
+		private rootCauseBL: RootCauseBL
+	) {}
 
 	async getAlerts(req: Request, res: Response) {
 		try {
@@ -726,6 +733,70 @@ export class AlertController {
 		}
 	}
 
+	// region root cause
+	// "Bring your own" root cause: an external system (authenticated with the API
+	// token) pushes the analysis for an alert it ingested earlier — the ingest
+	// response carries the alertId this path is addressed by. Upsert semantics: a
+	// re-push replaces the content and clears any previous rating.
+	async upsertRootCause(req: Request, res: Response) {
+		try {
+			const alertId = req.params.alertId;
+			const body = UpsertRootCauseSchema.parse(req.body);
+			const rootCause = await this.rootCauseBL.upsert({
+				alertId,
+				source: 'api',
+				content: body.content,
+				feedbackUpUrl: body.feedbackUpUrl ?? null,
+				feedbackDownUrl: body.feedbackDownUrl ?? null,
+			});
+			return res.json({ success: true, data: { rootCause } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof RootCauseNotFoundError) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			logger.error('Error upserting root cause:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// On-demand read for the drawer. 200 with null when there is no analysis yet —
+	// the UI always asks, so absence is a normal answer, not an error.
+	async getRootCause(req: Request, res: Response) {
+		try {
+			const rootCause = await this.rootCauseBL.get(req.params.alertId);
+			return res.json({ success: true, data: { rootCause } });
+		} catch (error) {
+			logger.error('Error getting root cause:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async rateRootCause(req: AuthenticatedRequest, res: Response) {
+		try {
+			// A rating is a human verdict: it needs a user identity, which the machine
+			// API-token path does not carry.
+			if (!req.user) {
+				return res.status(401).json({ success: false, error: 'Rating requires a user session' });
+			}
+			const { rating } = RateRootCauseSchema.parse(req.body);
+			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user);
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof RootCauseNotFoundError) {
+				return res.status(404).json({ success: false, error: 'No root cause for this alert' });
+			}
+			logger.error('Error rating root cause:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+	// endregion
+
 	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = req.params.alertId;
@@ -798,6 +869,33 @@ export class AlertController {
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// Aggregates for the Insights page. from/to are ISO bounds (from absent = all
+	// time); tz is the requester's IANA timezone so day/hour bucketing matches what
+	// the user's clock says.
+	async getAlertAnalytics(req: Request, res: Response) {
+		try {
+			// Dashboard scoping (`filters` + `search`) uses the same JSON format and
+			// semantics as the alerts list endpoints, so a dashboard means the same
+			// thing here as there. The schema also rejects an inverted from/to window.
+			const params = AlertAnalyticsParamsSchema.parse(req.query);
+			const analytics = await this.alertBL.getAlertAnalytics({
+				from: params.from ?? null,
+				to: params.to ?? null,
+				timeZone: params.tz,
+				filters: params.filters,
+				search: params.search,
+				tagKey: params.tagKey,
+			});
+			return res.json({ success: true, data: analytics });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing alert analytics', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -891,7 +989,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			if (!req.user) {
-				return res.status(400).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			const { comment } = CreateCommentSchema.parse(req.body);
@@ -922,7 +1020,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
 			if (!req.user) {
-				return res.status(400).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			const { comment } = UpdateCommentSchema.parse(req.body);
@@ -949,7 +1047,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
 			if (!req.user) {
-				return res.status(400).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			await this.alertBL.deleteComment(commentId, req.user.id);

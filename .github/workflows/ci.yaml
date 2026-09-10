@@ -52,6 +52,11 @@ jobs:
       - name: Lint apps/client
         run: pnpm --filter @OpsiMate/client lint
 
+      # vite build strips types, so tsc is the only thing that type-checks the client.
+      # Gates on NEW errors vs a committed baseline (the pre-existing backlog).
+      - name: Typecheck apps/client
+        run: pnpm --filter @OpsiMate/client typecheck
+
       - name: Format apps/server
         run: pnpm --filter @OpsiMate/server format
 

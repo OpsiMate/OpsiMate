@@ -12,12 +12,25 @@ import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { formatDateTime, formatLongDateTime } from '@/lib/datetime';
+import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
-import { BellOff, Check, DatabaseBackup, Edit, FileText, KeyRound, Plus, Trash2, Users, X } from 'lucide-react';
+import {
+	BellOff,
+	Check,
+	DatabaseBackup,
+	Edit,
+	FileText,
+	KeyRound,
+	Plus,
+	Sparkle,
+	Trash2,
+	Users,
+	X,
+} from 'lucide-react';
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
+import { AiSettings } from '../components/Settings/AiSettings';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -214,6 +227,7 @@ const Settings: React.FC = () => {
 								if (h === 'Audit_Log') return 'audit';
 								if (h === 'retention') return 'retention';
 								if (h === 'silences') return 'silences';
+								if (h === 'ai') return 'ai';
 								if (h === 'secrets') return 'secrets';
 								if (h === 'custom-fields') return 'custom-fields';
 								return 'users';
@@ -224,6 +238,7 @@ const Settings: React.FC = () => {
 									audit: 'Audit_Log',
 									retention: 'retention',
 									silences: 'silences',
+									ai: 'ai',
 									secrets: 'secrets',
 									'custom-fields': 'custom-fields',
 								};
@@ -250,6 +265,10 @@ const Settings: React.FC = () => {
 										<TabsTrigger value="silences" className="justify-start gap-2">
 											<BellOff className="h-4 w-4" />
 											Alert Silences
+										</TabsTrigger>
+										<TabsTrigger value="ai" className="justify-start gap-2">
+											<Sparkle className="h-4 w-4" />
+											AI (Beta)
 										</TabsTrigger>
 									</TabsList>
 								</div>
@@ -558,6 +577,10 @@ const Settings: React.FC = () => {
 										<SilenceResetSettings />
 									</TabsContent>
 
+									<TabsContent value="ai" className="space-y-6">
+										<AiSettings />
+									</TabsContent>
+
 									<TabsContent value="secrets" className="space-y-6">
 										<div className="flex justify-between items-center">
 											<div>
@@ -656,22 +679,6 @@ const Settings: React.FC = () => {
 
 export default Settings;
 
-// Helper to parse SQLite UTC timestamp as ISO 8601
-function parseUTCDate(dateString: string) {
-	return new Date(dateString.replace(' ', 'T') + 'Z');
-}
-
-function formatRelativeTime(dateString: string) {
-	const now = new Date();
-	const date = parseUTCDate(dateString);
-	const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // in seconds
-	if (diff < 60) return 'just now';
-	if (diff < 3600) return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) === 1 ? '' : 's'} ago`;
-	if (diff < 86400) return `${Math.floor(diff / 3600)} hour${Math.floor(diff / 3600) === 1 ? '' : 's'} ago`;
-	if (diff < 604800) return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) === 1 ? '' : 's'} ago`;
-	return date.toLocaleDateString();
-}
-
 const AuditLogTable: React.FC = () => {
 	const [logs, setLogs] = useState<AuditLog[]>([]);
 	const [total, setTotal] = useState(0);
@@ -679,7 +686,6 @@ const AuditLogTable: React.FC = () => {
 	const [pageSize, setPageSize] = useState(10);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [filter, setFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL');
 
 	useEffect(() => {
 		let mounted = true;
@@ -687,9 +693,9 @@ const AuditLogTable: React.FC = () => {
 
 		auditApi.getAuditLogs(page, pageSize).then((res) => {
 			if (mounted) {
-				if (res && Array.isArray(res.logs)) {
-					setLogs(res.logs);
-					setTotal(res.total || 0);
+				if (res?.success && res.data && Array.isArray(res.data.logs)) {
+					setLogs(res.data.logs);
+					setTotal(res.data.total || 0);
 					setError(null);
 				} else {
 					setError(res?.error || 'Failed to fetch audit logs');
@@ -704,7 +710,6 @@ const AuditLogTable: React.FC = () => {
 	}, [page, pageSize]);
 
 	const totalPages = Math.ceil(total / pageSize);
-	const filteredLogs = logs.filter((log) => (filter === 'ALL' ? true : log.actionType === filter));
 
 	const getActionBadgeProps = (action: string) => {
 		switch (action) {
@@ -781,52 +786,53 @@ const AuditLogTable: React.FC = () => {
 				<div className="py-8 text-center">Loading audit logs...</div>
 			) : error ? (
 				<ErrorAlert message={error} className="mb-4" />
-			) : filteredLogs.length === 0 ? (
-				<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
 			) : (
 				<>
-					{/* Table */}
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Time</TableHead>
-								<TableHead>Action</TableHead>
-								<TableHead>Resource</TableHead>
-								<TableHead>Resource Name</TableHead>
-								<TableHead>User</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredLogs.map((log) => {
-								const actionProps = getActionBadgeProps(log.actionType);
-								return (
-									<TableRow key={log.id}>
-										<TableCell>
-											<span title={formatDateTime(parseUTCDate(log.timestamp))}>
-												{formatRelativeTime(log.timestamp)}
-											</span>
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													actionProps.variant as
-														'default' | 'destructive' | 'outline' | 'secondary'
-												}
-												className={actionProps.className}
-											>
-												{log.actionType}
-											</Badge>
-										</TableCell>
-										<TableCell>
-											<Badge variant="secondary">{log.resourceType}</Badge>
-										</TableCell>
-										<TableCell>{log.resourceName || '-'}</TableCell>
-										<TableCell>{log.userName || '-'}</TableCell>
-									</TableRow>
-								);
-							})}
-						</TableBody>
-					</Table>
+					{logs.length === 0 ? (
+						<div className="py-8 text-center text-muted-foreground">No audit logs found.</div>
+					) : (
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Time</TableHead>
+									<TableHead>Action</TableHead>
+									<TableHead>Resource</TableHead>
+									<TableHead>Resource Name</TableHead>
+									<TableHead>User</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{logs.map((log) => {
+									const actionProps = getActionBadgeProps(log.actionType);
+									return (
+										<TableRow key={log.id}>
+											<TableCell>
+												<span title={formatDateTime(parseUTCDate(log.timestamp))}>
+													{formatRelativeTime(parseUTCDate(log.timestamp))}
+												</span>
+											</TableCell>
+											<TableCell>
+												<Badge
+													variant={
+														actionProps.variant as
+															'default' | 'destructive' | 'outline' | 'secondary'
+													}
+													className={actionProps.className}
+												>
+													{log.actionType}
+												</Badge>
+											</TableCell>
+											<TableCell>
+												<Badge variant="secondary">{log.resourceType}</Badge>
+											</TableCell>
+											<TableCell>{log.resourceName || '-'}</TableCell>
+											<TableCell>{log.userName || '-'}</TableCell>
+										</TableRow>
+									);
+								})}
+							</TableBody>
+						</Table>
+					)}
 
 					{totalPages > 1 && (
 						<div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t">

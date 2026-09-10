@@ -28,6 +28,8 @@ import { UsersController } from './users/controller';
 import usersRouter from './users/router';
 import { RetentionController } from './retention/controller';
 import createRetentionRouter from './retention/router';
+import { AiController } from './ai/controller';
+import createAiRouter from './ai/router';
 
 export default function createV1Router(
 	dashboardController: DashboardController,
@@ -43,7 +45,8 @@ export default function createV1Router(
 	enrichmentController: EnrichmentController,
 	actionController: ActionController,
 	retentionController: RetentionController,
-	oncallController: OncallController
+	oncallController: OncallController,
+	aiController: AiController
 ) {
 	const router = Router();
 
@@ -74,6 +77,7 @@ export default function createV1Router(
 	router.use('/users', usersRouter(usersController));
 	router.use('/audit', createAuditRouter(auditController));
 	router.use('/retention', createRetentionRouter(retentionController));
+	router.use('/ai', createAiRouter(aiController));
 
 	return router;
 }

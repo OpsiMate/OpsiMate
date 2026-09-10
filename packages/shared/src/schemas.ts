@@ -516,6 +516,52 @@ export const UpdateSilenceResetSettingsSchema = z
 		message: 'Provide enabled and/or hour',
 	});
 
+// AI (BYOK) configuration update. apiKey: string replaces the stored key, null deletes
+// it, absent keeps it. Region/model shapes are validated loosely on purpose — AWS adds
+// regions and model ids faster than any hardcoded list stays correct.
+export const UpdateAiConfigSchema = z
+	.object({
+		region: z
+			.string()
+			.trim()
+			.min(1)
+			.max(40)
+			.regex(/^[a-z0-9-]+$/, 'Expected an AWS region like us-east-1')
+			.optional(),
+		modelId: z.string().trim().min(1).max(200).optional(),
+		baseUrl: z.string().trim().max(500).optional(),
+		// Don't trim the key itself (a real key never has surrounding space), but reject a
+		// value that is only whitespace — otherwise it encrypts to a non-null "key" that
+		// enables AI while sending an invalid bearer token.
+		apiKey: z
+			.string()
+			.max(4096)
+			.refine((value) => value.trim().length > 0, 'API key cannot be blank')
+			.nullable()
+			.optional(),
+		enabled: z.boolean().optional(),
+	})
+	.refine((v) => Object.keys(v).length > 0, { message: 'Provide at least one field to update' });
+
+export const AiFilterQuerySchema = z.object({
+	query: z.string().trim().min(2).max(400),
+});
+
+// "Bring your own" root cause, pushed by an external system (authenticated with the
+// API token) after it learns the alertId from the ingest response. Callback URLs are
+// hit server-side when an operator rates the analysis; they may point at internal
+// hosts (self-hosted reality) but are validated against the metadata/link-local range
+// before use. Content is capped so a webhook can't bloat the DB.
+export const UpsertRootCauseSchema = z.object({
+	content: z.string().min(1).max(65536),
+	feedbackUpUrl: z.string().url().max(2048).optional(),
+	feedbackDownUrl: z.string().url().max(2048).optional(),
+});
+
+export const RateRootCauseSchema = z.object({
+	rating: z.enum(['up', 'down']),
+});
+
 export const RetentionResourceParamSchema = z.object({
 	resourceType: z.nativeEnum(RetentionResource),
 });

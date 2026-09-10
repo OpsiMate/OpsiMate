@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { formatRelativeTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import { AlertComment } from '@OpsiMate/shared';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
@@ -37,21 +38,6 @@ export const CommentItem = ({
 		.toUpperCase()
 		.slice(0, 2);
 
-	const formatDate = (dateString: string) => {
-		const date = new Date(dateString);
-		const now = new Date();
-		const diff = now.getTime() - date.getTime();
-		const minutes = Math.floor(diff / 60000);
-		const hours = Math.floor(diff / 3600000);
-		const days = Math.floor(diff / 86400000);
-
-		if (minutes < 1) return 'just now';
-		if (minutes < 60) return `${minutes}m ago`;
-		if (hours < 24) return `${hours}h ago`;
-		if (days < 7) return `${days}d ago`;
-		return date.toLocaleDateString();
-	};
-
 	const handleSave = () => {
 		if (editText.trim() && editText !== comment.comment) {
 			onEdit(comment.id, editText.trim());
@@ -73,7 +59,9 @@ export const CommentItem = ({
 				<div className="flex items-center justify-between gap-2 mb-1">
 					<div className="flex items-center gap-2 min-w-0">
 						<span className="font-medium text-sm text-foreground truncate">{displayName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">{formatDate(comment.createdAt)}</span>
+						<span className="text-xs text-muted-foreground shrink-0">
+							{formatRelativeTime(comment.createdAt)}
+						</span>
 						{comment.updatedAt !== comment.createdAt && (
 							<span className="text-xs text-muted-foreground italic shrink-0">(edited)</span>
 						)}

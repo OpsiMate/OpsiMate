@@ -1,6 +1,7 @@
 // src/App.tsx
 import { Alerts, AuthGuard, MobileWebOverlay, Profile, ThemeProvider } from '@/components';
 import { Dashboards } from '@/components/Dashboards';
+import { Suspense, lazy } from 'react';
 import { ErrorBoundary, ErrorBoundaryInner } from '@/components/ErrorBoundary';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import { UnsavedChangesDialog } from '@/components/shared';
@@ -25,6 +26,10 @@ const UnsavedChangesDialogWrapper = () => {
 		/>
 	);
 };
+
+// Lazy: Insights carries the whole charting library (~450KB); users who never open
+// it must not download it, and the alerts table's first paint must not wait on it.
+const AlertInsights = lazy(() => import('./pages/AlertInsights'));
 
 const queryClient = new QueryClient();
 
@@ -61,6 +66,14 @@ const App: React.FC = () => {
 										<Routes>
 											<Route path="/" element={<Alerts />} />
 											<Route path="/dashboards" element={<Dashboards />} />
+											<Route
+												path="/insights"
+												element={
+													<Suspense fallback={null}>
+														<AlertInsights />
+													</Suspense>
+												}
+											/>
 											<Route path="/integrations" element={<Integrations />} />
 											<Route path="/settings" element={<Settings />} />
 											<Route path="/profile" element={<Profile />} />

@@ -1,4 +1,4 @@
-import { encryptPassword, decryptPassword } from '../src/utils/encryption';
+import { encryptPassword, decryptPassword, warnIfEncryptionKeyInsecure } from '../src/utils/encryption';
 
 describe('Password Encryption', () => {
 	test('should encrypt and decrypt password correctly', () => {
@@ -40,5 +40,17 @@ describe('Password Encryption', () => {
 		const result = decryptPassword(invalidEncrypted);
 		// Should return the original value if decryption fails
 		expect(result).toBe(invalidEncrypted);
+	});
+
+	// The key invariant: warning must NEVER throw, so it can't block a boot. Env is
+	// injected, so this never mutates the shared process.env (which would leak into
+	// other test files in the same worker).
+	test('warnIfEncryptionKeyInsecure never throws, in any environment', () => {
+		expect(() => warnIfEncryptionKeyInsecure({ NODE_ENV: 'production' })).not.toThrow();
+		expect(() => warnIfEncryptionKeyInsecure({ NODE_ENV: 'production', ENCRYPTION_KEY: '   ' })).not.toThrow();
+		expect(() =>
+			warnIfEncryptionKeyInsecure({ NODE_ENV: 'production', ENCRYPTION_KEY: 'a-strong-secret' })
+		).not.toThrow();
+		expect(() => warnIfEncryptionKeyInsecure({ NODE_ENV: 'development' })).not.toThrow();
 	});
 });

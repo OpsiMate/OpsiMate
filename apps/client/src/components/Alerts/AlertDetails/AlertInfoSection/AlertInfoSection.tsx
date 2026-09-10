@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useSetAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
-import { Sparkles } from 'lucide-react';
+import { Sparkle } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 import { FixBadge } from '../../FixBadge';
 import { SeverityBadge } from '../../SeverityBadge';
@@ -55,7 +55,7 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 									className="shrink-0 text-violet-500"
 									aria-label={`Enriched by: ${alert.appliedEnrichments.map((e) => e.name).join(', ')}`}
 								>
-									<Sparkles className="h-3.5 w-3.5" aria-hidden />
+									<Sparkle className="h-3.5 w-3.5" aria-hidden />
 								</span>
 							</TooltipTrigger>
 							<TooltipContent>

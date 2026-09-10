@@ -1,5 +1,5 @@
 import { AlertRepository } from '../../dal/alertRepository';
-import { ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
+import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
 	AlertComment,
@@ -12,9 +12,10 @@ import {
 	normalizeAlertSeverity,
 	SilenceResetSettings,
 	UpdateSilenceResetSettings,
+	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { AlertCommentsRepository } from '../../dal/alertCommentsRepository.ts';
-import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
+import { AlertHistoryRepository, EventTimeRow } from '../../dal/alertHistoryRepository';
 import {
 	alertsIngestedTotal,
 	alertsResolvedTotal,
@@ -26,9 +27,11 @@ import {
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
+import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
@@ -40,6 +43,8 @@ import {
 	applyAlertListQuery,
 	computeAlertFacets,
 	computeAlertGroupSummaries,
+	alertMatchesFilters,
+	searchAlerts,
 } from '@OpsiMate/shared';
 
 const logger = new Logger('bl/alert.bl');
@@ -50,9 +55,54 @@ const logger = new Logger('bl/alert.bl');
 // assigns the env var after imports are evaluated but before the app is constructed.
 const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
 
+// The resolved list (and the analytics input scans behind it) changes only through
+// writes that call invalidateSnapshots() in this process — resolution, unresolve,
+// rule edits — so its TTL is purely the staleness bound for OTHER processes' writes,
+// which today means the worker's retention deletes. Those are rare and a 30s lag on
+// them is invisible next to the client's own 30s resolved poll; meanwhile the 2.5s
+// TTL was re-reading ~10k resolved+history rows dozens of times a minute, which a
+// production-shaped CPU profile put at roughly a third of the server's busy time.
+// Explicitly setting ALERTS_SNAPSHOT_TTL_MS still governs both (tests set 0).
+const resolvedSnapshotTtlMs = () =>
+	Number(process.env.ALERTS_RESOLVED_SNAPSHOT_TTL_MS ?? process.env.ALERTS_SNAPSHOT_TTL_MS ?? 30_000);
+
+// Analytics responses are pure functions of the four input snapshots plus the request
+// params, so they cache by input etags + params. The TTL exists only because `to`
+// defaults to "now": with unchanged inputs the episode content is identical, but the
+// dense time axis can grow a new empty trailing bucket as now advances — the TTL
+// bounds how long that bucket can lag. Tests inherit 0 and bypass the cache.
+const analyticsCacheTtlMs = () =>
+	Number(process.env.ALERTS_ANALYTICS_CACHE_TTL_MS ?? process.env.ALERTS_SNAPSHOT_TTL_MS ?? 15_000);
+
+// The analytics request after validation: the window, the requester's timezone,
+// an optional dashboard scope (filters + search) and an optional tag key to research.
+// One cached analytics response with its compute time, for the TTL check.
+interface AnalyticsCacheEntry {
+	value: AlertAnalytics;
+	computedAt: number;
+}
+
+export interface AlertAnalyticsQuery {
+	from: string | null;
+	// null = "now", stamped per call below. Kept null in the cache key so default-window
+	// requests share entries (bounded by the TTL); an EXPLICIT to keys its own entry.
+	to: string | null;
+	timeZone?: string;
+	filters?: Record<string, string[]>;
+	search?: string;
+	tagKey?: string;
+}
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
+	// Notified when an alert is deleted for good (resolve is NOT deletion — an alert's
+	// root cause must survive it). Wired in app.ts to drop per-alert satellite rows.
+	private onAlertPermanentlyDeleted: ((alertId: string) => Promise<void>) | null = null;
+
+	setOnAlertPermanentlyDeleted(callback: (alertId: string) => Promise<void>): void {
+		this.onAlertPermanentlyDeleted = callback;
+	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
@@ -60,8 +110,33 @@ export class AlertBL {
 	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
-		snapshotTtlMs()
+		resolvedSnapshotTtlMs()
 	);
+	// Analytics inputs: two full-table scans (history rows, event times) that must not
+	// run per request. Same invalidation as the alert snapshots — every write path that
+	// changes them already calls invalidateSnapshots() — and the longer resolved TTL,
+	// for the same reason (see resolvedSnapshotTtlMs).
+	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
+		() => this.resolvedAlertRepo.getAllHistoryRows(),
+		resolvedSnapshotTtlMs()
+	);
+	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
+		() => this.alertHistoryRepo.getAllEventTimes(),
+		resolvedSnapshotTtlMs()
+	);
+	// Owners feed sort keys, filter matching and facet labels on every list read; the
+	// users table changes rarely. Cached with the base TTL, and every name-affecting
+	// user write invalidates it via UserBL.setOnUsersChanged (wired in app.ts) — so a
+	// rename is visible on the immediate next refetch, and the TTL only bounds writes
+	// from OTHER processes, exactly like the alert snapshots.
+	private readonly ownersSnapshot = new SnapshotCache<AlertOwnerInfo[]>(() => this.getOwnerInfos(), snapshotTtlMs());
+	// Per-query results (pages / facets / group summaries) computed over a snapshot.
+	// Content-addressed on the source snapshots' etags — see QueryResultCache. Pages
+	// hold references into snapshot arrays, so capacity is pointer-cheap.
+	private readonly listQueryCache = new QueryResultCache<AlertListPage>(128);
+	private readonly facetsCache = new QueryResultCache<AlertFacetsResult>(64);
+	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
+	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -74,9 +149,18 @@ export class AlertBL {
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
 	// affect both, so both drop together — a second compute per edit is far cheaper than
 	// reasoning about which list a given write touched.
+	// Wired to UserBL's users-changed callback in app.ts: a rename/create/delete of a
+	// user must reach owner columns, sort, facets and the query caches (which key on
+	// this snapshot's etag) on the very next request, not after a TTL window.
+	invalidateOwners(): void {
+		this.ownersSnapshot.invalidate();
+	}
+
 	invalidateSnapshots(): void {
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
+		this.historyRowsSnapshot.invalidate();
+		this.eventTimesSnapshot.invalidate();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
@@ -98,25 +182,45 @@ export class AlertBL {
 	// filter/search/sort/page semantics are the shared implementation, so a pushed-down
 	// query returns exactly what the client would have computed from the full list.
 	async queryAlerts(query: AlertListQuery): Promise<AlertListPage> {
-		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
-		return applyAlertListQuery(snapshot.value, owners, query);
+		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.ownersSnapshot.get()]);
+		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey(query)}`;
+		const cached = this.listQueryCache.get(key);
+		if (cached) return cached;
+		const page = applyAlertListQuery(snapshot.value, owners.value, query);
+		this.listQueryCache.set(key, page);
+		return page;
 	}
 
 	async queryResolvedAlerts(query: AlertListQuery): Promise<AlertListPage> {
-		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
-		return applyAlertListQuery(snapshot.value, owners, query);
+		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.ownersSnapshot.get()]);
+		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey(query)}`;
+		const cached = this.listQueryCache.get(key);
+		if (cached) return cached;
+		const page = applyAlertListQuery(snapshot.value, owners.value, query);
+		this.listQueryCache.set(key, page);
+		return page;
 	}
 
 	// Facets for the filter sidebar, computed over the RAW list (the sidebar describes
 	// what filters WOULD show — see computeAlertFacets).
 	async getAlertFacets(filters: Record<string, string[]>, fields?: string[]): Promise<AlertFacetsResult> {
-		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
-		return computeAlertFacets(snapshot.value, filters, fields, owners);
+		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.ownersSnapshot.get()]);
+		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey({ filters, fields })}`;
+		const cached = this.facetsCache.get(key);
+		if (cached) return cached;
+		const result = computeAlertFacets(snapshot.value, filters, fields, owners.value);
+		this.facetsCache.set(key, result);
+		return result;
 	}
 
 	async getResolvedAlertFacets(filters: Record<string, string[]>, fields?: string[]): Promise<AlertFacetsResult> {
-		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
-		return computeAlertFacets(snapshot.value, filters, fields, owners);
+		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.ownersSnapshot.get()]);
+		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey({ filters, fields })}`;
+		const cached = this.facetsCache.get(key);
+		if (cached) return cached;
+		const result = computeAlertFacets(snapshot.value, filters, fields, owners.value);
+		this.facetsCache.set(key, result);
+		return result;
 	}
 
 	// Group counts + rollup status over the FULL matching set, no alerts in the payload.
@@ -128,13 +232,18 @@ export class AlertBL {
 		groupBy: string[],
 		timeZone?: string
 	): Promise<AlertGroupSummaryNode[]> {
-		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
-		const { items } = applyAlertListQuery(snapshot.value, owners, {
+		const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.ownersSnapshot.get()]);
+		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey({ query, groupBy, timeZone })}`;
+		const cached = this.groupsCache.get(key);
+		if (cached) return cached;
+		const { items } = applyAlertListQuery(snapshot.value, owners.value, {
 			...query,
 			limit: undefined,
 			cursor: undefined,
 		});
-		return computeAlertGroupSummaries(items, groupBy, owners, timeZone);
+		const summaries = computeAlertGroupSummaries(items, groupBy, owners.value, timeZone);
+		this.groupsCache.set(key, summaries);
+		return summaries;
 	}
 
 	async getResolvedAlertGroupSummaries(
@@ -142,13 +251,18 @@ export class AlertBL {
 		groupBy: string[],
 		timeZone?: string
 	): Promise<AlertGroupSummaryNode[]> {
-		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.getOwnerInfos()]);
-		const { items } = applyAlertListQuery(snapshot.value, owners, {
+		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.ownersSnapshot.get()]);
+		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey({ query, groupBy, timeZone })}`;
+		const cached = this.groupsCache.get(key);
+		if (cached) return cached;
+		const { items } = applyAlertListQuery(snapshot.value, owners.value, {
 			...query,
 			limit: undefined,
 			cursor: undefined,
 		});
-		return computeAlertGroupSummaries(items, groupBy, owners, timeZone);
+		const summaries = computeAlertGroupSummaries(items, groupBy, owners.value, timeZone);
+		this.groupsCache.set(key, summaries);
+		return summaries;
 	}
 
 	// One call mutates every matching active alert. The scope is either an explicit id
@@ -166,8 +280,8 @@ export class AlertBL {
 		if (input.ids) {
 			targetIds = [...new Set(input.ids)];
 		} else {
-			const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.getOwnerInfos()]);
-			const { items } = applyAlertListQuery(snapshot.value, owners, {
+			const [snapshot, owners] = await Promise.all([this.activeSnapshot.get(), this.ownersSnapshot.get()]);
+			const { items } = applyAlertListQuery(snapshot.value, owners.value, {
 				...(input.query ?? {}),
 				limit: undefined,
 				cursor: undefined,
@@ -234,6 +348,10 @@ export class AlertBL {
 	): Promise<void> {
 		try {
 			await this.alertHistoryRepo.recordEvent({ alertId, eventType, actorName, description });
+			// Only the events table changed; the analytics MTTA/responder numbers read it
+			// through this snapshot, so it must drop even when no alert-list write follows
+			// (e.g. an action run records an event without touching either alert table).
+			this.eventTimesSnapshot.invalidate();
 		} catch (error) {
 			logger.error(`Failed to record alert history event (${eventType}) for ${alertId}`, error);
 		}
@@ -643,7 +761,20 @@ export class AlertBL {
 	async deleteResolvedAlert(alertId: string): Promise<void> {
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
-			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			// Only a row that actually left the resolved table counts as permanent
+			// deletion — an id naming a still-active alert must not shed its satellites.
+			// Satellite cleanup is BEST-EFFORT: the alert row is already gone, so a
+			// cleanup failure must not fail the request or — worse — skip the snapshot
+			// invalidation below and keep serving the deleted alert from cache. A row
+			// orphaned by a failed cleanup is bounded by the retention policy.
+			if (deleted > 0) {
+				try {
+					await this.onAlertPermanentlyDeleted?.(alertId);
+				} catch (cleanupError) {
+					logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
+				}
+			}
 			this.invalidateSnapshots();
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
@@ -651,6 +782,93 @@ export class AlertBL {
 		}
 	}
 	// endregion
+
+	// Aggregates for the Insights page, computed over the FULL history and reduced
+	// server-side — the client never receives per-alert rows, so page cost does not
+	// grow with installation size. The pure computation lives in
+	// bl/analytics/computeAlertAnalytics for direct testing.
+	//
+	// Deliberately NOT range-limited at the SQL layer: episodes must include
+	// pre-window rows (MTBF gaps and re-fire checks cross the boundary) and every
+	// window needs its previous-period twin for deltas, so a naive WHERE clause
+	// would change results. The full scans are amortized by the snapshot caches
+	// below; revisit with incremental episode materialization if history tables
+	// reach the millions of rows where reconstruction itself becomes the cost.
+	async getAlertAnalytics(query: AlertAnalyticsQuery): Promise<AlertAnalytics> {
+		const { from, timeZone, filters, search, tagKey } = query;
+		const to = query.to ?? new Date().toISOString();
+		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, ownersSnapshot] = await Promise.all([
+			this.activeSnapshot.get(),
+			this.resolvedSnapshot.get(),
+			this.historyRowsSnapshot.get(),
+			this.eventTimesSnapshot.get(),
+			this.ownersSnapshot.get(),
+		]);
+		const owners = ownersSnapshot.value;
+
+		// Content-keyed on every input snapshot plus the params. `to` enters the key AS
+		// REQUESTED: an explicit end time keys its own entry, while the default (null =
+		// now, stamped just above) shares one — with unchanged inputs the episode content
+		// under a moving now is identical, and the TTL bounds the only real drift (a new
+		// empty trailing bucket on the dense axis). ttl <= 0 bypasses.
+		const cacheTtl = analyticsCacheTtlMs();
+		const cacheKey = [
+			activeSnapshot.etag,
+			resolvedSnapshot.etag,
+			historySnapshot.etag,
+			eventsSnapshot.etag,
+			// Owners participate: dashboard scopes can filter by owner display name.
+			ownersSnapshot.etag,
+			stableQueryKey({ from, to: query.to, timeZone, filters, search, tagKey }),
+		].join('|');
+		if (cacheTtl > 0) {
+			const cached = this.analyticsCache.get(cacheKey);
+			if (cached && Date.now() - cached.computedAt < cacheTtl) return cached.value;
+		}
+		const historyRows = historySnapshot.value;
+		const eventRows = eventsSnapshot.value;
+
+		// Dashboard scoping: the SAME filter/search semantics the alerts list uses, so
+		// the Insights numbers agree with what that dashboard shows. Alerts deleted from
+		// both tables cannot match a filter and drop out with it.
+		let allowedAlertIds: Set<string> | undefined;
+		const hasFilters = filters && Object.keys(filters).length > 0;
+		const hasSearch = !!search?.trim();
+		if (hasFilters || hasSearch) {
+			let candidates = [...activeSnapshot.value, ...resolvedSnapshot.value];
+			if (hasFilters) {
+				candidates = candidates.filter((alert) => alertMatchesFilters(alert, filters, owners));
+			}
+			if (hasSearch) {
+				candidates = searchAlerts(candidates, search as string);
+			}
+			allowedAlertIds = new Set(candidates.map((alert) => alert.id));
+		}
+
+		const analytics = computeAlertAnalytics({
+			episodes: historyRows.map((row) => ({
+				alertId: row.alert_id,
+				status: row.status,
+				at: toIsoUtc(row.archived_at),
+			})),
+			events: eventRows.map((row) => ({
+				alertId: row.alert_id,
+				at: toIsoUtc(row.created_at),
+				actorName: row.actor_name,
+			})),
+			activeAlerts: activeSnapshot.value,
+			resolvedAlerts: resolvedSnapshot.value,
+			from,
+			to,
+			timeZone,
+			allowedAlertIds,
+			tagKey,
+		});
+		if (cacheTtl > 0) {
+			this.analyticsCache.set(cacheKey, { value: analytics, computedAt: Date.now() });
+		}
+		return analytics;
+	}
 
 	// region history
 	async getAlertHistory(alertId: string): Promise<AlertHistory> {

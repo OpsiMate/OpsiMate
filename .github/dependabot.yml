@@ -29,6 +29,19 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # js-yaml 5 made the parser spec-strict: it rejects the multi-line flow
+      # mapping that configs written before #854 contain, failing with
+      # "deficient indentation" and killing the server at startup. User configs
+      # are mounted into the container, so upgrading the image never rewrites
+      # them and the crash lands on existing installs.
+      #
+      # This has now shipped twice -- reverted in #854, bumped straight back by
+      # #879, released broken as 0.0.108. Majors stay blocked until the loader
+      # can migrate (or clearly diagnose) a legacy config. Minor and patch
+      # updates within 4.x still come through.
+      - dependency-name: "js-yaml"
+        update-types: ["version-update:semver-major"]
 
   # Backend + frontend Docker images
   - package-ecosystem: "docker"

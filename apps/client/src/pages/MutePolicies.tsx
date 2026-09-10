@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { formatShortDateTime } from '@/lib/datetime';
+import { formatRelativeTime, formatShortDateTime } from '@/lib/datetime';
 import { MutePolicyFormDialog } from '@/components/MutePolicies/MutePolicyFormDialog';
 import {
 	AlertDialog,
@@ -54,21 +54,12 @@ const formatDaysOfWeek = (days: number[]): string => {
 
 const formatDateTime = (iso?: string | null): string => formatShortDateTime(iso, iso ?? '—');
 
-const relativeFromNow = (iso?: string | null): string => {
-	if (!iso) return 'no end';
-	const ts = new Date(iso).getTime();
-	if (Number.isNaN(ts)) return iso;
-	const diff = ts - Date.now();
-	const future = diff > 0;
-	const abs = Math.abs(diff);
-	const minutes = Math.round(abs / 60000);
-	if (minutes < 1) return future ? 'in <1m' : 'just now';
-	if (minutes < 60) return future ? `in ${minutes}m` : `${minutes}m ago`;
-	const hours = Math.round(minutes / 60);
-	if (hours < 24) return future ? `in ${hours}h` : `${hours}h ago`;
-	const days = Math.round(hours / 24);
-	return future ? `in ${days}d` : `${days}d ago`;
-};
+// The absolute window renders directly above this line, so the relative form opts out
+// of the week cap: "in 30d" still says something, where the capped "Sep 10, 12:00" would
+// just repeat the line above verbatim. A missing endsAt reads as "no end"; an unparseable
+// one falls through to its raw value rather than claiming the policy runs forever, which
+// would contradict the sibling "indefinite" branch.
+const relativeFromNow = (iso?: string | null): string => formatRelativeTime(iso, iso || 'no end', Infinity);
 
 // When a recurring window next closes, as an absolute timestamp. Schedules are weekly
 // (daysOfWeek + HH:MM in server-local time), so the next end is the soonest upcoming

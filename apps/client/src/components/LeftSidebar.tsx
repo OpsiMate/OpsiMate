@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Bell, BellOff, LayoutDashboard, PhoneCall, Puzzle, Settings, Sparkles, Zap } from 'lucide-react';
+import { BarChart3, Bell, BellOff, LayoutDashboard, PhoneCall, Puzzle, Settings, Sparkles, Zap } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { isAdmin, isEditor } from '../lib/auth';
 import { AppIcon } from './icons/AppIcon';
@@ -64,6 +64,17 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					<PreserveQueryLink to="/dashboards">
 						<LayoutDashboard className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
+					</PreserveQueryLink>
+				</Button>
+
+				<Button
+					variant={location.pathname === '/insights' ? 'default' : 'ghost'}
+					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
+					asChild
+				>
+					<PreserveQueryLink to="/insights">
+						<BarChart3 className="h-5 w-5 shrink-0" />
+						<span className={cn('font-medium', collapsed && 'sr-only')}>Insights</span>
 					</PreserveQueryLink>
 				</Button>
 
@@ -158,7 +169,8 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 											onClick={() =>
 												window.open(
 													'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -183,7 +195,11 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 										<div
 											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
 											onClick={() =>
-												window.open('https://github.com/opsimate/opsimate', '_blank')
+												window.open(
+													'https://github.com/opsimate/opsimate',
+													'_blank',
+													'noopener,noreferrer'
+												)
 											}
 										>
 											<img

@@ -40,8 +40,10 @@ export const DashboardHeader = ({
 	const [isEditingName, setIsEditingName] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	const searchContainerRef = useRef<HTMLDivElement>(null);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(-1);
 
 	const filteredDashboards = useMemo(() => {
 		return dashboards.filter(
@@ -56,6 +58,27 @@ export const DashboardHeader = ({
 		}
 	}, [isEditingName]);
 
+	useEffect(() => {
+		setActiveIndex(-1);
+	}, [filteredDashboards]);
+
+	useEffect(() => {
+		if (!isSearchFocused) return;
+
+		const handleClickAway = (e: MouseEvent) => {
+			if (!searchContainerRef.current?.contains(e.target as Node)) {
+				setIsSearchFocused(false);
+				setActiveIndex(-1);
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickAway);
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickAway);
+		};
+	}, [isSearchFocused]);
+
 	const handleNameClick = () => {
 		setIsEditingName(true);
 	};
@@ -68,6 +91,37 @@ export const DashboardHeader = ({
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === 'Enter') {
 			handleNameBlur();
+		}
+	};
+
+	const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+		if (!isSearchFocused || filteredDashboards.length === 0) return;
+
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			setActiveIndex((index) => (index + 1) % filteredDashboards.length);
+		}
+
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			setActiveIndex((index) => (index <= 0 ? filteredDashboards.length - 1 : index - 1));
+		}
+		if (e.key === 'Enter' && activeIndex >= 0) {
+			e.preventDefault();
+
+			const dashboard = filteredDashboards[activeIndex];
+
+			if (dashboard) {
+				onDashboardSelect?.(dashboard);
+				setSearchQuery('');
+				setIsSearchFocused(false);
+				setActiveIndex(-1);
+			}
+		}
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			setIsSearchFocused(false);
+			setActiveIndex(-1);
 		}
 	};
 
@@ -127,26 +181,52 @@ export const DashboardHeader = ({
 			</div>
 
 			{/* Search (grows to fill the row) */}
-			<div className="relative flex-1 min-w-0">
+			<div
+				ref={searchContainerRef}
+				className="relative flex-1 min-w-0"
+				onBlur={(e) => {
+					if (!searchContainerRef.current?.contains(e.relatedTarget as Node | null)) {
+						setIsSearchFocused(false);
+						setActiveIndex(-1);
+					}
+				}}
+			>
 				<div className="flex items-center h-8 rounded-md border bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
 					<Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-foreground" />
 					<input
 						ref={searchInputRef}
 						className="flex h-full w-full bg-transparent text-sm text-foreground outline-hidden placeholder:text-muted-foreground"
 						placeholder="Search dashboards..."
+						role="combobox"
+						aria-expanded={isSearchFocused && filteredDashboards.length > 0}
+						aria-controls="dashboard-search-results"
+						aria-activedescendant={
+							activeIndex >= 0 ? `dashboard-option-${filteredDashboards[activeIndex]?.id}` : undefined
+						}
 						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
+						onChange={(e) => {
+							setSearchQuery(e.target.value);
+							setActiveIndex(-1);
+						}}
 						onFocus={() => setIsSearchFocused(true)}
-						onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+						onKeyDown={handleSearchKeyDown}
 					/>
 				</div>
 				{isSearchFocused && filteredDashboards.length > 0 && (
 					<div className="absolute left-0 top-10 z-50 w-full max-w-64 rounded-lg border shadow-md bg-popover overflow-hidden">
-						<ul className="max-h-[300px] overflow-y-auto py-1">
-							{filteredDashboards.map((dashboard) => (
+						<ul className="max-h-[300px] overflow-y-auto py-1" id="dashboard-search-results" role="listbox">
+							{filteredDashboards.map((dashboard, index) => (
 								<li
 									key={dashboard.id}
-									className="px-2 py-1.5 text-sm text-popover-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm mx-1"
+									id={`dashboard-option-${dashboard.id}`}
+									role="option"
+									aria-selected={index === activeIndex}
+									className={cn(
+										'px-2 py-1.5 text-sm text-popover-foreground cursor-pointer rounded-sm mx-1',
+										index === activeIndex
+											? 'bg-accent text-accent-foreground'
+											: 'hover:bg-accent hover:text-accent-foreground'
+									)}
 									onMouseDown={(e) => {
 										e.preventDefault();
 										onDashboardSelect?.(dashboard);
