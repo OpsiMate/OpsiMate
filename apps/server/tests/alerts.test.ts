@@ -1337,22 +1337,20 @@ describe('Alerts API', () => {
 			expect(response.body.error).toBe('Validation error');
 		});
 
-		test('a partial payload (heartbeat without monitor) is a 400, not a phantom test alert', async () => {
-			const before = (
-				db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number }
-			).c;
+		// Grounded in Uptime Kuma's source: the Test button calls
+		// Notification.send(notification, msg) with monitorJSON/heartbeatJSON at their
+		// null defaults, so the real test body is { heartbeat: null, monitor: null, msg }.
+		// A presence check ("key in body") would 400 it and break every integration setup.
+		test('the REAL Uptime Kuma Test payload (both fields null) creates a test alert', async () => {
 			const response = await app
 				.post('/api/v1/alerts/custom/uptimekuma')
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ heartbeat: baseHeartbeat, msg: 'no monitor' });
-			expect(response.status).toBe(400);
-			const after = (
-				db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number }
-			).c;
-			expect(after).toBe(before);
+				.send({ heartbeat: null, monitor: null, msg: 'My Webhook Testing' });
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ success: true, data: null });
 		});
 
-		test('a present-but-null heartbeat or monitor is a 400, not a phantom test alert', async () => {
+		test('one real field with the other null/missing is a 400, not a phantom test alert', async () => {
 			const count = () =>
 				(db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number })
 					.c;
@@ -1360,7 +1358,7 @@ describe('Alerts API', () => {
 			for (const payload of [
 				{ heartbeat: null, monitor: baseMonitor, msg: 'x' },
 				{ heartbeat: baseHeartbeat, monitor: null, msg: 'x' },
-				{ heartbeat: null, monitor: null, msg: 'x' },
+				{ heartbeat: baseHeartbeat, msg: 'x' },
 			]) {
 				const response = await app
 					.post('/api/v1/alerts/custom/uptimekuma')

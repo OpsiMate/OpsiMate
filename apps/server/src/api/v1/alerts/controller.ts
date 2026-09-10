@@ -267,16 +267,18 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			// Uptime Kuma's "Test" notification sends NEITHER heartbeat nor monitor. Only
-			// that shape bypasses validation; anything else — one field but not the other,
-			// or a field present but null/invalid — is a malformed real alert and must fall
-			// through to the strict parse (400), not be persisted as a phantom "Test
-			// Alert". Hence PRESENCE, not truthiness: `{ heartbeat: null }` is not a test.
+			// Uptime Kuma's "Test" button calls Notification.send(notification, msg) with
+			// monitorJSON/heartbeatJSON left at their null defaults (server.js, the
+			// testNotification handler), so the webhook body is { heartbeat: null,
+			// monitor: null, msg } — keys PRESENT, values null. An empty body is accepted as
+			// the same thing for hand-sent probes. Only that shape bypasses validation: a
+			// payload with one real field and the other missing/null is a malformed alert
+			// and must fall through to the strict parse (400), not become a phantom
+			// "Test Alert".
 			const raw: unknown = req.body;
-			const isTestRequest =
-				raw === undefined ||
-				raw === null ||
-				(typeof raw === 'object' && !('heartbeat' in raw) && !('monitor' in raw));
+			const field = (key: 'heartbeat' | 'monitor'): unknown =>
+				typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>)[key] : undefined;
+			const isTestRequest = field('heartbeat') == null && field('monitor') == null;
 			if (isTestRequest) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
