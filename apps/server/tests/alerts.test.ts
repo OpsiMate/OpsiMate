@@ -1308,7 +1308,7 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send(payload);
 
-			expect(response.status).toBe(200);
+			expect(response.status).toBe(400);
 		});
 
 		// Real Uptime Kuma heartbeats carry status as a NUMBER (0/1/2). A schema written
@@ -1335,6 +1335,21 @@ describe('Alerts API', () => {
 				.send({ heartbeat: { ...baseHeartbeat, time: 'not-a-date' }, monitor: baseMonitor, msg: 'x' });
 			expect(response.status).toBe(400);
 			expect(response.body.error).toBe('Validation error');
+		});
+
+		test('a partial payload (heartbeat without monitor) is a 400, not a phantom test alert', async () => {
+			const before = (
+				db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number }
+			).c;
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: baseHeartbeat, msg: 'no monitor' });
+			expect(response.status).toBe(400);
+			const after = (
+				db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number }
+			).c;
+			expect(after).toBe(before);
 		});
 
 		test('should create a test alert for an empty request body', async () => {

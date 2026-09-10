@@ -270,7 +270,11 @@ export class AlertController {
 		try {
 			const body = req.body as UptimeKumaWebhookTestPayload;
 
-			if (!body?.heartbeat || !body?.monitor) {
+			// Uptime Kuma's "Test" notification sends NEITHER heartbeat nor monitor. Only
+			// that shape bypasses validation; a payload carrying one but not the other is
+			// a malformed real alert and must fall through to the strict parse (400), not
+			// be persisted as a phantom "Test Alert".
+			if (!body?.heartbeat && !body?.monitor) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),
