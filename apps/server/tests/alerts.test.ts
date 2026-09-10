@@ -1308,7 +1308,7 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send(payload);
 
-			expect(response.status).toBe(200);
+			expect(response.status).toBe(400);
 		});
 
 		// Real Uptime Kuma heartbeats carry status as a NUMBER (0/1/2). A schema written
@@ -1335,6 +1335,38 @@ describe('Alerts API', () => {
 				.send({ heartbeat: { ...baseHeartbeat, time: 'not-a-date' }, monitor: baseMonitor, msg: 'x' });
 			expect(response.status).toBe(400);
 			expect(response.body.error).toBe('Validation error');
+		});
+
+		// Grounded in Uptime Kuma's source: the Test button calls
+		// Notification.send(notification, msg) with monitorJSON/heartbeatJSON at their
+		// null defaults, so the real test body is { heartbeat: null, monitor: null, msg }.
+		// A presence check ("key in body") would 400 it and break every integration setup.
+		test('the REAL Uptime Kuma Test payload (both fields null) creates a test alert', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: null, monitor: null, msg: 'My Webhook Testing' });
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ success: true, data: null });
+		});
+
+		test('one real field with the other null/missing is a 400, not a phantom test alert', async () => {
+			const count = () =>
+				(db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number })
+					.c;
+			const before = count();
+			for (const payload of [
+				{ heartbeat: null, monitor: baseMonitor, msg: 'x' },
+				{ heartbeat: baseHeartbeat, monitor: null, msg: 'x' },
+				{ heartbeat: baseHeartbeat, msg: 'x' },
+			]) {
+				const response = await app
+					.post('/api/v1/alerts/custom/uptimekuma')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(payload);
+				expect(response.status, JSON.stringify(payload)).toBe(400);
+			}
+			expect(count()).toBe(before);
 		});
 
 		test('should create a test alert for an empty request body', async () => {
