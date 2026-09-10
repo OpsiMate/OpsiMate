@@ -471,10 +471,14 @@ export class AlertController {
 	async createCustomGCPAlert(req: Request, res: Response) {
 		try {
 			// Specific message for the most common misconfiguration, before strict parsing.
-			if (!req.body?.incident) {
+			// req.body is `any` on Express's Request — narrow through unknown so the check
+			// is typed (the server lints with --max-warnings=0).
+			const raw: unknown = req.body;
+			const hasIncident = typeof raw === 'object' && raw !== null && 'incident' in raw && raw.incident != null;
+			if (!hasIncident) {
 				return res.status(400).json({ success: false, error: 'Missing incident in payload' });
 			}
-			const payload = GcpAlertWebhookSchema.parse(req.body);
+			const payload = GcpAlertWebhookSchema.parse(raw);
 			const incident = payload.incident;
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
