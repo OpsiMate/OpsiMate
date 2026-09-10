@@ -1311,6 +1311,26 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 		});
 
+		test('should create a test alert for an empty request body', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send();
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ success: true, data: null });
+
+			const row = db
+				.prepare("SELECT type, status, alert_name, summary FROM alerts WHERE alert_name = 'Test Alert'")
+				.get();
+			expect(row).toEqual({
+				type: 'UptimeKuma',
+				status: 'firing',
+				alert_name: 'Test Alert',
+				summary: 'Test Alert by UptimeKuma was created successfully',
+			});
+		});
+
 		// ----------------------------------------
 		// TEST 4: Unauthorized = 401 without token
 		// ----------------------------------------
