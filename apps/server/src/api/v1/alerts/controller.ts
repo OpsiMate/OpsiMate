@@ -16,14 +16,15 @@ import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
 	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
-	GcpAlertWebhook,
+	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
 	HttpAlertWebhookSchema,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
-	UptimeKumaWebhookPayload,
-	ZabbixWebhookPayload,
+	UptimeKumaWebhookPayloadSchema,
+	ZabbixWebhookPayloadSchema,
+	UptimeKumaWebhookTestPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
@@ -267,9 +268,9 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as UptimeKumaWebhookPayload;
+			const body = req.body as UptimeKumaWebhookTestPayload;
 
-			if (!payload?.heartbeat || !payload?.monitor) {
+			if (!body?.heartbeat || !body?.monitor) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),
@@ -286,6 +287,8 @@ export class AlertController {
 
 				return res.status(200).json({ success: true, data: null });
 			}
+
+			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
 
 			const { heartbeat, monitor } = payload;
 			const monitorId = `UPTIMEKUMA_${String(monitor.id)}`;
@@ -329,6 +332,9 @@ export class AlertController {
 				data: { alertId: monitorId, updated: true },
 			});
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error while handling Uptime Kuma alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -336,7 +342,7 @@ export class AlertController {
 
 	async createZabbixAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as ZabbixWebhookPayload;
+			const payload = ZabbixWebhookPayloadSchema.parse(req.body);
 
 			logger.info(`Received Zabbix alert: ${JSON.stringify(payload)}`);
 
@@ -454,6 +460,9 @@ export class AlertController {
 				data: { alertId, updated: true },
 			});
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error while handling Zabbix alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -461,11 +470,16 @@ export class AlertController {
 
 	async createCustomGCPAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as GcpAlertWebhook;
-			const incident = payload.incident;
-			if (!incident) {
-				return res.status(400).json({ error: 'Missing incident in payload' });
+			// Specific message for the most common misconfiguration, before strict parsing.
+			// req.body is `any` on Express's Request — narrow through unknown so the check
+			// is typed (the server lints with --max-warnings=0).
+			const raw: unknown = req.body;
+			const hasIncident = typeof raw === 'object' && raw !== null && 'incident' in raw && raw.incident != null;
+			if (!hasIncident) {
+				return res.status(400).json({ success: false, error: 'Missing incident in payload' });
 			}
+			const payload = GcpAlertWebhookSchema.parse(raw);
+			const incident = payload.incident;
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
@@ -493,6 +507,9 @@ export class AlertController {
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error creating gcp alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
