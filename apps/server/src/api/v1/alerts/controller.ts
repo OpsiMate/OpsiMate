@@ -268,7 +268,6 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-
 			const body = req.body as UptimeKumaWebhookTestPayload;
 
 			if (!body?.heartbeat || !body?.monitor) {
@@ -471,11 +470,12 @@ export class AlertController {
 
 	async createCustomGCPAlert(req: Request, res: Response) {
 		try {
+			// Specific message for the most common misconfiguration, before strict parsing.
+			if (!req.body?.incident) {
+				return res.status(400).json({ success: false, error: 'Missing incident in payload' });
+			}
 			const payload = GcpAlertWebhookSchema.parse(req.body);
 			const incident = payload.incident;
-			if (!incident) {
-				return res.status(400).json({ error: 'Missing incident in payload' });
-			}
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 

@@ -23,7 +23,9 @@ export const GcpIncidentSchema = z.object({
 	resource_name: z.string().optional(),
 	policy_name: z.string().optional(),
 	condition_name: z.string().optional(),
-	state: z.enum(['open', 'acknowledged', 'closed']),
+	// Any state string: the handler only distinguishes 'closed' (resolve) from the
+	// rest (firing), and GCP emits states beyond open/closed (e.g. incident_updated).
+	state: z.string(),
 	started_at: z.union([z.string(), z.number()]),
 	url: z.string(),
 	summary: z.string().optional(),
@@ -202,7 +204,9 @@ export interface UptimeKumaHeartbeat {
 
 export const UptimeKumaHeartbeatSchema = z.object({
 	monitorID: z.number(),
-	status: z.enum([0, 1, 2]), // 0 = down, 1 = up, 2 = pending
+	// z.enum is string-only — numeric literals must be a union or every real
+	// heartbeat (status 0/1/2) fails validation.
+	status: z.union([z.literal(0), z.literal(1), z.literal(2)]), // 0 = down, 1 = up, 2 = pending
 	time: dateString, // "2025-11-29 15:20:31.368"
 	msg: z.string(),
 	important: z.boolean(),
@@ -298,78 +302,15 @@ export interface UptimeKumaMonitor {
 	includeSensitiveData: boolean;
 }
 
+// Only the fields the handler reads are required. Uptime Kuma's monitor object
+// carries 40+ type-specific fields (mqttTopic, databaseQuery, dns_resolve_server, ...)
+// that are simply absent for other monitor types — requiring them rejected every
+// real webhook. Unknown keys pass through (z.object strips them by default).
 export const UptimeKumaMonitorSchema = z.object({
-	tags: z.array(UptimeKumaTagSchema),
 	id: z.number(),
-	name: z.string(),
-	description: z.string().nullable(),
-	path: z.array(z.string()),
-	pathName: z.string(),
-	parent: z.number().nullable(),
-	childrenIDs: z.array(z.number()),
-	url: z.string().nullable(),
-	method: z.string().nullable(),
-	hostname: z.string().nullable(),
-	port: z.number().nullable(),
-	maxretries: z.number(),
-	weight: z.number(),
-	active: z.boolean(),
-	forceInactive: z.boolean(),
-	type: z.string(),
-	timeout: z.number(),
-	interval: z.number(),
-	retryInterval: z.number(),
-	resendInterval: z.number(),
-	keyword: z.string().nullable(),
-	invertKeyword: z.boolean(),
-	expiryNotification: z.boolean(),
-	ignoreTls: z.boolean(),
-	upsideDown: z.boolean(),
-	packetSize: z.number(),
-	maxredirects: z.number(),
-	accepted_statuscodes: z.array(z.string()),
-	dns_resolve_type: z.string(),
-	dns_resolve_server: z.string(),
-	dns_last_result: z.string().nullable(),
-	docker_container: z.string(),
-	docker_host: z.string().nullable(),
-	proxyId: z.number().nullable(),
-	notificationIDList: z.record(z.string(), z.boolean()),
-	maintenance: z.boolean(),
-	mqttTopic: z.string(),
-	mqttSuccessMessage: z.string(),
-	mqttCheckType: z.string(),
-	databaseQuery: z.string().nullable(),
-	authMethod: z.string().nullable(),
-	grpcUrl: z.string().nullable(),
-	grpcProtobuf: z.string().nullable(),
-	grpcMethod: z.string().nullable(),
-	grpcServiceName: z.string().nullable(),
-	grpcEnableTls: z.boolean(),
-	radiusCalledStationId: z.string().nullable(),
-	radiusCallingStationId: z.string().nullable(),
-	game: z.string().nullable(),
-	gamedigGivenPortOnly: z.boolean(),
-	httpBodyEncoding: z.string().nullable(),
-	jsonPath: z.string().nullable(),
-	expectedValue: z.string().nullable(),
-	kafkaProducerTopic: z.string().nullable(),
-	kafkaProducerBrokers: z.array(z.string()),
-	kafkaProducerSsl: z.boolean(),
-	kafkaProducerAllowAutoTopicCreation: z.boolean(),
-	kafkaProducerMessage: z.string().nullable(),
-	screenshot: z.string().nullable(),
-	cacheBust: z.boolean(),
-	remote_browser: z.string().nullable(),
-	snmpOid: z.string().nullable(),
-	jsonPathOperator: z.string().nullable(),
-	snmpVersion: z.string(),
-	smtpSecurity: z.string().nullable(),
-	ipFamily: z.number().nullable(),
-	ping_numeric: z.boolean(),
-	ping_count: z.number(),
-	ping_per_request_timeout: z.number(),
-	includeSensitiveData: z.boolean(),
+	name: z.string().nullable().optional(),
+	pathName: z.string().nullable().optional(),
+	tags: z.array(UptimeKumaTagSchema).optional().default([]),
 });
 
 export interface UptimeKumaWebhookPayload {
