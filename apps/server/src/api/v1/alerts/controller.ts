@@ -21,6 +21,7 @@ import {
 	SilenceAlertBodySchema,
 	UptimeKumaWebhookPayloadSchema,
 	ZabbixWebhookPayloadSchema,
+	UptimeKumaWebhookTestPayload,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
@@ -260,7 +261,10 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			if (!req.body?.heartbeat || !req.body?.monitor) {
+
+			const body = req.body as UptimeKumaWebhookTestPayload;
+
+			if (!body?.heartbeat || !body?.monitor) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),

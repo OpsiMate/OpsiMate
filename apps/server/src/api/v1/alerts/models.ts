@@ -384,6 +384,8 @@ export const UptimeKumaWebhookPayloadSchema = z.object({
 	msg: z.string(),
 });
 
+export type UptimeKumaWebhookTestPayload = Partial<z.infer<typeof UptimeKumaWebhookPayloadSchema>>;
+
 /**
  * Zabbix webhook payload
  *
