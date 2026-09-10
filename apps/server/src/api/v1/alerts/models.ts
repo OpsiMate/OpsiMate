@@ -17,21 +17,21 @@ export interface GcpIncident {
 }
 
 export const GcpIncidentSchema = z.object({
-  policy_user_labels: z.record(z.string(), z.string()).optional(),
-  incident_id: z.string(),
-  resource_id: z.string().optional(),
-  resource_name: z.string().optional(),
-  policy_name: z.string().optional(),
-  condition_name: z.string().optional(),
-  state: z.enum(["open", "acknowledged", "closed"]),
-  started_at: z.union([z.string(), z.number()]),
-  url: z.string(),
-  summary: z.string().optional(),
-  documentation: z
-    .object({
-      content: z.string().optional(),
-    })
-    .optional(),
+	policy_user_labels: z.record(z.string(), z.string()).optional(),
+	incident_id: z.string(),
+	resource_id: z.string().optional(),
+	resource_name: z.string().optional(),
+	policy_name: z.string().optional(),
+	condition_name: z.string().optional(),
+	state: z.enum(['open', 'acknowledged', 'closed']),
+	started_at: z.union([z.string(), z.number()]),
+	url: z.string(),
+	summary: z.string().optional(),
+	documentation: z
+		.object({
+			content: z.string().optional(),
+		})
+		.optional(),
 });
 
 export interface GcpAlertWebhook {
@@ -39,11 +39,10 @@ export interface GcpAlertWebhook {
 	incident: GcpIncident;
 }
 
-export const GcpAlertWebhookSchema = z
-	.object({
-		version: z.union([z.string(), z.number()]).optional(),
-		incident: GcpIncidentSchema,
-	});
+export const GcpAlertWebhookSchema = z.object({
+	version: z.union([z.string(), z.number()]).optional(),
+	incident: GcpIncidentSchema,
+});
 
 const isoDateString = z.string().refine(
 	(s) => {
@@ -187,6 +186,8 @@ export const SetAlertOwnerSchema = z.object({
 	ownerId: z.string().nullable(),
 });
 
+const dateString = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date');
+
 export interface UptimeKumaHeartbeat {
 	monitorID: number;
 	status: 0 | 1 | 2; // 0 = down, 1 = up, 2 = pending
@@ -199,18 +200,17 @@ export interface UptimeKumaHeartbeat {
 	localDateTime: string;
 }
 
-export const UptimeKumaHeartbeatSchema = z
-	.object({
-		monitorID: z.number(),
-		status: z.enum([0, 1, 2]), // 0 = down, 1 = up, 2 = pending
-		time: z.string(), // "2025-11-29 15:20:31.368"
-		msg: z.string(),
-		important: z.boolean(),
-		retries: z.number(),
-		timezone: z.string(),
-		timezoneOffset: z.string(),
-		localDateTime: z.string(),
-	});
+export const UptimeKumaHeartbeatSchema = z.object({
+	monitorID: z.number(),
+	status: z.enum([0, 1, 2]), // 0 = down, 1 = up, 2 = pending
+	time: dateString, // "2025-11-29 15:20:31.368"
+	msg: z.string(),
+	important: z.boolean(),
+	retries: z.number(),
+	timezone: z.string(),
+	timezoneOffset: z.string(),
+	localDateTime: dateString,
+});
 
 export interface UptimeKumaTag {
 	id: number;
@@ -298,8 +298,7 @@ export interface UptimeKumaMonitor {
 	includeSensitiveData: boolean;
 }
 
-export const UptimeKumaMonitorSchema = z
-	.object({
+export const UptimeKumaMonitorSchema = z.object({
 	tags: z.array(UptimeKumaTagSchema),
 	id: z.number(),
 	name: z.string(),
@@ -371,7 +370,7 @@ export const UptimeKumaMonitorSchema = z
 	ping_count: z.number(),
 	ping_per_request_timeout: z.number(),
 	includeSensitiveData: z.boolean(),
-	});
+});
 
 export interface UptimeKumaWebhookPayload {
 	heartbeat: UptimeKumaHeartbeat;
@@ -379,12 +378,11 @@ export interface UptimeKumaWebhookPayload {
 	msg: string;
 }
 
-export const UptimeKumaWebhookPayloadSchema = z
-	.object({
-		heartbeat: UptimeKumaHeartbeatSchema,
-		monitor: UptimeKumaMonitorSchema,
-		msg: z.string(),
-	});
+export const UptimeKumaWebhookPayloadSchema = z.object({
+	heartbeat: UptimeKumaHeartbeatSchema,
+	monitor: UptimeKumaMonitorSchema,
+	msg: z.string(),
+});
 
 /**
  * Zabbix webhook payload
@@ -440,28 +438,28 @@ export interface ZabbixWebhookPayload {
 }
 
 export const ZabbixWebhookPayloadSchema = z
-  .object({
-    event_id: z.string().optional(),
-    event_name: z.string().optional(),
-    host_name: z.string().optional(),
-    host_ip: z.string().optional(),
-    trigger_id: z.string().optional(),
-    trigger_name: z.string().optional(),
-    trigger_severity: z.string().optional(),
-    trigger_status: z.string().optional(), // "PROBLEM" or "OK"
-    event_date: z.string().optional(),
-    event_time: z.string().optional(),
-    event_value: z.string().optional(), // "1" for problem, "0" for resolved
-    event_tags: z.string().optional(),
-    item_name: z.string().optional(),
-    item_value: z.string().optional(),
-    alert_message: z.string().optional(),
-    event_recovery_date: z.string().optional(),
-    event_recovery_time: z.string().optional(),
-    zabbix_url: z.string().optional(), // Base URL of the Zabbix server
-    trigger_url: z.string().optional(), // Direct URL to the trigger (from {TRIGGER.URL} macro)
-  })
-  .catchall(z.string().optional());
+	.object({
+		event_id: z.string().optional(),
+		event_name: z.string().optional(),
+		host_name: z.string().optional(),
+		host_ip: z.string().optional(),
+		trigger_id: z.string().optional(),
+		trigger_name: z.string().optional(),
+		trigger_severity: z.string().optional(),
+		trigger_status: z.string().optional(), // "PROBLEM" or "OK"
+		event_date: z.string().optional(),
+		event_time: z.string().optional(),
+		event_value: z.string().optional(), // "1" for problem, "0" for resolved
+		event_tags: z.string().optional(),
+		item_name: z.string().optional(),
+		item_value: z.string().optional(),
+		alert_message: z.string().optional(),
+		event_recovery_date: z.string().optional(),
+		event_recovery_time: z.string().optional(),
+		zabbix_url: z.string().optional(), // Base URL of the Zabbix server
+		trigger_url: z.string().optional(), // Direct URL to the trigger (from {TRIGGER.URL} macro)
+	})
+	.catchall(z.string().optional());
 
 // ---------- list-query params (Phase 1: server-side filtering/paging) ----------
 
