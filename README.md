@@ -3,10 +3,11 @@
 </p>
 
 <h1 align="center">OpsiMate</h1>
-<p align="center"><b>Unified Alert Management & Monitoring Platform</b></p>
+<p align="center"><b>One alert queue for all your monitoring tools.</b></p>
 <p align="center">
-  Built for DevOps/NOC/IT teams to centralize alerts from multiple sources,
-  monitor system health, and respond to incidents faster.
+  Grafana, Datadog, Zabbix, Uptime Kuma and Google Cloud each have their own alert list.
+  OpsiMate gives your NOC one screen: every alert, one owner, one place to say
+  "we know, it's handled" — self-hosted, one container, no SaaS.
 </p>
 
 <p align="center">
@@ -38,88 +39,90 @@
 
 ---
 
-### TL;DR
-- 🚨 **Centralized Alert Management** - Aggregate alerts from any platform!
-- 📊 **Smart Filtering & Grouping** - Organize alerts by type, status, tags, and custom criteria
-- 🎯 **Quick Actions** - Acknowledge, resolve, and manage alerts with one click
-- 🏷️ **Flexible Tagging** - Categorize and filter alerts for faster incident response
+<p align="center">
+  <a href="https://demo.opsimate.dev/">
+    <img src="assets/images/root-cause.gif" alt="An alert arrives, its root cause is already attached, the operator rates it — click to open the live demo" width="900" />
+  </a>
+  <br/>
+  <sub>👆 An alert with its root cause attached, rated by the on-call engineer. Click for the live demo — no signup.</sub>
+</p>
 
-### Alert Management Dashboard
+### What you get
 
-![OpsiMate Alerts Dashboard](assets/images/dashboard.png)
+- 🚨 **One queue** — alerts from every source, deduplicated by ID, with owner, status and comments on each
+- 🔎 **Filter, search, group** — by severity, source, tag, team, time window; save the view as a dashboard
+- 🔕 **Mute policies** — scheduled or ad-hoc silences that match on any alert field, without deleting anything
+- 🏷️ **Enrichment rules** — add tags, links and runbooks to alerts as they arrive, by pattern
+- 🧠 **Root cause analysis** — your system pushes a root cause per alert via the API; operators rate it 👍/👎 and the verdict is relayed back to the sender
+- 📈 **Insights** — MTTR, MTTA, volume and re-fire trends, per tag, with hourly resolution on short windows
+- ☎️ **On-call teams** and role-based access (admin / editor / viewer)
 
-### TV Mode for NOC Displays
+</br>
 
-![OpsiMate TV Mode](assets/images/tv-mode.png)
+<table>
+<tr>
+  <td width="50%"><img src="assets/images/dashboard.png" alt="The alert queue: 500 alerts from Grafana, GCP and Uptime Kuma in one table with owner, severity and status" /><br/><sub><b>One queue</b> — every source, one table, one owner per alert</sub></td>
+  <td width="50%"><img src="assets/images/insights.png" alt="Insights: alert volume by severity over 7 days, peak hours, busiest days" /><br/><sub><b>Insights</b> — volume, MTTR/MTTA and re-fire trends</sub></td>
+</tr>
+</table>
 
 </br>
 
 ## Key Features
 
-### 🚨 Alert Integrations
+### 🚨 Alert sources
 
-OpsiMate connects with your existing monitoring tools to centralize all alerts in one place:
+Every integration is a webhook — point your tool at OpsiMate and alerts appear in the queue:
 
 <table>
 <tr>
-    <td align="center" width="150">
+    <td align="center" width="140">
         <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/grafana/grafana-original.svg" alt="Grafana"/><br/>
-        <strong>Grafana</strong><br/>
-        <span style="font-size: 12px;">Webhook alerts</span>
+        <strong>Grafana</strong>
     </td>
-    <td align="center" width="150">
-        <img width="40" src="https://www.gstatic.com/pantheon/images/welcome/supercloud.svg" alt="GCP"/><br/>
-        <strong>Google Cloud</strong><br/>
-        <span style="font-size: 12px;">Cloud Monitoring</span>
+    <td align="center" width="140">
+        <img width="40" src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/datadog.svg" alt="Datadog"/><br/>
+        <strong>Datadog</strong>
     </td>
-    <td align="center" width="150">
+    <td align="center" width="140">
+        <img width="40" src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/zabbix.svg" alt="Zabbix"/><br/>
+        <strong>Zabbix</strong>
+    </td>
+    <td align="center" width="140">
         <img width="40" src="https://uptime.kuma.pet/img/icon.svg" alt="Uptime Kuma"/><br/>
-        <strong>Uptime Kuma</strong><br/>
-        <span style="font-size: 12px;">Uptime alerts</span>
+        <strong>Uptime Kuma</strong>
     </td>
-    <td align="center" width="150">
+    <td align="center" width="140">
+        <img width="40" src="https://www.gstatic.com/pantheon/images/welcome/supercloud.svg" alt="Google Cloud"/><br/>
+        <strong>Google Cloud</strong>
+    </td>
+    <td align="center" width="140">
         <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/prometheus/prometheus-original.svg" alt="Custom"/><br/>
-        <strong>Custom Webhooks</strong><br/>
-        <span style="font-size: 12px;">Any source</span>
+        <strong>Anything else</strong><br/>
+        <sub>generic webhook</sub>
     </td>
 </tr>
 </table>
 
-### 📊 Service Discovery & Monitoring
+Each source has a setup guide in the app (Integrations → Add) with the exact webhook URL to paste.
 
-Automatically discover and monitor services across your infrastructure:
+## Run it
 
-<table>
-<tr>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg" alt="Docker"/><br/>
-        Docker
-    </td>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kubernetes/kubernetes-plain.svg" alt="Kubernetes"/><br/>
-        Kubernetes
-    </td>
-    <td align="center" width="150">
-        <img width="40" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux VMs"/><br/>
-        Linux VMs (systemd)
-    </td>
-</tr>
-</table>
+### Docker — one command, nothing to clone
 
-
-### Docker Deployment
-
-Run OpsiMate locally quickly with Docker and a single command — no cloning or building required.
-
-### Run OpsiMate with one command
-#### Open your terminal and run:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
+
 **Access the application:**
 - **Backend:** [http://localhost:3001](http://localhost:3001)
 - **Client:** [http://localhost:8080](http://localhost:8080)
 
+The first account you register becomes the admin.
+
+### Kubernetes
+
+A Helm chart lives in [`infrastructure/helm`](infrastructure/helm); Terraform for the surrounding infra is in [`infrastructure/terraform`](infrastructure/terraform). See the [deployment docs](https://docs.opsimate.dev/docs/getting-started/deploy).
 
 ### Volume Mounts (optional but recommended)
 
@@ -129,16 +132,9 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 | `/app/data/private-keys` | SSH private keys for authentication | Backend + Worker |
 | `/app/config/config.yml` | Custom configuration | Backend + Worker |
 
-## Configuration
-
-OpsiMate uses YAML configuration file
-
-
-
-### Example Configuration
+### Configuration
 
 ```yaml
-# OpsiMate Configuration
 server:
   port: 3001
   host: "0.0.0.0"
@@ -148,31 +144,38 @@ database:
 
 security:
   private_keys_path: "/app/data/private-keys"
-
-vm:
-  try_with_sudo: false
+  # Machine-to-machine token: your monitoring tools send it as X-API-Token
+  # when pushing alerts and root causes. Change it.
+  api_token: "change-me"
 ```
+
+Set `ENCRYPTION_KEY` (credentials at rest — the server warns at startup if it's missing) and `JWT_SECRET` (session signing) in the environment for anything beyond a laptop.
 
 ## Contributing
 
-We welcome contributions to OpsiMate! Here's how you can help:
+New here? Start with a [`good first issue`](https://github.com/OpsiMate/OpsiMate/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) — each one names the exact file and line, and a maintainer reviews within a day or two.
 
-### Areas for Contribution
+```bash
+pnpm install
+pnpm dev            # client on :8080, server on :3001
+pnpm run check      # lint + prettier — run this before you push; CI runs the same
+pnpm test
+```
 
-- **New Alert Integrations** - Add support for additional monitoring platforms (Datadog, New Relic, etc.)
-- **Alert Routing & Escalation** - Implement advanced alert routing and escalation policies
-- **UI/UX Improvements** - Enhance the alert dashboard and user experience
-- **Performance Optimizations** - Improve alert processing and dashboard responsiveness
-- **Documentation** - Help improve integration guides and documentation
+Bigger areas where help is welcome: new alert sources, the incident-management work, and the AI investigation agent (see roadmap).
 
 ## Roadmap
 
-### Upcoming Features
+**Recently shipped**
+- 📈 Alert Insights — MTTR / MTTA / volume trends, hourly on short windows
+- 🧠 Root cause analysis via API, with operator ratings fed back to the sender
+- 🤖 AI-powered alert search
+- ⚡ Server-side query engine — the queue stays fast at 10K+ alerts
 
-- **📊 Alert Analytics** - Trends, patterns, and incident reports
-- **🤖 AI-Powered Insights** - Intelligent alert correlation and noise reduction
-- **🔄 Incident Management** - Full incident lifecycle management and postmortems
-
+**Next**
+- 🤖 **Built-in investigation agent** — one-click root cause that actually looks at your cluster, logs and metrics ([HolmesGPT](https://holmesgpt.dev) integration, in design)
+- 🔄 **Incidents** — group related alerts into a named incident with a timeline and postmortem
+- 📣 **Alert routing** — escalation to Slack / on-call by severity and team
 
 ## Support
 
@@ -184,9 +187,8 @@ We welcome contributions to OpsiMate! Here's how you can help:
 ---
 
 <div align="center">
-  <p>Built with ❤️ by the OpsiMate team</p>
-  <p>© 2025 OpsiMate. All rights reserved.</p>
-</div> 
+  <p>Built with ❤️ by the OpsiMate team · <a href="LICENSE">AGPL-3.0</a></p>
+</div>
 
 ## 💖 Our Amazing Contributors
 
