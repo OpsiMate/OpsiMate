@@ -3,7 +3,10 @@ import { extractTagKeyFromColumnId, getTagKeyColumnId, isTagKeyColumn } from '@/
 
 describe('TagKey column ID helpers', () => {
 	it.each(['environment', 'team', 'service:name'])('round trips the tag key %j', (tagKey) => {
-		expect(extractTagKeyFromColumnId(getTagKeyColumnId(tagKey))).toBe(tagKey);
+		const columnId = getTagKeyColumnId(tagKey);
+		expect(columnId).toBe(`tagKey:${tagKey}`);
+		expect(extractTagKeyFromColumnId(columnId)).toBe(tagKey);
+		expect(isTagKeyColumn(columnId)).toBe(true);
 	});
 
 	it.each(['alertName', 'severity'])('does not treat %j as a tag column', (columnId) => {
