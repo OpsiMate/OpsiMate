@@ -41,10 +41,10 @@
 
 <p align="center">
   <a href="https://demo.opsimate.dev/">
-    <img src="assets/images/dashboard.png" alt="OpsiMate alerts dashboard — click to open the live demo" width="900" />
+    <img src="assets/images/root-cause.gif" alt="An alert arrives, its root cause is already attached, the operator rates it — click to open the live demo" width="900" />
   </a>
   <br/>
-  <sub>👆 Click for the live demo — no signup.</sub>
+  <sub>👆 An alert with its root cause attached, rated by the on-call engineer. Click for the live demo — no signup.</sub>
 </p>
 
 ### What you get
@@ -55,8 +55,16 @@
 - 🏷️ **Enrichment rules** — add tags, links and runbooks to alerts as they arrive, by pattern
 - 🧠 **Root cause analysis** — your system pushes a root cause per alert via the API; operators rate it 👍/👎 and the verdict is relayed back to the sender
 - 📈 **Insights** — MTTR, MTTA, volume and re-fire trends, per tag, with hourly resolution on short windows
-- 📺 **TV mode** — a NOC wall display that stays out of the way
 - ☎️ **On-call teams** and role-based access (admin / editor / viewer)
+
+</br>
+
+<table>
+<tr>
+  <td width="50%"><img src="assets/images/dashboard.png" alt="The alert queue: 500 alerts from Grafana, GCP and Uptime Kuma in one table with owner, severity and status" /><br/><sub><b>One queue</b> — every source, one table, one owner per alert</sub></td>
+  <td width="50%"><img src="assets/images/insights.png" alt="Insights: alert volume by severity over 7 days, peak hours, busiest days" /><br/><sub><b>Insights</b> — volume, MTTR/MTTA and re-fire trends</sub></td>
+</tr>
+</table>
 
 </br>
 
