@@ -433,6 +433,14 @@ export interface AlertComment {
 	updatedAt: string;
 }
 
+// Build identity of the running server, from GET /version. The release workflow bakes
+// these into the image; a local/dev build reports version "dev" with no commit.
+export interface AppVersionInfo {
+	version: string;
+	commit: string | null;
+	buildDate: string | null;
+}
+
 // Who produced a root-cause analysis: an external system pushing through the API
 // ("bring your own"), or the built-in AI agent (phase 2).
 export type RootCauseSource = 'api' | 'ai';
