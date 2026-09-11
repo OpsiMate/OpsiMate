@@ -1,4 +1,6 @@
-export { Role } from '@OpsiMate/shared';
+import { Role } from '@OpsiMate/shared';
+
+export { Role };
 
 export interface User {
 	id: number;
