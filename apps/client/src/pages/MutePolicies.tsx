@@ -23,16 +23,11 @@ import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat
 import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
+import { isScheduleActiveNow } from '@OpsiMate/shared';
 
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const isScheduleActiveNow = (schedule: NonNullable<MutePolicy['schedule']>, now: Date = new Date()): boolean => {
-	if (!schedule.daysOfWeek?.includes(now.getDay())) return false;
-	const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-	return current >= schedule.startTime && current < schedule.endTime;
-};
 
 const getStatus = (s: MutePolicy): MutePolicyStatus => {
 	if (s.schedule) {
