@@ -1,13 +1,6 @@
+import { Role } from '@OpsiMate/shared';
 import { getUserRole } from './auth';
 import { isPlaygroundMode } from './playground';
-
-// Local role definitions for client-side use
-enum Role {
-	Admin = 'admin',
-	Editor = 'editor',
-	Viewer = 'viewer',
-	Operation = 'operation',
-}
 
 export type Permission = 'create' | 'edit' | 'delete' | 'view' | 'operate';
 
