@@ -114,18 +114,23 @@ Each source has a setup guide in the app (Integrations → Add) with the exact w
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 
-Then open **http://localhost:8080** — the first account you register becomes the admin.
+**Access the application:**
+- **Backend:** [http://localhost:3001](http://localhost:3001)
+- **Client:** [http://localhost:8080](http://localhost:8080)
+
+The first account you register becomes the admin.
 
 ### Kubernetes
 
 A Helm chart lives in [`infrastructure/helm`](infrastructure/helm); Terraform for the surrounding infra is in [`infrastructure/terraform`](infrastructure/terraform). See the [deployment docs](https://docs.opsimate.dev/docs/getting-started/deploy).
 
-### Persist your data
+### Volume Mounts (optional but recommended)
 
-| Mount | What lives there |
-|---|---|
-| `/app/data/database` | the SQLite database — **mount this or you lose everything on restart** |
-| `/app/config/config.yml` | your configuration (below) |
+| Volume | Purpose | Required For |
+|--------|---------|--------------|
+| `/app/data/database` | SQLite database persistence | Backend + Worker |
+| `/app/data/private-keys` | SSH private keys for authentication | Backend + Worker |
+| `/app/config/config.yml` | Custom configuration | Backend + Worker |
 
 ### Configuration
 
