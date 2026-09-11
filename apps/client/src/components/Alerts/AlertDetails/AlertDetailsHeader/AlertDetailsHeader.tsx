@@ -16,7 +16,13 @@ export const AlertDetailsHeader = ({ onClose, className, actions }: AlertDetails
 			<h2 className="text-lg font-semibold text-foreground">Alert Details</h2>
 			<div className="flex items-center gap-0.5">
 				{actions}
-				<Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-foreground">
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={onClose}
+					aria-label="Close details"
+					className="h-8 w-8 text-foreground"
+				>
 					<X className="h-4 w-4" />
 				</Button>
 			</div>
