@@ -73,6 +73,7 @@ export const CommentItem = ({
 								size="icon"
 								className="h-6 w-6 text-muted-foreground hover:text-foreground"
 								onClick={() => setIsEditing(true)}
+								aria-label="Edit comment"
 								disabled={isUpdating}
 							>
 								<Pencil className="h-3 w-3" />
@@ -82,6 +83,7 @@ export const CommentItem = ({
 								size="icon"
 								className="h-6 w-6 text-muted-foreground hover:text-destructive"
 								onClick={() => onDelete(comment.id)}
+								aria-label="Delete comment"
 								disabled={isDeleting}
 							>
 								<Trash2 className="h-3 w-3" />
