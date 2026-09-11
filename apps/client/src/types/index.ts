@@ -1,10 +1,6 @@
-// Client-side type definitions
-export enum Role {
-	Admin = 'admin',
-	Editor = 'editor',
-	Viewer = 'viewer',
-	Operation = 'operation',
-}
+import { Role } from '@OpsiMate/shared';
+
+export { Role } from '@OpsiMate/shared';
 
 export interface User {
 	id: number;
