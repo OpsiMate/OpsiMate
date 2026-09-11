@@ -1,5 +1,3 @@
-import { Role } from '@OpsiMate/shared';
-
 export { Role } from '@OpsiMate/shared';
 
 export interface User {
