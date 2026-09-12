@@ -6,6 +6,9 @@ import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
 
+// Work factor used for every password hash created by this module.
+const BCRYPT_SALT_ROUNDS = 10;
+
 const logger = new Logger('bl/users/user.bl');
 
 export class UserBL {
@@ -32,7 +35,7 @@ export class UserBL {
 		if (userCount > 0) {
 			throw new Error('Registration is disabled after first admin');
 		}
-		const hash = await bcrypt.hash(password, 10);
+		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
@@ -49,7 +52,7 @@ export class UserBL {
 	}
 
 	async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
-		const hash = await bcrypt.hash(password, 10);
+		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 		const result = await this.userRepo.createUser(email, hash, fullName, role);
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
@@ -74,7 +77,7 @@ export class UserBL {
 	}
 
 	async resetUserPassword(userId: number, newPassword: string): Promise<void> {
-		const hashedPassword = await bcrypt.hash(newPassword, 10);
+		const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 		await this.userRepo.updateUserPassword(userId, hashedPassword);
 	}
 
@@ -117,7 +120,7 @@ export class UserBL {
 	): Promise<User> {
 		let passwordHash: string | undefined;
 		if (newPassword) {
-			passwordHash = await bcrypt.hash(newPassword, 10);
+			passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 		}
 
 		await this.userRepo.updateUserProfile(id, fullName, passwordHash, phoneNumber);
