@@ -12,7 +12,7 @@ Always design for split subcomponents and strong separation of concerns.
    - Each component must have its own subdirectory with the same name as the component.
    - The main component file is `${componentName}.tsx` inside the subdirectory.
    - Include an `index.ts` file that exports the component for clean imports.
-   - Example: `AlertsHeatmap/AlertsHeatmap.tsx` and `AlertsHeatmap/index.ts`.
+   - Example: `AlertsTable/AlertsTable.tsx` and `AlertsTable/index.ts`.
 
 2. Subcomponents & Hooks:
    - If logic/UI grows, split into subcomponents or hooks.
