@@ -187,7 +187,7 @@ export const RetentionSettings = () => {
 					title: 'Cleanup complete',
 					description:
 						total > 0
-							? `Deleted ${total} row(s).${result.vacuumed ? ' Disk space reclaimed.' : ''}`
+							? `Deleted ${total} row${total !== 1 ? 's' : ''}.${result.vacuumed ? ' Disk space reclaimed.' : ''}`
 							: 'Nothing to delete.',
 				});
 			},
