@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
@@ -17,7 +17,7 @@ export const ZabbixSetupModal = ({ open, onOpenChange }: ZabbixSetupModalProps) 
 	const [copied, setCopied] = useState(false);
 	const [copiedScript, setCopiedScript] = useState(false);
 	const [copiedCurl, setCopiedCurl] = useState(false);
-	const { toast } = useToast();
+	const { copy } = useCopyToClipboard();
 
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom/zabbix?api_token={your_api_token}`;
 
@@ -148,25 +148,13 @@ fi`;
     throw 'OpsiMate webhook error: ' + error;
 }`;
 
-	const handleCopy = async (text: string, setCopiedState: (v: boolean) => void, description: string) => {
-		try {
-			await navigator.clipboard.writeText(text);
-			setCopiedState(true);
-			toast({
-				title: 'Copied!',
-				description,
-				duration: 2000,
-			});
-			setTimeout(() => setCopiedState(false), 2000);
-		} catch {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
-	};
+	const handleCopy = (text: string, setCopiedState: (v: boolean) => void, description: string) =>
+		copy(text, {
+			successDescription: description,
+			failureDescription: 'Please copy manually',
+			onCopied: () => setCopiedState(true),
+			onReset: () => setCopiedState(false),
+		});
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>

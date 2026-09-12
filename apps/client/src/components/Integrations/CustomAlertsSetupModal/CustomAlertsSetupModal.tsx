@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, CheckCircle2, Copy, ExternalLink, Send, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -18,7 +18,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 	const [copiedPayload, setCopiedPayload] = useState(false);
 	const [copiedResolve, setCopiedResolve] = useState(false);
 	const [copiedDelete, setCopiedDelete] = useState(false);
-	const { toast } = useToast();
+	const { copy } = useCopyToClipboard();
 
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom?api_token={your_api_token}`;
 	const resolveUrl = `${API_HOST}/api/v1/alerts/{alertId}?api_token={your_api_token}`;
@@ -39,35 +39,19 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
   ]
 }`;
 
-	const handleCopy = async (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
-		try {
-			await navigator.clipboard.writeText(text);
-			if (type === 'url') {
-				setCopiedUrl(true);
-				setTimeout(() => setCopiedUrl(false), 2000);
-			} else if (type === 'payload') {
-				setCopiedPayload(true);
-				setTimeout(() => setCopiedPayload(false), 2000);
-			} else if (type === 'resolve') {
-				setCopiedResolve(true);
-				setTimeout(() => setCopiedResolve(false), 2000);
-			} else {
-				setCopiedDelete(true);
-				setTimeout(() => setCopiedDelete(false), 2000);
-			}
-			toast({
-				title: 'Copied!',
-				description: type === 'payload' ? 'Example payload copied to clipboard' : 'URL copied to clipboard',
-				duration: 2000,
-			});
-		} catch (error) {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
+	const handleCopy = (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
+		const setCopiedState = {
+			url: setCopiedUrl,
+			payload: setCopiedPayload,
+			resolve: setCopiedResolve,
+			delete: setCopiedDelete,
+		}[type];
+		return copy(text, {
+			successDescription: type === 'payload' ? 'Example payload copied to clipboard' : 'URL copied to clipboard',
+			failureDescription: 'Please copy manually',
+			onCopied: () => setCopiedState(true),
+			onReset: () => setCopiedState(false),
+		});
 	};
 
 	return (
