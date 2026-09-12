@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AiFilterQuerySchema, Logger, Role, UpdateAiConfigSchema } from '@OpsiMate/shared';
+import { AiFilterQuerySchema, Logger, UpdateAiConfigSchema } from '@OpsiMate/shared';
 import { AiBL, AiDisabledError, AiValidationError, BedrockCallError } from '../../../bl/ai/ai.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
@@ -34,18 +34,7 @@ export class AiController {
 		return true;
 	}
 
-	// Org-wide configuration holding a credential — admin-only, same gate the
-	// retention and silence-reset settings use.
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
-
-	getConfigHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
+	getConfigHandler = async (_req: AuthenticatedRequest, res: Response) => {
 		try {
 			const config = await this.aiBL.getConfig();
 			return res.json({ success: true, data: config });
@@ -56,7 +45,6 @@ export class AiController {
 	};
 
 	updateConfigHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const updates = UpdateAiConfigSchema.parse(req.body ?? {});
 			const config = await this.aiBL.updateConfig(updates, req.user);
@@ -111,8 +99,7 @@ export class AiController {
 		}
 	};
 
-	testConnectionHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
+	testConnectionHandler = async (_req: AuthenticatedRequest, res: Response) => {
 		try {
 			const result = await this.aiBL.testConnection();
 			// Always 200: a failed Bedrock call is a RESULT the user asked for, not a
