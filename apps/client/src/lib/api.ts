@@ -1,3 +1,4 @@
+import { AUTH_TOKEN_STORAGE_KEY } from './auth';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	AiConfig,
@@ -63,7 +64,7 @@ async function apiRequest<T>(
 ): Promise<ApiResponse<T>> {
 	const url = `${API_BASE_URL}${endpoint}`;
 
-	const token = localStorage.getItem('jwt');
+	const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 	const options: RequestInit = {
 		method,
 		headers: {
@@ -96,7 +97,7 @@ async function apiRequest<T>(
 			// Try to parse the error as JSON to handle validation errors properly
 
 			if (response.status === 401 && !isPlaygroundMode()) {
-				localStorage.removeItem('jwt');
+				localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 
 				const authPages = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
 				if (!authPages.has(window.location.pathname)) {

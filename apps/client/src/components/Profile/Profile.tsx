@@ -1,3 +1,4 @@
+import { AUTH_TOKEN_STORAGE_KEY } from '@/lib/auth';
 import { useCallback } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ProfileContent, ProfileLoadingState, ProfileErrorState } from '@/components/Profile/components';
@@ -10,7 +11,7 @@ const Profile: React.FC = () => {
 		useProfileEdit({ profile, setProfile });
 
 	const handleLogout = useCallback(() => {
-		localStorage.removeItem('jwt');
+		localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 		window.location.href = '/login';
 	}, []);
 
