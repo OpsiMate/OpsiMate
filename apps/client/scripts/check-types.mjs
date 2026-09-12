@@ -20,9 +20,9 @@ const baselineFile = join(clientDir, 'type-errors-baseline.txt');
 // would never match across environments.
 const repoRoot = resolve(clientDir, '..', '..');
 
-// tsc exits 1 (or 2) when it reports diagnostics — expected. Any OTHER failure means
-// tsc never actually ran (binary missing, bad config path), which must fail the gate
-// loudly instead of looking like "no errors".
+// tsc exits 1 (or 2) when it reports diagnostics — expected. Package-manager and
+// shell failures can use the same exit codes, so require actual diagnostics too.
+// Otherwise a failed invocation would look like "no errors", even in --update mode.
 const runTsc = () => {
 	try {
 		execSync('pnpm exec tsc -p tsconfig.app.json --noEmit', {
@@ -33,7 +33,7 @@ const runTsc = () => {
 		return '';
 	} catch (error) {
 		const output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
-		if (error.status !== 1 && error.status !== 2) {
+		if ((error.status !== 1 && error.status !== 2) || normalize(output).length === 0) {
 			console.error(`Could not run tsc — the client typecheck gate did not execute:\n${output}`);
 			process.exit(2);
 		}
