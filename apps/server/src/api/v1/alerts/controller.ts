@@ -632,6 +632,8 @@ export class AlertController {
 	// ISO timestamps too. Preserve Number()'s accepted numeric forms (including decimals),
 	// then delegate ISO and invalid values to Grafana's established fallback parser.
 	private static toDatadogIsoOrNow(value?: string): string {
+		if (value?.trim() === '') return AlertController.toIsoOrNow(undefined);
+
 		const epochMs = Number(value);
 		if (value !== undefined && Number.isFinite(epochMs)) {
 			const parsed = new Date(epochMs);

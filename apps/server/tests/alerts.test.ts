@@ -1149,6 +1149,56 @@ describe('Alerts API', () => {
 			}
 		});
 
+		test('falls back to current time for empty and whitespace-only timestamps', async () => {
+			const before = Date.now();
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'datadog-blank-timestamps',
+					title: 'Blank timestamps',
+					date: '',
+					last_updated: ' \t ',
+				});
+			const after = Date.now();
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get('datadog-blank-timestamps') as {
+				starts_at: string;
+				updated_at: string;
+			};
+			for (const timestamp of [row.starts_at, row.updated_at]) {
+				const parsed = Date.parse(timestamp);
+				expect(Number.isNaN(parsed)).toBe(false);
+				expect(parsed).toBeGreaterThanOrEqual(before);
+				expect(parsed).toBeLessThanOrEqual(after);
+			}
+		});
+
+		test.each([
+			{ name: 'zero', value: '0' },
+			{ name: 'padded zero', value: ' 0 ' },
+			{ name: 'decimal zero', value: '0.0' },
+		])('preserves $name timestamps as Unix epoch zero', async ({ value }) => {
+			const id = `datadog-${value.trim().replace('.', '-')}-timestamp`;
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id, title: 'Zero timestamp', date: value, last_updated: value });
+
+			expect(response.status).toBe(200);
+			const row = db.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?').get(id) as {
+				starts_at: string;
+				updated_at: string;
+			};
+			expect(row).toEqual({
+				starts_at: '1970-01-01T00:00:00.000Z',
+				updated_at: '1970-01-01T00:00:00.000Z',
+			});
+		});
+
 		test('should resolve an existing Datadog alert when alert_transition is recovered', async () => {
 			const now = '1765302826000';
 			const alertId = 'datadog-alert-resolve';
