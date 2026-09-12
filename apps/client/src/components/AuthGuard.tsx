@@ -1,3 +1,4 @@
+import { AUTH_TOKEN_STORAGE_KEY } from '@/lib/auth';
 import { useUsersExist } from '@/hooks/queries';
 import { isPlaygroundMode } from '@/lib/playground';
 import { useEffect } from 'react';
@@ -19,7 +20,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 		}
 
 		// Check if user is already authenticated
-		const jwt = localStorage.getItem('jwt');
+		const jwt = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 		const isOnRegisterPage = location.pathname === '/register';
 		const isOnLoginPage = location.pathname === '/login';
 		const isOnForgotPasswordPage = location.pathname === '/forgot-password';
@@ -91,7 +92,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 	}
 
 	// If there's an error and no JWT, show error state
-	if (error && !localStorage.getItem('jwt')) {
+	if (error && !localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
 				<div className="text-lg text-red-500">Error loading application</div>

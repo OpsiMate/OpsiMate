@@ -1,3 +1,4 @@
+import { AUTH_TOKEN_STORAGE_KEY } from '../lib/auth';
 import { Logger } from '@OpsiMate/shared';
 import React, { useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert';
@@ -39,7 +40,7 @@ const Register: React.FC = () => {
 			if (res.success) {
 				const token = (res.data && res.data.token) || res.token;
 				if (token) {
-					localStorage.setItem('jwt', token);
+					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
 					window.location.href = '/';
 				} else {
 					// This shouldn't happen in normal flow, but handle it gracefully

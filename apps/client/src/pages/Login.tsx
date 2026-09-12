@@ -1,3 +1,4 @@
+import { AUTH_TOKEN_STORAGE_KEY } from '../lib/auth';
 import { Logger } from '@OpsiMate/shared';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,7 +21,7 @@ const Login: React.FC = () => {
 	});
 
 	useEffect(() => {
-		if (localStorage.getItem('jwt') && window.location.pathname === '/login') {
+		if (localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) && window.location.pathname === '/login') {
 			window.location.href = '/';
 		}
 
@@ -63,7 +64,7 @@ const Login: React.FC = () => {
 			if (res.success) {
 				const token = (res.data && res.data.token) || res.token;
 				if (token) {
-					localStorage.setItem('jwt', token);
+					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
 					window.location.href = '/';
 				} else {
 					logger.error('Login successful but no token received');
