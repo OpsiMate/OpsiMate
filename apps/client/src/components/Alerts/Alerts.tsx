@@ -1166,7 +1166,11 @@ const Alerts = () => {
 								isDraft={!dashboardState.id}
 							/>
 
-							<div className="mt-3 flex items-center gap-4">
+							{/* Wraps rather than clipping: every button in this row is shrink-0, so on a
+							    narrow column (1440px with the details pane open is already one) a single
+							    row squeezes the search field down to a sliver and pushes the time filter
+							    out of sight. */}
+							<div className="mt-3 flex flex-wrap items-center gap-2">
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
 										<Button
@@ -1226,7 +1230,7 @@ const Alerts = () => {
 									</DropdownMenuContent>
 								</DropdownMenu>
 
-								<div className="flex-1 min-w-0">
+								<div className="flex-1 min-w-[192px]">
 									<SearchBar
 										searchTerm={dashboardState.query}
 										onSearchChange={(term) => updateDashboardField('query', term)}
