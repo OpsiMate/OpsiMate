@@ -32,6 +32,7 @@ describe('useFilterPanel', () => {
 
 		expect(filteredAndLimitedFacets).toHaveLength(4);
 		expect(hasMore).toBe(false);
+		// remaining isn't clamped by the hook, so it goes negative once the count is below the limit
 		expect(remaining).toBe(-2);
 	});
 
@@ -54,6 +55,7 @@ describe('useFilterPanel', () => {
 		limited = result.current.getFilteredAndLimitedFacets('status', facets);
 		expect(limited.filteredAndLimitedFacets).toHaveLength(20);
 		expect(limited.hasMore).toBe(false);
+		// same unclamped formula as above: 20 facets - 21 revealed slots = -1
 		expect(limited.remaining).toBe(-1);
 	});
 
