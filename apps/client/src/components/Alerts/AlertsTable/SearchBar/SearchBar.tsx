@@ -85,10 +85,14 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 	};
 
 	return (
-		<div className="relative flex-1 max-w-md">
+		<div className="relative min-w-0 flex-1 max-w-md">
 			<div
 				className={cn(
-					'flex items-center rounded-md border transition-colors',
+					// min-w-0 + overflow-hidden: in a cramped toolbar the wrapper collapses, and
+					// without these the input's automatic minimum size (a text field is ~20
+					// characters wide by default) keeps the row wider than the box and its text
+					// paints over whatever sits to the right of the search field.
+					'flex min-w-0 items-center overflow-hidden rounded-md border transition-colors',
 					aiMode
 						? 'border-violet-400/70 bg-violet-50/50 dark:bg-violet-950/20 ring-1 ring-violet-400/30'
 						: isActive
@@ -114,7 +118,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 					onChange={(e) => (aiMode ? setAiQuery(e.target.value) : setValue(e.target.value))}
 					onKeyDown={handleKeyDown}
 					className={cn(
-						'flex-1 h-7 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground',
+						'min-w-0 flex-1 h-7 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground',
 						aiMode && 'placeholder:text-violet-400/70'
 					)}
 				/>
