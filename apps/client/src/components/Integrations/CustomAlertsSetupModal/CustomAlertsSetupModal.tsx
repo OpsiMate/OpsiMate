@@ -5,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, CheckCircle2, Copy, ExternalLink, Send, Trash2 } from 'lucide-react';
-import { useState } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface CustomAlertsSetupModalProps {
@@ -14,11 +13,10 @@ export interface CustomAlertsSetupModalProps {
 }
 
 export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetupModalProps) => {
-	const [copiedUrl, setCopiedUrl] = useState(false);
-	const [copiedPayload, setCopiedPayload] = useState(false);
-	const [copiedResolve, setCopiedResolve] = useState(false);
-	const [copiedDelete, setCopiedDelete] = useState(false);
-	const { copy } = useCopyToClipboard();
+	const { copied: copiedUrl, copy: copyUrl } = useCopyToClipboard();
+	const { copied: copiedPayload, copy: copyPayload } = useCopyToClipboard();
+	const { copied: copiedResolve, copy: copyResolve } = useCopyToClipboard();
+	const { copied: copiedDelete, copy: copyDelete } = useCopyToClipboard();
 
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom?api_token={your_api_token}`;
 	const resolveUrl = `${API_HOST}/api/v1/alerts/{alertId}?api_token={your_api_token}`;
@@ -40,17 +38,15 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 }`;
 
 	const handleCopy = (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
-		const setCopiedState = {
-			url: setCopiedUrl,
-			payload: setCopiedPayload,
-			resolve: setCopiedResolve,
-			delete: setCopiedDelete,
+		const copy = {
+			url: copyUrl,
+			payload: copyPayload,
+			resolve: copyResolve,
+			delete: copyDelete,
 		}[type];
 		return copy(text, {
 			successDescription: type === 'payload' ? 'Example payload copied to clipboard' : 'URL copied to clipboard',
 			failureDescription: 'Please copy manually',
-			onCopied: () => setCopiedState(true),
-			onReset: () => setCopiedState(false),
 		});
 	};
 

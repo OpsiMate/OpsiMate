@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe('Datadog clipboard behaviour', () => {
-	test('preserves each toast and resets both indicators at the first copy deadline', async () => {
+	test('preserves each toast and gives each button its own feedback deadline', async () => {
 		render(<DatadogSetupModal open onOpenChange={vi.fn()} />);
 		const [webhook, payload] = screen.getAllByRole('button', { name: 'Copy' });
 		await act(async () => {
@@ -44,7 +44,10 @@ describe('Datadog clipboard behaviour', () => {
 		});
 		expect(screen.getAllByRole('button', { name: 'Copied' })).toHaveLength(2);
 		act(() => vi.advanceTimersByTime(1000));
-		expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(2);
+		expect(webhook).toHaveTextContent(/^Copy$/);
+		expect(payload).toHaveTextContent('Copied');
+		act(() => vi.advanceTimersByTime(1000));
+		expect(payload).toHaveTextContent(/^Copy$/);
 	});
 	test('keeps the manual-copy error message after rejection', async () => {
 		writeText.mockRejectedValue(new Error('Denied'));
