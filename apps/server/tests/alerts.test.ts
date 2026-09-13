@@ -1006,6 +1006,19 @@ describe('Alerts API', () => {
 	});
 
 	describe('POST /api/v1/alerts/custom/datadog', () => {
+		interface DatadogAlertRow {
+			alert_name: string;
+			status: string;
+			tags: string | null;
+			starts_at: string;
+			updated_at: string;
+		}
+
+		interface DatadogTimestampRow {
+			starts_at: string;
+			updated_at: string;
+		}
+
 		test('should create a new Datadog alert successfully with valid payload', async () => {
 			const alertId = 'alert-id';
 			const alertInstanceId = 'alert-id-instance';
@@ -1040,13 +1053,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe(alertInstanceId);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as {
-				alert_name: string;
-				status: string;
-				tags: string | null;
-				starts_at: string;
-				updated_at: string;
-			};
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as DatadogAlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.title);
 			expect(row.status).toBe('firing');
@@ -1070,10 +1077,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db
 				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
-				.get('datadog-iso-timestamps') as {
-				starts_at: string;
-				updated_at: string;
-			};
+				.get('datadog-iso-timestamps') as DatadogTimestampRow;
 			expect(row).toEqual({ starts_at: date, updated_at: lastUpdated });
 		});
 
@@ -1093,10 +1097,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db
 				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
-				.get('datadog-decimal-timestamps') as {
-				starts_at: string;
-				updated_at: string;
-			};
+				.get('datadog-decimal-timestamps') as DatadogTimestampRow;
 			expect(row).toEqual({
 				starts_at: new Date(Number(date)).toISOString(),
 				updated_at: new Date(Number(lastUpdated)).toISOString(),
@@ -1114,10 +1115,9 @@ describe('Alerts API', () => {
 				.send({ id, title: 'No last updated', date });
 
 			expect(response.status).toBe(200);
-			const row = db.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?').get(id) as {
-				starts_at: string;
-				updated_at: string;
-			};
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get(id) as DatadogTimestampRow;
 			expect(row).toEqual({ starts_at: expected, updated_at: expected });
 		});
 
@@ -1137,10 +1137,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db
 				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
-				.get('datadog-invalid-timestamps') as {
-				starts_at: string;
-				updated_at: string;
-			};
+				.get('datadog-invalid-timestamps') as DatadogTimestampRow;
 			for (const timestamp of [row.starts_at, row.updated_at]) {
 				const parsed = Date.parse(timestamp);
 				expect(Number.isNaN(parsed)).toBe(false);
@@ -1165,10 +1162,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db
 				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
-				.get('datadog-blank-timestamps') as {
-				starts_at: string;
-				updated_at: string;
-			};
+				.get('datadog-blank-timestamps') as DatadogTimestampRow;
 			for (const timestamp of [row.starts_at, row.updated_at]) {
 				const parsed = Date.parse(timestamp);
 				expect(Number.isNaN(parsed)).toBe(false);
@@ -1181,18 +1175,17 @@ describe('Alerts API', () => {
 			{ name: 'zero', value: '0' },
 			{ name: 'padded zero', value: ' 0 ' },
 			{ name: 'decimal zero', value: '0.0' },
-		])('preserves $name timestamps as Unix epoch zero', async ({ value }) => {
-			const id = `datadog-${value.trim().replace('.', '-')}-timestamp`;
+		])('preserves $name timestamps as Unix epoch zero', async ({ name, value }) => {
+			const id = `datadog-${name.replaceAll(' ', '-')}-timestamp`;
 			const response = await app
 				.post('/api/v1/alerts/custom/datadog')
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send({ id, title: 'Zero timestamp', date: value, last_updated: value });
 
 			expect(response.status).toBe(200);
-			const row = db.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?').get(id) as {
-				starts_at: string;
-				updated_at: string;
-			};
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get(id) as DatadogTimestampRow;
 			expect(row).toEqual({
 				starts_at: '1970-01-01T00:00:00.000Z',
 				updated_at: '1970-01-01T00:00:00.000Z',
