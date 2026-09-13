@@ -18,6 +18,7 @@ import {
 	Action,
 	Alert,
 	AlertComment,
+	AlertRootCause,
 	AlertEnrichment,
 	AlertHistoryData,
 	MutePolicy,
@@ -45,6 +46,7 @@ export interface PlaygroundState {
 	alerts: Alert[];
 	resolvedAlerts: Alert[];
 	alertComments: AlertComment[];
+	rootCauses: AlertRootCause[];
 	providers: Provider[];
 	services: ServiceWithProvider[];
 	tags: Tag[];
@@ -482,6 +484,20 @@ export const playgroundState: PlaygroundState = {
 			alertId: initialAlerts[0]?.id || 'alert-1',
 			userId: getPlaygroundUser().id,
 			comment: 'Investigating this spike now.',
+			createdAt: nowIso(),
+			updatedAt: nowIso(),
+		},
+	],
+	// One demo analysis so the drawer's Root cause section is discoverable in playground.
+	rootCauses: [
+		{
+			alertId: initialAlerts[0]?.id || 'alert-1',
+			source: 'api',
+			content:
+				'Deploy 2481 rotated the connection pooler config; max_connections dropped from 400 to 40. Checkout pods exhausted the pool within 90s of the rollout, which is what the p99 spike tracks. Rolling back the pooler config restores headroom.',
+			rating: null,
+			ratedBy: null,
+			ratedAt: null,
 			createdAt: nowIso(),
 			updatedAt: nowIso(),
 		},

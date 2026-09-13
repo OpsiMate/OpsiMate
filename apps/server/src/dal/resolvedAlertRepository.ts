@@ -4,6 +4,13 @@ import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { ResolvedAlertRow, TableInfoRow } from './models';
 
+// The compact projection getAllHistoryRows returns for the analytics aggregates.
+export interface HistoryStatusRow {
+	alert_id: string;
+	status: string;
+	archived_at: string;
+}
+
 export class ResolvedAlertRepository {
 	private db: Database.Database;
 
@@ -59,6 +66,18 @@ export class ResolvedAlertRepository {
 																	  archived_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 																	  status TEXT NOT NULL
 						);
+
+						-- Every hot read of this table probes by alert_id:
+						-- getFiringTimesByAlert runs inside EVERY active-snapshot recompute
+						-- (feeding the alerts list, facets and groups) and getAlertHistory
+						-- backs the per-alert history drawer. Without the index both were
+						-- full scans, so main-page latency grew with TOTAL history size —
+						-- history a user never looks at taxed every poll. archived_at as the
+						-- second column serves the drawer's ORDER BY straight off the index
+						-- (status still comes from the row — a covering index isn't worth
+						-- the write cost on the trigger-driven insert path).
+						CREATE INDEX IF NOT EXISTS idx_alerts_history_alert
+							ON alerts_history (alert_id, archived_at);
 
 						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_update
 							BEFORE UPDATE ON alerts_resolved
@@ -220,10 +239,13 @@ export class ResolvedAlertRepository {
 		});
 	}
 
-	async deleteResolvedAlert(alertId: string): Promise<void> {
+	// Returns the number of rows removed so callers can tell a real deletion from a
+	// no-op (an id that names an ACTIVE alert deletes nothing here — and must not
+	// trigger permanent-deletion side effects like root-cause cleanup).
+	async deleteResolvedAlert(alertId: string): Promise<number> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
-			stmt.run(alertId);
+			return stmt.run(alertId).changes;
 		});
 	}
 
@@ -233,6 +255,17 @@ export class ResolvedAlertRepository {
 			const row = this.db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertId) as
 				ResolvedAlertRow | undefined;
 			return row ? this.toSharedAlert(row) : null;
+		});
+	}
+
+	// Every status row for every alert, for the analytics aggregates. Compact columns
+	// only; on large installations this is tens of thousands of small rows, which the
+	// analytics module reduces to a few hundred bytes of aggregates.
+	async getAllHistoryRows(): Promise<HistoryStatusRow[]> {
+		return runAsync(() => {
+			return this.db
+				.prepare(`SELECT alert_id, status, archived_at FROM alerts_history`)
+				.all() as HistoryStatusRow[];
 		});
 	}
 

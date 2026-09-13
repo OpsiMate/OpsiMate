@@ -1006,9 +1006,24 @@ describe('Alerts API', () => {
 	});
 
 	describe('POST /api/v1/alerts/custom/datadog', () => {
+		interface DatadogAlertRow {
+			alert_name: string;
+			status: string;
+			tags: string | null;
+			starts_at: string;
+			updated_at: string;
+		}
+
+		interface DatadogTimestampRow {
+			starts_at: string;
+			updated_at: string;
+		}
+
 		test('should create a new Datadog alert successfully with valid payload', async () => {
 			const alertId = 'alert-id';
 			const alertInstanceId = 'alert-id-instance';
+			const date = '1765302826000';
+			const lastUpdated = '1765302886000';
 
 			const payload = {
 				alert_id: alertId,
@@ -1021,8 +1036,8 @@ describe('Alerts API', () => {
 				link: 'https://app.datadoghq.com/monitors/123',
 				tags: 'service:web,env:prod',
 				alert_scope: 'service:web',
-				date: '1765302826000',
-				last_updated: '1765302826000',
+				date,
+				last_updated: lastUpdated,
 				org: {
 					id: '123456',
 					name: 'Opsimate',
@@ -1038,15 +1053,143 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe(alertInstanceId);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as DatadogAlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.title);
 			expect(row.status).toBe('firing');
+			expect(row.starts_at).toBe(new Date(Number(date)).toISOString());
+			expect(row.updated_at).toBe(new Date(Number(lastUpdated)).toISOString());
 
 			// Validate tags mapping – primary tag should be derived from alert_scope / tags.
 			// The ingestion funnel also mirrors the resolved severity into the tags.
-			const parsedTags = row.tags ? JSON.parse(row.tags as string) : {};
+			const parsedTags = row.tags ? (JSON.parse(row.tags) as Record<string, string>) : {};
 			expect(parsedTags).toEqual({ service: 'web', env: 'prod', severity: 'warning' });
+		});
+
+		test('accepts ISO date and last_updated timestamps', async () => {
+			const date = '2026-09-12T00:00:00.000Z';
+			const lastUpdated = '2026-09-12T00:05:00.000Z';
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'datadog-iso-timestamps', title: 'ISO timestamps', date, last_updated: lastUpdated });
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get('datadog-iso-timestamps') as DatadogTimestampRow;
+			expect(row).toEqual({ starts_at: date, updated_at: lastUpdated });
+		});
+
+		test('preserves decimal epoch timestamps with Date time-clipping', async () => {
+			const date = '1765302826000.9';
+			const lastUpdated = '1765302886000.1';
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'datadog-decimal-timestamps',
+					title: 'Decimal timestamps',
+					date,
+					last_updated: lastUpdated,
+				});
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get('datadog-decimal-timestamps') as DatadogTimestampRow;
+			expect(row).toEqual({
+				starts_at: new Date(Number(date)).toISOString(),
+				updated_at: new Date(Number(lastUpdated)).toISOString(),
+			});
+		});
+
+		test.each([
+			{ name: 'ISO', date: '2026-09-12T00:00:00.000Z', expected: '2026-09-12T00:00:00.000Z' },
+			{ name: 'numeric-string epoch', date: '1765302826000', expected: new Date(1765302826000).toISOString() },
+		])('uses date for both timestamps when last_updated is missing ($name)', async ({ name, date, expected }) => {
+			const id = `datadog-no-last-updated-${name}`;
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id, title: 'No last updated', date });
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get(id) as DatadogTimestampRow;
+			expect(row).toEqual({ starts_at: expected, updated_at: expected });
+		});
+
+		test('falls back to current time for invalid timestamps instead of returning 500', async () => {
+			const before = Date.now();
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'datadog-invalid-timestamps',
+					title: 'Invalid timestamps',
+					date: 'not-a-date',
+					last_updated: 'also-not-a-date',
+				});
+			const after = Date.now();
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get('datadog-invalid-timestamps') as DatadogTimestampRow;
+			for (const timestamp of [row.starts_at, row.updated_at]) {
+				const parsed = Date.parse(timestamp);
+				expect(Number.isNaN(parsed)).toBe(false);
+				expect(parsed).toBeGreaterThanOrEqual(before);
+				expect(parsed).toBeLessThanOrEqual(after);
+			}
+		});
+
+		test('falls back to current time for empty and whitespace-only timestamps', async () => {
+			const before = Date.now();
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					id: 'datadog-blank-timestamps',
+					title: 'Blank timestamps',
+					date: '',
+					last_updated: ' \t ',
+				});
+			const after = Date.now();
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get('datadog-blank-timestamps') as DatadogTimestampRow;
+			for (const timestamp of [row.starts_at, row.updated_at]) {
+				const parsed = Date.parse(timestamp);
+				expect(Number.isNaN(parsed)).toBe(false);
+				expect(parsed).toBeGreaterThanOrEqual(before);
+				expect(parsed).toBeLessThanOrEqual(after);
+			}
+		});
+
+		test.each([
+			{ name: 'zero', value: '0' },
+			{ name: 'padded zero', value: ' 0 ' },
+			{ name: 'decimal zero', value: '0.0' },
+		])('preserves $name timestamps as Unix epoch zero', async ({ name, value }) => {
+			const id = `datadog-${name.replaceAll(' ', '-')}-timestamp`;
+			const response = await app
+				.post('/api/v1/alerts/custom/datadog')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id, title: 'Zero timestamp', date: value, last_updated: value });
+
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT starts_at, updated_at FROM alerts WHERE id = ?')
+				.get(id) as DatadogTimestampRow;
+			expect(row).toEqual({
+				starts_at: '1970-01-01T00:00:00.000Z',
+				updated_at: '1970-01-01T00:00:00.000Z',
+			});
 		});
 
 		test('should resolve an existing Datadog alert when alert_transition is recovered', async () => {
@@ -1308,7 +1451,85 @@ describe('Alerts API', () => {
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send(payload);
 
+			expect(response.status).toBe(400);
+		});
+
+		// Real Uptime Kuma heartbeats carry status as a NUMBER (0/1/2). A schema written
+		// with z.enum silently matched nothing and 400'd every genuine alert — this pins
+		// that a realistic payload is accepted, and that a bad time is a 400, not a 500.
+		test('accepts a realistic payload with a numeric status and a minimal monitor', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					heartbeat: { ...baseHeartbeat, status: 2 },
+					// Only what the handler reads; Kuma's other 40 fields vary by monitor type.
+					monitor: { id: 77, name: 'Minimal', pathName: 'Minimal', tags: [] },
+					msg: '[Minimal] [🟡 Pending] retrying',
+				});
 			expect(response.status).toBe(200);
+			expect(response.body.data.alertId).toBe('UPTIMEKUMA_77');
+		});
+
+		test('returns 400 (not 500) for an unparseable heartbeat.time', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: { ...baseHeartbeat, time: 'not-a-date' }, monitor: baseMonitor, msg: 'x' });
+			expect(response.status).toBe(400);
+			expect(response.body.error).toBe('Validation error');
+		});
+
+		// Grounded in Uptime Kuma's source: the Test button calls
+		// Notification.send(notification, msg) with monitorJSON/heartbeatJSON at their
+		// null defaults, so the real test body is { heartbeat: null, monitor: null, msg }.
+		// A presence check ("key in body") would 400 it and break every integration setup.
+		test('the REAL Uptime Kuma Test payload (both fields null) creates a test alert', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: null, monitor: null, msg: 'My Webhook Testing' });
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ success: true, data: null });
+		});
+
+		test('one real field with the other null/missing is a 400, not a phantom test alert', async () => {
+			const count = () =>
+				(db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number })
+					.c;
+			const before = count();
+			for (const payload of [
+				{ heartbeat: null, monitor: baseMonitor, msg: 'x' },
+				{ heartbeat: baseHeartbeat, monitor: null, msg: 'x' },
+				{ heartbeat: baseHeartbeat, msg: 'x' },
+			]) {
+				const response = await app
+					.post('/api/v1/alerts/custom/uptimekuma')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send(payload);
+				expect(response.status, JSON.stringify(payload)).toBe(400);
+			}
+			expect(count()).toBe(before);
+		});
+
+		test('should create a test alert for an empty request body', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send();
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ success: true, data: null });
+
+			const row = db
+				.prepare("SELECT type, status, alert_name, summary FROM alerts WHERE alert_name = 'Test Alert'")
+				.get();
+			expect(row).toEqual({
+				type: 'UptimeKuma',
+				status: 'firing',
+				alert_name: 'Test Alert',
+				summary: 'Test Alert by UptimeKuma was created successfully',
+			});
 		});
 
 		// ----------------------------------------
@@ -1756,6 +1977,42 @@ describe('Alerts API', () => {
 
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);
+			});
+		});
+
+		describe('POST /api/v1/alerts/:alertId/comments', () => {
+			test('should return 401 for request without authentication', async () => {
+				const alertId = testAlerts[0].id;
+
+				const response = await app.post(`/api/v1/alerts/${alertId}/comments`);
+
+				expect(response.statusCode).toBe(401);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Missing Authorization header or API token');
+			});
+		});
+
+		describe('PATCH /api/v1/alerts/comments/:commentId', () => {
+			test('should return 401 for request without authentication', async () => {
+				const testCommentId = 'comment-1';
+
+				const response = await app.patch(`/api/v1/alerts/comments/${testCommentId}`);
+
+				expect(response.statusCode).toBe(401);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Missing Authorization header or API token');
+			});
+		});
+
+		describe('DELETE /api/v1/alerts/comments/:commentId', () => {
+			test('should return 401 for request without authentication', async () => {
+				const testCommentId = 'comment-1';
+
+				const response = await app.delete(`/api/v1/alerts/comments/${testCommentId}`);
+
+				expect(response.statusCode).toBe(401);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Missing Authorization header or API token');
 			});
 		});
 	});

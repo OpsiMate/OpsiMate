@@ -5,6 +5,8 @@ import express from 'express';
 import healthRouter from './api/health';
 import { ActionController } from './api/v1/actions/controller';
 import { AlertController } from './api/v1/alerts/controller';
+import { RootCauseBL } from './bl/rootCause/rootCause.bl';
+import { RootCauseRepository } from './dal/rootCauseRepository';
 import { AuditController } from './api/v1/audit/controller';
 import { RetentionController } from './api/v1/retention/controller';
 import { CustomFieldsController } from './api/v1/custom-fields/controller';
@@ -56,6 +58,9 @@ import { RetentionBL } from './bl/retention/retention.bl';
 import { PlaygroundRepository } from './dal/playgroundRepository.ts';
 import { PlaygroundBL } from './bl/playground/playground.bl.ts';
 import { initMetrics, metricsHandler, metricsMiddleware } from './metrics';
+import { AiBL } from './bl/ai/ai.bl';
+import { AiConfigRepository } from './dal/aiConfigRepository';
+import { AiController } from './api/v1/ai/controller';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -71,6 +76,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const secretsMetadataRepo = new SecretsMetadataRepository(db);
 	const resolvedAlertRepo = new ResolvedAlertRepository(db);
 	const alertHistoryRepo = new AlertHistoryRepository(db);
+	const rootCauseRepo = new RootCauseRepository(db);
 	const retentionRepo = new RetentionRepository(db);
 	// Needed by AlertBL (to resolve owner names for history); constructed here so it is also
 	// available in WORKER mode where AlertBL is used.
@@ -83,6 +89,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		alertRepo.initAlertsTable(),
 		alertCommentsRepo.initAlertCommentsTable(),
 		alertHistoryRepo.initAlertHistoryEventsTable(),
+		rootCauseRepo.initRootCausesTable(),
 		auditLogRepo.initAuditLogsTable(),
 		secretsMetadataRepo.initSecretsMetadataTable(),
 		retentionRepo.initRetentionTables(),
@@ -92,6 +99,17 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const auditBL = new AuditBL(auditLogRepo);
 	const alertBL = new AlertBL(alertRepo, resolvedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
+	// Root causes live in their own table read only on drawer-open — never through the
+	// alerts snapshot. Existence check spans both alert stores: an analysis may arrive
+	// after the alert already resolved.
+	const rootCauseBL = new RootCauseBL(
+		rootCauseRepo,
+		auditBL,
+		async (alertId) =>
+			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
+	);
+	// Resolve keeps the root cause; only permanent deletion drops it.
+	alertBL.onAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
@@ -155,6 +173,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const oncallRepo = new OncallRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
+	const aiConfigRepo = new AiConfigRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -173,6 +192,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		oncallRepo.initOncallTables(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
+		aiConfigRepo.initAiConfigTable(),
 	]);
 
 	// Every table the metric gauges count now exists.
@@ -185,7 +205,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const tagBL = new TagBL(tagRepo);
 	const dashboardBL = new DashboardBL(dashboardRepository, auditBL, tagBL);
 	const playgroundBL = new PlaygroundBL(playgroundRepo, mailClient);
-	const mutePolicyBL = new MutePolicyBL(mutePolicyRepo);
+	const mutePolicyBL = new MutePolicyBL(mutePolicyRepo, auditBL);
 	const oncallBL = new OncallBL(oncallRepo);
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
@@ -193,17 +213,20 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// Rule edits change what the cached alerts snapshot would serve.
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
+	// User renames/creates/deletes change owner names in columns, sort and facets.
+	userBL.setOnUsersChanged(() => alertBL.invalidateOwners());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
 	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, () => alertBL.invalidateSnapshots());
 	alertBL.setIncidentRepo(incidentRepo);
 	// Permanent deletion (delete-forever) must not leave dangling incident memberships.
-	alertBL.setOnAlertsPermanentlyDeleted((alertIds) => incidentBL.handleAlertsDeleted(alertIds));
+	alertBL.onAlertPermanentlyDeleted((alertId) => incidentBL.handleAlertsDeleted([alertId]));
+	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
 	// Controllers (only for SERVER)
 	const dashboardController = new DashboardController(dashboardBL);
 	const tagController = new TagController(tagRepo);
 	const integrationController = new IntegrationController(integrationBL);
-	const alertController = new AlertController(alertBL);
+	const alertController = new AlertController(alertBL, rootCauseBL);
 	const usersController = new UsersController(userBL);
 	const auditController = new AuditController(auditBL);
 	const secretController = new SecretsController(secretMetadataBL);
@@ -215,6 +238,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
 	const incidentController = new IncidentController(incidentBL);
+	const aiController = new AiController(aiBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -235,7 +259,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			actionController,
 			retentionController,
 			oncallController,
-			incidentController
+			incidentController,
+			aiController
 		)
 	);
 

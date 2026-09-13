@@ -9,20 +9,24 @@ import {
 	Role,
 	UpdateCommentSchema,
 	UpdateSilenceResetSettingsSchema,
+	UpsertRootCauseSchema,
+	RateRootCauseSchema,
 } from '@OpsiMate/shared';
 import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
+	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
-	GcpAlertWebhook,
+	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
 	HttpAlertWebhookSchema,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
-	UptimeKumaWebhookPayload,
-	ZabbixWebhookPayload,
+	UptimeKumaWebhookPayloadSchema,
+	ZabbixWebhookPayloadSchema,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import crypto from 'crypto';
 import {
@@ -41,7 +45,10 @@ const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
 
 export class AlertController {
-	constructor(private alertBL: AlertBL) {}
+	constructor(
+		private alertBL: AlertBL,
+		private rootCauseBL: RootCauseBL
+	) {}
 
 	async getAlerts(req: Request, res: Response) {
 		try {
@@ -260,9 +267,19 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as UptimeKumaWebhookPayload;
-
-			if (!payload?.heartbeat || !payload?.monitor) {
+			// Uptime Kuma's "Test" button calls Notification.send(notification, msg) with
+			// monitorJSON/heartbeatJSON left at their null defaults (server.js, the
+			// testNotification handler), so the webhook body is { heartbeat: null,
+			// monitor: null, msg } — keys PRESENT, values null. An empty body is accepted as
+			// the same thing for hand-sent probes. Only that shape bypasses validation: a
+			// payload with one real field and the other missing/null is a malformed alert
+			// and must fall through to the strict parse (400), not become a phantom
+			// "Test Alert".
+			const raw: unknown = req.body;
+			const field = (key: 'heartbeat' | 'monitor'): unknown =>
+				typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>)[key] : undefined;
+			const isTestRequest = field('heartbeat') == null && field('monitor') == null;
+			if (isTestRequest) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),
@@ -279,6 +296,8 @@ export class AlertController {
 
 				return res.status(200).json({ success: true, data: null });
 			}
+
+			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
 
 			const { heartbeat, monitor } = payload;
 			const monitorId = `UPTIMEKUMA_${String(monitor.id)}`;
@@ -322,6 +341,9 @@ export class AlertController {
 				data: { alertId: monitorId, updated: true },
 			});
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error while handling Uptime Kuma alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -329,7 +351,7 @@ export class AlertController {
 
 	async createZabbixAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as ZabbixWebhookPayload;
+			const payload = ZabbixWebhookPayloadSchema.parse(req.body);
 
 			logger.info(`Received Zabbix alert: ${JSON.stringify(payload)}`);
 
@@ -447,6 +469,9 @@ export class AlertController {
 				data: { alertId, updated: true },
 			});
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error while handling Zabbix alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -454,11 +479,16 @@ export class AlertController {
 
 	async createCustomGCPAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as GcpAlertWebhook;
-			const incident = payload.incident;
-			if (!incident) {
-				return res.status(400).json({ error: 'Missing incident in payload' });
+			// Specific message for the most common misconfiguration, before strict parsing.
+			// req.body is `any` on Express's Request — narrow through unknown so the check
+			// is typed (the server lints with --max-warnings=0).
+			const raw: unknown = req.body;
+			const hasIncident = typeof raw === 'object' && raw !== null && 'incident' in raw && raw.incident != null;
+			if (!hasIncident) {
+				return res.status(400).json({ success: false, error: 'Missing incident in payload' });
 			}
+			const payload = GcpAlertWebhookSchema.parse(raw);
+			const incident = payload.incident;
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
@@ -486,6 +516,9 @@ export class AlertController {
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error creating gcp alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -528,8 +561,8 @@ export class AlertController {
 				// (P1 → critical, …) unless an explicit severity tag is present.
 				severity: tags['severity'] ?? payload.priority,
 				tags,
-				startsAt: new Date(Number(startsAtSource)).toISOString(),
-				updatedAt: new Date(Number(updatedAtSource)).toISOString(),
+				startsAt: AlertController.toDatadogIsoOrNow(startsAtSource),
+				updatedAt: AlertController.toDatadogIsoOrNow(updatedAtSource),
 				alertUrl: payload.link ?? '',
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
@@ -593,6 +626,20 @@ export class AlertController {
 		if (!value) return new Date().toISOString();
 		const parsed = new Date(value);
 		return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+	}
+
+	// Datadog normally sends epoch milliseconds as strings, but custom templates can emit
+	// ISO timestamps too. Preserve Number()'s accepted numeric forms (including decimals),
+	// then delegate ISO and invalid values to Grafana's established fallback parser.
+	private static toDatadogIsoOrNow(value?: string): string {
+		if (value?.trim() === '') return AlertController.toIsoOrNow(undefined);
+
+		const epochMs = Number(value);
+		if (value !== undefined && Number.isFinite(epochMs)) {
+			const parsed = new Date(epochMs);
+			if (!isNaN(parsed.getTime())) return parsed.toISOString();
+		}
+		return AlertController.toIsoOrNow(value);
 	}
 
 	// Receives alerts pushed by a Grafana "Webhook" contact point. Replaces the old polling job:
@@ -713,6 +760,70 @@ export class AlertController {
 		}
 	}
 
+	// region root cause
+	// "Bring your own" root cause: an external system (authenticated with the API
+	// token) pushes the analysis for an alert it ingested earlier — the ingest
+	// response carries the alertId this path is addressed by. Upsert semantics: a
+	// re-push replaces the content and clears any previous rating.
+	async upsertRootCause(req: Request, res: Response) {
+		try {
+			const alertId = req.params.alertId;
+			const body = UpsertRootCauseSchema.parse(req.body);
+			const rootCause = await this.rootCauseBL.upsert({
+				alertId,
+				source: 'api',
+				content: body.content,
+				feedbackUpUrl: body.feedbackUpUrl ?? null,
+				feedbackDownUrl: body.feedbackDownUrl ?? null,
+			});
+			return res.json({ success: true, data: { rootCause } });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof RootCauseNotFoundError) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			logger.error('Error upserting root cause:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// On-demand read for the drawer. 200 with null when there is no analysis yet —
+	// the UI always asks, so absence is a normal answer, not an error.
+	async getRootCause(req: Request, res: Response) {
+		try {
+			const rootCause = await this.rootCauseBL.get(req.params.alertId);
+			return res.json({ success: true, data: { rootCause } });
+		} catch (error) {
+			logger.error('Error getting root cause:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async rateRootCause(req: AuthenticatedRequest, res: Response) {
+		try {
+			// A rating is a human verdict: it needs a user identity, which the machine
+			// API-token path does not carry.
+			if (!req.user) {
+				return res.status(401).json({ success: false, error: 'Rating requires a user session' });
+			}
+			const { rating } = RateRootCauseSchema.parse(req.body);
+			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user);
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof RootCauseNotFoundError) {
+				return res.status(404).json({ success: false, error: 'No root cause for this alert' });
+			}
+			logger.error('Error rating root cause:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+	// endregion
+
 	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = req.params.alertId;
@@ -785,6 +896,33 @@ export class AlertController {
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	// Aggregates for the Insights page. from/to are ISO bounds (from absent = all
+	// time); tz is the requester's IANA timezone so day/hour bucketing matches what
+	// the user's clock says.
+	async getAlertAnalytics(req: Request, res: Response) {
+		try {
+			// Dashboard scoping (`filters` + `search`) uses the same JSON format and
+			// semantics as the alerts list endpoints, so a dashboard means the same
+			// thing here as there. The schema also rejects an inverted from/to window.
+			const params = AlertAnalyticsParamsSchema.parse(req.query);
+			const analytics = await this.alertBL.getAlertAnalytics({
+				from: params.from ?? null,
+				to: params.to ?? null,
+				timeZone: params.tz,
+				filters: params.filters,
+				search: params.search,
+				tagKey: params.tagKey,
+			});
+			return res.json({ success: true, data: analytics });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error computing alert analytics', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -878,7 +1016,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			if (!req.user) {
-				return res.status(400).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			const { comment } = CreateCommentSchema.parse(req.body);
@@ -909,7 +1047,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
 			if (!req.user) {
-				return res.status(400).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			const { comment } = UpdateCommentSchema.parse(req.body);
@@ -936,7 +1074,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
 			if (!req.user) {
-				return res.status(400).json({ success: false, error: 'user id is required' });
+				return res.status(401).json({ success: false, error: 'Unauthorized' });
 			}
 
 			await this.alertBL.deleteComment(commentId, req.user.id);

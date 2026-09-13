@@ -1,0 +1,126 @@
+import { Response } from 'express';
+import { AiFilterQuerySchema, Logger, Role, UpdateAiConfigSchema } from '@OpsiMate/shared';
+import { AiBL, AiDisabledError, AiValidationError, BedrockCallError } from '../../../bl/ai/ai.bl';
+import { AuthenticatedRequest } from '../../../middleware/auth';
+import { isZodError } from '../../../utils/isZodError.ts';
+
+const logger = new Logger('ai.controller');
+
+// Every /ai/filter call is a real, billed Bedrock request available to ANY
+// authenticated user — a fixed per-user window keeps a loop (or a stuck client)
+// from draining the org's Bedrock spend.
+const FILTER_RATE_LIMIT = 15;
+const FILTER_RATE_WINDOW_MS = 60_000;
+
+interface FilterRateWindow {
+	windowStart: number;
+	count: number;
+}
+
+export class AiController {
+	constructor(private aiBL: AiBL) {}
+
+	private filterRates = new Map<string, FilterRateWindow>();
+
+	private allowFilterCall(actorKey: string): boolean {
+		const now = Date.now();
+		const window = this.filterRates.get(actorKey);
+		if (!window || now - window.windowStart >= FILTER_RATE_WINDOW_MS) {
+			this.filterRates.set(actorKey, { windowStart: now, count: 1 });
+			return true;
+		}
+		if (window.count >= FILTER_RATE_LIMIT) return false;
+		window.count += 1;
+		return true;
+	}
+
+	// Org-wide configuration holding a credential — admin-only, same gate the
+	// retention and silence-reset settings use.
+	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
+		if (!req.user || req.user.role !== Role.Admin) {
+			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
+			return false;
+		}
+		return true;
+	}
+
+	getConfigHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!this.requireAdmin(req, res)) return;
+		try {
+			const config = await this.aiBL.getConfig();
+			return res.json({ success: true, data: config });
+		} catch (error) {
+			logger.error('Error getting AI config:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	updateConfigHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!this.requireAdmin(req, res)) return;
+		try {
+			const updates = UpdateAiConfigSchema.parse(req.body ?? {});
+			const config = await this.aiBL.updateConfig(updates, req.user);
+			return res.json({ success: true, data: config });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof AiValidationError) {
+				return res.status(400).json({ success: false, error: error.message });
+			}
+			logger.error('Error updating AI config:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	// Any authenticated user: only whether AI features are usable (drives feature UI
+	// visibility) — configuration details stay admin-only.
+	statusHandler = async (_req: AuthenticatedRequest, res: Response) => {
+		try {
+			const status = await this.aiBL.getStatus();
+			return res.json({ success: true, data: status });
+		} catch (error) {
+			logger.error('Error getting AI status:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	// Any authenticated user: translating a phrase into filters is a read operation.
+	filterHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!this.allowFilterCall(String(req.user?.id ?? 'anonymous'))) {
+			return res.status(429).json({ success: false, error: 'Too many AI requests — try again in a minute.' });
+		}
+		try {
+			const { query } = AiFilterQuerySchema.parse(req.body ?? {});
+			const result = await this.aiBL.filterFromText(query);
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof AiDisabledError) {
+				return res.status(409).json({ success: false, error: error.message });
+			}
+			// Bedrock's own diagnosis (bad key, throttling, no structured reply) is
+			// user-showable — anything else stays a generic 500, never leaked.
+			if (error instanceof BedrockCallError) {
+				return res.status(502).json({ success: false, error: error.message });
+			}
+			logger.error('Error translating filter query:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
+	testConnectionHandler = async (req: AuthenticatedRequest, res: Response) => {
+		if (!this.requireAdmin(req, res)) return;
+		try {
+			const result = await this.aiBL.testConnection();
+			// Always 200: a failed Bedrock call is a RESULT the user asked for, not a
+			// server error — the payload carries ok=false plus Bedrock's reason.
+			return res.json({ success: true, data: result });
+		} catch (error) {
+			logger.error('Error testing AI connection:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+}

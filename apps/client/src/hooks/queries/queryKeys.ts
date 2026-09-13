@@ -6,6 +6,7 @@ export const queryKeys = {
 	resolvedAlerts: ['resolvedAlerts'] as const,
 	alertComments: ['alertComments'] as const,
 	alertHistory: (alertId: string) => ['alertHistory', alertId] as const,
+	alertRootCause: (alertId: string) => ['alertRootCause', alertId] as const,
 	providers: ['providers'] as const,
 	tags: ['tags'] as const,
 	integrations: ['integrations'] as const,
@@ -27,4 +28,5 @@ export const queryKeys = {
 	actions: ['actions'] as const,
 	retention: ['retention'] as const,
 	silenceReset: ['silenceReset'] as const,
+	ai: ['ai'] as const,
 };

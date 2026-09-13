@@ -77,6 +77,49 @@ export const formatLongDateTime = (value: DateInput, fallback = '—'): string =
 /** "08/11/2026, 22:53:07" — full precision, for tooltips and copy-to-clipboard. */
 export const formatDateTime = (value: DateInput, fallback = '—'): string => format(value, NUMERIC_DATE_TIME, fallback);
 
+/**
+ * "5m ago" / "in 5m" — coarse relative time for comment threads, mute-policy
+ * windows and the audit log. Handles future timestamps (mute-policy schedules
+ * look forward as often as back) alongside the usual past ones.
+ *
+ * Beyond `maxRelativeDays` the gap renders as an absolute formatShortDateTime, so
+ * week-old rows don't read as "34d ago". Callers that already show the absolute
+ * timestamp alongside pass Infinity to opt out — for them the capped form would
+ * degrade into a verbatim copy of the line above it.
+ */
+export const formatRelativeTime = (value: DateInput, fallback = '—', maxRelativeDays = 7): string => {
+	const date = toDate(value);
+	if (!date) return fallback;
+
+	const diffMs = date.getTime() - Date.now();
+	const future = diffMs > 0;
+	const absMs = Math.abs(diffMs);
+	// Direction is applied in one place so each unit below stays a single branch.
+	const rel = (magnitude: string): string => (future ? `in ${magnitude}` : `${magnitude} ago`);
+
+	const minutes = Math.floor(absMs / 60_000);
+	if (minutes < 1) return future ? 'in <1m' : 'just now';
+
+	const hours = Math.floor(minutes / 60);
+	if (hours < 1) return rel(`${minutes}m`);
+
+	const days = Math.floor(hours / 24);
+	if (days < 1) return rel(`${hours}h`);
+
+	if (days < maxRelativeDays) return rel(`${days}d`);
+
+	return formatShortDateTime(date);
+};
+
+/**
+ * SQLite's bare "YYYY-MM-DD HH:MM:SS" is UTC but carries no marker, so `new Date()`
+ * reads it as local time and shifts it by the viewer's offset. The audit-log table
+ * stores timestamps that way (DEFAULT CURRENT_TIMESTAMP) and the endpoint passes them
+ * through untouched; comment timestamps were fixed server-side in #824, audit logs
+ * were not. Such strings must go through here before reaching the formatters above.
+ */
+export const parseUTCDate = (value: string): Date => new Date(value.replace(' ', 'T') + 'Z');
+
 /** True when the timestamp falls on the viewer's current calendar day. */
 export const isSameLocalDay = (value: DateInput, reference: Date = new Date()): boolean => {
 	const date = toDate(value);

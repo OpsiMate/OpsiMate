@@ -6,9 +6,23 @@ import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
 
+// Work factor used for every password hash created by this module.
+const BCRYPT_SALT_ROUNDS = 10;
+
 const logger = new Logger('bl/users/user.bl');
 
 export class UserBL {
+	// Notified after any write that changes who the users are or what they are called.
+	// Wired in app.ts to invalidate AlertBL's owners snapshot (same pattern as the
+	// mute/enrichment rule-change callbacks), so a rename or a new user is visible to
+	// the alerts list's owner column, sort, and facets on the immediate next refetch
+	// instead of after a TTL window. Password-only writes do not notify.
+	private onUsersChanged: (() => void) | null = null;
+
+	setOnUsersChanged(callback: () => void): void {
+		this.onUsersChanged = callback;
+	}
+
 	constructor(
 		private userRepo: UserRepository,
 		private mailClient: MailClient,
@@ -21,10 +35,11 @@ export class UserBL {
 		if (userCount > 0) {
 			throw new Error('Registration is disabled after first admin');
 		}
-		const hash = await bcrypt.hash(password, 10);
+		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
+		this.onUsersChanged?.();
 
 		// Send welcome email
 		void this.mailClient.sendMail({
@@ -37,10 +52,11 @@ export class UserBL {
 	}
 
 	async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
-		const hash = await bcrypt.hash(password, 10);
+		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 		const result = await this.userRepo.createUser(email, hash, fullName, role);
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
+		this.onUsersChanged?.();
 		return user;
 	}
 
@@ -61,7 +77,7 @@ export class UserBL {
 	}
 
 	async resetUserPassword(userId: number, newPassword: string): Promise<void> {
-		const hashedPassword = await bcrypt.hash(newPassword, 10);
+		const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 		await this.userRepo.updateUserPassword(userId, hashedPassword);
 	}
 
@@ -71,6 +87,7 @@ export class UserBL {
 		if (!updatedUser) {
 			throw new Error('User not found');
 		}
+		this.onUsersChanged?.();
 		return updatedUser;
 	}
 
@@ -80,6 +97,7 @@ export class UserBL {
 
 	async deleteUser(id: number): Promise<void> {
 		await this.userRepo.deleteUser(id);
+		this.onUsersChanged?.();
 	}
 
 	async getUserById(id: number): Promise<User | null> {
@@ -102,7 +120,7 @@ export class UserBL {
 	): Promise<User> {
 		let passwordHash: string | undefined;
 		if (newPassword) {
-			passwordHash = await bcrypt.hash(newPassword, 10);
+			passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 		}
 
 		await this.userRepo.updateUserProfile(id, fullName, passwordHash, phoneNumber);
@@ -110,6 +128,7 @@ export class UserBL {
 		if (!updatedUser) {
 			throw new Error('User not found');
 		}
+		this.onUsersChanged?.();
 		return updatedUser;
 	}
 

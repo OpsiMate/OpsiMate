@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { MutePolicyIdSchema, CreateMutePolicySchema, Logger, UpdateMutePolicySchema } from '@OpsiMate/shared';
 import { MutePolicyBL } from '../../../bl/mute-policies/mutePolicy.bl';
+import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/mute-policies/controller');
@@ -35,10 +36,10 @@ export class MutePolicyController {
 		}
 	};
 
-	createHandler = async (req: Request, res: Response) => {
+	createHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const data = CreateMutePolicySchema.parse(req.body);
-			const mutePolicy = await this.mutePolicyBL.create({
+			const mutePolicyData = {
 				name: data.name,
 				nameContains: data.nameContains ?? null,
 				nameContainsAny: data.nameContainsAny ?? null,
@@ -49,7 +50,8 @@ export class MutePolicyController {
 				endsAt: data.endsAt ?? null,
 				schedule: data.schedule ?? null,
 				reason: data.reason ?? null,
-			});
+			};
+			const mutePolicy = await this.mutePolicyBL.create(mutePolicyData, req.user);
 			return res.status(201).json({ success: true, data: mutePolicy, message: 'Mute policy created' });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -60,7 +62,7 @@ export class MutePolicyController {
 		}
 	};
 
-	updateHandler = async (req: Request, res: Response) => {
+	updateHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { mutePolicyId } = MutePolicyIdSchema.parse({ mutePolicyId: req.params.mutePolicyId });
 			const data = UpdateMutePolicySchema.parse(req.body);
@@ -70,7 +72,7 @@ export class MutePolicyController {
 				return res.status(404).json({ success: false, error: 'Mute policy not found' });
 			}
 
-			const updated = await this.mutePolicyBL.update(mutePolicyId, data);
+			const updated = await this.mutePolicyBL.update(mutePolicyId, data, req.user);
 			return res.json({ success: true, data: updated, message: 'Mute policy updated' });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -81,14 +83,14 @@ export class MutePolicyController {
 		}
 	};
 
-	deleteHandler = async (req: Request, res: Response) => {
+	deleteHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { mutePolicyId } = MutePolicyIdSchema.parse({ mutePolicyId: req.params.mutePolicyId });
 			const existing = await this.mutePolicyBL.get(mutePolicyId);
 			if (!existing) {
 				return res.status(404).json({ success: false, error: 'Mute policy not found' });
 			}
-			await this.mutePolicyBL.delete(mutePolicyId);
+			await this.mutePolicyBL.delete(mutePolicyId, req.user);
 			return res.json({ success: true, message: 'Mute policy deleted' });
 		} catch (error) {
 			if (isZodError(error)) {

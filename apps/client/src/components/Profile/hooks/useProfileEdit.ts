@@ -1,3 +1,4 @@
+import { AUTH_TOKEN_STORAGE_KEY } from '@/lib/auth';
 import { useFormErrors } from '@/hooks/useFormErrors';
 import { apiRequest } from '@/lib/api';
 import { Logger, User } from '@OpsiMate/shared';
@@ -109,7 +110,7 @@ export const useProfileEdit = ({ profile, setProfile }: UseProfileEditProps): Us
 			if (response.success) {
 				// Update JWT token if password was changed
 				if (response.data && typeof response.data === 'object' && 'token' in response.data) {
-					localStorage.setItem('jwt', response.data.token as string);
+					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, response.data.token as string);
 				}
 
 				// update local profile state to reflect changes in UI

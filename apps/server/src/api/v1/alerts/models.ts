@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-export interface GcpAlertWebhook {
-	version?: string | number;
-	incident: GcpIncident;
-}
-
 export interface GcpIncident {
 	policy_user_labels?: Record<string, string>;
 	incident_id: string;
@@ -20,6 +15,36 @@ export interface GcpIncident {
 		content?: string;
 	};
 }
+
+export const GcpIncidentSchema = z.object({
+	policy_user_labels: z.record(z.string(), z.string()).optional(),
+	incident_id: z.string(),
+	resource_id: z.string().optional(),
+	resource_name: z.string().optional(),
+	policy_name: z.string().optional(),
+	condition_name: z.string().optional(),
+	// Any state string: the handler only distinguishes 'closed' (resolve) from the
+	// rest (firing), and GCP emits states beyond open/closed (e.g. incident_updated).
+	state: z.string(),
+	started_at: z.union([z.string(), z.number()]),
+	url: z.string(),
+	summary: z.string().optional(),
+	documentation: z
+		.object({
+			content: z.string().optional(),
+		})
+		.optional(),
+});
+
+export interface GcpAlertWebhook {
+	version?: string | number;
+	incident: GcpIncident;
+}
+
+export const GcpAlertWebhookSchema = z.object({
+	version: z.union([z.string(), z.number()]).optional(),
+	incident: GcpIncidentSchema,
+});
 
 const isoDateString = z.string().refine(
 	(s) => {
@@ -163,6 +188,8 @@ export const SetAlertOwnerSchema = z.object({
 	ownerId: z.string().nullable(),
 });
 
+const dateString = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date');
+
 export interface UptimeKumaHeartbeat {
 	monitorID: number;
 	status: 0 | 1 | 2; // 0 = down, 1 = up, 2 = pending
@@ -175,11 +202,31 @@ export interface UptimeKumaHeartbeat {
 	localDateTime: string;
 }
 
+export const UptimeKumaHeartbeatSchema = z.object({
+	monitorID: z.number(),
+	// z.enum is string-only — numeric literals must be a union or every real
+	// heartbeat (status 0/1/2) fails validation.
+	status: z.union([z.literal(0), z.literal(1), z.literal(2)]), // 0 = down, 1 = up, 2 = pending
+	time: dateString, // "2025-11-29 15:20:31.368"
+	msg: z.string(),
+	important: z.boolean(),
+	retries: z.number(),
+	timezone: z.string(),
+	timezoneOffset: z.string(),
+	localDateTime: dateString,
+});
+
 export interface UptimeKumaTag {
 	id: number;
 	name: string;
 	value?: string;
 }
+
+export const UptimeKumaTagSchema = z.object({
+	id: z.number(),
+	name: z.string(),
+	value: z.string().optional(),
+});
 
 export interface UptimeKumaMonitor {
 	tags: UptimeKumaTag[];
@@ -255,11 +302,30 @@ export interface UptimeKumaMonitor {
 	includeSensitiveData: boolean;
 }
 
+// Only the fields the handler reads are required. Uptime Kuma's monitor object
+// carries 40+ type-specific fields (mqttTopic, databaseQuery, dns_resolve_server, ...)
+// that are simply absent for other monitor types — requiring them rejected every
+// real webhook. Unknown keys pass through (z.object strips them by default).
+export const UptimeKumaMonitorSchema = z.object({
+	id: z.number(),
+	name: z.string().nullable().optional(),
+	pathName: z.string().nullable().optional(),
+	tags: z.array(UptimeKumaTagSchema).optional().default([]),
+});
+
 export interface UptimeKumaWebhookPayload {
 	heartbeat: UptimeKumaHeartbeat;
 	monitor: UptimeKumaMonitor;
 	msg: string;
 }
+
+export const UptimeKumaWebhookPayloadSchema = z.object({
+	heartbeat: UptimeKumaHeartbeatSchema,
+	monitor: UptimeKumaMonitorSchema,
+	msg: z.string(),
+});
+
+export type UptimeKumaWebhookTestPayload = Partial<z.infer<typeof UptimeKumaWebhookPayloadSchema>>;
 
 /**
  * Zabbix webhook payload
@@ -314,6 +380,30 @@ export interface ZabbixWebhookPayload {
 	[key: string]: string | undefined;
 }
 
+export const ZabbixWebhookPayloadSchema = z
+	.object({
+		event_id: z.string().optional(),
+		event_name: z.string().optional(),
+		host_name: z.string().optional(),
+		host_ip: z.string().optional(),
+		trigger_id: z.string().optional(),
+		trigger_name: z.string().optional(),
+		trigger_severity: z.string().optional(),
+		trigger_status: z.string().optional(), // "PROBLEM" or "OK"
+		event_date: z.string().optional(),
+		event_time: z.string().optional(),
+		event_value: z.string().optional(), // "1" for problem, "0" for resolved
+		event_tags: z.string().optional(),
+		item_name: z.string().optional(),
+		item_value: z.string().optional(),
+		alert_message: z.string().optional(),
+		event_recovery_date: z.string().optional(),
+		event_recovery_time: z.string().optional(),
+		zabbix_url: z.string().optional(), // Base URL of the Zabbix server
+		trigger_url: z.string().optional(), // Direct URL to the trigger (from {TRIGGER.URL} macro)
+	})
+	.catchall(z.string().optional());
+
 // ---------- list-query params (Phase 1: server-side filtering/paging) ----------
 
 // JSON-in-a-param: the sidebar filter record and the facet field list are structured
@@ -329,7 +419,7 @@ const jsonParam = <T>(parse: (raw: unknown) => T) =>
 		}
 	});
 
-const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
+export const FiltersParamSchema = jsonParam((value) => z.record(z.string(), z.array(z.string())).parse(value));
 const FieldsParamSchema = jsonParam((value) => z.array(z.string()).parse(value));
 
 export const AlertListQueryParamsSchema = z.object({
@@ -343,6 +433,22 @@ export const AlertListQueryParamsSchema = z.object({
 	limit: z.coerce.number().int().min(1).max(1000).optional(),
 	cursor: z.string().optional(),
 });
+
+// Insights endpoint params. from<=to is enforced here so the handler never sees an
+// inverted window.
+export const AlertAnalyticsParamsSchema = z
+	.object({
+		from: z.iso.datetime({ offset: true }).optional(),
+		to: z.iso.datetime({ offset: true }).optional(),
+		tz: z.string().max(64).optional(),
+		filters: FiltersParamSchema.optional(),
+		search: z.string().optional(),
+		// Tag key to research; adds the tagInsights section to the response.
+		tagKey: z.string().max(200).optional(),
+	})
+	.refine((params) => !params.from || !params.to || Date.parse(params.from) <= Date.parse(params.to), {
+		message: 'from must not be after to',
+	});
 
 export const AlertFacetsParamsSchema = z.object({
 	filters: FiltersParamSchema.optional(),

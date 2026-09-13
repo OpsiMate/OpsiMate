@@ -1,10 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface GCPSetupModalProps {
@@ -13,32 +12,17 @@ export interface GCPSetupModalProps {
 }
 
 export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
-	const [copied, setCopied] = useState(false);
-	const { toast } = useToast();
+	const { copied: copied, copy } = useCopyToClipboard();
 
 	// Correct webhook URL with API token parameter
 	// User needs to replace {your_api_token} with their actual API_TOKEN environment variable value
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom/gcp?api_token={your_api_token}`;
 
-	const handleCopyWebhook = async () => {
-		try {
-			await navigator.clipboard.writeText(webhookUrl);
-			setCopied(true);
-			toast({
-				title: 'Copied!',
-				description: 'Webhook URL copied to clipboard',
-				duration: 2000,
-			});
-			setTimeout(() => setCopied(false), 2000);
-		} catch (error) {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy the URL manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
-	};
+	const handleCopyWebhook = () =>
+		copy(webhookUrl, {
+			successDescription: 'Webhook URL copied to clipboard',
+			failureDescription: 'Please copy the URL manually',
+		});
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,7 +84,13 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 										<Button
 											variant="link"
 											className="p-0 h-auto text-blue-600 hover:text-blue-700"
-											onClick={() => window.open('https://console.cloud.google.com/', '_blank')}
+											onClick={() =>
+												window.open(
+													'https://console.cloud.google.com/',
+													'_blank',
+													'noopener,noreferrer'
+												)
+											}
 										>
 											<span>Open Google Cloud Console</span>
 											<ExternalLink className="ml-1 h-3 w-3" />
@@ -116,7 +106,8 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 											onClick={() =>
 												window.open(
 													'https://console.cloud.google.com/monitoring/alerting/notifications',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -149,7 +140,8 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 											onClick={() =>
 												window.open(
 													'https://console.cloud.google.com/monitoring/alerting/policies',
-													'_blank'
+													'_blank',
+													'noopener,noreferrer'
 												)
 											}
 										>
@@ -214,7 +206,8 @@ export const GCPSetupModal = ({ open, onOpenChange }: GCPSetupModalProps) => {
 							onClick={() =>
 								window.open(
 									'https://cloud.google.com/monitoring/support/notification-options',
-									'_blank'
+									'_blank',
+									'noopener,noreferrer'
 								)
 							}
 							className="gap-2"

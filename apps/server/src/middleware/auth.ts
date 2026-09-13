@@ -30,8 +30,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 }
 
 function authenticateApiToken(apiToken: string, res: Response, next: NextFunction) {
-	// Double check the apiToken is not empty
-	if (apiToken !== getSecurityConfig().api_token && apiToken.length > 0) {
+	if (apiToken !== getSecurityConfig().api_token) {
 		return res.status(401).json({ success: false, error: 'Invalid API token' });
 	}
 
@@ -46,7 +45,7 @@ function authenticateUserJWT(bearerToken: string, req: AuthenticatedRequest, res
 		req.user = payload;
 
 		// Viewer edit restrictions
-		const editMethods = ['PUT', 'PATCH', 'DELETE', 'POST', 'OPTIONS'];
+		const editMethods = ['PUT', 'PATCH', 'DELETE', 'POST'];
 		if (editMethods.includes(req.method) && payload.role === Role.Viewer) {
 			return res.status(403).json({ success: false, error: 'Forbidden: Viewer users cannot edit data' });
 		}

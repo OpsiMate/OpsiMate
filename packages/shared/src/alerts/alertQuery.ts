@@ -194,13 +194,38 @@ export const compareAlerts = (
 	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 };
 
+// One decorated row of the sort below: the alert with its sort key extracted once.
+interface SortDecoratedAlert {
+	alert: Alert;
+	key: string | number | null;
+}
+
+// Decorate-sort-undecorate. getAlertSortValue lowercases strings, parses dates and
+// scans the users list — calling it per COMPARISON (as a plain sort(comparator) does)
+// makes the sort O(n log n) key extractions and was the single largest CPU consumer in
+// a production-shaped profile. Extracting each key once keeps the comparator to
+// primitive compares. Ordering semantics are compareAlerts' exactly: values compare
+// only when both are non-null, and ties (or null keys) fall back to the alert id so
+// the order stays total and keyset cursors stay well-defined.
 export const sortAlertsBy = (
 	alerts: Alert[],
 	sortField: string,
 	sortDirection: AlertSortDirection,
 	users: AlertOwnerInfo[] = []
 ): Alert[] => {
-	return [...alerts].sort((a, b) => compareAlerts(a, b, sortField, sortDirection, users));
+	const flip = sortDirection === 'asc' ? 1 : -1;
+	const decorated: SortDecoratedAlert[] = alerts.map((alert) => ({
+		alert,
+		key: getAlertSortValue(alert, sortField, users),
+	}));
+	decorated.sort((a, b) => {
+		if (a.key !== null && b.key !== null) {
+			if (a.key < b.key) return -flip;
+			if (a.key > b.key) return flip;
+		}
+		return a.alert.id < b.alert.id ? -1 : a.alert.id > b.alert.id ? 1 : 0;
+	});
+	return decorated.map((d) => d.alert);
 };
 
 // ---------- paging ----------

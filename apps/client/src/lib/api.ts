@@ -1,5 +1,10 @@
+import { AUTH_TOKEN_STORAGE_KEY } from './auth';
 import { CustomAction } from '@OpsiMate/custom-actions';
 import {
+	AiConfig,
+	AiFilterResult,
+	AiStatus,
+	AiTestResult,
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
 	AlertGroupSummaryNode,
@@ -30,6 +35,8 @@ import {
 	Incident,
 	IncidentSummary,
 	UpdateIncidentPayload,
+	UpdateAiConfig,
+	AlertAnalytics,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -61,7 +68,7 @@ async function apiRequest<T>(
 ): Promise<ApiResponse<T>> {
 	const url = `${API_BASE_URL}${endpoint}`;
 
-	const token = localStorage.getItem('jwt');
+	const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 	const options: RequestInit = {
 		method,
 		headers: {
@@ -94,7 +101,7 @@ async function apiRequest<T>(
 			// Try to parse the error as JSON to handle validation errors properly
 
 			if (response.status === 401 && !isPlaygroundMode()) {
-				localStorage.removeItem('jwt');
+				localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 
 				const authPages = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
 				if (!authPages.has(window.location.pathname)) {
@@ -288,6 +295,14 @@ export interface AlertQueryParams {
 	cursor?: string;
 }
 
+export interface AlertAnalyticsRequest {
+	from: string | null;
+	timeZone: string;
+	filters?: Record<string, string[]>;
+	search?: string;
+	tagKey?: string;
+}
+
 export interface AlertListResponse {
 	alerts: SharedAlert[];
 	total?: number;
@@ -444,6 +459,20 @@ export const alertsApi = {
 
 	getAlertHistory: (alertId: string) => {
 		return apiRequest<AlertHistory>(`/alerts/${encodeURIComponent(alertId)}/history`, 'GET');
+	},
+
+	// Insights aggregates; from=null means all time, tz buckets days/hours in the
+	// requester's timezone. filters/search use the SAME format as the list endpoints,
+	// so a dashboard scopes Insights exactly as it scopes the alerts table.
+	getAlertAnalytics: (query: AlertAnalyticsRequest) => {
+		const params = new URLSearchParams();
+		if (query.from) params.set('from', query.from);
+		params.set('tz', query.timeZone);
+		if (query.filters && Object.keys(query.filters).length > 0)
+			params.set('filters', JSON.stringify(query.filters));
+		if (query.search?.trim()) params.set('search', query.search);
+		if (query.tagKey) params.set('tagKey', query.tagKey);
+		return apiRequest<AlertAnalytics>(`/alerts/analytics?${params.toString()}`);
 	},
 
 	// Get alerts by tag
@@ -633,6 +662,17 @@ export const retentionApi = {
 };
 
 // Org-wide daily silence reset (admin-only endpoints).
+// AI (BYOK) configuration — Bedrock key/region/model, admin-only. The key is
+// write-only: the server returns hasApiKey, never the key.
+export const aiApi = {
+	getConfig: () => apiRequest<AiConfig>('/ai/config'),
+	updateConfig: (updates: UpdateAiConfig) => apiRequest<AiConfig>('/ai/config', 'PUT', updates),
+	testConnection: () => apiRequest<AiTestResult>('/ai/test', 'POST'),
+	// Any authenticated user: drives AI feature visibility without exposing config.
+	getStatus: () => apiRequest<AiStatus>('/ai/status'),
+	filterFromText: (query: string) => apiRequest<AiFilterResult>('/ai/filter', 'POST', { query }),
+};
+
 export const silenceResetApi = {
 	getSettings: () => apiRequest<SilenceResetSettings>('/alerts/silence-reset'),
 	updateSettings: (updates: UpdateSilenceResetSettings) =>

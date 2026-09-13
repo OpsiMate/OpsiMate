@@ -11,6 +11,9 @@ interface CollapsibleSectionProps {
 	badge?: ReactNode;
 	// Controls rendered on the right of the header; clicks here don't toggle the section.
 	headerRight?: ReactNode;
+	// Overrides the header's text colors (cn/twMerge resolves the conflict), letting a
+	// section brand its title row — e.g. the AI-family violet on Root cause.
+	headerClassName?: string;
 	children: ReactNode;
 	className?: string;
 }
@@ -24,6 +27,7 @@ export const CollapsibleSection = ({
 	defaultOpen = true,
 	badge,
 	headerRight,
+	headerClassName,
 	children,
 	className,
 }: CollapsibleSectionProps) => {
@@ -47,7 +51,10 @@ export const CollapsibleSection = ({
 					type="button"
 					onClick={() => setOpen((v) => !v)}
 					aria-expanded={open}
-					className="flex items-center gap-1.5 min-w-0 flex-1 text-muted-foreground hover:text-foreground transition-colors"
+					className={cn(
+						'flex items-center gap-1.5 min-w-0 flex-1 text-muted-foreground hover:text-foreground transition-colors',
+						headerClassName
+					)}
 				>
 					{open ? (
 						<ChevronDown className="h-3.5 w-3.5 shrink-0" />
