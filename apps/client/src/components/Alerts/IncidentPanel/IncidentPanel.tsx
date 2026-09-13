@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { formatLongDateTime } from '@/lib/datetime';
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
 import { Folder, History, Pencil, Ungroup, X } from 'lucide-react';
-import { AlertHistoryTimeline } from '../AlertDetails/AlertHistoryTimeline';
 import { CollapsibleSection } from '../AlertDetails/CollapsibleSection';
-import { useMergedIncidentHistory } from './useMergedIncidentHistory';
+import { IncidentMergedHistory } from './IncidentMergedHistory';
 
 interface IncidentPanelProps {
 	incident: IncidentSummary;
@@ -20,14 +19,6 @@ interface IncidentPanelProps {
 	onEdit: (incidentId: number) => void;
 	onUngroup: (incidentId: number) => void;
 }
-
-// Mounted only while the History section is expanded — CollapsibleSection renders its
-// children only when open, so the N per-member history requests wait for the user to
-// actually ask for the timeline.
-const IncidentMergedHistory = ({ alertIds }: { alertIds: string[] }) => {
-	const mergedHistory = useMergedIncidentHistory(alertIds);
-	return <AlertHistoryTimeline data={mergedHistory} />;
-};
 
 // Right-side details panel for an incident: identity, roll-ups, the member list (each
 // clickable through to its alert details), and the merged history of all members.
