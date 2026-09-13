@@ -48,8 +48,8 @@ const runTsc = () => {
 // a broken invocation would normalize to nothing and pass green.
 const normalize = (output) => {
 	const ids = new Set();
-	for (const rawLine of output.split('\n')) {
-		const line = rawLine.split(repoRoot).join('<repo>');
+	for (const rawLine of output.split(/\r?\n/)) {
+		const line = rawLine.split(repoRoot).join('<repo>').split(repoRoot.replaceAll('\\', '/')).join('<repo>');
 		const positioned = line.match(/^(.*?)\(\d+,\d+\): (error TS\d+: .*)$/);
 		if (positioned) {
 			ids.add(`${positioned[1]}: ${positioned[2]}`.trim());
