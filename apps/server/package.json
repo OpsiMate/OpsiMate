@@ -54,7 +54,7 @@
 		"@types/node": "^26.4.1",
 		"@types/nodemailer": "^8.0.1",
 		"@types/supertest": "^7.2.1",
-		"@vitest/coverage-v8": "^4.1.11",
+		"@vitest/coverage-v8": "^5.0.0",
 		"eslint": "^10.9.1",
 		"supertest": "^7.2.2",
 		"ts-node": "^10.9.2",

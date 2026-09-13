@@ -96,7 +96,7 @@
 		"@types/react-dom": "^19.2.5",
 		"@typescript-eslint/eslint-plugin": "^8.69.0",
 		"@vitejs/plugin-react-swc": "^4.3.3",
-		"@vitest/coverage-v8": "^4.1.11",
+		"@vitest/coverage-v8": "^5.0.0",
 		"@vitest/ui": "^4.1.11",
 		"eslint": "^10.9.1",
 		"eslint-config-prettier": "^10.1.8",
