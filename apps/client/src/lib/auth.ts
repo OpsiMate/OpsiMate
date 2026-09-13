@@ -2,6 +2,8 @@ import { Logger, Role } from '@OpsiMate/shared';
 import { jwtDecode } from 'jwt-decode';
 import { getPlaygroundUser, isPlaygroundMode } from './playground';
 
+export const AUTH_TOKEN_STORAGE_KEY = 'jwt';
+
 const logger = new Logger('auth');
 
 export interface JWTPayload {
@@ -24,7 +26,7 @@ export function getCurrentUser(): JWTPayload | null {
 		};
 	}
 
-	const token = localStorage.getItem('jwt');
+	const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 	if (!token) return null;
 
 	try {
