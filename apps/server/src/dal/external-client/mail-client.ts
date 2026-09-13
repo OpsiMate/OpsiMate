@@ -1,5 +1,5 @@
 import { Logger } from '@OpsiMate/shared';
-import nodemailer from 'nodemailer';
+import nodemailer, { type Transporter } from 'nodemailer';
 import { getMailerConfig } from '../../config/config';
 import { passwordResetTemplate, welcomeTemplate, playgroundDemoTemplate } from '../../utils/mailTemplate';
 
@@ -28,7 +28,7 @@ const logger = new Logger('service/mail.service');
  * It supports sending different types of emails using predefined templates.
  */
 export class MailClient {
-	private transporter: nodemailer.Transporter | null = null;
+	private transporter: Transporter | null = null;
 	private mailerConfig = getMailerConfig();
 	private verified = false;
 
