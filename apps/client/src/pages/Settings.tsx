@@ -661,14 +661,14 @@ const Settings: React.FC = () => {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Multiple Users</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete {selectedUsers.length} user(s)? This action cannot be
-							undone.
+							Are you sure you want to delete {selectedUsers.length} user
+							{selectedUsers.length !== 1 ? 's' : ''}? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete}>
-							Delete {selectedUsers.length} User(s)
+							Delete {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
