@@ -1,10 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface UptimeKumaSetupModalProps {
@@ -13,32 +12,17 @@ export interface UptimeKumaSetupModalProps {
 }
 
 export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModalProps) => {
-	const [copied, setCopied] = useState(false);
-	const { toast } = useToast();
+	const { copied: copied, copy } = useCopyToClipboard();
 
 	// Correct webhook URL with API token parameter
 	// User needs to replace {your_api_token} with their actual API_TOKEN environment variable value
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom/UptimeKuma?api_token={your_api_token}`;
 
-	const handleCopyWebhook = async () => {
-		try {
-			await navigator.clipboard.writeText(webhookUrl);
-			setCopied(true);
-			toast({
-				title: 'Copied!',
-				description: 'Webhook URL copied to clipboard',
-				duration: 2000,
-			});
-			setTimeout(() => setCopied(false), 2000);
-		} catch (error) {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy the URL manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
-	};
+	const handleCopyWebhook = () =>
+		copy(webhookUrl, {
+			successDescription: 'Webhook URL copied to clipboard',
+			failureDescription: 'Please copy the URL manually',
+		});
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>

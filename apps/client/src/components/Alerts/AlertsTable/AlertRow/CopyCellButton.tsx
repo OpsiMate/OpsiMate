@@ -1,30 +1,6 @@
 import { Check, Copy } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { cn } from '@/lib/utils';
-
-// The Clipboard API needs a secure context, and self-hosted OpsiMate commonly runs on
-// plain http — fall back to the legacy execCommand path there.
-const copyText = async (text: string): Promise<boolean> => {
-	if (navigator.clipboard?.writeText) {
-		try {
-			await navigator.clipboard.writeText(text);
-			return true;
-		} catch {
-			// Permission denied or transient failure — try the fallback below.
-		}
-	}
-	const textarea = document.createElement('textarea');
-	textarea.value = text;
-	textarea.style.position = 'fixed';
-	textarea.style.opacity = '0';
-	document.body.appendChild(textarea);
-	textarea.select();
-	try {
-		return document.execCommand('copy');
-	} finally {
-		textarea.remove();
-	}
-};
 
 export interface CopyCellButtonProps {
 	// The FULL underlying value — not the (possibly truncated/reformatted) display text.
@@ -36,16 +12,11 @@ export interface CopyCellButtonProps {
 // `relative group/cell` for the reveal and positioning to work. Click/mousedown stop
 // propagation so copying never opens the details panel or starts a drag selection.
 export const CopyCellButton = ({ value, className }: CopyCellButtonProps) => {
-	const [copied, setCopied] = useState(false);
-	const resetTimer = useRef<number>();
-	useEffect(() => () => window.clearTimeout(resetTimer.current), []);
+	const { copied, copy } = useCopyToClipboard({ resetMs: 1500, restartTimer: true, legacyFallback: true });
 
 	const handleCopy = async (e: React.MouseEvent) => {
 		e.stopPropagation();
-		if (!(await copyText(value))) return;
-		setCopied(true);
-		window.clearTimeout(resetTimer.current);
-		resetTimer.current = window.setTimeout(() => setCopied(false), 1500);
+		await copy(value);
 	};
 
 	return (

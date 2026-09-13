@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_BASE_URL } from '@/lib/api';
 import { Check, Copy, ExternalLink, Info } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface GrafanaSetupModalProps {
@@ -16,8 +16,7 @@ const GRAFANA_CONTACT_POINTS_DOCS_URL =
 	'https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/';
 
 export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps) => {
-	const [copiedWebhook, setCopiedWebhook] = useState(false);
-	const { toast } = useToast();
+	const { copied: copiedWebhook, copy } = useCopyToClipboard();
 
 	const webhookUrl = useMemo(() => {
 		// Prefer the shared API_BASE_URL, which already encodes the correct host + base path.
@@ -26,21 +25,11 @@ export const GrafanaSetupModal = ({ open, onOpenChange }: GrafanaSetupModalProps
 		return `${trimmedBase || ''}/alerts/custom/grafana?api_token={your_api_token}`;
 	}, []);
 
-	const handleCopy = async (value: string) => {
-		try {
-			await navigator.clipboard.writeText(value);
-			setCopiedWebhook(true);
-			toast({ title: 'Copied!', description: 'Webhook URL copied to clipboard', duration: 2000 });
-			setTimeout(() => setCopiedWebhook(false), 2000);
-		} catch (error) {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy the value manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
-	};
+	const handleCopy = (value: string) =>
+		copy(value, {
+			successDescription: 'Webhook URL copied to clipboard',
+			failureDescription: 'Please copy the value manually',
+		});
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
