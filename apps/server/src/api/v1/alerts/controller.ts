@@ -561,8 +561,8 @@ export class AlertController {
 				// (P1 → critical, …) unless an explicit severity tag is present.
 				severity: tags['severity'] ?? payload.priority,
 				tags,
-				startsAt: new Date(Number(startsAtSource)).toISOString(),
-				updatedAt: new Date(Number(updatedAtSource)).toISOString(),
+				startsAt: AlertController.toDatadogIsoOrNow(startsAtSource),
+				updatedAt: AlertController.toDatadogIsoOrNow(updatedAtSource),
 				alertUrl: payload.link ?? '',
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
@@ -626,6 +626,20 @@ export class AlertController {
 		if (!value) return new Date().toISOString();
 		const parsed = new Date(value);
 		return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+	}
+
+	// Datadog normally sends epoch milliseconds as strings, but custom templates can emit
+	// ISO timestamps too. Preserve Number()'s accepted numeric forms (including decimals),
+	// then delegate ISO and invalid values to Grafana's established fallback parser.
+	private static toDatadogIsoOrNow(value?: string): string {
+		if (value?.trim() === '') return AlertController.toIsoOrNow(undefined);
+
+		const epochMs = Number(value);
+		if (value !== undefined && Number.isFinite(epochMs)) {
+			const parsed = new Date(epochMs);
+			if (!isNaN(parsed.getTime())) return parsed.toISOString();
+		}
+		return AlertController.toIsoOrNow(value);
 	}
 
 	// Receives alerts pushed by a Grafana "Webhook" contact point. Replaces the old polling job:
