@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_BASE_URL } from '@/lib/api';
 import { Check, Copy, ExternalLink, Info } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface DatadogSetupModalProps {
@@ -16,9 +16,8 @@ export interface DatadogSetupModalProps {
 const DATADOG_WEBHOOK_DOCS_URL = 'https://docs.datadoghq.com/integrations/webhooks/#usage';
 
 export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps) => {
-	const [copiedWebhook, setCopiedWebhook] = useState(false);
-	const [copiedPayload, setCopiedPayload] = useState(false);
-	const { copy } = useCopyToClipboard();
+	const { copied: copiedWebhook, copy: copyWebhook } = useCopyToClipboard();
+	const { copied: copiedPayload, copy: copyPayload } = useCopyToClipboard();
 
 	const webhookUrl = useMemo(() => {
 		// Prefer the shared API_BASE_URL, which already encodes the correct host + base path.
@@ -48,15 +47,10 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
 }`;
 
 	const handleCopy = (value: string, type: 'webhook' | 'payload') =>
-		copy(value, {
+		(type === 'webhook' ? copyWebhook : copyPayload)(value, {
 			successDescription:
 				type === 'webhook' ? 'Webhook URL copied to clipboard' : 'Payload template copied to clipboard',
 			failureDescription: 'Please copy the value manually',
-			onCopied: () => (type === 'webhook' ? setCopiedWebhook(true) : setCopiedPayload(true)),
-			onReset: () => {
-				setCopiedWebhook(false);
-				setCopiedPayload(false);
-			},
 		});
 
 	return (

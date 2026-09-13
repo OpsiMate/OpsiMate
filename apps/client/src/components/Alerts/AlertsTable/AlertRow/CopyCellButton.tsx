@@ -12,7 +12,7 @@ export interface CopyCellButtonProps {
 // `relative group/cell` for the reveal and positioning to work. Click/mousedown stop
 // propagation so copying never opens the details panel or starts a drag selection.
 export const CopyCellButton = ({ value, className }: CopyCellButtonProps) => {
-	const { copied, copy } = useCopyToClipboard({ resetMs: 1500, restartTimer: true, legacyFallback: true });
+	const { copied, copy } = useCopyToClipboard({ resetMs: 1500 });
 
 	const handleCopy = async (e: React.MouseEvent) => {
 		e.stopPropagation();

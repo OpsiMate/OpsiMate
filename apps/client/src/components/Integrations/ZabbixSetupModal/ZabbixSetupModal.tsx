@@ -14,10 +14,9 @@ export interface ZabbixSetupModalProps {
 }
 
 export const ZabbixSetupModal = ({ open, onOpenChange }: ZabbixSetupModalProps) => {
-	const [copied, setCopied] = useState(false);
-	const [copiedScript, setCopiedScript] = useState(false);
-	const [copiedCurl, setCopiedCurl] = useState(false);
-	const { copy } = useCopyToClipboard();
+	const { copied: copied, copy: copyWebhook } = useCopyToClipboard();
+	const { copied: copiedScript, copy: copyScript } = useCopyToClipboard();
+	const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
 
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom/zabbix?api_token={your_api_token}`;
 
@@ -148,12 +147,10 @@ fi`;
     throw 'OpsiMate webhook error: ' + error;
 }`;
 
-	const handleCopy = (text: string, setCopiedState: (v: boolean) => void, description: string) =>
+	const handleCopy = (text: string, copy: ReturnType<typeof useCopyToClipboard>['copy'], description: string) =>
 		copy(text, {
 			successDescription: description,
 			failureDescription: 'Please copy manually',
-			onCopied: () => setCopiedState(true),
-			onReset: () => setCopiedState(false),
 		});
 
 	return (
@@ -274,7 +271,7 @@ fi`;
 												username: zabbixUsername,
 												password: zabbixPassword,
 											}),
-											setCopiedCurl,
+											copyCurl,
 											'Script copied'
 										)
 									}
@@ -316,7 +313,7 @@ fi`;
 							<div className="flex gap-2">
 								<Input value={webhookUrl} readOnly className="font-mono text-sm" />
 								<Button
-									onClick={() => handleCopy(webhookUrl, setCopied, 'Webhook URL copied')}
+									onClick={() => handleCopy(webhookUrl, copyWebhook, 'Webhook URL copied')}
 									variant="outline"
 									className="gap-2 shrink-0"
 								>
@@ -346,7 +343,7 @@ fi`;
 									{webhookScript}
 								</pre>
 								<Button
-									onClick={() => handleCopy(webhookScript, setCopiedScript, 'Script copied')}
+									onClick={() => handleCopy(webhookScript, copyScript, 'Script copied')}
 									variant="outline"
 									size="sm"
 									className="absolute top-2 right-2 gap-1"
