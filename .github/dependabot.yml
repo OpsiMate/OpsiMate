@@ -42,6 +42,16 @@ updates:
       # updates within 4.x still come through.
       - dependency-name: "js-yaml"
         update-types: ["version-update:semver-major"]
+      # The vitest plugins pin an EXACT peer on the vitest core version
+      # (@vitest/ui@5.0.0 requires vitest 5.0.0), so a plugin major arriving
+      # on its own installs incoherently -- it doesn't break `vitest run`, so
+      # CI stays green, but test:ui and coverage are broken for whoever runs
+      # them (#950, #951). A vitest major has to move as one coordinated bump
+      # of core + both plugins, done by hand.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
 
   # Backend + frontend Docker images
   - package-ecosystem: "docker"
