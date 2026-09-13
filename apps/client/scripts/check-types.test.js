@@ -1,3 +1,5 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -102,4 +104,46 @@ describe('client typecheck command failures', () => {
 		expect(mocks.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('type-errors-baseline.txt'), '');
 		expect(process.exit).toHaveBeenCalledWith(0);
 	});
+});
+
+describe('Windows compiler output', () => {
+	it.each([1, 2])('accepts baselined CRLF diagnostics with exit %s', async (status) => {
+		failCommand(status, diagnostic.replaceAll('\n', '\r\n'));
+		await runGate();
+		expect(process.exit).not.toHaveBeenCalled();
+		expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No new client type errors'));
+	});
+	it('classifies a CRLF global diagnostic as a compiler error', async () => {
+		failCommand(1, "error TS5058: The specified path does not exist: 'tsconfig.app.json'.\r\n");
+		await runGate();
+		expect(process.exit).toHaveBeenCalledWith(1);
+	});
+	it('does not skip new CRLF diagnostics beside baselined LF output', async () => {
+		failCommand(2, diagnostic + 'src/new.ts(1,2): error TS2322: New type error.\r\n');
+		await runGate();
+		expect(process.exit).toHaveBeenCalledWith(1);
+		expect(console.error).toHaveBeenCalledWith(
+			expect.stringContaining('src/new.ts: error TS2322: New type error.')
+		);
+	});
+	it('writes a normalized baseline from CRLF compiler output', async () => {
+		failCommand(2, diagnostic.replaceAll('\n', '\r\n'));
+		await runGate(true);
+		expect(mocks.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('type-errors-baseline.txt'), baseline);
+		expect(process.exit).toHaveBeenCalledWith(0);
+	});
+});
+
+it.each(['native', 'forward'])('normalizes %s repository paths in diagnostics', async (style) => {
+	const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+	const prefix = style === 'forward' ? root.replaceAll('\\', '/') : root;
+	mocks.readFileSync.mockReturnValue(
+		'src/example.ts: error TS2322: Type import("<repo>/packages/shared/dist/types").Example.\n'
+	);
+	failCommand(
+		2,
+		`src/example.ts(1,1): error TS2322: Type import("${prefix}/packages/shared/dist/types").Example.\r\n`
+	);
+	await runGate();
+	expect(process.exit).not.toHaveBeenCalled();
 });
