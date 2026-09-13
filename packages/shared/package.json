@@ -23,11 +23,11 @@
 		"fix": "npm run format-fix && npm run lint-fix"
 	},
 	"dependencies": {
-		"zod": "^4.5.4"
+		"zod": "^4.6.1"
 	},
 	"devDependencies": {
-		"@types/node": "^26.4.1",
-		"eslint": "^10.9.1",
+		"@types/node": "^26.5.1",
+		"eslint": "^10.10.0",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
 		"vite-plugin-dts": "^5.1.0"
