@@ -460,6 +460,9 @@ export interface AlertRootCause {
 	// Who rated (full name from the JWT) and when; null until someone rates.
 	ratedBy: string | null;
 	ratedAt: string | null;
+	// Optional free text the operator attached to a thumbs-down ("what went wrong?").
+	// Relayed to the sender's feedback callback verbatim; null for thumbs-up.
+	ratingComment: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
