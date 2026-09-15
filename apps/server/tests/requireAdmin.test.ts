@@ -39,7 +39,18 @@ const ADMIN_ROUTES = [
 	['patch', '/api/v1/users/999'],
 ] as const;
 
-const send = (method: string, path: string) => (app as unknown as Record<string, (p: string) => Test>)[method](path);
+// supertest's agent type doesn't expose its verb methods in a form we can index by a
+// variable, so we cast through this. Naming the verbs keeps `send` type-checked: a typo
+// or an unsupported method in ADMIN_ROUTES is a compile error, not a runtime one.
+interface HttpMethodCaller {
+	get(path: string): Test;
+	put(path: string): Test;
+	post(path: string): Test;
+	patch(path: string): Test;
+	delete(path: string): Test;
+}
+
+const send = (method: keyof HttpMethodCaller, path: string) => (app as unknown as HttpMethodCaller)[method](path);
 
 const createUserWithRole = async (role: string): Promise<string> => {
 	const email = `${role}@requireadmin.test`;

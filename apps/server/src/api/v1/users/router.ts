@@ -24,10 +24,10 @@ export default function createUsersRouter(usersController: UsersController) {
 	// DELETE /users/:id - delete user by ID (admin only)
 	router.delete('/:id', requireAdmin, usersController.deleteUserHandler);
 
-	// PATCH /users/password - update user password
+	// PATCH /users/:id/reset-password - admin resets another user's password
 	router.patch('/:id/reset-password', requireAdmin, usersController.updateUserPasswordHandler);
 
-	//PATCH /user/:id - update user info by admin
+	// PATCH /users/:id - admin updates another user's details
 	router.patch('/:id', requireAdmin, usersController.updateUserHandler);
 
 	return router;
