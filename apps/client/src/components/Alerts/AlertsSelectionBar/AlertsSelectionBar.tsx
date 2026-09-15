@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
-import { BellRing, CheckCircle2, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { BellRing, CheckCircle2, FolderPlus, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
@@ -38,6 +38,8 @@ export interface AlertsSelectionBarProps {
 	// Offered when the whole loaded list is selected but more alerts match the query —
 	// arming it widens every bulk action to all matchingTotal alerts (Gmail's pattern).
 	onSelectAllMatching?: () => void;
+	// Groups the selection into a new incident (needs at least two alerts).
+	onGroupIntoIncident?: () => void;
 }
 
 export const AlertsSelectionBar = ({
@@ -53,6 +55,7 @@ export const AlertsSelectionBar = ({
 	matchingTotal,
 	allMatchingSelected,
 	onSelectAllMatching,
+	onGroupIntoIncident,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -109,6 +112,12 @@ export const AlertsSelectionBar = ({
 					<Button variant="outline" size="sm" onClick={onCommentAll} className="gap-1.5">
 						<MessageSquarePlus className="h-3.5 w-3.5" />
 						Comment
+					</Button>
+				)}
+				{onGroupIntoIncident && selectedAlerts.length >= 2 && (
+					<Button variant="outline" size="sm" onClick={onGroupIntoIncident} className="gap-1.5">
+						<FolderPlus className="h-3.5 w-3.5" />
+						Group into incident
 					</Button>
 				)}
 				{onDeleteAll && (

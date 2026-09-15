@@ -20,12 +20,14 @@ import {
 	TABLE_HEAD_CLASSES,
 } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
+import { IncidentSummary } from '@OpsiMate/shared';
 import { filterAlerts } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
 import {
 	useAlertGrouping,
 	useAlertKeyboardNav,
+	useIncidentFolding,
 	useAlertSelection,
 	useAlertSorting,
 	useColumnResize,
@@ -44,6 +46,10 @@ import { VirtualizedAlertList } from './VirtualizedAlertList';
 // than one animation frame (so a sliding sidebar coalesces into one commit), short
 // enough that the settle after the gesture reads as immediate.
 const RESIZE_SETTLE_MS = 100;
+
+// Stable empty map for tables rendered without incident data (identity matters: a fresh
+// Map per render would re-run the folding memo every time).
+const EMPTY_INCIDENTS: Map<number, IncidentSummary> = new Map();
 
 // Icon-only headers for the narrow icon-only columns; the column name stays in the
 // header tooltip.
@@ -73,6 +79,12 @@ export const AlertsTable = ({
 	columnOrder = DEFAULT_COLUMN_ORDER,
 	onAlertClick,
 	activeAlertId = null,
+	incidentsById,
+	onOpenIncident,
+	activeIncidentId = null,
+	onEditIncident,
+	onUngroupIncident,
+	onRemoveFromIncident,
 	tagKeyColumnLabels = {},
 	groupByColumns: controlledGroupBy,
 	onGroupByChange,
@@ -180,7 +192,7 @@ export const AlertsTable = ({
 	// When server summaries are supplied, group headers show the TRUE totals over the
 	// full matching set instead of counting only the loaded page. Same length and keys,
 	// so the virtualizer and sticky headers are unaffected.
-	const flatRows = useMemo(() => {
+	const summarizedRows = useMemo(() => {
 		if (!groupSummaryByKey || groupSummaryByKey.size === 0) return groupedRows;
 		return groupedRows.map((item) => {
 			if (item.type !== 'group') return item;
@@ -188,6 +200,13 @@ export const AlertsTable = ({
 			return summary ? { ...item, count: summary.count, groupStatus: summary.status } : item;
 		});
 	}, [groupedRows, groupSummaryByKey]);
+	// Incident folding runs LAST, over the filtered/sorted/grouped rows: the folder sits
+	// where its best member would have, and folds only members visible under the current
+	// filters (see useIncidentFolding).
+	const { foldedRows: flatRows, toggleIncident } = useIncidentFolding(
+		summarizedRows,
+		incidentsById ?? EMPTY_INCIDENTS
+	);
 	const { allSelected, handleSelectAll, handleSelectAlert } = useAlertSelection({
 		sortedAlerts,
 		selectedAlerts,
@@ -589,6 +608,12 @@ export const AlertsTable = ({
 									contentColumnWidths={effectiveColumnWidths}
 									expandRows={expandRows}
 									onToggleGroup={toggleGroup}
+									onToggleIncident={toggleIncident}
+									onOpenIncident={onOpenIncident}
+									activeIncidentId={activeIncidentId}
+									onEditIncident={onEditIncident}
+									onUngroupIncident={onUngroupIncident}
+									onRemoveFromIncident={onRemoveFromIncident}
 									onSelectAlert={handleSelectAlert}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}
