@@ -102,6 +102,7 @@ export class RootCauseRepository {
 						rating = NULL,
 						rated_by = NULL,
 						rated_at = NULL,
+						rating_comment = NULL,
 						updated_at = excluded.updated_at`
 				)
 				.run(input.alertId, input.source, input.content, input.feedbackUpUrl, input.feedbackDownUrl, now, now);

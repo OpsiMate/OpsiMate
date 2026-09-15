@@ -764,6 +764,10 @@ export const handlers = [
 		if (rating !== 'up' && rating !== 'down') {
 			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
 		}
+		// Present-but-not-a-string is a 400 on the server (zod), so it is here too.
+		if (body?.comment !== undefined && typeof body.comment !== 'string') {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
 		const comment = typeof body?.comment === 'string' ? body.comment.trim() : '';
 		if (comment.length > ROOT_CAUSE_RATING_COMMENT_MAX) {
 			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });

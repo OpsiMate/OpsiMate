@@ -11,39 +11,48 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ROOT_CAUSE_RATING_COMMENT_MAX } from '@OpsiMate/shared';
 import { Loader2, ThumbsDown } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface RootCauseFeedbackDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	// Called once, with the trimmed comment or undefined when the operator skipped it.
-	// The thumbs-down itself is submitted by the caller either way.
+	// Called with the trimmed comment, or undefined when the operator skipped it. The
+	// thumbs-down itself is submitted by the caller either way; the caller closes the
+	// dialog on success and leaves it open (with `error`) on failure.
 	onSubmit: (comment: string | undefined) => void;
 	submitting: boolean;
+	error: string | null;
 }
 
 // "What went wrong?" — shown after a thumbs-down. The comment is optional on purpose:
 // the verdict is the signal that matters and must never be gated behind typing, so
 // Skip sends the bare thumbs-down. What is typed here is relayed verbatim to the
 // sender's feedback callback (and, in phase 2, becomes the eval note for the agent).
-export const RootCauseFeedbackDialog = ({ open, onOpenChange, onSubmit, submitting }: RootCauseFeedbackDialogProps) => {
+export const RootCauseFeedbackDialog = ({
+	open,
+	onOpenChange,
+	onSubmit,
+	submitting,
+	error,
+}: RootCauseFeedbackDialogProps) => {
 	const [comment, setComment] = useState('');
 	const trimmed = comment.trim();
 	const overLimit = trimmed.length > ROOT_CAUSE_RATING_COMMENT_MAX;
 
-	const handleOpenChange = (next: boolean) => {
-		if (!next) setComment('');
-		onOpenChange(next);
-	};
+	// The text is kept while a request is in flight or has failed (so a retry needs no
+	// re-typing) and dropped only once the dialog is actually closed — whichever side
+	// closed it.
+	useEffect(() => {
+		if (!open) setComment('');
+	}, [open]);
 
 	const submit = (withComment: boolean) => {
 		if (submitting) return;
 		onSubmit(withComment && trimmed ? trimmed : undefined);
-		setComment('');
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={handleOpenChange}>
+		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
@@ -74,6 +83,11 @@ export const RootCauseFeedbackDialog = ({ open, onOpenChange, onSubmit, submitti
 					>
 						{trimmed.length}/{ROOT_CAUSE_RATING_COMMENT_MAX}
 					</p>
+					{error && (
+						<p role="alert" className="text-xs text-destructive">
+							{error}
+						</p>
+					)}
 				</div>
 				<DialogFooter className="gap-2 sm:gap-0">
 					<Button type="button" variant="ghost" onClick={() => submit(false)} disabled={submitting}>

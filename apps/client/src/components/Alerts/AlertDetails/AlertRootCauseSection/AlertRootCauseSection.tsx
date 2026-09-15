@@ -66,8 +66,10 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 		rate.mutate({ alertId, rating });
 	};
 
+	// Close only on success: a failed request keeps the dialog (and the typed note) so
+	// the operator can retry instead of re-typing.
 	const onFeedback = (comment: string | undefined) => {
-		rate.mutate({ alertId, rating: 'down', comment }, { onSettled: () => setFeedbackOpen(false) });
+		rate.mutate({ alertId, rating: 'down', comment }, { onSuccess: () => setFeedbackOpen(false) });
 	};
 
 	return (
@@ -118,6 +120,7 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 				onOpenChange={setFeedbackOpen}
 				onSubmit={onFeedback}
 				submitting={rate.isPending}
+				error={rate.isError ? 'Could not send your feedback. Please try again.' : null}
 			/>
 		</CollapsibleSection>
 	);

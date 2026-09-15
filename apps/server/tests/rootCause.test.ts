@@ -214,15 +214,17 @@ describe('root cause API', () => {
 		expect(res.status).toBe(400);
 	});
 
-	test('a re-pushed analysis clears the previous rating', async () => {
-		await rate('rc-1', 'up');
+	test('a re-pushed analysis clears the previous rating and its comment', async () => {
+		await rate('rc-1', 'down', 'the old analysis was wrong');
 		const put = await putRootCause('rc-1', { content: 'Revised: it was the cache, not the pool.' });
 		expect(put.status).toBe(200);
 
+		// The note explained the REPLACED analysis — it must not be shown under the new one.
 		const got = await getRootCause('rc-1');
 		expect(got.body.data.rootCause.content).toContain('Revised');
 		expect(got.body.data.rootCause.rating).toBeNull();
 		expect(got.body.data.rootCause.ratedBy).toBeNull();
+		expect(got.body.data.rootCause.ratingComment).toBeNull();
 	});
 
 	test('rating lands in the audit log', async () => {

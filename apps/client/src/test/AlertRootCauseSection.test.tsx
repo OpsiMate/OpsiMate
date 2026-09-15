@@ -73,6 +73,26 @@ describe('AlertRootCauseSection feedback', () => {
 		expect(mutate.mock.calls[0][0]).toEqual({ alertId: 'alert-1', rating: 'down', comment: undefined });
 	});
 
+	test('the dialog closes only once the rating succeeds', () => {
+		mutate.mockImplementation((_vars, options) => options?.onSuccess?.());
+		renderSection();
+		fireEvent.click(screen.getByRole('button', { name: /rate root cause unhelpful/i }));
+		fireEvent.click(screen.getByRole('button', { name: /skip/i }));
+		expect(screen.queryByText('What went wrong?')).toBeNull();
+	});
+
+	test('a request that does not succeed keeps the dialog and the typed note', () => {
+		// mutate never reports success here — the dialog must stay, text intact, so the
+		// operator can retry instead of re-typing.
+		renderSection();
+		fireEvent.click(screen.getByRole('button', { name: /rate root cause unhelpful/i }));
+		fireEvent.change(screen.getByLabelText('Feedback'), { target: { value: 'keep me' } });
+		fireEvent.click(screen.getByRole('button', { name: /send feedback/i }));
+		expect(mutate).toHaveBeenCalledTimes(1);
+		expect(screen.getByText('What went wrong?')).toBeInTheDocument();
+		expect(screen.getByLabelText('Feedback')).toHaveValue('keep me');
+	});
+
 	test('a stored thumbs-down comment is shown under the analysis', () => {
 		rootCauseState.current = analysis({
 			rating: 'down',
