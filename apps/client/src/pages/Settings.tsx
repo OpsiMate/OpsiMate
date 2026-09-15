@@ -31,6 +31,7 @@ import {
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
+import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -579,6 +580,7 @@ const Settings: React.FC = () => {
 
 									<TabsContent value="ai" className="space-y-6">
 										<AiSettings />
+										<RootCauseGuide />
 									</TabsContent>
 
 									<TabsContent value="secrets" className="space-y-6">
