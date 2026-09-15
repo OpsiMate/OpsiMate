@@ -1,7 +1,6 @@
 import { Response } from 'express';
 import {
 	Logger,
-	Role,
 	UpdateRetentionConfigSchema,
 	UpdateRetentionPolicySchema,
 	RetentionResourceParamSchema,
@@ -15,16 +14,7 @@ const logger = new Logger('api/v1/retention/controller');
 export class RetentionController {
 	constructor(private retentionBL: RetentionBL) {}
 
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
-
-	getSettings = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
+	getSettings = async (_req: AuthenticatedRequest, res: Response) => {
 		try {
 			const settings = await this.retentionBL.getSettings();
 			return res.json({ success: true, data: settings });
@@ -35,7 +25,6 @@ export class RetentionController {
 	};
 
 	updateConfig = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const updates = UpdateRetentionConfigSchema.parse(req.body as unknown);
 			const config = await this.retentionBL.updateConfig(updates);
@@ -50,7 +39,6 @@ export class RetentionController {
 	};
 
 	updatePolicy = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const { resourceType } = RetentionResourceParamSchema.parse(req.params);
 			const updates = UpdateRetentionPolicySchema.parse(req.body as unknown);
@@ -65,8 +53,7 @@ export class RetentionController {
 		}
 	};
 
-	runNow = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
+	runNow = async (_req: AuthenticatedRequest, res: Response) => {
 		try {
 			const result = await this.retentionBL.runCleanup();
 			return res.json({ success: true, data: result });
