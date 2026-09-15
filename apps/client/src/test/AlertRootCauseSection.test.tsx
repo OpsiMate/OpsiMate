@@ -6,13 +6,15 @@ import { AllTheProviders } from './TestProviders';
 
 // The rating hooks are mocked at the module boundary: this test is about the
 // thumbs-down → "what went wrong?" flow, not about fetching.
-const { mutate, rootCauseState } = vi.hoisted(() => ({
+const { mutate, reset, rootCauseState, rateState } = vi.hoisted(() => ({
 	mutate: vi.fn(),
+	reset: vi.fn(),
 	rootCauseState: { current: null as AlertRootCause | null },
+	rateState: { isError: false },
 }));
 vi.mock('@/hooks/queries/rootCause', () => ({
 	useAlertRootCause: () => ({ data: rootCauseState.current, isLoading: false }),
-	useRateRootCause: () => ({ mutate, isPending: false }),
+	useRateRootCause: () => ({ mutate, reset, isPending: false, isError: rateState.isError }),
 }));
 
 const analysis = (overrides: Partial<AlertRootCause> = {}): AlertRootCause => ({
@@ -37,6 +39,8 @@ const renderSection = () =>
 
 beforeEach(() => {
 	mutate.mockReset();
+	reset.mockReset();
+	rateState.isError = false;
 	rootCauseState.current = analysis();
 });
 
@@ -91,6 +95,20 @@ describe('AlertRootCauseSection feedback', () => {
 		expect(mutate).toHaveBeenCalledTimes(1);
 		expect(screen.getByText('What went wrong?')).toBeInTheDocument();
 		expect(screen.getByLabelText('Feedback')).toHaveValue('keep me');
+	});
+
+	test('a failed attempt shows an inline error that editing or closing clears', () => {
+		rateState.isError = true;
+		renderSection();
+		fireEvent.click(screen.getByRole('button', { name: /rate root cause unhelpful/i }));
+		expect(screen.getByRole('alert')).toHaveTextContent(/could not send your feedback/i);
+
+		fireEvent.change(screen.getByLabelText('Feedback'), { target: { value: 'second try' } });
+		expect(reset).toHaveBeenCalledTimes(1);
+		expect(screen.getByLabelText('Feedback')).toHaveValue('second try');
+
+		fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+		expect(reset).toHaveBeenCalledTimes(2);
 	});
 
 	test('a stored thumbs-down comment is shown under the analysis', () => {

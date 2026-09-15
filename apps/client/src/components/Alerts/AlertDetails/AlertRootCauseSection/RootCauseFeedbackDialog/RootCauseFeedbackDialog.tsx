@@ -22,6 +22,9 @@ interface RootCauseFeedbackDialogProps {
 	onSubmit: (comment: string | undefined) => void;
 	submitting: boolean;
 	error: string | null;
+	// Fired on every keystroke so the caller can drop a stale `error` once the operator
+	// starts editing after a failed attempt.
+	onEdit: () => void;
 }
 
 // "What went wrong?" — shown after a thumbs-down. The comment is optional on purpose:
@@ -34,6 +37,7 @@ export const RootCauseFeedbackDialog = ({
 	onSubmit,
 	submitting,
 	error,
+	onEdit,
 }: RootCauseFeedbackDialogProps) => {
 	const [comment, setComment] = useState('');
 	const trimmed = comment.trim();
@@ -69,7 +73,10 @@ export const RootCauseFeedbackDialog = ({
 					<Textarea
 						id="root-cause-feedback"
 						value={comment}
-						onChange={(event) => setComment(event.target.value)}
+						onChange={(event) => {
+							setComment(event.target.value);
+							onEdit();
+						}}
 						placeholder="e.g. It blamed the connection pool, but the pool was fine — the real cause was DNS."
 						rows={4}
 						autoFocus

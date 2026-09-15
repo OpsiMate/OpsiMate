@@ -72,6 +72,12 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 		rate.mutate({ alertId, rating: 'down', comment }, { onSuccess: () => setFeedbackOpen(false) });
 	};
 
+	// A failed attempt's error must not outlive the dialog (or the next keystroke).
+	const onFeedbackOpenChange = (open: boolean) => {
+		if (!open) rate.reset();
+		setFeedbackOpen(open);
+	};
+
 	return (
 		<CollapsibleSection
 			title="Root cause"
@@ -117,10 +123,11 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 			</div>
 			<RootCauseFeedbackDialog
 				open={feedbackOpen}
-				onOpenChange={setFeedbackOpen}
+				onOpenChange={onFeedbackOpenChange}
 				onSubmit={onFeedback}
 				submitting={rate.isPending}
 				error={rate.isError ? 'Could not send your feedback. Please try again.' : null}
+				onEdit={rate.reset}
 			/>
 		</CollapsibleSection>
 	);
