@@ -14,11 +14,9 @@ describe('normalizeAlertSeverity', () => {
 		expect(normalizeAlertSeverity(value)).toBe(expected);
 	});
 
-	it.each([undefined, null, '', 'unknown', '__proto__', 'constructor', 'toString'])(
-		'falls back for %s', (value) => {
-			expect(normalizeAlertSeverity(value)).toBe(AlertSeverity.WARNING);
-		},
-	);
+	it.each([undefined, null, '', 'unknown', '__proto__', 'constructor', 'toString'])('falls back for %s', (value) => {
+		expect(normalizeAlertSeverity(value)).toBe(AlertSeverity.WARNING);
+	});
 
 	it('ignores case and surrounding whitespace', () => {
 		expect(normalizeAlertSeverity('  CRIT ')).toBe(AlertSeverity.CRITICAL);
