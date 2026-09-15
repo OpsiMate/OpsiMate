@@ -1,6 +1,7 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
 	AlertHistoryData,
 	AlertHistoryEventType,
@@ -408,6 +409,11 @@ interface AiFilterRequestBody {
 	query?: string;
 }
 
+interface RateRootCauseBody {
+	rating?: unknown;
+	comment?: unknown;
+}
+
 export const handlers = [
 	// ==================== AI (BYOK) ====================
 	http.get(`${API_BASE}/ai/config`, () => {
@@ -753,9 +759,13 @@ export const handlers = [
 
 	http.post(`${API_BASE}/alerts/:alertId/root-cause/rating`, async ({ params, request }) => {
 		// Mirror the server's zod validation: only 'up'/'down' mutate state.
-		const body = (await request.json().catch(() => null)) as { rating?: unknown } | null;
+		const body = (await request.json().catch(() => null)) as RateRootCauseBody | null;
 		const rating = body?.rating;
 		if (rating !== 'up' && rating !== 'down') {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const comment = typeof body?.comment === 'string' ? body.comment.trim() : '';
+		if (comment.length > ROOT_CAUSE_RATING_COMMENT_MAX) {
 			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
 		}
 		const rootCause = playgroundState.rootCauses.find((rc) => rc.alertId === params.alertId);
@@ -765,6 +775,8 @@ export const handlers = [
 		rootCause.rating = rating;
 		rootCause.ratedBy = getPlaygroundUser().fullName;
 		rootCause.ratedAt = new Date().toISOString();
+		// Mirrors the server: the comment only ever accompanies a thumbs-down.
+		rootCause.ratingComment = rating === 'down' && comment ? comment : null;
 		return HttpResponse.json({ success: true, data: { rootCause, callbackDelivered: null } });
 	}),
 

@@ -38,8 +38,17 @@ const putRootCause = (alertId: string, body: object) =>
 const getRootCause = (alertId: string) =>
 	app.get(`/api/v1/alerts/${alertId}/root-cause`).set('Authorization', `Bearer ${jwtToken}`);
 
-const rate = (alertId: string, rating: string) =>
-	app.post(`/api/v1/alerts/${alertId}/root-cause/rating`).set('Authorization', `Bearer ${jwtToken}`).send({ rating });
+const rate = (alertId: string, rating: string, comment?: string) =>
+	app
+		.post(`/api/v1/alerts/${alertId}/root-cause/rating`)
+		.set('Authorization', `Bearer ${jwtToken}`)
+		.send(comment === undefined ? { rating } : { rating, comment });
+
+interface CallbackPayload {
+	alertId: string;
+	rating: string;
+	comment: string | null;
+}
 
 beforeAll(async () => {
 	db = await setupDB();
@@ -114,9 +123,11 @@ describe('root cause API', () => {
 
 		expect(received).toHaveLength(1);
 		expect(received[0].path).toBe('/up');
-		const payload = JSON.parse(received[0].body) as { alertId: string; rating: string };
+		const payload = JSON.parse(received[0].body) as CallbackPayload;
 		expect(payload.alertId).toBe('rc-1');
 		expect(payload.rating).toBe('up');
+		// The key is always present so receivers can rely on it; null on thumbs-up.
+		expect(payload.comment).toBeNull();
 
 		// The verdict persists for later readers.
 		const got = await getRootCause('rc-1');
@@ -137,6 +148,40 @@ describe('root cause API', () => {
 		} finally {
 			receiverStatus = 200;
 		}
+	});
+
+	test('a thumbs-down comment is stored, returned and relayed to the down callback', async () => {
+		received = [];
+		const res = await rate('rc-1', 'down', '  Blames the pool, but the pool was fine — it was DNS.  ');
+		expect(res.status).toBe(200);
+		expect(res.body.data.rootCause.rating).toBe('down');
+		// Trimmed by the schema, stored verbatim otherwise.
+		expect(res.body.data.rootCause.ratingComment).toBe('Blames the pool, but the pool was fine — it was DNS.');
+
+		expect(received).toHaveLength(1);
+		expect(received[0].path).toBe('/down');
+		const payload = JSON.parse(received[0].body) as CallbackPayload;
+		expect(payload.comment).toBe('Blames the pool, but the pool was fine — it was DNS.');
+
+		const got = await getRootCause('rc-1');
+		expect(got.body.data.rootCause.ratingComment).toBe('Blames the pool, but the pool was fine — it was DNS.');
+	});
+
+	test('re-rating clears the comment: thumbs-up drops it even when one is sent', async () => {
+		await rate('rc-1', 'down', 'wrong service');
+		const res = await rate('rc-1', 'up', 'should be ignored on up');
+		expect(res.status).toBe(200);
+		expect(res.body.data.rootCause.ratingComment).toBeNull();
+		expect((await getRootCause('rc-1')).body.data.rootCause.ratingComment).toBeNull();
+	});
+
+	test('an over-long comment is a 400 and nothing is stored', async () => {
+		await rate('rc-1', 'up');
+		const res = await rate('rc-1', 'down', 'x'.repeat(2001));
+		expect(res.status).toBe(400);
+		const got = await getRootCause('rc-1');
+		expect(got.body.data.rootCause.rating).toBe('up');
+		expect(got.body.data.rootCause.ratingComment).toBeNull();
 	});
 
 	test('a callback to the metadata range is refused, rating still stored', async () => {
