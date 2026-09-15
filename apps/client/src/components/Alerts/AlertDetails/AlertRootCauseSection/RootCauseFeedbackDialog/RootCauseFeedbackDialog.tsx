@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ROOT_CAUSE_RATING_COMMENT_MAX } from '@OpsiMate/shared';
 import { Loader2, ThumbsDown } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface RootCauseFeedbackDialogProps {
 	open: boolean;
@@ -45,10 +45,13 @@ export const RootCauseFeedbackDialog = ({
 
 	// The text is kept while a request is in flight or has failed (so a retry needs no
 	// re-typing) and dropped only once the dialog is actually closed — whichever side
-	// closed it.
-	useEffect(() => {
+	// closed it. Done as a render-time state adjustment (React's pattern for reacting
+	// to a prop change) rather than an effect, so there is no extra render with stale text.
+	const [wasOpen, setWasOpen] = useState(open);
+	if (open !== wasOpen) {
+		setWasOpen(open);
 		if (!open) setComment('');
-	}, [open]);
+	}
 
 	const submit = (withComment: boolean) => {
 		if (submitting) return;
