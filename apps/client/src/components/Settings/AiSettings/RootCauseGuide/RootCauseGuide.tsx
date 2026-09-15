@@ -9,12 +9,12 @@ const ROOT_CAUSE_ENDPOINT = `${API_HOST}/api/v1/alerts/{alertId}/root-cause?api_
 const SEND_EXAMPLE = `curl -X PUT "${ROOT_CAUSE_ENDPOINT}" \\
   -H "content-type: application/json" \\
   -d '{
-    "content": "Deploy 2481 rotated the connection pooler config; max_connections dropped from 400 to 40. Checkout pods exhausted the pool within 90s of the rollout. Rolling back the pooler config restores headroom.",
-    "feedbackUpUrl": "https://your-analyzer.example/feedback/up?token=…",
-    "feedbackDownUrl": "https://your-analyzer.example/feedback/down?token=…"
+    "content": "Deploy 2481 shrank the connection pool from 400 to 40; checkout exhausted it within 90s. Roll back the pooler config.",
+    "feedbackUpUrl": "https://analyzer.example/feedback/up?token=…",
+    "feedbackDownUrl": "https://analyzer.example/feedback/down?token=…"
   }'`;
 
-const CALLBACK_EXAMPLE = `POST https://your-analyzer.example/feedback/down?token=…
+const CALLBACK_EXAMPLE = `POST https://analyzer.example/feedback/down?token=…
 content-type: application/json
 
 {
@@ -22,7 +22,7 @@ content-type: application/json
   "rating": "down",
   "ratedBy": "Dana Levi",
   "ratedAt": "2026-09-15T15:12:03.201Z",
-  "comment": "It blamed the pool, but the pool was fine — the real cause was DNS."
+  "comment": "It blamed the pool; the real cause was DNS."
 }`;
 
 interface StepProps {
@@ -52,7 +52,7 @@ const CodeBlock = ({ code, copyLabel }: CodeBlockProps) => {
 	const { copied, copy } = useCopyToClipboard();
 	return (
 		<div className="relative">
-			<pre className="bg-muted p-3 pr-12 rounded-lg text-xs font-mono overflow-x-auto border whitespace-pre">
+			<pre className="bg-muted p-3 pr-12 rounded-lg text-xs font-mono border whitespace-pre-wrap break-all">
 				{code}
 			</pre>
 			<Button
@@ -84,12 +84,12 @@ const SectionPreview = () => (
 			Root cause
 		</div>
 		<p className="text-sm text-foreground">
-			Deploy 2481 rotated the connection pooler config; max_connections dropped from 400 to 40. Checkout pods
-			exhausted the pool within 90s of the rollout. Rolling back the pooler config restores headroom.
+			Deploy 2481 shrank the connection pool from 400 to 40; checkout exhausted it within 90s. Roll back the
+			pooler config.
 		</p>
 		<p className="flex items-start gap-1.5 text-xs text-muted-foreground italic">
 			<MessageSquareQuote className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-			<span>It blamed the pool, but the pool was fine — the real cause was DNS.</span>
+			<span>It blamed the pool; the real cause was DNS.</span>
 		</p>
 		<div className="flex items-center justify-between gap-2 border-t border-violet-400/30 pt-2">
 			<span className="text-xs text-violet-600/80 dark:text-violet-400/80">via API · just now</span>
@@ -105,7 +105,7 @@ const SectionPreview = () => (
 // "Bring your own" root cause, explained where people go looking for AI features:
 // what to send, what operators see, how they rate, and what your system gets back.
 export const RootCauseGuide = () => (
-	<div className="space-y-4">
+	<div className="space-y-4 min-w-0 max-w-4xl">
 		<div>
 			<h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
 				<SearchCheck className="h-5 w-5 text-violet-500" />

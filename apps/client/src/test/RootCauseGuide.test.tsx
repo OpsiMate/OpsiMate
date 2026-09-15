@@ -16,7 +16,7 @@ describe('RootCauseGuide', () => {
 		expect(send).toContain('"feedbackUpUrl"');
 		expect(send).toContain('"feedbackDownUrl"');
 
-		const callback = screen.getByText(/POST https:\/\/your-analyzer/).textContent ?? '';
+		const callback = screen.getByText(/POST https:\/\/analyzer\.example/).textContent ?? '';
 		for (const key of ['"alertId"', '"rating"', '"ratedBy"', '"ratedAt"', '"comment"']) {
 			expect(callback).toContain(key);
 		}
