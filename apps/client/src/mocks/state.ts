@@ -498,7 +498,6 @@ export const playgroundState: PlaygroundState = {
 			rating: null,
 			ratedBy: null,
 			ratedAt: null,
-			ratingComment: null,
 			createdAt: nowIso(),
 			updatedAt: nowIso(),
 		},

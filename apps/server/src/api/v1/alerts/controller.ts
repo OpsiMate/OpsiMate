@@ -808,8 +808,8 @@ export class AlertController {
 			if (!req.user) {
 				return res.status(401).json({ success: false, error: 'Rating requires a user session' });
 			}
-			const { rating, comment } = RateRootCauseSchema.parse(req.body);
-			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user, comment);
+			const { rating } = RateRootCauseSchema.parse(req.body);
+			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {

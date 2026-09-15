@@ -1,7 +1,6 @@
 import { AlertRootCause, RootCauseRating, RootCauseSource } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { TableInfoRow } from './models';
 
 // One row per alert (UNIQUE(alert_id) — which is also the index every read probes by,
 // so lookups stay O(log n) however large this grows; see #897 for why that matters).
@@ -20,7 +19,6 @@ interface RootCauseRow {
 	rating: string | null;
 	rated_by: string | null;
 	rated_at: string | null;
-	rating_comment: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -47,7 +45,6 @@ const toRecord = (row: RootCauseRow): RootCauseRecord => ({
 	rating: (row.rating as RootCauseRating | null) ?? null,
 	ratedBy: row.rated_by,
 	ratedAt: row.rated_at,
-	ratingComment: row.rating_comment,
 	createdAt: row.created_at,
 	updatedAt: row.updated_at,
 	feedbackUpUrl: row.feedback_up_url,
@@ -70,16 +67,10 @@ export class RootCauseRepository {
 					rating TEXT,
 					rated_by TEXT,
 					rated_at TEXT,
-					rating_comment TEXT,
 					created_at TEXT NOT NULL,
 					updated_at TEXT NOT NULL
 				);
 			`);
-			// Backward compatibility: the "what went wrong?" text arrived after the table.
-			const columns = this.db.prepare(`PRAGMA table_info(alert_root_causes)`).all() as TableInfoRow[];
-			if (!columns.some((col) => col.name === 'rating_comment')) {
-				this.db.prepare(`ALTER TABLE alert_root_causes ADD COLUMN rating_comment TEXT`).run();
-			}
 		});
 	}
 
@@ -102,7 +93,6 @@ export class RootCauseRepository {
 						rating = NULL,
 						rated_by = NULL,
 						rated_at = NULL,
-						rating_comment = NULL,
 						updated_at = excluded.updated_at`
 				)
 				.run(input.alertId, input.source, input.content, input.feedbackUpUrl, input.feedbackDownUrl, now, now);
@@ -121,20 +111,11 @@ export class RootCauseRepository {
 		});
 	}
 
-	// The comment always follows the verdict: a re-rate without one clears the previous
-	// text, so a stale "what went wrong" never outlives the thumbs-down it explained.
-	async setRating(
-		alertId: string,
-		rating: RootCauseRating,
-		ratedBy: string,
-		comment: string | null
-	): Promise<RootCauseRecord | null> {
+	async setRating(alertId: string, rating: RootCauseRating, ratedBy: string): Promise<RootCauseRecord | null> {
 		return runAsync(() => {
 			const result = this.db
-				.prepare(
-					`UPDATE alert_root_causes SET rating = ?, rated_by = ?, rated_at = ?, rating_comment = ? WHERE alert_id = ?`
-				)
-				.run(rating, ratedBy, new Date().toISOString(), comment, alertId);
+				.prepare(`UPDATE alert_root_causes SET rating = ?, rated_by = ?, rated_at = ? WHERE alert_id = ?`)
+				.run(rating, ratedBy, new Date().toISOString(), alertId);
 			if (result.changes === 0) return null;
 			const row = this.db
 				.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`)

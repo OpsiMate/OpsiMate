@@ -558,12 +558,8 @@ export const UpsertRootCauseSchema = z.object({
 	feedbackDownUrl: z.string().url().max(2048).optional(),
 });
 
-export const ROOT_CAUSE_RATING_COMMENT_MAX = 2000;
-
 export const RateRootCauseSchema = z.object({
 	rating: z.enum(['up', 'down']),
-	// "What went wrong?" — only meaningful with 'down'; the server drops it for 'up'.
-	comment: z.string().trim().max(ROOT_CAUSE_RATING_COMMENT_MAX).optional(),
 });
 
 export const RetentionResourceParamSchema = z.object({
