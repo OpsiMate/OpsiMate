@@ -29,6 +29,13 @@ RUN pnpm --filter @OpsiMate/shared build && \
 
 # Production runtime
 FROM node:26-alpine AS server-runtime
+# Baked by the release workflow; read by GET /health. "dev" for local builds.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=
+ARG APP_BUILD_DATE=
+ENV APP_VERSION=$APP_VERSION \
+    APP_COMMIT=$APP_COMMIT \
+    APP_BUILD_DATE=$APP_BUILD_DATE
 WORKDIR /app
 
 # Copy built server and minimal workspace files

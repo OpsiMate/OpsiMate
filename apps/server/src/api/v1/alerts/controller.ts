@@ -16,14 +16,14 @@ import { AlertBL } from '../../../bl/alerts/alert.bl';
 import {
 	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
-	GcpAlertWebhook,
+	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
 	HttpAlertWebhookSchema,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
-	UptimeKumaWebhookPayload,
-	ZabbixWebhookPayload,
+	UptimeKumaWebhookPayloadSchema,
+	ZabbixWebhookPayloadSchema,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
@@ -267,9 +267,19 @@ export class AlertController {
 
 	async createUptimeKumaAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as UptimeKumaWebhookPayload;
-
-			if (!payload?.heartbeat || !payload?.monitor) {
+			// Uptime Kuma's "Test" button calls Notification.send(notification, msg) with
+			// monitorJSON/heartbeatJSON left at their null defaults (server.js, the
+			// testNotification handler), so the webhook body is { heartbeat: null,
+			// monitor: null, msg } — keys PRESENT, values null. An empty body is accepted as
+			// the same thing for hand-sent probes. Only that shape bypasses validation: a
+			// payload with one real field and the other missing/null is a malformed alert
+			// and must fall through to the strict parse (400), not become a phantom
+			// "Test Alert".
+			const raw: unknown = req.body;
+			const field = (key: 'heartbeat' | 'monitor'): unknown =>
+				typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>)[key] : undefined;
+			const isTestRequest = field('heartbeat') == null && field('monitor') == null;
+			if (isTestRequest) {
 				logger.info('UptimeKuma Test Alert Created');
 				await this.alertBL.insertOrUpdateAlert({
 					id: randomUUID(),
@@ -286,6 +296,8 @@ export class AlertController {
 
 				return res.status(200).json({ success: true, data: null });
 			}
+
+			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
 
 			const { heartbeat, monitor } = payload;
 			const monitorId = `UPTIMEKUMA_${String(monitor.id)}`;
@@ -329,6 +341,9 @@ export class AlertController {
 				data: { alertId: monitorId, updated: true },
 			});
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error while handling Uptime Kuma alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -336,7 +351,7 @@ export class AlertController {
 
 	async createZabbixAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as ZabbixWebhookPayload;
+			const payload = ZabbixWebhookPayloadSchema.parse(req.body);
 
 			logger.info(`Received Zabbix alert: ${JSON.stringify(payload)}`);
 
@@ -454,6 +469,9 @@ export class AlertController {
 				data: { alertId, updated: true },
 			});
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error while handling Zabbix alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -461,11 +479,16 @@ export class AlertController {
 
 	async createCustomGCPAlert(req: Request, res: Response) {
 		try {
-			const payload = req.body as GcpAlertWebhook;
-			const incident = payload.incident;
-			if (!incident) {
-				return res.status(400).json({ error: 'Missing incident in payload' });
+			// Specific message for the most common misconfiguration, before strict parsing.
+			// req.body is `any` on Express's Request — narrow through unknown so the check
+			// is typed (the server lints with --max-warnings=0).
+			const raw: unknown = req.body;
+			const hasIncident = typeof raw === 'object' && raw !== null && 'incident' in raw && raw.incident != null;
+			if (!hasIncident) {
+				return res.status(400).json({ success: false, error: 'Missing incident in payload' });
 			}
+			const payload = GcpAlertWebhookSchema.parse(raw);
+			const incident = payload.incident;
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
@@ -493,6 +516,9 @@ export class AlertController {
 			}
 			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			logger.error('Error creating gcp alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -535,8 +561,8 @@ export class AlertController {
 				// (P1 → critical, …) unless an explicit severity tag is present.
 				severity: tags['severity'] ?? payload.priority,
 				tags,
-				startsAt: new Date(Number(startsAtSource)).toISOString(),
-				updatedAt: new Date(Number(updatedAtSource)).toISOString(),
+				startsAt: AlertController.toDatadogIsoOrNow(startsAtSource),
+				updatedAt: AlertController.toDatadogIsoOrNow(updatedAtSource),
 				alertUrl: payload.link ?? '',
 				alertName: payload.title || 'UNKNOWN',
 				summary: payload.message,
@@ -600,6 +626,20 @@ export class AlertController {
 		if (!value) return new Date().toISOString();
 		const parsed = new Date(value);
 		return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+	}
+
+	// Datadog normally sends epoch milliseconds as strings, but custom templates can emit
+	// ISO timestamps too. Preserve Number()'s accepted numeric forms (including decimals),
+	// then delegate ISO and invalid values to Grafana's established fallback parser.
+	private static toDatadogIsoOrNow(value?: string): string {
+		if (value?.trim() === '') return AlertController.toIsoOrNow(undefined);
+
+		const epochMs = Number(value);
+		if (value !== undefined && Number.isFinite(epochMs)) {
+			const parsed = new Date(epochMs);
+			if (!isNaN(parsed.getTime())) return parsed.toISOString();
+		}
+		return AlertController.toIsoOrNow(value);
 	}
 
 	// Receives alerts pushed by a Grafana "Webhook" contact point. Replaces the old polling job:

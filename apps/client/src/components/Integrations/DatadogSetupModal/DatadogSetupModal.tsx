@@ -2,10 +2,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_BASE_URL } from '@/lib/api';
 import { Check, Copy, ExternalLink, Info } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface DatadogSetupModalProps {
@@ -16,9 +16,8 @@ export interface DatadogSetupModalProps {
 const DATADOG_WEBHOOK_DOCS_URL = 'https://docs.datadoghq.com/integrations/webhooks/#usage';
 
 export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps) => {
-	const [copiedWebhook, setCopiedWebhook] = useState(false);
-	const [copiedPayload, setCopiedPayload] = useState(false);
-	const { toast } = useToast();
+	const { copied: copiedWebhook, copy: copyWebhook } = useCopyToClipboard();
+	const { copied: copiedPayload, copy: copyPayload } = useCopyToClipboard();
 
 	const webhookUrl = useMemo(() => {
 		// Prefer the shared API_BASE_URL, which already encodes the correct host + base path.
@@ -47,33 +46,12 @@ export const DatadogSetupModal = ({ open, onOpenChange }: DatadogSetupModalProps
   }
 }`;
 
-	const handleCopy = async (value: string, type: 'webhook' | 'payload') => {
-		try {
-			await navigator.clipboard.writeText(value);
-			if (type === 'webhook') {
-				setCopiedWebhook(true);
-			} else {
-				setCopiedPayload(true);
-			}
-			toast({
-				title: 'Copied!',
-				description:
-					type === 'webhook' ? 'Webhook URL copied to clipboard' : 'Payload template copied to clipboard',
-				duration: 2000,
-			});
-			setTimeout(() => {
-				setCopiedWebhook(false);
-				setCopiedPayload(false);
-			}, 2000);
-		} catch (error) {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy the value manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
-	};
+	const handleCopy = (value: string, type: 'webhook' | 'payload') =>
+		(type === 'webhook' ? copyWebhook : copyPayload)(value, {
+			successDescription:
+				type === 'webhook' ? 'Webhook URL copied to clipboard' : 'Payload template copied to clipboard',
+			failureDescription: 'Please copy the value manually',
+		});
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>

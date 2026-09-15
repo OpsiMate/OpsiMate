@@ -7,6 +7,7 @@ import { AppIcon } from './icons/AppIcon';
 import { ALERTS_PATHS } from './LeftSidebar.constants';
 import { PreserveQueryLink } from './PreserveQueryLink';
 import { ProfileButton } from './ProfileButton';
+import { VersionBadge } from './VersionBadge';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -219,7 +220,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 								</Tooltip>
 							</div>
 
-							<p className={cn('text-xs text-foreground', collapsed && 'sr-only')}>© 2024 OpsiMate</p>
+							<VersionBadge collapsed={collapsed} />
 						</div>
 					</TooltipProvider>
 				</div>
