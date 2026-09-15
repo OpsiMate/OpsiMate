@@ -3,6 +3,7 @@ import {
 	AuditActionType,
 	AuditResourceType,
 	criteriaMatchesAlert,
+	isScheduleActiveNow,
 	Logger,
 	MutePolicy,
 	User,
@@ -117,9 +118,7 @@ export class MutePolicyBL {
 		if (mutePolicy.schedule) {
 			const { daysOfWeek, startTime, endTime } = mutePolicy.schedule;
 			if (!daysOfWeek?.length || !startTime || !endTime) return false;
-			if (!daysOfWeek.includes(now.getDay())) return false;
-			const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-			return current >= startTime && current < endTime;
+			return isScheduleActiveNow(mutePolicy.schedule, now);
 		}
 		const ts = now.getTime();
 		if (mutePolicy.startsAt) {
