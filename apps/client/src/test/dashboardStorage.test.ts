@@ -10,7 +10,12 @@ import {
 } from '@/context/DashboardContext.utils';
 import type { DashboardState } from '@/context/DashboardContext';
 
-const defaults = { id: null, name: '', type: 'alerts', timeRange: { from: null, to: null, preset: null } } as DashboardState;
+const defaults = {
+	id: null,
+	name: '',
+	type: 'alerts',
+	timeRange: { from: null, to: null, preset: null },
+} as DashboardState;
 
 beforeEach(() => localStorage.clear());
 
@@ -18,8 +23,14 @@ describe('dashboard storage helpers', () => {
 	it('keeps custom dates and drops frozen quick-range dates', () => {
 		const from = new Date('2026-01-01T00:00:00Z');
 		const to = new Date('2026-01-02T00:00:00Z');
-		expect(deserializeTimeRange(serializeTimeRange({ from, to, preset: 'custom' }))).toEqual({ from, to, preset: 'custom' });
-		expect(deserializeTimeRange({ from: from.toISOString(), to: to.toISOString(), preset: 'last24Hours' })).toEqual({ from: null, to: null, preset: 'last24Hours' });
+		expect(deserializeTimeRange(serializeTimeRange({ from, to, preset: 'custom' }))).toEqual({
+			from,
+			to,
+			preset: 'custom',
+		});
+		expect(deserializeTimeRange({ from: from.toISOString(), to: to.toISOString(), preset: 'last24Hours' })).toEqual(
+			{ from: null, to: null, preset: 'last24Hours' }
+		);
 	});
 
 	it('round-trips storage and clearStorage removes the saved draft', () => {
