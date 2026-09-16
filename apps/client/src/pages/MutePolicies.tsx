@@ -23,7 +23,7 @@ import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat
 import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
-import { isScheduleActiveNow } from '@OpsiMate/shared';
+
 
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
 
@@ -61,20 +61,30 @@ const relativeFromNow = (iso?: string | null): string => formatRelativeTime(iso,
 // occurrence across the policy's days; today counts only if its end time hasn't passed.
 const nextScheduleEnd = (schedule: MutePolicySchedule): number | null => {
 	if (!schedule.daysOfWeek?.length) return null;
+
 	const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
 	if (!Number.isFinite(endHour) || !Number.isFinite(endMinute)) return null;
+
 	const now = new Date();
 	let soonest: number | null = null;
+
 	for (const day of schedule.daysOfWeek) {
 		const candidate = new Date(now);
 		candidate.setHours(endHour, endMinute, 0, 0);
-		const dayDelta = (day - now.getDay() + 7) % 7;
+
+		const endDay = schedule.startTime > schedule.endTime ? (day + 1) % 7 : day;
+		const dayDelta = (endDay - now.getDay() + 7) % 7;
+
 		candidate.setDate(candidate.getDate() + dayDelta);
-		// Same weekday but already past today: that occurrence is next week.
-		if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 7);
+
+		if (candidate.getTime() <= now.getTime()) {
+			candidate.setDate(candidate.getDate() + 7);
+		}
+
 		const time = candidate.getTime();
 		if (soonest === null || time < soonest) soonest = time;
 	}
+
 	return soonest;
 };
 
