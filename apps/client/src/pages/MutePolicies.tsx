@@ -18,12 +18,17 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
-import { getLabelMatcherGroups, MutePolicy, getNameNeedles, MutePolicySchedule } from '@OpsiMate/shared';
+import {
+	getLabelMatcherGroups,
+	MutePolicy,
+	getNameNeedles,
+	MutePolicySchedule,
+	isScheduleActiveNow,
+} from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
-
 
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
 
