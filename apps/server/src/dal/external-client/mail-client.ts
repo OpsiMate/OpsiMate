@@ -193,6 +193,7 @@ export class MailClient {
 			});
 		} catch (error) {
 			logger.error('Failed to send email', error);
+			throw error;
 		}
 	}
 }
