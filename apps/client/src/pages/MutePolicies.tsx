@@ -24,7 +24,6 @@ import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { useMemo, useState } from 'react';
 
-
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
