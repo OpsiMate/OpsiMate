@@ -154,7 +154,9 @@ export const RootCauseGuide = () => (
 					</li>
 					<li>
 						The verdict is stored first; delivery is best-effort with a 3-second timeout, no redirects, and
-						no headers from us — put any token you need in the URL.
+						no authentication headers from us (the only header is{' '}
+						<span className="font-mono">content-type: application/json</span>) — put any token you need in
+						the URL.
 					</li>
 				</ul>
 				<CodeBlock code={CALLBACK_EXAMPLE} copyLabel="Copy the callback example" />
