@@ -102,6 +102,8 @@ const EXPORT_LABELS: Record<string, string> = {
 	[AlertHistoryEventType.ACTION_RUN]: 'Action run',
 	[AlertHistoryEventType.COMMENT_ADDED]: 'Comment added',
 	[AlertHistoryEventType.UPDATED]: 'Updated',
+	[AlertHistoryEventType.INCIDENT_ADDED]: 'Grouped into incident',
+	[AlertHistoryEventType.INCIDENT_REMOVED]: 'Removed from incident',
 };
 
 const exportEventLabel = (entry: AlertHistoryData): string => {

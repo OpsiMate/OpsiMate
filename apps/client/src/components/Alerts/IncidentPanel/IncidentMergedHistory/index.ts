@@ -1,0 +1,1 @@
+export { IncidentMergedHistory } from './IncidentMergedHistory';

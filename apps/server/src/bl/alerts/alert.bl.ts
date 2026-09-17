@@ -1,4 +1,5 @@
 import { AlertRepository } from '../../dal/alertRepository';
+import { IncidentRepository } from '../../dal/incidentRepository';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
@@ -96,12 +97,14 @@ export interface AlertAnalyticsQuery {
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
+	private incidentRepo: IncidentRepository | null = null;
 	// Notified when an alert is deleted for good (resolve is NOT deletion — an alert's
-	// root cause must survive it). Wired in app.ts to drop per-alert satellite rows.
-	private onAlertPermanentlyDeleted: ((alertId: string) => Promise<void>) | null = null;
+	// root cause and incident membership must survive it). Wired in app.ts by every
+	// subsystem that keeps per-alert satellite rows; each listener is best-effort.
+	private permanentDeletionListeners: Array<(alertId: string) => Promise<void>> = [];
 
-	setOnAlertPermanentlyDeleted(callback: (alertId: string) => Promise<void>): void {
-		this.onAlertPermanentlyDeleted = callback;
+	onAlertPermanentlyDeleted(listener: (alertId: string) => Promise<void>): void {
+		this.permanentDeletionListeners.push(listener);
 	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
@@ -376,6 +379,23 @@ export class AlertBL {
 		this.enrichmentBL = enrichmentBL;
 	}
 
+	setIncidentRepo(incidentRepo: IncidentRepository): void {
+		this.incidentRepo = incidentRepo;
+	}
+
+	// Stamps each alert with the incident it belongs to (or null), in one pass over the
+	// membership table. Applied to BOTH snapshots: membership follows the alert id, so a
+	// resolved member still folds under its incident in the Resolved/All views.
+	private async attachIncidentIds(alerts: Alert[]): Promise<Alert[]> {
+		if (!this.incidentRepo) return alerts;
+		const membership = await this.incidentRepo.getMembershipMap();
+		if (membership.size === 0) return alerts;
+		return alerts.map((alert) => {
+			const incidentId = membership.get(alert.id);
+			return incidentId !== undefined ? { ...alert, incidentId } : alert;
+		});
+	}
+
 	// region active
 	// Severity is resolved here — the single funnel for every ingestion endpoint: an explicit
 	// severity field wins, then a `severity` tag (Zabbix/Grafana/Datadog labels), then the
@@ -525,7 +545,7 @@ export class AlertBL {
 			if (this.mutePolicyBL) {
 				alerts = await this.mutePolicyBL.markMuted(alerts);
 			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			return await this.attachIncidentIds(await this.attachLastComments(await this.attachFiringTimes(alerts)));
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
@@ -621,7 +641,7 @@ export class AlertBL {
 			if (this.enrichmentBL) {
 				alerts = await this.enrichmentBL.applyEnrichments(alerts);
 			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			return await this.attachIncidentIds(await this.attachLastComments(await this.attachFiringTimes(alerts)));
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;
@@ -767,12 +787,15 @@ export class AlertBL {
 			// Satellite cleanup is BEST-EFFORT: the alert row is already gone, so a
 			// cleanup failure must not fail the request or — worse — skip the snapshot
 			// invalidation below and keep serving the deleted alert from cache. A row
-			// orphaned by a failed cleanup is bounded by the retention policy.
+			// orphaned by a failed cleanup is bounded by the retention policy. One
+			// listener failing must not starve the others.
 			if (deleted > 0) {
-				try {
-					await this.onAlertPermanentlyDeleted?.(alertId);
-				} catch (cleanupError) {
-					logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
+				for (const listener of this.permanentDeletionListeners) {
+					try {
+						await listener(alertId);
+					} catch (cleanupError) {
+						logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
+					}
 				}
 			}
 			this.invalidateSnapshots();
