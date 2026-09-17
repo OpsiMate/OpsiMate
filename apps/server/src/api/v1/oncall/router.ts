@@ -1,14 +1,17 @@
 import { Router } from 'express';
 import { OncallController } from './controller';
+import { requireAdmin } from '../../../middleware/auth';
 
 export default function createOncallRouter(controller: OncallController) {
 	const router = Router();
 
+	// Reading the schedule is open to any authenticated user (the NOC needs it);
+	// changing it is admins only.
 	router.get('/teams', controller.listTeamsHandler);
-	router.post('/teams', controller.createTeamHandler);
-	router.patch('/teams/:teamId', controller.updateTeamHandler);
-	router.delete('/teams/:teamId', controller.deleteTeamHandler);
-	router.put('/teams/:teamId/members', controller.setTeamMembersHandler);
+	router.post('/teams', requireAdmin, controller.createTeamHandler);
+	router.patch('/teams/:teamId', requireAdmin, controller.updateTeamHandler);
+	router.delete('/teams/:teamId', requireAdmin, controller.deleteTeamHandler);
+	router.put('/teams/:teamId/members', requireAdmin, controller.setTeamMembersHandler);
 
 	return router;
 }
