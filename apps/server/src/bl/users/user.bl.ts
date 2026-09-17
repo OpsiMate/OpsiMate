@@ -42,11 +42,13 @@ export class UserBL {
 		this.onUsersChanged?.();
 
 		// Send welcome email
-		void this.mailClient.sendMail({
-			to: user.email,
-			mailType: MailType.WELCOME,
-			userName: user.fullName,
-		});
+		void this.mailClient
+			.sendMail({
+				to: user.email,
+				mailType: MailType.WELCOME,
+				userName: user.fullName,
+			})
+			.catch((error) => logger.error('Failed to send welcome email', error));
 
 		return user;
 	}
@@ -139,15 +141,16 @@ export class UserBL {
 			return;
 		}
 
+		let resetPasswordConfig: ReturnType<typeof generatePasswordResetInfo> | undefined;
 		try {
-			const resetPasswordConfig = generatePasswordResetInfo();
+			resetPasswordConfig = generatePasswordResetInfo();
 			await this.passwordResetsRepo.createPasswordResetToken({
 				userId: user.id,
 				tokenHash: resetPasswordConfig.tokenHash,
 				expiresAt: resetPasswordConfig.expiresAt,
 			});
 
-			void this.mailClient.sendMail({
+			await this.mailClient.sendMail({
 				to: user.email,
 				subject: 'Password Reset Request',
 				mailType: MailType.PASSWORD_RESET,
@@ -156,7 +159,12 @@ export class UserBL {
 			});
 		} catch (error) {
 			logger.error('Failed to send password reset email', error);
-			await this.passwordResetsRepo.deletePasswordResetsByUserId(user.id);
+			if (resetPasswordConfig) {
+				await this.passwordResetsRepo.deletePasswordResetByUserIdAndTokenHash(
+					user.id,
+					resetPasswordConfig.tokenHash
+				);
+			}
 			throw new Error('Failed to send password reset email. Please try again later.', { cause: error });
 		}
 	}

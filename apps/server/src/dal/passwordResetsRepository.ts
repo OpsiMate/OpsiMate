@@ -50,6 +50,12 @@ export class PasswordResetsRepository {
 		});
 	}
 
+	async deletePasswordResetByUserIdAndTokenHash(userId: number, tokenHash: string): Promise<void> {
+		return runAsync(() => {
+			this.db.prepare('DELETE FROM password_resets WHERE user_id = ? AND token_hash = ?').run(userId, tokenHash);
+		});
+	}
+
 	private toSharedResetPassword = (row: ResetPasswordRow): ResetPassword => {
 		return {
 			id: row.id,
