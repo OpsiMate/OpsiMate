@@ -1,11 +1,19 @@
 import Database from 'better-sqlite3';
 import { describe, expect, test, vi } from 'vitest';
-import { AuditBL } from '../src/bl/audit/audit.bl.ts';
-import { UserBL } from '../src/bl/users/user.bl.ts';
-import { AuditLogRepository } from '../src/dal/auditLogRepository.ts';
-import { MailClient, MailType } from '../src/dal/external-client/mail-client.ts';
-import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository.ts';
-import { UserRepository } from '../src/dal/userRepository.ts';
+import { AuditBL } from '../src/bl/audit/audit.bl';
+import { UserBL } from '../src/bl/users/user.bl';
+import { AuditLogRepository } from '../src/dal/auditLogRepository';
+import { MailClient, MailType } from '../src/dal/external-client/mail-client';
+import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository';
+import { UserRepository } from '../src/dal/userRepository';
+
+interface PasswordResetTokenRow {
+	token_hash: string;
+}
+
+interface SentMailOptions {
+	token?: string;
+}
 
 async function createRepositories() {
 	const db = new Database(':memory:');
@@ -43,7 +51,7 @@ describe('forgot password mail failures', () => {
 			sendMail: vi.fn(async () => {
 				const record = db
 					.prepare('SELECT token_hash FROM password_resets WHERE user_id = ?')
-					.get(user.lastID) as { token_hash: string } | undefined;
+					.get(user.lastID) as PasswordResetTokenRow | undefined;
 				tokenHashAtSend = record?.token_hash;
 				throw new Error('SMTP delivery failed');
 			}),
@@ -81,7 +89,7 @@ describe('forgot password mail failures', () => {
 		} as unknown as MailClient;
 		let secondToken: string | undefined;
 		const secondMailClient = {
-			sendMail: vi.fn(async (options: { token?: string }) => {
+			sendMail: vi.fn(async (options: SentMailOptions) => {
 				secondToken = options.token;
 			}),
 		} as unknown as MailClient;
