@@ -4,6 +4,7 @@ import { CommentItem } from '@/components/Alerts/AlertDetails/CommentsWall/Comme
 import { AlertDetailsHeader } from '@/components/Alerts/AlertDetails/AlertDetailsHeader';
 import { DashboardRow } from '@/components/Dashboards/DashboardRow';
 import { DashboardWithFavorite } from '@/components/Dashboards/Dashboards.types';
+import { LeftSidebar } from '@/components/LeftSidebar';
 import { render, screen } from './test-utils';
 
 const comment: AlertComment = {
@@ -70,5 +71,45 @@ describe('icon-only button accessible names', () => {
 
 		expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Delete dashboard' })).toBeInTheDocument();
+	});
+
+	test('renders Slack and GitHub as keyboard-accessible links', () => {
+		render(<LeftSidebar collapsed={false} />);
+
+		const slackLink = screen.getByRole('link', { name: 'Join our Slack' });
+		const githubLink = screen.getByRole('link', { name: 'Star us on GitHub' });
+
+		expect(slackLink).toBeInTheDocument();
+		expect(githubLink).toBeInTheDocument();
+
+		expect(slackLink).toHaveAttribute(
+			'href',
+			'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA'
+		);
+		expect(githubLink).toHaveAttribute(
+			'href',
+			'https://github.com/opsimate/opsimate'
+		);
+
+		expect(slackLink).toHaveAttribute('target', '_blank');
+		expect(githubLink).toHaveAttribute('target', '_blank');
+
+		expect(slackLink).toHaveAttribute('rel', 'noopener noreferrer');
+		expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+		expect(slackLink).toHaveAttribute('aria-label', 'Join our Slack');
+		expect(githubLink).toHaveAttribute('aria-label', 'Star us on GitHub');
+
+		expect(slackLink).not.toHaveAttribute('role', 'button');
+		expect(githubLink).not.toHaveAttribute('role', 'button');
+
+		expect(slackLink).not.toHaveAttribute('tabindex', '-1');
+		expect(githubLink).not.toHaveAttribute('tabindex', '-1');
+
+		slackLink.focus();
+		expect(slackLink).toHaveFocus();
+
+		githubLink.focus();
+		expect(githubLink).toHaveFocus();
 	});
 });
