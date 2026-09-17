@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, memo } from 'react';
+import { useMemo, useCallback, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	DropdownMenu,
@@ -28,13 +28,28 @@ interface IntegrationInfo {
 
 type IntegrationType = 'Grafana' | 'Datadog';
 
+const IntegrationIcon = ({
+	integrationType,
+	className,
+}: {
+	integrationType: IntegrationType;
+	className?: string;
+}) => {
+	switch (integrationType) {
+		case 'Datadog':
+			return <DatadogIcon className={className} />;
+		case 'Grafana':
+		default:
+			return <GrafanaIcon className={className} />;
+	}
+};
+
 interface DashboardMenuContentProps {
 	loading: boolean;
 	error: Error | null;
 	dashboards: Dashboard[];
 	integrationUrl: string;
 	integrationType: IntegrationType;
-	IconComponent: React.ComponentType<{ className?: string }>;
 	onDashboardClick: (url: string, name: string) => void;
 }
 
@@ -44,7 +59,6 @@ const DashboardMenuContent = ({
 	dashboards,
 	integrationUrl,
 	integrationType,
-	IconComponent,
 	onDashboardClick,
 }: DashboardMenuContentProps) => {
 	if (loading) {
@@ -86,12 +100,14 @@ const DashboardMenuContent = ({
 					</div>
 				</DropdownMenuItem>
 			))}
+
 			<DropdownMenuSeparator />
+
 			<DropdownMenuItem
 				className="text-xs text-muted-foreground"
 				onClick={() => window.open(integrationUrl, '_blank', 'noopener,noreferrer')}
 			>
-				<IconComponent className="h-3 w-3 mr-2" />
+				<IntegrationIcon integrationType={integrationType} className="h-3 w-3 mr-2" />
 				Open {integrationType}
 			</DropdownMenuItem>
 		</>
@@ -117,18 +133,6 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 	// Memoize display properties to prevent unnecessary re-renders
 	const displayName = useMemo(() => `${integrationType} Dashboards`, [integrationType]);
 
-	const getIconComponent = useCallback(() => {
-		switch (integrationType) {
-			case 'Datadog':
-				return DatadogIcon;
-			case 'Grafana':
-			default:
-				return GrafanaIcon;
-		}
-	}, [integrationType]);
-
-	const IconComponent = getIconComponent();
-
 	// Find the specific integration from cached data
 	const integration = useMemo(() => {
 		return integrations.find((item: IntegrationInfo) => item.type === integrationType);
@@ -139,11 +143,15 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 
 	// Use React Query to fetch dashboards
 	const tagNames = useMemo(() => tags.map((tag) => tag.name), [tags]);
-	const { data: dashboards = [], isLoading: loading, error } = useIntegrationUrls(integrationId, tagNames);
+	const { data: dashboards = [], isLoading: loading, error } = useIntegrationUrls(
+		integrationId,
+		tagNames
+	);
 
 	const handleDashboardClick = useCallback(
 		(url: string, name: string) => {
 			window.open(url, '_blank', 'noopener,noreferrer');
+
 			toast({
 				title: 'Opening Dashboard',
 				description: `Opening "${name}" in ${integrationType}`,
@@ -167,9 +175,10 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 				disabled
 			>
 				<div className="flex items-center gap-2">
-					<IconComponent className="h-3 w-3" />
+					<IntegrationIcon integrationType={integrationType} className="h-3 w-3" />
 					<span>{displayName}</span>
 				</div>
+
 				<span className="text-red-500">Error</span>
 			</Button>
 		);
@@ -185,16 +194,23 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 					disabled={loading}
 				>
 					<div className="flex items-center gap-2">
-						<IconComponent className="h-3 w-3" />
+						<IntegrationIcon integrationType={integrationType} className="h-3 w-3" />
 						<span>{displayName}</span>
 					</div>
-					{loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChevronDown className="h-3 w-3" />}
+
+					{loading ? (
+						<Loader2 className="h-3 w-3 animate-spin" />
+					) : (
+						<ChevronDown className="h-3 w-3" />
+					)}
 				</Button>
 			</DropdownMenuTrigger>
+
 			<DropdownMenuContent align="start" className="w-64">
 				<DropdownMenuLabel className="text-xs">
 					Dashboards for tags: {tags.map((tag) => tag.name).join(', ')}
 				</DropdownMenuLabel>
+
 				<DropdownMenuSeparator />
 
 				<DashboardMenuContent
@@ -203,7 +219,6 @@ export const IntegrationDashboardDropdown = memo(function IntegrationDashboardDr
 					dashboards={dashboards}
 					integrationUrl={integrationUrl}
 					integrationType={integrationType}
-					IconComponent={IconComponent}
 					onDashboardClick={handleDashboardClick}
 				/>
 			</DropdownMenuContent>
