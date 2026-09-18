@@ -22,7 +22,7 @@ export const useAlertActions = () => {
 	const handleSilenceAlert = async (alertId: string, silencedUntil?: string | null, comment?: string) => {
 		try {
 			await silenceAlertMutation.mutateAsync({ alertId, silencedUntil, comment });
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error silencing alert',
 				description: 'Failed to silence alert',
@@ -34,9 +34,9 @@ export const useAlertActions = () => {
 	const handleUnsilenceAlert = async (alertId: string) => {
 		try {
 			await unsilenceAlertMutation.mutateAsync(alertId);
-		} catch (error) {
+		} catch {
 			toast({
-				title: 'Error unsilenceing alert',
+				title: 'Error unsilencing alert',
 				description: 'Failed to unsilence alert',
 				variant: 'destructive',
 			});
@@ -78,7 +78,7 @@ export const useAlertActions = () => {
 	};
 
 	// Permanently delete the selected active alerts: resolve each one, then remove it from
-	// the resolve (permanent delete only exists for resolved alerts).
+	// the resolved list (permanent delete only exists for resolved alerts).
 	const handleDeleteForeverAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
 		const results = await Promise.allSettled(
 			selectedAlerts.map(async (alert) => {
@@ -92,7 +92,7 @@ export const useAlertActions = () => {
 			failCount > 0
 				? {
 						title: 'Partial delete',
-						description: `Deleted ${successCount} alerts, ${failCount} failed`,
+					description: `Deleted ${successCount} alert${successCount !== 1 ? 's' : ''}, ${failCount} failed`,
 						variant: 'destructive',
 					}
 				: {
