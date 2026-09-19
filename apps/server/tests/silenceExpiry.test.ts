@@ -24,12 +24,20 @@ interface HistoryEntry {
 	description?: string;
 }
 
+interface ListingData {
+	alerts: ListedAlert[];
+}
+
 interface ListingBody {
-	data: { alerts: ListedAlert[] };
+	data: ListingData;
+}
+
+interface HistoryData {
+	data: HistoryEntry[];
 }
 
 interface HistoryBody {
-	data: { data: HistoryEntry[] };
+	data: HistoryData;
 }
 
 const insertSilencedAlert = (id: string, silencedUntil: string | null) => {
