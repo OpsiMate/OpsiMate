@@ -1,6 +1,5 @@
-import { useIsMobile , MOBILE_BREAKPOINT } from '@/hooks/use-mobile';
+import { useIsMobile, MOBILE_BREAKPOINT } from '@/hooks/use-mobile';
 import { Monitor } from 'lucide-react';
-
 
 export const MobileWebOverlay = () => {
 	const isMobile = useIsMobile();
