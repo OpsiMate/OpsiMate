@@ -165,22 +165,19 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							<div className={cn('flex gap-2', collapsed && 'gap-0.5')}>
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div
+										<a
+											href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA"
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label="Join our Slack community"
 											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
-											onClick={() =>
-												window.open(
-													'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA',
-													'_blank',
-													'noopener,noreferrer'
-												)
-											}
 										>
 											<img
 												src="/images/slack.png"
 												alt="Slack"
 												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
-										</div>
+										</a>
 									</TooltipTrigger>
 									<TooltipContent
 										side="top"
@@ -193,22 +190,19 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div
+										<a
+											href="https://github.com/opsimate/opsimate"
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label="Star OpsiMate on GitHub"
 											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
-											onClick={() =>
-												window.open(
-													'https://github.com/opsimate/opsimate',
-													'_blank',
-													'noopener,noreferrer'
-												)
-											}
 										>
 											<img
 												src="/images/git.png"
 												alt="GitHub"
 												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
-										</div>
+										</a>
 									</TooltipTrigger>
 									<TooltipContent
 										side="top"
