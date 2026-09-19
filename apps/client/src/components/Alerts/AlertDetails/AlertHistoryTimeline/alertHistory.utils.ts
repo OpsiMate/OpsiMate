@@ -2,19 +2,29 @@ import { AlertHistoryData, AlertHistoryEventType } from '@OpsiMate/shared';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { resolveTimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.utils';
 
+const resolveWindow = (timeRange?: TimeRange | null): { fromMs: number | null; toMs: number | null } | null => {
+	if (!timeRange) {
+		return null;
+	}
+	const resolved = resolveTimeRange(timeRange);
+	if (!resolved.from && !resolved.to) {
+		return null;
+	}
+	return {
+		fromMs: resolved.from ? resolved.from.getTime() : null,
+		toMs: resolved.to ? resolved.to.getTime() : null,
+	};
+};
+
 // Filters history entries to the active time range. An empty range ("All time") returns
 // everything. Mirrors how the alerts list itself is filtered by the time button —
 // including quick presets, which resolve to a fresh window at call time.
 export const filterHistoryByRange = (data: AlertHistoryData[], timeRange?: TimeRange | null): AlertHistoryData[] => {
-	if (!timeRange) {
+	const window = resolveWindow(timeRange);
+	if (!window) {
 		return data;
 	}
-	const resolved = resolveTimeRange(timeRange);
-	if (!resolved.from && !resolved.to) {
-		return data;
-	}
-	const fromMs = resolved.from ? resolved.from.getTime() : null;
-	const toMs = resolved.to ? resolved.to.getTime() : null;
+	const { fromMs, toMs } = window;
 	return data.filter((item) => {
 		const t = new Date(item.date).getTime();
 		if (fromMs !== null && t < fromMs) return false;
@@ -31,7 +41,7 @@ export const filterHistoryByRange = (data: AlertHistoryData[], timeRange?: TimeR
 export const selectHistoryEntries = (data: AlertHistoryData[], timeRange?: TimeRange | null): AlertHistoryData[] => {
 	const realEntries = data.filter((entry) => entry.eventType !== AlertHistoryEventType.UPDATED);
 	const filteredReal = filterHistoryByRange(realEntries, timeRange);
-	if (filteredReal.length > 0 || realEntries.length === data.length) {
+	if (filteredReal.length > 0 || !resolveWindow(timeRange)) {
 		return filteredReal;
 	}
 	const updatedEntries = data.filter((entry) => entry.eventType === AlertHistoryEventType.UPDATED);
