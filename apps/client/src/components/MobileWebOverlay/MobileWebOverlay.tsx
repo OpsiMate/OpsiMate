@@ -1,4 +1,4 @@
-import { useIsMobile } from '@/hooks/use-mobile';
+import { MOBILE_BREAKPOINT, useIsMobile } from '@/hooks/use-mobile';
 import { Monitor } from 'lucide-react';
 
 export const MobileWebOverlay = () => {
@@ -32,7 +32,7 @@ export const MobileWebOverlay = () => {
 					<span className="text-sm font-medium text-slate-200">Please open on a desktop or tablet</span>
 				</div>
 
-				<p className="text-xs text-slate-500">Minimum recommended width: 768px</p>
+				<p className="text-xs text-slate-500">{`Minimum recommended width: ${MOBILE_BREAKPOINT}px`}</p>
 			</div>
 
 			<div className="absolute bottom-8 text-xs text-slate-600">© {new Date().getFullYear()} OpsiMate</div>
