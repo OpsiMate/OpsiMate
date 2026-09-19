@@ -4,6 +4,7 @@ import { CommentItem } from '@/components/Alerts/AlertDetails/CommentsWall/Comme
 import { AlertDetailsHeader } from '@/components/Alerts/AlertDetails/AlertDetailsHeader';
 import { DashboardRow } from '@/components/Dashboards/DashboardRow';
 import { DashboardWithFavorite } from '@/components/Dashboards/Dashboards.types';
+import { LeftSidebar } from '@/components/LeftSidebar';
 import { render, screen } from './test-utils';
 
 const comment: AlertComment = {
@@ -25,6 +26,25 @@ const dashboard = (isFavorite: boolean): DashboardWithFavorite => ({
 	groupBy: [],
 	isFavorite,
 	tags: [],
+});
+
+describe('sidebar community links', () => {
+	test('exposes the sidebar community actions as named links', () => {
+		render(<LeftSidebar collapsed={false} />);
+
+		const slack = screen.getByRole('link', { name: 'Join our Slack community' });
+		expect(slack).toHaveAttribute(
+			'href',
+			'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA'
+		);
+		expect(slack).toHaveAttribute('target', '_blank');
+		expect(slack).toHaveAttribute('rel', 'noopener noreferrer');
+
+		const github = screen.getByRole('link', { name: 'Star OpsiMate on GitHub' });
+		expect(github).toHaveAttribute('href', 'https://github.com/opsimate/opsimate');
+		expect(github).toHaveAttribute('target', '_blank');
+		expect(github).toHaveAttribute('rel', 'noopener noreferrer');
+	});
 });
 
 describe('icon-only button accessible names', () => {
