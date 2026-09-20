@@ -71,13 +71,18 @@ describe('selectHistoryEntries', () => {
 		expect(selectHistoryEntries([updatedBefore, statusBefore], range(FROM, TO))).toEqual([]);
 	});
 
-	test('never uses the fallback on "All time", even with no real events', () => {
+	test('on "All time" returns only the real events when any exist', () => {
 		expect(selectHistoryEntries([updatedInside, statusBefore, commentBefore], null)).toEqual([
 			statusBefore,
 			commentBefore,
 		]);
-		expect(selectHistoryEntries([updatedInside], null)).toEqual([]);
-		expect(selectHistoryEntries([updatedInside], undefined)).toEqual([]);
+	});
+
+	test('on "All time" falls back to the synthesized entry when it is the only history', () => {
+		// After Data Retention prunes the status-history rows, the server-synthesized
+		// last-update entry is all an alert has left; it must still be shown.
+		expect(selectHistoryEntries([updatedInside], null)).toEqual([updatedInside]);
+		expect(selectHistoryEntries([updatedInside], undefined)).toEqual([updatedInside]);
 	});
 
 	test('returns real events unchanged when there is no synthesized entry', () => {
