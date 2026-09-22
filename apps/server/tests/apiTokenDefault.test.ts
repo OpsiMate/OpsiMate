@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import express, { Express } from 'express';
 import request from 'supertest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 // Regression coverage for the hardcoded 'opsimate' API-token default. Every layer
 // that used to fall back to it (config.ts, default-config.yml, docker-compose.yml)
@@ -87,5 +90,54 @@ describe('API-token auth once an operator sets a real token', () => {
 
 		const res = await request(app).get('/protected').set('x-api-token', 'opsimate');
 		expect(res.status).toBe(401);
+	});
+});
+
+// A mounted config.yml is the documented docker-compose path. loadConfig() used to read
+// API_TOKEN only in the no-config-file branch, so an operator following the "set
+// API_TOKEN" advice above got silently ignored once they had a config file mounted.
+describe('API_TOKEN still overrides a mounted config file', () => {
+	const originalToken = process.env.API_TOKEN;
+	const originalConfigFile = process.env.CONFIG_FILE;
+	let configPath: string;
+
+	beforeEach(() => {
+		configPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'opsimate-config-')), 'config.yml');
+		fs.writeFileSync(
+			configPath,
+			[
+				'server:',
+				'  port: 3001',
+				'  host: "0.0.0.0"',
+				'database:',
+				'  path: "/tmp/opsimate.db"',
+				'security:',
+				'  private_keys_path: "/tmp/private-keys"',
+				'  api_token: "from-the-mounted-file"',
+			].join('\n')
+		);
+		process.env.CONFIG_FILE = configPath;
+		process.env.API_TOKEN = 'from-the-env-var';
+		vi.resetModules();
+	});
+
+	afterEach(() => {
+		if (originalToken === undefined) {
+			delete process.env.API_TOKEN;
+		} else {
+			process.env.API_TOKEN = originalToken;
+		}
+		if (originalConfigFile === undefined) {
+			delete process.env.CONFIG_FILE;
+		} else {
+			process.env.CONFIG_FILE = originalConfigFile;
+		}
+		fs.rmSync(path.dirname(configPath), { recursive: true, force: true });
+		vi.resetModules();
+	});
+
+	test('API_TOKEN wins over the value written in the mounted file', async () => {
+		const { getSecurityConfig } = await import('../src/config/config.ts');
+		expect(getSecurityConfig().api_token).toBe('from-the-env-var');
 	});
 });

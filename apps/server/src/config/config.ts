@@ -70,6 +70,13 @@ export function loadConfig(): OpsimateConfig {
 		throw new Error(`Invalid config file: ${configPath}`);
 	}
 
+	// API_TOKEN is meant to work whether or not a config file is mounted, so it
+	// has to override the file's value here too, not just the no-config-file
+	// default in getDefaultConfig().
+	if (process.env.API_TOKEN) {
+		config.security.api_token = process.env.API_TOKEN;
+	}
+
 	// Set default VM config if not provided
 	if (!config.vm) {
 		config.vm = {
