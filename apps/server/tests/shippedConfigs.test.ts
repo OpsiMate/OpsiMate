@@ -87,6 +87,22 @@ describe('shipped YAML configs', () => {
 		}
 	});
 
+	// A shipped config is public the moment it's committed. default-config.yml in
+	// particular is baked into the published Docker image and is what
+	// docker-entrypoint.sh falls back to whenever no config is mounted, so a fixed
+	// value here is a credential anyone can read and use against a fresh install.
+	test('no shipped config carries a literal api_token', () => {
+		for (const { file } of SHIPPED_CONFIGS) {
+			const parsed = yaml.load(fs.readFileSync(path.join(repoRoot, file), 'utf8')) as Record<string, any>;
+			expect(parsed.security?.api_token, `${file} ships a non-empty api_token`).toBeFalsy();
+		}
+	});
+
+	test('docker-compose.yml does not hardcode API_TOKEN', () => {
+		const compose = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8');
+		expect(compose).not.toMatch(/^\s*-\s*API_TOKEN=/m);
+	});
+
 	// The case that #879 slipped past. This fixture is a user config in the pre-#854
 	// format; it is deliberately NOT in SHIPPED_CONFIGS, because the flow-mapping check
 	// above would (correctly) reject it. Nothing rewrites a mounted config on upgrade,

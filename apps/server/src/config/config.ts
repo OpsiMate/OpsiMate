@@ -106,7 +106,10 @@ function getDefaultConfig(): OpsimateConfig {
 		},
 		security: {
 			private_keys_path: '../../data/private-keys',
-			api_token: process.env.API_TOKEN || 'opsimate',
+			// No hardcoded fallback: a fixed literal here would be a credential
+			// shipped with the project. Leaving it unset disables API-token auth
+			// until an operator sets API_TOKEN themselves.
+			api_token: process.env.API_TOKEN || '',
 		},
 		vm: {
 			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',

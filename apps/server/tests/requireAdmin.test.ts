@@ -117,13 +117,17 @@ describe('requireAdmin middleware', () => {
 		}
 	});
 
-	// API-token auth calls next() without populating req.user, so the `!req.user`
-	// clause in requireAdmin is what keeps these endpoints human-admin only.
-	test('API-token callers are rejected (they carry no user identity)', async () => {
+	// No API_TOKEN is configured for this suite (see apiTokenDefault.test.ts for that
+	// axis), so an API-token attempt is rejected by authenticateApiToken itself, before
+	// it ever reaches requireAdmin's `!req.user` clause. That clause is still what
+	// keeps a valid API-token caller out of these routes when a real token IS
+	// configured elsewhere; here we only confirm the layering doesn't leak a 403
+	// (which would imply the token was accepted) in place of the 401 it should get.
+	test('API-token callers with no configured token are rejected before reaching the gate', async () => {
 		for (const [method, path] of ADMIN_ROUTES) {
-			const res = await send(method, path).set('x-api-token', process.env.API_TOKEN ?? 'opsimate');
-			expect(res.status, `${method.toUpperCase()} ${path}`).toBe(403);
-			expect(res.body).toEqual({ success: false, error: 'Forbidden: Admins only' });
+			const res = await send(method, path).set('x-api-token', 'opsimate');
+			expect(res.status, `${method.toUpperCase()} ${path}`).toBe(401);
+			expect(res.body).toEqual({ success: false, error: 'Invalid API token' });
 		}
 	});
 

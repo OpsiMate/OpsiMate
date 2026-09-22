@@ -14,7 +14,9 @@ services:
       - ./data/private-keys:/app/data/private-keys
       - ./config.yml:/app/config/config.yml
     environment:
-      - API_TOKEN=opsimate
+      # Set your own value here (or in config.yml's security.api_token) to turn
+      # on X-Api-Token auth. Leave unset and it stays off - never ship a fixed
+      # value here, this file is public.
       - NODE_ENV=production
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml
