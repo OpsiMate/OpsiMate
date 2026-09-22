@@ -44,6 +44,12 @@ Learn how to set up and run the OpsiMate project locally for development.
 
 - `pnpm run test` - Run test suite
 - `pnpm run lint` - Check code quality
+- `pnpm run check` - Run the same format and lint checks as CI
+- `pnpm run fix` - Fix formatting and auto-fixable lint issues
+
+`pnpm install` also sets up a pre-commit hook that runs Prettier on your staged files.
+
+If CI says a format check failed, run `pnpm --filter <package> format-fix` (for example `pnpm --filter @OpsiMate/server format-fix`) and commit the result.
 
 # How to Make a Pull Request (PR)
 

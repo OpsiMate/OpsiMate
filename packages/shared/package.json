@@ -15,12 +15,15 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"clean": "rm -rf dist",
-		"lint": "eslint src --ext .ts",
+		"lint": "eslint src --ext .ts --max-warnings=0",
 		"lint-fix": "eslint src --ext .ts --fix",
 		"format": "prettier --check .",
 		"format-fix": "prettier --write .",
 		"check": "npm run format && npm run lint",
 		"fix": "npm run format-fix && npm run lint-fix"
+	},
+	"lint-staged": {
+		"*": "prettier --write --ignore-unknown"
 	},
 	"dependencies": {
 		"zod": "^4.6.5"
