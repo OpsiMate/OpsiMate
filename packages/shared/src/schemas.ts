@@ -41,14 +41,14 @@ export const UpdateTagSchema = TagSchema.partial().extend({
 	id: z.number(),
 });
 
+const positiveIntegerIdSchema = z.coerce.number().int().positive();
+
 export const TagIdSchema = z.object({
-	tagId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid tag ID');
-		}
-		return parsed;
-	}),
+	tagId: positiveIntegerIdSchema,
+});
+
+export const CustomFieldIdSchema = z.object({
+	id: positiveIntegerIdSchema,
 });
 
 export const RoleSchema = z.nativeEnum(Role);
@@ -168,13 +168,7 @@ export const CreateDashboardSchema = z.object({
 });
 
 export const DashboardIdSchema = z.object({
-	dashboardId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid dashboard ID');
-		}
-		return parsed;
-	}),
+	dashboardId: positiveIntegerIdSchema,
 });
 
 export const DashboardTagSchema = z.object({
@@ -289,13 +283,7 @@ export const UpdateMutePolicySchema = z
 	});
 
 export const MutePolicyIdSchema = z.object({
-	mutePolicyId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid mute policy ID');
-		}
-		return parsed;
-	}),
+	mutePolicyId: positiveIntegerIdSchema,
 });
 
 // ---- Alert enrichments ----
@@ -365,13 +353,7 @@ export const UpdateAlertEnrichmentSchema = z.object({
 });
 
 export const AlertEnrichmentIdSchema = z.object({
-	enrichmentId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid enrichment ID');
-		}
-		return parsed;
-	}),
+	enrichmentId: positiveIntegerIdSchema,
 });
 
 // ---- Actions ----
@@ -439,13 +421,7 @@ export const CreateActionSchema = z.discriminatedUnion('type', [
 export const UpdateActionSchema = CreateActionSchema;
 
 export const ActionIdSchema = z.object({
-	actionId: z.string().transform((val) => {
-		const parsed = parseInt(val);
-		if (isNaN(parsed)) {
-			throw new Error('Invalid action ID');
-		}
-		return parsed;
-	}),
+	actionId: positiveIntegerIdSchema,
 });
 
 // Body for running an action against a specific alert. Lenient on BOTH axes: extra
@@ -558,8 +534,12 @@ export const UpsertRootCauseSchema = z.object({
 	feedbackDownUrl: z.string().url().max(2048).optional(),
 });
 
+export const ROOT_CAUSE_RATING_COMMENT_MAX = 2000;
+
 export const RateRootCauseSchema = z.object({
 	rating: z.enum(['up', 'down']),
+	// "What went wrong?" — only meaningful with 'down'; the server drops it for 'up'.
+	comment: z.string().trim().max(ROOT_CAUSE_RATING_COMMENT_MAX).optional(),
 });
 
 export const RetentionResourceParamSchema = z.object({

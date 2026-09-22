@@ -2,10 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, CheckCircle2, Copy, ExternalLink, Send, Trash2 } from 'lucide-react';
-import { useState } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface CustomAlertsSetupModalProps {
@@ -14,11 +13,10 @@ export interface CustomAlertsSetupModalProps {
 }
 
 export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetupModalProps) => {
-	const [copiedUrl, setCopiedUrl] = useState(false);
-	const [copiedPayload, setCopiedPayload] = useState(false);
-	const [copiedResolve, setCopiedResolve] = useState(false);
-	const [copiedDelete, setCopiedDelete] = useState(false);
-	const { toast } = useToast();
+	const { copied: copiedUrl, copy: copyUrl } = useCopyToClipboard();
+	const { copied: copiedPayload, copy: copyPayload } = useCopyToClipboard();
+	const { copied: copiedResolve, copy: copyResolve } = useCopyToClipboard();
+	const { copied: copiedDelete, copy: copyDelete } = useCopyToClipboard();
 
 	const webhookUrl = `${API_HOST}/api/v1/alerts/custom?api_token={your_api_token}`;
 	const resolveUrl = `${API_HOST}/api/v1/alerts/{alertId}?api_token={your_api_token}`;
@@ -39,35 +37,17 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
   ]
 }`;
 
-	const handleCopy = async (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
-		try {
-			await navigator.clipboard.writeText(text);
-			if (type === 'url') {
-				setCopiedUrl(true);
-				setTimeout(() => setCopiedUrl(false), 2000);
-			} else if (type === 'payload') {
-				setCopiedPayload(true);
-				setTimeout(() => setCopiedPayload(false), 2000);
-			} else if (type === 'resolve') {
-				setCopiedResolve(true);
-				setTimeout(() => setCopiedResolve(false), 2000);
-			} else {
-				setCopiedDelete(true);
-				setTimeout(() => setCopiedDelete(false), 2000);
-			}
-			toast({
-				title: 'Copied!',
-				description: type === 'payload' ? 'Example payload copied to clipboard' : 'URL copied to clipboard',
-				duration: 2000,
-			});
-		} catch (error) {
-			toast({
-				title: 'Failed to copy',
-				description: 'Please copy manually',
-				variant: 'destructive',
-				duration: 3000,
-			});
-		}
+	const handleCopy = (text: string, type: 'url' | 'payload' | 'resolve' | 'delete') => {
+		const copy = {
+			url: copyUrl,
+			payload: copyPayload,
+			resolve: copyResolve,
+			delete: copyDelete,
+		}[type];
+		return copy(text, {
+			successDescription: type === 'payload' ? 'Example payload copied to clipboard' : 'URL copied to clipboard',
+			failureDescription: 'Please copy manually',
+		});
 	};
 
 	return (
@@ -483,7 +463,11 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						<Button
 							variant="outline"
 							onClick={() =>
-								window.open('https://docs.opsimate.dev/docs/integrations/custom-alerts', '_blank')
+								window.open(
+									'https://docs.opsimate.dev/docs/integrations/custom-alerts',
+									'_blank',
+									'noopener,noreferrer'
+								)
 							}
 							className="gap-2"
 						>

@@ -21,6 +21,16 @@ COPY apps/client apps/client
 COPY packages/shared packages/shared
 COPY packages/custom-actions packages/custom-actions
 
+# The release workflow passes the tag-derived version; local builds fall back to
+# "dev" so the UI never claims a release number it isn't. Vite inlines VITE_* at
+# build time, which is why these are set in the BUILDER stage.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=
+ARG APP_BUILD_DATE=
+ENV VITE_APP_VERSION=$APP_VERSION \
+    VITE_APP_COMMIT=$APP_COMMIT \
+    VITE_APP_BUILD_DATE=$APP_BUILD_DATE
+
 # Build shared package first, then client
 RUN pnpm --filter @OpsiMate/shared build && \
     pnpm --filter @OpsiMate/custom-actions build && \

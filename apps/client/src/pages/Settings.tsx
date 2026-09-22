@@ -31,6 +31,7 @@ import {
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
+import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -579,6 +580,7 @@ const Settings: React.FC = () => {
 
 									<TabsContent value="ai" className="space-y-6">
 										<AiSettings />
+										<RootCauseGuide />
 									</TabsContent>
 
 									<TabsContent value="secrets" className="space-y-6">
@@ -661,14 +663,14 @@ const Settings: React.FC = () => {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Multiple Users</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete {selectedUsers.length} user(s)? This action cannot be
-							undone.
+							Are you sure you want to delete {selectedUsers.length} user
+							{selectedUsers.length !== 1 ? 's' : ''}? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete}>
-							Delete {selectedUsers.length} User(s)
+							Delete {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

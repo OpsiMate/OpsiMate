@@ -141,6 +141,9 @@ jobs:
         run: |
           docker buildx build \
             --platform ${{ matrix.platform }} \
+            --build-arg APP_VERSION=${{ needs.version.outputs.version }} \
+            --build-arg APP_COMMIT=${{ github.sha }} \
+            --build-arg APP_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
             -t opsimate/backend:${{ needs.version.outputs.version }}-${{ matrix.arch }} \
             -f Dockerfile.server \
             --push .
@@ -149,6 +152,9 @@ jobs:
         run: |
           docker buildx build \
             --platform ${{ matrix.platform }} \
+            --build-arg APP_VERSION=${{ needs.version.outputs.version }} \
+            --build-arg APP_COMMIT=${{ github.sha }} \
+            --build-arg APP_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
             -t opsimate/frontend:${{ needs.version.outputs.version }}-${{ matrix.arch }} \
             -f Dockerfile.client \
             --push .

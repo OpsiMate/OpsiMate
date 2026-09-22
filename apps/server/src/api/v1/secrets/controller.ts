@@ -7,7 +7,7 @@ import { encryptPassword } from '../../../utils/encryption';
 import { isZodError } from '../../../utils/isZodError';
 import { validateKubeConfig, validatePublicSSHKey } from '../../../utils/validators/validators';
 
-const logger = new Logger('v1/integrations/controller');
+const logger = new Logger('api/v1/secrets/controller');
 
 export class SecretsController {
 	constructor(private secretsBL: SecretsMetadataBL) {}

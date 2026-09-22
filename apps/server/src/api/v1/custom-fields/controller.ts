@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Logger } from '@OpsiMate/shared';
+import { CustomFieldIdSchema, Logger } from '@OpsiMate/shared';
 import { z } from 'zod';
 import { ServiceCustomFieldBL } from '../../../bl/custom-fields/serviceCustomField.bl';
 import { isZodError } from '../../../utils/isZodError';
@@ -63,13 +63,7 @@ export class CustomFieldsController {
 
 	getCustomFieldById = async (req: Request, res: Response) => {
 		try {
-			const customFieldId = parseInt(req.params.id);
-			if (isNaN(customFieldId)) {
-				return res.status(400).json({
-					success: false,
-					error: 'Invalid custom field ID',
-				});
-			}
+			const { id: customFieldId } = CustomFieldIdSchema.parse(req.params);
 
 			const customField = await this.customFieldsBL.getCustomFieldById(customFieldId);
 			if (customField) {
@@ -84,6 +78,13 @@ export class CustomFieldsController {
 				});
 			}
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({
+					success: false,
+					error: 'Validation error',
+					details: error.issues,
+				});
+			}
 			logger.error('Error getting custom field:', error);
 			return res.status(500).json({
 				success: false,
@@ -94,13 +95,7 @@ export class CustomFieldsController {
 
 	updateCustomField = async (req: Request, res: Response) => {
 		try {
-			const customFieldId = parseInt(req.params.id);
-			if (isNaN(customFieldId)) {
-				return res.status(400).json({
-					success: false,
-					error: 'Invalid custom field ID',
-				});
-			}
+			const { id: customFieldId } = CustomFieldIdSchema.parse(req.params);
 
 			const { name } = UpdateCustomFieldSchema.parse(req.body);
 			const updated = await this.customFieldsBL.updateCustomField(customFieldId, name);
@@ -135,13 +130,7 @@ export class CustomFieldsController {
 
 	deleteCustomField = async (req: Request, res: Response) => {
 		try {
-			const customFieldId = parseInt(req.params.id);
-			if (isNaN(customFieldId)) {
-				return res.status(400).json({
-					success: false,
-					error: 'Invalid custom field ID',
-				});
-			}
+			const { id: customFieldId } = CustomFieldIdSchema.parse(req.params);
 
 			const deleted = await this.customFieldsBL.deleteCustomField(customFieldId);
 			if (deleted) {
@@ -156,6 +145,13 @@ export class CustomFieldsController {
 				});
 			}
 		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({
+					success: false,
+					error: 'Validation error',
+					details: error.issues,
+				});
+			}
 			logger.error('Error deleting custom field:', error);
 			return res.status(500).json({
 				success: false,
