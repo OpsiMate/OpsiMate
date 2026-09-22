@@ -109,12 +109,12 @@ describe('AlertHistoryRepository', () => {
 		expect(result).toHaveProperty('alert-7');
 		expect(result['alert-6']).toEqual(
 			alert6Events
-				.filter((event) => event.event_type === AlertHistoryEventType.UNRESOLVED)
+				.filter((event) => event.event_type === (AlertHistoryEventType.UNRESOLVED as string))
 				.map((event) => event.created_at)
 		);
 		expect(result['alert-7']).toEqual(
 			alert7Events
-				.filter((event) => event.event_type === AlertHistoryEventType.UNRESOLVED)
+				.filter((event) => event.event_type === (AlertHistoryEventType.UNRESOLVED as string))
 				.map((event) => event.created_at)
 		);
 	});
