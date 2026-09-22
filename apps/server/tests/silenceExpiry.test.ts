@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { AlertHistoryEventType } from '@OpsiMate/shared';
-import { AlertRepository } from '../src/dal/alertRepository.ts';
+import { AlertRepository } from '../src/dal/alertRepository';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // Timed silences expire lazily: every alert listing first sweeps alerts whose
