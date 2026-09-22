@@ -28,8 +28,21 @@ describe('alert grouping', () => {
 		const groups = groupAlerts(alerts, ['team'], valueGetter);
 
 		expect(groups).toMatchObject([
-			{ type: 'group', value: 'platform', count: 2 },
-			{ type: 'group', value: 'product', count: 1 },
+			{
+				type: 'group',
+				value: 'platform',
+				count: 2,
+				children: [
+					{ type: 'leaf', alert: { id: '1' } },
+					{ type: 'leaf', alert: { id: '3' } },
+				],
+			},
+			{
+				type: 'group',
+				value: 'product',
+				count: 1,
+				children: [{ type: 'leaf', alert: { id: '2' } }],
+			},
 		]);
 		expect(alerts).toEqual(originalOrder);
 	});
@@ -62,6 +75,7 @@ describe('flattening alert groups', () => {
 			mkAlert('2', { tags: { team: 'platform', service: 'web' } }),
 		];
 		const groups = groupAlerts(alerts, ['team', 'service'], valueGetter);
+		const originalGroups = structuredClone(groups);
 		const rootKey = 'root:platform';
 		const apiKey = `${rootKey}:api`;
 		const webKey = `${rootKey}:web`;
@@ -69,13 +83,14 @@ describe('flattening alert groups', () => {
 		expect(flattenGroups(groups, new Set())).toMatchObject([{ type: 'group', key: rootKey }]);
 
 		const flattened = flattenGroups(groups, new Set([rootKey, apiKey, webKey]));
-		expect(flattened.map((item) => (item.type === 'group' ? item.key : item.alert.id))).toEqual([
+			expect(flattened.map((item) => (item.type === 'group' ? item.key : item.alert.id))).toEqual([
 			rootKey,
 			apiKey,
 			'1',
 			webKey,
 			'2',
 		]);
+		expect(groups).toEqual(originalGroups);
 		expect(alerts.map((alert) => alert.id)).toEqual(['1', '2']);
 	});
 });
