@@ -1,6 +1,6 @@
 import { TimeRange } from '@/context/DashboardContext';
 import { TagKeyInfo } from '@/types';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, IncidentSummary } from '@OpsiMate/shared';
 import { ReactNode } from 'react';
 
 export enum AlertTab {
@@ -30,6 +30,16 @@ export interface AlertsTableProps {
 	visibleColumns?: string[];
 	columnOrder?: string[];
 	onAlertClick?: (alert: Alert) => void;
+	// Incident summaries keyed by id; rows whose alert carries a matching incidentId
+	// fold under a folder row. Absent = no folding (e.g. playground mode).
+	incidentsById?: Map<number, IncidentSummary>;
+	// Opens the incident details panel (folder-row name click).
+	onOpenIncident?: (incidentId: number) => void;
+	activeIncidentId?: number | null;
+	onEditIncident?: (incidentId: number) => void;
+	onUngroupIncident?: (incidentId: number) => void;
+	// Removes one alert from its incident (member rows' ⋮ menu).
+	onRemoveFromIncident?: (alertId: string) => void;
 	// Alert currently open in the details panel; its row is highlighted.
 	activeAlertId?: string | null;
 	tagKeyColumnLabels?: Record<string, string>;
@@ -98,4 +108,14 @@ export type FlatGroupItem =
 			isExpanded: boolean;
 			groupStatus: GroupStatus;
 	  }
-	| { type: 'leaf'; alert: Alert };
+	// incidentMember: this leaf renders indented beneath its incident's folder row.
+	| { type: 'leaf'; alert: Alert; incidentMember?: boolean }
+	// A folder row for an incident, positioned where its best-sorted member would have
+	// sat. shownCount counts members passing the current filters/search/time window;
+	// the summary's alertCount is the true total ("3 of 5").
+	| {
+			type: 'incident';
+			incident: IncidentSummary;
+			shownCount: number;
+			isExpanded: boolean;
+	  };

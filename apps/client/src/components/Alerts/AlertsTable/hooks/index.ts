@@ -1,4 +1,5 @@
 export * from './useAlertGrouping';
+export * from './useIncidentFolding';
 export * from './useAlertKeyboardNav';
 export * from './useAlertSorting';
 export * from './useAlertSelection';

@@ -15,6 +15,7 @@ import { IntegrationController } from './api/v1/integrations/controller';
 import { PlaygroundController } from './api/v1/playground/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { EnrichmentController } from './api/v1/enrichments/controller';
+import { IncidentController } from './api/v1/incidents/controller';
 import { MutePolicyController } from './api/v1/mute-policies/controller';
 import { OncallController } from './api/v1/oncall/controller';
 import { TagController } from './api/v1/tags/controller';
@@ -28,6 +29,7 @@ import { DashboardBL } from './bl/dashboards/dashboard.bl.ts';
 import { IntegrationBL } from './bl/integrations/integration.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
+import { IncidentBL } from './bl/incidents/incident.bl';
 import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
@@ -46,6 +48,7 @@ import { PasswordResetsRepository } from './dal/passwordResetsRepository';
 import { SecretsMetadataRepository } from './dal/secretsMetadataRepository';
 import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository';
 import { EnrichmentRepository } from './dal/enrichmentRepository';
+import { IncidentRepository } from './dal/incidentRepository';
 import { MutePolicyRepository } from './dal/mutePolicyRepository';
 import { OncallRepository } from './dal/oncallRepository';
 import { TagRepository } from './dal/tagRepository';
@@ -106,7 +109,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
 	);
 	// Resolve keeps the root cause; only permanent deletion drops it.
-	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
+	alertBL.onAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
@@ -166,6 +169,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
 	const mutePolicyRepo = new MutePolicyRepository(db);
+	const incidentRepo = new IncidentRepository(db);
 	const oncallRepo = new OncallRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
@@ -184,6 +188,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		passwordResetsRepo.initPasswordResetsTable(),
 		playgroundRepo.initPlaygroundTable(),
 		mutePolicyRepo.initMutePoliciesTable(),
+		incidentRepo.initIncidentsTables(),
 		oncallRepo.initOncallTables(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
@@ -211,6 +216,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// User renames/creates/deletes change owner names in columns, sort and facets.
 	userBL.setOnUsersChanged(() => alertBL.invalidateOwners());
 	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
+	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, () => alertBL.invalidateSnapshots());
+	alertBL.setIncidentRepo(incidentRepo);
+	// Permanent deletion (delete-forever) must not leave dangling incident memberships.
+	alertBL.onAlertPermanentlyDeleted((alertId) => incidentBL.handleAlertsDeleted([alertId]));
 	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
 	// Controllers (only for SERVER)
@@ -228,6 +237,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
+	const incidentController = new IncidentController(incidentBL);
 	const aiController = new AiController(aiBL);
 
 	// Routes (only for SERVER)
@@ -249,6 +259,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			actionController,
 			retentionController,
 			oncallController,
+			incidentController,
 			aiController
 		)
 	);
