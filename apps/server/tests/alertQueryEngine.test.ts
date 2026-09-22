@@ -155,3 +155,16 @@ describe('sortAlertsBy status', () => {
 		expect(desc).toEqual(['s1', 'r1', 'r2', 'm1', 'f1', 'f2']);
 	});
 });
+
+describe('search term whitespace handling (#1018)', () => {
+	// Trailing/leading spaces (easy when pasting) matched nothing before the fix.
+	const named = [mkAlert('x', { alertName: 'cpu high' })];
+
+	test('trailing space still matches', () => {
+		expect(applyAlertListQuery(named, [], { search: 'high ' }).items).toEqual(named);
+	});
+
+	test('leading space still matches', () => {
+		expect(applyAlertListQuery(named, [], { search: ' high' }).items).toEqual(named);
+	});
+});
