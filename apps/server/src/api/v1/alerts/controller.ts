@@ -6,7 +6,6 @@ import {
 	AlertStatus,
 	CreateCommentSchema,
 	Logger,
-	Role,
 	UpdateCommentSchema,
 	UpdateSilenceResetSettingsSchema,
 	UpsertRootCauseSchema,
@@ -185,18 +184,7 @@ export class AlertController {
 		return res.type('application/json').send(`{"success":true,"data":{"alerts":${snapshot.json}}}`);
 	}
 
-	// Both silence-reset endpoints are admin-only: this is org-wide configuration, same
-	// gate the retention settings use.
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
-
-	async getSilenceResetSettings(req: AuthenticatedRequest, res: Response) {
-		if (!this.requireAdmin(req, res)) return;
+	async getSilenceResetSettings(_req: AuthenticatedRequest, res: Response) {
 		try {
 			const settings = await this.alertBL.getSilenceResetSettings();
 			return res.json({ success: true, data: settings });
@@ -207,7 +195,6 @@ export class AlertController {
 	}
 
 	async updateSilenceResetSettings(req: AuthenticatedRequest, res: Response) {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const updates = UpdateSilenceResetSettingsSchema.parse(req.body ?? {});
 			const settings = await this.alertBL.updateSilenceResetSettings(updates);
@@ -808,8 +795,8 @@ export class AlertController {
 			if (!req.user) {
 				return res.status(401).json({ success: false, error: 'Rating requires a user session' });
 			}
-			const { rating } = RateRootCauseSchema.parse(req.body);
-			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user);
+			const { rating, comment } = RateRootCauseSchema.parse(req.body);
+			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user, comment);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {

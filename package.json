@@ -23,8 +23,8 @@
     "fix": "turbo run fix"
   },
   "devDependencies": {
-    "prettier": "^3.9.6",
-    "turbo": "^2.10.12"
+    "prettier": "^3.9.7",
+    "turbo": "^2.10.13"
   },
   "packageManager": "pnpm@9.12.0"
 }

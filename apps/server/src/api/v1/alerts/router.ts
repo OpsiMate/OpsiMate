@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AlertController } from './controller';
+import { requireAdmin } from '../../../middleware/auth';
 
 export default function createAlertRouter(controller: AlertController) {
 	const router = Router();
@@ -15,8 +16,8 @@ export default function createAlertRouter(controller: AlertController) {
 	router.post('/bulk', controller.bulkAlertAction.bind(controller));
 
 	// Daily silence reset settings (admin; must be before /:alertId to avoid route conflicts)
-	router.get('/silence-reset', controller.getSilenceResetSettings.bind(controller));
-	router.put('/silence-reset', controller.updateSilenceResetSettings.bind(controller));
+	router.get('/silence-reset', requireAdmin, controller.getSilenceResetSettings.bind(controller));
+	router.put('/silence-reset', requireAdmin, controller.updateSilenceResetSettings.bind(controller));
 
 	// Resolved alerts (must be before /:alertId to avoid route conflicts)
 	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
