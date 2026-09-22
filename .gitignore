@@ -53,3 +53,7 @@ issue-backlog*.md
 # can't reach) — keep it out of the repo so installs use the default registry.
 .npmrc
 
+# Stray lockfiles: this repo uses pnpm (see "packageManager" in package.json)
+package-lock.json
+yarn.lock
+bun.lockb
