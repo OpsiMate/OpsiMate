@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { AlertEnrichment, AlertEnrichmentField, AlertLink } from '@OpsiMate/shared';
+import { AlertEnrichment, AlertEnrichmentField, AlertEnrichmentVersion, AlertLink } from '@OpsiMate/shared';
 import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 import { runAsync } from './db';
 
@@ -17,6 +17,15 @@ interface EnrichmentRow {
 	last_modified_by: string | null;
 	created_at: string;
 	updated_at: string;
+}
+
+interface EnrichmentVersionRow {
+	id: number;
+	enrichment_id: number;
+	version: number;
+	content: string;
+	author: string;
+	created_at: string;
 }
 
 export type CreateEnrichmentInput = Omit<AlertEnrichment, 'id' | 'createdAt' | 'updatedAt'>;
@@ -51,6 +60,19 @@ export class EnrichmentRepository {
 		updatedAt: row.updated_at,
 	});
 
+	private saveVersion(enrichmentId: number, actor?: string | null): void {
+		const row = this.db.prepare(`SELECT * FROM alert_enrichments WHERE id = ?`).get(enrichmentId) as
+			EnrichmentRow | undefined;
+		if (!row) return;
+
+		this.db
+			.prepare(
+				`INSERT INTO alert_enrichment_versions (enrichment_id, version, content, author)
+				 VALUES (?, (SELECT COALESCE(MAX(version), 0) + 1 FROM alert_enrichment_versions WHERE enrichment_id = ?), ?, ?)`
+			)
+			.run(enrichmentId, enrichmentId, JSON.stringify(this.toShared(row)), actor ?? 'API Token');
+	}
+
 	async initEnrichmentsTable(): Promise<void> {
 		return runAsync(() => {
 			this.db
@@ -75,6 +97,26 @@ export class EnrichmentRepository {
 				)
 				.run();
 
+			this.db
+				.prepare(
+					`CREATE TABLE IF NOT EXISTS alert_enrichment_versions (
+						id            INTEGER PRIMARY KEY AUTOINCREMENT,
+						enrichment_id INTEGER NOT NULL,
+						version       INTEGER NOT NULL,
+						content       TEXT NOT NULL,
+						author        TEXT NOT NULL,
+						created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+						UNIQUE(enrichment_id, version)
+					)`
+				)
+				.run();
+			this.db
+				.prepare(
+					`CREATE INDEX IF NOT EXISTS idx_alert_enrichment_versions_enrichment
+					 ON alert_enrichment_versions(enrichment_id, version DESC)`
+				)
+				.run();
+
 			// Migrate older installs that predate later columns.
 			const columns = this.db.prepare(`PRAGMA table_info(alert_enrichments)`).all() as { name: string }[];
 			const hasColumn = (name: string) => columns.some((c) => c.name === name);
@@ -93,28 +135,45 @@ export class EnrichmentRepository {
 			if (!hasColumn('match_all')) {
 				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN match_all INTEGER DEFAULT 0`).run();
 			}
+
+			// Existing installations predate version history. Preserve the current
+			// rule as version 1 before its next edit so that edit still has a usable
+			// "before" snapshot.
+			const enrichments = this.db.prepare(`SELECT * FROM alert_enrichments`).all() as EnrichmentRow[];
+			const hasVersions = this.db.prepare(
+				`SELECT 1 FROM alert_enrichment_versions WHERE enrichment_id = ? LIMIT 1`
+			);
+			for (const enrichment of enrichments) {
+				if (!hasVersions.get(enrichment.id)) {
+					this.saveVersion(enrichment.id, enrichment.last_modified_by ?? enrichment.created_by);
+				}
+			}
 		});
 	}
 
 	async createEnrichment(data: CreateEnrichmentInput, actor?: string | null): Promise<{ lastID: number }> {
 		return runAsync(() => {
-			const stmt = this.db.prepare(
-				`INSERT INTO alert_enrichments (name, name_contains, label_matchers, match_all, add_fields, add_links, summary_template, priority, created_by, last_modified_by)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-			);
-			const result = stmt.run(
-				data.name,
-				serializeNameColumn(data),
-				serializeMatcherColumn(data),
-				data.matchAll ? 1 : 0,
-				JSON.stringify(data.addFields ?? []),
-				JSON.stringify(data.addLinks ?? []),
-				data.summaryTemplate ?? null,
-				data.priority ?? 0,
-				actor ?? null,
-				actor ?? null
-			);
-			return { lastID: result.lastInsertRowid as number };
+			return this.db.transaction(() => {
+				const stmt = this.db.prepare(
+					`INSERT INTO alert_enrichments (name, name_contains, label_matchers, match_all, add_fields, add_links, summary_template, priority, created_by, last_modified_by)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				);
+				const result = stmt.run(
+					data.name,
+					serializeNameColumn(data),
+					serializeMatcherColumn(data),
+					data.matchAll ? 1 : 0,
+					JSON.stringify(data.addFields ?? []),
+					JSON.stringify(data.addLinks ?? []),
+					data.summaryTemplate ?? null,
+					data.priority ?? 0,
+					actor ?? null,
+					actor ?? null
+				);
+				const lastID = result.lastInsertRowid as number;
+				this.saveVersion(lastID, actor);
+				return { lastID };
+			})();
 		});
 	}
 
@@ -132,6 +191,22 @@ export class EnrichmentRepository {
 			const row = this.db.prepare(`SELECT * FROM alert_enrichments WHERE id = ?`).get(id) as
 				EnrichmentRow | undefined;
 			return row ? this.toShared(row) : undefined;
+		});
+	}
+
+	async getEnrichmentVersions(id: number): Promise<AlertEnrichmentVersion[]> {
+		return runAsync(() => {
+			const rows = this.db
+				.prepare(`SELECT * FROM alert_enrichment_versions WHERE enrichment_id = ? ORDER BY version DESC`)
+				.all(id) as EnrichmentVersionRow[];
+			return rows.map((row) => ({
+				id: row.id,
+				enrichmentId: row.enrichment_id,
+				version: row.version,
+				content: JSON.parse(row.content) as AlertEnrichment,
+				author: row.author,
+				createdAt: row.created_at,
+			}));
 		});
 	}
 
@@ -184,7 +259,10 @@ export class EnrichmentRepository {
 
 			updates.push('updated_at = CURRENT_TIMESTAMP');
 			values.push(id);
-			this.db.prepare(`UPDATE alert_enrichments SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+			this.db.transaction(() => {
+				this.db.prepare(`UPDATE alert_enrichments SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+				this.saveVersion(id, actor);
+			})();
 		});
 	}
 

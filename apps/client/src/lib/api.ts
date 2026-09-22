@@ -16,6 +16,7 @@ import {
 	ActionType,
 	AlertHistory,
 	AlertEnrichment,
+	AlertEnrichmentVersion,
 	MutePolicy,
 	AuditLog,
 	Integration,
@@ -592,6 +593,7 @@ export type EnrichmentPayload = {
 export const enrichmentsApi = {
 	listEnrichments: () => apiRequest<AlertEnrichment[]>('/enrichments'),
 	getEnrichment: (id: number) => apiRequest<AlertEnrichment>(`/enrichments/${id}`),
+	getEnrichmentHistory: (id: number) => apiRequest<AlertEnrichmentVersion[]>(`/enrichments/${id}/history`),
 	createEnrichment: (payload: EnrichmentPayload) => apiRequest<AlertEnrichment>('/enrichments', 'POST', payload),
 	updateEnrichment: (id: number, payload: Partial<EnrichmentPayload>) =>
 		apiRequest<AlertEnrichment>(`/enrichments/${id}`, 'PUT', payload),

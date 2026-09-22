@@ -24,6 +24,7 @@ export const queryKeys = {
 	mutePolicies: ['mutePolicies'] as const,
 	oncallTeams: ['oncallTeams'] as const,
 	enrichments: ['enrichments'] as const,
+	enrichmentHistory: (id: number) => ['enrichments', id, 'history'] as const,
 	actions: ['actions'] as const,
 	retention: ['retention'] as const,
 	silenceReset: ['silenceReset'] as const,

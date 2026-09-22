@@ -1384,6 +1384,26 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: playgroundState.enrichments });
 	}),
 
+	http.get(`${API_BASE}/enrichments/:id/history`, ({ params }) => {
+		const enrichment = playgroundState.enrichments.find((item) => item.id === Number(params.id));
+		if (!enrichment) {
+			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
+		}
+		return HttpResponse.json({
+			success: true,
+			data: [
+				{
+					id: enrichment.id,
+					enrichmentId: enrichment.id,
+					version: 1,
+					content: { ...enrichment },
+					author: enrichment.lastModifiedBy ?? enrichment.createdBy ?? 'Playground user',
+					createdAt: enrichment.updatedAt,
+				},
+			],
+		});
+	}),
+
 	http.post(`${API_BASE}/enrichments`, async ({ request }) => {
 		const body = (await request.json()) as Partial<(typeof playgroundState.enrichments)[0]>;
 		const newEnrichment = {
