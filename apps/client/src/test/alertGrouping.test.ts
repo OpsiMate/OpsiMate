@@ -83,7 +83,7 @@ describe('flattening alert groups', () => {
 		expect(flattenGroups(groups, new Set())).toMatchObject([{ type: 'group', key: rootKey }]);
 
 		const flattened = flattenGroups(groups, new Set([rootKey, apiKey, webKey]));
-			expect(flattened.map((item) => (item.type === 'group' ? item.key : item.alert.id))).toEqual([
+		expect(flattened.map((item) => (item.type === 'group' ? item.key : item.alert.id))).toEqual([
 			rootKey,
 			apiKey,
 			'1',
