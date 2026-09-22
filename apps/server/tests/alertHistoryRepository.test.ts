@@ -100,12 +100,23 @@ describe('AlertHistoryRepository', () => {
 			eventType: AlertHistoryEventType.COMMENT_ADDED,
 		});
 
+		const alert6Events = await repository.getEvents('alert-6');
+		const alert7Events = await repository.getEvents('alert-7');
+
 		const result = await repository.getEventTimesByType(AlertHistoryEventType.UNRESOLVED, ['alert-6', 'alert-7']);
 
 		expect(result).toHaveProperty('alert-6');
 		expect(result).toHaveProperty('alert-7');
-		expect(result['alert-6']).toHaveLength(2);
-		expect(result['alert-7']).toHaveLength(1);
+		expect(result['alert-6']).toEqual(
+			alert6Events
+				.filter((event) => event.event_type === AlertHistoryEventType.UNRESOLVED)
+				.map((event) => event.created_at)
+		);
+		expect(result['alert-7']).toEqual(
+			alert7Events
+				.filter((event) => event.event_type === AlertHistoryEventType.UNRESOLVED)
+				.map((event) => event.created_at)
+		);
 	});
 
 	test('getEventTimesByType returns an empty object for no alert IDs', async () => {
@@ -127,6 +138,9 @@ describe('AlertHistoryRepository', () => {
 			actorName: 'Bob',
 		});
 
+		const alert8Events = await repository.getEvents('alert-8');
+		const alert9Events = await repository.getEvents('alert-9');
+
 		const rows = await repository.getAllEventTimes();
 
 		const matchingRows = rows.filter((row) => ['alert-8', 'alert-9'].includes(row.alert_id));
@@ -136,12 +150,14 @@ describe('AlertHistoryRepository', () => {
 			expect.objectContaining({
 				alert_id: 'alert-8',
 				actor_name: 'Alice',
+				created_at: alert8Events[0].created_at,
 			})
 		);
 		expect(matchingRows).toContainEqual(
 			expect.objectContaining({
 				alert_id: 'alert-9',
 				actor_name: 'Bob',
+				created_at: alert9Events[0].created_at,
 			})
 		);
 	});
