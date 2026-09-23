@@ -14,10 +14,8 @@ services:
       - ./data/private-keys:/app/data/private-keys
       - ./config.yml:/app/config/config.yml
     environment:
-      # Publicly known default, same as default-config.yml. The server warns
-      # loudly at startup while this is still the effective token. Set your
-      # own value here (or in config.yml's security.api_token) to silence it.
-      - API_TOKEN=opsimate
+      # Optional: overrides security.api_token from config.yml when set in your shell/.env
+      - API_TOKEN=${API_TOKEN:-}
       - NODE_ENV=production
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml

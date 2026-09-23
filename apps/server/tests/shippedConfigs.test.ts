@@ -103,9 +103,11 @@ describe('shipped YAML configs', () => {
 		expect(parsed.security?.api_token).toBe(DEFAULT_API_TOKEN);
 	});
 
-	test('docker-compose.yml sets API_TOKEN to the known default, not some other literal', () => {
+	// A literal here would override the token in a user's mounted config.yml, so
+	// compose only passes API_TOKEN through from the host environment.
+	test('docker-compose.yml passes API_TOKEN through instead of hardcoding it', () => {
 		const compose = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8');
-		expect(compose).toMatch(new RegExp(`^\\s*-\\s*API_TOKEN=${DEFAULT_API_TOKEN}\\s*$`, 'm'));
+		expect(compose).toMatch(/^\s*-\s*API_TOKEN=\$\{API_TOKEN:-\}\s*$/m);
 	});
 
 	// The case that #879 slipped past. This fixture is a user config in the pre-#854

@@ -143,6 +143,15 @@ describe('API_TOKEN still overrides a mounted config file', () => {
 		const { getSecurityConfig } = await import('../src/config/config.ts');
 		expect(getSecurityConfig().api_token).toBe('from-the-env-var');
 	});
+
+	// docker-compose passes API_TOKEN through as `${API_TOKEN:-}`, so an unset host
+	// variable reaches the container as an empty string. That must not clobber the
+	// token in the mounted file.
+	test('an empty API_TOKEN leaves the mounted file token in place', async () => {
+		process.env.API_TOKEN = '';
+		const { getSecurityConfig } = await import('../src/config/config.ts');
+		expect(getSecurityConfig().api_token).toBe('from-the-mounted-file');
+	});
 });
 
 // The startup warning is the actual safeguard now that the default token fallback
