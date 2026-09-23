@@ -13,10 +13,11 @@ database:
 # Security configuration
 security:
   private_keys_path: "/app/data/private-keys"  # Container path for SSH keys
-  # Left blank on purpose: this file ships inside the public Docker image, so
-  # any fixed value here would be a credential anyone can read. API-token auth
-  # stays off until you set one, either here or via the API_TOKEN env var.
-  api_token: ""
+  # This file ships inside the public Docker image, so this value is a
+  # publicly known credential. The server logs a warning at startup for as
+  # long as the effective token is still this default. Set your own value
+  # here or via the API_TOKEN env var to silence it and secure API-token auth.
+  api_token: "opsimate"
 
 # mailer configuration
 # Email functionality is disabled by default for security

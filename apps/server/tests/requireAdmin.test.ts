@@ -117,15 +117,23 @@ describe('requireAdmin middleware', () => {
 		}
 	});
 
-	// No API_TOKEN is configured for this suite (see apiTokenDefault.test.ts for that
-	// axis), so an API-token attempt is rejected by authenticateApiToken itself, before
-	// it ever reaches requireAdmin's `!req.user` clause. That clause is still what
-	// keeps a valid API-token caller out of these routes when a real token IS
-	// configured elsewhere; here we only confirm the layering doesn't leak a 403
-	// (which would imply the token was accepted) in place of the 401 it should get.
-	test('API-token callers with no configured token are rejected before reaching the gate', async () => {
+	// No API_TOKEN or CONFIG_FILE is set for this suite (see apiTokenDefault.test.ts
+	// for that axis), so config.ts falls back to the shipped default token. A caller
+	// who supplies that default authenticates at authenticateApiToken, same as any
+	// other configured token, and only then hits requireAdmin's `!req.user` clause -
+	// which is exactly what keeps it out of admin routes, same as any other API-token
+	// caller. A caller with a token that doesn't match anything is rejected earlier.
+	test('API-token callers using the default token pass auth but are still blocked by the admin gate', async () => {
 		for (const [method, path] of ADMIN_ROUTES) {
 			const res = await send(method, path).set('x-api-token', 'opsimate');
+			expect(res.status, `${method.toUpperCase()} ${path}`).toBe(403);
+			expect(res.body).toEqual({ success: false, error: 'Forbidden: Admins only' });
+		}
+	});
+
+	test('API-token callers with a token that matches nothing are rejected before reaching the gate', async () => {
+		for (const [method, path] of ADMIN_ROUTES) {
+			const res = await send(method, path).set('x-api-token', 'not-the-configured-token');
 			expect(res.status, `${method.toUpperCase()} ${path}`).toBe(401);
 			expect(res.body).toEqual({ success: false, error: 'Invalid API token' });
 		}
