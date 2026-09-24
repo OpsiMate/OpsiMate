@@ -33,6 +33,10 @@ const pct = (values, p) =>
 const REQUEST_TIMEOUT_MS = 10_000;
 
 const run = `load-${Date.now()}`;
+// INGEST_ID_POOL=N: cycle through N fixed ids instead of minting a new one per request,
+// so the storm re-fires the same alerts (the common real case) and the table stays the
+// same size for the whole run instead of growing with the throughput being measured.
+const ID_POOL = Number(process.env.INGEST_ID_POOL) || 0;
 let posted = 0;
 let failed = 0;
 let getFailed = 0;
@@ -46,7 +50,7 @@ const t0 = Date.now();
 const poster = async (worker) => {
 	let i = 0;
 	while (Date.now() - t0 < D) {
-		const id = `${run}-${worker}-${i++}`;
+		const id = ID_POOL > 0 ? `load-pool-${(worker + i++ * C) % ID_POOL}` : `${run}-${worker}-${i++}`;
 		const started = performance.now();
 		try {
 			const res = await fetch(`${H}/alerts/custom?api_token=${token}`, {
