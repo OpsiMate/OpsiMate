@@ -11,6 +11,20 @@ import { runAsync } from './db';
 import { toIsoUtc } from '../utils/time';
 import { AlertRow, TableInfoRow } from './models';
 
+export type IngestAlert = Omit<SharedAlert, 'createdAt' | 'isSilenced'>;
+
+interface IngestStatements {
+	upsert: Database.Statement;
+	resolvedCopy: Database.Statement;
+	deleteResolved: Database.Statement;
+}
+
+// Id lists go in as ONE json parameter, matched through json_each. A `?` per id hits
+// SQLite's 32,766-variable limit at ~33k active alerts — which is exactly the moment
+// an install is busiest — and blew up the snapshot rebuild ("too many SQL variables")
+// under load. json_each has no such limit and keeps NOT IN semantics intact.
+const idsParam = (ids: Iterable<string>): string => JSON.stringify(Array.from(ids));
+
 export class AlertRepository {
 	private db: Database.Database;
 
@@ -18,79 +32,100 @@ export class AlertRepository {
 		this.db = db;
 	}
 
-	async insertOrUpdateAlert(alert: Omit<SharedAlert, 'createdAt' | 'isSilenced'>): Promise<{ changes: number }> {
-		return runAsync(() => {
-			// starts_at is deliberately NOT in the DO UPDATE clause: "Started At" means when
-			// the current firing episode began. Sources that re-send an active alert with a
-			// fresh startsAt (some push "now" on every notification) must not drag it forward —
-			// the firing-history trigger only fires on INSERT, so a moving starts_at diverges
-			// from the recorded firing time. A new episode (resolve, then re-fire) deletes and
-			// re-inserts the row, which picks up the new starts_at.
-			const stmt = this.db.prepare(`
-				INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, links)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT(id) DO UPDATE SET
-											  status=excluded.status,
-											  type=excluded.type,
-											  severity=excluded.severity,
-											  team=excluded.team,
-											  tags=excluded.tags,
-											  updated_at=excluded.updated_at,
-											  alert_url=excluded.alert_url,
-											  alert_name=excluded.alert_name,
-											  summary=excluded.summary,
-											  runbook_url=excluded.runbook_url,
-											  links=excluded.links,
-											  -- Every arrival re-surfaces the alert: any push for this id — an update
-											  -- OR an identical replay — marks it unread so the row re-bolds. All
-											  -- ingestion here is push-based webhooks, so a repeat notification is the
-											  -- source deliberately saying "this is still happening"; that deserves
-											  -- the same visual weight as a brand-new alert.
-											  is_read=0
-			`);
+	// Prepared once per repository. The ingest hot path runs these thousands of times a
+	// second under a burst, and re-preparing them on every call was ~7% of the server's
+	// busy CPU in a load profile (PR #1028).
+	private ingestStatements: IngestStatements | null = null;
 
-			// An alert id must never live in both tables: if this alert was previously
-			// resolved (manually or by a source) and is now firing again, drop the resolved
-			// copy — the active row is the truth. Same transaction as the upsert so a
-			// failure between the two can't leave the alert in neither table.
-			const upsert = this.db.transaction(() => {
-				// Re-fire after a resolve = a new episode. Sources often replay the ORIGINAL
-				// incident startsAt on the re-fire push; trusting that claim would show a
-				// freshly re-activated alert as weeks old. If the claimed start predates the
-				// resolve that ended the previous episode (a contradiction — it can't have
-				// started before it last ended), stamp the observed re-fire moment instead.
-				// A claimed start AFTER the resolve is a genuine fresh start and is kept.
-				let startsAt = alert.startsAt;
-				const resolvedCopy = this.db
-					.prepare(`SELECT archived_at, updated_at FROM alerts_resolved WHERE id = ?`)
-					.get(alert.id) as { archived_at: string | null; updated_at: string } | undefined;
-				if (resolvedCopy) {
-					const resolveMoment = new Date(
-						toIsoUtc(resolvedCopy.archived_at ?? resolvedCopy.updated_at)
-					).getTime();
-					const claimed = new Date(startsAt).getTime();
-					if (isNaN(claimed) || (!isNaN(resolveMoment) && claimed <= resolveMoment)) {
-						startsAt = new Date().toISOString();
-					}
-				}
-				this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`).run(alert.id);
-				return stmt.run(
-					alert.id,
-					alert.status,
-					alert.type,
-					alert.severity,
-					alert.team ?? null,
-					JSON.stringify(alert.tags ?? {}),
-					startsAt,
-					alert.updatedAt,
-					alert.alertUrl,
-					alert.alertName,
-					alert.summary || null,
-					alert.runbookUrl || null,
-					alert.links?.length ? JSON.stringify(alert.links) : null
-				);
-			});
-			return { changes: upsert().changes };
+	private getIngestStatements(): IngestStatements {
+		if (this.ingestStatements) return this.ingestStatements;
+		// starts_at is deliberately NOT in the DO UPDATE clause: "Started At" means when
+		// the current firing episode began. Sources that re-send an active alert with a
+		// fresh startsAt (some push "now" on every notification) must not drag it forward —
+		// the firing-history trigger only fires on INSERT, so a moving starts_at diverges
+		// from the recorded firing time. A new episode (resolve, then re-fire) deletes and
+		// re-inserts the row, which picks up the new starts_at.
+		const upsert = this.db.prepare(`
+			INSERT INTO alerts (id, status, type, severity, team, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, links)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+										  status=excluded.status,
+										  type=excluded.type,
+										  severity=excluded.severity,
+										  team=excluded.team,
+										  tags=excluded.tags,
+										  updated_at=excluded.updated_at,
+										  alert_url=excluded.alert_url,
+										  alert_name=excluded.alert_name,
+										  summary=excluded.summary,
+										  runbook_url=excluded.runbook_url,
+										  links=excluded.links,
+										  -- Every arrival re-surfaces the alert: any push for this id — an update
+										  -- OR an identical replay — marks it unread so the row re-bolds. All
+										  -- ingestion here is push-based webhooks, so a repeat notification is the
+										  -- source deliberately saying "this is still happening"; that deserves
+										  -- the same visual weight as a brand-new alert.
+										  is_read=0
+		`);
+		const resolvedCopy = this.db.prepare(`SELECT archived_at, updated_at FROM alerts_resolved WHERE id = ?`);
+		const deleteResolved = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
+		this.ingestStatements = { upsert, resolvedCopy, deleteResolved };
+		return this.ingestStatements;
+	}
+
+	// One row, run INSIDE a transaction the caller owns. An alert id must never live in
+	// both tables: if this alert was previously resolved (manually or by a source) and
+	// is now firing again, drop the resolved copy — the active row is the truth.
+	private upsertAlertRow(alert: IngestAlert): { changes: number } {
+		const { upsert, resolvedCopy, deleteResolved } = this.getIngestStatements();
+		// Re-fire after a resolve = a new episode. Sources often replay the ORIGINAL
+		// incident startsAt on the re-fire push; trusting that claim would show a
+		// freshly re-activated alert as weeks old. If the claimed start predates the
+		// resolve that ended the previous episode (a contradiction — it can't have
+		// started before it last ended), stamp the observed re-fire moment instead.
+		// A claimed start AFTER the resolve is a genuine fresh start and is kept.
+		let startsAt = alert.startsAt;
+		const resolved = resolvedCopy.get(alert.id) as { archived_at: string | null; updated_at: string } | undefined;
+		if (resolved) {
+			const resolveMoment = new Date(toIsoUtc(resolved.archived_at ?? resolved.updated_at)).getTime();
+			const claimed = new Date(startsAt).getTime();
+			if (isNaN(claimed) || (!isNaN(resolveMoment) && claimed <= resolveMoment)) {
+				startsAt = new Date().toISOString();
+			}
+		}
+		deleteResolved.run(alert.id);
+		const result = upsert.run(
+			alert.id,
+			alert.status,
+			alert.type,
+			alert.severity,
+			alert.team ?? null,
+			JSON.stringify(alert.tags ?? {}),
+			startsAt,
+			alert.updatedAt,
+			alert.alertUrl,
+			alert.alertName,
+			alert.summary || null,
+			alert.runbookUrl || null,
+			alert.links?.length ? JSON.stringify(alert.links) : null
+		);
+		return { changes: result.changes };
+	}
+
+	async insertOrUpdateAlert(alert: IngestAlert): Promise<{ changes: number }> {
+		const [result] = await this.insertOrUpdateAlerts([alert]);
+		return result;
+	}
+
+	// The batch form the ingest queue uses: one transaction (one fsync) for the whole
+	// batch instead of one per webhook. Results are positional. If any row fails the
+	// whole batch rolls back and throws — the queue retries the rows one at a time so
+	// a single bad row can't sink its neighbours.
+	async insertOrUpdateAlerts(alerts: IngestAlert[]): Promise<{ changes: number }[]> {
+		if (alerts.length === 0) return [];
+		return runAsync(() => {
+			const upsertAll = this.db.transaction((rows: IngestAlert[]) => rows.map((row) => this.upsertAlertRow(row)));
+			return upsertAll(alerts);
 		});
 	}
 
@@ -428,13 +463,12 @@ export class AlertRepository {
 	async getFiringTimesByAlert(alertIds: string[]): Promise<Record<string, string[]>> {
 		if (alertIds.length === 0) return {};
 		return runAsync(() => {
-			const placeholders = alertIds.map(() => '?').join(', ');
 			const rows = this.db
 				.prepare(
 					`SELECT alert_id, archived_at FROM alerts_history
-					 WHERE status = 'firing' AND alert_id IN (${placeholders})`
+					 WHERE status = 'firing' AND alert_id IN (SELECT value FROM json_each(?))`
 				)
-				.all(...alertIds) as { alert_id: string; archived_at: string }[];
+				.all(idsParam(alertIds)) as { alert_id: string; archived_at: string }[];
 			const result: Record<string, string[]> = {};
 			for (const row of rows) {
 				(result[row.alert_id] ??= []).push(row.archived_at);
@@ -473,18 +507,13 @@ export class AlertRepository {
 				return dbAlerts.map(this.toSharedAlert);
 			}
 
-			// Build dynamic placeholders for SQLite
-			const placeholders = Array.from(activeAlertIds)
-				.map(() => '?')
-				.join(',');
-
 			const stmt = this.db.prepare(`
 			SELECT * FROM alerts
 			WHERE type = ?
-			AND id NOT IN (${placeholders})
+			AND id NOT IN (SELECT value FROM json_each(?))
 		`);
 
-			const dbAlerts = stmt.all(alertType, ...activeAlertIds) as AlertRow[];
+			const dbAlerts = stmt.all(alertType, idsParam(activeAlertIds)) as AlertRow[];
 			return dbAlerts.map(this.toSharedAlert);
 		});
 	}
@@ -501,18 +530,13 @@ export class AlertRepository {
 				return;
 			}
 
-			// Build dynamic placeholders for SQLite
-			const placeholders = Array.from(activeAlertIds)
-				.map(() => '?')
-				.join(',');
-
 			const stmt = this.db.prepare(`
 			DELETE FROM alerts
 			WHERE type = ?
-			AND id NOT IN (${placeholders})
+			AND id NOT IN (SELECT value FROM json_each(?))
 		`);
 
-			stmt.run(alertType, ...activeAlertIds);
+			stmt.run(alertType, idsParam(activeAlertIds));
 		});
 	}
 
