@@ -41,7 +41,17 @@ export class IngestQueue<TItem, TResult> {
 	constructor(
 		private readonly flushBatch: (items: TItem[]) => Promise<TResult[]>,
 		private readonly options: IngestQueueOptions
-	) {}
+	) {
+		// A non-positive or NaN maxBatch would make splice() remove nothing and run()
+		// spin forever on the first enqueue — with a synchronous flush that never yields,
+		// which freezes the whole process. Refuse it here rather than at 3 a.m.
+		if (!Number.isInteger(options.maxBatch) || options.maxBatch < 1) {
+			throw new Error(`IngestQueue: maxBatch must be a positive integer, got ${String(options.maxBatch)}`);
+		}
+		if (!Number.isFinite(options.flushMs)) {
+			throw new Error(`IngestQueue: flushMs must be a finite number, got ${String(options.flushMs)}`);
+		}
+	}
 
 	get size(): number {
 		return this.pending.length;

@@ -60,8 +60,18 @@ const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
 // Ingest batching (see IngestQueue). Next-tick flushing (0) batches everything the
 // event loop parsed while busy — ~10 rows per transaction at 4.7k webhooks/s in the
 // load test — without adding latency for a sender that posts one at a time.
-const ingestFlushMs = () => Number(process.env.ALERTS_INGEST_FLUSH_MS ?? 0);
-const ingestMaxBatch = () => Number(process.env.ALERTS_INGEST_MAX_BATCH ?? 500);
+// Both env knobs fall back to their defaults on anything that isn't a sane number —
+// an empty or misspelled value must never turn into a 0/NaN that hangs the queue.
+const positiveIntFromEnv = (raw: string | undefined, fallback: number): number => {
+	const parsed = Number(raw);
+	return raw !== undefined && Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
+};
+const nonNegativeFromEnv = (raw: string | undefined, fallback: number): number => {
+	const parsed = Number(raw);
+	return raw !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+const ingestFlushMs = () => nonNegativeFromEnv(process.env.ALERTS_INGEST_FLUSH_MS, 0);
+const ingestMaxBatch = () => positiveIntFromEnv(process.env.ALERTS_INGEST_MAX_BATCH, 500);
 
 // The resolved list (and the analytics input scans behind it) changes only through
 // writes that call invalidateSnapshots() in this process — resolution, unresolve,
@@ -726,6 +736,9 @@ export class AlertBL {
 	}
 
 	async resolveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
+		// The selection below must see every webhook that arrived before this call —
+		// a queued-but-uncommitted alert would be skipped here and then land as firing.
+		await this.drainIngest();
 		try {
 			logger.info(`Resolving alerts not in ids for type: ${alertType}`);
 			// Get alerts that need to be resolved

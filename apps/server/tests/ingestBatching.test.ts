@@ -2,6 +2,12 @@ import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { IngestQueue } from '../src/bl/alerts/ingestQueue';
+import { AlertBL } from '../src/bl/alerts/alert.bl';
+import { AlertRepository } from '../src/dal/alertRepository';
+import { AlertCommentsRepository } from '../src/dal/alertCommentsRepository';
+import { AlertHistoryRepository } from '../src/dal/alertHistoryRepository';
+import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository';
+import { UserRepository } from '../src/dal/userRepository';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // The ingest queue (bl/alerts/ingestQueue.ts) coalesces webhook writes into one
@@ -34,9 +40,9 @@ const postCustom = (id: string) =>
 		.send({ id, alertName: `alert ${id}`, tags: { env: 'test' }, severity: 'warning' });
 
 beforeAll(async () => {
-	// A wide flush window for this file only: it makes the ordering test below
-	// deterministic (the POST is provably still queued when the resolve arrives) and
-	// forces the burst test to actually batch instead of flushing per request.
+	// A wide flush window for this file only, so the burst test provably batches
+	// instead of flushing per request (ordering tests below are deterministic at the
+	// BL level and do not depend on it).
 	process.env.ALERTS_INGEST_FLUSH_MS = '150';
 	db = await setupDB();
 	app = await setupExpressApp(db);
@@ -63,19 +69,62 @@ describe('ingest batching through the webhook API', () => {
 		expect(ids).toContain('visible-1');
 	});
 
-	test('a resolve fired right behind an un-awaited POST still lands after the ingest', async () => {
-		// supertest only sends on .then(), so start the POST explicitly, give the server
-		// a moment to enqueue it (the flush window is 150ms here), then resolve. Without
-		// drain() the resolve would run against a not-yet-committed row and the alert
-		// would surface as firing right after.
-		const pending = postCustom('race-1').then((res) => res);
-		await new Promise((resolve) => setTimeout(resolve, 30));
-		const resolve = await app.delete('/api/v1/alerts/race-1').set('Authorization', `Bearer ${jwtToken}`);
-		const posted = await pending;
-		expect(posted.status).toBe(200);
-		expect(resolve.status).toBe(200);
+	test('a resolve issued while the ingest is still queued lands after it (drain)', async () => {
+		// Deterministic at the BL level: insertOrUpdateAlert() enqueues synchronously
+		// before its first await, so after calling it un-awaited the row is provably
+		// in the queue, not committed. Without drain() the resolve would run against a
+		// not-yet-committed row and the alert would surface as firing right after.
+		const bl = new AlertBL(
+			new AlertRepository(db),
+			new ResolvedAlertRepository(db),
+			new AlertCommentsRepository(db),
+			new AlertHistoryRepository(db),
+			new UserRepository(db)
+		);
+		const now = new Date().toISOString();
+		const pending = bl.insertOrUpdateAlert({
+			id: 'race-1',
+			type: 'Custom',
+			status: 'firing',
+			tags: {},
+			startsAt: now,
+			updatedAt: now,
+			alertUrl: '',
+			alertName: 'race',
+		});
+		expect(countActive('race-1')).toBe(0); // still only queued
+		const resolved = await bl.resolveAlert('race-1', { id: null, name: null });
+		await pending;
+		expect(resolved).toBe(true);
 		expect(countActive('race-1')).toBe(0);
 		expect(countResolved('race-1')).toBe(1);
+	});
+
+	test('Grafana reconciliation drains the queue before deciding what to resolve', async () => {
+		const bl = new AlertBL(
+			new AlertRepository(db),
+			new ResolvedAlertRepository(db),
+			new AlertCommentsRepository(db),
+			new AlertHistoryRepository(db),
+			new UserRepository(db)
+		);
+		const now = new Date().toISOString();
+		const pending = bl.insertOrUpdateAlert({
+			id: 'grafana-queued',
+			type: 'Grafana',
+			status: 'firing',
+			tags: {},
+			startsAt: now,
+			updatedAt: now,
+			alertUrl: '',
+			alertName: 'queued grafana alert',
+		});
+		// Empty active set = "nothing is firing any more": the queued alert must be
+		// committed first so this resolves it, instead of it landing as firing afterwards.
+		await bl.resolveNonActiveAlerts(new Set(), 'Grafana');
+		await pending;
+		expect(countActive('grafana-queued')).toBe(0);
+		expect(countResolved('grafana-queued')).toBe(1);
 	});
 
 	test('a re-fire after resolve still drops the resolved copy inside the batch', async () => {
@@ -89,6 +138,14 @@ describe('ingest batching through the webhook API', () => {
 });
 
 describe('IngestQueue', () => {
+	test('refuses a maxBatch that could never drain (0, NaN, negative) and a NaN flushMs', () => {
+		const flush = (items: number[]) => Promise.resolve(items);
+		for (const maxBatch of [0, -1, NaN, 2.5]) {
+			expect(() => new IngestQueue<number, number>(flush, { flushMs: 0, maxBatch })).toThrow(/maxBatch/);
+		}
+		expect(() => new IngestQueue<number, number>(flush, { flushMs: NaN, maxBatch: 10 })).toThrow(/flushMs/);
+	});
+
 	test('coalesces items enqueued within one flush window into a single batch', async () => {
 		const flush = vi.fn((items: number[]) => Promise.resolve(items.map((n) => n * 2)));
 		const queue = new IngestQueue<number, number>(flush, { flushMs: 5, maxBatch: 100 });

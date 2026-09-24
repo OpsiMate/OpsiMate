@@ -27,11 +27,18 @@ const pct = (values, p) =>
 		? values.slice().sort((a, b) => a - b)[Math.min(values.length - 1, Math.floor(p * values.length))]
 		: NaN;
 
+// Every request gets a deadline: Node's fetch would otherwise wait up to 300 s on a
+// server that accepts the connection but never answers, and the report would hang
+// with it.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 const run = `load-${Date.now()}`;
 let posted = 0;
 let failed = 0;
+let getFailed = 0;
+let metricsFailed = 0;
 const postLatency = [];
-const getLatency = [];
+const getLatency = []; // successful probes only
 const elu = [];
 const cpu = [];
 const t0 = Date.now();
@@ -44,6 +51,7 @@ const poster = async (worker) => {
 		try {
 			const res = await fetch(`${H}/alerts/custom?api_token=${token}`, {
 				method: 'POST',
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					id,
@@ -66,17 +74,20 @@ const probe = async () => {
 	while (Date.now() - t0 < D) {
 		const started = performance.now();
 		try {
-			await fetch(`${H}/alerts?api_token=${token}&limit=50`);
+			const res = await fetch(`${H}/alerts?api_token=${token}&limit=50`, {
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+			});
+			if (res.ok) getLatency.push(performance.now() - started);
+			else getFailed++;
 		} catch {
-			// counted as latency anyway
+			getFailed++;
 		}
-		getLatency.push(performance.now() - started);
 		try {
-			const metrics = await (await fetch(`${base}/metrics`)).text();
-			const match = metrics.match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
+			const res = await fetch(`${base}/metrics`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+			const match = (await res.text()).match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
 			if (match) elu.push(Number(match[1]));
 		} catch {
-			// metrics may be disabled
+			metricsFailed++;
 		}
 		if (pid) {
 			try {
@@ -95,6 +106,8 @@ console.log(
 	`C=${C} ${seconds.toFixed(0)}s | ingest ${(posted / seconds).toFixed(0)} req/s (${posted} ok, ${failed} failed)` +
 		` | POST p50 ${pct(postLatency, 0.5).toFixed(0)}ms p99 ${pct(postLatency, 0.99).toFixed(0)}ms` +
 		` | GET /alerts p50 ${pct(getLatency, 0.5).toFixed(0)}ms p99 ${pct(getLatency, 0.99).toFixed(0)}ms` +
+		(getFailed ? ` (${getFailed} probe failures)` : '') +
+		(metricsFailed ? ` (${metricsFailed} metrics failures)` : '') +
 		` | ELU p50 ${pct(elu, 0.5).toFixed(2)}` +
 		(cpu.length ? ` | server CPU p50 ${pct(cpu, 0.5)}% max ${Math.max(...cpu)}%` : '')
 );
