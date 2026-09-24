@@ -21,13 +21,19 @@ const insertAlert = (id: string, name: string) => {
 
 const getAlerts = () => app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
 
+interface AlertIdRow {
+	id: string;
+}
+
 beforeAll(async () => {
 	process.env.ALERTS_SNAPSHOT_TTL_MS = '60000';
+	process.env.ALERTS_SNAPSHOT_REFRESH_MS = '200';
 	db = await setupDB();
 	app = await setupExpressApp(db);
 	jwtToken = await setupUserWithToken(app);
 	// Restore the suite-wide default so files sharing this worker are unaffected.
 	process.env.ALERTS_SNAPSHOT_TTL_MS = '0';
+	delete process.env.ALERTS_SNAPSHOT_REFRESH_MS;
 	insertAlert('cache-alert-1', 'Cache Alert 1');
 });
 
@@ -82,5 +88,27 @@ describe('alerts snapshot cache over HTTP', () => {
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.set('If-None-Match', etagBefore);
 		expect(revalidated.status).toBe(200);
+	});
+	test('a webhook does not invalidate: the snapshot is served until the refresh window passes', async () => {
+		const before = await getAlerts();
+		const posted = await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: 'cache-alert-webhook', alertName: 'From a webhook', tags: {} });
+		expect(posted.status).toBe(200);
+
+		// Nobody refetches on a webhook, so the poll right after it is served the copy
+		// the server already holds — same ETag, no rebuild.
+		const stale = await getAlerts();
+		expect(stale.headers['etag']).toBe(before.headers['etag']);
+		expect(stale.body.data.alerts.map((a: AlertIdRow) => a.id)).not.toContain('cache-alert-webhook');
+
+		// Past the window, one more stale answer while the rebuild runs, then it is there.
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		await getAlerts();
+		await new Promise((resolve) => setImmediate(resolve));
+		const fresh = await getAlerts();
+		expect(fresh.body.data.alerts.map((a: AlertIdRow) => a.id)).toContain('cache-alert-webhook');
+		expect(fresh.headers['etag']).not.toBe(before.headers['etag']);
 	});
 });

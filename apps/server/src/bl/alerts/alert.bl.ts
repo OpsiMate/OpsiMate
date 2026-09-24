@@ -73,6 +73,12 @@ const nonNegativeFromEnv = (raw: string | undefined, fallback: number): number =
 const ingestFlushMs = () => nonNegativeFromEnv(process.env.ALERTS_INGEST_FLUSH_MS, 0);
 const ingestMaxBatch = () => positiveIntFromEnv(process.env.ALERTS_INGEST_MAX_BATCH, 500);
 
+// How long a snapshot keeps being served after webhooks have changed the data under
+// it, before a poll triggers a background rebuild (SnapshotCache.markStale). Bounds
+// the rebuild rate under an ingest storm to one per second no matter how many tabs
+// poll; a webhook is visible within this plus one rebuild. User actions bypass it.
+const snapshotRefreshMs = () => nonNegativeFromEnv(process.env.ALERTS_SNAPSHOT_REFRESH_MS, 1000);
+
 // The resolved list (and the analytics input scans behind it) changes only through
 // writes that call invalidateSnapshots() in this process — resolution, unresolve,
 // rule edits — so its TTL is purely the staleness bound for OTHER processes' writes,
@@ -125,10 +131,15 @@ export class AlertBL {
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
 	// follows it. See SnapshotCache for the generation/race handling.
-	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
+	private readonly activeSnapshot = new SnapshotCache<Alert[]>(
+		() => this.computeAllAlerts(),
+		snapshotTtlMs(),
+		snapshotRefreshMs()
+	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	// Analytics inputs: two full-table scans (history rows, event times) that must not
 	// run per request. Same invalidation as the alert snapshots — every write path that
@@ -136,11 +147,13 @@ export class AlertBL {
 	// for the same reason (see resolvedSnapshotTtlMs).
 	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
 		() => this.resolvedAlertRepo.getAllHistoryRows(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
 		() => this.alertHistoryRepo.getAllEventTimes(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	// Owners feed sort keys, filter matching and facet labels on every list read; the
 	// users table changes rarely. Cached with the base TTL, and every name-affecting
@@ -184,6 +197,18 @@ export class AlertBL {
 		this.resolvedSnapshot.invalidate();
 		this.historyRowsSnapshot.invalidate();
 		this.eventTimesSnapshot.invalidate();
+	}
+
+	// The webhook path. Ingest touches every list (an upsert can pull a resolved copy
+	// back, and the insert trigger writes history), but nobody refetches on a webhook —
+	// the UI polls — so these are marked stale and rebuilt at most once per refresh
+	// window instead of on every batch. Everything a user does goes through
+	// invalidateSnapshots() and is visible on the immediate refetch.
+	markSnapshotsStale(): void {
+		this.activeSnapshot.markStale();
+		this.resolvedSnapshot.markStale();
+		this.historyRowsSnapshot.markStale();
+		this.eventTimesSnapshot.markStale();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
@@ -437,7 +462,7 @@ export class AlertBL {
 	// costs that pinned the single core under a burst.
 	private async flushIngestBatch(batch: IngestAlert[]): Promise<{ changes: number }[]> {
 		const results = await this.alertRepo.insertOrUpdateAlerts(batch);
-		this.invalidateSnapshots();
+		this.markSnapshotsStale();
 		ingestBatchSize.observe(batch.length);
 		// In-memory increment; this is the single funnel every webhook source flows
 		// through, so one counter covers all of them.
