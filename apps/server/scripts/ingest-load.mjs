@@ -55,7 +55,11 @@ const poster = async (worker) => {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					id,
-					alertName: `load ${id}`,
+					// A pool of rule names, not one per alert: real sources fire the same rule
+					// on many instances, and the facets sidebar lists every distinct name —
+					// unique names made that payload 1.8MB at 50k alerts and dominated the
+					// UI-side numbers instead of the ingest path this script exists for.
+					alertName: `load rule ${posted % 200}`,
 					tags: { env: 'load', team: 'perf' },
 					severity: 'warning',
 					summary: 'synthetic',
