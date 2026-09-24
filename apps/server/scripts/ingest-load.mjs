@@ -84,8 +84,13 @@ const probe = async () => {
 		}
 		try {
 			const res = await fetch(`${base}/metrics`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-			const match = (await res.text()).match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
-			if (match) elu.push(Number(match[1]));
+			if (!res.ok) {
+				// e.g. 401 when METRICS_TOKEN protects the endpoint — a failed probe, not a sample
+				metricsFailed++;
+			} else {
+				const match = (await res.text()).match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
+				if (match) elu.push(Number(match[1]));
+			}
 		} catch {
 			metricsFailed++;
 		}
