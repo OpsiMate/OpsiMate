@@ -37,7 +37,7 @@ export class PasswordResetsRepository {
 					.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)')
 					.run(resetPassword.userId, resetPassword.tokenHash, resetPassword.expiresAt.toISOString());
 			});
-			transaction();
+			transaction.immediate();
 		});
 	}
 

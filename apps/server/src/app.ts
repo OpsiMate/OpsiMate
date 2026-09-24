@@ -37,6 +37,7 @@ import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
 import { AlertRepository } from './dal/alertRepository';
 import { ResolvedAlertRepository } from './dal/resolvedAlertRepository';
+import { CacheGenerationRepository } from './dal/cacheGenerationRepository';
 import { RetentionRepository } from './dal/retentionRepository';
 import { AuditLogRepository } from './dal/auditLogRepository';
 import { DashboardRepository } from './dal/dashboardRepository.ts';
@@ -62,6 +63,9 @@ import { AiController } from './api/v1/ai/controller';
 export enum AppMode {
 	SERVER = 'SERVER',
 	WORKER = 'WORKER',
+	// Create/migrate every table and return — used once by the cluster primary before
+	// it forks, so N workers never race the same ALTER TABLE.
+	INIT = 'INIT',
 }
 
 export async function createApp(db: Database.Database, mode: AppMode): Promise<express.Application | void> {
@@ -80,7 +84,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const userRepo = new UserRepository(db);
 
 	// Init tables (needed by both)
+	const cacheGenerationRepo = new CacheGenerationRepository(db);
 	await Promise.all([
+		cacheGenerationRepo.initCacheGenerationTable(),
 		integrationRepo.initIntegrationsTable(),
 		resolvedAlertRepo.initResolvedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
 		alertRepo.initAlertsTable(),
@@ -94,7 +100,18 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// BL (needed by both)
 	const auditBL = new AuditBL(auditLogRepo);
-	const alertBL = new AlertBL(alertRepo, resolvedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
+	if (mode === AppMode.INIT) {
+		return;
+	}
+
+	const alertBL = new AlertBL(
+		alertRepo,
+		resolvedAlertRepo,
+		alertCommentsRepo,
+		alertHistoryRepo,
+		userRepo,
+		cacheGenerationRepo
+	);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	// Root causes live in their own table read only on drawer-open — never through the
 	// alerts snapshot. Existence check spans both alert stores: an analysis may arrive
@@ -107,7 +124,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	);
 	// Resolve keeps the root cause; only permanent deletion drops it.
 	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
-	const retentionBL = new RetentionBL(retentionRepo);
+	// Retention runs in the jobs process; its purges must reach the HTTP workers' caches.
+	const retentionBL = new RetentionBL(retentionRepo, () => cacheGenerationRepo.bumpSync());
 
 	if (mode === AppMode.WORKER) {
 		// WORKER mode: Only start background jobs.

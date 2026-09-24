@@ -56,7 +56,7 @@ export class OncallRepository {
 						ALTER TABLE oncall_team_members_new RENAME TO oncall_team_members;
 					`);
 				});
-				rebuild();
+				rebuild.immediate();
 			}
 
 			// A team's name is its identity (alerts reference teams by name), so enforce
@@ -154,7 +154,7 @@ export class OncallRepository {
 				this.db.prepare('DELETE FROM oncall_team_members WHERE team_id = ?').run(teamId);
 				this.db.prepare('DELETE FROM oncall_teams WHERE id = ?').run(teamId);
 			});
-			remove();
+			remove.immediate();
 		});
 	}
 
@@ -172,7 +172,7 @@ export class OncallRepository {
 					.prepare('UPDATE oncall_teams SET rotation_anchor = ? WHERE id = ?')
 					.run(new Date().toISOString(), teamId);
 			});
-			replace();
+			replace.immediate();
 		});
 	}
 }

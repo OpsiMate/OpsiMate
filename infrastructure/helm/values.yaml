@@ -26,6 +26,9 @@ backend:
     NODE_ENV: test
     HOST: "0.0.0.0"
     CONFIG_FILE: /app/config/config.yml
+    # HTTP worker processes inside the pod. Keep in step with resources.limits.cpu —
+    # one worker per core; the default limit below is half a core, hence 1.
+    WEB_CONCURRENCY: "1"
 
   # -- Resource limits and requests
   resources:

@@ -1,7 +1,8 @@
 import type Database from 'better-sqlite3';
 import { NextFunction, Request, Response } from 'express';
 import { performance } from 'node:perf_hooks';
-import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
+import cluster from 'node:cluster';
+import { AggregatorRegistry, collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
 
 // Prometheus metrics (issue #658). Everything here is deliberately OUTSIDE the hot
 // path: the alert gauges run plain COUNT/GROUP BY prepared statements at SCRAPE time
@@ -276,6 +277,65 @@ export const metricsHandler = async (req: Request, res: Response): Promise<void>
 		res.status(401).send('unauthorized');
 		return;
 	}
-	res.set('Content-Type', metricsRegistry.contentType);
-	res.send(await metricsRegistry.metrics());
+	try {
+		const body = await collectMetricsText();
+		res.set('Content-Type', metricsRegistry.contentType);
+		res.send(body);
+	} catch (error) {
+		res.status(503).send(`metrics unavailable: ${error instanceof Error ? error.message : String(error)}`);
+	}
+};
+
+// ---- cluster mode -------------------------------------------------------------
+// Each worker holds its own registry (counters, histograms, ELU) and the port is
+// shared, so a scrape lands on ONE worker. To answer for the whole process group the
+// worker asks the primary, which aggregates every worker's registry through
+// prom-client's AggregatorRegistry (see index.ts). Single-process: local registry.
+export const CLUSTER_METRICS_REQUEST = 'opsimate:metrics:request';
+export const CLUSTER_METRICS_REPLY = 'opsimate:metrics:reply';
+const CLUSTER_METRICS_TIMEOUT_MS = 5000;
+
+export interface ClusterMetricsRequest {
+	type: typeof CLUSTER_METRICS_REQUEST;
+	id: number;
+}
+
+export interface ClusterMetricsReply {
+	type: typeof CLUSTER_METRICS_REPLY;
+	id: number;
+	body?: string;
+	error?: string;
+}
+
+let clusterMetricsSeq = 0;
+
+// prom-client installs the worker-side responder (answers the primary's
+// getMetricsReq with this process's metrics) only when an AggregatorRegistry is
+// constructed in the worker, and by default reports its global registry — ours is
+// custom, so point it at metricsRegistry. Module-level so it runs at import time.
+if (cluster.isWorker) {
+	AggregatorRegistry.setRegistries([metricsRegistry]);
+	new AggregatorRegistry();
+}
+
+export const collectMetricsText = (): Promise<string> => {
+	if (!cluster.isWorker || !process.send) return metricsRegistry.metrics();
+	return new Promise<string>((resolve, reject) => {
+		const id = ++clusterMetricsSeq;
+		const onMessage = (raw: unknown) => {
+			const message = raw as Partial<ClusterMetricsReply>;
+			if (message?.type !== CLUSTER_METRICS_REPLY || message.id !== id) return;
+			clearTimeout(timer);
+			process.off('message', onMessage);
+			if (message.error !== undefined) reject(new Error(message.error));
+			else resolve(message.body ?? '');
+		};
+		const timer = setTimeout(() => {
+			process.off('message', onMessage);
+			reject(new Error('timed out waiting for the primary to aggregate cluster metrics'));
+		}, CLUSTER_METRICS_TIMEOUT_MS);
+		process.on('message', onMessage);
+		const request: ClusterMetricsRequest = { type: CLUSTER_METRICS_REQUEST, id };
+		process.send?.(request);
+	});
 };

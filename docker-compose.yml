@@ -14,6 +14,9 @@ services:
       - ./data/private-keys:/app/data/private-keys
       - ./config.yml:/app/config/config.yml
     environment:
+      # HTTP worker processes. Unset = auto (CPU count, capped at 4). Set to 1 for a
+      # single-core host or to keep memory flat: each worker caches the alert lists.
+      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-}
       - API_TOKEN=opsimate
       - NODE_ENV=production
       - HOST=0.0.0.0

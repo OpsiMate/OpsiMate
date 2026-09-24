@@ -151,6 +151,10 @@ security:
 
 Set `ENCRYPTION_KEY` (credentials at rest — the server warns at startup if it's missing) and `JWT_SECRET` (session signing) in the environment for anything beyond a laptop.
 
+#### Using more than one CPU
+
+The API server runs one HTTP worker process per CPU (up to 4) by default and shares the database between them. Set `WEB_CONCURRENCY` to pin the count — `1` for a single-core host or to keep memory flat (each worker caches the alert lists in memory), higher on a big box with a heavy webhook load.
+
 ## Contributing
 
 New here? Start with a [`good first issue`](https://github.com/OpsiMate/OpsiMate/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) — each one names the exact file and line, and a maintainer reviews within a day or two.

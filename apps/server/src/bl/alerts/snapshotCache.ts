@@ -23,7 +23,7 @@ export interface Snapshot<T> {
 // ttlMs <= 0 disables caching (every get() recomputes) but keeps the json/etag shape;
 // the test environment uses this so seed-directly-then-read tests stay valid.
 export class SnapshotCache<T> {
-	private cached: { snapshot: Snapshot<T>; computedAt: number } | null = null;
+	private cached: { snapshot: Snapshot<T>; computedAt: number; externalGeneration: number | undefined } | null = null;
 	private inflight: { promise: Promise<Snapshot<T>>; generation: number } | null = null;
 	// Bumped by invalidate(). A compute that started under an older generation read the
 	// DB before the invalidating write, so its result must not be cached — and readers
@@ -34,10 +34,19 @@ export class SnapshotCache<T> {
 
 	constructor(
 		private readonly compute: () => Promise<T>,
-		private readonly ttlMs: number
+		private readonly ttlMs: number,
+		// Cross-process invalidation: a cheap read of a shared counter (see
+		// CacheGenerationRepository). When it differs from the value the cached copy was
+		// computed under, another process wrote in between and the copy is stale — the
+		// TTL then no longer decides. Absent, behaviour is exactly the single-process one.
+		private readonly externalGeneration?: () => number
 	) {}
 
 	async get(): Promise<Snapshot<T>> {
+		const external = this.externalGeneration?.();
+		if (this.cached && external !== undefined && external !== this.cached.externalGeneration) {
+			this.invalidate();
+		}
 		if (this.cached && Date.now() - this.cached.computedAt < this.ttlMs) {
 			return this.cached.snapshot;
 		}
@@ -47,6 +56,7 @@ export class SnapshotCache<T> {
 			return this.inflight.promise;
 		}
 		const startedGeneration = this.generation;
+		const startedExternal = external;
 		const entry = {
 			generation: startedGeneration,
 			promise: this.compute().then((value) => {
@@ -57,7 +67,7 @@ export class SnapshotCache<T> {
 					etag: `"${crypto.createHash('sha1').update(json).digest('hex')}"`,
 				};
 				if (this.ttlMs > 0 && this.generation === startedGeneration) {
-					this.cached = { snapshot, computedAt: Date.now() };
+					this.cached = { snapshot, computedAt: Date.now(), externalGeneration: startedExternal };
 				}
 				return snapshot;
 			}),
