@@ -193,11 +193,17 @@ export class AlertBL {
 	}
 
 	invalidateSnapshots(): void {
+		this.ingestedSinceInvalidate = false;
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
 		this.historyRowsSnapshot.invalidate();
 		this.eventTimesSnapshot.invalidate();
 	}
+
+	// True while webhook writes have only marked the snapshots stale (see below) and no
+	// hard invalidate has happened since. A user action that selects its targets from
+	// the snapshot (bulk-by-query) must not act on that stale view — see drainIngest.
+	private ingestedSinceInvalidate = false;
 
 	// The webhook path. Ingest touches every list (an upsert can pull a resolved copy
 	// back, and the insert trigger writes history), but nobody refetches on a webhook —
@@ -205,6 +211,7 @@ export class AlertBL {
 	// window instead of on every batch. Everything a user does goes through
 	// invalidateSnapshots() and is visible on the immediate refetch.
 	markSnapshotsStale(): void {
+		this.ingestedSinceInvalidate = true;
 		this.activeSnapshot.markStale();
 		this.resolvedSnapshot.markStale();
 		this.historyRowsSnapshot.markStale();
@@ -475,8 +482,15 @@ export class AlertBL {
 	// Write paths that must see every ingest that arrived before them wait for the
 	// queue first; otherwise an alert POSTed a millisecond before its resolve would be
 	// committed after it and reappear as firing.
-	private drainIngest(): Promise<void> {
-		return this.ingestQueue.drain();
+	// Draining commits the queue but only marks the snapshots stale; a caller that then
+	// resolves a query against the snapshot (bulk-by-query) would act on a view up to
+	// one refresh window behind the database — resolving an alert a webhook just
+	// downgraded, skipping one it just raised. User actions read fresh, so any pending
+	// webhook staleness is turned into a hard invalidate here, at the cost of the one
+	// rebuild per user action that every write path already pays.
+	private async drainIngest(): Promise<void> {
+		await this.ingestQueue.drain();
+		if (this.ingestedSinceInvalidate) this.invalidateSnapshots();
 	}
 
 	// Timed silences expire lazily: every listing first sweeps alerts whose silence window

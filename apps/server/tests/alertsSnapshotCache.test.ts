@@ -111,4 +111,23 @@ describe('alerts snapshot cache over HTTP', () => {
 		expect(fresh.body.data.alerts.map((a: AlertIdRow) => a.id)).toContain('cache-alert-webhook');
 		expect(fresh.headers['etag']).not.toBe(before.headers['etag']);
 	});
+	test('a bulk action by query selects from a fresh view, not the stale-served snapshot', async () => {
+		await getAlerts(); // warm the cache
+		const posted = await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: 'stale-bulk-target', alertName: 'Bulk target from a webhook', tags: {} });
+		expect(posted.status).toBe(200);
+		// A poll right after the webhook is still the stale copy (previous test proves it).
+		// A user action must not be: "resolve everything matching" has to include this alert.
+		const bulk = await app
+			.post('/api/v1/alerts/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ action: 'resolve', query: { search: 'bulk target from a webhook' } });
+		expect(bulk.status).toBe(200);
+		expect(bulk.body.data.matched).toBe(1);
+		expect(bulk.body.data.succeeded).toBe(1);
+		const after = await getAlerts();
+		expect(after.body.data.alerts.map((a: AlertIdRow) => a.id)).not.toContain('stale-bulk-target');
+	});
 });
