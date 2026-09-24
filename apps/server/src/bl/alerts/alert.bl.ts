@@ -1,4 +1,5 @@
 import { AlertRepository, IngestAlert } from '../../dal/alertRepository';
+import { CacheGenerationRepository } from '../../dal/cacheGenerationRepository';
 import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
@@ -122,13 +123,23 @@ export class AlertBL {
 		this.onAlertPermanentlyDeleted = callback;
 	}
 
+	// Read by every snapshot get(); undefined (never invalidates externally) when no
+	// repo was given. Declared BEFORE the caches: class fields initialize in source order, and it reads
+	// the repo lazily so it is safe to capture here.
+	private readonly externalGeneration = () => this.cacheGenerationRepo?.readSync();
+
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
 	// follows it. See SnapshotCache for the generation/race handling.
-	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
+	private readonly activeSnapshot = new SnapshotCache<Alert[]>(
+		() => this.computeAllAlerts(),
+		snapshotTtlMs(),
+		this.externalGeneration
+	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		this.externalGeneration
 	);
 	// Analytics inputs: two full-table scans (history rows, event times) that must not
 	// run per request. Same invalidation as the alert snapshots — every write path that
@@ -136,18 +147,24 @@ export class AlertBL {
 	// for the same reason (see resolvedSnapshotTtlMs).
 	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
 		() => this.resolvedAlertRepo.getAllHistoryRows(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		this.externalGeneration
 	);
 	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
 		() => this.alertHistoryRepo.getAllEventTimes(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		this.externalGeneration
 	);
 	// Owners feed sort keys, filter matching and facet labels on every list read; the
 	// users table changes rarely. Cached with the base TTL, and every name-affecting
 	// user write invalidates it via UserBL.setOnUsersChanged (wired in app.ts) — so a
 	// rename is visible on the immediate next refetch, and the TTL only bounds writes
 	// from OTHER processes, exactly like the alert snapshots.
-	private readonly ownersSnapshot = new SnapshotCache<AlertOwnerInfo[]>(() => this.getOwnerInfos(), snapshotTtlMs());
+	private readonly ownersSnapshot = new SnapshotCache<AlertOwnerInfo[]>(
+		() => this.getOwnerInfos(),
+		snapshotTtlMs(),
+		this.externalGeneration
+	);
 
 	private readonly ingestQueue = new IngestQueue<IngestAlert, { changes: number }>(
 		(batch) => this.flushIngestBatch(batch),
@@ -166,7 +183,11 @@ export class AlertBL {
 		private resolvedAlertRepo: ResolvedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
-		private userRepo: UserRepository
+		private userRepo: UserRepository,
+		// Optional so single-purpose tests can build an AlertBL from five repos; the app
+		// always passes it. Without it, invalidation is process-local (the pre-cluster
+		// behaviour) and other processes see writes only through the TTL.
+		private cacheGenerationRepo?: CacheGenerationRepository
 	) {}
 
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
@@ -177,6 +198,7 @@ export class AlertBL {
 	// this snapshot's etag) on the very next request, not after a TTL window.
 	invalidateOwners(): void {
 		this.ownersSnapshot.invalidate();
+		this.cacheGenerationRepo?.bumpSync();
 	}
 
 	invalidateSnapshots(): void {
@@ -184,6 +206,8 @@ export class AlertBL {
 		this.resolvedSnapshot.invalidate();
 		this.historyRowsSnapshot.invalidate();
 		this.eventTimesSnapshot.invalidate();
+		// Tell every OTHER process (cluster workers, the jobs worker) as well.
+		this.cacheGenerationRepo?.bumpSync();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {

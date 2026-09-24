@@ -60,7 +60,7 @@ export class AlertCommentsRepository {
 						CREATE INDEX IF NOT EXISTS idx_alert_comments_alert_latest ON alert_comments(alert_id, created_at);
 					`);
 				});
-				rebuild();
+				rebuild.immediate();
 			}
 		});
 	}

@@ -28,6 +28,11 @@ export function initializeDb(): Database.Database {
 
 		const db = new Database(dbPath);
 		db.pragma('journal_mode = WAL');
+		// Writers from other processes (cluster workers) are waited on for up to 5s.
+		// Note for transaction authors: this only helps a transaction that takes the
+		// write lock when it BEGINs. A default (DEFERRED) transaction that reads first and
+		// writes later gets an immediate "database is locked" if anyone else committed in
+		// between, so run read-then-write transactions with `.immediate()`.
 		db.pragma('busy_timeout = 5000');
 		logger.info(`SQLite database connected at ${dbPath}`);
 

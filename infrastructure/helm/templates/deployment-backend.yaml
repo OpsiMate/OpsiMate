@@ -40,6 +40,8 @@ spec:
               value: {{ .Values.backend.env.HOST | quote }}
             - name: CONFIG_FILE
               value: {{ .Values.backend.env.CONFIG_FILE | quote }}
+            - name: WEB_CONCURRENCY
+              value: {{ .Values.backend.env.WEB_CONCURRENCY | quote }}
             - name: API_TOKEN
               valueFrom:
                 secretKeyRef:

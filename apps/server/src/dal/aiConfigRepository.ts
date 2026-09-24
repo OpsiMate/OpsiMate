@@ -101,7 +101,7 @@ export class AiConfigRepository {
 					);
 				return { ...next, updated_at: updatedAt };
 			});
-			return run();
+			return run.immediate();
 		});
 	}
 }

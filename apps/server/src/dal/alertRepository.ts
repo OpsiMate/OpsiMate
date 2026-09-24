@@ -121,7 +121,7 @@ export class AlertRepository {
 	// batch instead of one per webhook. Results are positional. If any row fails the
 	// whole batch rolls back and throws — the queue retries the rows one at a time so
 	// a single bad row can't sink its neighbours.
-	private upsertBatchTx: ((rows: IngestAlert[]) => { changes: number }[]) | null = null;
+	private upsertBatchTx: Database.Transaction<(rows: IngestAlert[]) => { changes: number }[]> | null = null;
 
 	async insertOrUpdateAlerts(alerts: IngestAlert[]): Promise<{ changes: number }[]> {
 		if (alerts.length === 0) return [];
@@ -131,7 +131,12 @@ export class AlertRepository {
 			this.upsertBatchTx ??= this.db.transaction((rows: IngestAlert[]) =>
 				rows.map((row) => this.upsertAlertRow(row))
 			);
-			return this.upsertBatchTx(alerts);
+			// BEGIN IMMEDIATE, not the default DEFERRED: upsertAlertRow reads before it writes,
+			// and a deferred transaction that read under one WAL snapshot cannot upgrade to a
+			// write lock once another process has committed — SQLite fails it with "database
+			// is locked" without consulting busy_timeout. Taking the write lock up front lets
+			// the busy handler wait its turn instead (see initializeDb).
+			return this.upsertBatchTx.immediate(alerts);
 		});
 	}
 
@@ -181,7 +186,7 @@ export class AlertRepository {
 
 				this.db.prepare(`DELETE FROM alerts_history WHERE alert_id = ? AND rowid > ?`).run(alert.id, maxRowId);
 			});
-			restore();
+			restore.immediate();
 		});
 	}
 
@@ -384,7 +389,7 @@ export class AlertRepository {
 				}
 				return rows.map((r) => r.id);
 			});
-			return sweep();
+			return sweep.immediate();
 		});
 	}
 
@@ -412,7 +417,7 @@ export class AlertRepository {
 				}
 				return rows.map((r) => r.id);
 			});
-			return sweep();
+			return sweep.immediate();
 		});
 	}
 

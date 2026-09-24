@@ -11,7 +11,12 @@ import { RetentionRepository } from '../../dal/retentionRepository';
 const logger = new Logger('bl/retention.bl');
 
 export class RetentionBL {
-	constructor(private retentionRepo: RetentionRepository) {}
+	constructor(
+		private retentionRepo: RetentionRepository,
+		// Called after a cleanup that deleted rows, so caches in other processes learn
+		// about it (the HTTP workers never see the jobs process's writes otherwise).
+		private onPurged?: () => void
+	) {}
 
 	async getSettings(): Promise<RetentionSettings> {
 		const [config, policies] = await Promise.all([
@@ -69,6 +74,7 @@ export class RetentionBL {
 
 		// Reclaim disk only when something was actually deleted (VACUUM is expensive).
 		const totalDeleted = Object.values(deleted).reduce((a, b) => a + (b ?? 0), 0);
+		if (totalDeleted > 0) this.onPurged?.();
 		let vacuumed = false;
 		if (config.vacuumAfterCleanup && totalDeleted > 0) {
 			try {
