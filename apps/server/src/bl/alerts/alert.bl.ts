@@ -1,4 +1,5 @@
-import { AlertRepository } from '../../dal/alertRepository';
+import { AlertRepository, IngestAlert } from '../../dal/alertRepository';
+import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
@@ -24,6 +25,7 @@ import {
 	bulkActionsTotal,
 	bulkAlertsAffectedTotal,
 	snapshotComputeDuration,
+	ingestBatchSize,
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
 import { toIsoUtc } from '../../utils/time';
@@ -54,6 +56,22 @@ const logger = new Logger('bl/alert.bl');
 // which is why this is read per instance rather than at module level: the test setup
 // assigns the env var after imports are evaluated but before the app is constructed.
 const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
+
+// Ingest batching (see IngestQueue). Next-tick flushing (0) batches everything the
+// event loop parsed while busy — ~10 rows per transaction at 4.7k webhooks/s in the
+// load test — without adding latency for a sender that posts one at a time.
+// Both env knobs fall back to their defaults on anything that isn't a sane number —
+// an empty or misspelled value must never turn into a 0/NaN that hangs the queue.
+const positiveIntFromEnv = (raw: string | undefined, fallback: number): number => {
+	const parsed = Number(raw);
+	return raw !== undefined && Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
+};
+const nonNegativeFromEnv = (raw: string | undefined, fallback: number): number => {
+	const parsed = Number(raw);
+	return raw !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+const ingestFlushMs = () => nonNegativeFromEnv(process.env.ALERTS_INGEST_FLUSH_MS, 0);
+const ingestMaxBatch = () => positiveIntFromEnv(process.env.ALERTS_INGEST_MAX_BATCH, 500);
 
 // The resolved list (and the analytics input scans behind it) changes only through
 // writes that call invalidateSnapshots() in this process — resolution, unresolve,
@@ -130,6 +148,11 @@ export class AlertBL {
 	// rename is visible on the immediate next refetch, and the TTL only bounds writes
 	// from OTHER processes, exactly like the alert snapshots.
 	private readonly ownersSnapshot = new SnapshotCache<AlertOwnerInfo[]>(() => this.getOwnerInfos(), snapshotTtlMs());
+
+	private readonly ingestQueue = new IngestQueue<IngestAlert, { changes: number }>(
+		(batch) => this.flushIngestBatch(batch),
+		{ flushMs: ingestFlushMs(), maxBatch: ingestMaxBatch() }
+	);
 	// Per-query results (pages / facets / group summaries) computed over a snapshot.
 	// Content-addressed on the source snapshots' etags — see QueryResultCache. Pages
 	// hold references into snapshot arrays, so capacity is pointer-cheap.
@@ -276,6 +299,7 @@ export class AlertBL {
 		input: AlertBulkActionRequest,
 		actor: { id: string | null; name: string | null }
 	): Promise<AlertBulkActionResult> {
+		await this.drainIngest();
 		let targetIds: string[];
 		if (input.ids) {
 			targetIds = [...new Set(input.ids)];
@@ -387,25 +411,47 @@ export class AlertBL {
 		alert: Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string }
 	): Promise<{ changes: number }> {
 		try {
-			logger.info(`Inserting alert: ${alert.id}`);
+			// debug, not info: at thousands of webhooks a second a per-alert info line is
+			// itself a measurable cost (synchronous console writes) and floods the log; the
+			// ingested counter and batch-size histogram carry the operational signal.
+			logger.debug(`Inserting alert: ${alert.id}`);
 			// || (not ??) so a blank explicit severity falls through to the tag.
 			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
 			// Same funnel for the owning team: explicit field wins, then a `team` tag,
 			// otherwise none. Unlike severity there is no fixed scale — any name is kept.
 			const team = alert.team?.trim() || alert.tags?.['team'] || null;
 			const tags = { ...(alert.tags ?? {}), severity };
-			// The repository atomically drops any resolved copy of this id — a re-firing
-			// alert must never show as both firing and resolved.
-			const result = await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
-			this.invalidateSnapshots();
-			// In-memory increment; this is the single funnel every webhook source flows
-			// through, so one counter covers all of them.
-			alertsIngestedTotal.inc({ type: alert.type ?? 'unknown', severity });
-			return result;
+			// Queued, not written here: the queue commits it with whatever else arrives in
+			// the same flush window, and this resolves once that commit is in (so a GET
+			// right after the POST still sees the alert). The repository atomically drops
+			// any resolved copy of this id — a re-firing alert must never show as both
+			// firing and resolved.
+			return await this.ingestQueue.enqueue({ ...alert, tags, severity, team });
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
+	}
+
+	// One transaction and ONE snapshot invalidation per batch — the two per-webhook
+	// costs that pinned the single core under a burst.
+	private async flushIngestBatch(batch: IngestAlert[]): Promise<{ changes: number }[]> {
+		const results = await this.alertRepo.insertOrUpdateAlerts(batch);
+		this.invalidateSnapshots();
+		ingestBatchSize.observe(batch.length);
+		// In-memory increment; this is the single funnel every webhook source flows
+		// through, so one counter covers all of them.
+		for (const alert of batch) {
+			alertsIngestedTotal.inc({ type: alert.type ?? 'unknown', severity: alert.severity });
+		}
+		return results;
+	}
+
+	// Write paths that must see every ingest that arrived before them wait for the
+	// queue first; otherwise an alert POSTed a millisecond before its resolve would be
+	// committed after it and reappear as firing.
+	private drainIngest(): Promise<void> {
+		return this.ingestQueue.drain();
 	}
 
 	// Timed silences expire lazily: every listing first sweeps alerts whose silence window
@@ -640,6 +686,7 @@ export class AlertBL {
 		manualActor?: { id: string | null; name: string | null },
 		comment?: string
 	): Promise<boolean> {
+		await this.drainIngest();
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
 
@@ -689,6 +736,9 @@ export class AlertBL {
 	}
 
 	async resolveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
+		// The selection below must see every webhook that arrived before this call —
+		// a queued-but-uncommitted alert would be skipped here and then land as firing.
+		await this.drainIngest();
 		try {
 			logger.info(`Resolving alerts not in ids for type: ${alertType}`);
 			// Get alerts that need to be resolved
@@ -713,6 +763,7 @@ export class AlertBL {
 
 	// Moves a resolved alert back to the active table as firing — the reverse of resolveAlert.
 	async unresolveAlert(alertId: string, actorName?: string | null): Promise<Alert | null> {
+		await this.drainIngest();
 		try {
 			logger.info(`Unresolving alert with id: ${alertId}`);
 
@@ -759,6 +810,7 @@ export class AlertBL {
 	}
 
 	async deleteResolvedAlert(alertId: string): Promise<void> {
+		await this.drainIngest();
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
 			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);

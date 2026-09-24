@@ -107,16 +107,15 @@ describe('AlertHistoryRepository', () => {
 
 		expect(result).toHaveProperty('alert-6');
 		expect(result).toHaveProperty('alert-7');
-		expect(result['alert-6']).toEqual(
-			alert6Events
+		// getEvents orders newest-first while getEventTimesByType returns rows in scan
+		// order; the contract is the SET of timestamps, so compare sorted.
+		const unresolvedTimes = (events: typeof alert6Events) =>
+			events
 				.filter((event) => event.event_type === (AlertHistoryEventType.UNRESOLVED as string))
 				.map((event) => event.created_at)
-		);
-		expect(result['alert-7']).toEqual(
-			alert7Events
-				.filter((event) => event.event_type === (AlertHistoryEventType.UNRESOLVED as string))
-				.map((event) => event.created_at)
-		);
+				.sort();
+		expect([...result['alert-6']].sort()).toEqual(unresolvedTimes(alert6Events));
+		expect([...result['alert-7']].sort()).toEqual(unresolvedTimes(alert7Events));
 	});
 
 	test('getEventTimesByType returns an empty object for no alert IDs', async () => {
