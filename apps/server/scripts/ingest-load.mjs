@@ -9,9 +9,11 @@
 // Clean up afterwards with:
 //   DELETE FROM alerts WHERE id LIKE 'load-%'; DELETE FROM alerts_history WHERE alert_id LIKE 'load-%';
 //
-// Reference numbers (8-core laptop, scratch DB, PR #1028):
-//   before batching: ~2,100 req/s at C=32, GET /alerts p50 500 ms (4 ms idle), ELU 1.00
-//   after  batching: see the PR description.
+// Reference numbers (8-core laptop, scratch DB, 12–15 s runs, closed-loop posters):
+//                       ingest req/s     GET /alerts p50 (idle: 4 ms)
+//   before batching   C=8 3,138 / C=32 2,085 / C=128 2,002     273 / 500 / 748 ms
+//   after  batching   C=8 4,584 / C=32 4,029 / C=128 4,016     294 / 271 / 349 ms
+//   sequential sender (C=1): 2,775 req/s at 0 ms p50 — batching adds no latency.
 
 import { execSync } from 'node:child_process';
 

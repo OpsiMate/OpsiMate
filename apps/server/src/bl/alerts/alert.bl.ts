@@ -57,9 +57,10 @@ const logger = new Logger('bl/alert.bl');
 // assigns the env var after imports are evaluated but before the app is constructed.
 const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
 
-// Ingest batching (see IngestQueue). 10ms is invisible to a webhook sender but, under
-// a burst, gathers hundreds of arrivals into one transaction and one invalidation.
-const ingestFlushMs = () => Number(process.env.ALERTS_INGEST_FLUSH_MS ?? 10);
+// Ingest batching (see IngestQueue). Next-tick flushing (0) batches everything the
+// event loop parsed while busy — ~10 rows per transaction at 4.7k webhooks/s in the
+// load test — without adding latency for a sender that posts one at a time.
+const ingestFlushMs = () => Number(process.env.ALERTS_INGEST_FLUSH_MS ?? 0);
 const ingestMaxBatch = () => Number(process.env.ALERTS_INGEST_MAX_BATCH ?? 500);
 
 // The resolved list (and the analytics input scans behind it) changes only through
@@ -400,7 +401,10 @@ export class AlertBL {
 		alert: Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string }
 	): Promise<{ changes: number }> {
 		try {
-			logger.info(`Inserting alert: ${alert.id}`);
+			// debug, not info: at thousands of webhooks a second a per-alert info line is
+			// itself a measurable cost (synchronous console writes) and floods the log; the
+			// ingested counter and batch-size histogram carry the operational signal.
+			logger.debug(`Inserting alert: ${alert.id}`);
 			// || (not ??) so a blank explicit severity falls through to the tag.
 			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
 			// Same funnel for the owning team: explicit field wins, then a `team` tag,

@@ -19,7 +19,9 @@
 
 export interface IngestQueueOptions {
 	// How long to wait after the first enqueue before flushing (more arrivals in that
-	// window join the batch). 0 flushes on the next macrotask.
+	// window join the batch). 0 (the default) flushes on the next macrotask: measured
+	// against a 10ms timer it batches just as well under load (avg ~10 rows at 4.7k/s)
+	// and costs a sequential sender nothing (2ms/POST vs 12ms).
 	flushMs: number;
 	// Flush immediately once this many items are waiting, regardless of the timer.
 	maxBatch: number;
@@ -33,7 +35,7 @@ interface PendingItem<TItem, TResult> {
 
 export class IngestQueue<TItem, TResult> {
 	private pending: PendingItem<TItem, TResult>[] = [];
-	private timer: NodeJS.Timeout | null = null;
+	private timer: NodeJS.Timeout | NodeJS.Immediate | null = null;
 	private inflight: Promise<void> | null = null;
 
 	constructor(
@@ -51,7 +53,13 @@ export class IngestQueue<TItem, TResult> {
 			if (this.pending.length >= this.options.maxBatch) {
 				void this.flush();
 			} else if (this.timer === null) {
-				this.timer = setTimeout(() => void this.flush(), this.options.flushMs);
+				// flushMs <= 0: flush on the next macrotask (setImmediate), so an idle server
+				// adds no latency while a busy one still gathers everything parsed in the
+				// current tick. A timer only makes sense to trade latency for bigger batches.
+				this.timer =
+					this.options.flushMs > 0
+						? setTimeout(() => void this.flush(), this.options.flushMs)
+						: setImmediate(() => void this.flush());
 			}
 		});
 	}
@@ -61,7 +69,8 @@ export class IngestQueue<TItem, TResult> {
 	// loop, so nothing is ever left behind a completed flush.
 	flush(): Promise<void> {
 		if (this.timer !== null) {
-			clearTimeout(this.timer);
+			if (this.options.flushMs > 0) clearTimeout(this.timer as NodeJS.Timeout);
+			else clearImmediate(this.timer as NodeJS.Immediate);
 			this.timer = null;
 		}
 		if (this.inflight === null) {
