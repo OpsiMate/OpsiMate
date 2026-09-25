@@ -85,15 +85,49 @@ describe('Dashboard Tags API', () => {
 	});
 
 	test('aggregates tags by dashboard', async () => {
+		const secondDashboard = await app
+			.post('/api/v1/dashboards')
+			.set(authorized())
+			.send({
+				name: `Second tag test dashboard ${fixtureNumber}`,
+				type: 'alerts',
+				description: '',
+				filters: {},
+				visibleColumns: ['alertName'],
+				query: '',
+				groupBy: [],
+			});
+		const secondTag = await app
+			.post('/api/v1/tags')
+			.set(authorized())
+			.send({ name: `Second dashboard tag ${fixtureNumber}`, color: '#22AA66' });
+
+		expect(secondDashboard.status).toBe(200);
+		expect(secondTag.status).toBe(201);
+		const secondDashboardId = secondDashboard.body.data.id;
+		const secondTagId = secondTag.body.data.id;
+
 		await app.post(`/api/v1/dashboards/${dashboardId}/tags`).set(authorized()).send({ tagId });
+		await app.post(`/api/v1/dashboards/${secondDashboardId}/tags`).set(authorized()).send({ tagId: secondTagId });
 
 		const response = await app.get('/api/v1/dashboards/tags').set(authorized());
 
 		expect(response.status).toBe(200);
 		const dashboard = response.body.data.find((item: { dashboardId: number }) => item.dashboardId === dashboardId);
+		const secondDashboardGroup = response.body.data.find(
+			(item: { dashboardId: number }) => item.dashboardId === secondDashboardId
+		);
 		expect(dashboard.tags).toHaveLength(1);
 		expect(dashboard.tags[0]).toEqual(
 			expect.objectContaining({ id: tagId, name: `Dashboard tag ${fixtureNumber}`, color: '#3366FF' })
+		);
+		expect(secondDashboardGroup.tags).toHaveLength(1);
+		expect(secondDashboardGroup.tags[0]).toEqual(
+			expect.objectContaining({
+				id: secondTagId,
+				name: `Second dashboard tag ${fixtureNumber}`,
+				color: '#22AA66',
+			})
 		);
 	});
 });
