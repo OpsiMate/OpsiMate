@@ -110,9 +110,10 @@ export const applyTimeWindow = (alerts: Alert[], window: ResolvedTimeWindow): Al
 // ---------- search ----------
 
 export const searchAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
-	if (!searchTerm.trim()) return alerts;
+	const trimmed = searchTerm.trim();
+	if (!trimmed) return alerts;
 
-	const lower = searchTerm.toLowerCase();
+	const lower = trimmed.toLowerCase();
 	return alerts.filter((alert) => {
 		const integration = resolveAlertIntegration(alert);
 		const integrationLabel = getIntegrationLabel(integration).toLowerCase();

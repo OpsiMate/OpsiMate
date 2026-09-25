@@ -83,13 +83,13 @@ export class AlertHistoryRepository {
 	async getEventTimesByType(eventType: string, alertIds: string[]): Promise<Record<string, string[]>> {
 		if (alertIds.length === 0) return {};
 		return runAsync(() => {
-			const placeholders = alertIds.map(() => '?').join(', ');
+			// One json parameter instead of a `?` per id — see alertRepository's idsParam.
 			const rows = this.db
 				.prepare(
 					`SELECT alert_id, created_at FROM alert_history_events
-					 WHERE event_type = ? AND alert_id IN (${placeholders})`
+					 WHERE event_type = ? AND alert_id IN (SELECT value FROM json_each(?))`
 				)
-				.all(eventType, ...alertIds) as { alert_id: string; created_at: string }[];
+				.all(eventType, JSON.stringify(alertIds)) as { alert_id: string; created_at: string }[];
 			const result: Record<string, string[]> = {};
 			for (const row of rows) {
 				(result[row.alert_id] ??= []).push(row.created_at);
