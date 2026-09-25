@@ -141,6 +141,146 @@ describe('SnapshotCache', () => {
 	});
 });
 
+// markStale(): the webhook path. See the SnapshotCache class comment.
+describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
+	const nextMacrotask = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+	test('inside the refresh window a stale-marked snapshot is served with no rebuild', async () => {
+		let n = 0;
+		const compute = vi.fn(async () => ++n);
+		const cache = new SnapshotCache(compute, 60_000, 1000);
+
+		expect((await cache.get()).value).toBe(1);
+		cache.markStale();
+		cache.markStale();
+		expect((await cache.get()).value).toBe(1);
+		expect(compute).toHaveBeenCalledTimes(1);
+	});
+
+	test('past the window a get serves the stale copy once more and rebuilds in the background', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			let n = 0;
+			const compute = vi.fn(async () => ++n);
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+
+			expect((await cache.get()).value).toBe(1);
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+
+			expect((await cache.get()).value).toBe(1); // stale, returned immediately
+			await nextMacrotask();
+			expect(compute).toHaveBeenCalledTimes(2);
+			expect((await cache.get()).value).toBe(2);
+
+			// The rebuilt copy is clean: another window passing without a mark rebuilds nothing.
+			vi.advanceTimersByTime(1500);
+			expect((await cache.get()).value).toBe(2);
+			await nextMacrotask();
+			expect(compute).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('a storm of polls past the window schedules exactly one rebuild', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			let n = 0;
+			const compute = vi.fn(async () => ++n);
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+			await cache.get();
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+
+			const polls = await Promise.all([cache.get(), cache.get(), cache.get(), cache.get(), cache.get()]);
+			await nextMacrotask();
+
+			expect(polls.map((p) => p.value)).toEqual([1, 1, 1, 1, 1]);
+			expect(compute).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('a mark landing during the rebuild keeps the new copy stale, so the next window rebuilds again', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const gates = [deferred<string>(), deferred<string>(), deferred<string>()];
+			let call = 0;
+			const compute = vi.fn(() => gates[call++].promise);
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+
+			const first = cache.get();
+			gates[0].resolve('v1');
+			await first;
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+			await cache.get(); // schedules the background rebuild
+			await nextMacrotask(); // rebuild started (gate 1 pending)
+			cache.markStale(); // a webhook lands while the rebuild reads the DB
+			gates[1].resolve('v2');
+			await nextMacrotask();
+
+			expect((await cache.get()).value).toBe('v2'); // newer than v1, so it is served
+			vi.advanceTimersByTime(1500);
+			await cache.get(); // ...but still marked stale: another rebuild is due
+			await nextMacrotask();
+			gates[2].resolve('v3');
+			await nextMacrotask();
+			expect((await cache.get()).value).toBe('v3');
+			expect(compute).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('a hard invalidate during a background rebuild discards it; the next get rebuilds inline', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const gates = [deferred<string>(), deferred<string>(), deferred<string>()];
+			let call = 0;
+			const compute = vi.fn(() => gates[call++].promise);
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+
+			const first = cache.get();
+			gates[0].resolve('v1');
+			await first;
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+			await cache.get();
+			await nextMacrotask(); // background rebuild in flight (gate 1)
+			cache.invalidate(); // a user action
+			gates[1].resolve('pre-write');
+			await nextMacrotask();
+
+			const fresh = cache.get(); // nothing cached: computes inline, does not join the stale one
+			gates[2].resolve('post-write');
+			expect((await fresh).value).toBe('post-write');
+			expect(compute).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('refreshMs defaults to the TTL, so a mark alone never shortens the cache window', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			let n = 0;
+			const compute = vi.fn(async () => ++n);
+			const cache = new SnapshotCache(compute, 1000);
+			await cache.get();
+			cache.markStale();
+			vi.advanceTimersByTime(900);
+			expect((await cache.get()).value).toBe(1);
+			await nextMacrotask();
+			expect(compute).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
 describe('ifNoneMatchSatisfied', async () => {
 	const { ifNoneMatchSatisfied } = await import('../src/utils/etag');
 	const etag = '"abc123"';

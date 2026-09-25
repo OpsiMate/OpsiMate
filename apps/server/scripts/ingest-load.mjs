@@ -33,6 +33,10 @@ const pct = (values, p) =>
 const REQUEST_TIMEOUT_MS = 10_000;
 
 const run = `load-${Date.now()}`;
+// INGEST_ID_POOL=N: cycle through N fixed ids instead of minting a new one per request,
+// so the storm re-fires the same alerts (the common real case) and the table stays the
+// same size for the whole run instead of growing with the throughput being measured.
+const ID_POOL = Number(process.env.INGEST_ID_POOL) || 0;
 let posted = 0;
 let failed = 0;
 let getFailed = 0;
@@ -46,7 +50,7 @@ const t0 = Date.now();
 const poster = async (worker) => {
 	let i = 0;
 	while (Date.now() - t0 < D) {
-		const id = `${run}-${worker}-${i++}`;
+		const id = ID_POOL > 0 ? `load-pool-${(worker + i++ * C) % ID_POOL}` : `${run}-${worker}-${i++}`;
 		const started = performance.now();
 		try {
 			const res = await fetch(`${H}/alerts/custom?api_token=${token}`, {
@@ -55,7 +59,11 @@ const poster = async (worker) => {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					id,
-					alertName: `load ${id}`,
+					// A pool of rule names, not one per alert: real sources fire the same rule
+					// on many instances, and the facets sidebar lists every distinct name —
+					// unique names made that payload 1.8MB at 50k alerts and dominated the
+					// UI-side numbers instead of the ingest path this script exists for.
+					alertName: `load rule ${posted % 200}`,
 					tags: { env: 'load', team: 'perf' },
 					severity: 'warning',
 					summary: 'synthetic',
