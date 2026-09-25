@@ -53,6 +53,9 @@ export class FiringTimesIndex {
 	private historyMark = 0;
 	private eventMark = 0;
 	private fullLoadedAt = Number.NEGATIVE_INFINITY;
+	// Refreshes run one at a time: two interleaved ones would race on the map (the
+	// older one's eviction loop can drop ids the newer one just loaded).
+	private refreshQueue: Promise<unknown> = Promise.resolve();
 
 	constructor(
 		private readonly history: FiringHistorySource,
@@ -63,7 +66,13 @@ export class FiringTimesIndex {
 
 	// The current map for exactly these ids: ids that left are evicted, ids that
 	// arrived are loaded, everything else is brought up to the appended rows.
-	async refresh(activeIds: string[]): Promise<ReadonlyMap<string, string[]>> {
+	refresh(activeIds: string[]): Promise<ReadonlyMap<string, string[]>> {
+		const run = this.refreshQueue.then(() => this.refreshNow(activeIds));
+		this.refreshQueue = run.catch(() => undefined);
+		return run;
+	}
+
+	private async refreshNow(activeIds: string[]): Promise<ReadonlyMap<string, string[]>> {
 		if (this.now() - this.fullLoadedAt >= this.fullReloadMs) {
 			await this.fullLoad(activeIds);
 			return this.times;

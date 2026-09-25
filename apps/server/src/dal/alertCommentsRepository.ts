@@ -187,19 +187,20 @@ export class AlertCommentsRepository {
 				}
 				return result;
 			}
+			// One json parameter for the id list (see alertRepository's idsParam); the
+			// predicate sits inside the window so comments of other alerts — resolved
+			// ones keep theirs — are never ranked at all.
 			const rows = this.db
 				.prepare(
 					`SELECT alert_id, comment FROM (
 						SELECT alert_id, comment,
 							ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY created_at DESC, rowid DESC) AS rn
 						FROM alert_comments
+						WHERE alert_id IN (SELECT value FROM json_each(?))
 					) WHERE rn = 1`
 				)
-				.all() as LatestCommentRow[];
-			const wanted = new Set(alertIds);
-			for (const row of rows) {
-				if (wanted.has(row.alert_id)) result[row.alert_id] = row.comment;
-			}
+				.all(JSON.stringify(alertIds)) as LatestCommentRow[];
+			for (const row of rows) result[row.alert_id] = row.comment;
 			return result;
 		});
 	}

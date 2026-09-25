@@ -190,6 +190,13 @@ export class AlertBL {
 	// Per-alert state kept between active-snapshot rebuilds — see computeAllAlerts.
 	private readonly firingTimes: FiringTimesIndex;
 	private assembled = new Map<string, AssembledAlert>();
+	// Builds run one at a time. SnapshotCache.invalidate() can start a new compute
+	// while an older one is still awaiting; the cache discards the older RESULT, but
+	// both would otherwise interleave on the state above — the older one finishing
+	// last would overwrite `assembled` with a stale map (every alert re-derived on the
+	// next build) and race the index's eviction. Queued, the newer build simply runs
+	// after the older one and stores last.
+	private buildQueue: Promise<unknown> = Promise.resolve();
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -624,7 +631,13 @@ export class AlertBL {
 	// key that only moves when a rule (or a mute schedule window) does. Enrich before
 	// mute so mute policy rules can match enrichment-added tags; then firing times and
 	// the newest comment, both best-effort — a failed lookup never breaks the listing.
-	private async computeAllAlerts(): Promise<Alert[]> {
+	private computeAllAlerts(): Promise<Alert[]> {
+		const run = this.buildQueue.then(() => this.buildActiveList());
+		this.buildQueue = run.catch(() => undefined);
+		return run;
+	}
+
+	private async buildActiveList(): Promise<Alert[]> {
 		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');

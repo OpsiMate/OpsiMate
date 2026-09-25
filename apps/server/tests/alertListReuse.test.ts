@@ -108,12 +108,13 @@ describe('active list reuses unchanged alerts between rebuilds', () => {
 
 	test('an unresolve adds a firing time to that alert only', async () => {
 		const before = await listing();
+		const firingBefore = before.b.firingTimes?.length ?? 0;
 		await bl.resolveAlert('b', { id: null, name: null });
-		await bl.unresolveAlert('b', { id: null, name: null });
+		await bl.unresolveAlert('b', null);
 		const after = await listing();
 		expect(after.a).toBe(before.a);
 		expect(after.b).not.toBe(before.b);
-		expect(after.b.firingTimes?.length ?? 0).toBeGreaterThan(0);
+		expect(after.b.firingTimes?.length ?? 0).toBe(firingBefore + 1);
 	});
 
 	test('a rule change re-derives every alert; the base row objects are still reused', async () => {
