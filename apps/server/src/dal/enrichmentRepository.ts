@@ -18,6 +18,7 @@ interface EnrichmentRow {
 	last_modified_by: string | null;
 	created_at: string;
 	updated_at: string;
+	version_history_initialized: number;
 }
 
 interface EnrichmentVersionRow {
@@ -92,7 +93,8 @@ export class EnrichmentRepository {
 						created_by       TEXT,
 						last_modified_by TEXT,
 						created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
-						updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+						updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+						version_history_initialized INTEGER NOT NULL DEFAULT 0
 					)
 				`
 				)
@@ -142,6 +144,13 @@ export class EnrichmentRepository {
 			if (!hasColumn('match_all')) {
 				this.db.prepare(`ALTER TABLE alert_enrichments ADD COLUMN match_all INTEGER DEFAULT 0`).run();
 			}
+			if (!hasColumn('version_history_initialized')) {
+				this.db
+					.prepare(
+						`ALTER TABLE alert_enrichments ADD COLUMN version_history_initialized INTEGER NOT NULL DEFAULT 0`
+					)
+					.run();
+			}
 
 			// Existing installations predate version history. Preserve the current
 			// rule as version 1 before its next edit so that edit still has a usable
@@ -151,6 +160,8 @@ export class EnrichmentRepository {
 				`SELECT 1 FROM alert_enrichment_versions WHERE enrichment_id = ? LIMIT 1`
 			);
 			for (const enrichment of enrichments) {
+				if (enrichment.version_history_initialized) continue;
+
 				if (!hasVersions.get(enrichment.id)) {
 					this.saveVersion(
 						enrichment.id,
@@ -158,6 +169,9 @@ export class EnrichmentRepository {
 						toIsoUtc(enrichment.updated_at)
 					);
 				}
+				this.db
+					.prepare(`UPDATE alert_enrichments SET version_history_initialized = 1 WHERE id = ?`)
+					.run(enrichment.id);
 			}
 		});
 	}
@@ -166,8 +180,8 @@ export class EnrichmentRepository {
 		return runAsync(() => {
 			return this.db.transaction(() => {
 				const stmt = this.db.prepare(
-					`INSERT INTO alert_enrichments (name, name_contains, label_matchers, match_all, add_fields, add_links, summary_template, priority, created_by, last_modified_by)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+					`INSERT INTO alert_enrichments (name, name_contains, label_matchers, match_all, add_fields, add_links, summary_template, priority, created_by, last_modified_by, version_history_initialized)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
 				);
 				const result = stmt.run(
 					data.name,

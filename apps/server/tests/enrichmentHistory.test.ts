@@ -52,6 +52,9 @@ describe('Enrichment version history API', () => {
 		expect(versions[0].content.name).toBe('Legacy enrichment');
 		expect(versions[0].content.addFields).toEqual([{ key: 'team', value: 'platform' }]);
 		expect(versions[0].createdAt).toBe('2024-01-15T12:30:00.000Z');
+		expect(
+			legacyDb.prepare(`SELECT version_history_initialized FROM alert_enrichments WHERE id = 1`).get()
+		).toEqual({ version_history_initialized: 1 });
 		legacyDb.close();
 	});
 
@@ -146,6 +149,9 @@ describe('Enrichment version history API', () => {
 		expect(deleted).toBe(1);
 		expect(await enrichmentRepository.getEnrichmentVersions(lastID)).toEqual([]);
 		expect((await enrichmentRepository.getEnrichmentById(lastID))?.name).toBe('Retained rule');
+
+		await enrichmentRepository.initEnrichmentsTable();
+		expect(await enrichmentRepository.getEnrichmentVersions(lastID)).toEqual([]);
 		retentionDb.close();
 	});
 
