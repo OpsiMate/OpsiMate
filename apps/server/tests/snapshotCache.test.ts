@@ -281,6 +281,42 @@ describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
 	});
 });
 
+describe('SnapshotCache with a fingerprint', () => {
+	interface Item {
+		id: string;
+		v: number;
+	}
+	const fingerprint = (items: Item[]) => items.map((i) => `${i.id}:${i.v}`).join('|');
+
+	test('the etag derives from the fingerprint, and json is built lazily once', async () => {
+		const items: Item[] = [
+			{ id: 'a', v: 1 },
+			{ id: 'b', v: 2 },
+		];
+		const stringify = vi.spyOn(JSON, 'stringify');
+		try {
+			const cache = new SnapshotCache(async () => items, 60_000, 60_000, { fingerprint });
+			const snapshot = await cache.get();
+			expect(stringify).not.toHaveBeenCalled();
+			expect(snapshot.json).toBe('[{"id":"a","v":1},{"id":"b","v":2}]');
+			expect(snapshot.json).toBe(snapshot.json);
+			expect(stringify).toHaveBeenCalledTimes(1);
+		} finally {
+			stringify.mockRestore();
+		}
+	});
+
+	test('same fingerprint, same etag across recomputes; a changed value rotates it', async () => {
+		let items: Item[] = [{ id: 'a', v: 1 }];
+		const cache = new SnapshotCache(async () => items, 0, 0, { fingerprint });
+		const first = await cache.get();
+		items = [{ id: 'a', v: 1 }]; // different objects, same content
+		expect((await cache.get()).etag).toBe(first.etag);
+		items = [{ id: 'a', v: 2 }];
+		expect((await cache.get()).etag).not.toBe(first.etag);
+	});
+});
+
 describe('ifNoneMatchSatisfied', async () => {
 	const { ifNoneMatchSatisfied } = await import('../src/utils/etag');
 	const etag = '"abc123"';

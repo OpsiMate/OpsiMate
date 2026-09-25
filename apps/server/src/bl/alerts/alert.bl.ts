@@ -33,6 +33,7 @@ import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import crypto from 'node:crypto';
 import { FiringTimesIndex } from './firingTimesIndex';
 import { PreparedRules } from './preparedRules';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
@@ -130,6 +131,26 @@ interface AssembledAlert {
 
 const NO_RULES: PreparedRules = { key: 'none', apply: (alert) => alert };
 
+// Content digest of the active list without serializing it. computeAllAlerts keeps the
+// same object for an alert whose inputs did not change, so each object's digest is
+// computed once (a stringify + hash of ONE alert) and remembered for as long as the
+// object lives; the list's fingerprint is the digests in order. Content-derived like
+// the JSON hash it replaces: an alert re-derived to identical content gets the same
+// digest, and a process restart yields the same ETags for the same data.
+const alertDigests = new WeakMap<Alert, string>();
+const alertListFingerprint = (alerts: Alert[]): string => {
+	let out = '';
+	for (const alert of alerts) {
+		let digest = alertDigests.get(alert);
+		if (digest === undefined) {
+			digest = crypto.createHash('sha1').update(JSON.stringify(alert)).digest('base64');
+			alertDigests.set(alert, digest);
+		}
+		out += digest;
+	}
+	return out;
+};
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -147,7 +168,8 @@ export class AlertBL {
 	private readonly activeSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllAlerts(),
 		snapshotTtlMs(),
-		snapshotRefreshMs()
+		snapshotRefreshMs(),
+		{ fingerprint: alertListFingerprint }
 	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),

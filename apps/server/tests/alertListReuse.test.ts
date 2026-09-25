@@ -136,4 +136,15 @@ describe('active list reuses unchanged alerts between rebuilds', () => {
 		const baseAfter = await alertRepo.getAllAlerts();
 		baseAfter.forEach((a, i) => expect(a).toBe(baseBefore[i]));
 	});
+	test('the list ETag is content-derived: a rebuild with nothing changed keeps it, a change rotates it', async () => {
+		const first = await bl.getAlertsSnapshot();
+		bl.invalidateSnapshots(); // forces a full recompute
+		const second = await bl.getAlertsSnapshot();
+		expect(second.etag).toBe(first.etag);
+		expect(second.json).toBe(first.json);
+		await bl.insertOrUpdateAlert(alert('c', { tags: { env: 'prod', changed: 'again' } }));
+		const third = await bl.getAlertsSnapshot();
+		expect(third.etag).not.toBe(first.etag);
+		expect(JSON.parse(third.json)).toEqual(third.value);
+	});
 });
