@@ -25,6 +25,36 @@ interface IngestStatements {
 // under load. json_each has no such limit and keeps NOT IN semantics intact.
 const idsParam = (ids: Iterable<string>): string => JSON.stringify(Array.from(ids));
 
+// A row and the alert object it was mapped to, kept between listings (see getAllAlerts).
+interface MappedRow {
+	row: AlertRow;
+	alert: SharedAlert;
+}
+
+// Column-by-column equality of two raw rows from the same SELECT (so the same
+// columns, listed once by the caller). SQLite hands back primitives only, so strict
+// equality is exact; any write to the row — ingest, silence, owner, read flag, a
+// column added later — shows up here without the code having to know about it.
+const sameRow = (a: AlertRow, b: AlertRow, columns: string[]): boolean => {
+	const left = a as unknown as Record<string, unknown>;
+	const right = b as unknown as Record<string, unknown>;
+	for (const column of columns) {
+		if (left[column] !== right[column]) return false;
+	}
+	return true;
+};
+
+// A firing record as the incremental feed returns it (see getFiringRowsAfter).
+export interface FiringHistoryRow {
+	history_id: number;
+	alert_id: string;
+	archived_at: string;
+}
+
+interface MaxIdRow {
+	max: number | null;
+}
+
 export class AlertRepository {
 	private db: Database.Database;
 
@@ -343,11 +373,32 @@ export class AlertRepository {
 		};
 	};
 
+	// Rows that have not changed since the last listing map to the SAME alert object.
+	// The listing feeds the alerts snapshot, which is rebuilt whenever anything changed;
+	// under a webhook storm that is once a second, and mapping 50k rows (a JSON.parse
+	// and two date normalizations each) cost more than reading them. Comparing the raw
+	// row to the one cached for that id is a handful of strict equalities per row, and
+	// exact. Object identity is the contract: AlertBL keys its own per-alert work on it,
+	// so nothing downstream may mutate an alert it gets from here.
+	private mappedRows = new Map<string, MappedRow>();
+
 	async getAllAlerts(): Promise<SharedAlert[]> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('SELECT * FROM alerts');
-			const rows = stmt.all() as AlertRow[];
-			return rows.map(this.toSharedAlert);
+			const rows = this.db.prepare('SELECT * FROM alerts').all() as AlertRow[];
+			// A cached row from an older listing may predate a schema migration and lack a
+			// column; comparing on this listing's columns then reads undefined !== value
+			// and remaps, which is the right outcome.
+			const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+			const next = new Map<string, MappedRow>();
+			const alerts = rows.map((row) => {
+				const cached = this.mappedRows.get(row.id);
+				const alert = cached && sameRow(cached.row, row, columns) ? cached.alert : this.toSharedAlert(row);
+				next.set(row.id, { row, alert });
+				return alert;
+			});
+			// Ids no longer in the table drop out with the old map.
+			this.mappedRows = next;
+			return alerts;
 		});
 	}
 
@@ -466,6 +517,28 @@ export class AlertRepository {
 	// records (first fire, webhook re-fires, unresolve re-inserts). Raw values — the BL
 	// merges them with unresolve events and normalizes to ISO. Scoped to the listed ids
 	// so the work doesn't grow with total history retention.
+	// The incremental feed behind FiringTimesIndex: firing records appended after a
+	// high-water mark, in insertion order so the caller can advance the mark from the
+	// last row. history_id is AUTOINCREMENT, so ids are monotonic and never reused.
+	async getFiringRowsAfter(historyId: number): Promise<FiringHistoryRow[]> {
+		return runAsync(
+			() =>
+				this.db
+					.prepare(
+						`SELECT history_id, alert_id, archived_at FROM alerts_history
+						 WHERE status = 'firing' AND history_id > ? ORDER BY history_id`
+					)
+					.all(historyId) as FiringHistoryRow[]
+		);
+	}
+
+	async getMaxHistoryId(): Promise<number> {
+		return runAsync(() => {
+			const row = this.db.prepare(`SELECT MAX(history_id) AS max FROM alerts_history`).get() as MaxIdRow;
+			return row.max ?? 0;
+		});
+	}
+
 	async getFiringTimesByAlert(alertIds: string[]): Promise<Record<string, string[]>> {
 		if (alertIds.length === 0) return {};
 		return runAsync(() => {

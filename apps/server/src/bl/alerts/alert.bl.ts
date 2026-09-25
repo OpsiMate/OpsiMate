@@ -33,6 +33,8 @@ import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import { FiringTimesIndex } from './firingTimesIndex';
+import { PreparedRules } from './preparedRules';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
 	AlertBulkActionRequest,
@@ -117,6 +119,17 @@ export interface AlertAnalyticsQuery {
 	tagKey?: string;
 }
 
+// What a listed alert was assembled from, so the next rebuild can tell it is unchanged.
+interface AssembledAlert {
+	source: Alert;
+	rulesKey: string;
+	firingTimes: string[] | undefined;
+	lastComment: string | null;
+	alert: Alert;
+}
+
+const NO_RULES: PreparedRules = { key: 'none', apply: (alert) => alert };
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -174,13 +187,19 @@ export class AlertBL {
 	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
 	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
+	// Per-alert state kept between active-snapshot rebuilds — see computeAllAlerts.
+	private readonly firingTimes: FiringTimesIndex;
+	private assembled = new Map<string, AssembledAlert>();
+
 	constructor(
 		private alertRepo: AlertRepository,
 		private resolvedAlertRepo: ResolvedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
-	) {}
+	) {
+		this.firingTimes = new FiringTimesIndex(alertRepo, alertHistoryRepo);
+	}
 
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
 	// affect both, so both drop together — a second compute per edit is far cheaper than
@@ -597,20 +616,57 @@ export class AlertBL {
 		return (await this.activeSnapshot.get()).value;
 	}
 
+	// The active list is rebuilt whenever anything changed — once a second under a
+	// webhook storm — but almost every alert in it is exactly as it was. So the work is
+	// keyed per alert on its inputs, and an alert whose inputs are unchanged is the same
+	// object as last time: the repository returns the same base object for an unchanged
+	// row, FiringTimesIndex the same array for unchanged history, and the rule sets a
+	// key that only moves when a rule (or a mute schedule window) does. Enrich before
+	// mute so mute policy rules can match enrichment-added tags; then firing times and
+	// the newest comment, both best-effort — a failed lookup never breaks the listing.
 	private async computeAllAlerts(): Promise<Alert[]> {
 		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
-			let alerts = await this.alertRepo.getAllAlerts();
-			// Enrich before muting so mute policy rules can match enrichment-added tags.
-			if (this.enrichmentBL) {
-				alerts = await this.enrichmentBL.applyEnrichments(alerts);
-			}
-			if (this.mutePolicyBL) {
-				alerts = await this.mutePolicyBL.markMuted(alerts);
-			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			const sources = await this.alertRepo.getAllAlerts();
+			const ids = sources.map((alert) => alert.id);
+			const [enricher, muter, firing, comments] = await Promise.all([
+				this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : Promise.resolve(NO_RULES),
+				this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : Promise.resolve(NO_RULES),
+				this.firingTimes.refresh(ids).catch((error: unknown) => {
+					logger.error('Failed to attach firing times to alerts', error);
+					return new Map<string, string[]>();
+				}),
+				this.alertCommentsRepo.getLatestCommentsByAlertIds(ids).catch((error: unknown) => {
+					logger.error('Failed to attach last comments to alerts', error);
+					const none: Record<string, string> = {};
+					return none;
+				}),
+			]);
+			const rulesKey = `${enricher.key}\n${muter.key}`;
+			const next = new Map<string, AssembledAlert>();
+			const alerts = sources.map((source) => {
+				const firingTimes = firing.get(source.id);
+				const lastComment = comments[source.id] ?? null;
+				const previous = this.assembled.get(source.id);
+				if (
+					previous &&
+					previous.source === source &&
+					previous.rulesKey === rulesKey &&
+					previous.firingTimes === firingTimes &&
+					previous.lastComment === lastComment
+				) {
+					next.set(source.id, previous);
+					return previous.alert;
+				}
+				const ruled = muter.apply(enricher.apply(source));
+				const alert: Alert = firingTimes ? { ...ruled, firingTimes, lastComment } : { ...ruled, lastComment };
+				next.set(source.id, { source, rulesKey, firingTimes, lastComment, alert });
+				return alert;
+			});
+			this.assembled = next;
+			return alerts;
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;

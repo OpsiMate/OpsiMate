@@ -10,6 +10,7 @@ import {
 } from '@OpsiMate/shared';
 import { MutePolicyRepository, CreateMutePolicyInput, UpdateMutePolicyInput } from '../../dal/mutePolicyRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { PreparedRules } from '../alerts/preparedRules';
 
 const logger = new Logger('bl/mutePolicy.bl');
 
@@ -141,16 +142,27 @@ export class MutePolicyBL {
 	}
 
 	async markMuted(alerts: Alert[]): Promise<Alert[]> {
+		const { apply } = await this.prepareMuter();
+		return alerts.map(apply);
+	}
+
+	// The policies active RIGHT NOW as a per-alert function plus a key that changes
+	// when that set changes — including when a schedule window opens or closes, since
+	// the key is built from the active subset. See EnrichmentBL.prepareEnricher.
+	async prepareMuter(): Promise<PreparedRules> {
+		let active: MutePolicy[];
 		try {
 			const mutePolicies = await this.mutePolicyRepo.getAllMutePolicies();
-			const active = mutePolicies.filter((s) => MutePolicyBL.isMutePolicyActive(s));
-			if (active.length === 0) return alerts;
-			return alerts.map((alert) =>
-				active.some((s) => MutePolicyBL.mutePolicyMatchesAlert(s, alert)) ? { ...alert, isMuted: true } : alert
-			);
+			active = mutePolicies.filter((s) => MutePolicyBL.isMutePolicyActive(s));
 		} catch (err) {
-			logger.error('Failed to apply mute policy tagging, returning alerts unchanged', err);
-			return alerts;
+			logger.error('Failed to load mute policies, leaving alerts unchanged', err);
+			return { key: 'mute:unavailable', apply: (alert) => alert };
 		}
+		if (active.length === 0) return { key: 'mute:none', apply: (alert) => alert };
+		return {
+			key: `mute:${JSON.stringify(active)}`,
+			apply: (alert) =>
+				active.some((s) => MutePolicyBL.mutePolicyMatchesAlert(s, alert)) ? { ...alert, isMuted: true } : alert,
+		};
 	}
 }
