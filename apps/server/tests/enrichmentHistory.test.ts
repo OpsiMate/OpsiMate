@@ -1,9 +1,10 @@
-import { AlertEnrichmentVersion } from '@OpsiMate/shared';
+import { AlertEnrichmentVersion, RetentionResource } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { SuperTest, Test } from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup.ts';
 import { EnrichmentRepository } from '../src/dal/enrichmentRepository';
+import { RetentionRepository } from '../src/dal/retentionRepository';
 
 let app: SuperTest<Test>;
 let db: Database.Database;
@@ -33,8 +34,14 @@ describe('Enrichment version history API', () => {
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 			);
-			INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields)
-			VALUES ('Legacy enrichment', 'database', '[]', '[{"key":"team","value":"platform"}]');
+			INSERT INTO alert_enrichments (name, name_contains, label_matchers, add_fields, updated_at)
+			VALUES (
+				'Legacy enrichment',
+				'database',
+				'[]',
+				'[{"key":"team","value":"platform"}]',
+				'2024-01-15 12:30:00'
+			);
 		`);
 
 		const repository = new EnrichmentRepository(legacyDb);
@@ -44,6 +51,7 @@ describe('Enrichment version history API', () => {
 		expect(versions).toHaveLength(1);
 		expect(versions[0].content.name).toBe('Legacy enrichment');
 		expect(versions[0].content.addFields).toEqual([{ key: 'team', value: 'platform' }]);
+		expect(versions[0].createdAt).toBe('2024-01-15T12:30:00.000Z');
 		legacyDb.close();
 	});
 
@@ -83,6 +91,9 @@ describe('Enrichment version history API', () => {
 		expect(versions).toHaveLength(2);
 		expect(versions.map((version) => version.version)).toEqual([2, 1]);
 		expect(versions.every((version) => version.author === 'Provider User')).toBe(true);
+		expect(
+			versions.every((version) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(version.createdAt))
+		).toBe(true);
 		expect(versions[0].content.priority).toBe(10);
 		expect(versions[0].content.addFields).toContainEqual({ key: 'severity', value: 'critical' });
 		expect(versions[1].content.priority).toBe(2);
@@ -103,6 +114,39 @@ describe('Enrichment version history API', () => {
 			.set('Authorization', `Bearer ${jwtToken}`);
 
 		expect(historyResponse.body.data).toHaveLength(1);
+	});
+
+	test('retention can remove old versions without deleting the enrichment', async () => {
+		const retentionDb = new Database(':memory:');
+		const enrichmentRepository = new EnrichmentRepository(retentionDb);
+		const retentionRepository = new RetentionRepository(retentionDb);
+		await enrichmentRepository.initEnrichmentsTable();
+		await retentionRepository.initRetentionTables();
+
+		const { lastID } = await enrichmentRepository.createEnrichment({
+			name: 'Retained rule',
+			nameContains: 'database',
+			labelMatchers: [],
+			addFields: [{ key: 'team', value: 'platform' }],
+			addLinks: [],
+			summaryTemplate: null,
+			priority: 1,
+			createdBy: 'Provider User',
+			lastModifiedBy: 'Provider User',
+		});
+		retentionDb
+			.prepare(`UPDATE alert_enrichment_versions SET created_at = ? WHERE enrichment_id = ?`)
+			.run('2024-01-15T12:30:00.000Z', lastID);
+
+		const deleted = await retentionRepository.purgeOlderThan(
+			RetentionResource.EnrichmentVersions,
+			'2025-01-01T00:00:00.000Z'
+		);
+
+		expect(deleted).toBe(1);
+		expect(await enrichmentRepository.getEnrichmentVersions(lastID)).toEqual([]);
+		expect((await enrichmentRepository.getEnrichmentById(lastID))?.name).toBe('Retained rule');
+		retentionDb.close();
 	});
 
 	test('returns not found for an unknown enrichment', async () => {

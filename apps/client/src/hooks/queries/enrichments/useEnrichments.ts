@@ -1,5 +1,5 @@
 import { enrichmentsApi, EnrichmentPayload } from '@/lib/api';
-import { AlertEnrichment, AlertEnrichmentVersion } from '@OpsiMate/shared';
+import { AlertEnrichment } from '@OpsiMate/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
@@ -13,20 +13,6 @@ export const useEnrichments = () => {
 			}
 			return response.data || [];
 		},
-	});
-};
-
-export const useEnrichmentHistory = (id: number | null) => {
-	return useQuery({
-		queryKey: id === null ? ['enrichments', 'history', 'closed'] : queryKeys.enrichmentHistory(id),
-		queryFn: async (): Promise<AlertEnrichmentVersion[]> => {
-			const response = await enrichmentsApi.getEnrichmentHistory(id!);
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to fetch enrichment history');
-			}
-			return response.data || [];
-		},
-		enabled: id !== null,
 	});
 };
 

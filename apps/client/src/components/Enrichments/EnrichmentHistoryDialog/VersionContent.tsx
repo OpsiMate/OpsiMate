@@ -1,15 +1,11 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useEnrichmentHistory } from '@/hooks/queries/enrichments';
 import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
 
-interface EnrichmentHistoryDialogProps {
-	enrichment: AlertEnrichment | null;
-	onOpenChange: (open: boolean) => void;
+interface VersionContentProps {
+	enrichment: AlertEnrichment;
 }
 
-const VersionContent = ({ enrichment }: { enrichment: AlertEnrichment }) => (
+export const VersionContent = ({ enrichment }: VersionContentProps) => (
 	<div className="space-y-3 rounded-md bg-muted/40 p-3">
 		<div className="grid gap-2 sm:grid-cols-2">
 			<div>
@@ -63,43 +59,3 @@ const VersionContent = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 		</div>
 	</div>
 );
-
-export const EnrichmentHistoryDialog = ({ enrichment, onOpenChange }: EnrichmentHistoryDialogProps) => {
-	const { data: versions = [], isLoading, error } = useEnrichmentHistory(enrichment?.id ?? null);
-
-	return (
-		<Dialog open={!!enrichment} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>Version history</DialogTitle>
-					<DialogDescription>{enrichment?.name}</DialogDescription>
-				</DialogHeader>
-				{isLoading ? (
-					<p className="py-8 text-center text-sm text-muted-foreground">Loading version history…</p>
-				) : error ? (
-					<p className="py-8 text-center text-sm text-destructive">{error.message}</p>
-				) : (
-					<Accordion
-						type="single"
-						collapsible
-						defaultValue={versions[0] ? String(versions[0].id) : undefined}
-					>
-						{versions.map((version) => (
-							<AccordionItem key={version.id} value={String(version.id)}>
-								<AccordionTrigger>
-									<span>
-										Version {version.version} · {version.author} ·{' '}
-										{new Date(version.createdAt).toLocaleString()}
-									</span>
-								</AccordionTrigger>
-								<AccordionContent>
-									<VersionContent enrichment={version.content} />
-								</AccordionContent>
-							</AccordionItem>
-						))}
-					</Accordion>
-				)}
-			</DialogContent>
-		</Dialog>
-	);
-};

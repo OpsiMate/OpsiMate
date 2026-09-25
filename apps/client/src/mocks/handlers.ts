@@ -1,6 +1,8 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	AlertEnrichment,
+	AlertEnrichmentVersion,
 	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
 	AlertHistoryData,
@@ -26,6 +28,15 @@ const SECONDARY_ACTOR = 'Dana Cohen';
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+
+const createEnrichmentVersion = (enrichment: AlertEnrichment, version: number): AlertEnrichmentVersion => ({
+	id: randomId(),
+	enrichmentId: enrichment.id,
+	version,
+	content: structuredClone(enrichment),
+	author: enrichment.lastModifiedBy ?? enrichment.createdBy ?? PLAYGROUND_ACTOR,
+	createdAt: enrichment.updatedAt,
+});
 
 const hashAlertId = (id: string): number => {
 	let h = 0;
@@ -1391,16 +1402,7 @@ export const handlers = [
 		}
 		return HttpResponse.json({
 			success: true,
-			data: [
-				{
-					id: enrichment.id,
-					enrichmentId: enrichment.id,
-					version: 1,
-					content: { ...enrichment },
-					author: enrichment.lastModifiedBy ?? enrichment.createdBy ?? 'Playground user',
-					createdAt: enrichment.updatedAt,
-				},
-			],
+			data: playgroundState.enrichmentVersions[enrichment.id] ?? [],
 		});
 	}),
 
@@ -1416,6 +1418,7 @@ export const handlers = [
 			updatedAt: nowIso(),
 		} as (typeof playgroundState.enrichments)[0];
 		playgroundState.enrichments.unshift(newEnrichment);
+		playgroundState.enrichmentVersions[newEnrichment.id] = [createEnrichmentVersion(newEnrichment, 1)];
 		return HttpResponse.json({ success: true, data: newEnrichment });
 	}),
 
@@ -1427,12 +1430,16 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
 		}
 		Object.assign(enrichment, body, { updatedAt: nowIso() });
+		const versions = playgroundState.enrichmentVersions[id] ?? [];
+		const nextVersion = (versions[0]?.version ?? 0) + 1;
+		playgroundState.enrichmentVersions[id] = [createEnrichmentVersion(enrichment, nextVersion), ...versions];
 		return HttpResponse.json({ success: true, data: enrichment });
 	}),
 
 	http.delete(`${API_BASE}/enrichments/:id`, ({ params }) => {
 		const id = Number(params.id);
 		playgroundState.enrichments = playgroundState.enrichments.filter((e) => e.id !== id);
+		delete playgroundState.enrichmentVersions[id];
 		return HttpResponse.json({ success: true, message: 'Enrichment deleted' });
 	}),
 ];

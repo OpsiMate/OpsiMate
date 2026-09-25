@@ -780,6 +780,7 @@ export enum RetentionResource {
 	ResolvedAlerts = 'archived_alerts',
 	AlertComments = 'alert_comments',
 	RootCauses = 'alert_root_causes',
+	EnrichmentVersions = 'enrichment_versions',
 }
 
 export interface RetentionPolicy {
