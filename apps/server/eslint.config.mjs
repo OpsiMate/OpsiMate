@@ -3,6 +3,9 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default [
+	// Plain-JS bootstraps (snapshotWorker.dev.mjs) carry no type information for the
+	// type-checked rules below.
+	{ ignores: ['**/*.mjs'] },
 	js.configs.recommended,
 	...tseslint.configs.recommended,
 	...tseslint.configs.recommendedTypeChecked,

@@ -205,6 +205,12 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
+	// The active list is built on a worker thread so a rebuild never blocks requests.
+	// Needs a database file (the worker opens its own connection); ALERTS_SNAPSHOT_WORKER=0
+	// keeps it on this thread.
+	if (!db.memory && process.env.ALERTS_SNAPSHOT_WORKER !== '0') {
+		alertBL.useSnapshotWorker(db.name);
+	}
 	// Rule edits change what the cached alerts snapshot would serve.
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());

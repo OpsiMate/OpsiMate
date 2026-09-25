@@ -33,9 +33,8 @@ import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
-import crypto from 'node:crypto';
-import { FiringTimesIndex } from './firingTimesIndex';
-import { PreparedRules } from './preparedRules';
+import { ActiveListBuild, ActiveListBuilder, alertListFingerprint, noRules } from './activeListBuilder';
+import { resolveWorkerScript, SnapshotWorkerClient } from './snapshotWorkerClient';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
 	AlertBulkActionRequest,
@@ -120,36 +119,11 @@ export interface AlertAnalyticsQuery {
 	tagKey?: string;
 }
 
-// What a listed alert was assembled from, so the next rebuild can tell it is unchanged.
-interface AssembledAlert {
-	source: Alert;
-	rulesKey: string;
-	firingTimes: string[] | undefined;
-	lastComment: string | null;
-	alert: Alert;
-}
-
-const NO_RULES: PreparedRules = { key: 'none', apply: (alert) => alert };
-
-// Content digest of the active list without serializing it. computeAllAlerts keeps the
-// same object for an alert whose inputs did not change, so each object's digest is
-// computed once (a stringify + hash of ONE alert) and remembered for as long as the
-// object lives; the list's fingerprint is the digests in order. Content-derived like
-// the JSON hash it replaces: an alert re-derived to identical content gets the same
-// digest, and a process restart yields the same ETags for the same data.
-const alertDigests = new WeakMap<Alert, string>();
-const alertListFingerprint = (alerts: Alert[]): string => {
-	let out = '';
-	for (const alert of alerts) {
-		let digest = alertDigests.get(alert);
-		if (digest === undefined) {
-			digest = crypto.createHash('sha1').update(JSON.stringify(alert)).digest('base64');
-			alertDigests.set(alert, digest);
-		}
-		out += digest;
-	}
-	return out;
-};
+// The list fingerprint a build reported, keyed by the array it belongs to, so the
+// SnapshotCache's fingerprint hook finds it without recomputing (or, for a list from
+// the worker thread, without owning the per-alert digests at all).
+const listFingerprints = new WeakMap<Alert[], string>();
+const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
 
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
@@ -169,7 +143,7 @@ export class AlertBL {
 		() => this.computeAllAlerts(),
 		snapshotTtlMs(),
 		snapshotRefreshMs(),
-		{ fingerprint: alertListFingerprint }
+		{ fingerprint: activeListFingerprint }
 	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
@@ -209,16 +183,10 @@ export class AlertBL {
 	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
 	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
-	// Per-alert state kept between active-snapshot rebuilds — see computeAllAlerts.
-	private readonly firingTimes: FiringTimesIndex;
-	private assembled = new Map<string, AssembledAlert>();
-	// Builds run one at a time. SnapshotCache.invalidate() can start a new compute
-	// while an older one is still awaiting; the cache discards the older RESULT, but
-	// both would otherwise interleave on the state above — the older one finishing
-	// last would overwrite `assembled` with a stale map (every alert re-derived on the
-	// next build) and race the index's eviction. Queued, the newer build simply runs
-	// after the older one and stores last.
-	private buildQueue: Promise<unknown> = Promise.resolve();
+	// Builds the active list (see ActiveListBuilder). Inline on this thread by default;
+	// useSnapshotWorker moves it to a worker thread and this one only patches deltas.
+	private readonly inlineBuilder: ActiveListBuilder;
+	private snapshotWorker: SnapshotWorkerClient | null = null;
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -227,7 +195,31 @@ export class AlertBL {
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
 	) {
-		this.firingTimes = new FiringTimesIndex(alertRepo, alertHistoryRepo);
+		this.inlineBuilder = new ActiveListBuilder(
+			alertRepo,
+			alertCommentsRepo,
+			alertHistoryRepo,
+			() => (this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : noRules()),
+			() => (this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : noRules())
+		);
+	}
+
+	// Build the active list on a worker thread over its own connection to dbPath. Only
+	// for a database file (a worker cannot see an in-memory database); the inline
+	// builder stays as the fallback for a worker that fails. Returns whether it is on.
+	useSnapshotWorker(dbPath: string): boolean {
+		const script = resolveWorkerScript();
+		if (!script) {
+			logger.warn('snapshot worker script not found next to the entry point; building the alerts list inline');
+			return false;
+		}
+		this.snapshotWorker = new SnapshotWorkerClient(dbPath, script);
+		return true;
+	}
+
+	async closeSnapshotWorker(): Promise<void> {
+		await this.snapshotWorker?.close();
+		this.snapshotWorker = null;
 	}
 
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
@@ -645,68 +637,33 @@ export class AlertBL {
 		return (await this.activeSnapshot.get()).value;
 	}
 
-	// The active list is rebuilt whenever anything changed — once a second under a
-	// webhook storm — but almost every alert in it is exactly as it was. So the work is
-	// keyed per alert on its inputs, and an alert whose inputs are unchanged is the same
-	// object as last time: the repository returns the same base object for an unchanged
-	// row, FiringTimesIndex the same array for unchanged history, and the rule sets a
-	// key that only moves when a rule (or a mute schedule window) does. Enrich before
-	// mute so mute policy rules can match enrichment-added tags; then firing times and
-	// the newest comment, both best-effort — a failed lookup never breaks the listing.
-	private computeAllAlerts(): Promise<Alert[]> {
-		const run = this.buildQueue.then(() => this.buildActiveList());
-		this.buildQueue = run.catch(() => undefined);
-		return run;
-	}
-
-	private async buildActiveList(): Promise<Alert[]> {
+	// Silences expire first (a write, on this thread), then the list is built — by the
+	// worker thread when one is on, else inline. See ActiveListBuilder for what a build
+	// does and why it is cheap when little changed.
+	private async computeAllAlerts(): Promise<Alert[]> {
 		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
-			const sources = await this.alertRepo.getAllAlerts();
-			const ids = sources.map((alert) => alert.id);
-			const [enricher, muter, firing, comments] = await Promise.all([
-				this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : Promise.resolve(NO_RULES),
-				this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : Promise.resolve(NO_RULES),
-				this.firingTimes.refresh(ids).catch((error: unknown) => {
-					logger.error('Failed to attach firing times to alerts', error);
-					return new Map<string, string[]>();
-				}),
-				this.alertCommentsRepo.getLatestCommentsByAlertIds(ids).catch((error: unknown) => {
-					logger.error('Failed to attach last comments to alerts', error);
-					const none: Record<string, string> = {};
-					return none;
-				}),
-			]);
-			const rulesKey = `${enricher.key}\n${muter.key}`;
-			const next = new Map<string, AssembledAlert>();
-			const alerts = sources.map((source) => {
-				const firingTimes = firing.get(source.id);
-				const lastComment = comments[source.id] ?? null;
-				const previous = this.assembled.get(source.id);
-				if (
-					previous &&
-					previous.source === source &&
-					previous.rulesKey === rulesKey &&
-					previous.firingTimes === firingTimes &&
-					previous.lastComment === lastComment
-				) {
-					next.set(source.id, previous);
-					return previous.alert;
-				}
-				const ruled = muter.apply(enricher.apply(source));
-				const alert: Alert = firingTimes ? { ...ruled, firingTimes, lastComment } : { ...ruled, lastComment };
-				next.set(source.id, { source, rulesKey, firingTimes, lastComment, alert });
-				return alert;
-			});
-			this.assembled = next;
+			const { alerts, fingerprint } = await this.buildActiveList();
+			listFingerprints.set(alerts, fingerprint);
 			return alerts;
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
 		} finally {
 			endTimer();
+		}
+	}
+
+	private async buildActiveList(): Promise<ActiveListBuild> {
+		if (!this.snapshotWorker) return this.inlineBuilder.build();
+		try {
+			return await this.snapshotWorker.build();
+		} catch (error) {
+			// The worker is replaced on the next build; this one must still answer.
+			logger.warn('snapshot worker build failed, building the alerts list inline', error);
+			return this.inlineBuilder.build();
 		}
 	}
 
