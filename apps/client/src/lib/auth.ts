@@ -51,10 +51,12 @@ export function isViewer(): boolean {
 	const user = getCurrentUser();
 	return user?.role === Role.Viewer;
 }
+
 export function isOperation(): boolean {
 	const user = getCurrentUser();
 	return user?.role === Role.Operation;
 }
+
 export function getUserRole(): Role | null {
 	const user = getCurrentUser();
 	return user?.role || null;
