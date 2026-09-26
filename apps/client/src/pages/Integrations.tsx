@@ -33,7 +33,7 @@ import { ValidationFeedback, validationRules } from '@/components/ValidationFeed
 import { integrationApi } from '@/lib/api';
 import { canDelete, canManageIntegrations } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
+import { IntegrationType, Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
 import {
 	Activity,
 	AlertCircle,
@@ -59,13 +59,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const logger = new Logger('Integrations');
-// Define IntegrationType locally until shared package export is fixed
-enum IntegrationType {
-	Grafana = 'Grafana',
-	Datadog = 'Datadog',
-	UptimeKuma = 'UptimeKuma',
-}
-
 interface Integration {
 	id: string;
 	supported: boolean;
