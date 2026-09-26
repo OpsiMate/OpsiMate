@@ -17,6 +17,7 @@ import {
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
+	HttpAlertWebhookHeadSchema,
 	HttpAlertWebhookSchema,
 	isResolvedWebhookStatus,
 	SetAlertOwnerSchema,
@@ -701,18 +702,20 @@ export class AlertController {
 
 	async createCustomAlert(req: Request, res: Response) {
 		try {
-			const alert = HttpAlertWebhookSchema.parse(req.body);
-
 			// A resolved status resolves the alert instead of firing it — the same
-			// source-driven resolve (no acting user) the Grafana webhook performs. Nothing
-			// to resolve (unknown id, already resolved) is not an error for a webhook:
-			// the sender's retry must be idempotent.
-			if (isResolvedWebhookStatus(alert.status)) {
-				const resolved = await this.alertBL.resolveAlert(alert.id);
+			// source-driven resolve (no acting user) the Grafana webhook performs. Only the
+			// id is needed for that, so the full firing schema is not applied. Nothing to
+			// resolve (unknown id, already resolved) is not an error for a webhook: the
+			// sender's retry must be idempotent.
+			const head = HttpAlertWebhookHeadSchema.parse(req.body);
+			if (isResolvedWebhookStatus(head.status)) {
+				const resolved = await this.alertBL.resolveAlert(head.id);
 				return res
 					.status(200)
-					.json({ success: true, data: { alertId: alert.id, status: 'resolved', resolved } });
+					.json({ success: true, data: { alertId: head.id, status: 'resolved', resolved } });
 			}
+
+			const alert = HttpAlertWebhookSchema.parse(req.body);
 
 			await this.alertBL.insertOrUpdateAlert({
 				id: alert.id,

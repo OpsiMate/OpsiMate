@@ -51,6 +51,27 @@ describe('POST /alerts/custom with a status', () => {
 		expect(await activeIds()).toEqual(expect.arrayContaining(['s-none', 's-firing', 's-active', 's-weird']));
 	});
 
+	test('legacy status values that used to be ignored still fire: a number, a long string', async () => {
+		const numeric = await post({ id: 's-number', alertName: 'n', tags: {}, status: 42 });
+		expect(numeric.status).toBe(200);
+		expect(numeric.body.data.status).toBe('firing');
+		const long = await post({ id: 's-long', alertName: 'l', tags: {}, status: 'x'.repeat(500) });
+		expect(long.status).toBe(200);
+		expect(long.body.data.status).toBe('firing');
+		expect(await activeIds()).toEqual(expect.arrayContaining(['s-number', 's-long']));
+	});
+
+	test('a resolve needs only the id and the status — other fields are not required', async () => {
+		await post({ id: 'r-min', alertName: 'minimal', tags: {} });
+		const res = await post({ id: 'r-min', status: 'resolved' });
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({ alertId: 'r-min', status: 'resolved', resolved: true });
+		expect(await resolvedIds()).toEqual(expect.arrayContaining(['r-min']));
+		// A firing POST still needs the full payload.
+		const firing = await post({ id: 'r-min', status: 'firing' });
+		expect(firing.status).toBe(400);
+	});
+
 	test('"resolved" resolves the active alert with that id — any casing', async () => {
 		await post({ id: 'r-1', alertName: 'to resolve', tags: {} });
 		await post({ id: 'r-2', alertName: 'to resolve too', tags: {} });
