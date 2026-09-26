@@ -20,6 +20,7 @@ import {
 	AlertComment,
 	AlertRootCause,
 	AlertEnrichment,
+	AlertEnrichmentVersion,
 	AlertHistoryData,
 	MutePolicy,
 	AlertStatus,
@@ -61,6 +62,7 @@ export interface PlaygroundState {
 	mutePolicies: MutePolicy[];
 	actions: Action[];
 	enrichments: AlertEnrichment[];
+	enrichmentVersions: Record<number, AlertEnrichmentVersion[]>;
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
 	// silencings, actions, comments). Merged with generated base history by the history handler.
 	alertHistoryEvents: Record<string, AlertHistoryData[]>;
@@ -474,6 +476,24 @@ const initialTags = createTags();
 const initialProviders = createProviders();
 const initialServices = createServices(initialProviders, initialTags);
 const initialAlerts = seedAlerts();
+const initialEnrichments = createEnrichments();
+
+const createEnrichmentVersions = (enrichments: AlertEnrichment[]): Record<number, AlertEnrichmentVersion[]> =>
+	Object.fromEntries(
+		enrichments.map((enrichment) => [
+			enrichment.id,
+			[
+				{
+					id: enrichment.id,
+					enrichmentId: enrichment.id,
+					version: 1,
+					content: structuredClone(enrichment),
+					author: enrichment.lastModifiedBy ?? enrichment.createdBy ?? 'Playground user',
+					createdAt: enrichment.updatedAt,
+				},
+			],
+		])
+	);
 
 export const playgroundState: PlaygroundState = {
 	alerts: initialAlerts,
@@ -516,7 +536,8 @@ export const playgroundState: PlaygroundState = {
 	auditLogs: createAuditLogs(),
 	mutePolicies: createMutePolicies(),
 	actions: createActions(),
-	enrichments: createEnrichments(),
+	enrichments: initialEnrichments,
+	enrichmentVersions: createEnrichmentVersions(initialEnrichments),
 	alertHistoryEvents: {},
 	oncallTeams: createOncallTeams(),
 };

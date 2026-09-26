@@ -627,6 +627,15 @@ export interface AlertEnrichment {
 	updatedAt: string;
 }
 
+export interface AlertEnrichmentVersion {
+	id: number;
+	enrichmentId: number;
+	version: number;
+	content: AlertEnrichment;
+	author: string;
+	createdAt: string;
+}
+
 // Actions are reusable, user-configured integrations that can be run against an alert
 // (e.g. notify a Slack/Teams channel, open a Jira ticket, or fire an arbitrary HTTP request).
 // This phase only covers configuring them; wiring them to alerts comes later.
@@ -771,6 +780,7 @@ export enum RetentionResource {
 	ResolvedAlerts = 'archived_alerts',
 	AlertComments = 'alert_comments',
 	RootCauses = 'alert_root_causes',
+	EnrichmentVersions = 'enrichment_versions',
 }
 
 export interface RetentionPolicy {

@@ -2,6 +2,7 @@ import {
 	criteriaMatchesAlert,
 	Alert,
 	AlertEnrichment,
+	AlertEnrichmentVersion,
 	AlertLink,
 	AppliedEnrichment,
 	AuditActionType,
@@ -51,6 +52,10 @@ export class EnrichmentBL {
 
 	async get(id: number): Promise<AlertEnrichment | undefined> {
 		return this.enrichmentRepo.getEnrichmentById(id);
+	}
+
+	async history(id: number): Promise<AlertEnrichmentVersion[]> {
+		return this.enrichmentRepo.getEnrichmentVersions(id);
 	}
 
 	async update(id: number, data: UpdateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment | undefined> {
