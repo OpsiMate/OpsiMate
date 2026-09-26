@@ -17,7 +17,9 @@ import {
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
+	HttpAlertWebhookHeadSchema,
 	HttpAlertWebhookSchema,
+	isResolvedWebhookStatus,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
@@ -700,6 +702,19 @@ export class AlertController {
 
 	async createCustomAlert(req: Request, res: Response) {
 		try {
+			// A resolved status resolves the alert instead of firing it — the same
+			// source-driven resolve (no acting user) the Grafana webhook performs. Only the
+			// id is needed for that, so the full firing schema is not applied. Nothing to
+			// resolve (unknown id, already resolved) is not an error for a webhook: the
+			// sender's retry must be idempotent.
+			const head = HttpAlertWebhookHeadSchema.parse(req.body);
+			if (isResolvedWebhookStatus(head.status)) {
+				const resolved = await this.alertBL.resolveAlert(head.id);
+				return res
+					.status(200)
+					.json({ success: true, data: { alertId: head.id, status: 'resolved', resolved } });
+			}
+
 			const alert = HttpAlertWebhookSchema.parse(req.body);
 
 			await this.alertBL.insertOrUpdateAlert({
@@ -719,7 +734,7 @@ export class AlertController {
 				runbookUrl: alert.runbookUrl,
 				links: alert.links,
 			});
-			return res.status(200).json({ success: true, data: { alertId: alert.id } });
+			return res.status(200).json({ success: true, data: { alertId: alert.id, status: 'firing' } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
