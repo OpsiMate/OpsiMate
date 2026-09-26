@@ -196,3 +196,94 @@ export class RetentionRepository {
 		});
 	}
 }
+
+// --- apps/server/tests/retentionRepository.test.ts ---
+if (process.env.NODE_ENV === 'test' || (typeof import.meta !== 'undefined' && (import.meta as any).vitest)) {
+	const { describe, it, expect, beforeEach } = require('vitest');
+
+	describe('RetentionRepository', () => {
+		let db: Database.Database;
+		let repo: RetentionRepository;
+
+		beforeEach(() => {
+			db = new Database(':memory:');
+			repo = new RetentionRepository(db);
+		});
+
+		it('seeds the seven default policies, all disabled', async () => {
+			await repo.initRetentionTables();
+			const policies = await repo.getPolicies();
+			expect(policies).toHaveLength(7);
+			for (const p of policies) {
+				expect(p.enabled).toBe(false);
+			}
+		});
+
+		it('calling it twice keeps edits made in between (INSERT OR IGNORE, no reset)', async () => {
+			await repo.initRetentionTables();
+			await repo.updatePolicy(RetentionResource.AuditLogs, { enabled: true, retentionDays: 10 });
+			await repo.initRetentionTables();
+			const policies = await repo.getPolicies();
+			const auditPolicy = policies.find((p) => p.resourceType === RetentionResource.AuditLogs);
+			expect(auditPolicy?.enabled).toBe(true);
+			expect(auditPolicy?.retentionDays).toBe(10);
+		});
+
+		it('rows with an unknown resource_type are dropped from the returned policies', async () => {
+			await repo.initRetentionTables();
+			db.exec(`INSERT INTO retention_policies (resource_type, enabled, retention_days) VALUES ('unknown_resource', 1, 5)`);
+			const policies = await repo.getPolicies();
+			expect(policies.find((p: any) => p.resourceType === 'unknown_resource')).toBeUndefined();
+			expect(policies).toHaveLength(7);
+		});
+
+		it('getConfig() returns defaults when the config row is missing', async () => {
+			await repo.initRetentionTables();
+			db.exec(`DELETE FROM retention_config`);
+			const config = await repo.getConfig();
+			expect(config.cleanupIntervalHours).toBe(24);
+			expect(config.vacuumAfterCleanup).toBe(true);
+			expect(config.lastRunAt).toBeNull();
+		});
+
+		it('updatePolicy(resource, {}) and updateConfig({}) are no-ops', async () => {
+			await repo.initRetentionTables();
+			await repo.updatePolicy(RetentionResource.AuditLogs, {});
+			await repo.updateConfig({});
+			const policies = await repo.getPolicies();
+			expect(policies.find((p) => p.resourceType === RetentionResource.AuditLogs)?.enabled).toBe(false);
+		});
+
+		it('purgeOlderThan deletes rows stored as ISO and as SQLite YYYY-MM-DD HH:MM:SS, and returns the count', async () => {
+			await repo.initRetentionTables();
+			db.exec(`CREATE TABLE audit_logs (id INTEGER PRIMARY KEY, timestamp TEXT)`);
+			
+			// Insert ISO format
+			db.exec(`INSERT INTO audit_logs (timestamp) VALUES ('2020-01-01T00:00:00.000Z')`);
+			// Insert SQLite format
+			db.exec(`INSERT INTO audit_logs (timestamp) VALUES ('2020-01-02 00:00:00')`);
+			// Insert newer row
+			db.exec(`INSERT INTO audit_logs (timestamp) VALUES ('2026-01-01T00:00:00.000Z')`);
+
+			const count = await repo.purgeOlderThan(RetentionResource.AuditLogs, '2025-01-01T00:00:00.000Z');
+			expect(count).toBe(2);
+
+			const remaining = db.prepare(`SELECT * FROM audit_logs`).all();
+			expect(remaining).toHaveLength(1);
+		});
+
+		it('the vacuum_after_cleanup column is added when an older table lacks it', async () => {
+			db.exec(`
+				CREATE TABLE retention_config (
+					id INTEGER PRIMARY KEY CHECK (id = 1),
+					cleanup_interval_hours INTEGER NOT NULL,
+					last_run_at TEXT,
+					updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				);
+			`);
+			await repo.initRetentionTables();
+			const cols = db.prepare(`PRAGMA table_info(retention_config)`).all() as ColumnInfo[];
+			expect(cols.some((c) => c.name === 'vacuum_after_cleanup')).toBe(true);
+		});
+	});
+}
