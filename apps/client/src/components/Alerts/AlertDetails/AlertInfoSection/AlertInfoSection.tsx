@@ -37,6 +37,14 @@ export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
 				</div>
 				<div className="flex-1 min-w-0">
 					<h3 className="text-lg font-semibold wrap-break-word min-w-0 text-foreground">{alert.alertName}</h3>
+					{/* The id is what webhook senders key on (re-fire, resolve) — shown small and
+					    unobtrusive, one click selects all of it for copying. */}
+					<p className="mt-0.5 text-xs text-muted-foreground font-mono break-all">
+						<span className="font-sans">ID:</span>{' '}
+						<span className="select-all" title="Alert ID — click to select">
+							{alert.id}
+						</span>
+					</p>
 				</div>
 			</div>
 			<div className="flex items-center gap-2 flex-wrap">
