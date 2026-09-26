@@ -89,6 +89,15 @@ const makeAlert = (i: number): Alert => {
 		isRead: false,
 		ownerId: rnd() < 0.4 ? pick(['1', '2']) : null,
 		createdAt: '2026-09-01 00:00:00',
+		// Re-fired alerts: a later firing inside a window must become that window's startsAt.
+		...(rnd() < 0.3
+			? {
+					firingTimes: [
+						`2026-09-${String(day).padStart(2, '0')}T10:00:00.000Z`,
+						`2026-09-${String(Math.min(28, day + 6)).padStart(2, '0')}T09:00:00.000Z`,
+					],
+				}
+			: {}),
 	} as Alert;
 };
 const users: AlertOwnerInfo[] = [
@@ -115,15 +124,35 @@ const queries: AlertListQuery[] = [
 	{ sort: 'tagKey:team', dir: 'asc' },
 	{ from: '2026-09-05T00:00:00.000Z', to: '2026-09-12T00:00:00.000Z' },
 	{ from: '2026-09-10T00:00:00.000Z', search: 'vm', filters: { severity: ['Warning', 'Critical'] } },
+	{ to: '2026-09-15T00:00:00.000Z', sort: 'startsAt', dir: 'asc' },
+	{ from: '2026-09-03T00:00:00.000Z', to: '2026-09-20T00:00:00.000Z', sort: 'updatedAt', dir: 'desc', limit: 20 },
 ];
 const ids = (xs: Alert[]) => xs.map((a) => a.id);
 
 describe('memoized query engine equals a from-scratch computation', () => {
 	test.each(queries.map((q) => [JSON.stringify(q), q] as const))('query %s', (_label, q) => {
-		const expected = ids(referenceQuery(alerts, users, q));
-		// Twice: the second call is served from the memos.
-		expect(ids(applyAlertListQuery(alerts, users, q).items)).toEqual(expected);
-		expect(ids(applyAlertListQuery(alerts, users, q).items)).toEqual(expected);
+		const expected = referenceQuery(alerts, users, q);
+		const limited = q.limit ? expected.slice(0, q.limit) : expected;
+		// Twice: the second call is served from the memos. Whole items, not just ids: a
+		// time window rewrites startsAt to the episode inside it.
+		expect(applyAlertListQuery(alerts, users, q).items).toEqual(limited);
+		expect(applyAlertListQuery(alerts, users, q).items).toEqual(limited);
+	});
+
+	test('a time window rewrites startsAt to the latest firing inside it, and sorts by that', () => {
+		const q: AlertListQuery = {
+			from: '2026-09-05T00:00:00.000Z',
+			to: '2026-09-25T00:00:00.000Z',
+			sort: 'startsAt',
+			dir: 'desc',
+		};
+		const items = applyAlertListQuery(alerts, users, q).items;
+		const rewritten = items.filter(
+			(a) => a.firingTimes && a.startsAt !== alerts.find((o) => o.id === a.id)?.startsAt
+		);
+		expect(rewritten.length).toBeGreaterThan(0);
+		for (const a of rewritten) expect(a.firingTimes).toContain(a.startsAt);
+		expect(items.map((a) => a.id)).toEqual(referenceQuery(alerts, users, q).map((a) => a.id));
 	});
 
 	test('paging with a cursor walks the same order', () => {
