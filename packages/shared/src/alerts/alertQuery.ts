@@ -117,6 +117,32 @@ const getAlertTimes = (alert: Alert): AlertTimes => {
 	return times;
 };
 
+// Parsed firingTimes, for the time-window episode rewrite (see applyTimeWindow).
+interface FiringEpoch {
+	iso: string;
+	epoch: number;
+}
+const firingEpochs = new WeakMap<Alert, FiringEpoch[]>();
+const getFiringEpochs = (alert: Alert): FiringEpoch[] => {
+	let epochs = firingEpochs.get(alert);
+	if (!epochs) {
+		epochs = [alert.startsAt, ...(alert.firingTimes ?? [])]
+			.map((iso) => ({ iso, epoch: new Date(iso).getTime() }))
+			.filter(({ epoch }) => !isNaN(epoch));
+		firingEpochs.set(alert, epochs);
+	}
+	return epochs;
+};
+// The alert as the window shows it: startsAt moved to the latest firing at or before the
+// window's end (the episode inside the window). Same object when nothing moves.
+const episodeInWindow = (alert: Alert, windowEnd: number): Alert => {
+	let latest: FiringEpoch | null = null;
+	for (const candidate of getFiringEpochs(alert)) {
+		if (candidate.epoch <= windowEnd && (!latest || candidate.epoch > latest.epoch)) latest = candidate;
+	}
+	return !latest || latest.iso === alert.startsAt ? alert : { ...alert, startsAt: latest.iso };
+};
+
 // The list sorted by a field, per array. A filter over a sorted array keeps its order,
 // so the sort — the one O(n log n) step — runs once per list per sort field and every
 // query (any filters, any search) reuses it. Owner order depends on the users list, so
@@ -522,33 +548,39 @@ export const DEFAULT_ALERT_SORT_DIR: AlertSortDirection = 'desc';
 export const applyAlertListQuery = (alerts: Alert[], users: AlertOwnerInfo[], query: AlertListQuery): AlertListPage => {
 	const sortField = query.sort ?? DEFAULT_ALERT_SORT;
 	const dir = query.dir ?? DEFAULT_ALERT_SORT_DIR;
-	let result: Alert[];
-	if (query.from || query.to) {
-		// A time window also rewrites startsAt to the episode that fired inside it
-		// (see applyTimeWindow), which yields new objects — so this path sorts its own
-		// (smaller) result and cannot share the per-array memos. Rare next to the
-		// windowless polls, and the per-object memos still serve the unchanged alerts.
-		result = applyTimeWindow(alerts, { from: query.from ?? null, to: query.to ?? null });
-		if (query.filters && Object.keys(query.filters).length > 0) {
-			const filters = query.filters;
-			result = result.filter((alert) => alertMatchesFilters(alert, filters, users));
-		}
-		if (query.search) result = searchAlerts(result, query.search);
-		result = sortAlertsBy(result, sortField, dir, users);
-	} else {
-		// Sorted first, from the per-array memo; the filters below keep that order and
-		// run over the sorted array's columns.
-		const sorted = sortedOrder(alerts, sortField, dir, users);
-		const resolved = query.filters ? resolveFilters(sorted, query.filters, users) : [];
-		const search = query.search?.trim().toLowerCase() ?? '';
-		const searchTexts = search ? searchTextColumn(sorted) : null;
-		result = sorted;
-		if (resolved.length > 0 || searchTexts) {
-			result = sorted.filter((_alert, i) => {
-				if (resolved.length > 0 && !passesResolved(resolved, i)) return false;
-				return !searchTexts || searchTexts[i].includes(search);
-			});
-		}
+	// Sorted first, from the per-array memo; the window, filters and search below keep
+	// that order and run over the sorted array's columns in one pass.
+	const sorted = sortedOrder(alerts, sortField, dir, users);
+	const from = query.from ? new Date(query.from).getTime() : null;
+	const to = query.to ? new Date(query.to).getTime() : null;
+	const hasWindow = from !== null || to !== null;
+	const windowStart = from ?? 0;
+	const windowEnd = to ?? Date.now();
+	const resolved = query.filters ? resolveFilters(sorted, query.filters, users) : [];
+	const search = query.search?.trim().toLowerCase() ?? '';
+	const searchTexts = search ? searchTextColumn(sorted) : null;
+	let result = sorted;
+	if (hasWindow || resolved.length > 0 || searchTexts) {
+		result = sorted.filter((alert, i) => {
+			if (hasWindow) {
+				const times = getAlertTimes(alert);
+				if (!(times.startsAt <= windowEnd && times.updatedAt >= windowStart)) return false;
+			}
+			if (resolved.length > 0 && !passesResolved(resolved, i)) return false;
+			return !searchTexts || searchTexts[i].includes(search);
+		});
+	}
+	if (hasWindow) {
+		// A window also rewrites startsAt to the episode that fired inside it (see
+		// applyTimeWindow). Only re-fired alerts move; when any did and the order depends
+		// on startsAt, the (near-sorted) result is sorted again.
+		let moved = false;
+		result = result.map((alert) => {
+			const shown = episodeInWindow(alert, windowEnd);
+			if (shown !== alert) moved = true;
+			return shown;
+		});
+		if (moved && sortField === 'startsAt') result = sortAlertsBy(result, sortField, dir, users);
 	}
 
 	const total = result.length;

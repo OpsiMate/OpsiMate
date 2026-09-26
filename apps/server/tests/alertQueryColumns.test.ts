@@ -125,6 +125,11 @@ const queries: AlertListQuery[] = [
 	{ from: '2026-09-05T00:00:00.000Z', to: '2026-09-12T00:00:00.000Z' },
 	{ from: '2026-09-10T00:00:00.000Z', search: 'vm', filters: { severity: ['Warning', 'Critical'] } },
 	{ to: '2026-09-15T00:00:00.000Z', sort: 'startsAt', dir: 'asc' },
+	// "Today"-style dashboards: a from with no to (to = now), with search and filters.
+	{ from: '2026-09-08T00:00:00.000Z', search: 'disk', filters: { 'tagKey:team': ['core'] } },
+	{ from: '2026-09-08T00:00:00.000Z', sort: 'alertName', dir: 'desc', filters: { '!severity': ['Info'] } },
+	{ from: '2026-09-01T00:00:00.000Z', to: '2026-09-30T00:00:00.000Z', sort: 'updatedAt', dir: 'asc', search: 'pod' },
+	{ from: '2026-09-06T00:00:00.000Z', to: '2026-09-18T00:00:00.000Z', sort: 'severity', dir: 'desc', limit: 25 },
 	{ from: '2026-09-03T00:00:00.000Z', to: '2026-09-20T00:00:00.000Z', sort: 'updatedAt', dir: 'desc', limit: 20 },
 ];
 const ids = (xs: Alert[]) => xs.map((a) => a.id);
