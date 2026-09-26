@@ -2,13 +2,37 @@ import crypto from 'crypto';
 
 export interface Snapshot<T> {
 	value: T;
-	// The value serialized once at compute time, so N pollers per tick cost one
-	// JSON.stringify, not N.
-	json: string;
+	// The value serialized at most once per snapshot, so N pollers per tick cost one
+	// JSON.stringify, not N. With a fingerprint (below) it is built on first access —
+	// the full-list body is rarely requested, and at 50k alerts it is 24MB.
+	readonly json: string;
 	// Content-derived (not time-derived), so an unchanged list keeps its ETag across
 	// recomputes and If-None-Match keeps producing 304s.
 	etag: string;
 }
+
+export interface SnapshotCacheOptions<T> {
+	// Content-derived digest of the value, cheaper than hashing its JSON. Without it
+	// the ETag is a SHA-1 of the serialized value, which at 50k alerts costs ~90ms per
+	// rebuild (24MB stringified, then hashed) even though the list endpoint that needs
+	// the string is rarely called. Must change whenever the JSON would.
+	fingerprint?: (value: T) => string;
+}
+
+const sha1 = (input: string): string => `"${crypto.createHash('sha1').update(input).digest('hex')}"`;
+
+// The snapshot shape with a lazily built json — one stringify, on the first read.
+const lazySnapshot = <T>(value: T, etag: string): Snapshot<T> => {
+	let json: string | null = null;
+	return {
+		value,
+		etag,
+		get json(): string {
+			json ??= JSON.stringify(value);
+			return json;
+		},
+	};
+};
 
 // Read-through cache for the alerts list. Every client polls the same endpoint on a
 // short interval and the response is identical for all of them, yet it was recomputed
@@ -68,8 +92,17 @@ export class SnapshotCache<T> {
 		private readonly ttlMs: number,
 		// How old a stale-marked snapshot may get before a get() triggers a background
 		// rebuild. Defaults to the TTL, i.e. markStale() behaves like a plain TTL wait.
-		private readonly refreshMs: number = ttlMs
+		private readonly refreshMs: number = ttlMs,
+		private readonly options: SnapshotCacheOptions<T> = {}
 	) {}
+
+	private toSnapshot(value: T): Snapshot<T> {
+		if (this.options.fingerprint) {
+			return lazySnapshot(value, sha1(this.options.fingerprint(value)));
+		}
+		const json = JSON.stringify(value);
+		return { value, json, etag: sha1(json) };
+	}
 
 	async get(): Promise<Snapshot<T>> {
 		const now = Date.now();
@@ -110,12 +143,7 @@ export class SnapshotCache<T> {
 		const entry = {
 			generation: startedGeneration,
 			promise: this.compute().then((value) => {
-				const json = JSON.stringify(value);
-				const snapshot: Snapshot<T> = {
-					value,
-					json,
-					etag: `"${crypto.createHash('sha1').update(json).digest('hex')}"`,
-				};
+				const snapshot = this.toSnapshot(value);
 				if (this.ttlMs > 0 && this.generation === startedGeneration) {
 					this.cached = {
 						snapshot,

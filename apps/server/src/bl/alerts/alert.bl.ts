@@ -33,6 +33,8 @@ import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import { ActiveListBuild, ActiveListBuilder, alertListFingerprint, noRules } from './activeListBuilder';
+import { resolveWorkerScript, SnapshotWorkerClient } from './snapshotWorkerClient';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
 	AlertBulkActionRequest,
@@ -117,6 +119,12 @@ export interface AlertAnalyticsQuery {
 	tagKey?: string;
 }
 
+// The list fingerprint a build reported, keyed by the array it belongs to, so the
+// SnapshotCache's fingerprint hook finds it without recomputing (or, for a list from
+// the worker thread, without owning the per-alert digests at all).
+const listFingerprints = new WeakMap<Alert[], string>();
+const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -134,7 +142,8 @@ export class AlertBL {
 	private readonly activeSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllAlerts(),
 		snapshotTtlMs(),
-		snapshotRefreshMs()
+		snapshotRefreshMs(),
+		{ fingerprint: activeListFingerprint }
 	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
@@ -174,13 +183,44 @@ export class AlertBL {
 	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
 	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
+	// Builds the active list (see ActiveListBuilder). Inline on this thread by default;
+	// useSnapshotWorker moves it to a worker thread and this one only patches deltas.
+	private readonly inlineBuilder: ActiveListBuilder;
+	private snapshotWorker: SnapshotWorkerClient | null = null;
+
 	constructor(
 		private alertRepo: AlertRepository,
 		private resolvedAlertRepo: ResolvedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
-	) {}
+	) {
+		this.inlineBuilder = new ActiveListBuilder(
+			alertRepo,
+			alertCommentsRepo,
+			alertHistoryRepo,
+			() => (this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : noRules()),
+			() => (this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : noRules())
+		);
+	}
+
+	// Build the active list on a worker thread over its own connection to dbPath. Only
+	// for a database file (a worker cannot see an in-memory database); the inline
+	// builder stays as the fallback for a worker that fails. Returns whether it is on.
+	useSnapshotWorker(dbPath: string): boolean {
+		const script = resolveWorkerScript();
+		if (!script) {
+			logger.warn('snapshot worker script not found next to the entry point; building the alerts list inline');
+			return false;
+		}
+		this.snapshotWorker = new SnapshotWorkerClient(dbPath, script);
+		return true;
+	}
+
+	async closeSnapshotWorker(): Promise<void> {
+		await this.snapshotWorker?.close();
+		this.snapshotWorker = null;
+	}
 
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
 	// affect both, so both drop together — a second compute per edit is far cheaper than
@@ -597,25 +637,33 @@ export class AlertBL {
 		return (await this.activeSnapshot.get()).value;
 	}
 
+	// Silences expire first (a write, on this thread), then the list is built — by the
+	// worker thread when one is on, else inline. See ActiveListBuilder for what a build
+	// does and why it is cheap when little changed.
 	private async computeAllAlerts(): Promise<Alert[]> {
 		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
-			let alerts = await this.alertRepo.getAllAlerts();
-			// Enrich before muting so mute policy rules can match enrichment-added tags.
-			if (this.enrichmentBL) {
-				alerts = await this.enrichmentBL.applyEnrichments(alerts);
-			}
-			if (this.mutePolicyBL) {
-				alerts = await this.mutePolicyBL.markMuted(alerts);
-			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			const { alerts, fingerprint } = await this.buildActiveList();
+			listFingerprints.set(alerts, fingerprint);
+			return alerts;
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
 		} finally {
 			endTimer();
+		}
+	}
+
+	private async buildActiveList(): Promise<ActiveListBuild> {
+		if (!this.snapshotWorker) return this.inlineBuilder.build();
+		try {
+			return await this.snapshotWorker.build();
+		} catch (error) {
+			// The worker is replaced on the next build; this one must still answer.
+			logger.warn('snapshot worker build failed, building the alerts list inline', error);
+			return this.inlineBuilder.build();
 		}
 	}
 
