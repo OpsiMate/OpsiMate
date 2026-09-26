@@ -559,3 +559,7 @@ export const OncallTeamMembersSchema = z.object({
 		.max(50)
 		.refine((ids) => new Set(ids).size === ids.length, 'Each user may appear only once'),
 });
+
+export const OncallTeamIdSchema = z.object({
+	teamId: positiveIntegerIdSchema,
+});
