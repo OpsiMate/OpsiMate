@@ -154,6 +154,17 @@ describe('active list reuses unchanged alerts between rebuilds', () => {
 			return original(enrichment, target);
 		});
 		try {
+			// Self-sufficient when run alone: the match-all rule the previous test creates.
+			if ((await enrichmentBL.list()).length === 0) {
+				await enrichmentBL.create({
+					name: 'tag everything',
+					labelMatchers: [],
+					matchAll: true,
+					addFields: [{ key: 'enriched', value: 'yes' }],
+					priority: 1,
+				});
+				bl.invalidateSnapshots();
+			}
 			// Only re-derived alerts run the rules; a webhook for b forces that for b alone.
 			await bl.insertOrUpdateAlert(alert('b', { tags: { env: 'prod', refired: 'yes' } }));
 			const after = await listing();
