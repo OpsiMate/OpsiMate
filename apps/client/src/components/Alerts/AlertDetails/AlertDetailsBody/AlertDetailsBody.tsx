@@ -65,6 +65,15 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 			)}
 
 			<AlertActionsSection alert={alert} />
+
+			{/* The id webhook senders key on (re-fire, resolve) — reference info, so it sits
+			    last and quiet; one click selects all of it for copying. */}
+			<p className="pt-2 text-[11px] leading-tight text-muted-foreground/70 font-mono break-all">
+				<span className="font-sans">ID</span>{' '}
+				<span className="select-all" title="Alert ID — click to select">
+					{alert.id}
+				</span>
+			</p>
 		</div>
 	);
 };
