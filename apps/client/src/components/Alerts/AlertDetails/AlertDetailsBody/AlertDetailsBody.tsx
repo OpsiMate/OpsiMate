@@ -1,7 +1,6 @@
 import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
 import { FileText, Link2, PhoneCall, Tag } from 'lucide-react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
-import { hasAlertTags } from '../../utils/alertTags.utils';
 import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
@@ -52,11 +51,10 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 				<AlertHistorySection historyData={historyData} timeRange={timeRange} />
 			)}
 
-			{hasAlertTags(alert) && (
-				<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertTagsSection alert={alert} />
-				</CollapsibleSection>
-			)}
+			{/* Always present: the alert id is listed here even when the alert has no tags. */}
+			<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
+				<AlertTagsSection alert={alert} />
+			</CollapsibleSection>
 
 			{getAlertLinks(alert).length > 0 && (
 				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>
