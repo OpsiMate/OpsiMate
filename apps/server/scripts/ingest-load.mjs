@@ -37,6 +37,24 @@ const run = `load-${Date.now()}`;
 // so the storm re-fires the same alerts (the common real case) and the table stays the
 // same size for the whole run instead of growing with the throughput being measured.
 const ID_POOL = Number(process.env.INGEST_ID_POOL) || 0;
+// INGEST_TAGS=N: N tags per alert instead of two — a mix of low-cardinality values
+// (facet-heavy) and per-alert values (search-text-heavy), like a real label set.
+// env and team are always present, so the count is at least 2; anything that is not an
+// integer >= 2 falls back to the default rather than producing a surprising count.
+const tagCountEnv = Number(process.env.INGEST_TAGS);
+const TAG_COUNT = Number.isInteger(tagCountEnv) && tagCountEnv >= 2 ? tagCountEnv : 2;
+const tagsFor = (n) => {
+	const tags = { env: 'load', team: 'perf' };
+	for (let k = 2; k < TAG_COUNT; k++) {
+		tags[`label_${k}`] =
+			k % 3 === 0
+				? `pod-${(n * 31 + k) % 500}`
+				: k % 3 === 1
+					? `zone-${(n + k) % 8}`
+					: `component-${(n * 7 + k) % 40}`;
+	}
+	return tags;
+};
 let posted = 0;
 let failed = 0;
 let getFailed = 0;
@@ -64,7 +82,7 @@ const poster = async (worker) => {
 					// unique names made that payload 1.8MB at 50k alerts and dominated the
 					// UI-side numbers instead of the ingest path this script exists for.
 					alertName: `load rule ${posted % 200}`,
-					tags: { env: 'load', team: 'perf' },
+					tags: tagsFor(posted + worker),
 					severity: 'warning',
 					summary: 'synthetic',
 				}),

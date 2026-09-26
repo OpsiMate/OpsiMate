@@ -33,6 +33,243 @@ const getAlertType = (alert: Alert): string => alert.type || 'Custom';
 
 // The value an alert presents for a filter field; null when the field is unknown
 // (unknown fields never constrain — a stale persisted filter must not hide everything).
+// ---------- per-object memos ----------
+//
+// The server keeps the same alert object between list rebuilds while that alert's inputs
+// are unchanged, and the same array while nothing changed at all (the client's arrays
+// from a fetch are immutable too). So anything derived from one alert can be remembered
+// on the object — a WeakMap keyed by identity, released with it — and anything derived
+// from the whole list on the array. Every query used to rebuild all of it: at 50k alerts
+// a free-text search cost ~120ms and facets ~110ms, per user with a distinct search,
+// per list change. With the memos a query is a filter over precomputed strings.
+//
+// Nothing here may be served for a MUTATED object or array: consumers treat both as
+// immutable (a changed alert is a new object, a changed list a new array).
+
+// The base filter/facet field values that depend only on the alert, computed together
+// on first touch. Tag fields read straight from alert.tags (no cheaper memo exists) and
+// the owner field depends on the users list, so neither is memoized.
+interface BaseFieldValues {
+	status: string;
+	severity: string;
+	type: string;
+	alertName: string;
+}
+const baseFieldValues = new WeakMap<Alert, BaseFieldValues>();
+const NO_USERS: AlertOwnerInfo[] = [];
+const getBaseFieldValues = (alert: Alert): BaseFieldValues => {
+	let values = baseFieldValues.get(alert);
+	if (!values) {
+		values = {
+			status: getAlertFilterFieldValue(alert, 'status', NO_USERS) ?? '',
+			severity: getAlertFilterFieldValue(alert, 'severity', NO_USERS) ?? '',
+			type: getAlertFilterFieldValue(alert, 'type', NO_USERS) ?? '',
+			alertName: getAlertFilterFieldValue(alert, 'alertName', NO_USERS) ?? '',
+		};
+		baseFieldValues.set(alert, values);
+	}
+	return values;
+};
+const isBaseField = (field: string): field is keyof BaseFieldValues =>
+	field === 'status' || field === 'severity' || field === 'type' || field === 'alertName';
+const memoFilterFieldValue = (alert: Alert, field: string, users: AlertOwnerInfo[]): string | null => {
+	if (isBaseField(field)) return getBaseFieldValues(alert)[field];
+	return getAlertFilterFieldValue(alert, field, users);
+};
+
+// Everything free-text search looks at, lowercased, joined by a character no search
+// term contains — so one includes() per alert replaces six, and the same alert is
+// only ever prepared once.
+const SEARCH_FIELD_SEPARATOR = '\u0000';
+const searchTexts = new WeakMap<Alert, string>();
+const getSearchText = (alert: Alert): string => {
+	let text = searchTexts.get(alert);
+	if (text === undefined) {
+		text = [
+			alert.alertName,
+			alert.status,
+			getAlertTagsString(alert),
+			alert.summary,
+			alert.lastComment,
+			getIntegrationLabel(resolveAlertIntegration(alert)),
+		]
+			.map((value) => (value ?? '').toLowerCase())
+			.join(SEARCH_FIELD_SEPARATOR);
+		searchTexts.set(alert, text);
+	}
+	return text;
+};
+
+// Parsed timestamps for the date sort keys.
+interface AlertTimes {
+	startsAt: number;
+	updatedAt: number;
+}
+const alertTimes = new WeakMap<Alert, AlertTimes>();
+const getAlertTimes = (alert: Alert): AlertTimes => {
+	let times = alertTimes.get(alert);
+	if (!times) {
+		const starts = new Date(alert.startsAt).getTime();
+		const updated = new Date(alert.updatedAt).getTime();
+		times = { startsAt: isNaN(starts) ? 0 : starts, updatedAt: isNaN(updated) ? 0 : updated };
+		alertTimes.set(alert, times);
+	}
+	return times;
+};
+
+// Parsed firingTimes, for the time-window episode rewrite (see applyTimeWindow).
+interface FiringEpoch {
+	iso: string;
+	epoch: number;
+}
+const firingEpochs = new WeakMap<Alert, FiringEpoch[]>();
+const getFiringEpochs = (alert: Alert): FiringEpoch[] => {
+	let epochs = firingEpochs.get(alert);
+	if (!epochs) {
+		epochs = [alert.startsAt, ...(alert.firingTimes ?? [])]
+			.map((iso) => ({ iso, epoch: new Date(iso).getTime() }))
+			.filter(({ epoch }) => !isNaN(epoch));
+		firingEpochs.set(alert, epochs);
+	}
+	return epochs;
+};
+// The alert as the window shows it: startsAt moved to the latest firing at or before the
+// window's end (the episode inside the window). Same object when nothing moves.
+const episodeInWindow = (alert: Alert, windowEnd: number): Alert => {
+	let latest: FiringEpoch | null = null;
+	for (const candidate of getFiringEpochs(alert)) {
+		if (candidate.epoch <= windowEnd && (!latest || candidate.epoch > latest.epoch)) latest = candidate;
+	}
+	return !latest || latest.iso === alert.startsAt ? alert : { ...alert, startsAt: latest.iso };
+};
+
+// The list sorted by a field, per array. A filter over a sorted array keeps its order,
+// so the sort — the one O(n log n) step — runs once per list per sort field and every
+// query (any filters, any search) reuses it. Owner order depends on the users list, so
+// that list's identity is part of the key.
+const sortedOrders = new WeakMap<Alert[], Map<string, Alert[]>>();
+const usersListIds = new WeakMap<AlertOwnerInfo[], number>();
+let nextUsersListId = 0;
+const usersListId = (users: AlertOwnerInfo[]): number => {
+	let id = usersListIds.get(users);
+	if (id === undefined) {
+		id = ++nextUsersListId;
+		usersListIds.set(users, id);
+	}
+	return id;
+};
+const sortedOrder = (alerts: Alert[], sortField: string, dir: AlertSortDirection, users: AlertOwnerInfo[]): Alert[] => {
+	let perArray = sortedOrders.get(alerts);
+	if (!perArray) {
+		perArray = new Map();
+		sortedOrders.set(alerts, perArray);
+	}
+	// Only the owner order depends on the users list; keying every sort by it would
+	// keep one more full sorted array per owners refresh.
+	const key = sortField === 'owner' ? `${sortField}|${dir}|${usersListId(users)}` : `${sortField}|${dir}`;
+	let sorted = perArray.get(key);
+	if (!sorted) {
+		sorted = sortAlertsBy(alerts, sortField, dir, users);
+		perArray.set(key, sorted);
+	}
+	return sorted;
+};
+
+// The tag keys present in a list, per array.
+const tagKeyInfos = new WeakMap<Alert[], AlertTagKeyInfo[]>();
+
+// Per-array columns: the search text and each filter field's value for every alert,
+// in array order. Built once per array from the per-object memos (so a new snapshot
+// of mostly unchanged alerts builds them from lookups, not from scratch) and then a
+// query is a loop over plain arrays — no per-alert lookups, no per-alert allocations.
+interface ListColumns {
+	searchTexts: string[] | null;
+	fields: Map<string, (string | null)[]>;
+}
+const listColumns = new WeakMap<Alert[], ListColumns>();
+const columnsOf = (alerts: Alert[]): ListColumns => {
+	let columns = listColumns.get(alerts);
+	if (!columns) {
+		columns = { searchTexts: null, fields: new Map() };
+		listColumns.set(alerts, columns);
+	}
+	return columns;
+};
+const searchTextColumn = (alerts: Alert[]): string[] => {
+	const columns = columnsOf(alerts);
+	columns.searchTexts ??= alerts.map(getSearchText);
+	return columns.searchTexts;
+};
+// The owner column depends on the users list, so it is keyed by that list's identity.
+const columnKey = (field: string, users: AlertOwnerInfo[]): string =>
+	field === 'owner' ? `owner|${usersListId(users)}` : field;
+// Builds every missing column for `fields` in ONE pass over the list: one memo lookup
+// per alert, then a write per column. Column-by-column it was a lookup per alert per
+// column — 1.25M lookups and ~750ms for 25 facet fields at 50k alerts, on every new
+// list; now ~50k lookups.
+const fieldColumns = (alerts: Alert[], fields: string[], users: AlertOwnerInfo[]): (string | null)[][] => {
+	const columns = columnsOf(alerts);
+	const result: (string | null)[][] = [];
+	const missing: { index: number; field: string; column: (string | null)[] }[] = [];
+	fields.forEach((field, index) => {
+		const key = columnKey(field, users);
+		let column = columns.fields.get(key);
+		if (!column) {
+			column = new Array<string | null>(alerts.length);
+			columns.fields.set(key, column);
+			missing.push({ index, field, column });
+		}
+		result[index] = column;
+	});
+	if (missing.length === 0) return result;
+	const tagKeyOf = new Map<string, string | null>();
+	for (const { field } of missing) {
+		if (isTagKeyColumn(field)) tagKeyOf.set(field, extractTagKeyFromColumnId(field) ?? null);
+	}
+	for (let i = 0; i < alerts.length; i++) {
+		const alert = alerts[i];
+		let base: BaseFieldValues | null = null;
+		for (const { field, column } of missing) {
+			if (isBaseField(field)) {
+				base ??= getBaseFieldValues(alert);
+				column[i] = base[field];
+			} else if (tagKeyOf.has(field)) {
+				const tagKey = tagKeyOf.get(field);
+				column[i] = tagKey ? alert.tags?.[tagKey] || '' : null;
+			} else {
+				column[i] = getAlertFilterFieldValue(alert, field, users);
+			}
+		}
+	}
+	return result;
+};
+
+// One parsed filter: field column + accepted values + include/exclude.
+interface ResolvedFilter {
+	column: (string | null)[];
+	values: string[];
+	exclude: boolean;
+}
+const resolveFilters = (alerts: Alert[], filters: AlertListFilters, users: AlertOwnerInfo[]): ResolvedFilter[] => {
+	const active = Object.entries(filters).filter(([, values]) => values.length > 0);
+	const columns = fieldColumns(
+		alerts,
+		active.map(([key]) => (key.startsWith('!') ? key.slice(1) : key)),
+		users
+	);
+	return active.map(([key, values], i) => ({ column: columns[i], values, exclude: key.startsWith('!') }));
+};
+// Same semantics as alertMatchesFilters: a null field value never disqualifies.
+const passesResolved = (resolved: ResolvedFilter[], index: number, skipColumn?: (string | null)[]): boolean => {
+	for (const { column, values, exclude } of resolved) {
+		if (column === skipColumn) continue;
+		const value = column[index];
+		if (value === null) continue;
+		if (exclude ? values.includes(value) : !values.includes(value)) return false;
+	}
+	return true;
+};
+
 export const getAlertFilterFieldValue = (alert: Alert, field: string, users: AlertOwnerInfo[]): string | null => {
 	if (isTagKeyColumn(field)) {
 		const tagKey = extractTagKeyFromColumnId(field);
@@ -59,7 +296,7 @@ export const alertMatchesFilters = (alert: Alert, filters: AlertListFilters, use
 	for (const [key, values] of Object.entries(filters)) {
 		if (values.length === 0) continue;
 		const isExclusion = key.startsWith('!');
-		const fieldValue = getAlertFilterFieldValue(alert, isExclusion ? key.slice(1) : key, users);
+		const fieldValue = memoFilterFieldValue(alert, isExclusion ? key.slice(1) : key, users);
 		if (fieldValue === null) continue;
 		if (isExclusion ? values.includes(fieldValue) : !values.includes(fieldValue)) {
 			return false;
@@ -114,19 +351,7 @@ export const searchAlerts = (alerts: Alert[], searchTerm: string): Alert[] => {
 	if (!trimmed) return alerts;
 
 	const lower = trimmed.toLowerCase();
-	return alerts.filter((alert) => {
-		const integration = resolveAlertIntegration(alert);
-		const integrationLabel = getIntegrationLabel(integration).toLowerCase();
-		const tagsString = getAlertTagsString(alert).toLowerCase();
-		return (
-			(alert.alertName && alert.alertName.toLowerCase().includes(lower)) ||
-			(alert.status && alert.status.toLowerCase().includes(lower)) ||
-			tagsString.includes(lower) ||
-			(alert.summary && alert.summary.toLowerCase().includes(lower)) ||
-			(alert.lastComment && alert.lastComment.toLowerCase().includes(lower)) ||
-			integrationLabel.includes(lower)
-		);
-	});
+	return alerts.filter((alert) => getSearchText(alert).includes(lower));
 };
 
 // ---------- sort ----------
@@ -160,14 +385,10 @@ export const getAlertSortValue = (alert: Alert, sortField: string, users: AlertO
 			return (alert.summary || '').toLowerCase();
 		case 'lastComment':
 			return (alert.lastComment || '').toLowerCase();
-		case 'startsAt': {
-			const date = new Date(alert.startsAt);
-			return isNaN(date.getTime()) ? 0 : date.getTime();
-		}
-		case 'updatedAt': {
-			const date = new Date(alert.updatedAt);
-			return isNaN(date.getTime()) ? 0 : date.getTime();
-		}
+		case 'startsAt':
+			return getAlertTimes(alert).startsAt;
+		case 'updatedAt':
+			return getAlertTimes(alert).updatedAt;
 		case 'type':
 			return getIntegrationLabel(resolveAlertIntegration(alert)).toLowerCase();
 		case 'owner':
@@ -325,19 +546,42 @@ export const DEFAULT_ALERT_SORT = 'startsAt';
 export const DEFAULT_ALERT_SORT_DIR: AlertSortDirection = 'desc';
 
 export const applyAlertListQuery = (alerts: Alert[], users: AlertOwnerInfo[], query: AlertListQuery): AlertListPage => {
-	let result = alerts;
-	result = applyTimeWindow(result, { from: query.from ?? null, to: query.to ?? null });
-	if (query.filters && Object.keys(query.filters).length > 0) {
-		const filters = query.filters;
-		result = result.filter((alert) => alertMatchesFilters(alert, filters, users));
-	}
-	if (query.search) {
-		result = searchAlerts(result, query.search);
-	}
-
 	const sortField = query.sort ?? DEFAULT_ALERT_SORT;
 	const dir = query.dir ?? DEFAULT_ALERT_SORT_DIR;
-	result = sortAlertsBy(result, sortField, dir, users);
+	// Sorted first, from the per-array memo; the window, filters and search below keep
+	// that order and run over the sorted array's columns in one pass.
+	const sorted = sortedOrder(alerts, sortField, dir, users);
+	const from = query.from ? new Date(query.from).getTime() : null;
+	const to = query.to ? new Date(query.to).getTime() : null;
+	const hasWindow = from !== null || to !== null;
+	const windowStart = from ?? 0;
+	const windowEnd = to ?? Date.now();
+	const resolved = query.filters ? resolveFilters(sorted, query.filters, users) : [];
+	const search = query.search?.trim().toLowerCase() ?? '';
+	const searchTexts = search ? searchTextColumn(sorted) : null;
+	let result = sorted;
+	if (hasWindow || resolved.length > 0 || searchTexts) {
+		result = sorted.filter((alert, i) => {
+			if (hasWindow) {
+				const times = getAlertTimes(alert);
+				if (!(times.startsAt <= windowEnd && times.updatedAt >= windowStart)) return false;
+			}
+			if (resolved.length > 0 && !passesResolved(resolved, i)) return false;
+			return !searchTexts || searchTexts[i].includes(search);
+		});
+	}
+	if (hasWindow) {
+		// A window also rewrites startsAt to the episode that fired inside it (see
+		// applyTimeWindow). Only re-fired alerts move; when any did and the order depends
+		// on startsAt, the (near-sorted) result is sorted again.
+		let moved = false;
+		result = result.map((alert) => {
+			const shown = episodeInWindow(alert, windowEnd);
+			if (shown !== alert) moved = true;
+			return shown;
+		});
+		if (moved && sortField === 'startsAt') result = sortAlertsBy(result, sortField, dir, users);
+	}
 
 	const total = result.length;
 	if (query.limit === undefined) {
@@ -433,39 +677,31 @@ export const computeAlertFacets = (
 	fields: string[] | undefined,
 	users: AlertOwnerInfo[]
 ): AlertFacetsResult => {
-	const tagKeys = collectAlertTagKeys(alerts);
+	let tagKeys = tagKeyInfos.get(alerts);
+	if (!tagKeys) {
+		tagKeys = collectAlertTagKeys(alerts);
+		tagKeyInfos.set(alerts, tagKeys);
+	}
 	const facetFields = fields ?? [...BASE_ALERT_FACET_FIELDS, ...tagKeys.map((tk) => getTagKeyColumnId(tk.key))];
-	const passesOtherFilters = (alert: Alert, exceptField: string): boolean => {
-		for (const [key, values] of Object.entries(filters)) {
-			if (values.length === 0) continue;
-			const isExclusion = key.startsWith('!');
-			const field = isExclusion ? key.slice(1) : key;
-			if (field === exceptField) continue;
-			const fieldValue = getAlertFilterFieldValue(alert, field, users);
-			if (fieldValue === null) continue;
-			if (isExclusion ? values.includes(fieldValue) : !values.includes(fieldValue)) {
-				return false;
-			}
-		}
-		return true;
-	};
+	const resolved = resolveFilters(alerts, filters, users);
 
+	const columns = fieldColumns(alerts, facetFields, users);
 	const facets: Record<string, Record<string, number>> = {};
-	for (const field of facetFields) {
+	facetFields.forEach((field, f) => {
+		const column = columns[f];
 		const counts: Record<string, number> = {};
-		for (const alert of alerts) {
-			if (!passesOtherFilters(alert, field)) continue;
-			const value = getAlertFilterFieldValue(alert, field, users);
+		for (let i = 0; i < column.length; i++) {
+			const value = column[i];
 			if (value === null || value === '') continue;
+			// The sidebar describes what each filter WOULD show, so a field's own
+			// filter is skipped when counting that field.
+			if (resolved.length > 0 && !passesResolved(resolved, i, column)) continue;
 			counts[value] = (counts[value] ?? 0) + 1;
 		}
 		facets[field] = counts;
-	}
+	});
 
-	return {
-		facets,
-		total: alerts.length,
-		silencedTotal: alerts.filter((a) => a.isSilenced).length,
-		tagKeys,
-	};
+	let silencedTotal = 0;
+	for (const alert of alerts) if (alert.isSilenced) silencedTotal++;
+	return { facets, total: alerts.length, silencedTotal, tagKeys };
 };
