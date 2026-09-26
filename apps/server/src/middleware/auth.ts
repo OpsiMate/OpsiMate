@@ -42,7 +42,11 @@ export function requireAdmin(req: AuthenticatedRequest, res: Response, next: Nex
 }
 
 function authenticateApiToken(apiToken: string, res: Response, next: NextFunction) {
-	if (apiToken !== getSecurityConfig().api_token) {
+	const configuredToken = getSecurityConfig().api_token;
+
+	// No token configured means API-token auth is off, not "accept anything" -
+	// an empty configured value must never match a supplied one.
+	if (!configuredToken || apiToken !== configuredToken) {
 		return res.status(401).json({ success: false, error: 'Invalid API token' });
 	}
 
