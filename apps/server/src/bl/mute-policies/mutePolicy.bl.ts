@@ -159,10 +159,26 @@ export class MutePolicyBL {
 			return { key: 'mute:unavailable', apply: (alert) => alert };
 		}
 		if (active.length === 0) return { key: 'mute:none', apply: (alert) => alert };
+		// Fail open per alert, logged once per rule set — see EnrichmentBL.prepareEnricher.
+		let reported = false;
 		return {
 			key: `mute:${JSON.stringify(active)}`,
-			apply: (alert) =>
-				active.some((s) => MutePolicyBL.mutePolicyMatchesAlert(s, alert)) ? { ...alert, isMuted: true } : alert,
+			apply: (alert) => {
+				try {
+					return active.some((s) => MutePolicyBL.mutePolicyMatchesAlert(s, alert))
+						? { ...alert, isMuted: true }
+						: alert;
+				} catch (err) {
+					if (!reported) {
+						reported = true;
+						logger.error(
+							`Failed to apply mute policies (first failure: alert ${alert.id}), leaving such alerts unchanged`,
+							err
+						);
+					}
+					return alert;
+				}
+			},
 		};
 	}
 }

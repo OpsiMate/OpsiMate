@@ -215,20 +215,35 @@ export class EnrichmentBL {
 			return { key: 'enrichments:unavailable', apply: (alert) => alert };
 		}
 		if (enrichments.length === 0) return { key: 'enrichments:none', apply: (alert) => alert };
+		// Fail open per alert: a rule that throws (a bad template, say) leaves THAT alert
+		// undecorated and the list still served, as applyEnrichments always did. Logged
+		// once per rule set rather than once per alert, since a storm would repeat it.
+		let reported = false;
 		return {
 			key: `enrichments:${JSON.stringify(enrichments)}`,
 			apply: (alert) => {
-				let enriched = alert;
-				const claimedKeys = new Set<string>();
-				const applied: AppliedEnrichment[] = [];
-				for (const enrichment of enrichments) {
-					if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
-						enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
-						applied.push({ id: enrichment.id, name: enrichment.name });
+				try {
+					let enriched = alert;
+					const claimedKeys = new Set<string>();
+					const applied: AppliedEnrichment[] = [];
+					for (const enrichment of enrichments) {
+						if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
+							enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
+							applied.push({ id: enrichment.id, name: enrichment.name });
+						}
 					}
+					// Expose which rules decorated this alert so the UI can show it was enriched.
+					return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
+				} catch (err) {
+					if (!reported) {
+						reported = true;
+						logger.error(
+							`Failed to apply alert enrichments (first failure: alert ${alert.id}), leaving such alerts unchanged`,
+							err
+						);
+					}
+					return alert;
 				}
-				// Expose which rules decorated this alert so the UI can show it was enriched.
-				return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
 			},
 		};
 	}

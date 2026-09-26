@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { beforeAll, describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { AlertBL } from '../src/bl/alerts/alert.bl';
 import { EnrichmentBL } from '../src/bl/enrichments/enrichment.bl';
 import { AuditBL } from '../src/bl/audit/audit.bl';
@@ -146,5 +146,23 @@ describe('active list reuses unchanged alerts between rebuilds', () => {
 		const third = await bl.getAlertsSnapshot();
 		expect(third.etag).not.toBe(first.etag);
 		expect(JSON.parse(third.json)).toEqual(third.value);
+	});
+	test('a rule that throws for one alert leaves that alert unchanged and the list still served', async () => {
+		const original = EnrichmentBL.enrichmentMatchesAlert;
+		const spy = vi.spyOn(EnrichmentBL, 'enrichmentMatchesAlert').mockImplementation((enrichment, target) => {
+			if (target.id === 'b') throw new Error('broken matcher');
+			return original(enrichment, target);
+		});
+		try {
+			// Only re-derived alerts run the rules; a webhook for b forces that for b alone.
+			await bl.insertOrUpdateAlert(alert('b', { tags: { env: 'prod', refired: 'yes' } }));
+			const after = await listing();
+			expect(after.b.tags.refired).toBe('yes');
+			expect(after.b.tags.enriched).toBeUndefined();
+			expect(after.a.tags.enriched).toBe('yes');
+			expect(after.c.tags.enriched).toBe('yes');
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });
