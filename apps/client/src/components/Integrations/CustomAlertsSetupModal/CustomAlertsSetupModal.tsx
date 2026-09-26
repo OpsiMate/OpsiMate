@@ -24,6 +24,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 
 	const examplePayload = `{
   "id": "unique-alert-id",
+  "status": "firing",
   "tags": { "environment": "production", "team": "backend" },
   "alertName": "High CPU Usage Alert",
   "summary": "CPU usage exceeded 90% threshold",
@@ -124,7 +125,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 								</p>
 							</div>
 							<div className="relative">
-								<pre className="bg-muted p-4 rounded-lg text-sm font-mono overflow-x-auto border">
+								<pre className="bg-muted p-4 rounded-lg text-sm font-mono border whitespace-pre-wrap break-all">
 									{examplePayload}
 								</pre>
 								<Button
@@ -168,6 +169,18 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											</td>
 											<td className="p-3 text-muted-foreground">
 												Unique identifier for the alert
+											</td>
+										</tr>
+										<tr>
+											<td className="p-3 font-mono text-xs">status</td>
+											<td className="p-3">
+												<span className="text-muted-foreground">No</span>
+											</td>
+											<td className="p-3 text-muted-foreground">
+												<code className="bg-muted px-1 py-0.5 rounded">firing</code> (default)
+												or <code className="bg-muted px-1 py-0.5 rounded">resolved</code>. Send{' '}
+												<code className="bg-muted px-1 py-0.5 rounded">resolved</code> with the
+												same id to resolve the alert — see the Resolve tab.
 											</td>
 										</tr>
 										<tr>
@@ -279,6 +292,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
   -H "Content-Type: application/json" \\
   -d '{
     "id": "alert-123",
+    "status": "firing",
     "alertName": "High CPU Usage",
     "tags": {"env": "prod"},
     "links": [{"label": "Dashboard", "icon": "grafana", "url": "https://monitoring.example.com/alert/123"}]
@@ -288,19 +302,24 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 					</TabsContent>
 
 					<TabsContent value="resolve" className="space-y-6">
-						{/* Resolve Alert Endpoint */}
+						{/* Resolve by webhook */}
 						<div className="space-y-3">
 							<div>
-								<h3 className="text-lg font-semibold mb-2 text-foreground">1. Resolve Endpoint</h3>
+								<h3 className="text-lg font-semibold mb-2 text-foreground">
+									1. Resolve With the Webhook
+								</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Send a DELETE request to resolve an active alert. The alert will be moved to the
-									resolved alerts table.
+									POST the alert again to the webhook endpoint with{' '}
+									<code className="bg-muted px-1 py-0.5 rounded">{'"status": "resolved"'}</code> and
+									the same <code className="bg-muted px-1 py-0.5 rounded">id</code>. The alert moves
+									to the resolved list; the other fields are ignored on a resolve. Sending it again
+									for an alert that is already resolved is harmless, so retries are safe.
 								</p>
 							</div>
 							<div className="flex gap-2">
-								<Input value={resolveUrl} readOnly className="font-mono text-sm" />
+								<Input value={webhookUrl} readOnly className="font-mono text-sm" />
 								<Button
-									onClick={() => handleCopy(resolveUrl, 'resolve')}
+									onClick={() => handleCopy(webhookUrl, 'resolve')}
 									variant="outline"
 									className="gap-2"
 								>
@@ -317,19 +336,11 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 									)}
 								</Button>
 							</div>
-							<div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mt-2">
-								<p className="text-sm text-amber-900 dark:text-amber-100">
-									<strong>Important:</strong> Replace{' '}
-									<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
-										{'{alertId}'}
-									</code>{' '}
-									with the actual alert ID and{' '}
-									<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
-										{'{your_api_token}'}
-									</code>{' '}
-									with your API token.
-								</p>
-							</div>
+							<pre className="bg-muted p-4 rounded-lg text-xs font-mono border whitespace-pre-wrap break-all">
+								{`curl -X POST "${API_HOST}/api/v1/alerts/custom?api_token=YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "id": "alert-123", "alertName": "High CPU Usage", "tags": {}, "status": "resolved" }'`}
+							</pre>
 						</div>
 
 						{/* What happens when resolved */}
@@ -340,15 +351,32 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 									<li>Alert is removed from the active alerts list</li>
 									<li>Alert is moved to the resolved alerts table</li>
 									<li>Alert data is preserved and can be viewed in the Resolved tab</li>
+									<li>A later firing POST with the same id re-activates it as a new episode</li>
 									<li>Resolved alerts can be permanently deleted later</li>
 								</ul>
 							</div>
 						</div>
 
-						{/* Example cURL */}
+						{/* Deprecated DELETE endpoint */}
 						<div className="space-y-3">
-							<h3 className="text-lg font-semibold text-foreground">3. Example cURL Request</h3>
-							<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto border">
+							<h3 className="text-lg font-semibold text-foreground">3. DELETE Endpoint (Deprecated)</h3>
+							<div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+								<p className="text-sm text-amber-900 dark:text-amber-100">
+									<strong>Deprecated:</strong> resolving with a DELETE request still works and nothing
+									changes for existing senders, but new integrations should POST with{' '}
+									<code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
+										{'"status": "resolved"'}
+									</code>{' '}
+									instead. The DELETE route will be removed in a future release.
+								</p>
+							</div>
+							<p className="text-sm text-muted-foreground">
+								Replace <code className="bg-muted px-1 py-0.5 rounded">{'{alertId}'}</code> with the
+								alert ID and <code className="bg-muted px-1 py-0.5 rounded">{'{your_api_token}'}</code>{' '}
+								with your API token.
+							</p>
+							<Input value={resolveUrl} readOnly className="font-mono text-sm" />
+							<pre className="bg-muted p-4 rounded-lg text-xs font-mono border whitespace-pre-wrap break-all">
 								{`curl -X DELETE "${API_HOST}/api/v1/alerts/alert-123?api_token=YOUR_TOKEN"`}
 							</pre>
 						</div>
@@ -427,7 +455,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 						{/* Example cURL */}
 						<div className="space-y-3">
 							<h3 className="text-lg font-semibold text-foreground">3. Example cURL Request</h3>
-							<pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto border">
+							<pre className="bg-muted p-4 rounded-lg text-xs font-mono border whitespace-pre-wrap break-all">
 								{`curl -X DELETE "${API_HOST}/api/v1/alerts/resolved/alert-123?api_token=YOUR_TOKEN"`}
 							</pre>
 						</div>

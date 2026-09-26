@@ -63,8 +63,17 @@ export const AlertLinkSchema = z.object({
 	url: z.string().url(),
 });
 
+// A custom-webhook status is lenient on purpose: senders have always been free to put
+// whatever they like here (it used to be ignored), so only "resolved" (any casing)
+// means anything; everything else — "firing", "active", absent — is a firing alert.
+export const isResolvedWebhookStatus = (status: string | undefined): boolean =>
+	status !== undefined && status.trim().toLowerCase() === 'resolved';
+
 export const HttpAlertWebhookSchema = z.object({
 	id: z.string(),
+	// "resolved" resolves the alert with this id (the POST equivalent of the manual
+	// DELETE /alerts/:id); anything else, or absent, fires it. See isResolvedWebhookStatus.
+	status: z.string().max(50).optional(),
 	tags: z.record(z.string(), z.string()),
 	startsAt: isoDateString.optional(),
 	updatedAt: isoDateString.optional(),

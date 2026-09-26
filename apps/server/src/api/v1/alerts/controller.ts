@@ -18,6 +18,7 @@ import {
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
 	HttpAlertWebhookSchema,
+	isResolvedWebhookStatus,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
@@ -702,6 +703,17 @@ export class AlertController {
 		try {
 			const alert = HttpAlertWebhookSchema.parse(req.body);
 
+			// A resolved status resolves the alert instead of firing it — the same
+			// source-driven resolve (no acting user) the Grafana webhook performs. Nothing
+			// to resolve (unknown id, already resolved) is not an error for a webhook:
+			// the sender's retry must be idempotent.
+			if (isResolvedWebhookStatus(alert.status)) {
+				const resolved = await this.alertBL.resolveAlert(alert.id);
+				return res
+					.status(200)
+					.json({ success: true, data: { alertId: alert.id, status: 'resolved', resolved } });
+			}
+
 			await this.alertBL.insertOrUpdateAlert({
 				id: alert.id,
 				type: 'Custom',
@@ -719,7 +731,7 @@ export class AlertController {
 				runbookUrl: alert.runbookUrl,
 				links: alert.links,
 			});
-			return res.status(200).json({ success: true, data: { alertId: alert.id } });
+			return res.status(200).json({ success: true, data: { alertId: alert.id, status: 'firing' } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
