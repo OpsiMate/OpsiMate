@@ -23,6 +23,9 @@
 		"check": "npm run format && npm run lint",
 		"fix": "npm run format-fix && npm run lint-fix"
 	},
+	"lint-staged": {
+		"*": "prettier --write --ignore-unknown"
+	},
 	"dependencies": {
 		"@OpsiMate/custom-actions": "workspace:*",
 		"@OpsiMate/shared": "workspace:*",

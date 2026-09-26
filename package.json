@@ -20,9 +20,12 @@
     "format": "turbo run format",
     "format-fix": "turbo run format-fix",
     "check": "turbo run check",
-    "fix": "turbo run fix"
+    "fix": "turbo run fix",
+    "prepare": "husky || exit 0"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.9.7",
     "turbo": "^2.10.13"
   },
