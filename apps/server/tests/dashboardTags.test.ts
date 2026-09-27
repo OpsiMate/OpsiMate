@@ -2,6 +2,10 @@ import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
+interface DashboardTagGroup {
+	dashboardId: number;
+}
+
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
@@ -113,9 +117,9 @@ describe('Dashboard Tags API', () => {
 		const response = await app.get('/api/v1/dashboards/tags').set(authorized());
 
 		expect(response.status).toBe(200);
-		const dashboard = response.body.data.find((item: { dashboardId: number }) => item.dashboardId === dashboardId);
+		const dashboard = response.body.data.find((item: DashboardTagGroup) => item.dashboardId === dashboardId);
 		const secondDashboardGroup = response.body.data.find(
-			(item: { dashboardId: number }) => item.dashboardId === secondDashboardId
+			(item: DashboardTagGroup) => item.dashboardId === secondDashboardId
 		);
 		expect(dashboard.tags).toHaveLength(1);
 		expect(dashboard.tags[0]).toEqual(
