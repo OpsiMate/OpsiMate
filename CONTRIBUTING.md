@@ -4,8 +4,8 @@ Learn how to set up and run the OpsiMate project locally for development.
 
 ## Prerequisites
 
-- **Node.js** (v18 or higher)
-- **npm** (v8 or higher)
+- **Node.js** (v22 or higher — the pre-commit hook needs 22.22.1+; CI runs 24, the Docker images 26)
+- **pnpm** (the repo is a pnpm workspace; enable it with `corepack enable`)
 - **Git**
 
 ## Development Setup
