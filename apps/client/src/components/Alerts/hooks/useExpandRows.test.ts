@@ -19,7 +19,7 @@ describe('useExpandRows', () => {
 			const { result } = renderHook(() => useExpandRows());
 
 			expect(result.current.expandRows).toBe(false);
-		});
+		}
 
 		localStorage.setItem(STORAGE_KEY, 'true');
 		const { result } = renderHook(() => useExpandRows());
