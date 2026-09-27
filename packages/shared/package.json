@@ -29,10 +29,10 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@types/node": "^26.6.1",
-		"eslint": "^10.10.0",
+		"@types/node": "^26.6.2",
+		"eslint": "^10.11.0",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.0",
-		"vite-plugin-dts": "^5.1.0"
+		"vite-plugin-dts": "^5.1.1"
 	}
 }
