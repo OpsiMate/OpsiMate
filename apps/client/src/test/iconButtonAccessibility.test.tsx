@@ -2,10 +2,17 @@ import { AlertComment } from '@OpsiMate/shared';
 import { describe, expect, test, vi } from 'vitest';
 import { CommentItem } from '@/components/Alerts/AlertDetails/CommentsWall/CommentItem';
 import { AlertDetailsHeader } from '@/components/Alerts/AlertDetails/AlertDetailsHeader';
+import { GroupByControls } from '@/components/Alerts/AlertsTable/GroupByControls';
+import { ColumnSettingsDropdown } from '@/components/Alerts/AlertsTable/ColumnSettingsDropdown/ColumnSettingsDropdown';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { DashboardsFilter } from '@/components/Dashboards/DashboardsFilter/DashboardsFilter';
 import { DashboardRow } from '@/components/Dashboards/DashboardRow';
 import { DashboardWithFavorite } from '@/components/Dashboards/Dashboards.types';
 import { LeftSidebar } from '@/components/LeftSidebar';
-import { render, screen } from './test-utils';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { integrationApi } from '@/lib/api';
+import Integrations from '@/pages/Integrations';
+import { act, fireEvent, render, screen } from './test-utils';
 
 const comment: AlertComment = {
 	id: 'comment-1',
@@ -48,6 +55,70 @@ describe('sidebar community links', () => {
 });
 
 describe('icon-only button accessible names', () => {
+	test('updates the sidebar toggle name when its state changes', () => {
+		localStorage.removeItem('sidebarCollapsed');
+		render(
+			<DashboardLayout>
+				<div />
+			</DashboardLayout>
+		);
+
+		const collapseButton = screen.getByRole('button', { name: 'Collapse sidebar' });
+		fireEvent.click(collapseButton);
+
+		const expandButton = screen.getByRole('button', { name: 'Expand sidebar' });
+		fireEvent.click(expandButton);
+
+		expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+	});
+
+	test('names the alert grouping control by its action', () => {
+		render(<GroupByControls groupByColumns={[]} onGroupByChange={vi.fn()} availableColumns={['status']} />);
+
+		expect(screen.getByRole('button', { name: 'Configure alert grouping' })).toBeInTheDocument();
+	});
+
+	test('names the column settings control', () => {
+		render(
+			<TooltipProvider>
+				<ColumnSettingsDropdown visibleColumns={[]} onColumnToggle={vi.fn()} columnLabels={{ name: 'Name' }} />
+			</TooltipProvider>
+		);
+
+		expect(screen.getByRole('button', { name: 'Toggle columns' })).toBeInTheDocument();
+	});
+
+	test('names and clears the dashboard search filter', () => {
+		const onSearchChange = vi.fn();
+		render(
+			<DashboardsFilter
+				searchTerm="production"
+				onSearchChange={onSearchChange}
+				availableTags={[]}
+				selectedTagIds={[]}
+				onTagToggle={vi.fn()}
+				onClearTagFilters={vi.fn()}
+				onCreateDashboard={vi.fn()}
+			/>
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
+
+		expect(onSearchChange).toHaveBeenCalledWith('');
+	});
+
+	test('names the documentation action with its integration', async () => {
+		vi.spyOn(integrationApi, 'getIntegrations').mockResolvedValue({
+			success: false,
+			error: 'Not needed for this accessibility test',
+		});
+		await act(async () => {
+			render(<Integrations />);
+		});
+
+		expect(screen.getByRole('button', { name: 'Open Google Cloud Platform documentation' })).toBeInTheDocument();
+	});
+
 	test('names the edit and delete actions on an own comment', () => {
 		render(
 			<CommentItem
