@@ -109,6 +109,16 @@ export const HttpAlertWebhookSchema = z.object({
 });
 
 export type HttpAlertWebhook = z.infer<typeof HttpAlertWebhookSchema>;
+// A custom-webhook alert without its times — what both the firing and the resolve paths
+// map from; the times are handled per path.
+export type HttpAlertWebhookFields = Omit<HttpAlertWebhook, 'startsAt' | 'endsAt'>;
+
+// The start and end of a resolve as sent, unvalidated: on the resolve path a bad time is
+// treated as absent rather than rejecting the whole episode.
+export const HttpAlertWebhookTimesSchema = z.object({
+	startsAt: z.string().optional().catch(undefined),
+	endsAt: z.string().optional().catch(undefined),
+});
 
 // Optional body of the manual-resolve request (DELETE /alerts/:alertId).
 export const ResolveAlertBodySchema = z.object({

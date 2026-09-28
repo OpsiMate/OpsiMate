@@ -813,7 +813,7 @@ export class AlertBL {
 		// the history then ends on 'resolved' — see insertResolvedOnlyEpisode.
 		const resolvedAt = new Date(resolvedMs).toISOString();
 		const startsAt = !isNaN(startMs) && startMs <= resolvedMs ? new Date(startMs).toISOString() : resolvedAt;
-		this.resolvedAlertRepo.insertResolvedOnlyEpisode(
+		const outcome = this.resolvedAlertRepo.insertResolvedOnlyEpisode(
 			{
 				...this.normalizeIncoming(episode.alert),
 				startsAt,
@@ -824,6 +824,9 @@ export class AlertBL {
 			startsAt,
 			resolvedAt
 		);
+		// A firing committed between the check above and the insert: resolve it normally.
+		if (outcome === 'active') return { resolved: await this.resolveAlert(alertId), created: false };
+		if (outcome === 'exists') return { resolved: false, created: false };
 		this.invalidateSnapshots();
 		alertsResolvedTotal.inc({ mode: 'resolve_only' });
 		logger.info(`Recorded resolve-only episode for ${alertId} (${startsAt} → ${resolvedAt})`);

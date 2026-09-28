@@ -159,6 +159,45 @@ describe('resolve with no firing alert (custom webhook)', () => {
 		expect((await resolved()).map((a) => a.id)).not.toContain('ro-new');
 	});
 
+	test('an unparseable endsAt does not discard the episode — it resolves now', async () => {
+		const res = await custom({
+			id: 'ro-badend',
+			alertName: 'bad end',
+			tags: {},
+			status: 'resolved',
+			endsAt: 'soon-ish',
+		});
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({ created: true });
+		const history = await statusHistory('ro-badend');
+		expect(history.map((e) => e.status)).toEqual(['resolved', 'firing']);
+		expect(Math.abs(new Date(history[0].date).getTime() - Date.now())).toBeLessThan(5_000);
+	});
+
+	test('two concurrent resolves for the same unknown id create exactly one episode, without errors', async () => {
+		const body = { id: 'ro-race', alertName: 'race', tags: {}, status: 'resolved' };
+		const [a, b] = await Promise.all([custom(body), custom(body)]);
+		expect([a.status, b.status]).toEqual([200, 200]);
+		expect([a.body.data.created, b.body.data.created].filter(Boolean)).toHaveLength(1);
+		expect(historyRows('ro-race')).toBe(2);
+	});
+
+	test('a resolve delivered late (old endsAt) still blocks the retried firing of its episode', async () => {
+		const start = new Date(Date.now() - 60 * 60_000).toISOString(); // an hour ago
+		const end = new Date(Date.now() - 30 * 60_000).toISOString(); // ended 30 min ago — past the window
+		await custom({
+			id: 'ro-lateresolve',
+			alertName: 'late resolve',
+			tags: {},
+			status: 'resolved',
+			startsAt: start,
+			endsAt: end,
+		});
+		await custom({ id: 'ro-lateresolve', alertName: 'late resolve', tags: {}, startsAt: start });
+		expect((await active()).map((a) => a.id)).not.toContain('ro-lateresolve');
+		expect((await statusHistory('ro-lateresolve'))[0].status).toBe('resolved');
+	});
+
 	test('a normal resolve of a firing alert is unchanged', async () => {
 		await custom({ id: 'ro-normal', alertName: 'normal', tags: {} });
 		const res = await custom({ id: 'ro-normal', alertName: 'normal', tags: {}, status: 'resolved' });

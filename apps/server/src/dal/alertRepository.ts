@@ -32,6 +32,7 @@ export const LATE_FIRING_WINDOW_MS = 15 * 60 * 1000;
 interface ResolvedCopyRow {
 	archived_at: string | null;
 	updated_at: string;
+	created_at: string | null;
 	resolved_without_firing: number | null;
 }
 
@@ -108,7 +109,7 @@ export class AlertRepository {
 										  is_read=0
 		`);
 		const resolvedCopy = this.db.prepare(
-			`SELECT archived_at, updated_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
+			`SELECT archived_at, updated_at, created_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
 		);
 		const deleteResolved = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
 		this.ingestStatements = { upsert, resolvedCopy, deleteResolved };
@@ -134,14 +135,19 @@ export class AlertRepository {
 		// would leave it firing forever, because the source already sent its resolve.
 		// Bounded in time so a genuine re-fire that replays the original start much
 		// later is still treated as a new episode below.
+		// The window runs from when OpsiMate recorded the resolve (created_at), not from the
+		// source's end time: a resolve delivered late carries an old end time, and its
+		// retried firing would otherwise reopen the alert.
 		if (resolved?.resolved_without_firing) {
 			const resolvedMs = new Date(toIsoUtc(resolved.archived_at ?? resolved.updated_at)).getTime();
+			const recordedMs = new Date(toIsoUtc(resolved.created_at ?? resolved.updated_at)).getTime();
 			const claimedMs = new Date(startsAt).getTime();
 			if (
 				!isNaN(resolvedMs) &&
+				!isNaN(recordedMs) &&
 				!isNaN(claimedMs) &&
 				claimedMs <= resolvedMs &&
-				Date.now() - resolvedMs <= LATE_FIRING_WINDOW_MS
+				Date.now() - recordedMs <= LATE_FIRING_WINDOW_MS
 			) {
 				return { changes: 0 };
 			}

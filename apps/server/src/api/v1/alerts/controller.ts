@@ -17,8 +17,9 @@ import {
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
-	HttpAlertWebhook,
+	HttpAlertWebhookFields,
 	HttpAlertWebhookHeadSchema,
+	HttpAlertWebhookTimesSchema,
 	HttpAlertWebhookSchema,
 	isResolvedWebhookStatus,
 	SetAlertOwnerSchema,
@@ -615,7 +616,7 @@ export class AlertController {
 	// A custom-webhook payload as the alert it describes. startsAt is the caller's: the
 	// firing path defaults it to now, the resolve-only path keeps it absent ('') so the
 	// episode collapses onto the resolve moment.
-	private static customToIncoming(alert: HttpAlertWebhook, startsAt: string): IncomingAlert {
+	private static customToIncoming(alert: HttpAlertWebhookFields, startsAt: string): IncomingAlert {
 		return {
 			id: alert.id,
 			type: 'Custom',
@@ -743,13 +744,16 @@ export class AlertController {
 			if (isResolvedWebhookStatus(head.status)) {
 				// A full payload lets us record the episode even when the firing never
 				// arrived (see AlertBL.resolveFromSource); an id-only resolve cannot.
-				const full = HttpAlertWebhookSchema.safeParse(req.body);
+				// The times are read raw: an unparseable startsAt/endsAt must not throw away
+				// the episode — resolveFromSource treats it as absent (start = end, end = now).
+				const full = HttpAlertWebhookSchema.omit({ startsAt: true, endsAt: true }).safeParse(req.body);
+				const times = HttpAlertWebhookTimesSchema.parse(req.body);
 				const { resolved, created } = await this.alertBL.resolveFromSource(
 					head.id,
 					full.success
 						? {
-								alert: AlertController.customToIncoming(full.data, full.data.startsAt ?? ''),
-								endsAt: full.data.endsAt,
+								alert: AlertController.customToIncoming(full.data, times.startsAt ?? ''),
+								endsAt: times.endsAt,
 							}
 						: undefined
 				);

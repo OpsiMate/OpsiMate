@@ -11,6 +11,10 @@ export interface HistoryStatusRow {
 	archived_at: string;
 }
 
+// What insertResolvedOnlyEpisode found: it recorded the episode, the alert is firing
+// after all, or a resolved record already exists.
+export type ResolveOnlyOutcome = 'created' | 'active' | 'exists';
+
 export class ResolvedAlertRepository {
 	private db: Database.Database;
 
@@ -239,7 +243,15 @@ export class ResolvedAlertRepository {
 	// startsAt <= resolvedAt is the caller's contract. When they are equal (the source
 	// sent no start time) the 'resolved' row is written second, so it has the higher
 	// history_id and wins every tie: it is the alert's last status.
-	insertResolvedOnlyEpisode(alert: SharedAlert, startsAt: string, resolvedAt: string): void {
+	//
+	// The existence checks run inside the same write-locked transaction as the insert, so
+	// two concurrent retries cannot both create it, and a firing committed a moment ago
+	// is reported back ('active') instead of ending up in both tables.
+	// created_at is the moment OpsiMate recorded the episode (not the source's end time):
+	// the ingest path measures its late-firing window from it.
+	insertResolvedOnlyEpisode(alert: SharedAlert, startsAt: string, resolvedAt: string): ResolveOnlyOutcome {
+		const isActive = this.db.prepare(`SELECT 1 FROM alerts WHERE id = ?`);
+		const isResolved = this.db.prepare(`SELECT 1 FROM alerts_resolved WHERE id = ?`);
 		const insertFiring = this.db.prepare(
 			`INSERT INTO alerts_history (alert_id, status, archived_at) VALUES (?, 'firing', ?)`
 		);
@@ -255,8 +267,11 @@ export class ResolvedAlertRepository {
 				SELECT MAX(history_id) FROM alerts_history WHERE alert_id = ? AND status = 'resolved'
 			)
 		`);
-		this.db
-			.transaction(() => {
+		const recordedAt = new Date().toISOString();
+		return this.db
+			.transaction((): ResolveOnlyOutcome => {
+				if (isActive.get(alert.id)) return 'active';
+				if (isResolved.get(alert.id)) return 'exists';
 				insertFiring.run(alert.id, startsAt);
 				insertResolved.run(
 					alert.id,
@@ -272,10 +287,11 @@ export class ResolvedAlertRepository {
 					alert.summary || null,
 					alert.runbookUrl || null,
 					alert.links?.length ? JSON.stringify(alert.links) : null,
-					resolvedAt,
+					recordedAt,
 					resolvedAt
 				);
 				restampResolved.run(resolvedAt, alert.id);
+				return 'created';
 			})
 			.immediate();
 	}
