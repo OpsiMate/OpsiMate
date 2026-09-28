@@ -1145,15 +1145,12 @@ export class AlertBL {
 			}
 		}
 
-		// Newest first. On an exact tie (a resolve-only episode without a start time) the
-		// resolve is the later status, so it must come first — it is the alert's state.
-		const statusRank = (entry: AlertHistoryData): number =>
-			entry.eventType === AlertHistoryEventType.STATUS_CHANGED
-				? entry.status === AlertStatus.FIRING
-					? 0
-					: 1
-				: 0.5;
-		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || statusRank(b) - statusRank(a));
+		// Newest first. Exact ties keep the order the entries arrive in: status rows come
+		// from the repository newest-written first (history_id DESC), so two transitions in
+		// the same millisecond stay in the order they happened, whichever way round — and a
+		// resolve-only episode without a start time ends on 'resolved' (written second).
+		// Array.prototype.sort is stable.
+		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 		return { alertId, data };
 	}

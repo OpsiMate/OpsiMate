@@ -365,7 +365,7 @@ export class ResolvedAlertRepository {
 	async getAllHistoryRows(): Promise<HistoryStatusRow[]> {
 		return runAsync(() => {
 			return this.db
-				.prepare(`SELECT alert_id, status, archived_at FROM alerts_history`)
+				.prepare(`SELECT alert_id, status, archived_at FROM alerts_history ORDER BY history_id`)
 				.all() as HistoryStatusRow[];
 		});
 	}

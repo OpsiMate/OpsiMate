@@ -32,6 +32,8 @@ export interface UserEventRow {
 }
 
 export interface AnalyticsInputs {
+	// In the order the rows were written (oldest first): rows at the same instant are
+	// taken in this order, so a same-millisecond resolve → re-fire is read correctly.
 	episodes: EpisodeRow[];
 	events: UserEventRow[];
 	activeAlerts: Alert[];
@@ -151,11 +153,10 @@ const buildEpisodes = (rows: EpisodeRow[], events: UserEventRow[]): Episode[] =>
 		const timeline = alertRows
 			.map((row) => ({ status: row.status, ms: Date.parse(row.at) }))
 			.filter((row) => !Number.isNaN(row.ms))
-			.sort(
-				// Same instant (a resolve-only episode without a start time): the firing opens
-				// the episode before the resolve closes it, whatever order the rows came in.
-				(a, b) => a.ms - b.ms || (a.status === 'firing' ? 0 : 1) - (b.status === 'firing' ? 0 : 1)
-			);
+			// Stable: rows at the same instant keep the order they were written in (the
+			// server passes them in history_id order), so a same-millisecond resolve → re-fire
+			// stays two episodes and a resolve-only episode opens before it closes.
+			.sort((a, b) => a.ms - b.ms);
 		const alertEvents = (eventsByAlert.get(alertId) ?? []).sort((a, b) => a - b);
 
 		const alertEpisodes: Episode[] = [];

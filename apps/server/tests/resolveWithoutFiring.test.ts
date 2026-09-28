@@ -270,3 +270,42 @@ describe('history trigger upgrade on existing installs', () => {
 		expect(history[0].status).toBe('resolved');
 	});
 });
+
+describe('same-millisecond transitions keep the order they happened in', () => {
+	interface NameStat {
+		name: string;
+		episodes: number;
+		firingNow: number;
+	}
+	const T = '2026-09-22T09:00:00.000Z';
+	const addRows = (id: string, rows: [string, string][]) => {
+		const insert = db.prepare(`INSERT INTO alerts_history (alert_id, status, archived_at) VALUES (?, ?, ?)`);
+		for (const [status, at] of rows) insert.run(id, status, at);
+	};
+
+	test('history: resolve then re-fire in the same ms shows firing on top; fire then resolve shows resolved on top', async () => {
+		addRows('tie-rf', [
+			['firing', '2026-09-22T08:59:59.000Z'],
+			['resolved', T],
+			['firing', T],
+		]);
+		addRows('tie-fr', [
+			['firing', T],
+			['resolved', T],
+		]);
+		expect((await statusHistory('tie-rf')).map((e) => e.status)).toEqual(['firing', 'resolved', 'firing']);
+		expect((await statusHistory('tie-fr')).map((e) => e.status)).toEqual(['resolved', 'firing']);
+	});
+
+	test('Insights: a same-ms resolve → re-fire is two episodes, the second still firing', async () => {
+		// Give the rows a live alert so they show up by name.
+		await custom({ id: 'tie-live', alertName: 'Tie live', tags: {}, startsAt: '2026-09-22T08:59:59.000Z' });
+		addRows('tie-live', [
+			['resolved', T],
+			['firing', T],
+		]);
+		const res = await auth(app.get('/api/v1/alerts/analytics?tz=UTC&from=2026-09-22T00:00:00Z'));
+		const row = (res.body.data.byName as NameStat[]).find((r) => r.name === 'Tie live');
+		expect(row).toMatchObject({ episodes: 2, firingNow: 1 });
+	});
+});
