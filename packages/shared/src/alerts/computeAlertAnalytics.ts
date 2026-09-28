@@ -151,7 +151,11 @@ const buildEpisodes = (rows: EpisodeRow[], events: UserEventRow[]): Episode[] =>
 		const timeline = alertRows
 			.map((row) => ({ status: row.status, ms: Date.parse(row.at) }))
 			.filter((row) => !Number.isNaN(row.ms))
-			.sort((a, b) => a.ms - b.ms);
+			.sort(
+				// Same instant (a resolve-only episode without a start time): the firing opens
+				// the episode before the resolve closes it, whatever order the rows came in.
+				(a, b) => a.ms - b.ms || (a.status === 'firing' ? 0 : 1) - (b.status === 'firing' ? 0 : 1)
+			);
 		const alertEvents = (eventsByAlert.get(alertId) ?? []).sort((a, b) => a - b);
 
 		const alertEpisodes: Episode[] = [];

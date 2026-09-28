@@ -85,6 +85,9 @@ export const HttpAlertWebhookSchema = z.object({
 	tags: z.record(z.string(), z.string()),
 	startsAt: isoDateString.optional(),
 	updatedAt: isoDateString.optional(),
+	// When the source says the alert ended — read only with status "resolved", as the
+	// resolve moment of an episode OpsiMate never saw firing. Defaults to now.
+	endsAt: isoDateString.optional(),
 	// Deprecated in favor of `links` — still accepted; folds into the links UI as the
 	// "Source" entry when `links` is absent.
 	alertUrl: z.string().url().optional(),
@@ -104,6 +107,8 @@ export const HttpAlertWebhookSchema = z.object({
 	// Owning team; falls back to a `team` tag at ingestion, null when neither is present.
 	team: z.string().optional(),
 });
+
+export type HttpAlertWebhook = z.infer<typeof HttpAlertWebhookSchema>;
 
 // Optional body of the manual-resolve request (DELETE /alerts/:alertId).
 export const ResolveAlertBodySchema = z.object({

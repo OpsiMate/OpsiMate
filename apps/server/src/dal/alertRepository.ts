@@ -25,6 +25,16 @@ interface IngestStatements {
 // under load. json_each has no such limit and keeps NOT IN semantics intact.
 const idsParam = (ids: Iterable<string>): string => JSON.stringify(Array.from(ids));
 
+// How long after a resolve-only episode a firing with an earlier start is still taken
+// as that episode's late first half rather than a new episode (see upsertAlertRow).
+export const LATE_FIRING_WINDOW_MS = 15 * 60 * 1000;
+
+interface ResolvedCopyRow {
+	archived_at: string | null;
+	updated_at: string;
+	resolved_without_firing: number | null;
+}
+
 // A row and the alert object it was mapped to, kept between listings (see getAllAlerts).
 interface MappedRow {
 	row: AlertRow;
@@ -97,7 +107,9 @@ export class AlertRepository {
 										  -- the same visual weight as a brand-new alert.
 										  is_read=0
 		`);
-		const resolvedCopy = this.db.prepare(`SELECT archived_at, updated_at FROM alerts_resolved WHERE id = ?`);
+		const resolvedCopy = this.db.prepare(
+			`SELECT archived_at, updated_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
+		);
 		const deleteResolved = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
 		this.ingestStatements = { upsert, resolvedCopy, deleteResolved };
 		return this.ingestStatements;
@@ -115,7 +127,25 @@ export class AlertRepository {
 		// started before it last ended), stamp the observed re-fire moment instead.
 		// A claimed start AFTER the resolve is a genuine fresh start and is kept.
 		let startsAt = alert.startsAt;
-		const resolved = resolvedCopy.get(alert.id) as { archived_at: string | null; updated_at: string } | undefined;
+		const resolved = resolvedCopy.get(alert.id) as ResolvedCopyRow | undefined;
+		// The late firing of an episode we only heard the resolve of (the resolve arrived
+		// first — out-of-order delivery or a retried firing). Its start predates the
+		// resolve, so it belongs to the episode that already ended: reopening the alert
+		// would leave it firing forever, because the source already sent its resolve.
+		// Bounded in time so a genuine re-fire that replays the original start much
+		// later is still treated as a new episode below.
+		if (resolved?.resolved_without_firing) {
+			const resolvedMs = new Date(toIsoUtc(resolved.archived_at ?? resolved.updated_at)).getTime();
+			const claimedMs = new Date(startsAt).getTime();
+			if (
+				!isNaN(resolvedMs) &&
+				!isNaN(claimedMs) &&
+				claimedMs <= resolvedMs &&
+				Date.now() - resolvedMs <= LATE_FIRING_WINDOW_MS
+			) {
+				return { changes: 0 };
+			}
+		}
 		if (resolved) {
 			const resolveMoment = new Date(toIsoUtc(resolved.archived_at ?? resolved.updated_at)).getTime();
 			const claimed = new Date(startsAt).getTime();
