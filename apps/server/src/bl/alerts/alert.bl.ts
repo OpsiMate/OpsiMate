@@ -125,6 +125,23 @@ export interface AlertAnalyticsQuery {
 const listFingerprints = new WeakMap<Alert[], string>();
 const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
 
+// An alert as a webhook hands it in: severity still free-form (see normalizeIncoming).
+export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string };
+
+// What a webhook knows about an alert it reports as resolved (see resolveFromSource).
+export interface SourceResolvedEpisode {
+	alert: IncomingAlert;
+	// When the source says the alert ended; now when absent.
+	endsAt?: string;
+}
+
+export interface SourceResolveResult {
+	// An alert that was firing here is now resolved.
+	resolved: boolean;
+	// No alert was firing: the episode the source described was recorded as resolved.
+	created: boolean;
+}
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -479,26 +496,30 @@ export class AlertBL {
 	// and the severity tag is rewritten to the normalized value so label matchers (mute policies,
 	// enrichments) always see the same three values the severity field uses. The tag is
 	// hidden from the UI — users only interact with the first-class severity.
-	async insertOrUpdateAlert(
-		alert: Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string }
-	): Promise<{ changes: number }> {
+	// The one funnel for what a source sends: severity normalized onto the fixed scale,
+	// team resolved, the severity tag mirroring the first-class field.
+	private normalizeIncoming(alert: IncomingAlert): IngestAlert {
+		// || (not ??) so a blank explicit severity falls through to the tag.
+		const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
+		// Same funnel for the owning team: explicit field wins, then a `team` tag,
+		// otherwise none. Unlike severity there is no fixed scale — any name is kept.
+		const team = alert.team?.trim() || alert.tags?.['team'] || null;
+		const tags = { ...(alert.tags ?? {}), severity };
+		return { ...alert, tags, severity, team };
+	}
+
+	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number }> {
 		try {
 			// debug, not info: at thousands of webhooks a second a per-alert info line is
 			// itself a measurable cost (synchronous console writes) and floods the log; the
 			// ingested counter and batch-size histogram carry the operational signal.
 			logger.debug(`Inserting alert: ${alert.id}`);
-			// || (not ??) so a blank explicit severity falls through to the tag.
-			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
-			// Same funnel for the owning team: explicit field wins, then a `team` tag,
-			// otherwise none. Unlike severity there is no fixed scale — any name is kept.
-			const team = alert.team?.trim() || alert.tags?.['team'] || null;
-			const tags = { ...(alert.tags ?? {}), severity };
 			// Queued, not written here: the queue commits it with whatever else arrives in
 			// the same flush window, and this resolves once that commit is in (so a GET
 			// right after the POST still sees the alert). The repository atomically drops
 			// any resolved copy of this id — a re-firing alert must never show as both
 			// firing and resolved.
-			return await this.ingestQueue.enqueue({ ...alert, tags, severity, team });
+			return await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
@@ -768,6 +789,50 @@ export class AlertBL {
 	// name, they become the alert's owner, and an optional resolve note is stored as a
 	// regular comment. Leave it undefined for API-driven resolution (a source reporting the
 	// alert as recovered), which only gets the automatic status-transition entry.
+	// A source reported that an alert is resolved (custom or Grafana webhook). If it is
+	// firing here, resolve it as usual. If it is not, and the source sent the whole alert
+	// (name, tags, ...), record the episode it describes — fired at its startsAt (or at
+	// the resolve moment when it sent none), resolved at its endsAt (or now) — so the
+	// incident is not silently lost. An id-only resolve, or one for an alert already
+	// resolved, changes nothing: retries must stay harmless.
+	async resolveFromSource(alertId: string, episode?: SourceResolvedEpisode): Promise<SourceResolveResult> {
+		await this.drainIngest();
+		if (await this.alertRepo.getAlert(alertId)) {
+			return { resolved: await this.resolveAlert(alertId), created: false };
+		}
+		if (!episode || (await this.resolvedAlertRepo.getResolvedAlert(alertId))) {
+			logger.warn(`Resolve for ${alertId} with no firing alert; nothing recorded`);
+			return { resolved: false, created: false };
+		}
+		const nowMs = Date.now();
+		const endMs = episode.endsAt ? new Date(episode.endsAt).getTime() : NaN;
+		// A missing, unparseable or future end is "now": the source says it is over.
+		const resolvedMs = !isNaN(endMs) && endMs <= nowMs ? endMs : nowMs;
+		const startMs = episode.alert.startsAt ? new Date(episode.alert.startsAt).getTime() : NaN;
+		// No start (or one after the end) collapses the episode onto the resolve moment;
+		// the history then ends on 'resolved' — see insertResolvedOnlyEpisode.
+		const resolvedAt = new Date(resolvedMs).toISOString();
+		const startsAt = !isNaN(startMs) && startMs <= resolvedMs ? new Date(startMs).toISOString() : resolvedAt;
+		const outcome = this.resolvedAlertRepo.insertResolvedOnlyEpisode(
+			{
+				...this.normalizeIncoming(episode.alert),
+				startsAt,
+				updatedAt: resolvedAt,
+				createdAt: resolvedAt,
+				isSilenced: false,
+			},
+			startsAt,
+			resolvedAt
+		);
+		// A firing committed between the check above and the insert: resolve it normally.
+		if (outcome === 'active') return { resolved: await this.resolveAlert(alertId), created: false };
+		if (outcome === 'exists') return { resolved: false, created: false };
+		this.invalidateSnapshots();
+		alertsResolvedTotal.inc({ mode: 'resolve_only' });
+		logger.info(`Recorded resolve-only episode for ${alertId} (${startsAt} → ${resolvedAt})`);
+		return { resolved: false, created: true };
+	}
+
 	async resolveAlert(
 		activeAlertId: string,
 		manualActor?: { id: string | null; name: string | null },
@@ -1080,6 +1145,11 @@ export class AlertBL {
 			}
 		}
 
+		// Newest first. Exact ties keep the order the entries arrive in: status rows come
+		// from the repository newest-written first (history_id DESC), so two transitions in
+		// the same millisecond stay in the order they happened, whichever way round — and a
+		// resolve-only episode without a start time ends on 'resolved' (written second).
+		// Array.prototype.sort is stable.
 		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 		return { alertId, data };

@@ -65,7 +65,7 @@ describe('POST /alerts/custom with a status', () => {
 		await post({ id: 'r-min', alertName: 'minimal', tags: {} });
 		const res = await post({ id: 'r-min', status: 'resolved' });
 		expect(res.status).toBe(200);
-		expect(res.body.data).toEqual({ alertId: 'r-min', status: 'resolved', resolved: true });
+		expect(res.body.data).toEqual({ alertId: 'r-min', status: 'resolved', resolved: true, created: false });
 		expect(await resolvedIds()).toEqual(expect.arrayContaining(['r-min']));
 		// A firing POST still needs the full payload.
 		const firing = await post({ id: 'r-min', status: 'firing' });
@@ -79,19 +79,26 @@ describe('POST /alerts/custom with a status', () => {
 
 		const lower = await post({ id: 'r-1', alertName: 'to resolve', tags: {}, status: 'resolved' });
 		expect(lower.status).toBe(200);
-		expect(lower.body.data).toEqual({ alertId: 'r-1', status: 'resolved', resolved: true });
+		expect(lower.body.data).toEqual({ alertId: 'r-1', status: 'resolved', resolved: true, created: false });
 		const upper = await post({ id: 'r-2', alertName: 'to resolve too', tags: {}, status: ' RESOLVED ' });
-		expect(upper.body.data).toEqual({ alertId: 'r-2', status: 'resolved', resolved: true });
+		expect(upper.body.data).toEqual({ alertId: 'r-2', status: 'resolved', resolved: true, created: false });
 
 		expect(await activeIds()).not.toEqual(expect.arrayContaining(['r-1']));
 		expect(await activeIds()).not.toEqual(expect.arrayContaining(['r-2']));
 		expect(await resolvedIds()).toEqual(expect.arrayContaining(['r-1', 'r-2']));
 	});
 
-	test('resolving an unknown or already-resolved id is a 200 no-op (idempotent for retries)', async () => {
-		const unknown = await post({ id: 'never-existed', alertName: 'x', tags: {}, status: 'resolved' });
+	test('an id-only resolve for an unknown id, or a resolve for an already-resolved id, is a 200 no-op', async () => {
+		// Id-only: nothing to build an episode from (a full payload is covered in
+		// resolveWithoutFiring.test.ts).
+		const unknown = await post({ id: 'never-existed', status: 'resolved' });
 		expect(unknown.status).toBe(200);
-		expect(unknown.body.data).toEqual({ alertId: 'never-existed', status: 'resolved', resolved: false });
+		expect(unknown.body.data).toEqual({
+			alertId: 'never-existed',
+			status: 'resolved',
+			resolved: false,
+			created: false,
+		});
 		const again = await post({ id: 'r-1', alertName: 'to resolve', tags: {}, status: 'resolved' });
 		expect(again.status).toBe(200);
 		expect(again.body.data.resolved).toBe(false);

@@ -261,6 +261,19 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											</td>
 										</tr>
 										<tr>
+											<td className="p-3 font-mono text-xs">endsAt</td>
+											<td className="p-3">
+												<span className="text-muted-foreground">No</span>
+											</td>
+											<td className="p-3 text-muted-foreground">
+												ISO 8601. Only with{' '}
+												<code className="bg-muted px-1 py-0.5 rounded">
+													{'"status": "resolved"'}
+												</code>
+												: when the alert ended (defaults to now)
+											</td>
+										</tr>
+										<tr>
 											<td className="p-3 font-mono text-xs">updatedAt</td>
 											<td className="p-3">
 												<span className="text-muted-foreground">No</span>
@@ -352,6 +365,14 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 									<li>Alert is moved to the resolved alerts table</li>
 									<li>Alert data is preserved and can be viewed in the Resolved tab</li>
 									<li>A later firing POST with the same id re-activates it as a new episode</li>
+									<li>
+										Never received it as firing? If the resolve carries the full alert (id,
+										alertName, tags), it is recorded as a resolved episode: fired at{' '}
+										<code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">startsAt</code> (or
+										at the resolve moment if absent), resolved at{' '}
+										<code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">endsAt</code> (or
+										now). A resolve with only the id changes nothing.
+									</li>
 									<li>Resolved alerts can be permanently deleted later</li>
 								</ul>
 							</div>
