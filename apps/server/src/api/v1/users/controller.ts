@@ -1,6 +1,13 @@
+import { LdapUnavailableError } from '../../../bl/users/ldapAuthenticator';
 import { Request, Response } from 'express';
 import { isZodError } from '../../../utils/isZodError';
-import { UserBL } from '../../../bl/users/user.bl';
+import {
+	DirectoryManagedError,
+	INVALID_LOGIN,
+	NOT_ALLOWED_LOGIN,
+	TooManyLoginAttemptsError,
+	UserBL,
+} from '../../../bl/users/user.bl';
 import {
 	CreateUserSchema,
 	Logger,
@@ -81,8 +88,18 @@ export class UsersController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			} else if (error instanceof Error && error.message === 'Invalid email or password') {
+			} else if (error instanceof Error && error.message === INVALID_LOGIN) {
 				return res.status(401).json({ success: false, error: error.message });
+			} else if (error instanceof Error && error.message === NOT_ALLOWED_LOGIN) {
+				return res.status(403).json({ success: false, error: error.message });
+			} else if (error instanceof TooManyLoginAttemptsError) {
+				return res.status(429).json({ success: false, error: error.message });
+			} else if (error instanceof LdapUnavailableError) {
+				// Details (host, bind failure) go to the log, not to an anonymous caller.
+				logger.error('LDAP login unavailable:', error.message);
+				return res
+					.status(503)
+					.json({ success: false, error: 'Directory login is unavailable right now. Try again later.' });
 			} else {
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
@@ -186,6 +203,8 @@ export class UsersController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof Error && error.message === 'User not found') {
 				return res.status(404).json({ success: false, error: error.message });
+			} else if (error instanceof DirectoryManagedError) {
+				return res.status(400).json({ success: false, error: error.message });
 			} else {
 				logger.error('Error updating profile:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -231,6 +250,9 @@ export class UsersController {
 			});
 		} catch (error) {
 			logger.error('Error resetting user password:', error);
+			if (error instanceof DirectoryManagedError) {
+				return res.status(400).json({ success: false, error: error.message });
+			}
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
@@ -271,6 +293,8 @@ export class UsersController {
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
+			} else if (error instanceof DirectoryManagedError) {
+				return res.status(400).json({ success: false, error: error.message });
 			} else {
 				logger.error('Error updating user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });

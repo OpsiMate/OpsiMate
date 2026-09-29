@@ -408,6 +408,15 @@ const Settings: React.FC = () => {
 																			(me)
 																		</Badge>
 																	)}
+																	{user.authSource === 'ldap' && (
+																		<Badge
+																			variant="outline"
+																			className="ml-2 text-xs"
+																			title="Signs in through LDAP; role follows directory groups at each login"
+																		>
+																			LDAP
+																		</Badge>
+																	)}
 																</TableCell>
 																<TableCell>{user.email}</TableCell>
 																<TableCell>
@@ -464,22 +473,24 @@ const Settings: React.FC = () => {
 																					>
 																						<Edit className="h-4 w-4" />
 																					</Button>
-																					<Button
-																						variant="ghost"
-																						size="icon"
-																						onClick={() => {
-																							setUserToResetPassword(
-																								user
-																							);
-																							setShowResetPasswordModal(
-																								true
-																							);
-																						}}
-																						title="Reset password"
-																						className="hover:bg-muted hover:text-foreground"
-																					>
-																						<KeyRound className="h-4 w-4" />
-																					</Button>
+																					{user.authSource !== 'ldap' && (
+																						<Button
+																							variant="ghost"
+																							size="icon"
+																							onClick={() => {
+																								setUserToResetPassword(
+																									user
+																								);
+																								setShowResetPasswordModal(
+																									true
+																								);
+																							}}
+																							title="Reset password"
+																							className="hover:bg-muted hover:text-foreground"
+																						>
+																							<KeyRound className="h-4 w-4" />
+																						</Button>
+																					)}
 																					<AlertDialog>
 																						<AlertDialogTrigger asChild>
 																							<Button

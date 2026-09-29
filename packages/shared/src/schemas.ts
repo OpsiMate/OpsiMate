@@ -80,14 +80,15 @@ export const UpdateUserRoleSchema = z.object({
 
 export const RegisterSchema = CreateUserSchema.omit({ role: true });
 
+// Login only checks that a password was sent: strength rules belong to setting a
+// password, not to presenting one — and directory (LDAP) passwords follow the
+// directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z.object({
 	email: z.string().email(),
-	password: z
-		.string()
-		.min(6)
-		.refine((val) => !/\s/.test(val), {
-			message: 'Password must not contain spaces',
-		}),
+	// No maximum: none of the password-setting paths has one, so a cap here could
+	// lock out a password that was accepted when set. express.json's body limit
+	// (100kb) already bounds the request.
+	password: z.string().min(1),
 });
 
 export const UpdateProfileSchema = z.object({

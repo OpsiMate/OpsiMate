@@ -1,3 +1,4 @@
+import { Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import compression from 'compression';
@@ -32,6 +33,8 @@ import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
+import { LdapAuthenticator } from './bl/users/ldapAuthenticator';
+import { getLdapConfig } from './config/config';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
@@ -195,6 +198,13 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// BL
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
+	// Directory login, when configured (config.yml `ldap:` or LDAP_* env). Local
+	// accounts keep signing in locally either way.
+	const ldapConfig = getLdapConfig();
+	if (ldapConfig.enabled) {
+		userBL.setLdapAuthenticator(new LdapAuthenticator(ldapConfig), ldapConfig.login_max_failures);
+		new Logger('app').info(`LDAP login enabled (${ldapConfig.url})`);
+	}
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo);
 	const tagBL = new TagBL(tagRepo);

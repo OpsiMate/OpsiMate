@@ -39,7 +39,12 @@ export interface User {
 	createdAt: string;
 	// Optional contact number, shown on the on-call page so responders can be phoned.
 	phoneNumber?: string | null;
+	// Where the password lives: 'local' (bcrypt hash here) or 'ldap' (the directory;
+	// the account is provisioned on first LDAP login). Absent on old tokens = local.
+	authSource?: UserAuthSource;
 }
+
+export type UserAuthSource = 'local' | 'ldap';
 
 // On-call scheduling: a team is an ordered group of users where the order defines call
 // priority (1 = called first). With a rotation interval set, the order shifts by one
