@@ -1,4 +1,3 @@
-import { Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import compression from 'compression';
@@ -33,8 +32,9 @@ import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
-import { LdapAuthenticator } from './bl/users/ldapAuthenticator';
-import { getLdapConfig } from './config/config';
+import { LdapSettingsBL } from './bl/ldap/ldapSettings.bl';
+import { LdapConfigRepository } from './dal/ldapConfigRepository';
+import { LdapController } from './api/v1/ldap/controller';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
@@ -173,6 +173,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
 	const aiConfigRepo = new AiConfigRepository(db);
+	const ldapConfigRepo = new LdapConfigRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -191,6 +192,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 		aiConfigRepo.initAiConfigTable(),
+		ldapConfigRepo.initLdapConfigTable(),
 	]);
 
 	// Every table the metric gauges count now exists.
@@ -200,11 +202,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 	// Directory login, when configured (config.yml `ldap:` or LDAP_* env). Local
 	// accounts keep signing in locally either way.
-	const ldapConfig = getLdapConfig();
-	if (ldapConfig.enabled) {
-		userBL.setLdapAuthenticator(new LdapAuthenticator(ldapConfig), ldapConfig.login_max_failures);
-		new Logger('app').info(`LDAP login enabled (${ldapConfig.url})`);
-	}
+	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
+	// settings saved on the Settings page. Local accounts keep signing in locally either way.
+	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);
+	await ldapSettingsBL.init();
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo);
 	const tagBL = new TagBL(tagRepo);
@@ -265,7 +266,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			actionController,
 			retentionController,
 			oncallController,
-			aiController
+			aiController,
+			new LdapController(ldapSettingsBL)
 		)
 	);
 

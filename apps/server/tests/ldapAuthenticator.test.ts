@@ -287,6 +287,44 @@ describe('LdapAuthenticator hardening', () => {
 	});
 });
 
+describe('LdapAuthenticator.probe (Settings page test)', () => {
+	test('all steps pass and the user lookup reports the role they would get', async () => {
+		const { auth } = make();
+		const result = await auth.probe('alice@example.com');
+		expect(result.ok).toBe(true);
+		expect(result.steps.map((s) => s.step)).toEqual(['connect', 'service_bind', 'search_base', 'user_lookup']);
+		expect(result.user).toMatchObject({ dn: 'uid=alice,ou=people,dc=example,dc=com', role: Role.Admin });
+	});
+
+	test('a user in no mapped group fails the lookup step: they could not sign in', async () => {
+		const { auth } = make({ ...CONFIG, role_mapping: { admin: ['nobody'] } });
+		const result = await auth.probe('bob@example.com');
+		expect(result.ok).toBe(false);
+		expect(result.steps.at(-1)).toMatchObject({ step: 'user_lookup', ok: false });
+		expect(result.user?.role).toBeNull();
+	});
+
+	test('a wrong service password fails at service_bind, not connect', async () => {
+		const result = await make({ ...CONFIG, bind_password: 'wrong' }).auth.probe();
+		expect(result.steps).toEqual([
+			expect.objectContaining({ step: 'connect', ok: true }),
+			expect.objectContaining({ step: 'service_bind', ok: false }),
+		]);
+	});
+
+	test('an unreachable server fails at connect', async () => {
+		const result = await make(CONFIG, { ...DIR, down: true }).auth.probe();
+		expect(result.steps).toEqual([expect.objectContaining({ step: 'connect', ok: false })]);
+	});
+
+	test('an unknown email is reported, without guessing', async () => {
+		const result = await make().auth.probe('ghost@example.com');
+		expect(result.ok).toBe(false);
+		expect(result.steps.at(-1)?.message).toMatch(/No entry matches/);
+		expect(result.user).toBeNull();
+	});
+});
+
 describe('resolveLdapConfig', () => {
 	const saved = { ...process.env };
 	afterEach(() => {
