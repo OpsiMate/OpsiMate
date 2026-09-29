@@ -108,6 +108,8 @@ export type UserRow = {
 	role: Role;
 	created_at: string;
 	phone_number: string | null;
+	// Absent on rows read before the column existed; treated as 'local'.
+	auth_source?: string | null;
 };
 
 export type OncallTeamRow = {

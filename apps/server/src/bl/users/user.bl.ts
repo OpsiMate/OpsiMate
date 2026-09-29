@@ -5,9 +5,24 @@ import { MailClient, MailType } from '../../dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
+import { LdapAuthenticator } from './ldapAuthenticator';
 
 // Work factor used for every password hash created by this module.
 const BCRYPT_SALT_ROUNDS = 10;
+
+export const INVALID_LOGIN = 'Invalid email or password';
+export const NOT_ALLOWED_LOGIN = 'Your directory account is not allowed to use OpsiMate';
+// Stored as password_hash for directory accounts: not a bcrypt hash, so bcrypt.compare
+// is false for every input — the account can only sign in through LDAP.
+const DIRECTORY_PASSWORD_HASH = '!ldap';
+
+// A change OpsiMate cannot make for a directory (LDAP) account.
+export class DirectoryManagedError extends Error {
+	constructor(what: string) {
+		super(`${what} is managed by your organization's directory (LDAP)`);
+		this.name = 'DirectoryManagedError';
+	}
+}
 
 const logger = new Logger('bl/users/user.bl');
 
@@ -21,6 +36,13 @@ export class UserBL {
 
 	setOnUsersChanged(callback: () => void): void {
 		this.onUsersChanged = callback;
+	}
+
+	// Directory login (see LdapAuthenticator); null when LDAP is not configured.
+	private ldap: LdapAuthenticator | null = null;
+
+	setLdapAuthenticator(ldap: LdapAuthenticator | null): void {
+		this.ldap = ldap;
 	}
 
 	constructor(
@@ -66,24 +88,79 @@ export class UserBL {
 		await this.userRepo.updateUserRole(email, newRole);
 	}
 
+	// A local account always signs in locally — including the first admin, which is the
+	// way in when the directory is down or misconfigured. Anyone else is checked against
+	// LDAP when it is enabled; on success their OpsiMate account is created, or brought
+	// in step with the directory (name, role), and they are signed in.
 	async login(email: string, password: string): Promise<User> {
-		const user = await this.userRepo.loginVerification(email);
-		if (!user) {
-			throw new Error('Invalid email or password');
+		const normalizedEmail = email.trim().toLowerCase();
+		const existing =
+			(await this.userRepo.loginVerification(email)) ??
+			(normalizedEmail !== email ? await this.userRepo.loginVerification(normalizedEmail) : undefined);
+
+		if (existing && existing.user.authSource !== 'ldap') {
+			if (!(await bcrypt.compare(password, existing.passwordHash))) throw new Error(INVALID_LOGIN);
+			return existing.user;
 		}
-		const valid = await bcrypt.compare(password, user.passwordHash);
-		if (!valid) {
-			throw new Error('Invalid email or password');
+		if (!this.ldap) {
+			// A directory account while LDAP is switched off: nothing can vouch for it.
+			throw new Error(INVALID_LOGIN);
 		}
-		return user.user;
+
+		const identity = await this.ldap.authenticate(normalizedEmail, password);
+		if (!identity) throw new Error(INVALID_LOGIN);
+		if (!identity.role) {
+			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
+			throw new Error(NOT_ALLOWED_LOGIN);
+		}
+		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role);
+	}
+
+	private async provisionDirectoryUser(email: string, fullName: string, role: Role): Promise<User> {
+		const current = await this.userRepo.getUserByEmail(email);
+		if (current && current.authSource !== 'ldap') {
+			// The directory email now matches a local account created meanwhile: never
+			// take a local account over from the directory.
+			throw new Error(INVALID_LOGIN);
+		}
+		if (current) {
+			if (current.fullName !== fullName || current.role !== role) {
+				await this.userRepo.syncDirectoryUser(Number(current.id), fullName, role);
+				this.onUsersChanged?.();
+			}
+			const synced = await this.userRepo.getUserById(Number(current.id));
+			if (!synced) throw new Error('User not found');
+			return synced;
+		}
+		// No usable password hash: this account can only ever sign in through LDAP.
+		const result = await this.userRepo.createUser(email, DIRECTORY_PASSWORD_HASH, fullName, role, 'ldap');
+		const created = await this.userRepo.getUserById(result.lastID);
+		if (!created) throw new Error('User creation failed');
+		logger.info(`Provisioned ${email} from LDAP as ${role}`);
+		this.onUsersChanged?.();
+		return created;
+	}
+
+	private async assertLocalAccount(userId: number, action: string): Promise<void> {
+		const user = await this.userRepo.getUserById(userId);
+		if (user?.authSource === 'ldap') throw new DirectoryManagedError(action);
 	}
 
 	async resetUserPassword(userId: number, newPassword: string): Promise<void> {
+		await this.assertLocalAccount(userId, 'Its password');
 		const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 		await this.userRepo.updateUserPassword(userId, hashedPassword);
 	}
 
 	async updateUser(userId: number, updates: { fullName?: string; email?: string; role?: Role }): Promise<User> {
+		// The email is what links a directory account to its LDAP entry. The edit form
+		// always sends it, so only an actual change is refused.
+		if (updates.email !== undefined) {
+			const current = await this.userRepo.getUserById(userId);
+			if (current?.authSource === 'ldap' && updates.email.trim().toLowerCase() !== current.email.toLowerCase()) {
+				throw new DirectoryManagedError('Its email');
+			}
+		}
 		await this.userRepo.updateUser(userId, updates);
 		const updatedUser = await this.userRepo.getUserById(userId);
 		if (!updatedUser) {
@@ -122,6 +199,7 @@ export class UserBL {
 	): Promise<User> {
 		let passwordHash: string | undefined;
 		if (newPassword) {
+			await this.assertLocalAccount(id, 'Your password');
 			passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 		}
 
@@ -136,6 +214,12 @@ export class UserBL {
 
 	async forgotPassword(email: string): Promise<void> {
 		const user = await this.userRepo.getUserByEmail(email);
+		if (user?.authSource === 'ldap') {
+			// Same silent answer as for an unknown email: no reset link for a password
+			// OpsiMate does not hold.
+			logger.info('Password reset requested for a directory (LDAP) account; ignored');
+			return;
+		}
 		if (!user) {
 			logger.info('Password reset requested for non-existent email');
 			return;

@@ -4,6 +4,52 @@ import { Logger } from '@OpsiMate/shared';
 
 const logger = new Logger('config');
 
+// Which directory groups grant which OpsiMate role. Entries are full group DNs
+// (cn=ops,ou=groups,dc=example,dc=com) or bare group names (ops); matching is
+// case-insensitive. The highest matching role wins: admin > editor > operation > viewer.
+export interface LdapRoleMapping {
+	admin?: string[];
+	editor?: string[];
+	operation?: string[];
+	viewer?: string[];
+}
+
+export interface LdapTlsConfig {
+	// Verify the server certificate. Leave on; turn off only for a lab.
+	rejectUnauthorized?: boolean;
+	// Path to a PEM CA bundle for a private CA.
+	ca_file?: string;
+}
+
+// Directory login. Users sign in with their email and directory password; the
+// account is created in OpsiMate on first login, with the role from role_mapping.
+export interface LdapConfig {
+	enabled: boolean;
+	// ldap://host:389 or ldaps://host:636
+	url?: string;
+	// Upgrade an ldap:// connection with StartTLS before binding.
+	start_tls?: boolean;
+	// Service account used to look users up. Omit both for an anonymous search.
+	bind_dn?: string;
+	bind_password?: string;
+	// Where users live, and how to find one by the email typed at login.
+	search_base?: string;
+	// {{email}} is replaced by the (escaped) email. Default: (mail={{email}})
+	search_filter?: string;
+	email_attribute?: string; // default: mail
+	name_attribute?: string; // default: displayName (falls back to cn)
+	// Groups: read from the user's memberOf attribute, and/or searched for.
+	groups_attribute?: string; // default: memberOf
+	group_search_base?: string;
+	// {{dn}} is replaced by the (escaped) user DN. Default: (member={{dn}})
+	group_search_filter?: string;
+	role_mapping?: LdapRoleMapping;
+	// Role for a directory user in none of the mapped groups. Omit to refuse them.
+	default_role?: 'admin' | 'editor' | 'viewer' | 'operation';
+	timeout_ms?: number; // default: 5000
+	tls?: LdapTlsConfig;
+}
+
 export interface OpsimateConfig {
 	server: {
 		port: number;
@@ -42,6 +88,7 @@ export interface OpsimateConfig {
 			rejectUnauthorized: boolean;
 		};
 	};
+	ldap?: LdapConfig;
 }
 
 let cachedConfig: OpsimateConfig | null = null;
@@ -56,6 +103,7 @@ export function loadConfig(): OpsimateConfig {
 	if (!configPath || !fs.existsSync(configPath)) {
 		logger.warn(`Config file not found starting from ${process.cwd()}, using defaults`);
 		const defaultConfig = getDefaultConfig();
+		defaultConfig.ldap = resolveLdapConfig(undefined);
 		cachedConfig = defaultConfig;
 		return defaultConfig;
 	}
@@ -89,6 +137,8 @@ export function loadConfig(): OpsimateConfig {
 			config.mailer.enabled = false;
 		}
 	}
+
+	config.ldap = resolveLdapConfig(config.ldap);
 
 	cachedConfig = config;
 	logger.info(`Configuration loaded from ${configPath}`);
@@ -149,4 +199,76 @@ export function getMailerConfig() {
 export function isEmailEnabled(): boolean {
 	const mailerConfig = getMailerConfig();
 	return mailerConfig?.enabled === true;
+}
+
+export function getLdapConfig(): LdapConfig {
+	return loadConfig().ldap ?? { enabled: false };
+}
+
+const LDAP_ROLES = ['admin', 'editor', 'operation', 'viewer'] as const;
+type LdapRole = (typeof LDAP_ROLES)[number];
+
+const envList = (value: string | undefined): string[] | undefined =>
+	value === undefined
+		? undefined
+		: value
+				.split(/[;|]/)
+				.map((entry) => entry.trim())
+				.filter(Boolean);
+
+// The ldap section from config.yml, with LDAP_* environment variables layered on top
+// (the Docker / Helm way to configure it), validated. An enabled but incomplete
+// section is switched off with a warning rather than failing the boot: the local
+// login keeps working and the log says what is missing.
+export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig {
+	const env = process.env;
+	const ldap: LdapConfig = { ...(fromFile ?? { enabled: false }) };
+	if (env.LDAP_ENABLED !== undefined) ldap.enabled = env.LDAP_ENABLED === 'true';
+	if (env.LDAP_URL) ldap.url = env.LDAP_URL;
+	if (env.LDAP_START_TLS !== undefined) ldap.start_tls = env.LDAP_START_TLS === 'true';
+	if (env.LDAP_BIND_DN) ldap.bind_dn = env.LDAP_BIND_DN;
+	if (env.LDAP_BIND_PASSWORD) ldap.bind_password = env.LDAP_BIND_PASSWORD;
+	if (env.LDAP_SEARCH_BASE) ldap.search_base = env.LDAP_SEARCH_BASE;
+	if (env.LDAP_SEARCH_FILTER) ldap.search_filter = env.LDAP_SEARCH_FILTER;
+	if (env.LDAP_EMAIL_ATTRIBUTE) ldap.email_attribute = env.LDAP_EMAIL_ATTRIBUTE;
+	if (env.LDAP_NAME_ATTRIBUTE) ldap.name_attribute = env.LDAP_NAME_ATTRIBUTE;
+	if (env.LDAP_GROUPS_ATTRIBUTE) ldap.groups_attribute = env.LDAP_GROUPS_ATTRIBUTE;
+	if (env.LDAP_GROUP_SEARCH_BASE) ldap.group_search_base = env.LDAP_GROUP_SEARCH_BASE;
+	if (env.LDAP_GROUP_SEARCH_FILTER) ldap.group_search_filter = env.LDAP_GROUP_SEARCH_FILTER;
+	if (env.LDAP_TIMEOUT_MS) ldap.timeout_ms = Number(env.LDAP_TIMEOUT_MS);
+	if (env.LDAP_TLS_REJECT_UNAUTHORIZED !== undefined) {
+		ldap.tls = { ...ldap.tls, rejectUnauthorized: env.LDAP_TLS_REJECT_UNAUTHORIZED !== 'false' };
+	}
+	if (env.LDAP_TLS_CA_FILE) ldap.tls = { ...ldap.tls, ca_file: env.LDAP_TLS_CA_FILE };
+	// Group lists: LDAP_ROLE_ADMIN_GROUPS="cn=ops,ou=groups,dc=x;sre" (; or | separated —
+	// DNs contain commas).
+	const mapping: LdapRoleMapping = { ...ldap.role_mapping };
+	for (const role of LDAP_ROLES) {
+		const groups = envList(env[`LDAP_ROLE_${role.toUpperCase()}_GROUPS`]);
+		if (groups) mapping[role] = groups;
+	}
+	ldap.role_mapping = mapping;
+	if (env.LDAP_DEFAULT_ROLE) ldap.default_role = env.LDAP_DEFAULT_ROLE as LdapRole;
+
+	if (!ldap.enabled) return ldap;
+	const problems: string[] = [];
+	if (!ldap.url || !/^ldaps?:\/\//i.test(ldap.url)) problems.push('url (ldap:// or ldaps://)');
+	if (!ldap.search_base) problems.push('search_base');
+	if (ldap.bind_dn && !ldap.bind_password) problems.push('bind_password (bind_dn is set)');
+	if (ldap.default_role && !LDAP_ROLES.includes(ldap.default_role)) problems.push('default_role');
+	if (ldap.search_filter && !ldap.search_filter.includes('{{email}}'))
+		problems.push('search_filter must contain {{email}}');
+	if (ldap.group_search_filter && !ldap.group_search_filter.includes('{{dn}}')) {
+		problems.push('group_search_filter must contain {{dn}}');
+	}
+	const mapped = LDAP_ROLES.some((role) => (mapping[role]?.length ?? 0) > 0);
+	if (!mapped && !ldap.default_role) problems.push('role_mapping or default_role (otherwise nobody may log in)');
+	if (problems.length > 0) {
+		logger.warn(`LDAP login is enabled but misconfigured — disabled. Missing/invalid: ${problems.join(', ')}`);
+		return { ...ldap, enabled: false };
+	}
+	if (/^ldap:\/\//i.test(ldap.url ?? '') && !ldap.start_tls) {
+		logger.warn('LDAP login uses ldap:// without start_tls: passwords cross the network unencrypted');
+	}
+	return ldap;
 }

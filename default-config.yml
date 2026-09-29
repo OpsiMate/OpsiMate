@@ -41,3 +41,29 @@ mailer:
     pass: "your-smtp-password"     # Replace with your SMTP password
   tls:
     rejectUnauthorized: true
+
+# LDAP / Active Directory login (optional, off by default)
+# Directory users sign in with their email + directory password; their OpsiMate account
+# is created on first login and its role follows their groups at every login.
+# Local accounts (e.g. the first admin) keep signing in locally even when LDAP is down.
+# Every key can also be set with an LDAP_* environment variable (see configuration_example/README.md).
+# ldap:
+#   enabled: true
+#   url: "ldaps://ldap.example.com:636"      # or ldap://...:389 with start_tls: true
+#   start_tls: false
+#   bind_dn: "cn=opsimate,ou=service,dc=example,dc=com"  # read-only service account
+#   bind_password: "change-me"
+#   search_base: "ou=people,dc=example,dc=com"
+#   search_filter: "(mail={{email}})"        # AD: "(&(objectClass=user)(mail={{email}}))"
+#   name_attribute: "displayName"
+#   groups_attribute: "memberOf"             # AD / OpenLDAP with the memberOf overlay
+#   # group_search_base: "ou=groups,dc=example,dc=com"   # directories without memberOf
+#   # group_search_filter: "(member={{dn}})"
+#   role_mapping:                            # full group DN or bare group name; highest role wins
+#     admin: ["cn=opsimate-admins,ou=groups,dc=example,dc=com"]
+#     editor: ["sre"]
+#     viewer: ["engineering"]
+#   # default_role: viewer                   # for users in none of the groups; omit to refuse them
+#   tls:
+#     rejectUnauthorized: true
+#     # ca_file: "/app/data/ldap-ca.pem"

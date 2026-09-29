@@ -62,3 +62,39 @@ docker run -d \
   -v $(pwd)/my-production-config.yml:/app/config/config.yml \
   OpsiMate
 ```
+
+## LDAP / Active Directory Login
+
+OpsiMate can sign users in against an LDAP directory (OpenLDAP, Active Directory, FreeIPA, ...).
+Nobody needs to be invited: a directory user's OpsiMate account is created the first time they log in, and their role is re-read from their groups at every login.
+
+How it works:
+
+1. OpsiMate binds with a read-only service account and searches `search_base` for the email the user typed.
+2. It checks the password by binding as that entry. OpsiMate never stores directory passwords.
+3. It reads the user's groups (`memberOf`, or a group search) and maps them to a role through `role_mapping`. The highest role wins. Users in no mapped group are refused unless `default_role` is set.
+
+Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same email.
+
+Configure it in the `ldap:` section of your config file (see the commented example in `default-config.yml`) or with environment variables:
+
+| Variable | Example |
+|---|---|
+| `LDAP_ENABLED` | `true` |
+| `LDAP_URL` | `ldaps://ldap.example.com:636` |
+| `LDAP_START_TLS` | `true` (with an `ldap://` URL) |
+| `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD` | service account |
+| `LDAP_SEARCH_BASE` | `ou=people,dc=example,dc=com` |
+| `LDAP_SEARCH_FILTER` | `(mail={{email}})` |
+| `LDAP_NAME_ATTRIBUTE` / `LDAP_EMAIL_ATTRIBUTE` | `displayName` / `mail` |
+| `LDAP_GROUPS_ATTRIBUTE` | `memberOf` |
+| `LDAP_GROUP_SEARCH_BASE` / `LDAP_GROUP_SEARCH_FILTER` | `ou=groups,dc=example,dc=com` / `(member={{dn}})` |
+| `LDAP_ROLE_ADMIN_GROUPS`, `LDAP_ROLE_EDITOR_GROUPS`, `LDAP_ROLE_OPERATION_GROUPS`, `LDAP_ROLE_VIEWER_GROUPS` | `cn=ops,ou=groups,dc=example,dc=com;sre` (`;` or `\|` separated) |
+| `LDAP_DEFAULT_ROLE` | `viewer` |
+| `LDAP_TLS_CA_FILE` | `/app/data/ldap-ca.pem` |
+| `LDAP_TLS_REJECT_UNAUTHORIZED` | `true` (only set `false` for testing) |
+| `LDAP_TIMEOUT_MS` | `5000` |
+
+Use `ldaps://` or StartTLS: with plain `ldap://` passwords cross the network unencrypted, and OpsiMate logs a warning at startup. If the configuration is incomplete, LDAP stays off and the reason is logged.
+
+For directory accounts, passwords and emails are managed in the directory. OpsiMate hides the password change, admin reset and "forgot password" for them.

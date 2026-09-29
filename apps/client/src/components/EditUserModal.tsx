@@ -110,7 +110,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							placeholder="john@example.com"
+							disabled={user?.authSource === 'ldap'}
 						/>
+						{user?.authSource === 'ldap' && (
+							<p className="text-xs text-muted-foreground">
+								Signs in through LDAP: the email comes from the directory.
+							</p>
+						)}
 					</div>
 				</div>
 

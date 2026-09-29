@@ -61,6 +61,7 @@ export const ProfileContent = ({
 							onSave={onSave}
 							onCancel={onCancel}
 							onEdit={onEdit}
+							isDirectoryAccount={profile.authSource === 'ldap'}
 						/>
 
 						<AccountSection onLogout={onLogout} />
