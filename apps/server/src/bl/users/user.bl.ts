@@ -6,6 +6,7 @@ import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
 import { LdapAuthenticator } from './ldapAuthenticator';
+import { LoginThrottle } from './loginThrottle';
 
 // Work factor used for every password hash created by this module.
 const BCRYPT_SALT_ROUNDS = 10;
@@ -37,12 +38,8 @@ export class TooManyLoginAttemptsError extends Error {
 
 const LDAP_MAX_FAILURES = 5;
 const LDAP_FAILURE_WINDOW_MS = 15 * 60 * 1000;
-const LDAP_FAILURE_TRACKING_CAP = 10_000;
-
-interface LoginFailures {
-	count: number;
-	windowStart: number;
-}
+// 65,536 buckets ≈ 768 KB, fixed.
+const LDAP_FAILURE_BUCKETS = 1 << 16;
 
 const logger = new Logger('bl/users/user.bl');
 
@@ -61,7 +58,11 @@ export class UserBL {
 	// Directory login (see LdapAuthenticator); null when LDAP is not configured.
 	private ldap: LdapAuthenticator | null = null;
 	// Failed directory logins per email (lower-cased), in a fixed window.
-	private readonly ldapFailures = new Map<string, LoginFailures>();
+	private readonly ldapFailures = new LoginThrottle({
+		maxFailures: LDAP_MAX_FAILURES,
+		windowMs: LDAP_FAILURE_WINDOW_MS,
+		buckets: LDAP_FAILURE_BUCKETS,
+	});
 
 	setLdapAuthenticator(ldap: LdapAuthenticator | null): void {
 		this.ldap = ldap;
@@ -129,47 +130,20 @@ export class UserBL {
 			throw new Error(INVALID_LOGIN);
 		}
 
-		if (this.isLdapThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
+		if (this.ldapFailures.isThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
 		const identity = await this.ldap.authenticate(normalizedEmail, password);
 		if (!identity) {
-			this.recordLdapFailure(normalizedEmail);
+			if (this.ldapFailures.recordFailure(normalizedEmail) === LDAP_MAX_FAILURES) {
+				logger.warn(`LDAP login for ${normalizedEmail} throttled after ${LDAP_MAX_FAILURES} failures`);
+			}
 			throw new Error(INVALID_LOGIN);
 		}
-		this.ldapFailures.delete(normalizedEmail);
+		this.ldapFailures.reset(normalizedEmail);
 		if (!identity.role) {
 			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);
 		}
 		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
-	}
-
-	private isLdapThrottled(email: string): boolean {
-		const entry = this.ldapFailures.get(email);
-		if (!entry) return false;
-		if (Date.now() - entry.windowStart > LDAP_FAILURE_WINDOW_MS) {
-			this.ldapFailures.delete(email);
-			return false;
-		}
-		return entry.count >= LDAP_MAX_FAILURES;
-	}
-
-	private recordLdapFailure(email: string): void {
-		const now = Date.now();
-		if (this.ldapFailures.size >= LDAP_FAILURE_TRACKING_CAP) {
-			for (const [key, value] of this.ldapFailures) {
-				if (now - value.windowStart > LDAP_FAILURE_WINDOW_MS) this.ldapFailures.delete(key);
-			}
-		}
-		const entry = this.ldapFailures.get(email);
-		if (!entry || now - entry.windowStart > LDAP_FAILURE_WINDOW_MS) {
-			// Past the cap with nothing expired: stop tracking new emails rather than grow.
-			if (this.ldapFailures.size < LDAP_FAILURE_TRACKING_CAP)
-				this.ldapFailures.set(email, { count: 1, windowStart: now });
-			return;
-		}
-		entry.count++;
-		if (entry.count === LDAP_MAX_FAILURES)
-			logger.warn(`LDAP login for ${email} throttled after ${entry.count} failures`);
 	}
 
 	private async provisionDirectoryUser(email: string, fullName: string, role: Role, dn: string): Promise<User> {
