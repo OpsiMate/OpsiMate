@@ -237,6 +237,19 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 
 	const readOnly = data.source === 'config';
 	const dirty = !sameForm(form, toForm(data)) || bindPassword.length > 0;
+	// Switched on, but the server can't use it (e.g. the saved password no longer decrypts).
+	const notActive = data.enabled && data.problems.length > 0;
+	// The server refuses to keep the stored password when where/how it is sent changes
+	// (see LdapSettingsBL): ask for it up front instead of failing on Save.
+	const needsPassword =
+		!readOnly &&
+		data.hasBindPassword &&
+		bindPassword.length === 0 &&
+		(form.url.trim().toLowerCase() !== data.url.toLowerCase() ||
+			form.bindDn.trim().toLowerCase() !== data.bindDn.toLowerCase() ||
+			form.startTls !== data.startTls ||
+			form.tlsRejectUnauthorized !== data.tlsRejectUnauthorized ||
+			form.tlsCaCert.trim() !== data.tlsCaCert);
 	const set = <K extends keyof LdapForm>(key: K, value: LdapForm[K]) => setForm({ ...form, [key]: value });
 	const text = (key: keyof LdapForm) => ({
 		id: `ldap-${key}`,
@@ -314,10 +327,14 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Badge
 								variant="outline"
 								className={
-									data.enabled ? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-300' : ''
+									notActive
+										? 'border-amber-500/50 text-amber-700 dark:text-amber-300'
+										: data.enabled
+											? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-300'
+											: ''
 								}
 							>
-								{data.enabled ? 'Enabled' : 'Off'}
+								{notActive ? 'Not active' : data.enabled ? 'Enabled' : 'Off'}
 							</Badge>
 							{readOnly && <Badge variant="outline">Server config</Badge>}
 						</div>
@@ -327,6 +344,15 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							their directory groups at every login. Local accounts, like yours, keep signing in locally —
 							even if the directory is down.
 						</p>
+						{notActive && (
+							<p className="text-sm text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+								<AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+								<span>
+									Switched on but not in effect — directory users can&apos;t sign in until this is
+									fixed: {data.problems.join(', ')}.
+								</span>
+							</p>
+						)}
 					</div>
 					<Button variant="outline" onClick={() => setOpen(!open)} className="gap-1.5 shrink-0">
 						{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -423,10 +449,17 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 								id="ldap-bindPassword"
 								label="Password"
 								hint={
-									<span className="flex items-center gap-1">
-										<KeyRound className="h-3 w-3" /> Stored encrypted; never shown again after
-										saving.
-									</span>
+									needsPassword ? (
+										<span className="flex items-center gap-1 text-amber-700 dark:text-amber-300">
+											<AlertTriangle className="h-3 w-3" /> Re-enter the password: you changed the
+											server, bind DN or TLS settings it is sent with.
+										</span>
+									) : (
+										<span className="flex items-center gap-1">
+											<KeyRound className="h-3 w-3" /> Stored encrypted; never shown again after
+											saving.
+										</span>
+									)
 								}
 							>
 								<div className="flex items-center gap-2">
@@ -567,7 +600,11 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 								</span>
 							</div>
 							{!readOnly && (
-								<Button onClick={() => void save()} disabled={updateMutation.isPending || !dirty}>
+								<Button
+									onClick={() => void save()}
+									disabled={updateMutation.isPending || !dirty || needsPassword}
+									title={needsPassword ? 'Re-enter the service-account password first' : undefined}
+								>
 									{updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
 								</Button>
 							)}

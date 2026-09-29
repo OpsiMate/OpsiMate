@@ -493,9 +493,6 @@ export const UpdateSilenceResetSettingsSchema = z
 		message: 'Provide enabled and/or hour',
 	});
 
-// AI (BYOK) configuration update. apiKey: string replaces the stored key, null deletes
-// it, absent keeps it. Region/model shapes are validated loosely on purpose — AWS adds
-// regions and model ids faster than any hardcoded list stays correct.
 const LdapGroupListSchema = z.array(z.string().trim().min(1).max(1000)).max(200);
 
 // Settings page -> server. Every field optional (partial update). Values are checked for
@@ -566,6 +563,9 @@ export const LdapTestRequestSchema = z
 	})
 	.strict();
 
+// AI (BYOK) configuration update. apiKey: string replaces the stored key, null deletes
+// it, absent keeps it. Region/model shapes are validated loosely on purpose — AWS adds
+// regions and model ids faster than any hardcoded list stays correct.
 export const UpdateAiConfigSchema = z
 	.object({
 		region: z

@@ -379,6 +379,24 @@ describe('resolveLdapConfig', () => {
 		}
 	});
 
+	test('an empty or unrelated LDAP_* variable does not make LDAP server-managed', async () => {
+		const savedConfigFile = process.env.CONFIG_FILE;
+		delete process.env.CONFIG_FILE;
+		try {
+			process.env.LDAP_URL = '';
+			process.env.LDAP_SOMETHING_UNRELATED = 'x';
+			vi.resetModules();
+			expect((await import('../src/config/config')).isLdapManagedByConfig()).toBe(false);
+			process.env.LDAP_URL = 'ldaps://dir.example.com';
+			vi.resetModules();
+			expect((await import('../src/config/config')).isLdapManagedByConfig()).toBe(true);
+		} finally {
+			delete process.env.LDAP_SOMETHING_UNRELATED;
+			if (savedConfigFile !== undefined) process.env.CONFIG_FILE = savedConfigFile;
+			vi.resetModules();
+		}
+	});
+
 	test('a single group written as a string counts as a one-item list', () => {
 		const c = resolveLdapConfig({
 			enabled: true,

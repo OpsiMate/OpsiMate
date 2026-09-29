@@ -885,7 +885,11 @@ export interface LdapSettings {
 	// 'config' = set in config.yml / LDAP_* environment variables, which win over the
 	// Settings page; the page then shows them read-only.
 	source: LdapSettingsSource;
+	// Switched on (saved intent).
 	enabled: boolean;
+	// Why a switched-on config is NOT in effect (e.g. the saved password no longer
+	// decrypts); empty when LDAP login works as configured or is off.
+	problems: string[];
 	url: string;
 	startTls: boolean;
 	bindDn: string;

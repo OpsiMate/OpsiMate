@@ -102,6 +102,15 @@ export class LdapSettingsBL {
 					: updates.bindPassword === null
 						? null
 						: encrypt(updates.bindPassword);
+			// Where the stored password would be sent, and how, is part of what it protects:
+			// pointing the server (or the bind DN, or TLS) elsewhere must come with the
+			// password again, or anyone with an admin session could redirect it to a host
+			// they control and press Test.
+			if (current.bind_password != null && updates.bindPassword === undefined && redirectsPassword(base, next)) {
+				throw new LdapSettingsValidationError([
+					'bind_password (re-enter the service-account password when changing the server URL, bind DN or TLS settings)',
+				]);
+			}
 			const password = decryptOrUndefined(bindPassword);
 			if (next.enabled) {
 				const problems = validateLdapConfig({ ...next, bind_password: password });
@@ -115,7 +124,7 @@ export class LdapSettingsBL {
 				userId: user ? Number(user.id) : 0,
 				userName: user?.fullName ?? 'unknown',
 				resourceName: 'LDAP settings',
-				details: `${passwordNote}enabled=${next.enabled}, url=${next.url ?? ''}`,
+				details: `${passwordNote}changed: ${changedFields(base, next).join(', ') || 'nothing'}; enabled=${next.enabled}, url=${next.url ?? ''}`,
 			});
 			applied = { ...next, bind_password: password };
 			return { settings: JSON.stringify(next), bind_password: bindPassword };
@@ -170,6 +179,24 @@ export class LdapSettingsBL {
 		return { ...parseSettings(row.settings), bind_password: decryptOrUndefined(row.bind_password) };
 	}
 }
+
+// Settings that decide where, and how safely, the service-account password is sent.
+const redirectsPassword = (before: LdapConfig, after: LdapConfig): boolean =>
+	(before.url ?? '').toLowerCase() !== (after.url ?? '').toLowerCase() ||
+	(before.bind_dn ?? '').toLowerCase() !== (after.bind_dn ?? '').toLowerCase() ||
+	(before.start_tls === true) !== (after.start_tls === true) ||
+	(before.tls?.rejectUnauthorized !== false) !== (after.tls?.rejectUnauthorized !== false) ||
+	(before.tls?.ca ?? '') !== (after.tls?.ca ?? '');
+
+// Names (never values) of the settings a save changed, for the audit trail: a new admin
+// group or default role grants privileges and must be traceable.
+const changedFields = (before: LdapConfig, after: LdapConfig): string[] => {
+	const keys = new Set([...Object.keys(before), ...Object.keys(after)]) as Set<keyof LdapConfig>;
+	return [...keys]
+		.filter((key) => key !== 'bind_password')
+		.filter((key) => JSON.stringify(before[key] ?? null) !== JSON.stringify(after[key] ?? null))
+		.sort();
+};
 
 const encrypt = (value: string): string => {
 	const encrypted = encryptPassword(value);
@@ -255,6 +282,9 @@ const toSettings = (
 ): LdapSettings => ({
 	source,
 	enabled: config.enabled === true,
+	// Switched on but not in effect (e.g. the saved password no longer decrypts): the
+	// server leaves LDAP login off, and the page must not claim otherwise.
+	problems: config.enabled === true ? validateLdapConfig(config) : [],
 	url: config.url ?? '',
 	startTls: config.start_tls === true,
 	bindDn: config.bind_dn ?? '',

@@ -145,7 +145,8 @@ export function loadConfig(): OpsimateConfig {
 		}
 	}
 
-	ldapManagedByConfig = config.ldap !== undefined || hasLdapEnv();
+	// A bare `ldap:` (YAML null) is not a configuration.
+	ldapManagedByConfig = config.ldap != null || hasLdapEnv();
 	config.ldap = resolveLdapConfig(config.ldap);
 
 	cachedConfig = config;
@@ -320,4 +321,27 @@ export function isLdapManagedByConfig(): boolean {
 	return ldapManagedByConfig;
 }
 
-const hasLdapEnv = (): boolean => Object.keys(process.env).some((key) => key.startsWith('LDAP_'));
+// Only the variables this module reads, and only when set to something: an empty
+// LDAP_URL= left in a compose/Helm template must not lock the Settings page.
+const LDAP_ENV_KEYS = [
+	'LDAP_ENABLED',
+	'LDAP_URL',
+	'LDAP_START_TLS',
+	'LDAP_BIND_DN',
+	'LDAP_BIND_PASSWORD',
+	'LDAP_SEARCH_BASE',
+	'LDAP_SEARCH_FILTER',
+	'LDAP_EMAIL_ATTRIBUTE',
+	'LDAP_NAME_ATTRIBUTE',
+	'LDAP_GROUPS_ATTRIBUTE',
+	'LDAP_GROUP_SEARCH_BASE',
+	'LDAP_GROUP_SEARCH_FILTER',
+	'LDAP_TIMEOUT_MS',
+	'LDAP_LOGIN_MAX_FAILURES',
+	'LDAP_TLS_REJECT_UNAUTHORIZED',
+	'LDAP_TLS_CA_FILE',
+	'LDAP_DEFAULT_ROLE',
+	...LDAP_ROLES.map((role) => `LDAP_ROLE_${role.toUpperCase()}_GROUPS`),
+];
+
+const hasLdapEnv = (): boolean => LDAP_ENV_KEYS.some((key) => (process.env[key] ?? '').trim() !== '');

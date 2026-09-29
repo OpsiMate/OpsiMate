@@ -397,11 +397,10 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
-// In-memory AI (BYOK) config for the playground: same masking contract as the server —
-// the key is write-only, GET only reports that one exists.
 const ldapSettingsState: LdapSettings = {
 	source: 'database',
 	enabled: false,
+	problems: [],
 	url: '',
 	startTls: false,
 	bindDn: '',
@@ -422,6 +421,8 @@ const ldapSettingsState: LdapSettings = {
 	updatedAt: null,
 };
 
+// In-memory AI (BYOK) config for the playground: same masking contract as the server —
+// the key is write-only, GET only reports that one exists.
 const aiConfigState = {
 	region: 'us-east-1',
 	modelId: '',

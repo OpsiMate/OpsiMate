@@ -84,7 +84,7 @@ describe('LDAP settings API', () => {
 
 	test('password: omitted keeps it, null removes it (and then a bind DN can no longer be enabled)', async () => {
 		await put({ ...COMPLETE, enabled: true });
-		expect((await put({ url: 'ldaps://other.example.com' })).body.data.hasBindPassword).toBe(true);
+		expect((await put({ nameAttribute: 'cn' })).body.data.hasBindPassword).toBe(true);
 		const removed = await put({ enabled: false, bindPassword: null });
 		expect(removed.body.data.hasBindPassword).toBe(false);
 		const reenable = await put({ enabled: true });
@@ -142,5 +142,51 @@ describe('LDAP settings API', () => {
 		const enable = await put({ enabled: true });
 		expect(enable.status).toBe(400);
 		expect(enable.body.details.join(' ')).toMatch(/bind_password/);
+	});
+
+	test('changing where or how the stored password is sent requires re-entering it', async () => {
+		await put({ ...COMPLETE, enabled: false });
+		for (const change of [
+			{ url: 'ldap://attacker.example.com:389' },
+			{ bindDn: 'cn=other,dc=example,dc=com' },
+			{ startTls: true },
+			{ tlsRejectUnauthorized: false },
+			{ tlsCaCert: '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----' },
+		]) {
+			const refused = await put(change);
+			expect(refused.status).toBe(400);
+			expect(refused.body.details.join(' ')).toMatch(/re-enter the service-account password/);
+		}
+		expect((await get()).body.data.url).toBe(COMPLETE.url);
+		// With the password, the same change goes through.
+		const ok = await put({ url: 'ldaps://ldap2.example.com', bindPassword: 'svc-secret-value' });
+		expect(ok.status).toBe(200);
+		expect(ok.body.data.url).toBe('ldaps://ldap2.example.com');
+		// Unrelated fields never need it.
+		expect((await put({ searchFilter: '(uid={{email}})' })).status).toBe(200);
+	});
+
+	test('switched on but unusable is reported as not in effect', async () => {
+		await put({ ...COMPLETE, enabled: true });
+		expect((await get()).body.data).toMatchObject({ enabled: true, problems: [] });
+		db.prepare('UPDATE ldap_config SET bind_password = ?').run(
+			'Z2FyYmFnZS1jaXBoZXJ0ZXh0LWdhcmJhZ2UtY2lwaGVydGV4dC4uLi4uLi4uLi4uLg=='
+		);
+		const data = (await get()).body.data;
+		expect(data.enabled).toBe(true);
+		expect(data.problems.join(' ')).toMatch(/bind_password/);
+	});
+
+	test('the audit row names the changed settings (never values of the password)', async () => {
+		await put({ ...COMPLETE, enabled: false });
+		await put({
+			roleMapping: { ...COMPLETE.roleMapping, admin: ['cn=new-admins,dc=example,dc=com'] },
+			defaultRole: 'viewer',
+		});
+		const last = db
+			.prepare(`SELECT details FROM audit_logs WHERE resource_type = 'LDAP' ORDER BY id DESC LIMIT 1`)
+			.get() as AuditDbRow;
+		expect(last.details).toMatch(/changed: default_role, role_mapping/);
+		expect(last.details).not.toContain('svc-secret-value');
 	});
 });
