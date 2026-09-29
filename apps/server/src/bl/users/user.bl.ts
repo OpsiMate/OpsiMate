@@ -64,15 +64,18 @@ export class UserBL {
 
 	setLdapAuthenticator(ldap: LdapAuthenticator | null, maxFailures = DEFAULT_LDAP_MAX_FAILURES): void {
 		this.ldap = ldap;
+		if (maxFailures <= 0) {
+			this.ldapFailures = null;
+		} else if (!this.ldapFailures || maxFailures !== this.ldapMaxFailures) {
+			// Any save that keeps the limit keeps the counters, including switching LDAP
+			// off and on: re-saving must not hand an attacker a fresh set of guesses.
+			this.ldapFailures = new LoginThrottle({
+				maxFailures,
+				windowMs: LDAP_FAILURE_WINDOW_MS,
+				buckets: LDAP_FAILURE_BUCKETS,
+			});
+		}
 		this.ldapMaxFailures = maxFailures;
-		this.ldapFailures =
-			ldap && maxFailures > 0
-				? new LoginThrottle({
-						maxFailures,
-						windowMs: LDAP_FAILURE_WINDOW_MS,
-						buckets: LDAP_FAILURE_BUCKETS,
-					})
-				: null;
 	}
 
 	constructor(

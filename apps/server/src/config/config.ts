@@ -19,6 +19,8 @@ export interface LdapTlsConfig {
 	rejectUnauthorized?: boolean;
 	// Path to a PEM CA bundle for a private CA.
 	ca_file?: string;
+	// The PEM itself (set from the Settings page, where there is no file to point at).
+	ca?: string;
 }
 
 // Directory login. Users sign in with their email and directory password; the
@@ -108,6 +110,7 @@ export function loadConfig(): OpsimateConfig {
 		logger.warn(`Config file not found starting from ${process.cwd()}, using defaults`);
 		const defaultConfig = getDefaultConfig();
 		defaultConfig.ldap = resolveLdapConfig(undefined);
+		ldapManagedByConfig = hasLdapEnv();
 		cachedConfig = defaultConfig;
 		return defaultConfig;
 	}
@@ -142,6 +145,8 @@ export function loadConfig(): OpsimateConfig {
 		}
 	}
 
+	// A bare `ldap:` (YAML null) is not a configuration.
+	ldapManagedByConfig = config.ldap != null || hasLdapEnv();
 	config.ldap = resolveLdapConfig(config.ldap);
 
 	cachedConfig = config;
@@ -264,6 +269,21 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_DEFAULT_ROLE) ldap.default_role = env.LDAP_DEFAULT_ROLE as LdapRole;
 
 	if (!ldap.enabled) return ldap;
+	const problems = validateLdapConfig(ldap);
+	if (problems.length > 0) {
+		logger.warn(`LDAP login is enabled but misconfigured — disabled. Missing/invalid: ${problems.join(', ')}`);
+		return { ...ldap, enabled: false };
+	}
+	if (/^ldap:\/\//i.test(ldap.url ?? '') && !ldap.start_tls) {
+		logger.warn('LDAP login uses ldap:// without start_tls: passwords cross the network unencrypted');
+	}
+	return ldap;
+}
+
+// What stops this LDAP config from working, as short field notes; empty = usable.
+// Shared by config.yml / env loading and the Settings page.
+export function validateLdapConfig(ldap: LdapConfig): string[] {
+	const mapping = ldap.role_mapping ?? {};
 	const problems: string[] = [];
 	if (!ldap.url || !/^ldaps?:\/\//i.test(ldap.url)) problems.push('url (ldap:// or ldaps://)');
 	if (!ldap.search_base) problems.push('search_base');
@@ -289,12 +309,39 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (ldap.start_tls && /^ldaps:\/\//i.test(ldap.url ?? '')) problems.push('start_tls (not with ldaps://)');
 	const mapped = LDAP_ROLES.some((role) => (mapping[role]?.length ?? 0) > 0);
 	if (!mapped && !ldap.default_role) problems.push('role_mapping or default_role (otherwise nobody may log in)');
-	if (problems.length > 0) {
-		logger.warn(`LDAP login is enabled but misconfigured — disabled. Missing/invalid: ${problems.join(', ')}`);
-		return { ...ldap, enabled: false };
-	}
-	if (/^ldap:\/\//i.test(ldap.url ?? '') && !ldap.start_tls) {
-		logger.warn('LDAP login uses ldap:// without start_tls: passwords cross the network unencrypted');
-	}
-	return ldap;
+	return problems;
 }
+
+// config.yml has an ldap section, or any LDAP_* variable is set: LDAP is then
+// configured by the deployment, and the Settings page shows it read-only.
+let ldapManagedByConfig = false;
+
+export function isLdapManagedByConfig(): boolean {
+	loadConfig();
+	return ldapManagedByConfig;
+}
+
+// Only the variables this module reads, and only when set to something: an empty
+// LDAP_URL= left in a compose/Helm template must not lock the Settings page.
+const LDAP_ENV_KEYS = [
+	'LDAP_ENABLED',
+	'LDAP_URL',
+	'LDAP_START_TLS',
+	'LDAP_BIND_DN',
+	'LDAP_BIND_PASSWORD',
+	'LDAP_SEARCH_BASE',
+	'LDAP_SEARCH_FILTER',
+	'LDAP_EMAIL_ATTRIBUTE',
+	'LDAP_NAME_ATTRIBUTE',
+	'LDAP_GROUPS_ATTRIBUTE',
+	'LDAP_GROUP_SEARCH_BASE',
+	'LDAP_GROUP_SEARCH_FILTER',
+	'LDAP_TIMEOUT_MS',
+	'LDAP_LOGIN_MAX_FAILURES',
+	'LDAP_TLS_REJECT_UNAUTHORIZED',
+	'LDAP_TLS_CA_FILE',
+	'LDAP_DEFAULT_ROLE',
+	...LDAP_ROLES.map((role) => `LDAP_ROLE_${role.toUpperCase()}_GROUPS`),
+];
+
+const hasLdapEnv = (): boolean => LDAP_ENV_KEYS.some((key) => (process.env[key] ?? '').trim() !== '');
