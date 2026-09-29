@@ -6,14 +6,15 @@ import { AllTheProviders } from './TestProviders';
 
 // The query hooks are mocked at the module boundary: this test is about what the form
 // lets an admin do, not about fetching.
-const { mutateAsync, settingsState } = vi.hoisted(() => ({
+const { mutateAsync, settingsState, pendingState } = vi.hoisted(() => ({
 	mutateAsync: vi.fn(),
 	settingsState: { current: null as LdapSettingsData | null },
+	pendingState: { save: false, test: false },
 }));
 vi.mock('@/hooks/queries/ldap', () => ({
 	useLdapSettings: () => ({ data: settingsState.current, isLoading: false, error: null }),
-	useUpdateLdapSettings: () => ({ mutateAsync, mutate: vi.fn(), isPending: false }),
-	useTestLdapConnection: () => ({ mutateAsync: vi.fn(), isPending: false }),
+	useUpdateLdapSettings: () => ({ mutateAsync, mutate: vi.fn(), isPending: pendingState.save }),
+	useTestLdapConnection: () => ({ mutateAsync: vi.fn(), isPending: pendingState.test }),
 }));
 
 const settings = (overrides: Partial<LdapSettingsData> = {}): LdapSettingsData => ({
@@ -54,6 +55,8 @@ beforeEach(() => {
 	mutateAsync.mockReset();
 	mutateAsync.mockImplementation(async () => settingsState.current);
 	settingsState.current = settings();
+	pendingState.save = false;
+	pendingState.test = false;
 });
 
 describe('LdapSettings', () => {
@@ -97,5 +100,14 @@ describe('LdapSettings', () => {
 		renderOpen();
 		expect(screen.getByLabelText('Server URL')).toBeDisabled();
 		expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
+	});
+
+	test.each(['save', 'test'] as const)('the form is frozen while a %s is in flight', (which) => {
+		pendingState[which] = true;
+		renderOpen();
+		expect(screen.getByLabelText('Server URL')).toBeDisabled();
+		expect(screen.getByLabelText('Password')).toBeDisabled();
+		expect(screen.getByLabelText('Admin groups')).toBeDisabled();
+		expect(screen.getByRole('button', { name: /test connection/i })).toBeDisabled();
 	});
 });

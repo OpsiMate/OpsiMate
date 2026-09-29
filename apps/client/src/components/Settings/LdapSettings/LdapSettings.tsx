@@ -236,6 +236,11 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 	}
 
 	const readOnly = data.source === 'config';
+	// While a save or a test is in flight the form is frozen: a save would otherwise
+	// overwrite edits typed meanwhile, and a test started before a save would report on
+	// settings that are no longer the saved ones.
+	const busy = updateMutation.isPending || testMutation.isPending;
+	const locked = readOnly || busy;
 	const dirty = !sameForm(form, toForm(data)) || bindPassword.length > 0;
 	// Switched on, but the server can't use it (e.g. the saved password no longer decrypts).
 	const notActive = data.enabled && data.problems.length > 0;
@@ -254,7 +259,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 	const text = (key: keyof LdapForm) => ({
 		id: `ldap-${key}`,
 		value: form[key] as string,
-		disabled: readOnly,
+		disabled: locked,
 		onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
 			set(key, e.target.value as LdapForm[typeof key]),
 	});
@@ -392,7 +397,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Switch
 								id="ldap-startTls"
 								checked={form.startTls}
-								disabled={readOnly}
+								disabled={locked}
 								onCheckedChange={(v) => set('startTls', v)}
 							/>
 							<Label htmlFor="ldap-startTls" className="text-sm">
@@ -409,7 +414,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Switch
 								id="ldap-tlsRejectUnauthorized"
 								checked={form.tlsRejectUnauthorized}
-								disabled={readOnly}
+								disabled={locked}
 								onCheckedChange={(v) => set('tlsRejectUnauthorized', v)}
 							/>
 							<Label htmlFor="ldap-tlsRejectUnauthorized" className="text-sm">
@@ -467,7 +472,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 										id="ldap-bindPassword"
 										type="password"
 										autoComplete="new-password"
-										disabled={readOnly}
+										disabled={locked}
 										placeholder={
 											data.hasBindPassword
 												? '•••••••• (saved — type to replace it)'
@@ -482,7 +487,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 											size="sm"
 											className="shrink-0"
 											onClick={() => void removePassword()}
-											disabled={updateMutation.isPending}
+											disabled={busy}
 										>
 											Remove
 										</Button>
@@ -561,7 +566,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Field id="ldap-defaultRole" label="Everyone else">
 								<Select
 									value={form.defaultRole}
-									disabled={readOnly}
+									disabled={locked}
 									onValueChange={(v) => set('defaultRole', v)}
 								>
 									<SelectTrigger id="ldap-defaultRole">
@@ -591,7 +596,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<div className="flex items-center gap-2">
 								<Switch
 									checked={data.enabled}
-									disabled={readOnly || updateMutation.isPending || dirty}
+									disabled={readOnly || busy || dirty}
 									onCheckedChange={setEnabled}
 									aria-label="Enable LDAP login"
 								/>
@@ -602,7 +607,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							{!readOnly && (
 								<Button
 									onClick={() => void save()}
-									disabled={updateMutation.isPending || !dirty || needsPassword}
+									disabled={busy || !dirty || needsPassword}
 									title={needsPassword ? 'Re-enter the service-account password first' : undefined}
 								>
 									{updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
@@ -624,7 +629,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Button
 								variant="outline"
 								onClick={() => void runTest()}
-								disabled={testMutation.isPending || dirty}
+								disabled={busy || dirty}
 								title={
 									dirty
 										? 'Save your changes first — the test runs with the saved settings'
