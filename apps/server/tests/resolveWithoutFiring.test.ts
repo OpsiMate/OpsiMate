@@ -208,8 +208,18 @@ describe('resolve with no firing alert (custom webhook)', () => {
 	test('Insights counts the no-start episode as resolved, not firing', async () => {
 		const res = await auth(app.get('/api/v1/alerts/analytics?tz=UTC'));
 		expect(res.status).toBe(200);
-		const byName = res.body.data.byName as { name: string; firingNow: number; episodes: number }[];
-		expect(byName.find((row) => row.name === 'Disk full')).toMatchObject({ episodes: 1, firingNow: 0 });
+		const byName = res.body.data.byName as {
+			name: string;
+			firingNow: number;
+			episodes: number;
+			refireRate: number;
+		}[];
+		// A zero-length resolve-only episode must not count its own start as a re-fire.
+		expect(byName.find((row) => row.name === 'Disk full')).toMatchObject({
+			episodes: 1,
+			firingNow: 0,
+			refireRate: 0,
+		});
 	});
 });
 
@@ -276,6 +286,7 @@ describe('same-millisecond transitions keep the order they happened in', () => {
 		name: string;
 		episodes: number;
 		firingNow: number;
+		refireRate: number | null;
 	}
 	const T = '2026-09-22T09:00:00.000Z';
 	const addRows = (id: string, rows: [string, string][]) => {
@@ -307,5 +318,7 @@ describe('same-millisecond transitions keep the order they happened in', () => {
 		const res = await auth(app.get('/api/v1/alerts/analytics?tz=UTC&from=2026-09-22T00:00:00Z'));
 		const row = (res.body.data.byName as NameStat[]).find((r) => r.name === 'Tie live');
 		expect(row).toMatchObject({ episodes: 2, firingNow: 1 });
+		// The second episode started in the same ms the first resolved: that is a re-fire.
+		expect(row?.refireRate).toBe(1);
 	});
 });

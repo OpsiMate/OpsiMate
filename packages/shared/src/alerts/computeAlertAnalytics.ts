@@ -401,13 +401,25 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 	const mtbfMean =
 		mtbfSamples.length > 0 ? Math.round(mtbfSamples.reduce((sum, v) => sum + v, 0) / mtbfSamples.length) : null;
 
-	// Re-fire rate over resolutions in the window: did the same alert fire again
-	// within 24h of this resolution?
+	// Re-fire: the same alert's NEXT episode started within 24h of this one's resolution.
+	// "Next" by episode order, not by comparing timestamps: a resolve and a re-fire in the
+	// same millisecond are still two ordered episodes, and a zero-length episode must not
+	// count its own start. buildEpisodes returns each alert's episodes in order.
+	const nextStartByEpisode = new Map<Episode, number>();
+	for (let i = 1; i < episodes.length; i++) {
+		if (episodes[i].alertId === episodes[i - 1].alertId)
+			nextStartByEpisode.set(episodes[i - 1], episodes[i].startMs);
+	}
+	const refiredAfter = (episode: Episode): boolean => {
+		const next = nextStartByEpisode.get(episode);
+		const gap = next === undefined || episode.resolvedMs === null ? NaN : next - episode.resolvedMs;
+		return gap >= 0 && gap <= REFIRE_WINDOW_MS;
+	};
+
+	// Re-fire rate over resolutions in the window.
 	let refired = 0;
 	for (const resolution of resolutionsInRange) {
-		const resolvedMs = resolution.resolvedMs as number;
-		const starts = startsByAlert.get(resolution.alertId) ?? [];
-		if (starts.some((s) => s > resolvedMs && s - resolvedMs <= REFIRE_WINDOW_MS)) refired += 1;
+		if (refiredAfter(resolution)) refired += 1;
 	}
 
 	const acked = windowEpisodes.filter((e) => e.firstTouchMs !== null).length;
@@ -463,9 +475,7 @@ export const computeAlertAnalytics = (inputs: AnalyticsInputs): AlertAnalytics =
 		}
 		let nameRefired = 0;
 		for (const e of resolved) {
-			const starts = startsByAlert.get(e.alertId) ?? [];
-			if (starts.some((s) => s > (e.resolvedMs as number) && s - (e.resolvedMs as number) <= REFIRE_WINDOW_MS))
-				nameRefired += 1;
+			if (refiredAfter(e)) nameRefired += 1;
 		}
 		let worst: string | null = null;
 		for (const alertId of acc.alertIds) {
