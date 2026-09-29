@@ -4,7 +4,7 @@ import { Role } from '@OpsiMate/shared';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuditBL } from '../src/bl/audit/audit.bl';
 import { LdapAuthenticator, LdapIdentity, LdapUnavailableError } from '../src/bl/users/ldapAuthenticator';
-import { DirectoryManagedError, UserBL } from '../src/bl/users/user.bl';
+import { DirectoryManagedError, TooManyLoginAttemptsError, UserBL } from '../src/bl/users/user.bl';
 import { AuditLogRepository } from '../src/dal/auditLogRepository';
 import { MailClient } from '../src/dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository';
@@ -155,5 +155,54 @@ describe('UserBL login with LDAP', () => {
 		await userBL.login('dana@example.com', 'dir-pw');
 		await userBL.forgotPassword('dana@example.com');
 		expect(sendMail).not.toHaveBeenCalled();
+	});
+
+	test('an account stays with its directory entry: another DN with the same email is refused', async () => {
+		await userBL.login('dana@example.com', 'dir-pw');
+		directory.answers.set('dana@example.com', {
+			password: 'dir-pw',
+			identity: { ...identity('dana@example.com', 'New Dana', Role.Admin), dn: 'uid=dana2,dc=example,dc=com' },
+		});
+		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
+		expect(await userRepo.getUserByEmail('dana@example.com')).toMatchObject({ fullName: 'Dana Directory' });
+	});
+
+	test('a local account is protected whatever the letter case of its email', async () => {
+		await userRepo.createUser('Case@Example.com', await bcrypt.hash('x', 4), 'Local Case', Role.Viewer);
+		directory.answers.set('case@example.com', {
+			password: 'dir-pw',
+			identity: identity('case@example.com', 'Directory Case', Role.Admin),
+		});
+		await expect(userBL.login('case@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
+		expect(await userRepo.countUsers()).toBe(2);
+	});
+
+	test('two simultaneous first logins end up in one account', async () => {
+		const [a, b] = await Promise.all([
+			userBL.login('dana@example.com', 'dir-pw'),
+			userBL.login('dana@example.com', 'dir-pw'),
+		]);
+		expect(a.id).toBe(b.id);
+		expect(await userRepo.countUsers()).toBe(2);
+	});
+
+	test('after 5 failed directory logins the email is throttled without asking the directory', async () => {
+		for (let i = 0; i < 5; i++) {
+			await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid email or password');
+		}
+		const callsBefore = directory.calls;
+		await expect(userBL.login('Dana@example.com', 'dir-pw')).rejects.toBeInstanceOf(TooManyLoginAttemptsError);
+		expect(directory.calls).toBe(callsBefore);
+		// Local accounts are not affected by directory throttling.
+		await expect(userBL.login('admin@example.com', 'local-pw')).resolves.toMatchObject({ authSource: 'local' });
+		// Other directory users are not affected either.
+		await expect(userBL.login('nogroup@example.com', 'dir-pw')).rejects.toThrow(/not allowed/i);
+	});
+
+	test('a successful directory login clears earlier failures', async () => {
+		for (let i = 0; i < 4; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow();
+		await userBL.login('dana@example.com', 'dir-pw');
+		for (let i = 0; i < 4; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow();
+		await expect(userBL.login('dana@example.com', 'dir-pw')).resolves.toMatchObject({ email: 'dana@example.com' });
 	});
 });

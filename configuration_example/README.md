@@ -74,6 +74,13 @@ How it works:
 2. It checks the password by binding as that entry. OpsiMate never stores directory passwords.
 3. It reads the user's groups (`memberOf`, or a group search) and maps them to a role through `role_mapping`. The highest role wins. Users in no mapped group are refused unless `default_role` is set.
 
+Security notes:
+
+- **Prefer full group DNs in `role_mapping`, at least for `admin`.** A bare name like `admins` matches *any* group whose name is `admins`, anywhere the lookup can see. Anyone who can create or own a group there could grant themselves that role.
+- An OpsiMate account belongs to the directory entry (DN) that created it. If another entry later answers for the same email (for example a reused address, or an entry that was moved or renamed), that login is refused and the server log says so. Delete the OpsiMate user to let the new entry sign in.
+- After 5 failed directory logins for an email within 15 minutes, OpsiMate answers 429 without asking the directory. This protects the account from being locked by the directory's own lockout policy. Keep your directory lockout threshold above 5.
+- Role and name changes in the directory apply at the user's next login. A session that is already open keeps its role until the token expires.
+
 Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same email.
 
 Configure it in the `ldap:` section of your config file (see the commented example in `default-config.yml`) or with environment variables:

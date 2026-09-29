@@ -1,6 +1,7 @@
 import { ClientOptions, InvalidCredentialsError } from 'ldapts';
 import { Role } from '@OpsiMate/shared';
-import { afterEach, describe, expect, test } from 'vitest';
+import { Socket } from 'node:net';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
 	escapeFilterValue,
 	LdapAuthenticator,
@@ -20,6 +21,9 @@ interface FakeUser {
 	cn?: string;
 	password: string;
 	memberOf?: string[];
+	// The search matches this address although the entry's mail says otherwise
+	// (a custom filter on another attribute, or a self-edited extra value).
+	searchAs?: string;
 }
 
 interface FakeGroup {
@@ -54,7 +58,9 @@ class FakeClient implements LdapClientLike {
 		this.calls.push(`search ${base} ${options.filter}`);
 		const mailMatch = /^\(mail=(.*)\)$/.exec(options.filter);
 		if (mailMatch) {
-			const users = this.dir.users.filter((u) => escapeFilterValue(u.mail) === mailMatch[1]);
+			const users = this.dir.users.filter(
+				(u) => escapeFilterValue(u.searchAs ?? u.mail).toLowerCase() === mailMatch[1].toLowerCase()
+			);
 			return Promise.resolve({
 				searchEntries: users.map((u) => ({
 					dn: u.dn,
@@ -217,6 +223,70 @@ describe('LdapAuthenticator', () => {
 	});
 });
 
+describe('LdapAuthenticator hardening', () => {
+	test('StartTLS checks the certificate against the LDAP host, not "localhost"', async () => {
+		const startTLS = vi.fn().mockResolvedValue(undefined);
+		const auth = new LdapAuthenticator({ ...CONFIG, url: 'ldap://dir.corp.example:389', start_tls: true }, () => {
+			const c = new FakeClient(DIR);
+			c.startTLS = startTLS;
+			return c;
+		});
+		await auth.authenticate('alice@example.com', 'alice-pw');
+		expect(startTLS).toHaveBeenCalledWith(
+			expect.objectContaining({ servername: 'dir.corp.example', host: 'dir.corp.example' })
+		);
+	});
+
+	test('with StartTLS, a dropped connection is never reopened in clear', async () => {
+		const { auth, options } = make({ ...CONFIG, url: 'ldap://127.0.0.1:9', start_tls: true });
+		await auth.authenticate('alice@example.com', 'alice-pw');
+		const connect = options[0].createConnection as (port: number, host: string) => Socket;
+		const first = connect(9, '127.0.0.1');
+		first.on('error', () => undefined);
+		first.destroy();
+		const second = connect(9, '127.0.0.1');
+		const error = await new Promise<Error>((resolve) => second.once('error', resolve));
+		expect(error.message).toMatch(/not reconnecting in clear/);
+		// Without StartTLS there is no such guard (an ldaps:// reconnect is TLS again).
+		expect(make().options.length).toBe(0);
+		const plain = make();
+		await plain.auth.authenticate('alice@example.com', 'alice-pw');
+		expect(plain.options[0].createConnection).toBeUndefined();
+	});
+
+	test('an entry that does not list the typed email itself is refused', async () => {
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [
+				...DIR.users,
+				{
+					dn: 'uid=mallory,ou=people,dc=example,dc=com',
+					mail: 'mallory@example.com',
+					searchAs: 'victim@example.com',
+					password: 'mallory-pw',
+					memberOf: ['cn=ops-admins,ou=groups,dc=example,dc=com'],
+				},
+			],
+		};
+		const { auth } = make(CONFIG, dir);
+		expect(await auth.authenticate('victim@example.com', 'mallory-pw')).toBeNull();
+		// The identity's email is the typed one (lower-cased), never another directory value.
+		expect((await auth.authenticate('ALICE@example.com', 'alice-pw'))?.email).toBe('alice@example.com');
+	});
+
+	test('$ patterns in a DN are not expanded into the group filter', async () => {
+		const dn = "uid=x$'y$&,ou=people,dc=example,dc=com";
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [{ dn, mail: 'x@example.com', password: 'x-pw', memberOf: [] }],
+			groups: [{ dn: 'cn=sre,ou=groups,dc=example,dc=com', member: [dn] }],
+		};
+		const { auth, clients } = make({ ...CONFIG, group_search_base: 'ou=groups,dc=example,dc=com' }, dir);
+		expect((await auth.authenticate('x@example.com', 'x-pw'))?.role).toBe(Role.Editor);
+		expect(clients[0].calls).toContain(`search ou=groups,dc=example,dc=com (member=${dn})`);
+	});
+});
+
 describe('resolveLdapConfig', () => {
 	const saved = { ...process.env };
 	afterEach(() => {
@@ -249,5 +319,24 @@ describe('resolveLdapConfig', () => {
 			resolveLdapConfig({ enabled: true, url: 'ldaps://dir', search_base: 'dc=x', default_role: 'viewer' })
 				.enabled
 		).toBe(true);
+	});
+
+	test('bad values switch it off instead of misbehaving at login', () => {
+		const base = { enabled: true, url: 'ldaps://dir', search_base: 'dc=x', default_role: 'viewer' as const };
+		expect(resolveLdapConfig({ ...base, timeout_ms: Number('abc') }).enabled).toBe(false);
+		expect(resolveLdapConfig({ ...base, tls: { ca_file: '/nonexistent/ca.pem' } }).enabled).toBe(false);
+		expect(resolveLdapConfig({ ...base, start_tls: true }).enabled).toBe(false); // ldaps + StartTLS
+		expect(resolveLdapConfig({ ...base, enabled: 'false' as unknown as boolean }).enabled).toBe(false);
+	});
+
+	test('a single group written as a string counts as a one-item list', () => {
+		const c = resolveLdapConfig({
+			enabled: true,
+			url: 'ldaps://dir',
+			search_base: 'dc=x',
+			role_mapping: { admin: 'cn=ops,dc=x' as unknown as string[] },
+		});
+		expect(c.enabled).toBe(true);
+		expect(c.role_mapping?.admin).toEqual(['cn=ops,dc=x']);
 	});
 });

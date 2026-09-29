@@ -59,7 +59,7 @@ mailer:
 #   groups_attribute: "memberOf"             # AD / OpenLDAP with the memberOf overlay
 #   # group_search_base: "ou=groups,dc=example,dc=com"   # directories without memberOf
 #   # group_search_filter: "(member={{dn}})"
-#   role_mapping:                            # full group DN or bare group name; highest role wins
+#   role_mapping:                            # full group DN (safest) or bare group name; highest role wins
 #     admin: ["cn=opsimate-admins,ou=groups,dc=example,dc=com"]
 #     editor: ["sre"]
 #     viewer: ["engineering"]

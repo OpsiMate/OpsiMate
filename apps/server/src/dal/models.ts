@@ -110,6 +110,7 @@ export type UserRow = {
 	phone_number: string | null;
 	// Absent on rows read before the column existed; treated as 'local'.
 	auth_source?: string | null;
+	ldap_dn?: string | null;
 };
 
 export type OncallTeamRow = {

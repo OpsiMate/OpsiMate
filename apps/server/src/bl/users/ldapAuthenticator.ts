@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import net from 'node:net';
 import type { ConnectionOptions } from 'node:tls';
 import { Client, ClientOptions, Entry, InvalidCredentialsError } from 'ldapts';
 import { Logger, Role } from '@OpsiMate/shared';
@@ -122,25 +123,55 @@ export class LdapAuthenticator {
 
 		const timeout = this.config.timeout_ms ?? 5000;
 		const url = this.config.url as string;
+		const host = new URL(url).hostname;
+		let plainSockets = 0;
 		const client = this.clientFactory({
 			url,
 			timeout,
 			connectTimeout: timeout,
 			// ldapts opens a TLS socket whenever tlsOptions is set, whatever the URL says:
 			// on ldap:// that breaks plain and StartTLS connections. StartTLS gets the
-			// options through startTLS() below instead.
-			...(url.toLowerCase().startsWith('ldaps://') ? { tlsOptions: this.tlsOptions } : {}),
+			// options through startTLS() below instead. A fresh copy each time: ldapts
+			// writes the socket into the object it is given.
+			...(url.toLowerCase().startsWith('ldaps://') ? { tlsOptions: { ...this.tlsOptions } } : {}),
+			// ldapts silently reconnects when the connection drops. After StartTLS that
+			// reconnect would be plain TCP and the next bind would send a password in
+			// clear, so with StartTLS only the first socket is ever opened.
+			...(this.config.start_tls
+				? {
+						createConnection: (port: number, connectHost: string): net.Socket => {
+							plainSockets++;
+							if (plainSockets === 1) return net.connect(port, connectHost);
+							const refused = new net.Socket();
+							process.nextTick(() =>
+								refused.destroy(
+									new Error('LDAP connection dropped after StartTLS; not reconnecting in clear')
+								)
+							);
+							return refused;
+						},
+					}
+				: {}),
 		});
 		try {
-			if (this.config.start_tls) await client.startTLS(this.tlsOptions);
+			// Without servername/host, Node checks the certificate against "localhost".
+			if (this.config.start_tls)
+				await client.startTLS({
+					...this.tlsOptions,
+					host,
+					// SNI takes DNS names only; for an IP the certificate is still checked against `host`.
+					...(net.isIP(host) ? {} : { servername: host }),
+				});
 			await this.bindServiceAccount(client);
 
 			const emailAttr = this.config.email_attribute ?? 'mail';
 			const nameAttr = this.config.name_attribute ?? 'displayName';
 			const groupsAttr = this.config.groups_attribute ?? 'memberOf';
+			// Function replacers: a string replacement would expand $&, $' and $` in the value.
+			const escapedEmail = escapeFilterValue(email);
 			const filter = (this.config.search_filter ?? '(mail={{email}})').replaceAll(
 				'{{email}}',
-				escapeFilterValue(email)
+				() => escapedEmail
 			);
 			const { searchEntries } = await this.search(client, this.config.search_base as string, {
 				scope: 'sub',
@@ -154,6 +185,17 @@ export class LdapAuthenticator {
 				return null;
 			}
 			const entry = searchEntries[0];
+			// The account is keyed on the email that was typed, and the entry must list that
+			// exact address itself: otherwise an entry whose (self-editable) mail attribute
+			// names someone else, or a custom filter matching some other attribute, could
+			// sign in to that other person's OpsiMate account.
+			const typedEmail = email.trim().toLowerCase();
+			if (!allValues(entry, emailAttr).some((value) => value.trim().toLowerCase() === typedEmail)) {
+				logger.warn(
+					`LDAP: entry ${entry.dn} matched ${email} but does not list it in ${emailAttr}; login refused`
+				);
+				return null;
+			}
 
 			try {
 				await client.bind(entry.dn, password);
@@ -167,9 +209,10 @@ export class LdapAuthenticator {
 			await this.bindServiceAccount(client);
 			const groups = [...allValues(entry, groupsAttr)];
 			if (this.config.group_search_base) {
+				const escapedDn = escapeFilterValue(entry.dn);
 				const groupFilter = (this.config.group_search_filter ?? '(member={{dn}})').replaceAll(
 					'{{dn}}',
-					escapeFilterValue(entry.dn)
+					() => escapedDn
 				);
 				const found = await this.search(client, this.config.group_search_base, {
 					scope: 'sub',
@@ -179,10 +222,9 @@ export class LdapAuthenticator {
 				groups.push(...found.searchEntries.map((g) => g.dn));
 			}
 
-			const directoryEmail = firstValue(entry, emailAttr);
 			return {
 				dn: entry.dn,
-				email: (directoryEmail ?? email).trim().toLowerCase(),
+				email: typedEmail,
 				fullName: firstValue(entry, nameAttr) ?? firstValue(entry, 'cn') ?? email,
 				groups,
 				role: resolveLdapRole(groups, this.config.role_mapping, this.config.default_role),

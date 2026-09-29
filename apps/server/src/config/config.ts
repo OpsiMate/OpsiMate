@@ -223,6 +223,8 @@ const envList = (value: string | undefined): string[] | undefined =>
 export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig {
 	const env = process.env;
 	const ldap: LdapConfig = { ...(fromFile ?? { enabled: false }) };
+	// YAML may carry "true"/"false" as strings; only a real true (or "true") enables.
+	ldap.enabled = (ldap.enabled as unknown) === true || (ldap.enabled as unknown) === 'true';
 	if (env.LDAP_ENABLED !== undefined) ldap.enabled = env.LDAP_ENABLED === 'true';
 	if (env.LDAP_URL) ldap.url = env.LDAP_URL;
 	if (env.LDAP_START_TLS !== undefined) ldap.start_tls = env.LDAP_START_TLS === 'true';
@@ -242,7 +244,13 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_TLS_CA_FILE) ldap.tls = { ...ldap.tls, ca_file: env.LDAP_TLS_CA_FILE };
 	// Group lists: LDAP_ROLE_ADMIN_GROUPS="cn=ops,ou=groups,dc=x;sre" (; or | separated —
 	// DNs contain commas).
-	const mapping: LdapRoleMapping = { ...ldap.role_mapping };
+	const mapping: LdapRoleMapping = {};
+	for (const role of LDAP_ROLES) {
+		// A single group written as a string instead of a list is still one group.
+		const fromYaml: unknown = ldap.role_mapping?.[role];
+		if (typeof fromYaml === 'string') mapping[role] = [fromYaml];
+		else if (Array.isArray(fromYaml)) mapping[role] = fromYaml.map(String);
+	}
 	for (const role of LDAP_ROLES) {
 		const groups = envList(env[`LDAP_ROLE_${role.toUpperCase()}_GROUPS`]);
 		if (groups) mapping[role] = groups;
@@ -261,6 +269,13 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (ldap.group_search_filter && !ldap.group_search_filter.includes('{{dn}}')) {
 		problems.push('group_search_filter must contain {{dn}}');
 	}
+	if (ldap.timeout_ms !== undefined && !(Number.isFinite(ldap.timeout_ms) && ldap.timeout_ms > 0)) {
+		// NaN would mean "no timeout" to the client: a hung directory would hang logins.
+		problems.push('timeout_ms (a positive number of milliseconds)');
+	}
+	if (ldap.tls?.ca_file && !fs.existsSync(ldap.tls.ca_file))
+		problems.push(`tls.ca_file (${ldap.tls.ca_file} not found)`);
+	if (ldap.start_tls && /^ldaps:\/\//i.test(ldap.url ?? '')) problems.push('start_tls (not with ldaps://)');
 	const mapped = LDAP_ROLES.some((role) => (mapping[role]?.length ?? 0) > 0);
 	if (!mapped && !ldap.default_role) problems.push('role_mapping or default_role (otherwise nobody may log in)');
 	if (problems.length > 0) {

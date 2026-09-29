@@ -24,6 +24,26 @@ export class DirectoryManagedError extends Error {
 	}
 }
 
+// Too many failed directory logins for one email: refuse before asking the directory
+// again. Each failure there counts toward the directory's own lockout policy (AD often
+// locks an account after 5–10), which would lock the person out of everything, not
+// just OpsiMate.
+export class TooManyLoginAttemptsError extends Error {
+	constructor() {
+		super('Too many failed login attempts. Try again later.');
+		this.name = 'TooManyLoginAttemptsError';
+	}
+}
+
+const LDAP_MAX_FAILURES = 5;
+const LDAP_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const LDAP_FAILURE_TRACKING_CAP = 10_000;
+
+interface LoginFailures {
+	count: number;
+	windowStart: number;
+}
+
 const logger = new Logger('bl/users/user.bl');
 
 export class UserBL {
@@ -40,6 +60,8 @@ export class UserBL {
 
 	// Directory login (see LdapAuthenticator); null when LDAP is not configured.
 	private ldap: LdapAuthenticator | null = null;
+	// Failed directory logins per email (lower-cased), in a fixed window.
+	private readonly ldapFailures = new Map<string, LoginFailures>();
 
 	setLdapAuthenticator(ldap: LdapAuthenticator | null): void {
 		this.ldap = ldap;
@@ -107,38 +129,96 @@ export class UserBL {
 			throw new Error(INVALID_LOGIN);
 		}
 
+		if (this.isLdapThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
 		const identity = await this.ldap.authenticate(normalizedEmail, password);
-		if (!identity) throw new Error(INVALID_LOGIN);
+		if (!identity) {
+			this.recordLdapFailure(normalizedEmail);
+			throw new Error(INVALID_LOGIN);
+		}
+		this.ldapFailures.delete(normalizedEmail);
 		if (!identity.role) {
 			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);
 		}
-		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role);
+		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
 	}
 
-	private async provisionDirectoryUser(email: string, fullName: string, role: Role): Promise<User> {
-		const current = await this.userRepo.getUserByEmail(email);
-		if (current && current.authSource !== 'ldap') {
-			// The directory email now matches a local account created meanwhile: never
-			// take a local account over from the directory.
+	private isLdapThrottled(email: string): boolean {
+		const entry = this.ldapFailures.get(email);
+		if (!entry) return false;
+		if (Date.now() - entry.windowStart > LDAP_FAILURE_WINDOW_MS) {
+			this.ldapFailures.delete(email);
+			return false;
+		}
+		return entry.count >= LDAP_MAX_FAILURES;
+	}
+
+	private recordLdapFailure(email: string): void {
+		const now = Date.now();
+		if (this.ldapFailures.size >= LDAP_FAILURE_TRACKING_CAP) {
+			for (const [key, value] of this.ldapFailures) {
+				if (now - value.windowStart > LDAP_FAILURE_WINDOW_MS) this.ldapFailures.delete(key);
+			}
+		}
+		const entry = this.ldapFailures.get(email);
+		if (!entry || now - entry.windowStart > LDAP_FAILURE_WINDOW_MS) {
+			// Past the cap with nothing expired: stop tracking new emails rather than grow.
+			if (this.ldapFailures.size < LDAP_FAILURE_TRACKING_CAP)
+				this.ldapFailures.set(email, { count: 1, windowStart: now });
+			return;
+		}
+		entry.count++;
+		if (entry.count === LDAP_MAX_FAILURES)
+			logger.warn(`LDAP login for ${email} throttled after ${entry.count} failures`);
+	}
+
+	private async provisionDirectoryUser(email: string, fullName: string, role: Role, dn: string): Promise<User> {
+		const link = await this.userRepo.findDirectoryLink(email);
+		if (link && link.authSource !== 'ldap') {
+			// A local account has this email (in any letter case): never take a local
+			// account over from the directory.
 			throw new Error(INVALID_LOGIN);
 		}
-		if (current) {
-			if (current.fullName !== fullName || current.role !== role) {
-				await this.userRepo.syncDirectoryUser(Number(current.id), fullName, role);
-				this.onUsersChanged?.();
+		if (link) {
+			if (link.ldapDn && link.ldapDn.toLowerCase() !== dn.toLowerCase()) {
+				// Another directory entry now answers for this email (address reused, or
+				// the entry was moved/renamed): don't hand it the old person's account.
+				logger.warn(
+					`LDAP login for ${email} refused: the account belongs to ${link.ldapDn}, not ${dn}. ` +
+						'Delete the OpsiMate user to let the new entry sign in.'
+				);
+				throw new Error(INVALID_LOGIN);
 			}
-			const synced = await this.userRepo.getUserById(Number(current.id));
-			if (!synced) throw new Error('User not found');
-			return synced;
+			if (!link.ldapDn) await this.userRepo.setLdapDn(link.id, dn);
+			return this.syncDirectoryAccount(link.id, fullName, role);
 		}
-		// No usable password hash: this account can only ever sign in through LDAP.
-		const result = await this.userRepo.createUser(email, DIRECTORY_PASSWORD_HASH, fullName, role, 'ldap');
-		const created = await this.userRepo.getUserById(result.lastID);
-		if (!created) throw new Error('User creation failed');
-		logger.info(`Provisioned ${email} from LDAP as ${role}`);
+		try {
+			// No usable password hash: this account can only ever sign in through LDAP.
+			const result = await this.userRepo.createUser(email, DIRECTORY_PASSWORD_HASH, fullName, role, 'ldap', dn);
+			const created = await this.userRepo.getUserById(result.lastID);
+			if (!created) throw new Error('User creation failed');
+			logger.info(`Provisioned ${email} from LDAP as ${role}`);
+			this.onUsersChanged?.();
+			return created;
+		} catch (error) {
+			// Two first logins at once: the other one created it; use that account.
+			const raced = await this.userRepo.findDirectoryLink(email);
+			if (raced?.authSource === 'ldap' && raced.ldapDn?.toLowerCase() === dn.toLowerCase()) {
+				return this.syncDirectoryAccount(raced.id, fullName, role);
+			}
+			throw error;
+		}
+	}
+
+	private async syncDirectoryAccount(userId: number, fullName: string, role: Role): Promise<User> {
+		const current = await this.userRepo.getUserById(userId);
+		if (!current) throw new Error('User not found');
+		if (current.fullName === fullName && current.role === role) return current;
+		await this.userRepo.syncDirectoryUser(userId, fullName, role);
 		this.onUsersChanged?.();
-		return created;
+		const synced = await this.userRepo.getUserById(userId);
+		if (!synced) throw new Error('User not found');
+		return synced;
 	}
 
 	private async assertLocalAccount(userId: number, action: string): Promise<void> {

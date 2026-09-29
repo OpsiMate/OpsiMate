@@ -1,7 +1,13 @@
 import { LdapUnavailableError } from '../../../bl/users/ldapAuthenticator';
 import { Request, Response } from 'express';
 import { isZodError } from '../../../utils/isZodError';
-import { DirectoryManagedError, INVALID_LOGIN, NOT_ALLOWED_LOGIN, UserBL } from '../../../bl/users/user.bl';
+import {
+	DirectoryManagedError,
+	INVALID_LOGIN,
+	NOT_ALLOWED_LOGIN,
+	TooManyLoginAttemptsError,
+	UserBL,
+} from '../../../bl/users/user.bl';
 import {
 	CreateUserSchema,
 	Logger,
@@ -86,6 +92,8 @@ export class UsersController {
 				return res.status(401).json({ success: false, error: error.message });
 			} else if (error instanceof Error && error.message === NOT_ALLOWED_LOGIN) {
 				return res.status(403).json({ success: false, error: error.message });
+			} else if (error instanceof TooManyLoginAttemptsError) {
+				return res.status(429).json({ success: false, error: error.message });
 			} else if (error instanceof LdapUnavailableError) {
 				// Details (host, bind failure) go to the log, not to an anonymous caller.
 				logger.error('LDAP login unavailable:', error.message);

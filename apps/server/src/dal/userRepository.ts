@@ -3,6 +3,13 @@ import { runAsync } from './db';
 import { TableInfoRow, UserRow } from './models';
 import { User, UserAuthSource } from '@OpsiMate/shared';
 
+// How an email maps onto an existing account, for directory provisioning.
+export interface DirectoryAccountLink {
+	id: number;
+	authSource: UserAuthSource;
+	ldapDn: string | null;
+}
+
 export class UserRepository {
 	private db: Database.Database;
 
@@ -37,6 +44,11 @@ export class UserRepository {
 			if (!columns.some((col) => col.name === 'auth_source')) {
 				this.db.prepare(`ALTER TABLE users ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local'`).run();
 			}
+			// The directory entry (DN) an LDAP account belongs to: a later login from a
+			// different entry with the same email must not get this account.
+			if (!columns.some((col) => col.name === 'ldap_dn')) {
+				this.db.prepare(`ALTER TABLE users ADD COLUMN ldap_dn TEXT`).run();
+			}
 		});
 	}
 
@@ -45,13 +57,14 @@ export class UserRepository {
 		password_hash: string,
 		full_name: string,
 		role: 'admin' | 'editor' | 'viewer' | 'operation',
-		authSource: UserAuthSource = 'local'
+		authSource: UserAuthSource = 'local',
+		ldapDn: string | null = null
 	): Promise<{ lastID: number }> {
 		return runAsync<{ lastID: number }>(() => {
 			const stmt = this.db.prepare(
-				'INSERT INTO users (email, password_hash, full_name, role, auth_source) VALUES (?, ?, ?, ?, ?)'
+				'INSERT INTO users (email, password_hash, full_name, role, auth_source, ldap_dn) VALUES (?, ?, ?, ?, ?, ?)'
 			);
-			const result = stmt.run(email, password_hash, full_name, role, authSource);
+			const result = stmt.run(email, password_hash, full_name, role, authSource, ldapDn);
 			return { lastID: result.lastInsertRowid as number };
 		});
 	}
@@ -184,6 +197,30 @@ export class UserRepository {
 	async syncDirectoryUser(userId: number, fullName: string, role: string): Promise<void> {
 		return runAsync(() => {
 			this.db.prepare('UPDATE users SET full_name = ?, role = ? WHERE id = ?').run(fullName, role, userId);
+		});
+	}
+
+	// Any account whose email matches ignoring case: the UNIQUE constraint is
+	// case-sensitive, so "Alice@x" (local) and "alice@x" could otherwise coexist.
+	async findDirectoryLink(email: string): Promise<DirectoryAccountLink | null> {
+		return runAsync(() => {
+			const row = this.db
+				.prepare(
+					'SELECT id, auth_source, ldap_dn FROM users WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1'
+				)
+				.get(email) as UserRow | undefined;
+			if (!row) return null;
+			return {
+				id: Number(row.id),
+				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
+				ldapDn: row.ldap_dn ?? null,
+			};
+		});
+	}
+
+	async setLdapDn(userId: number, dn: string): Promise<void> {
+		return runAsync(() => {
+			this.db.prepare('UPDATE users SET ldap_dn = ? WHERE id = ?').run(dn, userId);
 		});
 	}
 
