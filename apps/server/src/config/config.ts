@@ -4,6 +4,13 @@ import { Logger } from '@OpsiMate/shared';
 
 const logger = new Logger('config');
 
+// The token security.api_token falls back to when nothing else configures one.
+// Kept for backward compatibility: removing it outright breaks every deployment
+// still relying on it (webhooks pointed at ?api_token=opsimate, compose files
+// that never set their own). Removal is a planned, announced change, not this one.
+// See warnIfDefaultApiToken below, which is what actually protects a fresh install.
+export const DEFAULT_API_TOKEN = 'opsimate';
+
 export interface OpsimateConfig {
 	server: {
 		port: number;
@@ -56,6 +63,7 @@ export function loadConfig(): OpsimateConfig {
 	if (!configPath || !fs.existsSync(configPath)) {
 		logger.warn(`Config file not found starting from ${process.cwd()}, using defaults`);
 		const defaultConfig = getDefaultConfig();
+		warnIfDefaultApiToken(defaultConfig);
 		cachedConfig = defaultConfig;
 		return defaultConfig;
 	}
@@ -69,6 +77,15 @@ export function loadConfig(): OpsimateConfig {
 		logger.error('Invalid config file: missing required fields');
 		throw new Error(`Invalid config file: ${configPath}`);
 	}
+
+	// API_TOKEN is meant to work whether or not a config file is mounted, so it
+	// has to override the file's value here too, not just the no-config-file
+	// default in getDefaultConfig().
+	if (process.env.API_TOKEN) {
+		config.security.api_token = process.env.API_TOKEN;
+	}
+
+	warnIfDefaultApiToken(config);
 
 	// Set default VM config if not provided
 	if (!config.vm) {
@@ -95,6 +112,19 @@ export function loadConfig(): OpsimateConfig {
 	return config;
 }
 
+// Fires whenever the effective token is still the shipped default, regardless of
+// whether that came from getDefaultConfig(), a mounted config file, or the image's
+// baked-in default-config.yml. This is the actual safeguard: it doesn't stop the
+// token from working, but it makes running unconfigured impossible to miss in logs.
+function warnIfDefaultApiToken(config: OpsimateConfig): void {
+	if (config.security.api_token === DEFAULT_API_TOKEN) {
+		logger.warn(
+			`security.api_token is set to the default value ("${DEFAULT_API_TOKEN}"). ` +
+				'Set security.api_token in your config file or the API_TOKEN environment variable to a value only you know.'
+		);
+	}
+}
+
 function getDefaultConfig(): OpsimateConfig {
 	return {
 		server: {
@@ -106,7 +136,7 @@ function getDefaultConfig(): OpsimateConfig {
 		},
 		security: {
 			private_keys_path: '../../data/private-keys',
-			api_token: process.env.API_TOKEN || 'opsimate',
+			api_token: process.env.API_TOKEN || DEFAULT_API_TOKEN,
 		},
 		vm: {
 			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',
