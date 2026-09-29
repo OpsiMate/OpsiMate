@@ -125,10 +125,12 @@ const toUpdate = (form: LdapForm): UpdateLdapSettings => {
 		groupSearchFilter: form.groupSearchFilter.trim(),
 		roleMapping,
 		defaultRole: form.defaultRole === NO_DEFAULT_ROLE ? null : (form.defaultRole as Role),
-		timeoutMs: Number(form.timeoutMs),
-		loginMaxFailures: Number(form.loginMaxFailures),
 		tlsRejectUnauthorized: form.tlsRejectUnauthorized,
 		tlsCaCert: form.tlsCaCert.trim(),
+		// A blank number field keeps what's stored: Number('') is 0, which would be refused
+		// for the timeout and would silently mean "no limit" for failed logins.
+		...(form.timeoutMs.trim() ? { timeoutMs: Number(form.timeoutMs) } : {}),
+		...(form.loginMaxFailures.trim() ? { loginMaxFailures: Number(form.loginMaxFailures) } : {}),
 	};
 };
 

@@ -120,4 +120,27 @@ describe('LDAP settings API', () => {
 		expect(res.body.data.ok).toBe(false);
 		expect(res.body.data.steps[0]).toMatchObject({ step: 'connect', ok: false });
 	});
+
+	test('if the audit row cannot be written, the change is not saved or applied (one transaction)', async () => {
+		db.exec('ALTER TABLE audit_logs RENAME TO audit_logs_hidden');
+		try {
+			const res = await put({ ...COMPLETE, enabled: true });
+			expect(res.status).toBe(500);
+		} finally {
+			db.exec('ALTER TABLE audit_logs_hidden RENAME TO audit_logs');
+		}
+		const after = (await get()).body.data;
+		expect(after).toMatchObject({ enabled: false, url: '', hasBindPassword: false });
+	});
+
+	test('a stored password that no longer decrypts counts as none (never bind with ciphertext)', async () => {
+		await put({ ...COMPLETE, enabled: false });
+		db.prepare('UPDATE ldap_config SET bind_password = ?').run(
+			'bm90LWEtcmVhbC1jaXBoZXJ0ZXh0LWF0LWFsbC4uLi4uLi4uLi4uLi4uLi4uLi4uLg=='
+		);
+		expect((await get()).body.data.hasBindPassword).toBe(false);
+		const enable = await put({ enabled: true });
+		expect(enable.status).toBe(400);
+		expect(enable.body.details.join(' ')).toMatch(/bind_password/);
+	});
 });

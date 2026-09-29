@@ -76,12 +76,22 @@ export class LdapSettingsBL {
 			return toSettings(config, 'config', Boolean(config.bind_password), null);
 		}
 		const row = await this.repo.getConfig();
-		return toSettings(this.fromRow(row), 'database', row.bind_password != null, row.updated_at);
+		const config = this.fromRow(row);
+		// A stored password that no longer decrypts (the encryption key changed) counts as none.
+		return toSettings(config, 'database', config.bind_password !== undefined, row.updated_at);
 	}
 
 	async updateSettings(updates: UpdateLdapSettings, user?: User): Promise<LdapSettings> {
 		if (isLdapManagedByConfig()) throw new LdapSettingsManagedError();
+		const passwordNote =
+			updates.bindPassword === undefined
+				? ''
+				: updates.bindPassword === null
+					? 'password removed, '
+					: 'password replaced, ';
 		let applied: LdapConfig | null = null;
+		// Settings and their audit row commit together (same connection, one transaction):
+		// a change is never active without being recorded, nor recorded without being saved.
 		const saved = await this.repo.mergeConfig((current) => {
 			const base = parseSettings(current.settings);
 			const next = mergeUpdates(base, updates);
@@ -92,33 +102,29 @@ export class LdapSettingsBL {
 					: updates.bindPassword === null
 						? null
 						: encrypt(updates.bindPassword);
+			const password = decryptOrUndefined(bindPassword);
 			if (next.enabled) {
-				const problems = validateLdapConfig({ ...next, bind_password: decryptOrUndefined(bindPassword) });
+				const problems = validateLdapConfig({ ...next, bind_password: password });
 				if (problems.length > 0) throw new LdapSettingsValidationError(problems);
 			}
-			applied = { ...next, bind_password: decryptOrUndefined(bindPassword) };
+			// The audit trail records THAT the settings changed and by whom — never the password.
+			this.auditBL.logActionInTransaction({
+				actionType: AuditActionType.UPDATE,
+				resourceType: AuditResourceType.LDAP,
+				resourceId: 'ldap-config',
+				userId: user ? Number(user.id) : 0,
+				userName: user?.fullName ?? 'unknown',
+				resourceName: 'LDAP settings',
+				details: `${passwordNote}enabled=${next.enabled}, url=${next.url ?? ''}`,
+			});
+			applied = { ...next, bind_password: password };
 			return { settings: JSON.stringify(next), bind_password: bindPassword };
 		});
+		// Only once the transaction has committed.
 		if (applied) this.apply(applied);
 
 		const config = this.fromRow(saved);
-		const passwordNote =
-			updates.bindPassword === undefined
-				? ''
-				: updates.bindPassword === null
-					? 'password removed, '
-					: 'password replaced, ';
-		// The audit trail records THAT the settings changed and by whom — never the password.
-		await this.auditBL.logAction({
-			actionType: AuditActionType.UPDATE,
-			resourceType: AuditResourceType.LDAP,
-			resourceId: 'ldap-config',
-			userId: user ? Number(user.id) : 0,
-			userName: user?.fullName ?? 'unknown',
-			resourceName: 'LDAP settings',
-			details: `${passwordNote}enabled=${config.enabled}, url=${config.url ?? ''}`,
-		});
-		return toSettings(config, 'database', saved.bind_password != null, saved.updated_at);
+		return toSettings(config, 'database', config.bind_password !== undefined, saved.updated_at);
 	}
 
 	// Test the settings as they are SAVED (enabled or not): what was verified is what
@@ -171,8 +177,19 @@ const encrypt = (value: string): string => {
 	return encrypted;
 };
 
-const decryptOrUndefined = (value: string | null): string | undefined =>
-	value == null ? undefined : decryptPassword(value);
+// decryptPassword hands back its input when decryption fails (a legacy-plaintext
+// fallback). LDAP passwords are always stored encrypted, so getting the ciphertext back
+// means "can't decrypt" (e.g. the encryption key changed): treat it as no password
+// rather than bind with the ciphertext.
+const decryptOrUndefined = (value: string | null): string | undefined => {
+	if (value == null) return undefined;
+	const decrypted = decryptPassword(value);
+	if (decrypted === undefined || decrypted === value) {
+		logger.warn('The saved LDAP service-account password could not be decrypted; treating it as not set');
+		return undefined;
+	}
+	return decrypted;
+};
 
 const parseSettings = (json: string): LdapConfig => {
 	try {
