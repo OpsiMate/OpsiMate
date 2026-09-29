@@ -24,7 +24,6 @@ import {
 	KeyRound,
 	Plus,
 	Sparkle,
-	Building2,
 	Trash2,
 	Users,
 	X,
@@ -231,7 +230,7 @@ const Settings: React.FC = () => {
 								if (h === 'retention') return 'retention';
 								if (h === 'silences') return 'silences';
 								if (h === 'ai') return 'ai';
-								if (h === 'ldap') return 'ldap';
+								if (h === 'ldap') return 'users';
 								if (h === 'secrets') return 'secrets';
 								if (h === 'custom-fields') return 'custom-fields';
 								return 'users';
@@ -243,7 +242,6 @@ const Settings: React.FC = () => {
 									retention: 'retention',
 									silences: 'silences',
 									ai: 'ai',
-									ldap: 'ldap',
 									secrets: 'secrets',
 									'custom-fields': 'custom-fields',
 								};
@@ -274,10 +272,6 @@ const Settings: React.FC = () => {
 										<TabsTrigger value="ai" className="justify-start gap-2">
 											<Sparkle className="h-4 w-4" />
 											AI (Beta)
-										</TabsTrigger>
-										<TabsTrigger value="ldap" className="justify-start gap-2">
-											<Building2 className="h-4 w-4" />
-											Directory (LDAP)
 										</TabsTrigger>
 									</TabsList>
 								</div>
@@ -581,6 +575,8 @@ const Settings: React.FC = () => {
 												</Table>
 											</CardContent>
 										</Card>
+										{/* Directory login decides who can become a user, so it lives with them. */}
+										{isAdmin && <LdapSettings defaultOpen={location.hash === '#ldap'} />}
 									</TabsContent>
 
 									<TabsContent value="audit" className="space-y-6">
@@ -611,10 +607,6 @@ const Settings: React.FC = () => {
 									<TabsContent value="ai" className="space-y-6">
 										<AiSettings />
 										<RootCauseGuide />
-									</TabsContent>
-
-									<TabsContent value="ldap" className="space-y-6">
-										<LdapSettings />
 									</TabsContent>
 
 									<TabsContent value="secrets" className="space-y-6">

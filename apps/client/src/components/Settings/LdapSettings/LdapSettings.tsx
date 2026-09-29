@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,18 @@ import {
 	Role,
 	UpdateLdapSettings,
 } from '@OpsiMate/shared';
-import { AlertTriangle, CheckCircle2, Info, KeyRound, Loader2, PlugZap, XCircle } from 'lucide-react';
+import {
+	AlertTriangle,
+	Building2,
+	CheckCircle2,
+	ChevronDown,
+	ChevronUp,
+	Info,
+	KeyRound,
+	Loader2,
+	PlugZap,
+	XCircle,
+} from 'lucide-react';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
 // Everything the form edits, as the inputs hold it (group lists as one-per-line text).
@@ -45,6 +57,11 @@ interface FieldProps {
 	label: string;
 	hint?: ReactNode;
 	children: ReactNode;
+}
+
+interface LdapSettingsProps {
+	// Start expanded (e.g. opened from a #ldap link).
+	defaultOpen?: boolean;
 }
 
 interface TestResultViewProps {
@@ -174,8 +191,9 @@ const TestResultView = ({ result }: TestResultViewProps) => (
 // Directory (LDAP) login: users sign in with their directory email and password; their
 // OpsiMate account is created at first login and its role follows their groups. Save,
 // then Test: the test and the Enable switch use the SAVED settings. When the server's
-// config.yml / LDAP_* env configures LDAP, those win and this page is read-only.
-export const LdapSettings = () => {
+// config.yml / LDAP_* env configures LDAP, those win and this section is read-only.
+// Lives in Settings -> Users, collapsed to a one-line status until opened.
+export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 	const { data, isLoading, error } = useLdapSettings();
 	const updateMutation = useUpdateLdapSettings();
 	const testMutation = useTestLdapConnection();
@@ -185,6 +203,7 @@ export const LdapSettings = () => {
 	const [bindPassword, setBindPassword] = useState('');
 	const [testEmail, setTestEmail] = useState('');
 	const [testResult, setTestResult] = useState<LdapTestResult | null>(null);
+	const [open, setOpen] = useState(defaultOpen);
 
 	// Refresh from the server without clobbering unsaved edits (see AiSettings).
 	const lastSynced = useRef<LdapForm | null>(null);
@@ -284,272 +303,314 @@ export const LdapSettings = () => {
 
 	return (
 		<div className="space-y-4">
-			<div>
-				<h2 className="text-lg font-semibold text-foreground">Directory (LDAP)</h2>
-				<p className="text-sm text-muted-foreground">
-					Let people sign in with their company directory account (Active Directory, OpenLDAP, FreeIPA…).
-					Their OpsiMate account is created the first time they sign in, and their role follows their
-					directory groups at every login. Local accounts, like yours, keep signing in locally — even if the
-					directory is down.
-				</p>
-			</div>
-
-			{readOnly && (
-				<div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm flex items-start gap-2">
-					<Info className="h-4 w-4 mt-0.5 shrink-0" />
-					<span>
-						LDAP is configured on the server (<code>config.yml</code> or <code>LDAP_*</code> environment
-						variables), which takes priority over this page. The settings are shown read-only; you can still
-						test them.
-					</span>
+			<Card className="p-4">
+				<div className="flex flex-wrap items-start justify-between gap-4">
+					<div className="space-y-1 min-w-0 flex-1">
+						<div className="flex items-center gap-2">
+							<Building2 className="h-5 w-5 text-muted-foreground" />
+							<h2 className="text-lg font-semibold text-foreground">Directory login (LDAP)</h2>
+							<Badge
+								variant="outline"
+								className={
+									data.enabled ? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-300' : ''
+								}
+							>
+								{data.enabled ? 'Enabled' : 'Off'}
+							</Badge>
+							{readOnly && <Badge variant="outline">Server config</Badge>}
+						</div>
+						<p className="text-sm text-muted-foreground">
+							Let people sign in with their company directory account (Active Directory, OpenLDAP,
+							FreeIPA…). Their account is created the first time they sign in, and their role follows
+							their directory groups at every login. Local accounts, like yours, keep signing in locally —
+							even if the directory is down.
+						</p>
+					</div>
+					<Button variant="outline" onClick={() => setOpen(!open)} className="gap-1.5 shrink-0">
+						{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+						{open ? 'Hide' : 'Configure'}
+					</Button>
 				</div>
-			)}
-
-			<Card className="p-4 space-y-4">
-				<h3 className="text-sm font-semibold">Connection</h3>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<Field id="ldap-url" label="Server URL" hint="ldaps://host:636, or ldap://host:389 with StartTLS">
-						<Input placeholder="ldaps://ldap.example.com:636" {...text('url')} />
-					</Field>
-					<Field id="ldap-timeoutMs" label="Timeout (ms)">
-						<Input type="number" min={500} max={60000} {...text('timeoutMs')} />
-					</Field>
-				</div>
-				<div className="flex items-center gap-2">
-					<Switch
-						id="ldap-startTls"
-						checked={form.startTls}
-						disabled={readOnly}
-						onCheckedChange={(v) => set('startTls', v)}
-					/>
-					<Label htmlFor="ldap-startTls" className="text-sm">
-						Use StartTLS (for ldap:// URLs)
-					</Label>
-				</div>
-				{/^ldap:\/\//i.test(form.url) && !form.startTls && (
-					<p className="text-xs text-amber-600 flex items-center gap-1">
-						<AlertTriangle className="h-3 w-3" /> Without ldaps:// or StartTLS, passwords cross the network
-						unencrypted.
-					</p>
-				)}
-				<div className="flex items-center gap-2">
-					<Switch
-						id="ldap-tlsRejectUnauthorized"
-						checked={form.tlsRejectUnauthorized}
-						disabled={readOnly}
-						onCheckedChange={(v) => set('tlsRejectUnauthorized', v)}
-					/>
-					<Label htmlFor="ldap-tlsRejectUnauthorized" className="text-sm">
-						Verify the server certificate
-					</Label>
-				</div>
-				{!form.tlsRejectUnauthorized && (
-					<p className="text-xs text-amber-600 flex items-center gap-1">
-						<AlertTriangle className="h-3 w-3" /> Only for testing: anyone on the network path could read
-						passwords.
-					</p>
-				)}
-				<Field
-					id="ldap-tlsCaCert"
-					label="CA certificate (optional)"
-					hint="PEM of the CA that signed the directory's certificate, if it isn't publicly trusted."
-				>
-					<Textarea
-						rows={3}
-						className="font-mono text-xs"
-						placeholder="-----BEGIN CERTIFICATE-----"
-						{...text('tlsCaCert')}
-					/>
-				</Field>
 			</Card>
 
-			<Card className="p-4 space-y-4">
-				<h3 className="text-sm font-semibold">Service account</h3>
-				<p className="text-xs text-muted-foreground">
-					A read-only directory account OpsiMate uses to find users and their groups.
-				</p>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<Field id="ldap-bindDn" label="Bind DN">
-						<Input placeholder="cn=opsimate,ou=service,dc=example,dc=com" {...text('bindDn')} />
-					</Field>
-					<Field
-						id="ldap-bindPassword"
-						label="Password"
-						hint={
-							<span className="flex items-center gap-1">
-								<KeyRound className="h-3 w-3" /> Stored encrypted; never shown again after saving.
+			{open && (
+				<>
+					{readOnly && (
+						<div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm flex items-start gap-2">
+							<Info className="h-4 w-4 mt-0.5 shrink-0" />
+							<span>
+								LDAP is configured on the server (<code>config.yml</code> or <code>LDAP_*</code>{' '}
+								environment variables), which takes priority over this page. The settings are shown
+								read-only; you can still test them.
 							</span>
-						}
-					>
+						</div>
+					)}
+
+					<Card className="p-4 space-y-4">
+						<h3 className="text-sm font-semibold">Connection</h3>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<Field
+								id="ldap-url"
+								label="Server URL"
+								hint="ldaps://host:636, or ldap://host:389 with StartTLS"
+							>
+								<Input placeholder="ldaps://ldap.example.com:636" {...text('url')} />
+							</Field>
+							<Field id="ldap-timeoutMs" label="Timeout (ms)">
+								<Input type="number" min={500} max={60000} {...text('timeoutMs')} />
+							</Field>
+						</div>
 						<div className="flex items-center gap-2">
-							<Input
-								id="ldap-bindPassword"
-								type="password"
-								autoComplete="new-password"
+							<Switch
+								id="ldap-startTls"
+								checked={form.startTls}
 								disabled={readOnly}
-								placeholder={
-									data.hasBindPassword
-										? '•••••••• (saved — type to replace it)'
-										: 'Service account password'
-								}
-								value={bindPassword}
-								onChange={(e) => setBindPassword(e.target.value)}
+								onCheckedChange={(v) => set('startTls', v)}
 							/>
-							{data.hasBindPassword && !readOnly && (
-								<Button
-									variant="outline"
-									size="sm"
-									className="shrink-0"
-									onClick={() => void removePassword()}
-									disabled={updateMutation.isPending}
+							<Label htmlFor="ldap-startTls" className="text-sm">
+								Use StartTLS (for ldap:// URLs)
+							</Label>
+						</div>
+						{/^ldap:\/\//i.test(form.url) && !form.startTls && (
+							<p className="text-xs text-amber-600 flex items-center gap-1">
+								<AlertTriangle className="h-3 w-3" /> Without ldaps:// or StartTLS, passwords cross the
+								network unencrypted.
+							</p>
+						)}
+						<div className="flex items-center gap-2">
+							<Switch
+								id="ldap-tlsRejectUnauthorized"
+								checked={form.tlsRejectUnauthorized}
+								disabled={readOnly}
+								onCheckedChange={(v) => set('tlsRejectUnauthorized', v)}
+							/>
+							<Label htmlFor="ldap-tlsRejectUnauthorized" className="text-sm">
+								Verify the server certificate
+							</Label>
+						</div>
+						{!form.tlsRejectUnauthorized && (
+							<p className="text-xs text-amber-600 flex items-center gap-1">
+								<AlertTriangle className="h-3 w-3" /> Only for testing: anyone on the network path could
+								read passwords.
+							</p>
+						)}
+						<Field
+							id="ldap-tlsCaCert"
+							label="CA certificate (optional)"
+							hint="PEM of the CA that signed the directory's certificate, if it isn't publicly trusted."
+						>
+							<Textarea
+								rows={3}
+								className="font-mono text-xs"
+								placeholder="-----BEGIN CERTIFICATE-----"
+								{...text('tlsCaCert')}
+							/>
+						</Field>
+					</Card>
+
+					<Card className="p-4 space-y-4">
+						<h3 className="text-sm font-semibold">Service account</h3>
+						<p className="text-xs text-muted-foreground">
+							A read-only directory account OpsiMate uses to find users and their groups.
+						</p>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<Field id="ldap-bindDn" label="Bind DN">
+								<Input placeholder="cn=opsimate,ou=service,dc=example,dc=com" {...text('bindDn')} />
+							</Field>
+							<Field
+								id="ldap-bindPassword"
+								label="Password"
+								hint={
+									<span className="flex items-center gap-1">
+										<KeyRound className="h-3 w-3" /> Stored encrypted; never shown again after
+										saving.
+									</span>
+								}
+							>
+								<div className="flex items-center gap-2">
+									<Input
+										id="ldap-bindPassword"
+										type="password"
+										autoComplete="new-password"
+										disabled={readOnly}
+										placeholder={
+											data.hasBindPassword
+												? '•••••••• (saved — type to replace it)'
+												: 'Service account password'
+										}
+										value={bindPassword}
+										onChange={(e) => setBindPassword(e.target.value)}
+									/>
+									{data.hasBindPassword && !readOnly && (
+										<Button
+											variant="outline"
+											size="sm"
+											className="shrink-0"
+											onClick={() => void removePassword()}
+											disabled={updateMutation.isPending}
+										>
+											Remove
+										</Button>
+									)}
+								</div>
+							</Field>
+						</div>
+					</Card>
+
+					<Card className="p-4 space-y-4">
+						<h3 className="text-sm font-semibold">Users</h3>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<Field id="ldap-searchBase" label="Search base">
+								<Input placeholder="ou=people,dc=example,dc=com" {...text('searchBase')} />
+							</Field>
+							<Field
+								id="ldap-searchFilter"
+								label="Search filter"
+								hint="{{email}} is replaced by the address typed at login. AD: (&(objectClass=user)(mail={{email}}))"
+							>
+								<Input {...text('searchFilter')} />
+							</Field>
+							<Field id="ldap-emailAttribute" label="Email attribute">
+								<Input {...text('emailAttribute')} />
+							</Field>
+							<Field id="ldap-nameAttribute" label="Name attribute">
+								<Input {...text('nameAttribute')} />
+							</Field>
+						</div>
+					</Card>
+
+					<Card className="p-4 space-y-4">
+						<h3 className="text-sm font-semibold">Groups and roles</h3>
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<Field
+								id="ldap-groupsAttribute"
+								label="Groups attribute"
+								hint="On the user entry (AD: memberOf)"
+							>
+								<Input {...text('groupsAttribute')} />
+							</Field>
+							<Field
+								id="ldap-groupSearchBase"
+								label="Group search base (optional)"
+								hint="For directories without memberOf"
+							>
+								<Input placeholder="ou=groups,dc=example,dc=com" {...text('groupSearchBase')} />
+							</Field>
+							<Field
+								id="ldap-groupSearchFilter"
+								label="Group search filter"
+								hint="{{dn}} = the user's DN"
+							>
+								<Input {...text('groupSearchFilter')} />
+							</Field>
+						</div>
+						<p className="text-xs text-muted-foreground">
+							One group per line: a full DN (safest) or a bare group name. The highest matching role wins.
+							A bare name matches any group with that name, so prefer full DNs for Admin.
+						</p>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<Field id="ldap-adminGroups" label="Admin groups">
+								<Textarea rows={2} className="font-mono text-xs" {...text('adminGroups')} />
+							</Field>
+							<Field id="ldap-editorGroups" label="Editor groups">
+								<Textarea rows={2} className="font-mono text-xs" {...text('editorGroups')} />
+							</Field>
+							<Field id="ldap-operationGroups" label="Operation groups">
+								<Textarea rows={2} className="font-mono text-xs" {...text('operationGroups')} />
+							</Field>
+							<Field id="ldap-viewerGroups" label="Viewer groups">
+								<Textarea rows={2} className="font-mono text-xs" {...text('viewerGroups')} />
+							</Field>
+						</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<Field id="ldap-defaultRole" label="Everyone else">
+								<Select
+									value={form.defaultRole}
+									disabled={readOnly}
+									onValueChange={(v) => set('defaultRole', v)}
 								>
-									Remove
+									<SelectTrigger id="ldap-defaultRole">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={NO_DEFAULT_ROLE}>Refuse sign-in</SelectItem>
+										<SelectItem value={Role.Viewer}>Viewer</SelectItem>
+										<SelectItem value={Role.Operation}>Operation</SelectItem>
+										<SelectItem value={Role.Editor}>Editor</SelectItem>
+										<SelectItem value={Role.Admin}>Admin</SelectItem>
+									</SelectContent>
+								</Select>
+							</Field>
+							<Field
+								id="ldap-loginMaxFailures"
+								label="Failed logins before a 15-minute block"
+								hint="Per email; keep it below your directory's lockout threshold. 0 = no limit."
+							>
+								<Input type="number" min={0} max={1000} {...text('loginMaxFailures')} />
+							</Field>
+						</div>
+					</Card>
+
+					<Card className="p-4 space-y-4">
+						<div className="flex flex-wrap items-center justify-between gap-4">
+							<div className="flex items-center gap-2">
+								<Switch
+									checked={data.enabled}
+									disabled={readOnly || updateMutation.isPending || dirty}
+									onCheckedChange={setEnabled}
+									aria-label="Enable LDAP login"
+								/>
+								<span className="text-sm text-foreground">
+									{data.enabled ? 'LDAP login enabled' : 'LDAP login disabled'}
+								</span>
+							</div>
+							{!readOnly && (
+								<Button onClick={() => void save()} disabled={updateMutation.isPending || !dirty}>
+									{updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
 								</Button>
 							)}
 						</div>
-					</Field>
-				</div>
-			</Card>
-
-			<Card className="p-4 space-y-4">
-				<h3 className="text-sm font-semibold">Users</h3>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<Field id="ldap-searchBase" label="Search base">
-						<Input placeholder="ou=people,dc=example,dc=com" {...text('searchBase')} />
-					</Field>
-					<Field
-						id="ldap-searchFilter"
-						label="Search filter"
-						hint="{{email}} is replaced by the address typed at login. AD: (&(objectClass=user)(mail={{email}}))"
-					>
-						<Input {...text('searchFilter')} />
-					</Field>
-					<Field id="ldap-emailAttribute" label="Email attribute">
-						<Input {...text('emailAttribute')} />
-					</Field>
-					<Field id="ldap-nameAttribute" label="Name attribute">
-						<Input {...text('nameAttribute')} />
-					</Field>
-				</div>
-			</Card>
-
-			<Card className="p-4 space-y-4">
-				<h3 className="text-sm font-semibold">Groups and roles</h3>
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<Field id="ldap-groupsAttribute" label="Groups attribute" hint="On the user entry (AD: memberOf)">
-						<Input {...text('groupsAttribute')} />
-					</Field>
-					<Field
-						id="ldap-groupSearchBase"
-						label="Group search base (optional)"
-						hint="For directories without memberOf"
-					>
-						<Input placeholder="ou=groups,dc=example,dc=com" {...text('groupSearchBase')} />
-					</Field>
-					<Field id="ldap-groupSearchFilter" label="Group search filter" hint="{{dn}} = the user's DN">
-						<Input {...text('groupSearchFilter')} />
-					</Field>
-				</div>
-				<p className="text-xs text-muted-foreground">
-					One group per line: a full DN (safest) or a bare group name. The highest matching role wins. A bare
-					name matches any group with that name, so prefer full DNs for Admin.
-				</p>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<Field id="ldap-adminGroups" label="Admin groups">
-						<Textarea rows={2} className="font-mono text-xs" {...text('adminGroups')} />
-					</Field>
-					<Field id="ldap-editorGroups" label="Editor groups">
-						<Textarea rows={2} className="font-mono text-xs" {...text('editorGroups')} />
-					</Field>
-					<Field id="ldap-operationGroups" label="Operation groups">
-						<Textarea rows={2} className="font-mono text-xs" {...text('operationGroups')} />
-					</Field>
-					<Field id="ldap-viewerGroups" label="Viewer groups">
-						<Textarea rows={2} className="font-mono text-xs" {...text('viewerGroups')} />
-					</Field>
-				</div>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<Field id="ldap-defaultRole" label="Everyone else">
-						<Select
-							value={form.defaultRole}
-							disabled={readOnly}
-							onValueChange={(v) => set('defaultRole', v)}
-						>
-							<SelectTrigger id="ldap-defaultRole">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value={NO_DEFAULT_ROLE}>Refuse sign-in</SelectItem>
-								<SelectItem value={Role.Viewer}>Viewer</SelectItem>
-								<SelectItem value={Role.Operation}>Operation</SelectItem>
-								<SelectItem value={Role.Editor}>Editor</SelectItem>
-								<SelectItem value={Role.Admin}>Admin</SelectItem>
-							</SelectContent>
-						</Select>
-					</Field>
-					<Field
-						id="ldap-loginMaxFailures"
-						label="Failed logins before a 15-minute block"
-						hint="Per email; keep it below your directory's lockout threshold. 0 = no limit."
-					>
-						<Input type="number" min={0} max={1000} {...text('loginMaxFailures')} />
-					</Field>
-				</div>
-			</Card>
-
-			<Card className="p-4 space-y-4">
-				<div className="flex flex-wrap items-center justify-between gap-4">
-					<div className="flex items-center gap-2">
-						<Switch
-							checked={data.enabled}
-							disabled={readOnly || updateMutation.isPending || dirty}
-							onCheckedChange={setEnabled}
-							aria-label="Enable LDAP login"
-						/>
-						<span className="text-sm text-foreground">
-							{data.enabled ? 'LDAP login enabled' : 'LDAP login disabled'}
-						</span>
-					</div>
-					{!readOnly && (
-						<Button onClick={() => void save()} disabled={updateMutation.isPending || !dirty}>
-							{updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-						</Button>
-					)}
-				</div>
-				<div className="flex flex-wrap items-end gap-2">
-					<div className="flex-1 min-w-[14rem]">
-						<Field id="ldap-testEmail" label="Test with a user (optional)">
-							<Input
-								id="ldap-testEmail"
-								type="email"
-								placeholder="someone@example.com — shows the role they would get"
-								value={testEmail}
-								onChange={(e) => setTestEmail(e.target.value)}
-							/>
-						</Field>
-					</div>
-					<Button
-						variant="outline"
-						onClick={() => void runTest()}
-						disabled={testMutation.isPending || dirty}
-						title={dirty ? 'Save your changes first — the test runs with the saved settings' : undefined}
-						className="gap-1.5"
-					>
-						{testMutation.isPending ? (
-							<Loader2 className="h-4 w-4 animate-spin" />
-						) : (
-							<PlugZap className="h-4 w-4" />
+						<div className="flex flex-wrap items-end gap-2">
+							<div className="flex-1 min-w-[14rem]">
+								<Field id="ldap-testEmail" label="Test with a user (optional)">
+									<Input
+										id="ldap-testEmail"
+										type="email"
+										placeholder="someone@example.com — shows the role they would get"
+										value={testEmail}
+										onChange={(e) => setTestEmail(e.target.value)}
+									/>
+								</Field>
+							</div>
+							<Button
+								variant="outline"
+								onClick={() => void runTest()}
+								disabled={testMutation.isPending || dirty}
+								title={
+									dirty
+										? 'Save your changes first — the test runs with the saved settings'
+										: undefined
+								}
+								className="gap-1.5"
+							>
+								{testMutation.isPending ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<PlugZap className="h-4 w-4" />
+								)}
+								Test connection
+							</Button>
+						</div>
+						{dirty && (
+							<p className="text-xs text-muted-foreground">
+								Unsaved changes — save first: Test connection and the Enable switch use the saved
+								settings.
+							</p>
 						)}
-						Test connection
-					</Button>
-				</div>
-				{dirty && (
-					<p className="text-xs text-muted-foreground">
-						Unsaved changes — save first: Test connection and the Enable switch use the saved settings.
-					</p>
-				)}
-				{testResult && <TestResultView result={testResult} />}
-			</Card>
+						{testResult && <TestResultView result={testResult} />}
+					</Card>
+				</>
+			)}
 		</div>
 	);
 };
