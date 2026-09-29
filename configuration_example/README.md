@@ -78,7 +78,7 @@ Security notes:
 
 - **Prefer full group DNs in `role_mapping`, at least for `admin`.** A bare name like `admins` matches *any* group whose name is `admins`, anywhere the lookup can see. Anyone who can create or own a group there could grant themselves that role.
 - An OpsiMate account belongs to the directory entry (DN) that created it. If another entry later answers for the same email (for example a reused address, or an entry that was moved or renamed), that login is refused and the server log says so. Delete the OpsiMate user to let the new entry sign in.
-- After 5 failed directory logins for an email within 15 minutes, OpsiMate answers 429 without asking the directory. This protects the account from being locked by the directory's own lockout policy. Keep your directory lockout threshold above 5.
+- After 5 failed directory logins for an email within 15 minutes, OpsiMate answers 429 without asking the directory. This protects the account from being locked by the directory's own lockout policy. Keep your directory lockout threshold above this number. The trade-off is that anyone who knows a user's email can block that user's OpsiMate login for 15 minutes. Without the limit, the same guesses would lock their directory account everywhere. If your directory has no lockout policy, you can raise the limit or turn it off with `login_max_failures` / `LDAP_LOGIN_MAX_FAILURES` (`0` = no limit).
 - Role and name changes in the directory apply at the user's next login. A session that is already open keeps its role until the token expires.
 
 Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same email.
@@ -101,6 +101,7 @@ Configure it in the `ldap:` section of your config file (see the commented examp
 | `LDAP_TLS_CA_FILE` | `/app/data/ldap-ca.pem` |
 | `LDAP_TLS_REJECT_UNAUTHORIZED` | `true` (only set `false` for testing) |
 | `LDAP_TIMEOUT_MS` | `5000` |
+| `LDAP_LOGIN_MAX_FAILURES` | `5` (default; `0` = no limit) |
 
 Use `ldaps://` or StartTLS: with plain `ldap://` passwords cross the network unencrypted, and OpsiMate logs a warning at startup. If the configuration is incomplete, LDAP stays off and the reason is logged.
 

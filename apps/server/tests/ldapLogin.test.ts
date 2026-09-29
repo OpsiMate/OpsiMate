@@ -205,4 +205,16 @@ describe('UserBL login with LDAP', () => {
 		for (let i = 0; i < 4; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow();
 		await expect(userBL.login('dana@example.com', 'dir-pw')).resolves.toMatchObject({ email: 'dana@example.com' });
 	});
+
+	test('login_max_failures sets the threshold, and 0 turns the throttle off', async () => {
+		userBL.setLdapAuthenticator(directory as unknown as LdapAuthenticator, 2);
+		for (let i = 0; i < 2; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow();
+		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toBeInstanceOf(TooManyLoginAttemptsError);
+
+		userBL.setLdapAuthenticator(directory as unknown as LdapAuthenticator, 0);
+		for (let i = 0; i < 20; i++) {
+			await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid email or password');
+		}
+		await expect(userBL.login('dana@example.com', 'dir-pw')).resolves.toMatchObject({ email: 'dana@example.com' });
+	});
 });

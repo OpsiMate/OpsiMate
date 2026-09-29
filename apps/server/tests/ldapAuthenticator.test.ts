@@ -329,6 +329,18 @@ describe('resolveLdapConfig', () => {
 		expect(resolveLdapConfig({ ...base, enabled: 'false' as unknown as boolean }).enabled).toBe(false);
 	});
 
+	test('login_max_failures: from LDAP_LOGIN_MAX_FAILURES, a whole number ≥ 0', () => {
+		const base = { enabled: true, url: 'ldaps://dir', search_base: 'dc=x', default_role: 'viewer' as const };
+		process.env.LDAP_LOGIN_MAX_FAILURES = '10';
+		expect(resolveLdapConfig(base)).toMatchObject({ enabled: true, login_max_failures: 10 });
+		process.env.LDAP_LOGIN_MAX_FAILURES = '0';
+		expect(resolveLdapConfig(base)).toMatchObject({ enabled: true, login_max_failures: 0 });
+		for (const bad of ['-1', '2.5', 'abc']) {
+			process.env.LDAP_LOGIN_MAX_FAILURES = bad;
+			expect(resolveLdapConfig(base).enabled).toBe(false);
+		}
+	});
+
 	test('a single group written as a string counts as a one-item list', () => {
 		const c = resolveLdapConfig({
 			enabled: true,

@@ -64,6 +64,7 @@ mailer:
 #     editor: ["sre"]
 #     viewer: ["engineering"]
 #   # default_role: viewer                   # for users in none of the groups; omit to refuse them
+#   login_max_failures: 5                   # per email per 15 min, below your directory lockout; 0 = no limit
 #   tls:
 #     rejectUnauthorized: true
 #     # ca_file: "/app/data/ldap-ca.pem"

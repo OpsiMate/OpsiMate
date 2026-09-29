@@ -47,6 +47,10 @@ export interface LdapConfig {
 	// Role for a directory user in none of the mapped groups. Omit to refuse them.
 	default_role?: 'admin' | 'editor' | 'viewer' | 'operation';
 	timeout_ms?: number; // default: 5000
+	// Failed directory logins per email before OpsiMate stops asking the directory for
+	// 15 minutes (protects the account from the directory's own lockout). 0 = no limit,
+	// for directories without a lockout policy. Default: 5.
+	login_max_failures?: number;
 	tls?: LdapTlsConfig;
 }
 
@@ -238,6 +242,7 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_GROUP_SEARCH_BASE) ldap.group_search_base = env.LDAP_GROUP_SEARCH_BASE;
 	if (env.LDAP_GROUP_SEARCH_FILTER) ldap.group_search_filter = env.LDAP_GROUP_SEARCH_FILTER;
 	if (env.LDAP_TIMEOUT_MS) ldap.timeout_ms = Number(env.LDAP_TIMEOUT_MS);
+	if (env.LDAP_LOGIN_MAX_FAILURES) ldap.login_max_failures = Number(env.LDAP_LOGIN_MAX_FAILURES);
 	if (env.LDAP_TLS_REJECT_UNAUTHORIZED !== undefined) {
 		ldap.tls = { ...ldap.tls, rejectUnauthorized: env.LDAP_TLS_REJECT_UNAUTHORIZED !== 'false' };
 	}
@@ -272,6 +277,12 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (ldap.timeout_ms !== undefined && !(Number.isFinite(ldap.timeout_ms) && ldap.timeout_ms > 0)) {
 		// NaN would mean "no timeout" to the client: a hung directory would hang logins.
 		problems.push('timeout_ms (a positive number of milliseconds)');
+	}
+	if (
+		ldap.login_max_failures !== undefined &&
+		!(Number.isInteger(ldap.login_max_failures) && ldap.login_max_failures >= 0)
+	) {
+		problems.push('login_max_failures (a whole number, 0 = no limit)');
 	}
 	if (ldap.tls?.ca_file && !fs.existsSync(ldap.tls.ca_file))
 		problems.push(`tls.ca_file (${ldap.tls.ca_file} not found)`);

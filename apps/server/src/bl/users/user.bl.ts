@@ -36,7 +36,7 @@ export class TooManyLoginAttemptsError extends Error {
 	}
 }
 
-const LDAP_MAX_FAILURES = 5;
+export const DEFAULT_LDAP_MAX_FAILURES = 5;
 const LDAP_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 // 65,536 buckets ≈ 768 KB, fixed.
 const LDAP_FAILURE_BUCKETS = 1 << 16;
@@ -58,14 +58,21 @@ export class UserBL {
 	// Directory login (see LdapAuthenticator); null when LDAP is not configured.
 	private ldap: LdapAuthenticator | null = null;
 	// Failed directory logins per email (lower-cased), in a fixed window.
-	private readonly ldapFailures = new LoginThrottle({
-		maxFailures: LDAP_MAX_FAILURES,
-		windowMs: LDAP_FAILURE_WINDOW_MS,
-		buckets: LDAP_FAILURE_BUCKETS,
-	});
+	// null = no limit (login_max_failures: 0).
+	private ldapFailures: LoginThrottle | null = null;
+	private ldapMaxFailures = DEFAULT_LDAP_MAX_FAILURES;
 
-	setLdapAuthenticator(ldap: LdapAuthenticator | null): void {
+	setLdapAuthenticator(ldap: LdapAuthenticator | null, maxFailures = DEFAULT_LDAP_MAX_FAILURES): void {
 		this.ldap = ldap;
+		this.ldapMaxFailures = maxFailures;
+		this.ldapFailures =
+			ldap && maxFailures > 0
+				? new LoginThrottle({
+						maxFailures,
+						windowMs: LDAP_FAILURE_WINDOW_MS,
+						buckets: LDAP_FAILURE_BUCKETS,
+					})
+				: null;
 	}
 
 	constructor(
@@ -130,15 +137,15 @@ export class UserBL {
 			throw new Error(INVALID_LOGIN);
 		}
 
-		if (this.ldapFailures.isThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
+		if (this.ldapFailures?.isThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
 		const identity = await this.ldap.authenticate(normalizedEmail, password);
 		if (!identity) {
-			if (this.ldapFailures.recordFailure(normalizedEmail) === LDAP_MAX_FAILURES) {
-				logger.warn(`LDAP login for ${normalizedEmail} throttled after ${LDAP_MAX_FAILURES} failures`);
+			if (this.ldapFailures?.recordFailure(normalizedEmail) === this.ldapMaxFailures) {
+				logger.warn(`LDAP login for ${normalizedEmail} throttled after ${this.ldapMaxFailures} failures`);
 			}
 			throw new Error(INVALID_LOGIN);
 		}
-		this.ldapFailures.reset(normalizedEmail);
+		this.ldapFailures?.reset(normalizedEmail);
 		if (!identity.role) {
 			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);

@@ -202,7 +202,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// accounts keep signing in locally either way.
 	const ldapConfig = getLdapConfig();
 	if (ldapConfig.enabled) {
-		userBL.setLdapAuthenticator(new LdapAuthenticator(ldapConfig));
+		userBL.setLdapAuthenticator(new LdapAuthenticator(ldapConfig), ldapConfig.login_max_failures);
 		new Logger('app').info(`LDAP login enabled (${ldapConfig.url})`);
 	}
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
