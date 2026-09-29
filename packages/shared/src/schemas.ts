@@ -85,7 +85,10 @@ export const RegisterSchema = CreateUserSchema.omit({ role: true });
 // directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z.object({
 	email: z.string().email(),
-	password: z.string().min(1).max(1024),
+	// No maximum: none of the password-setting paths has one, so a cap here could
+	// lock out a password that was accepted when set. express.json's body limit
+	// (100kb) already bounds the request.
+	password: z.string().min(1),
 });
 
 export const UpdateProfileSchema = z.object({
