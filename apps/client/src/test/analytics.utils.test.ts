@@ -10,6 +10,9 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
+const expectedDateLabel = (isoDate: string) =>
+	new Date(`${isoDate}T00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
 describe('formatDurationMs', () => {
 	test('returns an em dash for null', () => {
 		expect(formatDurationMs(null)).toBe('—');
@@ -99,13 +102,10 @@ describe('formatBucketTick', () => {
 	test('hourly midnight tick shows the date instead of 00:00', () => {
 		const tick = formatBucketTick('2024-03-15 00:00', 'hour');
 		expect(tick).not.toBe('00:00');
-		expect(tick).toMatch(/Mar/);
-		expect(tick).toMatch(/15/);
+		expect(tick).toBe(expectedDateLabel('2024-03-15'));
 	});
 
 	test('daily bucket shows the short date', () => {
-		const tick = formatBucketTick('2024-03-15', 'day');
-		expect(tick).toMatch(/Mar/);
-		expect(tick).toMatch(/15/);
+		expect(formatBucketTick('2024-03-15', 'day')).toBe(expectedDateLabel('2024-03-15'));
 	});
 });
