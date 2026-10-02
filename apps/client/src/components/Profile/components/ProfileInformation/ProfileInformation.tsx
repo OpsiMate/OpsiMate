@@ -16,24 +16,24 @@ export const ProfileInformation = ({ email, role, createdAt, phoneNumber }: Prof
 				<h3 className="font-semibold">Profile Information</h3>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div>
-					<label className="text-sm font-semibold text-muted-foreground">Email</label>
-					<div className="mt-1 text-sm text-foreground">{email}</div>
+					<dt className="text-sm font-semibold text-muted-foreground">Email</dt>
+					<dd className="mt-1 text-sm text-foreground">{email}</dd>
 				</div>
 				<div>
-					<label className="text-sm font-semibold text-muted-foreground">Role</label>
-					<div className="mt-1 text-sm text-foreground capitalize">{role}</div>
+					<dt className="text-sm font-semibold text-muted-foreground">Role</dt>
+					<dd className="mt-1 text-sm text-foreground capitalize">{role}</dd>
 				</div>
 				<div>
-					<label className="text-sm font-semibold text-muted-foreground">Member Since</label>
-					<div className="mt-1 text-sm text-foreground">{formatDate(createdAt)}</div>
+					<dt className="text-sm font-semibold text-muted-foreground">Member Since</dt>
+					<dd className="mt-1 text-sm text-foreground">{formatDate(createdAt)}</dd>
 				</div>
 				<div>
-					<label className="text-sm font-semibold text-muted-foreground">Phone Number</label>
-					<div className="mt-1 text-sm text-foreground">{phoneNumber || '—'}</div>
+					<dt className="text-sm font-semibold text-muted-foreground">Phone Number</dt>
+					<dd className="mt-1 text-sm text-foreground">{phoneNumber || '—'}</dd>
 				</div>
-			</div>
+			</dl>
 		</div>
 	);
 };
