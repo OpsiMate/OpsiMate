@@ -10,7 +10,7 @@ describe('ProfileInformation', () => {
 				role="admin"
 				createdAt="2026-08-11T12:00:00.000Z"
 				phoneNumber={null}
-			/>,
+			/>
 		);
 
 		expect(screen.getByText('admin')).toBeInTheDocument();
