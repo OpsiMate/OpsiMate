@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { EnrichmentFormDialog } from '@/components/Enrichments/EnrichmentFormDialog';
+import { EnrichmentHistoryDialog } from '@/components/Enrichments/EnrichmentHistoryDialog';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,7 +21,7 @@ import { useDeleteEnrichment, useEnrichments } from '@/hooks/queries/enrichments
 import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
 import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
-import { Copy, FileText, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { Copy, FileText, History, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
@@ -103,6 +104,7 @@ const Enrichments: React.FC = () => {
 	const [creating, setCreating] = useState(false);
 	const [duplicating, setDuplicating] = useState<AlertEnrichment | null>(null);
 	const [deleting, setDeleting] = useState<AlertEnrichment | null>(null);
+	const [viewingHistory, setViewingHistory] = useState<AlertEnrichment | null>(null);
 
 	const filtered = useMemo(() => {
 		// Display in execution order: highest priority first, ties by creation order.
@@ -308,6 +310,15 @@ const Enrichments: React.FC = () => {
 														variant="ghost"
 														size="icon"
 														className="h-8 w-8"
+														onClick={() => setViewingHistory(e)}
+														aria-label="View enrichment history"
+													>
+														<History className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8"
 														onClick={() => setEditing(e)}
 														aria-label="Edit enrichment"
 													>
@@ -340,6 +351,12 @@ const Enrichments: React.FC = () => {
 					if (!open) setEditing(null);
 				}}
 				enrichment={editing}
+			/>
+			<EnrichmentHistoryDialog
+				enrichment={viewingHistory}
+				onOpenChange={(open) => {
+					if (!open) setViewingHistory(null);
+				}}
 			/>
 			<EnrichmentFormDialog
 				open={!!duplicating}
