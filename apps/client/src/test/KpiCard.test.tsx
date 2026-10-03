@@ -36,10 +36,13 @@ describe('KpiCard delta chip', () => {
 	});
 
 	test('shows the TrendingDown icon for a decrease', () => {
-		const { container } = render(<KpiCard label="Resolved" value="8" rawValue={8} rawPrevious={10} upIsGood />);
+		render(<KpiCard label="Resolved" value="8" rawValue={8} rawPrevious={10} upIsGood />);
 
-		expect(container.querySelector('svg')).toBeInTheDocument();
-		expect(screen.getByText('20%')).toBeInTheDocument();
+		const icon = document.querySelector('.lucide-trending-down');
+		expect(icon).toBeInTheDocument();
+
+		const chip = screen.getByText('20%');
+		expect(chip).toHaveClass('text-red-600');
 	});
 
 	test('renders a delta of 0.126 as 13%', () => {
