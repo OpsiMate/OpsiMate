@@ -179,6 +179,8 @@ Bigger areas where help is welcome: new alert sources, the incident-management w
 
 ## Support
 
+> **Testing note:** Analytics number formatting is covered by `apps/client/src/test/analytics.utils.test.ts`. Run `pnpm --filter @OpsiMate/client typecheck` before pushing.
+
 - **[Documentation](https://docs.opsimate.dev/)** - Comprehensive guides and API reference
 - **[GitHub Issues](https://github.com/opsimate/opsimate/issues)** - Bug reports and feature requests
 - **[Slack Community](https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA)** - Join our discussions and get help
