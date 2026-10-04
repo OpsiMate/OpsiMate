@@ -68,7 +68,8 @@ export class IntegrationController {
 		try {
 			const integrationToCreate = CreateIntegrationSchema.parse(req.body);
 			const createdIntegration: Integration = await this.integrationBL.createIntegration(integrationToCreate);
-			return res.status(201).json({ success: true, data: createdIntegration });
+			// Never echo credentials back, same as list and update.
+			return res.status(201).json({ success: true, data: toIntegrationResponse(createdIntegration) });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
