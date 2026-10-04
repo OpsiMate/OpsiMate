@@ -136,10 +136,31 @@ describe('serving the docs', () => {
 		expect(bundle.headers['content-type']).toContain('javascript');
 	});
 
-	test('API_DOCS_ENABLED=false turns them off', () => {
+	test('API_DOCS_ENABLED=false turns them off', async () => {
 		expect(apiDocsEnabled({})).toBe(true);
 		expect(apiDocsEnabled({ API_DOCS_ENABLED: 'true' })).toBe(true);
 		expect(apiDocsEnabled({ API_DOCS_ENABLED: 'False' })).toBe(false);
+
+		// And through a real app: nothing is served.
+		const saved = process.env.API_DOCS_ENABLED;
+		process.env.API_DOCS_ENABLED = 'false';
+		const offDb = await setupDB();
+		try {
+			const offApp = await createApp(offDb, AppMode.SERVER);
+			if (!offApp) throw new Error('createApp returned no app');
+			expect((await request(offApp).get('/api/openapi.json')).status).toBe(404);
+			expect((await request(offApp).get('/api/docs/')).status).toBe(404);
+			expect((await request(offApp).get('/api/docs/assets/swagger-ui-bundle.js')).status).toBe(404);
+		} finally {
+			if (saved === undefined) delete process.env.API_DOCS_ENABLED;
+			else process.env.API_DOCS_ENABLED = saved;
+			offDb.close();
+		}
+	});
+
+	test('the page does not keep the token after the tab closes', async () => {
+		const page = await request(app!).get('/api/docs/');
+		expect(page.text).toContain('persistAuthorization: false');
 	});
 });
 

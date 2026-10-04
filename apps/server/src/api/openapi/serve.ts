@@ -39,7 +39,8 @@ const DOCS_HTML = `<!doctype html>
 			url: '../openapi.json',
 			dom_id: '#swagger-ui',
 			deepLinking: true,
-			persistAuthorization: true,
+			// Not persisted: the instance API token must not sit in localStorage after the tab closes.
+			persistAuthorization: false,
 			displayRequestDuration: true,
 			docExpansion: 'list',
 			tryItOutEnabled: false,
