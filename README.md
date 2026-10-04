@@ -117,6 +117,7 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 **Access the application:**
 - **Backend:** [http://localhost:3001](http://localhost:3001)
 - **Client:** [http://localhost:8080](http://localhost:8080)
+- **API reference:** [http://localhost:3001/api/docs](http://localhost:3001/api/docs) — Swagger UI with "Try it out"; the OpenAPI document is at `/api/openapi.json` (set `API_DOCS_ENABLED=false` to turn both off)
 
 The first account you register becomes the admin.
 
