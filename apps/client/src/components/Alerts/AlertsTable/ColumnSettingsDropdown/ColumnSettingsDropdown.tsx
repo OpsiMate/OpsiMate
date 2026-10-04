@@ -130,6 +130,7 @@ export const ColumnSettingsDropdown = ({
 								variant="ghost"
 								size="icon"
 								className="h-7 w-7 rounded-md hover:bg-muted hover:text-foreground"
+								aria-label={TOGGLE_COLUMNS_LABEL}
 							>
 								<Columns3 className="h-4 w-4" />
 							</Button>

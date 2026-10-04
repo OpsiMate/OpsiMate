@@ -449,6 +449,7 @@ const Integrations = () => {
 												variant="ghost"
 												size="icon"
 												className="rounded-full h-8 w-8"
+												aria-label={`Open ${integration.name} documentation`}
 												onClick={() =>
 													window.open(
 														integration.documentationUrl,
