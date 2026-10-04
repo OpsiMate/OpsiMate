@@ -3,6 +3,8 @@ import { describe, expect, test } from 'vitest';
 import { useStickyHeaders } from '@/components/Alerts/AlertsTable/hooks/useStickyHeaders';
 import { FlatGroupItem } from '@/components/Alerts/AlertsTable/AlertsTable.types';
 
+type UseStickyHeadersInput = Parameters<typeof useStickyHeaders>[0];
+
 const createGroup = (level: number, key: string): FlatGroupItem => ({
 	type: 'group',
 	key,
@@ -19,20 +21,22 @@ const createLeaf = (): FlatGroupItem => ({
 	alert: {} as FlatGroupItem extends { type: 'leaf'; alert: infer A } ? A : never,
 });
 
-const createVirtualItem = (index: number, start: number, size: number) =>
-	({
-		index,
-		start,
-		size,
-		key: index,
-		lane: 0,
-		end: start + size,
-	}) as any;
+const createVirtualItem = (
+	index: number,
+	start: number,
+	size: number
+): UseStickyHeadersInput['virtualItems'][number] => ({
+	index,
+	start,
+	size,
+	key: index,
+	lane: 0,
+	end: start + size,
+});
 
-const createVirtualizer = (scrollOffset: number) =>
-	({
-		scrollOffset,
-	}) as any;
+const createVirtualizer = (scrollOffset: number): UseStickyHeadersInput['virtualizer'] => ({
+	scrollOffset,
+});
 
 describe('useStickyHeaders', () => {
 	test('returns [] when there are no groupBy columns', () => {
