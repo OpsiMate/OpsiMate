@@ -3,6 +3,9 @@ import { runAsync } from './db';
 import { AuditLog } from '@OpsiMate/shared';
 import { AuditLogRow } from './models';
 
+export interface InsertAuditLogResult {
+	lastID: number;
+}
 export class AuditLogRepository {
 	private db: Database.Database;
 
@@ -32,23 +35,27 @@ export class AuditLogRepository {
 		});
 	}
 
-	async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<{ lastID: number }> {
-		return runAsync(() => {
-			const stmt = this.db.prepare(`
+	async insertAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<InsertAuditLogResult> {
+		return runAsync(() => this.insertAuditLogSync(log));
+	}
+
+	// Synchronous, so it can run inside another repository's better-sqlite3 transaction
+	// (same connection) and commit or roll back together with that write.
+	insertAuditLogSync(log: Omit<AuditLog, 'id' | 'timestamp'>): InsertAuditLogResult {
+		const stmt = this.db.prepare(`
                 INSERT INTO audit_logs (action_type, resource_type, resource_id, user_id, user_name, resource_name, details)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
-			const result = stmt.run(
-				log.actionType,
-				log.resourceType,
-				log.resourceId,
-				log.userId,
-				log.userName,
-				log.resourceName,
-				log.details || null
-			);
-			return { lastID: result.lastInsertRowid as number };
-		});
+		const result = stmt.run(
+			log.actionType,
+			log.resourceType,
+			log.resourceId,
+			log.userId,
+			log.userName,
+			log.resourceName,
+			log.details || null
+		);
+		return { lastID: result.lastInsertRowid as number };
 	}
 
 	async getAuditLogs(offset: number, limit: number): Promise<AuditLog[]> {

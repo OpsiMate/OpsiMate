@@ -29,4 +29,5 @@ export const queryKeys = {
 	retention: ['retention'] as const,
 	silenceReset: ['silenceReset'] as const,
 	ai: ['ai'] as const,
+	ldap: ['ldap'] as const,
 };

@@ -15,18 +15,21 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "clean": "rm -rf dist",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts --max-warnings=0",
     "lint-fix": "eslint src --ext .ts --fix",
     "format": "prettier --check .",
     "format-fix": "prettier --write .",
     "check": "pnpm run format && pnpm run lint",
     "fix": "pnpm run format-fix && pnpm run lint-fix"
   },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown"
+  },
   "devDependencies": {
-    "@types/node": "^26.6.1",
-    "eslint": "^10.10.0",
+    "@types/node": "^26.6.2",
+    "eslint": "^10.11.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.0",
-    "vite-plugin-dts": "^5.1.0"
+    "vite-plugin-dts": "^5.1.1"
   }
 }

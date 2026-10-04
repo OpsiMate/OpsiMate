@@ -32,6 +32,9 @@ import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
+import { LdapSettingsBL } from './bl/ldap/ldapSettings.bl';
+import { LdapConfigRepository } from './dal/ldapConfigRepository';
+import { LdapController } from './api/v1/ldap/controller';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
@@ -170,6 +173,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
 	const aiConfigRepo = new AiConfigRepository(db);
+	const ldapConfigRepo = new LdapConfigRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -188,6 +192,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 		aiConfigRepo.initAiConfigTable(),
+		ldapConfigRepo.initLdapConfigTable(),
 	]);
 
 	// Every table the metric gauges count now exists.
@@ -195,6 +200,12 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// BL
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
+	// Directory login, when configured (config.yml `ldap:` or LDAP_* env). Local
+	// accounts keep signing in locally either way.
+	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
+	// settings saved on the Settings page. Local accounts keep signing in locally either way.
+	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);
+	await ldapSettingsBL.init();
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo);
 	const tagBL = new TagBL(tagRepo);
@@ -205,6 +216,12 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
+	// The active list is built on a worker thread so a rebuild never blocks requests.
+	// Needs a database file (the worker opens its own connection); ALERTS_SNAPSHOT_WORKER=0
+	// keeps it on this thread.
+	if (!db.memory && process.env.ALERTS_SNAPSHOT_WORKER !== '0') {
+		alertBL.useSnapshotWorker(db.name);
+	}
 	// Rule edits change what the cached alerts snapshot would serve.
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
@@ -249,7 +266,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			actionController,
 			retentionController,
 			oncallController,
-			aiController
+			aiController,
+			new LdapController(ldapSettingsBL)
 		)
 	);
 

@@ -4,6 +4,11 @@ import { AlertCommentRow, ForeignKeyInfoRow } from './models.ts';
 import { AlertComment } from '@OpsiMate/shared';
 import { toIsoUtc } from '../utils/time';
 
+interface LatestCommentRow {
+	alert_id: string;
+	comment: string;
+}
+
 export class AlertCommentsRepository {
 	private db: Database.Database;
 
@@ -159,22 +164,43 @@ export class AlertCommentsRepository {
 	// number of alerts LISTED, not with every comment ever written — a global window
 	// ranking over alert_comments would re-rank the whole table on every 5s poll.
 	// rowid breaks created_at ties by insertion order (same-second comments).
+	// Below this many ids a point lookup per alert is cheapest; above it (the full
+	// active list on every snapshot rebuild) one pass over the comments table wins —
+	// 50k lookups cost ~60ms even when there are no comments at all, while the single
+	// query costs in proportion to the comments that exist.
+	private static readonly POINT_LOOKUP_MAX_IDS = 500;
+
 	async getLatestCommentsByAlertIds(alertIds: string[]): Promise<Record<string, string>> {
 		if (alertIds.length === 0) return {};
 		return runAsync(() => {
-			const stmt = this.db.prepare(
-				`SELECT comment FROM alert_comments
-				 WHERE alert_id = ?
-				 ORDER BY created_at DESC, rowid DESC
-				 LIMIT 1`
-			);
 			const result: Record<string, string> = {};
-			for (const alertId of alertIds) {
-				const row = stmt.get(alertId) as { comment: string } | undefined;
-				if (row) {
-					result[alertId] = row.comment;
+			if (alertIds.length <= AlertCommentsRepository.POINT_LOOKUP_MAX_IDS) {
+				const stmt = this.db.prepare(
+					`SELECT comment FROM alert_comments
+					 WHERE alert_id = ?
+					 ORDER BY created_at DESC, rowid DESC
+					 LIMIT 1`
+				);
+				for (const alertId of alertIds) {
+					const row = stmt.get(alertId) as LatestCommentRow | undefined;
+					if (row) result[alertId] = row.comment;
 				}
+				return result;
 			}
+			// One json parameter for the id list (see alertRepository's idsParam); the
+			// predicate sits inside the window so comments of other alerts — resolved
+			// ones keep theirs — are never ranked at all.
+			const rows = this.db
+				.prepare(
+					`SELECT alert_id, comment FROM (
+						SELECT alert_id, comment,
+							ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY created_at DESC, rowid DESC) AS rn
+						FROM alert_comments
+						WHERE alert_id IN (SELECT value FROM json_each(?))
+					) WHERE rn = 1`
+				)
+				.all(JSON.stringify(alertIds)) as LatestCommentRow[];
+			for (const row of rows) result[row.alert_id] = row.comment;
 			return result;
 		});
 	}

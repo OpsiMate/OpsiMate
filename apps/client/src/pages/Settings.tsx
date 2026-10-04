@@ -31,6 +31,7 @@ import {
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
+import { LdapSettings } from '../components/Settings/LdapSettings';
 import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
@@ -229,6 +230,7 @@ const Settings: React.FC = () => {
 								if (h === 'retention') return 'retention';
 								if (h === 'silences') return 'silences';
 								if (h === 'ai') return 'ai';
+								if (h === 'ldap') return 'users';
 								if (h === 'secrets') return 'secrets';
 								if (h === 'custom-fields') return 'custom-fields';
 								return 'users';
@@ -371,6 +373,7 @@ const Settings: React.FC = () => {
 															<TableHead>User</TableHead>
 															<TableHead>Email</TableHead>
 															<TableHead>Role</TableHead>
+															<TableHead>Source</TableHead>
 															<TableHead>Created</TableHead>
 															<TableHead>Actions</TableHead>
 														</TableRow>
@@ -414,6 +417,25 @@ const Settings: React.FC = () => {
 																	<Badge variant={getRoleBadgeVariant(user.role)}>
 																		{user.role}
 																	</Badge>
+																</TableCell>
+																<TableCell>
+																	{user.authSource === 'ldap' ? (
+																		<Badge
+																			variant="outline"
+																			className="text-xs border-sky-500/50 text-sky-700 dark:text-sky-300"
+																			title="Signs in with the company directory. Created at their first login; the role follows their directory groups."
+																		>
+																			LDAP
+																		</Badge>
+																	) : (
+																		<Badge
+																			variant="outline"
+																			className="text-xs text-muted-foreground"
+																			title="An OpsiMate account with its own password, created by an admin (or the first sign-up)."
+																		>
+																			Local
+																		</Badge>
+																	)}
 																</TableCell>
 																<TableCell>{formatDate(user.createdAt)}</TableCell>
 																<TableCell>
@@ -464,22 +486,24 @@ const Settings: React.FC = () => {
 																					>
 																						<Edit className="h-4 w-4" />
 																					</Button>
-																					<Button
-																						variant="ghost"
-																						size="icon"
-																						onClick={() => {
-																							setUserToResetPassword(
-																								user
-																							);
-																							setShowResetPasswordModal(
-																								true
-																							);
-																						}}
-																						title="Reset password"
-																						className="hover:bg-muted hover:text-foreground"
-																					>
-																						<KeyRound className="h-4 w-4" />
-																					</Button>
+																					{user.authSource !== 'ldap' && (
+																						<Button
+																							variant="ghost"
+																							size="icon"
+																							onClick={() => {
+																								setUserToResetPassword(
+																									user
+																								);
+																								setShowResetPasswordModal(
+																									true
+																								);
+																							}}
+																							title="Reset password"
+																							className="hover:bg-muted hover:text-foreground"
+																						>
+																							<KeyRound className="h-4 w-4" />
+																						</Button>
+																					)}
 																					<AlertDialog>
 																						<AlertDialogTrigger asChild>
 																							<Button
@@ -551,6 +575,8 @@ const Settings: React.FC = () => {
 												</Table>
 											</CardContent>
 										</Card>
+										{/* Directory login decides who can become a user, so it lives with them. */}
+										{isAdmin && <LdapSettings defaultOpen={location.hash === '#ldap'} />}
 									</TabsContent>
 
 									<TabsContent value="audit" className="space-y-6">

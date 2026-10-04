@@ -11,13 +11,17 @@ import {
 	UpsertRootCauseSchema,
 	RateRootCauseSchema,
 } from '@OpsiMate/shared';
-import { AlertBL } from '../../../bl/alerts/alert.bl';
+import { AlertBL, IncomingAlert } from '../../../bl/alerts/alert.bl';
 import {
 	AlertAnalyticsParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
+	HttpAlertWebhookFields,
+	HttpAlertWebhookHeadSchema,
+	HttpAlertWebhookTimesSchema,
 	HttpAlertWebhookSchema,
+	isResolvedWebhookStatus,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
@@ -609,6 +613,29 @@ export class AlertController {
 
 	// Parses a timestamp to ISO, falling back to "now" when it is missing or unparseable, so a
 	// malformed startsAt from Grafana can't throw and drop the whole batch.
+	// A custom-webhook payload as the alert it describes. startsAt is the caller's: the
+	// firing path defaults it to now, the resolve-only path keeps it absent ('') so the
+	// episode collapses onto the resolve moment.
+	private static customToIncoming(alert: HttpAlertWebhookFields, startsAt: string): IncomingAlert {
+		return {
+			id: alert.id,
+			type: 'Custom',
+			status: AlertStatus.FIRING,
+			severity: alert.severity,
+			team: alert.team,
+			// The fix field rides on the fix tag (the client's first-class Fix column
+			// reads it from there); an explicit tag wins over the convenience field.
+			tags: alert.fix && !('fix' in alert.tags) ? { ...alert.tags, fix: alert.fix } : alert.tags,
+			startsAt,
+			updatedAt: alert.updatedAt || new Date().toISOString(),
+			alertUrl: alert.alertUrl || '',
+			alertName: alert.alertName,
+			summary: alert.summary,
+			runbookUrl: alert.runbookUrl,
+			links: alert.links,
+		};
+	}
+
 	private static toIsoOrNow(value?: string): string {
 		if (!value) return new Date().toISOString();
 		const parsed = new Date(value);
@@ -652,12 +679,6 @@ export class AlertController {
 					continue;
 				}
 
-				if (alert.status?.toLowerCase() === 'resolved') {
-					await this.alertBL.resolveAlert(alertId);
-					processedIds.push(alertId);
-					continue;
-				}
-
 				const tags = Object.fromEntries(
 					Object.entries(labels).filter(([key]) => !AlertController.GRAFANA_LABELS_TO_IGNORE.has(key))
 				);
@@ -672,7 +693,7 @@ export class AlertController {
 					{ label: 'Runbook', icon: '', url: alert.annotations?.runbook_url },
 				]);
 
-				await this.alertBL.insertOrUpdateAlert({
+				const incoming: IncomingAlert = {
 					id: alertId,
 					type: 'Grafana',
 					status: AlertStatus.FIRING,
@@ -684,7 +705,21 @@ export class AlertController {
 					summary: alert.annotations?.summary || alert.annotations?.description || '',
 					runbookUrl: alert.annotations?.runbook_url || '',
 					links,
-				});
+				};
+
+				// Grafana always sends the full alert, so a resolve with nothing firing here
+				// is recorded as the episode it describes (see AlertBL.resolveFromSource).
+				if (alert.status?.toLowerCase() === 'resolved') {
+					const startsAt = alert.startsAt ? AlertController.toIsoOrNow(alert.startsAt) : '';
+					await this.alertBL.resolveFromSource(alertId, {
+						alert: { ...incoming, startsAt },
+						endsAt: alert.endsAt,
+					});
+					processedIds.push(alertId);
+					continue;
+				}
+
+				await this.alertBL.insertOrUpdateAlert(incoming);
 				processedIds.push(alertId);
 			}
 
@@ -700,26 +735,38 @@ export class AlertController {
 
 	async createCustomAlert(req: Request, res: Response) {
 		try {
-			const alert = HttpAlertWebhookSchema.parse(req.body);
+			// A resolved status resolves the alert instead of firing it — the same
+			// source-driven resolve (no acting user) the Grafana webhook performs. Only the
+			// id is needed for that, so the full firing schema is not applied. Nothing to
+			// resolve (unknown id, already resolved) is not an error for a webhook: the
+			// sender's retry must be idempotent.
+			const head = HttpAlertWebhookHeadSchema.parse(req.body);
+			if (isResolvedWebhookStatus(head.status)) {
+				// A full payload lets us record the episode even when the firing never
+				// arrived (see AlertBL.resolveFromSource); an id-only resolve cannot.
+				// The times are read raw: an unparseable startsAt/endsAt must not throw away
+				// the episode — resolveFromSource treats it as absent (start = end, end = now).
+				const full = HttpAlertWebhookSchema.omit({ startsAt: true, endsAt: true }).safeParse(req.body);
+				const times = HttpAlertWebhookTimesSchema.parse(req.body);
+				const { resolved, created } = await this.alertBL.resolveFromSource(
+					head.id,
+					full.success
+						? {
+								alert: AlertController.customToIncoming(full.data, times.startsAt ?? ''),
+								endsAt: times.endsAt,
+							}
+						: undefined
+				);
+				return res
+					.status(200)
+					.json({ success: true, data: { alertId: head.id, status: 'resolved', resolved, created } });
+			}
 
-			await this.alertBL.insertOrUpdateAlert({
-				id: alert.id,
-				type: 'Custom',
-				status: AlertStatus.FIRING,
-				severity: alert.severity,
-				team: alert.team,
-				// The fix field rides on the fix tag (the client's first-class Fix column
-				// reads it from there); an explicit tag wins over the convenience field.
-				tags: alert.fix && !('fix' in alert.tags) ? { ...alert.tags, fix: alert.fix } : alert.tags,
-				startsAt: alert.startsAt || new Date().toISOString(),
-				updatedAt: alert.updatedAt || new Date().toISOString(),
-				alertUrl: alert.alertUrl || '',
-				alertName: alert.alertName,
-				summary: alert.summary,
-				runbookUrl: alert.runbookUrl,
-				links: alert.links,
-			});
-			return res.status(200).json({ success: true, data: { alertId: alert.id } });
+			const alert = HttpAlertWebhookSchema.parse(req.body);
+			await this.alertBL.insertOrUpdateAlert(
+				AlertController.customToIncoming(alert, alert.startsAt || new Date().toISOString())
+			);
+			return res.status(200).json({ success: true, data: { alertId: alert.id, status: 'firing' } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });

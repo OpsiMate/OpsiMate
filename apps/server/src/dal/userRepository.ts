@@ -1,7 +1,14 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { TableInfoRow, UserRow } from './models';
-import { User } from '@OpsiMate/shared';
+import { User, UserAuthSource } from '@OpsiMate/shared';
+
+// How an email maps onto an existing account, for directory provisioning.
+export interface DirectoryAccountLink {
+	id: number;
+	authSource: UserAuthSource;
+	ldapDn: string | null;
+}
 
 export class UserRepository {
 	private db: Database.Database;
@@ -32,6 +39,16 @@ export class UserRepository {
 			if (!columns.some((col) => col.name === 'phone_number')) {
 				this.db.prepare(`ALTER TABLE users ADD COLUMN phone_number TEXT`).run();
 			}
+			// 'local' (bcrypt password here) or 'ldap' (password in the directory). Every
+			// existing account is local.
+			if (!columns.some((col) => col.name === 'auth_source')) {
+				this.db.prepare(`ALTER TABLE users ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local'`).run();
+			}
+			// The directory entry (DN) an LDAP account belongs to: a later login from a
+			// different entry with the same email must not get this account.
+			if (!columns.some((col) => col.name === 'ldap_dn')) {
+				this.db.prepare(`ALTER TABLE users ADD COLUMN ldap_dn TEXT`).run();
+			}
 		});
 	}
 
@@ -39,13 +56,15 @@ export class UserRepository {
 		email: string,
 		password_hash: string,
 		full_name: string,
-		role: 'admin' | 'editor' | 'viewer' | 'operation'
+		role: 'admin' | 'editor' | 'viewer' | 'operation',
+		authSource: UserAuthSource = 'local',
+		ldapDn: string | null = null
 	): Promise<{ lastID: number }> {
 		return runAsync<{ lastID: number }>(() => {
 			const stmt = this.db.prepare(
-				'INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)'
+				'INSERT INTO users (email, password_hash, full_name, role, auth_source, ldap_dn) VALUES (?, ?, ?, ?, ?, ?)'
 			);
-			const result = stmt.run(email, password_hash, full_name, role);
+			const result = stmt.run(email, password_hash, full_name, role, authSource, ldapDn);
 			return { lastID: result.lastInsertRowid as number };
 		});
 	}
@@ -75,7 +94,9 @@ export class UserRepository {
 
 	async getAllUsers(): Promise<User[]> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('SELECT id, email, full_name, role, created_at, phone_number FROM users');
+			const stmt = this.db.prepare(
+				'SELECT id, email, full_name, role, created_at, phone_number, auth_source FROM users'
+			);
 			const userRows = stmt.all() as UserRow[];
 			return userRows.map(this.toSharedUser);
 		});
@@ -84,7 +105,9 @@ export class UserRepository {
 	async getUserById(id: number): Promise<User | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, email, full_name, role, created_at, phone_number FROM users WHERE id = ?')
+				.prepare(
+					'SELECT id, email, full_name, role, created_at, phone_number, auth_source FROM users WHERE id = ?'
+				)
 				.get(id) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
 		});
@@ -165,13 +188,48 @@ export class UserRepository {
 			role: row.role,
 			createdAt: row.created_at,
 			phoneNumber: row.phone_number ?? null,
+			authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
 		};
 	};
+
+	// An LDAP login keeps the local copy in step with the directory: name and role
+	// are the directory's on every login.
+	async syncDirectoryUser(userId: number, fullName: string, role: string): Promise<void> {
+		return runAsync(() => {
+			this.db.prepare('UPDATE users SET full_name = ?, role = ? WHERE id = ?').run(fullName, role, userId);
+		});
+	}
+
+	// Any account whose email matches ignoring case: the UNIQUE constraint is
+	// case-sensitive, so "Alice@x" (local) and "alice@x" could otherwise coexist.
+	async findDirectoryLink(email: string): Promise<DirectoryAccountLink | null> {
+		return runAsync(() => {
+			const row = this.db
+				.prepare(
+					'SELECT id, auth_source, ldap_dn FROM users WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1'
+				)
+				.get(email) as UserRow | undefined;
+			if (!row) return null;
+			return {
+				id: Number(row.id),
+				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
+				ldapDn: row.ldap_dn ?? null,
+			};
+		});
+	}
+
+	async setLdapDn(userId: number, dn: string): Promise<void> {
+		return runAsync(() => {
+			this.db.prepare('UPDATE users SET ldap_dn = ? WHERE id = ?').run(dn, userId);
+		});
+	}
 
 	async getUserByEmail(email: string): Promise<User | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, email, full_name, role, created_at, phone_number FROM users WHERE email = ?')
+				.prepare(
+					'SELECT id, email, full_name, role, created_at, phone_number, auth_source FROM users WHERE email = ?'
+				)
 				.get(email) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
 		});

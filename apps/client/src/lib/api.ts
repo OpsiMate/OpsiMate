@@ -5,6 +5,10 @@ import {
 	AiFilterResult,
 	AiStatus,
 	AiTestResult,
+	LdapSettings,
+	LdapTestRequest,
+	LdapTestResult,
+	UpdateLdapSettings,
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
 	AlertGroupSummaryNode,
@@ -652,6 +656,14 @@ export const aiApi = {
 	// Any authenticated user: drives AI feature visibility without exposing config.
 	getStatus: () => apiRequest<AiStatus>('/ai/status'),
 	filterFromText: (query: string) => apiRequest<AiFilterResult>('/ai/filter', 'POST', { query }),
+};
+
+// Directory (LDAP) login settings, admin-only. The service-account password is
+// write-only: the server returns hasBindPassword, never the password.
+export const ldapApi = {
+	getSettings: () => apiRequest<LdapSettings>('/ldap/settings'),
+	updateSettings: (updates: UpdateLdapSettings) => apiRequest<LdapSettings>('/ldap/settings', 'PUT', updates),
+	test: (request: LdapTestRequest) => apiRequest<LdapTestResult>('/ldap/test', 'POST', request),
 };
 
 export const silenceResetApi = {

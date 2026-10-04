@@ -80,14 +80,15 @@ export const UpdateUserRoleSchema = z.object({
 
 export const RegisterSchema = CreateUserSchema.omit({ role: true });
 
+// Login only checks that a password was sent: strength rules belong to setting a
+// password, not to presenting one — and directory (LDAP) passwords follow the
+// directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z.object({
 	email: z.string().email(),
-	password: z
-		.string()
-		.min(6)
-		.refine((val) => !/\s/.test(val), {
-			message: 'Password must not contain spaces',
-		}),
+	// No maximum: none of the password-setting paths has one, so a cap here could
+	// lock out a password that was accepted when set. express.json's body limit
+	// (100kb) already bounds the request.
+	password: z.string().min(1),
 });
 
 export const UpdateProfileSchema = z.object({
@@ -491,6 +492,76 @@ export const UpdateSilenceResetSettingsSchema = z
 	.refine((v) => v.enabled !== undefined || v.hour !== undefined, {
 		message: 'Provide enabled and/or hour',
 	});
+
+const LdapGroupListSchema = z.array(z.string().trim().min(1).max(1000)).max(200);
+
+// Settings page -> server. Every field optional (partial update). Values are checked for
+// shape here; whether the whole config is complete enough to enable is the server's call.
+export const UpdateLdapSettingsSchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		url: z
+			.string()
+			.trim()
+			.max(500)
+			.refine(
+				(v) => v === '' || /^ldaps?:\/\/[^\s/]+/i.test(v),
+				'Expected ldap://host[:port] or ldaps://host[:port]'
+			)
+			.optional(),
+		startTls: z.boolean().optional(),
+		bindDn: z.string().trim().max(1000).optional(),
+		// Not trimmed (a password may legitimately start or end with a space), but a
+		// whitespace-only value is almost certainly a mistake.
+		bindPassword: z
+			.string()
+			.max(1024)
+			.refine((v) => v.trim().length > 0, 'Password cannot be blank')
+			.nullable()
+			.optional(),
+		searchBase: z.string().trim().max(1000).optional(),
+		searchFilter: z
+			.string()
+			.trim()
+			.max(1000)
+			.refine((v) => v === '' || v.includes('{{email}}'), 'The search filter must contain {{email}}')
+			.optional(),
+		emailAttribute: z.string().trim().max(100).optional(),
+		nameAttribute: z.string().trim().max(100).optional(),
+		groupsAttribute: z.string().trim().max(100).optional(),
+		groupSearchBase: z.string().trim().max(1000).optional(),
+		groupSearchFilter: z
+			.string()
+			.trim()
+			.max(1000)
+			.refine((v) => v === '' || v.includes('{{dn}}'), 'The group search filter must contain {{dn}}')
+			.optional(),
+		roleMapping: z
+			.object({
+				admin: LdapGroupListSchema,
+				editor: LdapGroupListSchema,
+				operation: LdapGroupListSchema,
+				viewer: LdapGroupListSchema,
+			})
+			.optional(),
+		defaultRole: z.nativeEnum(Role).nullable().optional(),
+		timeoutMs: z.number().int().min(500).max(60_000).optional(),
+		loginMaxFailures: z.number().int().min(0).max(1000).optional(),
+		tlsRejectUnauthorized: z.boolean().optional(),
+		tlsCaCert: z
+			.string()
+			.trim()
+			.max(64_000)
+			.refine((v) => v === '' || v.includes('-----BEGIN CERTIFICATE-----'), 'Expected a PEM certificate')
+			.optional(),
+	})
+	.strict();
+
+export const LdapTestRequestSchema = z
+	.object({
+		email: z.string().trim().email().optional(),
+	})
+	.strict();
 
 // AI (BYOK) configuration update. apiKey: string replaces the stored key, null deletes
 // it, absent keeps it. Region/model shapes are validated loosely on purpose — AWS adds

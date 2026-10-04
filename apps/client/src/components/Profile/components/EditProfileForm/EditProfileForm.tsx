@@ -13,6 +13,8 @@ interface EditProfileFormProps {
 	onSave: () => void;
 	onCancel: () => void;
 	onEdit: () => void;
+	// Signs in through LDAP: the password lives in the directory, not here.
+	isDirectoryAccount?: boolean;
 }
 
 export const EditProfileForm = ({
@@ -24,6 +26,7 @@ export const EditProfileForm = ({
 	onSave,
 	onCancel,
 	onEdit,
+	isDirectoryAccount = false,
 }: EditProfileFormProps) => {
 	if (!isEditing) {
 		return (
@@ -75,35 +78,41 @@ export const EditProfileForm = ({
 					{errors.phoneNumber && <ErrorAlert message={errors.phoneNumber} className="mt-2" />}
 				</div>
 
-				<div className="space-y-3">
-					<h4 className="text-sm font-semibold text-muted-foreground">Change Password (Optional)</h4>
+				{isDirectoryAccount ? (
+					<p className="text-sm text-muted-foreground">
+						Your password is managed by your organization's directory (LDAP) and can't be changed here.
+					</p>
+				) : (
+					<div className="space-y-3">
+						<h4 className="text-sm font-semibold text-muted-foreground">Change Password (Optional)</h4>
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
-						<div>
-							<label className="text-sm font-semibold text-muted-foreground">New Password</label>
-							<Input
-								type="password"
-								value={formData.newPassword}
-								onChange={(e) => onFormDataChange({ ...formData, newPassword: e.target.value })}
-								className="mt-1"
-								disabled={saving}
-								placeholder="Enter new password"
-							/>
-						</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
+							<div>
+								<label className="text-sm font-semibold text-muted-foreground">New Password</label>
+								<Input
+									type="password"
+									value={formData.newPassword}
+									onChange={(e) => onFormDataChange({ ...formData, newPassword: e.target.value })}
+									className="mt-1"
+									disabled={saving}
+									placeholder="Enter new password"
+								/>
+							</div>
 
-						<div>
-							<label className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
-							<Input
-								type="password"
-								value={formData.confirmPassword}
-								onChange={(e) => onFormDataChange({ ...formData, confirmPassword: e.target.value })}
-								className="mt-1"
-								disabled={saving}
-								placeholder="Confirm password"
-							/>
+							<div>
+								<label className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
+								<Input
+									type="password"
+									value={formData.confirmPassword}
+									onChange={(e) => onFormDataChange({ ...formData, confirmPassword: e.target.value })}
+									className="mt-1"
+									disabled={saving}
+									placeholder="Confirm password"
+								/>
+							</div>
 						</div>
 					</div>
-				</div>
+				)}
 			</div>
 
 			<div className="flex gap-3 pt-4">

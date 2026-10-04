@@ -33,6 +33,8 @@ import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import { ActiveListBuild, ActiveListBuilder, alertListFingerprint, noRules } from './activeListBuilder';
+import { resolveWorkerScript, SnapshotWorkerClient } from './snapshotWorkerClient';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
 	AlertBulkActionRequest,
@@ -73,6 +75,12 @@ const nonNegativeFromEnv = (raw: string | undefined, fallback: number): number =
 const ingestFlushMs = () => nonNegativeFromEnv(process.env.ALERTS_INGEST_FLUSH_MS, 0);
 const ingestMaxBatch = () => positiveIntFromEnv(process.env.ALERTS_INGEST_MAX_BATCH, 500);
 
+// How long a snapshot keeps being served after webhooks have changed the data under
+// it, before a poll triggers a background rebuild (SnapshotCache.markStale). Bounds
+// the rebuild rate under an ingest storm to one per second no matter how many tabs
+// poll; a webhook is visible within this plus one rebuild. User actions bypass it.
+const snapshotRefreshMs = () => nonNegativeFromEnv(process.env.ALERTS_SNAPSHOT_REFRESH_MS, 1000);
+
 // The resolved list (and the analytics input scans behind it) changes only through
 // writes that call invalidateSnapshots() in this process — resolution, unresolve,
 // rule edits — so its TTL is purely the staleness bound for OTHER processes' writes,
@@ -111,6 +119,29 @@ export interface AlertAnalyticsQuery {
 	tagKey?: string;
 }
 
+// The list fingerprint a build reported, keyed by the array it belongs to, so the
+// SnapshotCache's fingerprint hook finds it without recomputing (or, for a list from
+// the worker thread, without owning the per-alert digests at all).
+const listFingerprints = new WeakMap<Alert[], string>();
+const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
+
+// An alert as a webhook hands it in: severity still free-form (see normalizeIncoming).
+export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string };
+
+// What a webhook knows about an alert it reports as resolved (see resolveFromSource).
+export interface SourceResolvedEpisode {
+	alert: IncomingAlert;
+	// When the source says the alert ended; now when absent.
+	endsAt?: string;
+}
+
+export interface SourceResolveResult {
+	// An alert that was firing here is now resolved.
+	resolved: boolean;
+	// No alert was firing: the episode the source described was recorded as resolved.
+	created: boolean;
+}
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -125,10 +156,16 @@ export class AlertBL {
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
 	// follows it. See SnapshotCache for the generation/race handling.
-	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
+	private readonly activeSnapshot = new SnapshotCache<Alert[]>(
+		() => this.computeAllAlerts(),
+		snapshotTtlMs(),
+		snapshotRefreshMs(),
+		{ fingerprint: activeListFingerprint }
+	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	// Analytics inputs: two full-table scans (history rows, event times) that must not
 	// run per request. Same invalidation as the alert snapshots — every write path that
@@ -136,11 +173,13 @@ export class AlertBL {
 	// for the same reason (see resolvedSnapshotTtlMs).
 	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
 		() => this.resolvedAlertRepo.getAllHistoryRows(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
 		() => this.alertHistoryRepo.getAllEventTimes(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	// Owners feed sort keys, filter matching and facet labels on every list read; the
 	// users table changes rarely. Cached with the base TTL, and every name-affecting
@@ -161,13 +200,44 @@ export class AlertBL {
 	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
 	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
+	// Builds the active list (see ActiveListBuilder). Inline on this thread by default;
+	// useSnapshotWorker moves it to a worker thread and this one only patches deltas.
+	private readonly inlineBuilder: ActiveListBuilder;
+	private snapshotWorker: SnapshotWorkerClient | null = null;
+
 	constructor(
 		private alertRepo: AlertRepository,
 		private resolvedAlertRepo: ResolvedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
-	) {}
+	) {
+		this.inlineBuilder = new ActiveListBuilder(
+			alertRepo,
+			alertCommentsRepo,
+			alertHistoryRepo,
+			() => (this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : noRules()),
+			() => (this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : noRules())
+		);
+	}
+
+	// Build the active list on a worker thread over its own connection to dbPath. Only
+	// for a database file (a worker cannot see an in-memory database); the inline
+	// builder stays as the fallback for a worker that fails. Returns whether it is on.
+	useSnapshotWorker(dbPath: string): boolean {
+		const script = resolveWorkerScript();
+		if (!script) {
+			logger.warn('snapshot worker script not found next to the entry point; building the alerts list inline');
+			return false;
+		}
+		this.snapshotWorker = new SnapshotWorkerClient(dbPath, script);
+		return true;
+	}
+
+	async closeSnapshotWorker(): Promise<void> {
+		await this.snapshotWorker?.close();
+		this.snapshotWorker = null;
+	}
 
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
 	// affect both, so both drop together — a second compute per edit is far cheaper than
@@ -180,10 +250,29 @@ export class AlertBL {
 	}
 
 	invalidateSnapshots(): void {
+		this.ingestedSinceInvalidate = false;
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
 		this.historyRowsSnapshot.invalidate();
 		this.eventTimesSnapshot.invalidate();
+	}
+
+	// True while webhook writes have only marked the snapshots stale (see below) and no
+	// hard invalidate has happened since. A user action that selects its targets from
+	// the snapshot (bulk-by-query) must not act on that stale view — see drainIngest.
+	private ingestedSinceInvalidate = false;
+
+	// The webhook path. Ingest touches every list (an upsert can pull a resolved copy
+	// back, and the insert trigger writes history), but nobody refetches on a webhook —
+	// the UI polls — so these are marked stale and rebuilt at most once per refresh
+	// window instead of on every batch. Everything a user does goes through
+	// invalidateSnapshots() and is visible on the immediate refetch.
+	markSnapshotsStale(): void {
+		this.ingestedSinceInvalidate = true;
+		this.activeSnapshot.markStale();
+		this.resolvedSnapshot.markStale();
+		this.historyRowsSnapshot.markStale();
+		this.eventTimesSnapshot.markStale();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
@@ -407,26 +496,30 @@ export class AlertBL {
 	// and the severity tag is rewritten to the normalized value so label matchers (mute policies,
 	// enrichments) always see the same three values the severity field uses. The tag is
 	// hidden from the UI — users only interact with the first-class severity.
-	async insertOrUpdateAlert(
-		alert: Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string }
-	): Promise<{ changes: number }> {
+	// The one funnel for what a source sends: severity normalized onto the fixed scale,
+	// team resolved, the severity tag mirroring the first-class field.
+	private normalizeIncoming(alert: IncomingAlert): IngestAlert {
+		// || (not ??) so a blank explicit severity falls through to the tag.
+		const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
+		// Same funnel for the owning team: explicit field wins, then a `team` tag,
+		// otherwise none. Unlike severity there is no fixed scale — any name is kept.
+		const team = alert.team?.trim() || alert.tags?.['team'] || null;
+		const tags = { ...(alert.tags ?? {}), severity };
+		return { ...alert, tags, severity, team };
+	}
+
+	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number }> {
 		try {
 			// debug, not info: at thousands of webhooks a second a per-alert info line is
 			// itself a measurable cost (synchronous console writes) and floods the log; the
 			// ingested counter and batch-size histogram carry the operational signal.
 			logger.debug(`Inserting alert: ${alert.id}`);
-			// || (not ??) so a blank explicit severity falls through to the tag.
-			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
-			// Same funnel for the owning team: explicit field wins, then a `team` tag,
-			// otherwise none. Unlike severity there is no fixed scale — any name is kept.
-			const team = alert.team?.trim() || alert.tags?.['team'] || null;
-			const tags = { ...(alert.tags ?? {}), severity };
 			// Queued, not written here: the queue commits it with whatever else arrives in
 			// the same flush window, and this resolves once that commit is in (so a GET
 			// right after the POST still sees the alert). The repository atomically drops
 			// any resolved copy of this id — a re-firing alert must never show as both
 			// firing and resolved.
-			return await this.ingestQueue.enqueue({ ...alert, tags, severity, team });
+			return await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
@@ -437,7 +530,7 @@ export class AlertBL {
 	// costs that pinned the single core under a burst.
 	private async flushIngestBatch(batch: IngestAlert[]): Promise<{ changes: number }[]> {
 		const results = await this.alertRepo.insertOrUpdateAlerts(batch);
-		this.invalidateSnapshots();
+		this.markSnapshotsStale();
 		ingestBatchSize.observe(batch.length);
 		// In-memory increment; this is the single funnel every webhook source flows
 		// through, so one counter covers all of them.
@@ -450,8 +543,15 @@ export class AlertBL {
 	// Write paths that must see every ingest that arrived before them wait for the
 	// queue first; otherwise an alert POSTed a millisecond before its resolve would be
 	// committed after it and reappear as firing.
-	private drainIngest(): Promise<void> {
-		return this.ingestQueue.drain();
+	// Draining commits the queue but only marks the snapshots stale; a caller that then
+	// resolves a query against the snapshot (bulk-by-query) would act on a view up to
+	// one refresh window behind the database — resolving an alert a webhook just
+	// downgraded, skipping one it just raised. User actions read fresh, so any pending
+	// webhook staleness is turned into a hard invalidate here, at the cost of the one
+	// rebuild per user action that every write path already pays.
+	private async drainIngest(): Promise<void> {
+		await this.ingestQueue.drain();
+		if (this.ingestedSinceInvalidate) this.invalidateSnapshots();
 	}
 
 	// Timed silences expire lazily: every listing first sweeps alerts whose silence window
@@ -558,25 +658,33 @@ export class AlertBL {
 		return (await this.activeSnapshot.get()).value;
 	}
 
+	// Silences expire first (a write, on this thread), then the list is built — by the
+	// worker thread when one is on, else inline. See ActiveListBuilder for what a build
+	// does and why it is cheap when little changed.
 	private async computeAllAlerts(): Promise<Alert[]> {
 		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
-			let alerts = await this.alertRepo.getAllAlerts();
-			// Enrich before muting so mute policy rules can match enrichment-added tags.
-			if (this.enrichmentBL) {
-				alerts = await this.enrichmentBL.applyEnrichments(alerts);
-			}
-			if (this.mutePolicyBL) {
-				alerts = await this.mutePolicyBL.markMuted(alerts);
-			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			const { alerts, fingerprint } = await this.buildActiveList();
+			listFingerprints.set(alerts, fingerprint);
+			return alerts;
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
 		} finally {
 			endTimer();
+		}
+	}
+
+	private async buildActiveList(): Promise<ActiveListBuild> {
+		if (!this.snapshotWorker) return this.inlineBuilder.build();
+		try {
+			return await this.snapshotWorker.build();
+		} catch (error) {
+			// The worker is replaced on the next build; this one must still answer.
+			logger.warn('snapshot worker build failed, building the alerts list inline', error);
+			return this.inlineBuilder.build();
 		}
 	}
 
@@ -681,6 +789,50 @@ export class AlertBL {
 	// name, they become the alert's owner, and an optional resolve note is stored as a
 	// regular comment. Leave it undefined for API-driven resolution (a source reporting the
 	// alert as recovered), which only gets the automatic status-transition entry.
+	// A source reported that an alert is resolved (custom or Grafana webhook). If it is
+	// firing here, resolve it as usual. If it is not, and the source sent the whole alert
+	// (name, tags, ...), record the episode it describes — fired at its startsAt (or at
+	// the resolve moment when it sent none), resolved at its endsAt (or now) — so the
+	// incident is not silently lost. An id-only resolve, or one for an alert already
+	// resolved, changes nothing: retries must stay harmless.
+	async resolveFromSource(alertId: string, episode?: SourceResolvedEpisode): Promise<SourceResolveResult> {
+		await this.drainIngest();
+		if (await this.alertRepo.getAlert(alertId)) {
+			return { resolved: await this.resolveAlert(alertId), created: false };
+		}
+		if (!episode || (await this.resolvedAlertRepo.getResolvedAlert(alertId))) {
+			logger.warn(`Resolve for ${alertId} with no firing alert; nothing recorded`);
+			return { resolved: false, created: false };
+		}
+		const nowMs = Date.now();
+		const endMs = episode.endsAt ? new Date(episode.endsAt).getTime() : NaN;
+		// A missing, unparseable or future end is "now": the source says it is over.
+		const resolvedMs = !isNaN(endMs) && endMs <= nowMs ? endMs : nowMs;
+		const startMs = episode.alert.startsAt ? new Date(episode.alert.startsAt).getTime() : NaN;
+		// No start (or one after the end) collapses the episode onto the resolve moment;
+		// the history then ends on 'resolved' — see insertResolvedOnlyEpisode.
+		const resolvedAt = new Date(resolvedMs).toISOString();
+		const startsAt = !isNaN(startMs) && startMs <= resolvedMs ? new Date(startMs).toISOString() : resolvedAt;
+		const outcome = this.resolvedAlertRepo.insertResolvedOnlyEpisode(
+			{
+				...this.normalizeIncoming(episode.alert),
+				startsAt,
+				updatedAt: resolvedAt,
+				createdAt: resolvedAt,
+				isSilenced: false,
+			},
+			startsAt,
+			resolvedAt
+		);
+		// A firing committed between the check above and the insert: resolve it normally.
+		if (outcome === 'active') return { resolved: await this.resolveAlert(alertId), created: false };
+		if (outcome === 'exists') return { resolved: false, created: false };
+		this.invalidateSnapshots();
+		alertsResolvedTotal.inc({ mode: 'resolve_only' });
+		logger.info(`Recorded resolve-only episode for ${alertId} (${startsAt} → ${resolvedAt})`);
+		return { resolved: false, created: true };
+	}
+
 	async resolveAlert(
 		activeAlertId: string,
 		manualActor?: { id: string | null; name: string | null },
@@ -993,6 +1145,11 @@ export class AlertBL {
 			}
 		}
 
+		// Newest first. Exact ties keep the order the entries arrive in: status rows come
+		// from the repository newest-written first (history_id DESC), so two transitions in
+		// the same millisecond stay in the order they happened, whichever way round — and a
+		// resolve-only episode without a start time ends on 'resolved' (written second).
+		// Array.prototype.sort is stable.
 		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 		return { alertId, data };

@@ -5,6 +5,8 @@ import {
 	AlertEnrichmentVersion,
 	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
+	LdapSettings,
+	UpdateLdapSettings,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -406,6 +408,30 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+const ldapSettingsState: LdapSettings = {
+	source: 'database',
+	enabled: false,
+	problems: [],
+	url: '',
+	startTls: false,
+	bindDn: '',
+	hasBindPassword: false,
+	searchBase: '',
+	searchFilter: '(mail={{email}})',
+	emailAttribute: 'mail',
+	nameAttribute: 'displayName',
+	groupsAttribute: 'memberOf',
+	groupSearchBase: '',
+	groupSearchFilter: '(member={{dn}})',
+	roleMapping: { admin: [], editor: [], operation: [], viewer: [] },
+	defaultRole: null,
+	timeoutMs: 5000,
+	loginMaxFailures: 5,
+	tlsRejectUnauthorized: true,
+	tlsCaCert: '',
+	updatedAt: null,
+};
+
 // In-memory AI (BYOK) config for the playground: same masking contract as the server —
 // the key is write-only, GET only reports that one exists.
 const aiConfigState = {
@@ -485,6 +511,35 @@ export const handlers = [
 				latencyMs: ok ? 420 : 0,
 				modelId: aiConfigState.modelId,
 				message: ok ? 'ok (playground stub)' : 'No API key is configured yet.',
+			},
+		});
+	}),
+
+	// ==================== LDAP ====================
+	// The playground has no directory: settings persist in memory and the test explains that.
+	http.get(`${API_BASE}/ldap/settings`, () => {
+		return HttpResponse.json({ success: true, data: ldapSettingsState });
+	}),
+
+	http.put(`${API_BASE}/ldap/settings`, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as UpdateLdapSettings;
+		const { bindPassword, ...rest } = body;
+		Object.assign(ldapSettingsState, rest);
+		if (bindPassword !== undefined) ldapSettingsState.hasBindPassword = bindPassword !== null;
+		ldapSettingsState.updatedAt = nowIso();
+		return HttpResponse.json({ success: true, data: ldapSettingsState });
+	}),
+
+	http.post(`${API_BASE}/ldap/test`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: {
+				ok: false,
+				latencyMs: 0,
+				steps: [
+					{ step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' },
+				],
+				user: null,
 			},
 		});
 	}),
