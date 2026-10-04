@@ -3,6 +3,12 @@ import { AuditActionType, AuditResourceType, AuditLog } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup.ts';
 
+// This file is the one place the suite exercises real API-token auth (the audit-log
+// "API token" actor fallback below), so it needs a token actually configured. Must be
+// set before anything makes a request — config.ts caches api_token on first read, and
+// unlike a real deployment nothing here sets API_TOKEN from the outside.
+process.env.API_TOKEN = 'audit-test-api-token';
+
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
@@ -211,7 +217,7 @@ describe('Audit Logs API', () => {
 	test('should use the API token actor fallback for mute policy audit entries', async () => {
 		const createRes = await app
 			.post('/api/v1/mute-policies')
-			.set('x-api-token', process.env.API_TOKEN ?? 'opsimate')
+			.set('x-api-token', process.env.API_TOKEN!)
 			.send({ name: 'API Token Mute Policy', matchAll: true });
 
 		expect(createRes.status).toBe(201);

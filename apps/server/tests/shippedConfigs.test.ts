@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { describe, expect, test } from 'vitest';
+import { DEFAULT_API_TOKEN } from '../src/config/config.ts';
 
 // The YAML files we ship must parse, or the server dies at startup before it can log
 // anything useful. That is not hypothetical: the js-yaml 4 -> 5 bump made the parser
@@ -85,6 +86,28 @@ describe('shipped YAML configs', () => {
 				).toBe(false);
 			});
 		}
+	});
+
+	// default-config.yml is baked into the published Docker image and is what
+	// docker-entrypoint.sh falls back to whenever no config is mounted, so its
+	// api_token is a publicly known value by design (see config.ts's
+	// DEFAULT_API_TOKEN and warnIfDefaultApiToken, which is the actual safeguard
+	// against running with it unnoticed). Removing the default outright is a
+	// planned, announced change, not this test; what this guards against is a
+	// *different* literal sneaking in that nobody knows to change.
+	test('default-config.yml ships the known default api_token, not some other literal', () => {
+		const parsed = yaml.load(fs.readFileSync(path.join(repoRoot, 'default-config.yml'), 'utf8')) as Record<
+			string,
+			any
+		>;
+		expect(parsed.security?.api_token).toBe(DEFAULT_API_TOKEN);
+	});
+
+	// A literal here would override the token in a user's mounted config.yml, so
+	// compose only passes API_TOKEN through from the host environment.
+	test('docker-compose.yml passes API_TOKEN through instead of hardcoding it', () => {
+		const compose = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8');
+		expect(compose).toMatch(/^\s*-\s*API_TOKEN=\$\{API_TOKEN:-\}\s*$/m);
 	});
 
 	// The case that #879 slipped past. This fixture is a user config in the pre-#854
