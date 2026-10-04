@@ -34,7 +34,7 @@ import {
 } from '@OpsiMate/shared';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 interface ActionFormDialogProps {
 	open: boolean;
@@ -66,6 +66,7 @@ const rowsToHeaders = (rows: HeaderRow[]): Record<string, string> | null => {
 };
 
 export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialogProps) => {
+	const httpMethodId = useId();
 	const isEdit = !!action;
 	const { toast } = useToast();
 	const createMutation = useCreateAction();
@@ -576,12 +577,14 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 							<>
 								<div className="grid grid-cols-[120px_1fr] gap-3">
 									<div className="space-y-2">
-										<Label className="text-xs">Method</Label>
+										<Label htmlFor={httpMethodId} className="text-xs">
+											Method
+										</Label>
 										<Select
 											value={httpMethod}
 											onValueChange={(v) => setHttpMethod(v as HttpActionMethod)}
 										>
-											<SelectTrigger>
+											<SelectTrigger id={httpMethodId}>
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>

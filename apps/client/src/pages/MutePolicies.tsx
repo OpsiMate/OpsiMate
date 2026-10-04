@@ -18,7 +18,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteMutePolicy, useMutePolicies } from '@/hooks/queries/mute-policies';
-import { getLabelMatcherGroups, MutePolicy, getNameNeedles, MutePolicySchedule } from '@OpsiMate/shared';
+import {
+	getLabelMatcherGroups,
+	MutePolicy,
+	getNameNeedles,
+	MutePolicySchedule,
+	isScheduleActiveNow,
+} from '@OpsiMate/shared';
 import { BellOff, Calendar, CheckCircle2, Clock, Hourglass, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
@@ -27,12 +33,6 @@ import { useMemo, useState } from 'react';
 type MutePolicyStatus = 'active' | 'scheduled' | 'expired';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const isScheduleActiveNow = (schedule: NonNullable<MutePolicy['schedule']>, now: Date = new Date()): boolean => {
-	if (!schedule.daysOfWeek?.includes(now.getDay())) return false;
-	const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-	return current >= schedule.startTime && current < schedule.endTime;
-};
 
 const getStatus = (s: MutePolicy): MutePolicyStatus => {
 	if (s.schedule) {
@@ -66,20 +66,30 @@ const relativeFromNow = (iso?: string | null): string => formatRelativeTime(iso,
 // occurrence across the policy's days; today counts only if its end time hasn't passed.
 const nextScheduleEnd = (schedule: MutePolicySchedule): number | null => {
 	if (!schedule.daysOfWeek?.length) return null;
+
 	const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
 	if (!Number.isFinite(endHour) || !Number.isFinite(endMinute)) return null;
+
 	const now = new Date();
 	let soonest: number | null = null;
+
 	for (const day of schedule.daysOfWeek) {
 		const candidate = new Date(now);
 		candidate.setHours(endHour, endMinute, 0, 0);
-		const dayDelta = (day - now.getDay() + 7) % 7;
+
+		const endDay = schedule.startTime > schedule.endTime ? (day + 1) % 7 : day;
+		const dayDelta = (endDay - now.getDay() + 7) % 7;
+
 		candidate.setDate(candidate.getDate() + dayDelta);
-		// Same weekday but already past today: that occurrence is next week.
-		if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 7);
+
+		if (candidate.getTime() <= now.getTime()) {
+			candidate.setDate(candidate.getDate() + 7);
+		}
+
 		const time = candidate.getTime();
 		if (soonest === null || time < soonest) soonest = time;
 	}
+
 	return soonest;
 };
 

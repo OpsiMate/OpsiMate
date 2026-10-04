@@ -41,6 +41,23 @@ export class EnrichmentController {
 		}
 	};
 
+	historyHandler = async (req: Request, res: Response) => {
+		try {
+			const { enrichmentId } = AlertEnrichmentIdSchema.parse({ enrichmentId: req.params.enrichmentId });
+			const enrichment = await this.enrichmentBL.get(enrichmentId);
+			if (!enrichment) {
+				return res.status(404).json({ success: false, error: 'Enrichment not found' });
+			}
+			return res.json({ success: true, data: await this.enrichmentBL.history(enrichmentId) });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error getting enrichment history', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
 	createHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const data = CreateAlertEnrichmentSchema.parse(req.body as unknown);

@@ -1,8 +1,12 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	AlertEnrichment,
+	AlertEnrichmentVersion,
 	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
+	LdapSettings,
+	UpdateLdapSettings,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -26,6 +30,15 @@ const SECONDARY_ACTOR = 'Dana Cohen';
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+
+const createEnrichmentVersion = (enrichment: AlertEnrichment, version: number): AlertEnrichmentVersion => ({
+	id: randomId(),
+	enrichmentId: enrichment.id,
+	version,
+	content: structuredClone(enrichment),
+	author: enrichment.lastModifiedBy ?? enrichment.createdBy ?? PLAYGROUND_ACTOR,
+	createdAt: enrichment.updatedAt,
+});
 
 const hashAlertId = (id: string): number => {
 	let h = 0;
@@ -395,6 +408,30 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+const ldapSettingsState: LdapSettings = {
+	source: 'database',
+	enabled: false,
+	problems: [],
+	url: '',
+	startTls: false,
+	bindDn: '',
+	hasBindPassword: false,
+	searchBase: '',
+	searchFilter: '(mail={{email}})',
+	emailAttribute: 'mail',
+	nameAttribute: 'displayName',
+	groupsAttribute: 'memberOf',
+	groupSearchBase: '',
+	groupSearchFilter: '(member={{dn}})',
+	roleMapping: { admin: [], editor: [], operation: [], viewer: [] },
+	defaultRole: null,
+	timeoutMs: 5000,
+	loginMaxFailures: 5,
+	tlsRejectUnauthorized: true,
+	tlsCaCert: '',
+	updatedAt: null,
+};
+
 // In-memory AI (BYOK) config for the playground: same masking contract as the server —
 // the key is write-only, GET only reports that one exists.
 const aiConfigState = {
@@ -474,6 +511,35 @@ export const handlers = [
 				latencyMs: ok ? 420 : 0,
 				modelId: aiConfigState.modelId,
 				message: ok ? 'ok (playground stub)' : 'No API key is configured yet.',
+			},
+		});
+	}),
+
+	// ==================== LDAP ====================
+	// The playground has no directory: settings persist in memory and the test explains that.
+	http.get(`${API_BASE}/ldap/settings`, () => {
+		return HttpResponse.json({ success: true, data: ldapSettingsState });
+	}),
+
+	http.put(`${API_BASE}/ldap/settings`, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as UpdateLdapSettings;
+		const { bindPassword, ...rest } = body;
+		Object.assign(ldapSettingsState, rest);
+		if (bindPassword !== undefined) ldapSettingsState.hasBindPassword = bindPassword !== null;
+		ldapSettingsState.updatedAt = nowIso();
+		return HttpResponse.json({ success: true, data: ldapSettingsState });
+	}),
+
+	http.post(`${API_BASE}/ldap/test`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: {
+				ok: false,
+				latencyMs: 0,
+				steps: [
+					{ step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' },
+				],
+				user: null,
 			},
 		});
 	}),
@@ -1384,6 +1450,17 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: playgroundState.enrichments });
 	}),
 
+	http.get(`${API_BASE}/enrichments/:id/history`, ({ params }) => {
+		const enrichment = playgroundState.enrichments.find((item) => item.id === Number(params.id));
+		if (!enrichment) {
+			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
+		}
+		return HttpResponse.json({
+			success: true,
+			data: playgroundState.enrichmentVersions[enrichment.id] ?? [],
+		});
+	}),
+
 	http.post(`${API_BASE}/enrichments`, async ({ request }) => {
 		const body = (await request.json()) as Partial<(typeof playgroundState.enrichments)[0]>;
 		const newEnrichment = {
@@ -1396,6 +1473,7 @@ export const handlers = [
 			updatedAt: nowIso(),
 		} as (typeof playgroundState.enrichments)[0];
 		playgroundState.enrichments.unshift(newEnrichment);
+		playgroundState.enrichmentVersions[newEnrichment.id] = [createEnrichmentVersion(newEnrichment, 1)];
 		return HttpResponse.json({ success: true, data: newEnrichment });
 	}),
 
@@ -1407,12 +1485,16 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
 		}
 		Object.assign(enrichment, body, { updatedAt: nowIso() });
+		const versions = playgroundState.enrichmentVersions[id] ?? [];
+		const nextVersion = (versions[0]?.version ?? 0) + 1;
+		playgroundState.enrichmentVersions[id] = [createEnrichmentVersion(enrichment, nextVersion), ...versions];
 		return HttpResponse.json({ success: true, data: enrichment });
 	}),
 
 	http.delete(`${API_BASE}/enrichments/:id`, ({ params }) => {
 		const id = Number(params.id);
 		playgroundState.enrichments = playgroundState.enrichments.filter((e) => e.id !== id);
+		delete playgroundState.enrichmentVersions[id];
 		return HttpResponse.json({ success: true, message: 'Enrichment deleted' });
 	}),
 ];

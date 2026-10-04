@@ -6,3 +6,4 @@ export * from './alerts/alertQuery';
 export * from './alerts/alertAnalytics';
 export * from './alerts/computeAlertAnalytics';
 export * from './alerts/alertGroups';
+export * from './mutePolicy.utils';

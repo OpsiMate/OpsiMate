@@ -39,7 +39,12 @@ export interface User {
 	createdAt: string;
 	// Optional contact number, shown on the on-call page so responders can be phoned.
 	phoneNumber?: string | null;
+	// Where the password lives: 'local' (bcrypt hash here) or 'ldap' (the directory;
+	// the account is provisioned on first LDAP login). Absent on old tokens = local.
+	authSource?: UserAuthSource;
 }
+
+export type UserAuthSource = 'local' | 'ldap';
 
 // On-call scheduling: a team is an ordered group of users where the order defines call
 // priority (1 = called first). With a rotation interval set, the order shifts by one
@@ -338,6 +343,7 @@ export enum AuditResourceType {
 	ENRICHMENT = 'ENRICHMENT',
 	ACTION = 'ACTION',
 	AI = 'AI',
+	LDAP = 'LDAP',
 	MUTE_POLICY = 'MUTE_POLICY',
 	ROOT_CAUSE = 'ROOT_CAUSE',
 	// Add more as needed
@@ -627,6 +633,15 @@ export interface AlertEnrichment {
 	updatedAt: string;
 }
 
+export interface AlertEnrichmentVersion {
+	id: number;
+	enrichmentId: number;
+	version: number;
+	content: AlertEnrichment;
+	author: string;
+	createdAt: string;
+}
+
 // Actions are reusable, user-configured integrations that can be run against an alert
 // (e.g. notify a Slack/Teams channel, open a Jira ticket, or fire an arbitrary HTTP request).
 // This phase only covers configuring them; wiring them to alerts comes later.
@@ -771,6 +786,7 @@ export enum RetentionResource {
 	ResolvedAlerts = 'archived_alerts',
 	AlertComments = 'alert_comments',
 	RootCauses = 'alert_root_causes',
+	EnrichmentVersions = 'enrichment_versions',
 }
 
 export interface RetentionPolicy {
@@ -862,6 +878,99 @@ export interface AiTestResult {
 	// On success: the model's reply text (proof the round trip worked). On failure: the
 	// error Bedrock returned, so the user can tell a bad key from a bad model id.
 	message: string;
+}
+
+// Directory (LDAP) login settings as the Settings page sees them. The service-account
+// password is write-only: only whether one is stored comes back.
+export type LdapSettingsSource = 'database' | 'config';
+
+export interface LdapRoleGroups {
+	admin: string[];
+	editor: string[];
+	operation: string[];
+	viewer: string[];
+}
+
+export interface LdapSettings {
+	// 'config' = set in config.yml / LDAP_* environment variables, which win over the
+	// Settings page; the page then shows them read-only.
+	source: LdapSettingsSource;
+	// Switched on (saved intent).
+	enabled: boolean;
+	// Why a switched-on config is NOT in effect (e.g. the saved password no longer
+	// decrypts); empty when LDAP login works as configured or is off.
+	problems: string[];
+	url: string;
+	startTls: boolean;
+	bindDn: string;
+	hasBindPassword: boolean;
+	searchBase: string;
+	searchFilter: string;
+	emailAttribute: string;
+	nameAttribute: string;
+	groupsAttribute: string;
+	groupSearchBase: string;
+	groupSearchFilter: string;
+	roleMapping: LdapRoleGroups;
+	// Role for users in none of the mapped groups; null = refuse them.
+	defaultRole: Role | null;
+	timeoutMs: number;
+	loginMaxFailures: number;
+	tlsRejectUnauthorized: boolean;
+	// PEM of the CA that signed the directory's certificate (for a private CA).
+	tlsCaCert: string;
+	updatedAt: string | null;
+}
+
+export interface UpdateLdapSettings {
+	enabled?: boolean;
+	url?: string;
+	startTls?: boolean;
+	bindDn?: string;
+	// undefined keeps the stored password, null removes it, a string replaces it.
+	bindPassword?: string | null;
+	searchBase?: string;
+	searchFilter?: string;
+	emailAttribute?: string;
+	nameAttribute?: string;
+	groupsAttribute?: string;
+	groupSearchBase?: string;
+	groupSearchFilter?: string;
+	roleMapping?: LdapRoleGroups;
+	defaultRole?: Role | null;
+	timeoutMs?: number;
+	loginMaxFailures?: number;
+	tlsRejectUnauthorized?: boolean;
+	tlsCaCert?: string;
+}
+
+export interface LdapTestRequest {
+	// Optional: look this user up too and show the role they would get (no password
+	// is needed or checked).
+	email?: string;
+}
+
+export type LdapTestStepName = 'connect' | 'service_bind' | 'search_base' | 'user_lookup';
+
+export interface LdapTestStep {
+	step: LdapTestStepName;
+	ok: boolean;
+	message: string;
+}
+
+export interface LdapTestUser {
+	dn: string;
+	fullName: string;
+	groups: string[];
+	// null = in none of the mapped groups and no default role: this user would be refused.
+	role: Role | null;
+}
+
+export interface LdapTestResult {
+	ok: boolean;
+	latencyMs: number;
+	steps: LdapTestStep[];
+	user: LdapTestUser | null;
 }
 
 export interface RetentionConfig {

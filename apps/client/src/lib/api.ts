@@ -5,6 +5,10 @@ import {
 	AiFilterResult,
 	AiStatus,
 	AiTestResult,
+	LdapSettings,
+	LdapTestRequest,
+	LdapTestResult,
+	UpdateLdapSettings,
 	AlertBulkActionRequest,
 	AlertBulkActionResult,
 	AlertGroupSummaryNode,
@@ -16,6 +20,7 @@ import {
 	ActionType,
 	AlertHistory,
 	AlertEnrichment,
+	AlertEnrichmentVersion,
 	MutePolicy,
 	AuditLog,
 	Integration,
@@ -592,6 +597,7 @@ export type EnrichmentPayload = {
 export const enrichmentsApi = {
 	listEnrichments: () => apiRequest<AlertEnrichment[]>('/enrichments'),
 	getEnrichment: (id: number) => apiRequest<AlertEnrichment>(`/enrichments/${id}`),
+	getEnrichmentHistory: (id: number) => apiRequest<AlertEnrichmentVersion[]>(`/enrichments/${id}/history`),
 	createEnrichment: (payload: EnrichmentPayload) => apiRequest<AlertEnrichment>('/enrichments', 'POST', payload),
 	updateEnrichment: (id: number, payload: Partial<EnrichmentPayload>) =>
 		apiRequest<AlertEnrichment>(`/enrichments/${id}`, 'PUT', payload),
@@ -650,6 +656,14 @@ export const aiApi = {
 	// Any authenticated user: drives AI feature visibility without exposing config.
 	getStatus: () => apiRequest<AiStatus>('/ai/status'),
 	filterFromText: (query: string) => apiRequest<AiFilterResult>('/ai/filter', 'POST', { query }),
+};
+
+// Directory (LDAP) login settings, admin-only. The service-account password is
+// write-only: the server returns hasBindPassword, never the password.
+export const ldapApi = {
+	getSettings: () => apiRequest<LdapSettings>('/ldap/settings'),
+	updateSettings: (updates: UpdateLdapSettings) => apiRequest<LdapSettings>('/ldap/settings', 'PUT', updates),
+	test: (request: LdapTestRequest) => apiRequest<LdapTestResult>('/ldap/test', 'POST', request),
 };
 
 export const silenceResetApi = {

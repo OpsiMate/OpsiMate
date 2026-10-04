@@ -2,6 +2,7 @@ import {
 	criteriaMatchesAlert,
 	Alert,
 	AlertEnrichment,
+	AlertEnrichmentVersion,
 	AlertLink,
 	AppliedEnrichment,
 	AuditActionType,
@@ -13,6 +14,7 @@ import {
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
 import { buildAlertContext } from '../actions/actionExecutor';
 import { AuditBL } from '../audit/audit.bl';
+import { PreparedRules } from '../alerts/preparedRules';
 
 const logger = new Logger('bl/enrichment.bl');
 
@@ -50,6 +52,10 @@ export class EnrichmentBL {
 
 	async get(id: number): Promise<AlertEnrichment | undefined> {
 		return this.enrichmentRepo.getEnrichmentById(id);
+	}
+
+	async history(id: number): Promise<AlertEnrichmentVersion[]> {
+		return this.enrichmentRepo.getEnrichmentVersions(id);
 	}
 
 	async update(id: number, data: UpdateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment | undefined> {
@@ -195,27 +201,55 @@ export class EnrichmentBL {
 	// key the higher-priority rule wins. A rule can also match on tags added by an
 	// earlier (higher-priority) rule in the same pass.
 	async applyEnrichments(alerts: Alert[]): Promise<Alert[]> {
+		const { apply } = await this.prepareEnricher();
+		return alerts.map(apply);
+	}
+
+	// The rule set loaded once, as a per-alert function plus a key that changes
+	// whenever the rules do. The alerts snapshot keeps per-alert results between
+	// rebuilds and uses the key to know they are still valid. A rule that matches
+	// nothing leaves the alert object itself untouched (same reference).
+	async prepareEnricher(): Promise<PreparedRules> {
+		let enrichments: AlertEnrichment[];
 		try {
-			const enrichments = (await this.enrichmentRepo.getAllEnrichments()).sort(
+			enrichments = (await this.enrichmentRepo.getAllEnrichments()).sort(
 				(a, b) => b.priority - a.priority || a.id - b.id
 			);
-			if (enrichments.length === 0) return alerts;
-			return alerts.map((alert) => {
-				let enriched = alert;
-				const claimedKeys = new Set<string>();
-				const applied: AppliedEnrichment[] = [];
-				for (const enrichment of enrichments) {
-					if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
-						enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
-						applied.push({ id: enrichment.id, name: enrichment.name });
-					}
-				}
-				// Expose which rules decorated this alert so the UI can show it was enriched.
-				return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
-			});
 		} catch (err) {
-			logger.error('Failed to apply alert enrichments, returning alerts unchanged', err);
-			return alerts;
+			logger.error('Failed to load alert enrichments, leaving alerts unchanged', err);
+			return { key: 'enrichments:unavailable', apply: (alert) => alert };
 		}
+		if (enrichments.length === 0) return { key: 'enrichments:none', apply: (alert) => alert };
+		// Fail open per alert: a rule that throws (a bad template, say) leaves THAT alert
+		// undecorated and the list still served, as applyEnrichments always did. Logged
+		// once per rule set rather than once per alert, since a storm would repeat it.
+		let reported = false;
+		return {
+			key: `enrichments:${JSON.stringify(enrichments)}`,
+			apply: (alert) => {
+				try {
+					let enriched = alert;
+					const claimedKeys = new Set<string>();
+					const applied: AppliedEnrichment[] = [];
+					for (const enrichment of enrichments) {
+						if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
+							enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
+							applied.push({ id: enrichment.id, name: enrichment.name });
+						}
+					}
+					// Expose which rules decorated this alert so the UI can show it was enriched.
+					return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
+				} catch (err) {
+					if (!reported) {
+						reported = true;
+						logger.error(
+							`Failed to apply alert enrichments (first failure: alert ${alert.id}), leaving such alerts unchanged`,
+							err
+						);
+					}
+					return alert;
+				}
+			},
+		};
 	}
 }

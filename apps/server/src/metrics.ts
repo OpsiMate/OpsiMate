@@ -94,6 +94,15 @@ export const bulkAlertsAffectedTotal = new Counter({
 // Visibility into the snapshot cache the whole read path sits on: how often the full
 // alert list is recomputed (enrichments + mute policies + comments + firing times) and
 // how long it takes. Wraps a computation that runs anyway — zero added cost.
+// How many webhooks each ingest flush committed together. Mostly 1 when quiet; the
+// upper buckets filling up is what a burst looks like — and proof the batching works.
+export const ingestBatchSize = new Histogram({
+	name: 'opsimate_ingest_batch_size',
+	help: 'Alerts committed per ingest batch (one transaction each)',
+	buckets: [1, 2, 5, 10, 25, 50, 100, 250, 500],
+	registers: [metricsRegistry],
+});
+
 export const snapshotComputeDuration = new Histogram({
 	name: 'opsimate_snapshot_compute_duration_seconds',
 	help: 'Duration of full alert-snapshot recomputes, by list',

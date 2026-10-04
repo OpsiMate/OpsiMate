@@ -11,6 +11,10 @@ export interface HistoryStatusRow {
 	archived_at: string;
 }
 
+// What insertResolvedOnlyEpisode found: it recorded the episode, the alert is firing
+// after all, or a resolved record already exists.
+export type ResolveOnlyOutcome = 'created' | 'active' | 'exists';
+
 export class ResolvedAlertRepository {
 	private db: Database.Database;
 
@@ -79,23 +83,44 @@ export class ResolvedAlertRepository {
 						CREATE INDEX IF NOT EXISTS idx_alerts_history_alert
 							ON alerts_history (alert_id, archived_at);
 
-						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_update
-							BEFORE UPDATE ON alerts_resolved
-							FOR EACH ROW
-						BEGIN
-							INSERT INTO alerts_history (alert_id, status)
-							VALUES (OLD.id, OLD.status);
-						END;
-
-						CREATE TRIGGER IF NOT EXISTS archive_alert_history_on_insert
-							AFTER INSERT ON alerts_resolved
-							FOR EACH ROW
-						BEGIN
-							INSERT INTO alerts_history (alert_id, status)
-							VALUES (NEW.id, NEW.status);
-						END;
 						`
 			);
+
+			// The resolved-status history rows are stamped by these triggers. They must use
+			// millisecond ISO-8601 UTC, the same form the firing rows carry (starts_at):
+			// the column default CURRENT_TIMESTAMP is second-precision "YYYY-MM-DD HH:MM:SS",
+			// so an alert that fired and resolved within the same second got a resolve that
+			// sorted BEFORE its own firing — history then showed "firing" as the last status.
+			// CREATE TRIGGER IF NOT EXISTS never upgrades an existing definition, so replace
+			// any trigger that doesn't stamp this way.
+			const HISTORY_NOW = `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`;
+			const HISTORY_TRIGGERS: Record<string, string> = {
+				archive_alert_history_on_update: `
+					CREATE TRIGGER archive_alert_history_on_update
+						BEFORE UPDATE ON alerts_resolved
+						FOR EACH ROW
+					BEGIN
+						INSERT INTO alerts_history (alert_id, status, archived_at)
+						VALUES (OLD.id, OLD.status, ${HISTORY_NOW});
+					END;`,
+				archive_alert_history_on_insert: `
+					CREATE TRIGGER archive_alert_history_on_insert
+						AFTER INSERT ON alerts_resolved
+						FOR EACH ROW
+					BEGIN
+						INSERT INTO alerts_history (alert_id, status, archived_at)
+						VALUES (NEW.id, NEW.status, ${HISTORY_NOW});
+					END;`,
+			};
+			for (const [name, definition] of Object.entries(HISTORY_TRIGGERS)) {
+				const existing = (
+					this.db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = ?`).get(name) as
+						{ sql: string } | undefined
+				)?.sql;
+				if (existing?.includes('strftime')) continue;
+				if (existing) this.db.exec(`DROP TRIGGER ${name}`);
+				this.db.exec(definition);
+			}
 
 			// Backfill: rows resolved while the triggers were stale never got their 'resolved'
 			// status-history entry. Add one (stamped with the resolve time) where it's missing.
@@ -121,6 +146,17 @@ export class ResolvedAlertRepository {
 			}
 
 			// Backward compatibility: ensure owner_id column exists
+			// Marks an episode recorded from a resolve whose firing never arrived (see
+			// insertResolvedOnlyEpisode). The ingest path uses it to recognise the late,
+			// out-of-order firing of that same episode instead of reopening the alert.
+			if (!columns.some((col: TableInfoRow) => col.name === 'resolved_without_firing')) {
+				this.db
+					.prepare(
+						`ALTER TABLE alerts_resolved ADD COLUMN resolved_without_firing INTEGER NOT NULL DEFAULT 0`
+					)
+					.run();
+			}
+
 			const hasOwnerId = columns.some((col: TableInfoRow) => col.name === 'owner_id');
 			if (!hasOwnerId) {
 				this.db.prepare(`ALTER TABLE alerts_resolved ADD COLUMN owner_id INTEGER REFERENCES users(id)`).run();
@@ -168,6 +204,7 @@ export class ResolvedAlertRepository {
                     links = excluded.links,
                     created_at = excluded.created_at,
                     owner_id = excluded.owner_id,
+                    resolved_without_firing = 0,
                     archived_at = CURRENT_TIMESTAMP
             `);
 
@@ -193,6 +230,70 @@ export class ResolvedAlertRepository {
 
 			return { changes: result.changes };
 		});
+	}
+
+	// Records a whole episode — fired and already resolved — for a source that reported
+	// the resolve of an alert OpsiMate never saw firing. Everything happens in one
+	// transaction and the status history is written explicitly with ISO timestamps
+	// (the insert trigger's CURRENT_TIMESTAMP has only second precision and a different
+	// format, which could sort the resolve before its own firing):
+	//   1. the 'firing' row at startsAt
+	//   2. the resolved alert itself (its insert trigger adds the 'resolved' row)
+	//   3. that 'resolved' row re-stamped at resolvedAt
+	// startsAt <= resolvedAt is the caller's contract. When they are equal (the source
+	// sent no start time) the 'resolved' row is written second, so it has the higher
+	// history_id and wins every tie: it is the alert's last status.
+	//
+	// The existence checks run inside the same write-locked transaction as the insert, so
+	// two concurrent retries cannot both create it, and a firing committed a moment ago
+	// is reported back ('active') instead of ending up in both tables.
+	// created_at is the moment OpsiMate recorded the episode (not the source's end time):
+	// the ingest path measures its late-firing window from it.
+	insertResolvedOnlyEpisode(alert: SharedAlert, startsAt: string, resolvedAt: string): ResolveOnlyOutcome {
+		const isActive = this.db.prepare(`SELECT 1 FROM alerts WHERE id = ?`);
+		const isResolved = this.db.prepare(`SELECT 1 FROM alerts_resolved WHERE id = ?`);
+		const insertFiring = this.db.prepare(
+			`INSERT INTO alerts_history (alert_id, status, archived_at) VALUES (?, 'firing', ?)`
+		);
+		const insertResolved = this.db.prepare(`
+			INSERT INTO alerts_resolved
+				(id, status, severity, team, tags, type, starts_at, updated_at, alert_url, alert_name, is_dismissed,
+				 summary, runbook_url, links, created_at, owner_id, archived_at, resolved_without_firing)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, NULL, ?, 1)
+		`);
+		const restampResolved = this.db.prepare(`
+			UPDATE alerts_history SET archived_at = ?
+			WHERE history_id = (
+				SELECT MAX(history_id) FROM alerts_history WHERE alert_id = ? AND status = 'resolved'
+			)
+		`);
+		const recordedAt = new Date().toISOString();
+		return this.db
+			.transaction((): ResolveOnlyOutcome => {
+				if (isActive.get(alert.id)) return 'active';
+				if (isResolved.get(alert.id)) return 'exists';
+				insertFiring.run(alert.id, startsAt);
+				insertResolved.run(
+					alert.id,
+					AlertStatus.RESOLVED,
+					alert.severity,
+					alert.team ?? null,
+					JSON.stringify(alert.tags ?? {}),
+					alert.type,
+					startsAt,
+					resolvedAt,
+					alert.alertUrl ?? '',
+					alert.alertName,
+					alert.summary || null,
+					alert.runbookUrl || null,
+					alert.links?.length ? JSON.stringify(alert.links) : null,
+					recordedAt,
+					resolvedAt
+				);
+				restampResolved.run(resolvedAt, alert.id);
+				return 'created';
+			})
+			.immediate();
 	}
 
 	private toSharedAlert = (row: ResolvedAlertRow): SharedAlert => {
@@ -264,7 +365,7 @@ export class ResolvedAlertRepository {
 	async getAllHistoryRows(): Promise<HistoryStatusRow[]> {
 		return runAsync(() => {
 			return this.db
-				.prepare(`SELECT alert_id, status, archived_at FROM alerts_history`)
+				.prepare(`SELECT alert_id, status, archived_at FROM alerts_history ORDER BY history_id`)
 				.all() as HistoryStatusRow[];
 		});
 	}
@@ -279,7 +380,8 @@ export class ResolvedAlertRepository {
 						status
 					FROM alerts_history
 					WHERE alert_id = ?
-					ORDER BY archived_at DESC 
+					-- Newest first; on an exact tie the later-written row is the later event.
+					ORDER BY archived_at DESC, history_id DESC
 				`
 				)
 				.all(alertId) as { archived_at: string; status: string }[];

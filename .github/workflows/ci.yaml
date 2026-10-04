@@ -40,14 +40,15 @@ jobs:
       - name: Build project
         run: pnpm run build
 
+      # --max-warnings=0 lives in each package's lint script, so a local lint fails the same way.
       - name: Lint apps/server
-        run: pnpm --filter @OpsiMate/server lint --max-warnings=0
+        run: pnpm --filter @OpsiMate/server lint
 
       - name: Lint packages/shared
-        run: pnpm --filter @OpsiMate/shared lint --max-warnings=0
+        run: pnpm --filter @OpsiMate/shared lint
 
       - name: Lint packages/custom-actions
-        run: pnpm --filter @OpsiMate/custom-actions lint --max-warnings=0
+        run: pnpm --filter @OpsiMate/custom-actions lint
 
       - name: Lint apps/client
         run: pnpm --filter @OpsiMate/client lint

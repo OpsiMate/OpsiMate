@@ -5,6 +5,7 @@ import {
 	applyAlertListQuery,
 	computeAlertFacets,
 	getTagKeyColumnId,
+	searchAlerts,
 	sortAlertsBy,
 } from '@OpsiMate/shared';
 
@@ -153,5 +154,15 @@ describe('sortAlertsBy status', () => {
 		expect(asc).toEqual(['f1', 'f2', 'm1', 'r1', 'r2', 's1']);
 		const desc = sortAlertsBy(mixed, 'status', 'desc').map((a) => a.id);
 		expect(desc).toEqual(['s1', 'r1', 'r2', 'm1', 'f1', 'f2']);
+	});
+});
+
+describe('searchAlerts', () => {
+	test('ignores leading and trailing whitespace', () => {
+		const alerts = [mkAlert('a1', { alertName: 'cpu high' }), mkAlert('a2', { alertName: 'disk full' })];
+
+		expect(searchAlerts(alerts, 'high ').map((item) => item.alertName)).toEqual(['cpu high']);
+		expect(searchAlerts(alerts, ' high').map((item) => item.alertName)).toEqual(['cpu high']);
+		expect(searchAlerts(alerts, '   ')).toBe(alerts);
 	});
 });
