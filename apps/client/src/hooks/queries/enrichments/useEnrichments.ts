@@ -43,8 +43,9 @@ export const useUpdateEnrichment = () => {
 			}
 			return response.data;
 		},
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.enrichments });
+			queryClient.invalidateQueries({ queryKey: queryKeys.enrichmentHistory(variables.id) });
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
 		},
 	});
