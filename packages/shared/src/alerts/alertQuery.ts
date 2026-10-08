@@ -450,8 +450,6 @@ export const sortAlertsBy = (
 	return decorated.map((d) => d.alert);
 };
 
-// ---------- paging ----------
-
 // ---------- bulk actions (one request mutates every alert in scope) ----------
 
 export type AlertBulkActionType = 'silence' | 'unsilence' | 'resolve' | 'assignOwner' | 'comment';

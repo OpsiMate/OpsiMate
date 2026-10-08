@@ -14,7 +14,7 @@ export const readLegacySeverityColors = (): boolean => {
 	try {
 		return localStorage.getItem(LEGACY_SEVERITY_COLORS_KEY) === 'true';
 	} catch (e) {
-		logger.warn('Failed to read the legacy severity-colors preference:', e);
+		logger.warn('Failed to read the legacy severity-colors preference:', { extraArgs: { err: e } });
 		return false;
 	}
 };
@@ -71,7 +71,7 @@ export const loadFromStorage = (defaultState: DashboardState): DashboardState =>
 			};
 		}
 	} catch (e) {
-		logger.warn('Failed to load dashboard from localStorage:', e);
+		logger.warn('Failed to load dashboard from localStorage:', { extraArgs: { err: e } });
 	}
 	// No stored draft (or an unreadable one). Both dashboardState and initialState load
 	// through here, so they agree and the dashboard doesn't start out looking dirty.
@@ -86,7 +86,7 @@ export const saveToStorage = (state: DashboardState): void => {
 		};
 		localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(toStore));
 	} catch (e) {
-		logger.warn('Failed to save dashboard to localStorage:', e);
+		logger.warn('Failed to save dashboard to localStorage:', { extraArgs: { err: e } });
 	}
 };
 
