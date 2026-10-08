@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { useStickyHeaders } from '@/components/Alerts/AlertsTable/hooks/useStickyHeaders';
 import { FlatGroupItem } from '@/components/Alerts/AlertsTable/AlertsTable.types';
+import { Alert } from '@OpsiMate/shared';
 
 type UseStickyHeadersInput = Parameters<typeof useStickyHeaders>[0];
 
@@ -18,7 +19,7 @@ const createGroup = (level: number, key: string): FlatGroupItem => ({
 
 const createLeaf = (): FlatGroupItem => ({
 	type: 'leaf',
-	alert: {} as FlatGroupItem extends { type: 'leaf'; alert: infer A } ? A : never,
+	alert: {} as Alert,
 });
 
 const createVirtualItem = (
@@ -129,5 +130,32 @@ describe('useStickyHeaders', () => {
 		);
 
 		expect(result.current).toEqual([flatRows[0]]);
+	});
+
+	test('uses the first visible virtual item as the anchor', () => {
+		const flatRows = [
+			createGroup(0, 'group-0'),
+			createLeaf(),
+			createGroup(1, 'group-1'),
+			createLeaf(),
+			createGroup(2, 'group-2'),
+		];
+
+		const virtualItems = [
+			createVirtualItem(0, 0, 20),
+			createVirtualItem(2, 100, 20),
+			createVirtualItem(4, 200, 20),
+		];
+
+		const { result } = renderHook(() =>
+			useStickyHeaders({
+				flatRows,
+				groupByColumns: ['service', 'team', 'severity'],
+				virtualItems,
+				virtualizer: createVirtualizer(110),
+			})
+		);
+
+		expect(result.current).toEqual([flatRows[0], flatRows[2]]);
 	});
 });
