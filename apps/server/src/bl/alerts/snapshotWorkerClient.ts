@@ -5,7 +5,7 @@ import { Worker } from 'node:worker_threads';
 import { Alert, Logger } from '@OpsiMate/shared';
 import { ActiveListBuild } from './activeListBuilder';
 
-const logger = new Logger('bl/snapshotWorker');
+const logger = new Logger('bl/alerts/snapshotWorkerClient');
 
 // Wire protocol between the main thread and snapshotWorker.ts.
 export interface BuildRequest {

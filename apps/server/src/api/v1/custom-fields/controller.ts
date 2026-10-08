@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { ServiceCustomFieldBL } from '../../../bl/custom-fields/serviceCustomField.bl';
 import { isZodError } from '../../../utils/isZodError';
 
-const logger = new Logger('v1/custom-fields/controller');
+const logger = new Logger('api/v1/custom-fields/controller');
 
 // Validation schemas
 const CreateCustomFieldSchema = z.object({
