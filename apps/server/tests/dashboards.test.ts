@@ -220,7 +220,7 @@ describe('Dashboards API — toolbar toggle persistence', () => {
 	});
 });
 
-describe('Dashboards API \u2014 CreateDashboardSchema bounds', () => {
+describe('Dashboards API — CreateDashboardSchema bounds', () => {
 \tconst base = {
 \t\tname: 'bounds test',
 \t\ttype: 'alerts' as const,
