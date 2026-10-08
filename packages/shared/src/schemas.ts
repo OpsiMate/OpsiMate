@@ -144,9 +144,9 @@ export const ResetPasswordSchema = z.object({
 });
 
 export const CreateDashboardSchema = z.object({
-	name: z.string(),
+	name: z.string().trim().min(1, 'Name is required').max(200),
 	type: z.enum(['services', 'alerts']),
-	description: z.string().optional(),
+	description: z.string().max(1000).optional(),
 	filters: z.record(z.string(), z.unknown()),
 	visibleColumns: z.array(z.string()),
 	columnOrder: z.array(z.string()).optional(),
@@ -157,13 +157,13 @@ export const CreateDashboardSchema = z.object({
 	// reuses it), so adding them here is enough for edits to keep them.
 	splitByAssignment: z.boolean().optional(),
 	severityColors: z.boolean().optional(),
-	query: z.string(),
+	query: z.string().max(10000),
 	groupBy: z.array(z.string()),
 	timeRange: z
 		.object({
-			from: z.string().nullable(),
-			to: z.string().nullable(),
-			preset: z.string().nullable(),
+			from: z.iso.datetime({ offset: true }).nullable(),
+			to: z.iso.datetime({ offset: true }).nullable(),
+			preset: z.string().max(50).nullable(),
 		})
 		.optional(),
 });

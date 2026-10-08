@@ -219,3 +219,121 @@ describe('Dashboards API — toolbar toggle persistence', () => {
 		expect(created.status).toBe(400);
 	});
 });
+
+describe('Dashboards API \u2014 CreateDashboardSchema bounds', () => {
+\tconst base = {
+\t\tname: 'bounds test',
+\t\ttype: 'alerts' as const,
+\t\tdescription: '',
+\t\tfilters: {},
+\t\tvisibleColumns: ['type'],
+\t\tquery: '',
+\t\tgroupBy: [],
+\t};
+
+\tconst findById = async (id: string) => {
+\t\tconst list = await app.get('/api/v1/dashboards').set('Authorization', `Bearer ${jwtToken}`);
+\t\treturn (
+\t\t\tlist.body.data as {
+\t\t\t\tid: string | number;
+\t\t\t\tname?: string;
+\t\t\t\ttimeRange?: { from: string | null; to: string | null };
+\t\t\t}[]
+\t\t).find((d) => String(d.id) === id);
+\t};
+
+\ttest('rejects an empty name', async () => {
+\t\tconst res = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: '' });
+\t\texpect(res.status).toBe(400);
+\t});
+
+\ttest('rejects a whitespace-only name', async () => {
+\t\tconst res = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: '   ' });
+\t\texpect(res.status).toBe(400);
+\t});
+
+\ttest('rejects a 201-character name and accepts a 200-character name', async () => {
+\t\tconst tooLong = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: 'a'.repeat(201) });
+\t\texpect(tooLong.status).toBe(400);
+
+\t\tconst ok = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: 'b'.repeat(200) });
+\t\t// Create currently returns 200, matching the rest of this suite (not 201).
+\t\texpect(ok.status).toBe(200);
+\t});
+
+\ttest('rejects a description longer than 1000 characters', async () => {
+\t\tconst res = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, description: 'd'.repeat(1001) });
+\t\texpect(res.status).toBe(400);
+\t});
+
+\ttest('rejects a query longer than 10000 characters', async () => {
+\t\tconst res = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, query: 'q'.repeat(10001) });
+\t\texpect(res.status).toBe(400);
+\t});
+
+\ttest('rejects a non-ISO time range', async () => {
+\t\tconst res = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, timeRange: { from: 'yesterday', to: null, preset: 'custom' } });
+\t\texpect(res.status).toBe(400);
+\t});
+
+\ttest('persists an ISO time range', async () => {
+\t\tconst from = new Date().toISOString();
+\t\tconst to = new Date().toISOString();
+\t\tconst created = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: 'iso range', timeRange: { from, to, preset: 'custom' } });
+\t\texpect(created.status).toBe(200);
+
+\t\tconst saved = await findById(String(created.body.data.id));
+\t\texpect(saved?.timeRange?.from).toBe(from);
+\t\texpect(saved?.timeRange?.to).toBe(to);
+\t});
+
+\ttest('accepts a null time range', async () => {
+\t\tconst created = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: 'null range', timeRange: { from: null, to: null, preset: null } });
+\t\texpect(created.status).toBe(200);
+\t});
+
+\ttest('rejects an empty name on update and leaves the stored name unchanged', async () => {
+\t\tconst created = await app
+\t\t\t.post('/api/v1/dashboards')
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: 'keep this name' });
+\t\texpect(created.status).toBe(200);
+\t\tconst id = String(created.body.data.id);
+
+\t\tconst updated = await app
+\t\t\t.put(`/api/v1/dashboards/${id}`)
+\t\t\t.set('Authorization', `Bearer ${jwtToken}`)
+\t\t\t.send({ ...base, name: '' });
+\t\texpect(updated.status).toBe(400);
+
+\t\tconst saved = await findById(id);
+\t\texpect(saved?.name).toBe('keep this name');
+\t});
+});
