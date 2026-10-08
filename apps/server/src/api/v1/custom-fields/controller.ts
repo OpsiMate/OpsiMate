@@ -97,7 +97,7 @@ export class CustomFieldsController {
 		try {
 			const { id: customFieldId } = CustomFieldIdSchema.parse(req.params);
 
-			const { name } = UpdateCustomFieldSchema.parse(req.body);
+			const { name } = CustomFieldNameSchema.parse(req.body);
 			const updated = await this.customFieldsBL.updateCustomField(customFieldId, name);
 
 			if (updated) {
@@ -118,13 +118,18 @@ export class CustomFieldsController {
 					error: 'Validation error',
 					details: error.issues,
 				});
-			} else {
-				logger.error('Error updating custom field:', error);
-				return res.status(500).json({
+			}
+			if (error instanceof DuplicateCustomFieldNameError) {
+				return res.status(409).json({
 					success: false,
-					error: 'Internal server error',
+					error: error.message,
 				});
 			}
+			logger.error('Error updating custom field:', error);
+			return res.status(500).json({
+				success: false,
+				error: 'Internal server error',
+			});
 		}
 	};
 
