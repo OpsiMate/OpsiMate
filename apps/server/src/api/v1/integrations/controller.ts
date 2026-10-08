@@ -112,7 +112,7 @@ export class IntegrationController {
 			}
 
 			await this.integrationBL.deleteIntegration(integrationId);
-			return res.json({ success: true, message: 'Integration and associated services deleted successfully' });
+			return res.json({ success: true, message: 'Integration deleted successfully' });
 		} catch (error) {
 			logger.error('Error deleting integration:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -136,7 +136,7 @@ export class IntegrationController {
 				});
 				return;
 			} else {
-				logger.error('Error in refreshServicesByTags:', error);
+				logger.error('Error getting integration URLs:', error);
 				res.status(500).json({
 					success: false,
 					error: 'Internal server error',
