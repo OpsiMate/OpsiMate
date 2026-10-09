@@ -47,6 +47,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	// Release any drag a test left active - the hook only removes its window
+	// listeners on pointerup, so an unreleased drag would leak into later tests.
+	pointerUp();
 	localStorage.clear();
 	document.body.style.userSelect = '';
 	document.body.style.cursor = '';
