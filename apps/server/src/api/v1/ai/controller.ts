@@ -4,7 +4,7 @@ import { AiBL, AiDisabledError, AiValidationError, BedrockCallError } from '../.
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
 
-const logger = new Logger('ai.controller');
+const logger = new Logger('api/v1/ai/controller');
 
 // Every /ai/filter call is a real, billed Bedrock request available to ANY
 // authenticated user — a fixed per-user window keeps a loop (or a stuck client)

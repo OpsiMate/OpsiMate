@@ -42,7 +42,7 @@ import {
 import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
-const logger: Logger = new Logger('alerts.controller');
+const logger: Logger = new Logger('api/v1/alerts/controller');
 
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
