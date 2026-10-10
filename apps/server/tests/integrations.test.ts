@@ -119,7 +119,7 @@ describe('Integrations API', () => {
 
 		expect(deleteRes.status).toBe(200);
 		expect(deleteRes.body.success).toBe(true);
-		expect(deleteRes.body.message).toBe('Integration and associated services deleted successfully');
+		expect(deleteRes.body.message).toBe('Integration deleted successfully');
 
 		// Verify the integration was deleted
 		const getRes = await app.get('/api/v1/integrations').set('Authorization', `Bearer ${jwtToken}`);
