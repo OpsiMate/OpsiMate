@@ -2,17 +2,14 @@ import { Request, Response } from 'express';
 import { CustomFieldIdSchema, Logger } from '@OpsiMate/shared';
 import { z } from 'zod';
 import { ServiceCustomFieldBL } from '../../../bl/custom-fields/serviceCustomField.bl';
+import { DuplicateCustomFieldNameError } from '../../../bl/custom-fields/serviceCustomField.bl';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/custom-fields/controller');
 
-// Validation schemas
-const CreateCustomFieldSchema = z.object({
-	name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-});
-
-const UpdateCustomFieldSchema = z.object({
-	name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
+// Validation schema
+const CustomFieldNameSchema = z.object({
+	name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
 });
 
 export class CustomFieldsController {
@@ -21,7 +18,7 @@ export class CustomFieldsController {
 	// Custom Field CRUD operations
 	createCustomField = async (req: Request, res: Response) => {
 		try {
-			const { name } = CreateCustomFieldSchema.parse(req.body);
+			const { name } = CustomFieldNameSchema.parse(req.body);
 			const customFieldId = await this.customFieldsBL.createCustomField(name);
 
 			return res.status(201).json({
@@ -35,13 +32,18 @@ export class CustomFieldsController {
 					error: 'Validation error',
 					details: error.issues,
 				});
-			} else {
-				logger.error('Error creating custom field:', error);
-				return res.status(500).json({
+			}
+			if (error instanceof DuplicateCustomFieldNameError) {
+				return res.status(409).json({
 					success: false,
-					error: 'Internal server error',
+					error: error.message,
 				});
 			}
+			logger.error('Error creating custom field:', error);
+			return res.status(500).json({
+				success: false,
+				error: 'Internal server error',
+			});
 		}
 	};
 
@@ -97,7 +99,7 @@ export class CustomFieldsController {
 		try {
 			const { id: customFieldId } = CustomFieldIdSchema.parse(req.params);
 
-			const { name } = UpdateCustomFieldSchema.parse(req.body);
+			const { name } = CustomFieldNameSchema.parse(req.body);
 			const updated = await this.customFieldsBL.updateCustomField(customFieldId, name);
 
 			if (updated) {
@@ -118,13 +120,18 @@ export class CustomFieldsController {
 					error: 'Validation error',
 					details: error.issues,
 				});
-			} else {
-				logger.error('Error updating custom field:', error);
-				return res.status(500).json({
+			}
+			if (error instanceof DuplicateCustomFieldNameError) {
+				return res.status(409).json({
 					success: false,
-					error: 'Internal server error',
+					error: error.message,
 				});
 			}
+			logger.error('Error updating custom field:', error);
+			return res.status(500).json({
+				success: false,
+				error: 'Internal server error',
+			});
 		}
 	};
 

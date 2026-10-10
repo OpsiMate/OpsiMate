@@ -3,6 +3,14 @@ import { ServiceCustomFieldRepository } from '../../dal/serviceCustomFieldReposi
 
 const logger = new Logger('bl/custom-fields/serviceCustomField.bl');
 
+// Thrown when a create/rename would collide with an existing custom field name (the API
+// maps it to 409). Names identify custom fields — services reference them by name.
+export class DuplicateCustomFieldNameError extends Error {
+	constructor(name: string) {
+		super(`A custom field named "${name}" already exists`);
+	}
+}
+
 // Custom field DEFINITIONS only. The per-service VALUES half went away with the provider/
 // services feature (#783); Settings still manages the field definitions themselves.
 export class ServiceCustomFieldBL {
@@ -16,7 +24,7 @@ export class ServiceCustomFieldBL {
 			const duplicate = existingField.find((field) => field.name.toLowerCase() === name.toLowerCase());
 
 			if (duplicate) {
-				throw new Error(`Custom field with name '${name}' already exists`);
+				throw new DuplicateCustomFieldNameError(name);
 			}
 
 			const result = await this.customFieldRepository.createCustomField({ name });
@@ -66,7 +74,7 @@ export class ServiceCustomFieldBL {
 
 			const existingField = await this.customFieldRepository.getCustomFieldById(id);
 			if (!existingField) {
-				throw new Error(`Custom field with ID ${id} not found`);
+				return false;
 			}
 
 			const allFields = await this.customFieldRepository.getCustomFields();
@@ -75,7 +83,7 @@ export class ServiceCustomFieldBL {
 			);
 
 			if (duplicate) {
-				throw new Error(`Custom field with name '${name}' already exists`);
+				throw new DuplicateCustomFieldNameError(name);
 			}
 
 			const updated = await this.customFieldRepository.updateCustomField(id, { name });
