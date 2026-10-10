@@ -171,6 +171,15 @@ describe('Integrations API', () => {
 		expect(urlsRes.body.success).toBe(false);
 	});
 
+	test('should return 400 for integration URLs with a trailing non-numeric suffix on the ID', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/1abc/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(400);
+		expect(urlsRes.body.success).toBe(false);
+	});
+
 	test('should require authentication', async () => {
 		const getRes = await app.get('/api/v1/integrations');
 		expect(getRes.status).toBe(401);

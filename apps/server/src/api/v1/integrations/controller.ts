@@ -126,8 +126,9 @@ export class IntegrationController {
 
 	getIntegrationUrls = async (req: Request, res: Response): Promise<void> => {
 		try {
-			const integrationId = parseInt(req.params.integrationId);
-			if (isNaN(integrationId)) {
+			const integrationIdParam = req.params.integrationId;
+			const integrationId = Number(integrationIdParam);
+			if (!/^\d+$/.test(integrationIdParam) || !Number.isSafeInteger(integrationId)) {
 				res.status(400).json({ success: false, error: 'Invalid integration ID' });
 				return;
 			}
