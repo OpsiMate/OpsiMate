@@ -2,14 +2,17 @@ import { Request, Response } from 'express';
 import { CustomFieldIdSchema, Logger } from '@OpsiMate/shared';
 import { z } from 'zod';
 import { ServiceCustomFieldBL } from '../../../bl/custom-fields/serviceCustomField.bl';
-import { DuplicateCustomFieldNameError } from '../../../bl/custom-fields/serviceCustomField.bl';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/custom-fields/controller');
 
-// Validation schema
-const CustomFieldNameSchema = z.object({
-	name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
+// Validation schemas
+const CreateCustomFieldSchema = z.object({
+	name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
+});
+
+const UpdateCustomFieldSchema = z.object({
+	name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
 });
 
 export class CustomFieldsController {
@@ -18,7 +21,7 @@ export class CustomFieldsController {
 	// Custom Field CRUD operations
 	createCustomField = async (req: Request, res: Response) => {
 		try {
-			const { name } = CustomFieldNameSchema.parse(req.body);
+			const { name } = CreateCustomFieldSchema.parse(req.body);
 			const customFieldId = await this.customFieldsBL.createCustomField(name);
 
 			return res.status(201).json({
@@ -32,18 +35,13 @@ export class CustomFieldsController {
 					error: 'Validation error',
 					details: error.issues,
 				});
-			}
-			if (error instanceof DuplicateCustomFieldNameError) {
-				return res.status(409).json({
+			} else {
+				logger.error('Error creating custom field:', error);
+				return res.status(500).json({
 					success: false,
-					error: error.message,
+					error: 'Internal server error',
 				});
 			}
-			logger.error('Error creating custom field:', error);
-			return res.status(500).json({
-				success: false,
-				error: 'Internal server error',
-			});
 		}
 	};
 
