@@ -13,12 +13,13 @@ import {
 	Logger,
 	LoginSchema,
 	RegisterSchema,
-	Role,
 	UpdateUserRoleSchema,
 	UpdateProfileSchema,
 	ForgotPasswordSchema,
 	ValidateResetTokenSchema,
 	ResetPasswordSchema,
+	AdminUpdateUserSchema,
+	AdminResetPasswordSchema,
 } from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth';
@@ -219,14 +220,7 @@ export class UsersController {
 		}
 
 		try {
-			const { newPassword } = req.body as { newPassword: string };
-
-			if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-				return res.status(400).json({
-					success: false,
-					error: 'Password must be at least 8 characters long',
-				});
-			}
+			const { newPassword } = AdminResetPasswordSchema.parse(req.body);
 
 			// Don't allow admin to reset their own password this way.
 			// requireAdmin (users/router.ts) guarantees req.user is present.
@@ -250,6 +244,9 @@ export class UsersController {
 			});
 		} catch (error) {
 			logger.error('Error resetting user password:', error);
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			if (error instanceof DirectoryManagedError) {
 				return res.status(400).json({ success: false, error: error.message });
 			}
@@ -264,19 +261,7 @@ export class UsersController {
 		}
 
 		try {
-			const { fullName, email, role } = req.body as {
-				fullName?: string;
-				email?: string;
-				role?: Role;
-			};
-
-			// Validate at least one field is provided
-			if (!fullName && !email && !role) {
-				return res.status(400).json({
-					success: false,
-					error: 'At least one field (fullName, email, or role) must be provided',
-				});
-			}
+			const { fullName, email, role } = AdminUpdateUserSchema.parse(req.body);
 
 			const user = await this.userBL.getUserById(userId);
 			if (!user) {
@@ -291,7 +276,9 @@ export class UsersController {
 				message: 'User updated successfully',
 			});
 		} catch (error) {
-			if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else if (error instanceof DirectoryManagedError) {
 				return res.status(400).json({ success: false, error: error.message });
