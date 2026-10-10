@@ -143,6 +143,18 @@ export const ResetPasswordSchema = z.object({
 		}),
 });
 
+export const AdminResetPasswordSchema = ResetPasswordSchema.pick({ newPassword: true });
+
+export const AdminUpdateUserSchema = z
+	.object({
+		fullName: z.string().min(1).optional(),
+		email: z.string().email().optional(),
+		role: RoleSchema.optional(),
+	})
+	.refine((val) => val.fullName !== undefined || val.email !== undefined || val.role !== undefined, {
+		message: 'At least one field (fullName, email, or role) must be provided',
+	});
+
 export const CreateDashboardSchema = z.object({
 	name: z.string(),
 	type: z.enum(['services', 'alerts']),
