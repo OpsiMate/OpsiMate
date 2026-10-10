@@ -42,7 +42,7 @@ import {
 import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
-const logger: Logger = new Logger('alerts.controller');
+const logger: Logger = new Logger('api/v1/alerts/controller');
 
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
@@ -251,7 +251,7 @@ export class AlertController {
 			}
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
-			logger.error('Error unsilenceing alert:', error);
+			logger.error('Error unsilencing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -771,7 +771,7 @@ export class AlertController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
-				logger.error('Error creating integration:', error);
+				logger.error('Error creating custom alert:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
