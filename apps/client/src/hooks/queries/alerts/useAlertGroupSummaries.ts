@@ -1,4 +1,5 @@
 import { alertsApi, AlertQueryParams } from '@/lib/api';
+import { GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { AlertGroupSummaryNode } from '@OpsiMate/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -42,7 +43,7 @@ export const useAlertGroupSummaries = (
 		staleTime: 10 * 1000,
 		// Callers that pair these counts with the 5s alert list (the split-by-owner
 		// panes) pass a matching cadence, so the two stop describing different moments.
-		refetchInterval: options?.refetchIntervalMs ?? 20 * 1000,
+		refetchInterval: options?.refetchIntervalMs ?? GROUPED_ALERTS_POLL_MS,
 		// Keep the previous header counts while a changed query refetches — group headers
 		// flashing to loaded-only counts and back reads as the data disappearing.
 		placeholderData: keepPreviousData,

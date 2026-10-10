@@ -31,6 +31,7 @@ import {
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
+import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { cn } from '@/lib/utils';
 import { AiFilterResult, Alert } from '@OpsiMate/shared';
 import {
@@ -89,10 +90,6 @@ const ALERT_TAB_OPTIONS = [
 // (~33KB gzipped, ~50ms measured at 10k alerts); bigger pages also mean FEWER poll
 // requests for deep scrollers, since every loaded page refetches on each poll.
 const SERVER_PAGE_SIZE = 1000;
-
-// Grouping loads the whole matching set, so a 5s poll would re-download all of it every
-// tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
-const GROUPED_POLL_MS = 20 * 1000;
 
 // How many added filters the notice spells out before collapsing the rest into
 // "+N more". Keeps the strip to one line on a narrow pane without hiding that more
@@ -268,9 +265,9 @@ const Alerts = () => {
 
 	// The active list's ACTUAL poll cadence, shared with every count that must stay in
 	// step with it (split panes, status-aware tab count). Grouping slows the list to
-	// GROUPED_POLL_MS; counts polling faster than the list would race ahead of the rows
+	// GROUPED_ALERTS_POLL_MS; counts polling faster than the list would race ahead of the rows
 	// they describe — the exact desync this file just removed.
-	const activeListPollMs = isGrouping && activeViewed ? GROUPED_POLL_MS : 5 * 1000;
+	const activeListPollMs = isGrouping && activeViewed ? GROUPED_ALERTS_POLL_MS : ACTIVE_ALERTS_POLL_MS;
 
 	const {
 		data: alerts = [],
@@ -288,7 +285,7 @@ const Alerts = () => {
 		fetchNextPage: fetchMoreResolved,
 		hasNextPage: hasMoreResolved,
 	} = useResolvedAlerts(resolvedQuery, {
-		refetchIntervalMs: isGrouping && resolvedViewed ? GROUPED_POLL_MS : undefined,
+		refetchIntervalMs: isGrouping && resolvedViewed ? GROUPED_ALERTS_POLL_MS : undefined,
 	});
 	lastActiveTotal.current = activeTotal;
 	lastResolvedTotal.current = resolvedTotal;
