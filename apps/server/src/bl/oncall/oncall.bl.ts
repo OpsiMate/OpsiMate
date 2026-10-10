@@ -1,10 +1,9 @@
 import { Logger, OncallTeam, OncallTeamMember } from '@OpsiMate/shared';
 import { OncallRepository, OncallTeamUpdate } from '../../dal/oncallRepository';
 import { OncallTeamMemberRow, OncallTeamRow } from './../../dal/models';
+import { MS_PER_DAY } from '../../utils/time';
 
 const logger = new Logger('bl/oncall.bl');
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Thrown when a create/rename would collide with an existing team's name (the API
 // maps it to 409). Names identify teams — alerts reference them by name.
@@ -31,9 +30,9 @@ export class OncallBL {
 		if (interval > 0 && count > 0) {
 			const anchorMs = new Date(team.rotation_anchor).getTime();
 			const elapsed = Math.max(0, now.getTime() - anchorMs);
-			const periods = Math.floor(elapsed / (interval * DAY_MS));
+			const periods = Math.floor(elapsed / (interval * MS_PER_DAY));
 			shift = periods % count;
-			nextRotationAt = new Date(anchorMs + (periods + 1) * interval * DAY_MS).toISOString();
+			nextRotationAt = new Date(anchorMs + (periods + 1) * interval * MS_PER_DAY).toISOString();
 		}
 
 		const members: OncallTeamMember[] = memberRows.map((row, index) => ({
