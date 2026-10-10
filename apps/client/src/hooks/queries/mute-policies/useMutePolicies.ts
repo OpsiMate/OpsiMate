@@ -1,4 +1,5 @@
 import { mutePoliciesApi, MutePolicyPayload } from '@/lib/api';
+import { MUTE_POLICIES_POLL_MS } from '@/lib/pollIntervals';
 import { MutePolicy } from '@OpsiMate/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
@@ -13,7 +14,7 @@ export const useMutePolicies = () => {
 			}
 			return response.data || [];
 		},
-		refetchInterval: 30_000,
+		refetchInterval: MUTE_POLICIES_POLL_MS,
 	});
 };
 

@@ -1,4 +1,5 @@
 import { alertsApi, AlertFacetsOptions, AlertFacetsResponse } from '@/lib/api';
+import { ALERT_FACETS_POLL_MS } from '@/lib/pollIntervals';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
@@ -17,7 +18,7 @@ export const useAlertFacets = (filters: Record<string, string[]>, options?: Aler
 			return response.data;
 		},
 		staleTime: 5 * 1000,
-		refetchInterval: 10 * 1000,
+		refetchInterval: ALERT_FACETS_POLL_MS,
 		// A filter click re-keys this query; keeping the previous counts avoids the whole
 		// sidebar collapsing to empty for a frame.
 		placeholderData: keepPreviousData,
