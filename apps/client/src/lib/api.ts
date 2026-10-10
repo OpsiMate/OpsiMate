@@ -38,6 +38,7 @@ import {
 	Tag,
 	UpdateAiConfig,
 	AlertAnalytics,
+	SecretType,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 
@@ -702,7 +703,7 @@ export const secretsApi = {
 	},
 
 	// Create a new secret
-	createSecret: async (displayName: string, file: File, secretType: 'ssh' | 'kubeconfig' = 'ssh') => {
+	createSecret: async (displayName: string, file: File, secretType: SecretType = SecretType.SSH) => {
 		try {
 			const formData = new FormData();
 			formData.append('displayName', displayName);
@@ -722,7 +723,7 @@ export const secretsApi = {
 	},
 
 	// Update a secret
-	updateSecret: async (secretId: number, displayName?: string, file?: File, secretType?: 'ssh' | 'kubeconfig') => {
+	updateSecret: async (secretId: number, displayName?: string, file?: File, secretType?: SecretType) => {
 		try {
 			const formData = new FormData();
 			if (displayName !== undefined) {

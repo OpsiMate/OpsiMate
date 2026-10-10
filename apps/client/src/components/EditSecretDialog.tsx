@@ -1,4 +1,4 @@
-import { Logger, SecretMetadata } from '@OpsiMate/shared';
+import { Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { updateSecretOnServer } from '../lib/sslKeys';
@@ -20,7 +20,7 @@ interface EditSecretDialogProps {
 
 export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecretDialogProps) => {
 	const [displayName, setDisplayName] = useState(secret.name);
-	const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>(secret.type);
+	const [secretType, setSecretType] = useState<SecretType>(secret.type);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
 	const [updating, setUpdating] = useState(false);
@@ -113,16 +113,13 @@ export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecre
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="secret-type">Type</Label>
-						<Select
-							value={secretType}
-							onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}
-						>
+						<Select value={secretType} onValueChange={(value) => setSecretType(value as SecretType)}>
 							<SelectTrigger>
 								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="ssh">SSH Key</SelectItem>
-								<SelectItem value="kubeconfig">Kubeconfig</SelectItem>
+								<SelectItem value={SecretType.SSH}>SSH Key</SelectItem>
+								<SelectItem value={SecretType.KUBECONFIG}>Kubeconfig</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
