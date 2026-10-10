@@ -44,6 +44,7 @@ export class UsersController {
 			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else {
+				logger.error('Error registering user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -60,6 +61,7 @@ export class UsersController {
 			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else {
+				logger.error('Error creating user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -74,6 +76,7 @@ export class UsersController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
+				logger.error('Error updating user role:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -101,6 +104,7 @@ export class UsersController {
 					.status(503)
 					.json({ success: false, error: 'Directory login is unavailable right now. Try again later.' });
 			} else {
+				logger.error('Error logging in:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -116,7 +120,8 @@ export class UsersController {
 		try {
 			const users = await this.userBL.getAllUsers();
 			return res.status(200).json({ success: true, data: users });
-		} catch {
+		} catch (error) {
+			logger.error('Error getting users:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
@@ -147,7 +152,8 @@ export class UsersController {
 		try {
 			const exists = await this.userBL.usersExist();
 			return res.status(200).json({ success: true, exists });
-		} catch {
+		} catch (error) {
+			logger.error('Error checking whether users exist:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
