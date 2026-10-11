@@ -6,7 +6,7 @@ import {
 	IntegrationTagsquerySchema,
 	Logger,
 } from '@OpsiMate/shared';
-import { IntegrationBL } from '../../../bl/integrations/integration.bl';
+import { IntegrationBL, IntegrationNotFoundError } from '../../../bl/integrations/integration.bl';
 import { isZodError } from '../../../utils/isZodError';
 import { integrationConnectorFactory } from '../../../bl/integrations/integration-connector/integration-connector-factory';
 
@@ -97,6 +97,8 @@ export class IntegrationController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else if (error instanceof IntegrationNotFoundError) {
+				return res.status(404).json({ success: false, error: 'Integration not found' });
 			} else {
 				logger.error('Error updating integration:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -114,6 +116,9 @@ export class IntegrationController {
 			await this.integrationBL.deleteIntegration(integrationId);
 			return res.json({ success: true, message: 'Integration deleted successfully' });
 		} catch (error) {
+			if (error instanceof IntegrationNotFoundError) {
+				return res.status(404).json({ success: false, error: 'Integration not found' });
+			}
 			logger.error('Error deleting integration:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -121,7 +126,13 @@ export class IntegrationController {
 
 	getIntegrationUrls = async (req: Request, res: Response): Promise<void> => {
 		try {
-			const integrationId = parseInt(req.params.integrationId);
+			const integrationIdParam = req.params.integrationId;
+			const integrationId = Number(integrationIdParam);
+			if (!/^\d+$/.test(integrationIdParam) || !Number.isSafeInteger(integrationId)) {
+				res.status(400).json({ success: false, error: 'Invalid integration ID' });
+				return;
+			}
+
 			const parsed = IntegrationTagsquerySchema.parse(req.query);
 			const tags: string[] = Array.isArray(parsed.tags) ? parsed.tags : [parsed.tags];
 			const response = await this.integrationBL.getIntegrationUrls(integrationId, tags);
@@ -134,6 +145,9 @@ export class IntegrationController {
 					error: 'Validation error',
 					details: error.issues,
 				});
+				return;
+			} else if (error instanceof IntegrationNotFoundError) {
+				res.status(404).json({ success: false, error: 'Integration not found' });
 				return;
 			} else {
 				logger.error('Error getting integration URLs:', error);

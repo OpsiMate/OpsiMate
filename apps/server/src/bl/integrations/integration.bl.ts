@@ -5,6 +5,13 @@ import { AlertBL } from '../alerts/alert.bl.ts';
 
 const logger = new Logger('bl/integrations/integration.bl');
 
+export class IntegrationNotFoundError extends Error {
+	constructor(integrationId: number) {
+		super(`Integration with ID ${integrationId} does not exist.`);
+		this.name = 'IntegrationNotFoundError';
+	}
+}
+
 export class IntegrationBL {
 	constructor(
 		private integrationRepo: IntegrationRepository,
@@ -30,6 +37,9 @@ export class IntegrationBL {
 			logger.info(`Integration created with ID: ${lastID}`);
 
 			const createdIntegration = await this.integrationRepo.getIntegrationById(lastID);
+			if (!createdIntegration) {
+				throw new IntegrationNotFoundError(lastID);
+			}
 			logger.info(`Fetched created integration: ${JSON.stringify(createdIntegration)}`);
 
 			return createdIntegration;
@@ -53,7 +63,11 @@ export class IntegrationBL {
 		try {
 			await this.integrationRepo.updateIntegration(integrationId, integrationToUpdate);
 			logger.info(`Updated integration with ID: ${integrationId}`);
-			return await this.integrationRepo.getIntegrationById(integrationId);
+			const updatedIntegration = await this.integrationRepo.getIntegrationById(integrationId);
+			if (!updatedIntegration) {
+				throw new IntegrationNotFoundError(integrationId);
+			}
+			return updatedIntegration;
 		} catch (error) {
 			logger.error(`Error updating integration`, error);
 			throw error;
@@ -76,16 +90,13 @@ export class IntegrationBL {
 	private async validateIntegrationExists(integrationId: number): Promise<Integration> {
 		const integration = await this.integrationRepo.getIntegrationById(integrationId);
 		if (!integration) {
-			throw new Error(`Integration with ID ${integrationId} does not exist.`);
+			throw new IntegrationNotFoundError(integrationId);
 		}
 		return integration;
 	}
 
 	async getIntegrationUrls(integrationId: number, tags: string[]) {
-		const integration = await this.integrationRepo.getIntegrationById(integrationId);
-		if (!integration) {
-			throw new Error(`Integration with ID ${integrationId} does not exist.`);
-		}
+		const integration = await this.validateIntegrationExists(integrationId);
 		return await integrationConnectorFactory(integration.type).getUrls(integration, tags);
 	}
 }
