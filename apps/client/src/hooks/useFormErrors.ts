@@ -32,7 +32,7 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
 	};
 
 	const handleApiResponse = (response: { success: boolean; error?: string; errors?: Record<string, string> }) => {
-		logger.debug('handleApiResponse called with:', response);
+		logger.debug('handleApiResponse called with:', { extraArgs: { response } });
 
 		if (response.success) {
 			clearErrors();
@@ -44,7 +44,7 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
 			logger.debug('Detected validation error, mapping fields...');
 			if (showFieldErrors) {
 				const fieldErrors = mapValidationErrors(response);
-				logger.debug('Mapped field errors:', fieldErrors);
+				logger.debug('Mapped field errors:', { extraArgs: { fieldErrors } });
 				setErrors(fieldErrors);
 				setGeneralError(null);
 			} else {
