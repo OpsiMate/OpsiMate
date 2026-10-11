@@ -36,15 +36,15 @@ export class IntegrationRepository {
 		});
 	}
 
-	async getIntegrationById(id: number): Promise<Integration> {
+	async getIntegrationById(id: number): Promise<Integration | undefined> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 SELECT id, name, type, external_url, credentials, created_at
                 FROM integrations
                 WHERE id = ?
             `);
-			const row = stmt.get(id) as IntegrationRow;
-			return mapRowToIntegration(row);
+			const row = stmt.get(id) as IntegrationRow | undefined;
+			return row ? mapRowToIntegration(row) : undefined;
 		});
 	}
 

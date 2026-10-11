@@ -7,6 +7,7 @@ import {
 	RetentionSettings,
 } from '@OpsiMate/shared';
 import { RetentionRepository } from '../../dal/retentionRepository';
+import { MS_PER_DAY, MS_PER_HOUR } from '../../utils/time';
 
 const logger = new Logger('bl/retention.bl');
 
@@ -53,7 +54,7 @@ export class RetentionBL {
 
 		for (const policy of policies) {
 			if (!policy.enabled) continue;
-			const cutoff = new Date(Date.now() - policy.retentionDays * 24 * 60 * 60 * 1000).toISOString();
+			const cutoff = new Date(Date.now() - policy.retentionDays * MS_PER_DAY).toISOString();
 			try {
 				const count = await this.retentionRepo.purgeOlderThan(policy.resourceType, cutoff);
 				deleted[policy.resourceType] = count;
@@ -92,6 +93,6 @@ export class RetentionBL {
 		const config = await this.retentionRepo.getConfig();
 		if (!config.lastRunAt) return true;
 		const elapsedMs = Date.now() - new Date(config.lastRunAt).getTime();
-		return elapsedMs >= config.cleanupIntervalHours * 60 * 60 * 1000;
+		return elapsedMs >= config.cleanupIntervalHours * MS_PER_HOUR;
 	}
 }

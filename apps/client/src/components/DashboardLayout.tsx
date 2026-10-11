@@ -6,20 +6,21 @@ import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sidebarCollapsed';
+
 interface DashboardLayoutProps {
 	children: React.ReactNode;
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-	const [isSidebarCollapsed, setSidebarCollapsed] = useState(() => {
-		const savedState = localStorage.getItem('sidebarCollapsed');
-		return savedState ? JSON.parse(savedState) : false;
-	});
+	const [isSidebarCollapsed, setSidebarCollapsed] = useState(
+		() => localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
+	);
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const showPlaygroundBanner = isPlaygroundMode();
 
 	useEffect(() => {
-		localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+		localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
 	}, [isSidebarCollapsed]);
 
 	useEffect(() => {

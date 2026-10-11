@@ -1,4 +1,5 @@
 import { alertsApi, AlertQueryParams } from '@/lib/api';
+import { ALERT_COUNTS_POLL_MS } from '@/lib/pollIntervals';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
@@ -34,7 +35,7 @@ export const useAlertMatchCount = (
 			return response.data.total ?? response.data.alerts.length;
 		},
 		staleTime: 10 * 1000,
-		refetchInterval: options?.refetchIntervalMs ?? 20 * 1000,
+		refetchInterval: options?.refetchIntervalMs ?? ALERT_COUNTS_POLL_MS,
 		// The N in "Select all N matching" (and the split-pane totals) shouldn't blink to
 		// nothing whenever the query re-keys.
 		placeholderData: keepPreviousData,

@@ -1,4 +1,5 @@
 import { oncallApi } from '@/lib/api';
+import { ONCALL_TEAMS_POLL_MS } from '@/lib/pollIntervals';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 
@@ -13,6 +14,6 @@ export const useOncallTeams = () => {
 			return response.data?.teams ?? [];
 		},
 		// The current on-call order is time-derived (rotation), so refresh periodically.
-		refetchInterval: 60_000,
+		refetchInterval: ONCALL_TEAMS_POLL_MS,
 	});
 };

@@ -7,6 +7,7 @@ import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
 import { LdapAuthenticator } from './ldapAuthenticator';
 import { LoginThrottle } from './loginThrottle';
+import { MS_PER_MINUTE } from '../../utils/time';
 
 // Work factor used for every password hash created by this module.
 const BCRYPT_SALT_ROUNDS = 10;
@@ -37,7 +38,7 @@ export class TooManyLoginAttemptsError extends Error {
 }
 
 export const DEFAULT_LDAP_MAX_FAILURES = 5;
-const LDAP_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const LDAP_FAILURE_WINDOW_MS = 15 * MS_PER_MINUTE;
 // 65,536 buckets ≈ 768 KB, fixed.
 const LDAP_FAILURE_BUCKETS = 1 << 16;
 
