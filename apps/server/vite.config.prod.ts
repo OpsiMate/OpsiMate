@@ -46,6 +46,8 @@ export default defineConfig({
 				'zod',
 				'sshpk',
 				'@OpsiMate/shared',
+				// Read from disk at runtime (its static files are served as-is), so never bundled.
+				'swagger-ui-dist',
 			],
 		},
 		minify: false,

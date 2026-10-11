@@ -247,8 +247,9 @@ export interface Alert {
 	// the links UI as "Source" / "Runbook" entries. Integrations still populate them.
 	alertUrl: string;
 	alertName: string;
-	summary?: string;
-	runbookUrl?: string;
+	// null when the alert has none (that's what the API sends).
+	summary?: string | null;
+	runbookUrl?: string | null;
 	// The alert's link collection — each entry renders as a button in the details panel's
 	// links section (and the row's ⋮ menu) with its icon when the slug is recognized.
 	links?: AlertLink[];

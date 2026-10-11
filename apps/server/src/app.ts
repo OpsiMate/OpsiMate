@@ -35,6 +35,7 @@ import { UserBL } from './bl/users/user.bl';
 import { LdapSettingsBL } from './bl/ldap/ldapSettings.bl';
 import { LdapConfigRepository } from './dal/ldapConfigRepository';
 import { LdapController } from './api/v1/ldap/controller';
+import { apiDocsEnabled, createApiDocsRouter } from './api/openapi/serve';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
@@ -249,6 +250,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
+	// API reference: /api/docs (Swagger UI) and /api/openapi.json.
+	if (apiDocsEnabled()) app.use(createApiDocsRouter(process.env.APP_VERSION?.trim() || 'dev'));
 	app.use(
 		'/api/v1',
 		createV1Router(
