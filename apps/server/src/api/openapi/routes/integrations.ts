@@ -46,6 +46,7 @@ export const integrationRoutes: ApiRouteDoc[] = [
 			},
 			400: errors.validation,
 			401: errors.unauthorized,
+			404: errors.notFound,
 		},
 	},
 	{
@@ -55,7 +56,12 @@ export const integrationRoutes: ApiRouteDoc[] = [
 		summary: 'Remove an integration',
 		auth: 'user',
 		params: IntegrationIdParams,
-		responses: { 200: { description: 'Removed', schema: MessageResponseSchema }, 401: errors.unauthorized },
+		responses: {
+			200: { description: 'Removed', schema: MessageResponseSchema },
+			400: errors.validation,
+			401: errors.unauthorized,
+			404: errors.notFound,
+		},
 	},
 	{
 		method: 'get',
@@ -66,7 +72,12 @@ export const integrationRoutes: ApiRouteDoc[] = [
 		auth: 'user',
 		params: IntegrationIdParams,
 		query: IntegrationTagsquerySchema,
-		responses: { 200: { description: 'OK', schema: okEnvelope(z.unknown()) }, 401: errors.unauthorized },
+		responses: {
+			200: { description: 'OK', schema: okEnvelope(z.unknown()) },
+			400: { description: 'The id is not a whole number (e.g. "1abc")', schema: errors.validation.schema },
+			401: errors.unauthorized,
+			404: errors.notFound,
+		},
 	},
 	{
 		method: 'post',

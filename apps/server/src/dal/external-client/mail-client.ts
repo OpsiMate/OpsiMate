@@ -21,7 +21,7 @@ interface SendMailOptions {
 	demo_user_tracking_id?: string;
 }
 
-const logger = new Logger('service/mail.service');
+const logger = new Logger('dal/external-client/mail-client');
 
 /**
  * MailClient handles sending emails using SMTP configuration.

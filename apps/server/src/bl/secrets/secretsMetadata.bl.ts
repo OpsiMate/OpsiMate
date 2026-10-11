@@ -5,7 +5,7 @@ import { getSecurityConfig } from '../../config/config';
 import { AuditBL } from '../audit/audit.bl';
 import path from 'path';
 
-const logger = new Logger('bl/secrets/secret.bl');
+const logger = new Logger('bl/secrets/secretsMetadata.bl');
 
 export class SecretsMetadataBL {
 	constructor(

@@ -119,7 +119,7 @@ describe('Integrations API', () => {
 
 		expect(deleteRes.status).toBe(200);
 		expect(deleteRes.body.success).toBe(true);
-		expect(deleteRes.body.message).toBe('Integration and associated services deleted successfully');
+		expect(deleteRes.body.message).toBe('Integration deleted successfully');
 
 		// Verify the integration was deleted
 		const getRes = await app.get('/api/v1/integrations').set('Authorization', `Bearer ${jwtToken}`);
@@ -129,6 +129,55 @@ describe('Integrations API', () => {
 			(i: Integration) => i.name === 'Test Integration'
 		);
 		expect(deletedIntegration).toBeUndefined();
+	});
+
+	test('should return 404 when updating a non-existent integration', async () => {
+		const updateRes = await app
+			.put('/api/v1/integrations/9999')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				name: 'Updated Integration',
+				type: IntegrationType.Datadog,
+				externalUrl: 'https://datadog.example.com',
+				credentials: { apiKey: 'updated-api-key' },
+			});
+
+		expect(updateRes.status).toBe(404);
+		expect(updateRes.body.success).toBe(false);
+	});
+
+	test('should return 404 when deleting a non-existent integration', async () => {
+		const deleteRes = await app.delete('/api/v1/integrations/9999').set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(deleteRes.status).toBe(404);
+		expect(deleteRes.body.success).toBe(false);
+	});
+
+	test('should return 404 for integration URLs of a non-existent integration', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/9999/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(404);
+		expect(urlsRes.body.success).toBe(false);
+	});
+
+	test('should return 400 for integration URLs with a non-numeric integration ID', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/abc/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(400);
+		expect(urlsRes.body.success).toBe(false);
+	});
+
+	test('should return 400 for integration URLs with a trailing non-numeric suffix on the ID', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/1abc/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(400);
+		expect(urlsRes.body.success).toBe(false);
 	});
 
 	test('should require authentication', async () => {

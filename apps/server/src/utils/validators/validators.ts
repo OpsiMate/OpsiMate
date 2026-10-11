@@ -4,7 +4,7 @@ import { Logger } from '@OpsiMate/shared';
 // runtime, which would take the server down at boot rather than in a test.
 import * as yaml from 'js-yaml';
 import { parseKey, Key } from 'sshpk';
-const logger: Logger = new Logger('server');
+const logger: Logger = new Logger('utils/validators');
 export function validatePublicSSHKey(content: string): boolean {
 	try {
 		const trimmed = content.trim();

@@ -53,7 +53,7 @@ export class ActionBL {
 			buildAlertContext(alert),
 			overrides
 		);
-		actionsRunTotal.inc({ type: action.type, outcome: result.success ? 'success' : 'error' });
+		actionsRunTotal.inc({ type: action.type, outcome: result.ok ? 'success' : 'error' });
 
 		// Record the run on the alert's history timeline (best-effort; never block the action).
 		if (alert.id && this.alertHistoryRepo) {

@@ -6,7 +6,7 @@ interface UseStickyHeadersProps {
 	flatRows: FlatGroupItem[];
 	groupByColumns: string[];
 	virtualItems: VirtualItem[];
-	virtualizer: Virtualizer<HTMLDivElement, Element>;
+	virtualizer: Pick<Virtualizer<HTMLDivElement, Element>, 'scrollOffset'>;
 }
 
 export const useStickyHeaders = ({ flatRows, groupByColumns, virtualItems, virtualizer }: UseStickyHeadersProps) => {

@@ -7,7 +7,7 @@ const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 
-const logger = new Logger('encryption-');
+const logger = new Logger('utils/encryption');
 
 // The built-in key is a PUBLIC constant (it ships in this repo). It exists so local dev
 // and the test suite work with zero config — it must never protect real data.

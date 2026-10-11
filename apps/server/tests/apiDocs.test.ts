@@ -252,5 +252,24 @@ describe('documented responses match the real API', () => {
 			expect(JSON.stringify(body)).not.toContain('secret-api-key');
 			expect(JSON.stringify(body)).not.toContain('credentials');
 		}
+
+		// Unknown and malformed ids answer as documented.
+		const body = { name: 'X', type: 'Datadog', externalUrl: 'https://app.datadoghq.com', credentials: {} };
+		expectDocumented(
+			'put',
+			'/api/v1/integrations/:integrationId',
+			await api.put('/api/v1/integrations/999999').set('x-api-token', token).send(body)
+		);
+		expectDocumented(
+			'delete',
+			'/api/v1/integrations/:integrationId',
+			await api.delete('/api/v1/integrations/999999').set('x-api-token', token)
+		);
+		const urls404 = await api.get('/api/v1/integrations/999999/urls?tags=env').set('x-api-token', token);
+		expect(urls404.status).toBe(404);
+		expectDocumented('get', '/api/v1/integrations/:integrationId/urls', urls404);
+		const urls400 = await api.get('/api/v1/integrations/1abc/urls?tags=env').set('x-api-token', token);
+		expect(urls400.status).toBe(400);
+		expectDocumented('get', '/api/v1/integrations/:integrationId/urls', urls400);
 	});
 });

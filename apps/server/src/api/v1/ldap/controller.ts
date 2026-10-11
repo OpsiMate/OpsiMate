@@ -8,7 +8,7 @@ import {
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
 
-const logger = new Logger('ldap.controller');
+const logger = new Logger('api/v1/ldap/controller');
 
 // Admin-only: directory (LDAP) login settings.
 export class LdapController {

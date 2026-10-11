@@ -3,14 +3,15 @@ import { AiFilterQuerySchema, Logger, UpdateAiConfigSchema } from '@OpsiMate/sha
 import { AiBL, AiDisabledError, AiValidationError, BedrockCallError } from '../../../bl/ai/ai.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { MS_PER_MINUTE } from '../../../utils/time';
 
-const logger = new Logger('ai.controller');
+const logger = new Logger('api/v1/ai/controller');
 
 // Every /ai/filter call is a real, billed Bedrock request available to ANY
 // authenticated user — a fixed per-user window keeps a loop (or a stuck client)
 // from draining the org's Bedrock spend.
 const FILTER_RATE_LIMIT = 15;
-const FILTER_RATE_WINDOW_MS = 60_000;
+const FILTER_RATE_WINDOW_MS = MS_PER_MINUTE;
 
 interface FilterRateWindow {
 	windowStart: number;

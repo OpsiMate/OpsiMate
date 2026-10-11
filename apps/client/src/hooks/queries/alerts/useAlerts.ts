@@ -1,5 +1,6 @@
 import { alertsApi, AlertListResponse, AlertQueryParams } from '@/lib/api';
 import { isPlaygroundMode } from '@/lib/playground';
+import { ACTIVE_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
@@ -25,7 +26,7 @@ export const useAlerts = (query?: AlertQueryParams, options?: { refetchIntervalM
 		initialPageParam: '',
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 5 * 1000,
-		refetchInterval: playgroundMode ? false : (options?.refetchIntervalMs ?? 5 * 1000),
+		refetchInterval: playgroundMode ? false : (options?.refetchIntervalMs ?? ACTIVE_ALERTS_POLL_MS),
 		// A changed query (typing, a filter click, a sort) mints a new key; without this
 		// the table drops to empty and repaints from scratch when the response lands —
 		// reads as "everything got deleted and re-rendered". Keeping the previous rows on
