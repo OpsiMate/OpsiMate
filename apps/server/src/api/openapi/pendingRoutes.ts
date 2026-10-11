@@ -1,6 +1,6 @@
 import { HttpMethod } from './registry';
 
-// Routes that exist but aren't in the API reference yet. apiDocsCoverage.test.ts fails for
+// Routes that exist but aren't in the API reference yet. apiDocs.test.ts fails for
 // any route that is neither documented (routes/*.ts) nor listed here, so new endpoints
 // can't go undocumented by accident. Document a group, then delete its lines here — the
 // test also fails if a listed route gets documented or stops existing.
