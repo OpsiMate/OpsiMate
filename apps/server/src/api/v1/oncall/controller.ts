@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { DuplicateTeamNameError, OncallBL } from '../../../bl/oncall/oncall.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 
 const logger = new Logger('api/v1/oncall/controller');
 
@@ -10,7 +11,7 @@ export class OncallController {
 	constructor(private oncallBL: OncallBL) {}
 
 	private parseTeamId(req: AuthenticatedRequest, res: Response): number | null {
-		const teamId = parseInt(req.params.teamId, 10);
+		const teamId = parseInt(routeParam(req, 'teamId'), 10);
 		if (isNaN(teamId) || teamId <= 0) {
 			res.status(400).json({ success: false, error: 'Invalid team id' });
 			return null;

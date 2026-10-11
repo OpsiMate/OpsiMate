@@ -683,7 +683,7 @@ export class AlertBL {
 			return await this.snapshotWorker.build();
 		} catch (error) {
 			// The worker is replaced on the next build; this one must still answer.
-			logger.warn('snapshot worker build failed, building the alerts list inline', error);
+			logger.warn('snapshot worker build failed, building the alerts list inline', { extraArgs: { err: error } });
 			return this.inlineBuilder.build();
 		}
 	}

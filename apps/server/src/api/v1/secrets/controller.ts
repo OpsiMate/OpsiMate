@@ -5,6 +5,7 @@ import { SecretsMetadataBL } from '../../../bl/secrets/secretsMetadata.bl';
 import fs from 'fs';
 import { encryptPassword } from '../../../utils/encryption';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 import { validateKubeConfig, validatePublicSSHKey } from '../../../utils/validators/validators';
 
 const logger = new Logger('api/v1/secrets/controller');
@@ -68,7 +69,7 @@ export class SecretsController {
 
 	updateSecret = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const secretId = parseInt(req.params.id);
+			const secretId = parseInt(routeParam(req, 'id'));
 			if (isNaN(secretId)) {
 				return res.status(400).json({ success: false, error: 'Invalid secret ID' });
 			}
@@ -129,7 +130,7 @@ export class SecretsController {
 
 	deleteSecret = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const secretId = parseInt(req.params.id);
+			const secretId = parseInt(routeParam(req, 'id'));
 			if (isNaN(secretId)) {
 				return res.status(400).json({ success: false, error: 'Invalid secret ID' });
 			}

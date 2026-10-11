@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CreateDashboardSchema, DashboardIdSchema, DashboardTagSchema, Logger } from '@OpsiMate/shared';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { routeParam } from '../../../utils/routeParams.ts';
 import { DashboardBL } from '../../../bl/dashboards/dashboard.bl.ts';
 
 const logger = new Logger('api/v1/dashboards/controller');
@@ -52,7 +53,7 @@ export class DashboardController {
 				return res.status(401).json({ success: false, error: 'Unauthorized: user not found' });
 			}
 
-			const dashboardId = req.params.dashboardId;
+			const dashboardId = routeParam(req, 'dashboardId');
 			const updateDashboardRequest = CreateDashboardSchema.parse(req.body);
 			await this.dashboardBL.updateDashboard(dashboardId, updateDashboardRequest, user);
 
@@ -72,7 +73,7 @@ export class DashboardController {
 
 	deleteDashboardHandler = async (req: Request, res: Response) => {
 		try {
-			const dashboardId = req.params.dashboardId;
+			const dashboardId = routeParam(req, 'dashboardId');
 			const success = await this.dashboardBL.deleteDashboard(dashboardId);
 
 			if (!success) {

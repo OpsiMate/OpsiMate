@@ -139,7 +139,7 @@ export class SnapshotWorkerClient {
 		const workerData: SnapshotWorkerData = { dbPath: this.dbPath };
 		const worker = new Worker(this.script.file, { workerData });
 		worker.on('message', (message: WorkerMessage) => this.onMessage(worker, message));
-		worker.on('error', (error) => this.onExit(worker, `snapshot worker error: ${error.message}`));
+		worker.on('error', (error: Error) => this.onExit(worker, `snapshot worker error: ${error.message}`));
 		worker.on('exit', (code) => this.onExit(worker, `snapshot worker exited with code ${code}`));
 		worker.unref();
 		this.worker = worker;
@@ -196,7 +196,11 @@ export class SnapshotWorkerClient {
 		this.known = new Map();
 		this.lastOrder = [];
 		if (worker) {
-			worker.terminate().catch((error: unknown) => logger.warn('snapshot worker terminate failed', error));
+			worker
+				.terminate()
+				.catch((error: unknown) =>
+					logger.warn('snapshot worker terminate failed', { extraArgs: { err: error } })
+				);
 		}
 	}
 
