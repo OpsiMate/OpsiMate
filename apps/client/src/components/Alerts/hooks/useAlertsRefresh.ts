@@ -1,9 +1,7 @@
 import { useToast } from '@/hooks/use-toast';
+import { ACTIVE_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { QueryObserverResult, RefetchOptions } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-
-// Poll for alert updates every five seconds while automatic refresh is enabled.
-const ALERTS_REFRESH_INTERVAL_MS = 5 * 1000;
 
 export interface UseAlertsRefreshOptions {
 	shouldPause?: boolean;
@@ -25,7 +23,7 @@ export const useAlertsRefresh = (
 		const interval = setInterval(() => {
 			refetch();
 			setLastRefresh(new Date());
-		}, ALERTS_REFRESH_INTERVAL_MS);
+		}, ACTIVE_ALERTS_POLL_MS);
 
 		return () => clearInterval(interval);
 	}, [refetch, shouldPause]);

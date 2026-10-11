@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
-import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
+import { AuditLog, Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
 import {
 	BellOff,
 	Check,
@@ -893,7 +893,7 @@ const AuditLogTable: React.FC = () => {
 
 interface AddSecretButtonProps {
 	triggerText?: string;
-	secretType?: 'ssh' | 'kubeconfig';
+	secretType?: SecretType;
 	onSecretCreated?: (secretId?: number) => void;
 	children?: React.ReactNode;
 	className?: string;
@@ -901,7 +901,7 @@ interface AddSecretButtonProps {
 
 export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 	triggerText = 'Add Secret',
-	secretType: defaultSecretType = 'ssh',
+	secretType: defaultSecretType = SecretType.SSH,
 	onSecretCreated,
 	children,
 	className,
@@ -910,7 +910,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 	const [uploading, setUploading] = useState(false);
 	const [fileName, setFileName] = useState<string | null>(null);
 	const [displayName, setDisplayName] = useState<string>('');
-	const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>(defaultSecretType);
+	const [secretType, setSecretType] = useState<SecretType>(defaultSecretType);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
 	const { toast } = useToast();
@@ -1006,16 +1006,13 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="secret-type">Type</Label>
-						<Select
-							value={secretType}
-							onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}
-						>
+						<Select value={secretType} onValueChange={(value) => setSecretType(value as SecretType)}>
 							<SelectTrigger>
 								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="ssh">SSH Key</SelectItem>
-								<SelectItem value="kubeconfig">Kubeconfig</SelectItem>
+								<SelectItem value={SecretType.SSH}>SSH Key</SelectItem>
+								<SelectItem value={SecretType.KUBECONFIG}>Kubeconfig</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>

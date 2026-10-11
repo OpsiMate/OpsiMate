@@ -1,4 +1,5 @@
 import { alertsApi, AlertListResponse, AlertQueryParams } from '@/lib/api';
+import { RESOLVED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
@@ -20,7 +21,7 @@ export const useResolvedAlerts = (query?: AlertQueryParams, options?: { refetchI
 		initialPageParam: '',
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 30 * 1000,
-		refetchInterval: options?.refetchIntervalMs ?? 30 * 1000,
+		refetchInterval: options?.refetchIntervalMs ?? RESOLVED_ALERTS_POLL_MS,
 		// See useAlerts: previous rows stay on screen while a changed query refetches.
 		placeholderData: keepPreviousData,
 	});

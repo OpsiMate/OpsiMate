@@ -8,7 +8,7 @@ import {
 } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
-import { toIsoUtc } from '../utils/time';
+import { MS_PER_MINUTE, toIsoUtc } from '../utils/time';
 import { AlertRow, TableInfoRow } from './models';
 
 export type IngestAlert = Omit<SharedAlert, 'createdAt' | 'isSilenced'>;
@@ -27,7 +27,7 @@ const idsParam = (ids: Iterable<string>): string => JSON.stringify(Array.from(id
 
 // How long after a resolve-only episode a firing with an earlier start is still taken
 // as that episode's late first half rather than a new episode (see upsertAlertRow).
-export const LATE_FIRING_WINDOW_MS = 15 * 60 * 1000;
+export const LATE_FIRING_WINDOW_MS = 15 * MS_PER_MINUTE;
 
 interface ResolvedCopyRow {
 	archived_at: string | null;
