@@ -29,6 +29,7 @@ import {
 	ZabbixWebhookPayloadSchema,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { routeParam } from '../../../utils/routeParams.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import crypto from 'crypto';
@@ -214,7 +215,7 @@ export class AlertController {
 
 	async silenceAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { id } = req.params;
+			const id = routeParam(req, 'id');
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -241,7 +242,7 @@ export class AlertController {
 
 	async unsilenceAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { id } = req.params;
+			const id = routeParam(req, 'id');
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -779,7 +780,7 @@ export class AlertController {
 
 	async markAlertRead(req: Request, res: Response) {
 		try {
-			const alertId = req.params.id;
+			const alertId = routeParam(req, 'id');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -801,7 +802,7 @@ export class AlertController {
 	// re-push replaces the content and clears any previous rating.
 	async upsertRootCause(req: Request, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			const body = UpsertRootCauseSchema.parse(req.body);
 			const rootCause = await this.rootCauseBL.upsert({
 				alertId,
@@ -827,7 +828,7 @@ export class AlertController {
 	// the UI always asks, so absence is a normal answer, not an error.
 	async getRootCause(req: Request, res: Response) {
 		try {
-			const rootCause = await this.rootCauseBL.get(req.params.alertId);
+			const rootCause = await this.rootCauseBL.get(routeParam(req, 'alertId'));
 			return res.json({ success: true, data: { rootCause } });
 		} catch (error) {
 			logger.error('Error getting root cause:', error);
@@ -843,7 +844,7 @@ export class AlertController {
 				return res.status(401).json({ success: false, error: 'Rating requires a user session' });
 			}
 			const { rating, comment } = RateRootCauseSchema.parse(req.body);
-			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user, comment);
+			const result = await this.rootCauseBL.rate(routeParam(req, 'alertId'), rating, req.user, comment);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -860,7 +861,7 @@ export class AlertController {
 
 	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -905,7 +906,7 @@ export class AlertController {
 
 	async unresolveAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const alertId = req.params.id;
+			const alertId = routeParam(req, 'id');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -922,7 +923,7 @@ export class AlertController {
 
 	async deleteResolvedAlert(req: Request, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -963,7 +964,7 @@ export class AlertController {
 
 	async getAlertHistory(req: Request, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -985,7 +986,7 @@ export class AlertController {
 
 	async setAlertOwnerWrapper(req: AuthenticatedRequest, res: Response, isResolved: boolean) {
 		try {
-			const { id } = req.params;
+			const id = routeParam(req, 'id');
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -1031,7 +1032,7 @@ export class AlertController {
 	// region Alert Comments
 	async getCommentsByAlertId(req: Request, res: Response) {
 		try {
-			const { alertId } = req.params;
+			const alertId = routeParam(req, 'alertId');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -1045,7 +1046,7 @@ export class AlertController {
 
 	async createComment(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { alertId } = req.params;
+			const alertId = routeParam(req, 'alertId');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -1076,7 +1077,7 @@ export class AlertController {
 
 	async updateComment(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { commentId } = req.params;
+			const commentId = routeParam(req, 'commentId');
 			if (!commentId) {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
@@ -1103,7 +1104,7 @@ export class AlertController {
 
 	async deleteComment(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { commentId } = req.params;
+			const commentId = routeParam(req, 'commentId');
 			if (!commentId) {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}

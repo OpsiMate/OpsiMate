@@ -1,6 +1,7 @@
 import { LdapUnavailableError } from '../../../bl/users/ldapAuthenticator';
 import { Request, Response } from 'express';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 import {
 	DirectoryManagedError,
 	INVALID_LOGIN,
@@ -128,7 +129,7 @@ export class UsersController {
 	};
 
 	deleteUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(req.params.id);
+		const userId = parseInt(routeParam(req, 'id'));
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
@@ -220,7 +221,7 @@ export class UsersController {
 	};
 
 	updateUserPasswordHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(req.params.id);
+		const userId = parseInt(routeParam(req, 'id'));
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
@@ -261,7 +262,7 @@ export class UsersController {
 	};
 
 	updateUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(req.params.id);
+		const userId = parseInt(routeParam(req, 'id'));
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}

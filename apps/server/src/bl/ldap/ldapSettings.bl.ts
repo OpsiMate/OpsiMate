@@ -232,13 +232,26 @@ const parseSettings = (json: string): LdapConfig => {
 const blankToUndefined = (value: string | undefined): string | undefined =>
 	value === undefined || value.trim() === '' ? undefined : value.trim();
 
+// The string-valued settings the page edits, named so setText can assign one of them
+// without widening the whole config to a record.
+type LdapTextKey =
+	| 'url'
+	| 'bind_dn'
+	| 'search_base'
+	| 'search_filter'
+	| 'email_attribute'
+	| 'name_attribute'
+	| 'groups_attribute'
+	| 'group_search_base'
+	| 'group_search_filter';
+
 // Apply a partial update from the page onto stored settings. Empty strings clear a
 // field (so defaults apply again).
 const mergeUpdates = (base: LdapConfig, updates: UpdateLdapSettings): LdapConfig => {
 	const next: LdapConfig = { ...base };
-	const setText = (key: keyof LdapConfig, value: string | undefined): void => {
+	const setText = <K extends LdapTextKey>(key: K, value: string | undefined): void => {
 		if (value === undefined) return;
-		(next as Record<string, unknown>)[key] = blankToUndefined(value);
+		next[key] = blankToUndefined(value);
 	};
 	if (updates.enabled !== undefined) next.enabled = updates.enabled;
 	setText('url', updates.url);

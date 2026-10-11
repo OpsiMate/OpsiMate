@@ -8,6 +8,7 @@ import {
 } from '@OpsiMate/shared';
 import { IntegrationBL, IntegrationNotFoundError } from '../../../bl/integrations/integration.bl';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 import { integrationConnectorFactory } from '../../../bl/integrations/integration-connector/integration-connector-factory';
 
 const logger = new Logger('api/v1/integrations/controller');
@@ -81,7 +82,7 @@ export class IntegrationController {
 
 	updateIntegration = async (req: Request, res: Response) => {
 		try {
-			const integrationId = parseInt(req.params.integrationId);
+			const integrationId = parseInt(routeParam(req, 'integrationId'));
 			if (isNaN(integrationId)) {
 				return res.status(400).json({ success: false, error: 'Invalid integration ID' });
 			}
@@ -108,7 +109,7 @@ export class IntegrationController {
 
 	deleteIntegration = async (req: Request, res: Response) => {
 		try {
-			const integrationId = parseInt(req.params.integrationId);
+			const integrationId = parseInt(routeParam(req, 'integrationId'));
 			if (isNaN(integrationId)) {
 				return res.status(400).json({ success: false, error: 'Invalid integration ID' });
 			}
@@ -126,7 +127,7 @@ export class IntegrationController {
 
 	getIntegrationUrls = async (req: Request, res: Response): Promise<void> => {
 		try {
-			const integrationIdParam = req.params.integrationId;
+			const integrationIdParam = routeParam(req, 'integrationId');
 			const integrationId = Number(integrationIdParam);
 			if (!/^\d+$/.test(integrationIdParam) || !Number.isSafeInteger(integrationId)) {
 				res.status(400).json({ success: false, error: 'Invalid integration ID' });

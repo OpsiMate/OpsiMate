@@ -21,11 +21,12 @@ export class DashboardBL {
 	async createDashboard(dashboard: Omit<Dashboard, 'createdAt' | 'id'>, user: User): Promise<number> {
 		const dashboardId = await this.dashboardRepository.createDashboard(dashboard);
 
+		// AuditLog.userId is the INTEGER user_id column; User.id travels as a string.
 		await this.auditBL.logAction({
 			actionType: AuditActionType.CREATE,
 			resourceType: AuditResourceType.DASHBOARD,
 			resourceId: dashboardId.toString(),
-			userId: user.id,
+			userId: Number(user.id),
 			userName: user.fullName,
 			resourceName: dashboard.name,
 		});
@@ -56,7 +57,7 @@ export class DashboardBL {
 			actionType: AuditActionType.UPDATE,
 			resourceType: AuditResourceType.DASHBOARD,
 			resourceId: dashboardId.toString(),
-			userId: user.id,
+			userId: Number(user.id),
 			userName: user.fullName,
 			resourceName: dashboard.name,
 		});

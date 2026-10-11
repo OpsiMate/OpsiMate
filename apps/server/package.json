@@ -18,6 +18,7 @@
 		"test:coverage": "vitest run --coverage",
 		"lint": "eslint src --ext .ts --max-warnings=0",
 		"lint-fix": "eslint src --ext .ts --fix",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"format": "prettier --check .",
 		"format-fix": "prettier --write .",
 		"check": "pnpm run format && pnpm run lint",
