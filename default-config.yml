@@ -23,7 +23,6 @@ security:
 # 3. Update mailLinkBaseUrl to your actual domain
 mailer:
   enabled: false
-  default_encoding: "UTF-8"
   host: "smtp.gmail.com"  # Replace with your SMTP server
   port: 587                
   secure: false
