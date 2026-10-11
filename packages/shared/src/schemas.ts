@@ -53,14 +53,6 @@ export const CustomFieldIdSchema = z.object({
 
 export const RoleSchema = z.nativeEnum(Role);
 
-export const UserSchema = z.object({
-	id: z.number(),
-	email: z.string().email(),
-	fullName: z.string(),
-	role: RoleSchema,
-	createdAt: z.string(),
-});
-
 export const CreateUserSchema = z.object({
 	email: z.string().email(),
 	fullName: z.string().min(1),

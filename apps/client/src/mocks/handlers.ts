@@ -895,64 +895,6 @@ export const handlers = [
 		return HttpResponse.json({ success: true, message: 'Comment deleted successfully' });
 	}),
 
-	// ==================== PROVIDERS ====================
-	http.get(`${API_BASE}/providers`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: { providers: playgroundState.providers },
-		});
-	}),
-
-	http.post(`${API_BASE}/providers`, async ({ request }) => {
-		const body = (await request.json()) as Partial<(typeof playgroundState.providers)[0]>;
-		const newProvider = {
-			...body,
-			id: randomId(),
-			createdAt: nowIso(),
-		} as (typeof playgroundState.providers)[0];
-
-		playgroundState.providers.push(newProvider);
-		return HttpResponse.json({ success: true, data: { provider: newProvider } });
-	}),
-
-	http.put(`${API_BASE}/providers/:id`, async ({ params, request }) => {
-		const id = Number(params.id);
-		const body = (await request.json()) as Partial<(typeof playgroundState.providers)[0]>;
-		const provider = playgroundState.providers.find((p) => p.id === id);
-
-		if (!provider) {
-			return HttpResponse.json({ success: false, error: 'Provider not found' }, { status: 404 });
-		}
-
-		Object.assign(provider, body);
-		return HttpResponse.json({ success: true, data: { provider } });
-	}),
-
-	http.delete(`${API_BASE}/providers/:id`, ({ params }) => {
-		const id = Number(params.id);
-		playgroundState.providers = playgroundState.providers.filter((p) => p.id !== id);
-		return HttpResponse.json({ success: true });
-	}),
-
-	// ==================== SERVICES ====================
-	http.get(`${API_BASE}/services`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: playgroundState.services,
-		});
-	}),
-
-	http.get(`${API_BASE}/services/:id`, ({ params }) => {
-		const id = Number(params.id);
-		const service = playgroundState.services.find((s) => s.id === id);
-
-		if (!service) {
-			return HttpResponse.json({ success: false, error: 'Service not found' }, { status: 404 });
-		}
-
-		return HttpResponse.json({ success: true, data: { service } });
-	}),
-
 	// ==================== TAGS ====================
 	http.get(`${API_BASE}/tags`, () => {
 		return HttpResponse.json({
