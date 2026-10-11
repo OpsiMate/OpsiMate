@@ -67,6 +67,7 @@ const convert = (schema: z.ZodType, io: 'input' | 'output'): ConvertedSchema => 
 const SECURITY: Record<ApiAuth, Array<Record<string, string[]>>> = {
 	public: [],
 	user: [{ apiToken: [] }, { bearerAuth: [] }],
+	userJwt: [{ bearerAuth: [] }],
 	admin: [{ bearerAuth: [] }],
 };
 

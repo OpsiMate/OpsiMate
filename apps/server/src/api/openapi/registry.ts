@@ -1,16 +1,18 @@
 import { z } from 'zod';
 
 // One documented API route. The OpenAPI document (document.ts) is generated from these,
-// and apiDocsCoverage.test.ts checks that every route the app really registers is either
+// and apiDocs.test.ts checks that every route the app really registers is either
 // documented here or listed in pendingRoutes.ts, so the docs can't silently drift.
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 // Who may call the route:
-// - public: no credentials
-// - user:   a signed-in user (Bearer JWT) or the instance API token (x-api-token)
-// - admin:  a signed-in user with the admin role (Bearer JWT)
-export type ApiAuth = 'public' | 'user' | 'admin';
+// - public:  no credentials
+// - user:    a signed-in user (Bearer JWT) or the instance API token (x-api-token)
+// - userJwt: a signed-in user only (Bearer JWT): the route acts as that person, so the
+//            API token, which has no user, is refused
+// - admin:   a signed-in user with the admin role (Bearer JWT)
+export type ApiAuth = 'public' | 'user' | 'userJwt' | 'admin';
 
 export interface ApiResponseDoc {
 	description: string;

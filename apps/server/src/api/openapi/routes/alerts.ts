@@ -152,7 +152,7 @@ export const alertRoutes: ApiRouteDoc[] = [
 		tag: 'Alerts',
 		summary: 'Comment on an alert',
 		description: 'Needs a signed-in user (Bearer JWT): the comment is attributed to them.',
-		auth: 'user',
+		auth: 'userJwt',
 		params: AlertIdParam,
 		body: CreateCommentSchema,
 		responses: {

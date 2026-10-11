@@ -14,6 +14,14 @@ interface OpenApiOperation {
 	parameters?: OpenApiParameter[];
 }
 
+interface HttpMethodCaller {
+	get(path: string): request.Test;
+	post(path: string): request.Test;
+	put(path: string): request.Test;
+	patch(path: string): request.Test;
+	delete(path: string): request.Test;
+}
+
 interface OpenApiParameter {
 	name: string;
 	in: string;
@@ -231,6 +239,33 @@ describe('documented responses match the real API', () => {
 
 		const exists = await api.get('/api/v1/users/exists');
 		expectDocumented('get', '/api/v1/users/exists', exists);
+	});
+
+	// The docs promise the API token works on every `user` route and is refused on
+	// `userJwt` routes; check both against the real middleware and handlers.
+	test('the API token is accepted exactly where the docs say', async () => {
+		const api = request(app!);
+		const token = getSecurityConfig().api_token;
+		await api
+			.post('/api/v1/alerts/custom')
+			.set('x-api-token', token)
+			.send({ id: 'token-probe', alertName: 'Token probe', tags: {} });
+		const concrete = (path: string): string =>
+			path.replace(':alertId', 'token-probe').replace(':id', 'token-probe').replace(':integrationId', '999999');
+		const send = (method: string, path: string) =>
+			(api as unknown as HttpMethodCaller)
+				[method as keyof HttpMethodCaller](concrete(path))
+				.set('x-api-token', token);
+
+		for (const route of API_ROUTE_DOCS.filter((doc) => doc.auth === 'user')) {
+			const res = await send(route.method, route.path).send({});
+			expect(res.status, `${route.method.toUpperCase()} ${route.path}`).not.toBe(401);
+		}
+		for (const route of API_ROUTE_DOCS.filter((doc) => doc.auth === 'userJwt')) {
+			const res = await send(route.method, route.path).send({ comment: 'from a token' });
+			expect(res.status, `${route.method.toUpperCase()} ${route.path}`).toBe(401);
+			expectDocumented(route.method, route.path, res);
+		}
 	});
 
 	test('integrations, and credentials never come back', async () => {
