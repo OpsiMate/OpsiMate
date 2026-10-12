@@ -509,7 +509,7 @@ const Alerts = () => {
 				title: 'Dashboard saved',
 				description: 'Your changes have been saved successfully.',
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error saving dashboard',
 				description: 'Failed to save dashboard changes',
@@ -1049,7 +1049,7 @@ const Alerts = () => {
 			await deleteDashboardMutation.mutateAsync(dashboardState.id);
 			resetDashboard();
 			setShowDashboardSettings(false);
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error deleting dashboard',
 				description: 'Failed to delete dashboard',
