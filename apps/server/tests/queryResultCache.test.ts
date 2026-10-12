@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
-import { Alert, AlertOwnerInfo, compareAlerts, sortAlertsBy } from '@OpsiMate/shared';
+import { Alert, AlertOwnerInfo, AlertSeverity, compareAlerts, sortAlertsBy } from '@OpsiMate/shared';
 import { QueryResultCache, stableQueryKey } from '../src/bl/alerts/queryResultCache';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
@@ -75,11 +75,11 @@ describe('sortAlertsBy matches compareAlerts ordering exactly', () => {
 	// Duplicated names/severities force tiebreaks; unparseable dates force the 0
 	// fallback; a missing owner forces the null/absent key path.
 	const alerts: Alert[] = [
-		mkAlert('e', { alertName: 'Same', severity: 'critical', ownerId: '1' }),
-		mkAlert('a', { alertName: 'Same', severity: 'warning', startsAt: 'not-a-date' }),
-		mkAlert('d', { alertName: 'zeta', severity: 'critical', ownerId: '2' }),
-		mkAlert('b', { alertName: 'Alpha', severity: 'info', ownerId: '9' }),
-		mkAlert('c', { alertName: 'alpha', severity: undefined as unknown as string }),
+		mkAlert('e', { alertName: 'Same', severity: AlertSeverity.CRITICAL, ownerId: '1' }),
+		mkAlert('a', { alertName: 'Same', severity: AlertSeverity.WARNING, startsAt: 'not-a-date' }),
+		mkAlert('d', { alertName: 'zeta', severity: AlertSeverity.CRITICAL, ownerId: '2' }),
+		mkAlert('b', { alertName: 'Alpha', severity: AlertSeverity.INFO, ownerId: '9' }),
+		mkAlert('c', { alertName: 'alpha', severity: undefined }),
 	];
 
 	const fields = ['alertName', 'severity', 'startsAt', 'updatedAt', 'owner', 'status', 'type', 'no-such-field'];

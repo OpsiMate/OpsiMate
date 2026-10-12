@@ -36,7 +36,7 @@ export const CustomFieldsTable: React.FC = () => {
 				title: 'Success',
 				description: `Custom field "${fieldName}" deleted successfully`,
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error',
 				description: `Failed to delete custom field "${fieldName}"`,
