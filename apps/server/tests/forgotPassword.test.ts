@@ -6,7 +6,7 @@ import { AuditLogRepository } from '../src/dal/auditLogRepository';
 import { MailClient, MailType } from '../src/dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository';
 import { UserRepository } from '../src/dal/userRepository';
-import { Role } from '../../../packages/shared/dist/types';
+import { Role } from '@OpsiMate/shared';
 
 interface PasswordResetTokenRow {
 	token_hash: string;
