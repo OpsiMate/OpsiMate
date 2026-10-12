@@ -5,6 +5,15 @@ import { useAlertSorting } from '@/components/Alerts/AlertsTable/hooks/useAlertS
 
 vi.mock('@/hooks/queries/users', () => ({ useUsers: () => ({ data: [] }) }));
 
+interface ControlledSortProps {
+	field: string;
+	direction: 'asc' | 'desc';
+}
+
+interface ControlledModeProps {
+	controlled: boolean;
+}
+
 const makeAlert = (id: string, alertName: string, startsAt: string): Alert => ({
 	id,
 	alertName,
@@ -59,8 +68,7 @@ describe('useAlertSorting', () => {
 	});
 	it('follows controlled field and direction changes', () => {
 		const { result, rerender } = renderHook(
-			({ field, direction }: { field: string; direction: 'asc' | 'desc' }) =>
-				useAlertSorting(alerts, field, direction),
+			({ field, direction }: ControlledSortProps) => useAlertSorting(alerts, field, direction),
 			{ initialProps: { field: 'alertName', direction: 'asc' } }
 		);
 		expect(result.current.sortField).toBe('alertName');
@@ -74,7 +82,7 @@ describe('useAlertSorting', () => {
 	it('reports controlled changes without updating controlled or local state', () => {
 		const onSortChange = vi.fn();
 		const { result, rerender } = renderHook(
-			({ controlled }: { controlled: boolean }) =>
+			({ controlled }: ControlledModeProps) =>
 				useAlertSorting(
 					alerts,
 					controlled ? 'startsAt' : undefined,
