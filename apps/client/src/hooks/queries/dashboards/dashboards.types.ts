@@ -1,5 +1,4 @@
-import { DashboardTimeRange, Tag } from '@OpsiMate/shared';
-import { DashboardType } from '@OpsiMate/shared';
+import { DashboardTimeRange, Tag, DashboardType } from '@OpsiMate/shared';
 
 export interface Dashboard {
 	id: string;
