@@ -1,22 +1,7 @@
-export enum ProviderType {
-	VM = 'VM',
-	K8S = 'K8S',
-}
-
-// Client-side provider types for UI configuration
-export type ClientProviderType =
-	'server' | 'kubernetes' | 'aws-ec2' | 'aws-eks' | 'gcp-compute' | 'gcp-gke' | 'azure-vm' | 'azure-aks';
-
 export enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
 	Datadog = 'Datadog',
-}
-
-export enum ServiceType {
-	DOCKER = 'DOCKER',
-	SYSTEMD = 'SYSTEMD',
-	MANUAL = 'MANUAL',
 }
 
 export enum Role {
@@ -75,67 +60,11 @@ export interface IntegrationUrls {
 	url: string;
 }
 
-export interface Provider {
-	id: number;
-	name: string;
-	providerIP?: string;
-	username?: string;
-	secretId?: number;
-	privateKeyFilename?: string; // Deprecated: use secretId instead
-	password?: string;
-	SSHPort?: number;
-	createdAt: string;
-	providerType: ProviderType;
-}
-
-export interface ContainerDetails {
-	id?: string;
-	image?: string;
-	created?: string;
-	namespace?: string;
-}
-
 export interface Tag {
 	id: number;
 	name: string;
 	color: string;
 	createdAt: string;
-}
-
-export interface ServiceTag {
-	id: number;
-	serviceId: number;
-	tagId: number;
-	createdAt: string;
-}
-
-export interface Service {
-	id: number;
-	providerId: number;
-	name: string;
-	serviceIP?: string;
-	serviceStatus: string;
-	createdAt: string;
-	serviceType: ServiceType;
-	// todo - this be in different interface
-	containerDetails?: ContainerDetails;
-	tags?: Tag[];
-	customFields?: Record<number, string>; // customFieldId -> value
-}
-
-export interface ServiceWithProvider extends Service {
-	provider: Provider;
-}
-
-export interface DiscoveredService {
-	name: string;
-	serviceStatus: string;
-	serviceIP: string;
-	namespace?: string;
-}
-
-export interface DiscoveredPod {
-	name: string;
 }
 
 export type AlertType = 'Grafana' | 'GCP' | 'Custom' | 'UptimeKuma' | 'Datadog' | 'Zabbix';
@@ -247,8 +176,9 @@ export interface Alert {
 	// the links UI as "Source" / "Runbook" entries. Integrations still populate them.
 	alertUrl: string;
 	alertName: string;
-	summary?: string;
-	runbookUrl?: string;
+	// null when the alert has none (that's what the API sends).
+	summary?: string | null;
+	runbookUrl?: string | null;
 	// The alert's link collection — each entry renders as a button in the details panel's
 	// links section (and the row's ⋮ menu) with its icon when the slug is recognized.
 	links?: AlertLink[];
@@ -372,14 +302,6 @@ export interface ServiceCustomField {
 	id: number;
 	name: string;
 	createdAt: string;
-}
-
-export interface ServiceCustomFieldValue {
-	serviceId: number;
-	customFieldId: number;
-	value: string;
-	createdAt: string;
-	updatedAt: string;
 }
 
 export interface ResetPassword {

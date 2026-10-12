@@ -292,9 +292,20 @@ export class LdapAuthenticator {
 			// clear, so with StartTLS only the first socket is ever opened.
 			...(this.config.start_tls
 				? {
-						createConnection: (port: number, connectHost: string): net.Socket => {
+						// ldapts types createConnection as net.connect and then calls it with
+						// (port, host), so the guard below takes every shape net.connect accepts.
+						createConnection: (
+							target: string | number | net.NetConnectOpts,
+							host?: string | (() => void)
+						): net.Socket => {
 							plainSockets++;
-							if (plainSockets === 1) return net.connect(port, connectHost);
+							if (plainSockets === 1) {
+								if (typeof target === 'number') {
+									return net.connect(target, typeof host === 'string' ? host : undefined);
+								}
+								if (typeof target === 'string') return net.connect(target);
+								return net.connect(target);
+							}
 							const refused = new net.Socket();
 							process.nextTick(() =>
 								refused.destroy(

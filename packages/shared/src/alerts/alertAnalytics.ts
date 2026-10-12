@@ -1,11 +1,14 @@
 // ---------------------------------------------------------------------------
 // Alert analytics: the aggregate payload behind the Insights page. Everything is
-// computed SERVER-side over the full history (episodes can number in the tens of
-// thousands); the client only ever receives these compact aggregates, so the page
-// costs the same whether the installation has a hundred alerts or a million.
+// computed over the full history (episodes can number in the tens of thousands);
+// the client only ever receives these compact aggregates, so the page costs the
+// same whether the installation has a hundred alerts or a million.
+//
+// The computation lives in computeAlertAnalytics.ts and is shared by the server
+// and the browser (playground mode), so both produce identical aggregates.
 //
 // Extension pattern: add a field to the relevant section interface, compute it in
-// the server's analytics module (one function per section), and render it in the
+// computeAlertAnalytics.ts (one function per section), and render it in the
 // matching client tab. Nothing else needs touching.
 // ---------------------------------------------------------------------------
 

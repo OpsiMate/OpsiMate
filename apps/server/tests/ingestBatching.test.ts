@@ -2,6 +2,7 @@ import { Agent as HttpAgent } from 'node:http';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { AlertStatus } from '@OpsiMate/shared';
 import { IngestQueue } from '../src/bl/alerts/ingestQueue';
 import { AlertBL } from '../src/bl/alerts/alert.bl';
 import { AlertRepository } from '../src/dal/alertRepository';
@@ -91,7 +92,7 @@ describe('ingest batching through the webhook API', () => {
 		const pending = bl.insertOrUpdateAlert({
 			id: 'race-1',
 			type: 'Custom',
-			status: 'firing',
+			status: AlertStatus.FIRING,
 			tags: {},
 			startsAt: now,
 			updatedAt: now,
@@ -118,7 +119,7 @@ describe('ingest batching through the webhook API', () => {
 		const pending = bl.insertOrUpdateAlert({
 			id: 'grafana-queued',
 			type: 'Grafana',
-			status: 'firing',
+			status: AlertStatus.FIRING,
 			tags: {},
 			startsAt: now,
 			updatedAt: now,

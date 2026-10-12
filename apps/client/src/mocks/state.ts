@@ -31,11 +31,7 @@ import {
 	normalizeAlertSeverity,
 	Integration,
 	IntegrationType,
-	Provider,
-	ProviderType,
 	Role,
-	ServiceType,
-	ServiceWithProvider,
 	Tag,
 	User,
 } from '@OpsiMate/shared';
@@ -48,8 +44,6 @@ export interface PlaygroundState {
 	resolvedAlerts: Alert[];
 	alertComments: AlertComment[];
 	rootCauses: AlertRootCause[];
-	providers: Provider[];
-	services: ServiceWithProvider[];
 	tags: Tag[];
 	integrations: Integration[];
 	dashboards: Dashboard[];
@@ -88,90 +82,6 @@ const createTags = (): Tag[] => [
 	{ id: 4, name: 'frontend', color: '#10B981', createdAt: nowIso() },
 	{ id: 5, name: 'backend', color: '#F59E0B', createdAt: nowIso() },
 	{ id: 6, name: 'security', color: '#EF4444', createdAt: nowIso() },
-];
-
-const createProviders = (): Provider[] => [
-	{
-		id: 1,
-		name: 'Production API',
-		providerIP: '10.0.0.10',
-		username: 'ubuntu',
-		privateKeyFilename: 'id_rsa_api',
-		SSHPort: 22,
-		createdAt: nowIso(),
-		providerType: ProviderType.VM,
-	},
-	{
-		id: 2,
-		name: 'K8s Cluster',
-		providerIP: '10.0.0.50',
-		username: 'kube-admin',
-		privateKeyFilename: 'id_rsa_k8s',
-		SSHPort: 22,
-		createdAt: nowIso(),
-		providerType: ProviderType.K8S,
-	},
-	{
-		id: 3,
-		name: 'Analytics Nodes',
-		providerIP: '10.0.1.20',
-		username: 'analytics',
-		privateKeyFilename: 'id_rsa_analytics',
-		SSHPort: 22,
-		createdAt: nowIso(),
-		providerType: ProviderType.VM,
-	},
-];
-
-const createServices = (providers: Provider[], tags: Tag[]): ServiceWithProvider[] => [
-	{
-		id: 1001,
-		providerId: 1,
-		name: 'api-gateway',
-		serviceIP: '10.0.0.21',
-		serviceStatus: 'running',
-		serviceType: ServiceType.DOCKER,
-		createdAt: nowIso(),
-		provider: providers[0],
-		tags: [tags[0], tags[4]],
-		containerDetails: { id: 'container-1001', image: 'opsimate/api:latest', created: nowIso() },
-	},
-	{
-		id: 1002,
-		providerId: 1,
-		name: 'billing-service',
-		serviceIP: '10.0.0.31',
-		serviceStatus: 'degraded',
-		serviceType: ServiceType.DOCKER,
-		createdAt: nowIso(),
-		provider: providers[0],
-		tags: [tags[0], tags[4]],
-		containerDetails: { id: 'container-1002', image: 'opsimate/billing:edge', created: nowIso() },
-	},
-	{
-		id: 1003,
-		providerId: 2,
-		name: 'kube-prometheus',
-		serviceIP: '10.0.0.61',
-		serviceStatus: 'running',
-		serviceType: ServiceType.SYSTEMD,
-		createdAt: nowIso(),
-		provider: providers[1],
-		tags: [tags[1], tags[3]],
-		containerDetails: { namespace: 'monitoring' },
-	},
-	{
-		id: 1004,
-		providerId: 3,
-		name: 'elasticsearch',
-		serviceIP: '10.0.1.30',
-		serviceStatus: 'running',
-		serviceType: ServiceType.DOCKER,
-		createdAt: nowIso(),
-		provider: providers[2],
-		tags: [tags[0], tags[2]],
-		containerDetails: { id: 'container-1004', image: 'elastic/elasticsearch:8', created: nowIso() },
-	},
 ];
 
 const createIntegrations = (): Integration[] => [
@@ -473,8 +383,6 @@ const createResolvedAlerts = (alerts: Alert[]) =>
 	}));
 
 const initialTags = createTags();
-const initialProviders = createProviders();
-const initialServices = createServices(initialProviders, initialTags);
 const initialAlerts = seedAlerts();
 const initialEnrichments = createEnrichments();
 
@@ -523,8 +431,6 @@ export const playgroundState: PlaygroundState = {
 			updatedAt: nowIso(),
 		},
 	],
-	providers: initialProviders,
-	services: initialServices,
 	tags: initialTags,
 	integrations: createIntegrations(),
 	dashboards: createDashboards(),

@@ -5,6 +5,7 @@ import { SecretsMetadataBL } from '../../../bl/secrets/secretsMetadata.bl';
 import fs from 'fs';
 import { encryptPassword } from '../../../utils/encryption';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 import { validateKubeConfig, validatePublicSSHKey } from '../../../utils/validators/validators';
 
 const logger = new Logger('api/v1/secrets/controller');
@@ -23,40 +24,35 @@ export class SecretsController {
 	};
 
 	createSecret = async (req: AuthenticatedRequest, res: Response) => {
+		let handedToBL = false;
 		try {
-			// Read the just-saved file
-			const filePath = req.file!.path;
-			const originalContent = fs.readFileSync(filePath, 'utf-8');
 			const { displayName, secretType } = CreateSecretsMetadataSchema.parse(req.body);
-			let isValidFile: boolean = false;
-
-			if (secretType === SecretType.SSH) {
-				isValidFile = validatePublicSSHKey(originalContent);
-			} else {
-				isValidFile = validateKubeConfig(originalContent);
+			if (!req.file) {
+				return res.status(400).json({ success: false, error: 'secret_file is required' });
 			}
-			if (!isValidFile) {
+
+			if (!this.encryptUploadedSecret(req.file, secretType)) {
+				this.removeUploadedFile(req.file);
 				return res.status(422).json({
 					success: false,
 					error: 'Invalid file content',
 				});
 			}
-			// Encrypt it
-			const encryptedContent = encryptPassword(originalContent);
 
-			// Overwrite file with encrypted content
-			fs.writeFileSync(filePath, encryptedContent ?? '');
-
-			// Use parsed values from earlier
+			// From here the record may reference the (already encrypted) file, so keep it on failure
+			handedToBL = true;
 			const createdSecretId: number = await this.secretsBL.createSecretMetadata(
 				displayName,
-				req.file!.filename,
+				req.file.filename,
 				secretType,
 				req.user
 			);
 
 			return res.status(201).json({ success: true, data: { id: createdSecretId } });
 		} catch (error) {
+			if (!handedToBL) {
+				this.removeUploadedFile(req.file);
+			}
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
@@ -67,9 +63,11 @@ export class SecretsController {
 	};
 
 	updateSecret = async (req: AuthenticatedRequest, res: Response) => {
+		let handedToBL = false;
 		try {
-			const secretId = parseInt(req.params.id);
+			const secretId = parseInt(routeParam(req, 'id'));
 			if (isNaN(secretId)) {
+				this.removeUploadedFile(req.file);
 				return res.status(400).json({ success: false, error: 'Invalid secret ID' });
 			}
 
@@ -80,30 +78,17 @@ export class SecretsController {
 
 			// If a new file is uploaded, handle it
 			if (req.file) {
-				// Read the just-saved file
-				const filePath = req.file.path;
-				const originalContent = fs.readFileSync(filePath, 'utf-8');
-				let isValidFile: boolean = false;
-				if (secretType === SecretType.SSH) {
-					isValidFile = validatePublicSSHKey(originalContent);
-				} else {
-					isValidFile = validateKubeConfig(originalContent);
-				}
-				if (!isValidFile) {
+				if (!this.encryptUploadedSecret(req.file, secretType)) {
+					this.removeUploadedFile(req.file);
 					return res.status(422).json({
 						success: false,
 						error: 'Invalid file content',
 					});
 				}
-				// Encrypt it
-				const encryptedContent = encryptPassword(originalContent);
-
-				// Overwrite file with encrypted content
-				fs.writeFileSync(filePath, encryptedContent ?? '');
-
 				newFileName = req.file.filename;
 			}
 
+			handedToBL = true;
 			const updated = await this.secretsBL.updateSecretMetadata(
 				secretId,
 				displayName,
@@ -115,9 +100,13 @@ export class SecretsController {
 			if (updated) {
 				return res.json({ success: true, message: 'Secret updated successfully' });
 			} else {
+				this.removeUploadedFile(req.file);
 				return res.status(404).json({ success: false, error: 'Secret not found' });
 			}
 		} catch (error) {
+			if (!handedToBL) {
+				this.removeUploadedFile(req.file);
+			}
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
@@ -127,9 +116,33 @@ export class SecretsController {
 		}
 	};
 
+	private encryptUploadedSecret(file: Express.Multer.File, secretType?: SecretType): boolean {
+		const originalContent = fs.readFileSync(file.path, 'utf-8');
+		const isValidFile =
+			secretType === SecretType.SSH ? validatePublicSSHKey(originalContent) : validateKubeConfig(originalContent);
+		if (!isValidFile) {
+			return false;
+		}
+		fs.writeFileSync(file.path, encryptPassword(originalContent) ?? '');
+		return true;
+	}
+
+	private removeUploadedFile(file?: Express.Multer.File) {
+		if (!file) {
+			return;
+		}
+		try {
+			fs.unlinkSync(file.path);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+				logger.error(`Failed to remove uploaded secret file ${file.path}`, error);
+			}
+		}
+	}
+
 	deleteSecret = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const secretId = parseInt(req.params.id);
+			const secretId = parseInt(routeParam(req, 'id'));
 			if (isNaN(secretId)) {
 				return res.status(400).json({ success: false, error: 'Invalid secret ID' });
 			}

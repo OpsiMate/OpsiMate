@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
 	Alert,
+	AlertListFilters,
 	AlertListQuery,
 	AlertOwnerInfo,
 	applyAlertListQuery,
@@ -174,12 +175,14 @@ describe('memoized query engine equals a from-scratch computation', () => {
 		expect(walked).toEqual(expected);
 	});
 
-	test.each([
+	const filterCases: AlertListFilters[] = [
 		{},
 		{ severity: ['Critical'] },
 		{ '!severity': ['Info'], 'tagKey:env': ['prod'] },
 		{ status: ['Silenced'], owner: ['bob'] },
-	])('facets with filters %o', (filters) => {
+	];
+
+	test.each(filterCases)('facets with filters %o', (filters) => {
 		const expected = referenceFacets(alerts, filters, users);
 		expect(computeAlertFacets(alerts, filters, undefined, users).facets).toEqual(expected);
 		expect(computeAlertFacets(alerts, filters, undefined, users).facets).toEqual(expected);

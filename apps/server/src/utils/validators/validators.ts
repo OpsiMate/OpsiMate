@@ -5,13 +5,20 @@ import { Logger } from '@OpsiMate/shared';
 import * as yaml from 'js-yaml';
 import { parseKey, Key } from 'sshpk';
 const logger: Logger = new Logger('utils/validators');
+
+export const MIN_SSH_KEY_LENGTH = 100;
+export const MAX_SSH_KEY_LENGTH = 100000;
+
 export function validatePublicSSHKey(content: string): boolean {
 	try {
 		const trimmed = content.trim();
-		if (!trimmed || trimmed.length < 100 || trimmed.length > 100000) {
+		if (!trimmed || trimmed.length < MIN_SSH_KEY_LENGTH || trimmed.length > MAX_SSH_KEY_LENGTH) {
 			return false;
 		}
-		const key: Key = parseKey(trimmed, 'auto'); //validate private Key
+		// Despite the function name, the uploaded file is the PRIVATE key OpsiMate uses to
+		// SSH into hosts (e.g. PEM "-----BEGIN RSA PRIVATE KEY-----" / PKCS#8). OpenSSH
+		// public keys ("ssh-rsa AAAA…", "ssh-ed25519 AAAA…") are rejected.
+		const key: Key = parseKey(trimmed, 'auto');
 		if (!key || !key.source) {
 			return false;
 		}

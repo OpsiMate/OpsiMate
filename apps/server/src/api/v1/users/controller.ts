@@ -1,6 +1,7 @@
 import { LdapUnavailableError } from '../../../bl/users/ldapAuthenticator';
 import { Request, Response } from 'express';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 import {
 	DirectoryManagedError,
 	INVALID_LOGIN,
@@ -13,12 +14,13 @@ import {
 	Logger,
 	LoginSchema,
 	RegisterSchema,
-	Role,
 	UpdateUserRoleSchema,
 	UpdateProfileSchema,
 	ForgotPasswordSchema,
 	ValidateResetTokenSchema,
 	ResetPasswordSchema,
+	AdminUpdateUserSchema,
+	AdminResetPasswordSchema,
 } from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth';
@@ -44,6 +46,7 @@ export class UsersController {
 			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else {
+				logger.error('Error registering user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -60,6 +63,7 @@ export class UsersController {
 			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else {
+				logger.error('Error creating user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -74,6 +78,7 @@ export class UsersController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
+				logger.error('Error updating user role:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -101,6 +106,7 @@ export class UsersController {
 					.status(503)
 					.json({ success: false, error: 'Directory login is unavailable right now. Try again later.' });
 			} else {
+				logger.error('Error logging in:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -116,13 +122,14 @@ export class UsersController {
 		try {
 			const users = await this.userBL.getAllUsers();
 			return res.status(200).json({ success: true, data: users });
-		} catch {
+		} catch (error) {
+			logger.error('Error getting users:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 
 	deleteUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(req.params.id);
+		const userId = parseInt(routeParam(req, 'id'));
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
@@ -147,7 +154,8 @@ export class UsersController {
 		try {
 			const exists = await this.userBL.usersExist();
 			return res.status(200).json({ success: true, exists });
-		} catch {
+		} catch (error) {
+			logger.error('Error checking whether users exist:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
@@ -213,20 +221,13 @@ export class UsersController {
 	};
 
 	updateUserPasswordHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(req.params.id);
+		const userId = parseInt(routeParam(req, 'id'));
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
 
 		try {
-			const { newPassword } = req.body as { newPassword: string };
-
-			if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-				return res.status(400).json({
-					success: false,
-					error: 'Password must be at least 8 characters long',
-				});
-			}
+			const { newPassword } = AdminResetPasswordSchema.parse(req.body);
 
 			// Don't allow admin to reset their own password this way.
 			// requireAdmin (users/router.ts) guarantees req.user is present.
@@ -250,6 +251,9 @@ export class UsersController {
 			});
 		} catch (error) {
 			logger.error('Error resetting user password:', error);
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
 			if (error instanceof DirectoryManagedError) {
 				return res.status(400).json({ success: false, error: error.message });
 			}
@@ -258,25 +262,13 @@ export class UsersController {
 	};
 
 	updateUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(req.params.id);
+		const userId = parseInt(routeParam(req, 'id'));
 		if (isNaN(userId)) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
 
 		try {
-			const { fullName, email, role } = req.body as {
-				fullName?: string;
-				email?: string;
-				role?: Role;
-			};
-
-			// Validate at least one field is provided
-			if (!fullName && !email && !role) {
-				return res.status(400).json({
-					success: false,
-					error: 'At least one field (fullName, email, or role) must be provided',
-				});
-			}
+			const { fullName, email, role } = AdminUpdateUserSchema.parse(req.body);
 
 			const user = await this.userBL.getUserById(userId);
 			if (!user) {
@@ -291,7 +283,9 @@ export class UsersController {
 				message: 'User updated successfully',
 			});
 		} catch (error) {
-			if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
 				return res.status(400).json({ success: false, error: 'Email already registered' });
 			} else if (error instanceof DirectoryManagedError) {
 				return res.status(400).json({ success: false, error: error.message });

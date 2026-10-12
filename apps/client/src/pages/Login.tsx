@@ -76,7 +76,7 @@ const Login: React.FC = () => {
 			} else {
 				handleApiResponse(res);
 			}
-		} catch (err) {
+		} catch {
 			handleApiResponse({
 				success: false,
 				error: 'Network error. Please check your connection and try again.',

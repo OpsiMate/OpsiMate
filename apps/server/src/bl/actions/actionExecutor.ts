@@ -10,6 +10,7 @@ import {
 	SlackActionConfig,
 	TeamsActionConfig,
 } from '@OpsiMate/shared';
+import { MS_PER_MINUTE } from '../../utils/time';
 
 const logger = new Logger('bl/actions/actionExecutor');
 
@@ -64,7 +65,7 @@ const expandContext = (fields: Record<string, string>, tags: Record<string, stri
 // in the past, updated now.
 export const buildSampleContext = (): Record<string, string> => {
 	const now = Date.now();
-	const fiveMinutesAgo = new Date(now - 5 * 60 * 1000).toISOString();
+	const fiveMinutesAgo = new Date(now - 5 * MS_PER_MINUTE).toISOString();
 	return expandContext(
 		{
 			name: 'Test alert from OpsiMate',

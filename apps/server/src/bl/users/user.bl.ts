@@ -7,6 +7,7 @@ import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
 import { LdapAuthenticator } from './ldapAuthenticator';
 import { LoginThrottle } from './loginThrottle';
+import { MS_PER_MINUTE } from '../../utils/time';
 
 // Work factor used for every password hash created by this module.
 const BCRYPT_SALT_ROUNDS = 10;
@@ -37,7 +38,7 @@ export class TooManyLoginAttemptsError extends Error {
 }
 
 export const DEFAULT_LDAP_MAX_FAILURES = 5;
-const LDAP_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const LDAP_FAILURE_WINDOW_MS = 15 * MS_PER_MINUTE;
 // 65,536 buckets ≈ 768 KB, fixed.
 const LDAP_FAILURE_BUCKETS = 1 << 16;
 
@@ -292,8 +293,10 @@ export class UserBL {
 		let resetPasswordConfig: ReturnType<typeof generatePasswordResetInfo> | undefined;
 		try {
 			resetPasswordConfig = generatePasswordResetInfo();
+			// User.id is a string at the API boundary; users, password_resets and audit_logs
+			// all key their user id as an INTEGER column.
 			await this.passwordResetsRepo.createPasswordResetToken({
-				userId: user.id,
+				userId: Number(user.id),
 				tokenHash: resetPasswordConfig.tokenHash,
 				expiresAt: resetPasswordConfig.expiresAt,
 			});
@@ -309,7 +312,7 @@ export class UserBL {
 			logger.error('Failed to send password reset email', error);
 			if (resetPasswordConfig) {
 				await this.passwordResetsRepo.deletePasswordResetByUserIdAndTokenHash(
-					user.id,
+					Number(user.id),
 					resetPasswordConfig.tokenHash
 				);
 			}
@@ -381,14 +384,14 @@ export class UserBL {
 				throw new Error('You cannot reuse an old password');
 			}
 
-			await this.resetUserPassword(user.id, newPassword);
-			await this.passwordResetsRepo.deletePasswordResetsByUserId(user.id);
+			await this.resetUserPassword(Number(user.id), newPassword);
+			await this.passwordResetsRepo.deletePasswordResetsByUserId(Number(user.id));
 
 			await this.auditBL.logAction({
 				actionType: AuditActionType.UPDATE,
 				resourceType: AuditResourceType.USER,
 				resourceId: String(user.id),
-				userId: user.id,
+				userId: Number(user.id),
 				userName: user.fullName,
 				resourceName: user.email,
 				details: 'User reset their password via email link',

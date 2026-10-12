@@ -29,12 +29,14 @@ export class SecretsMetadataBL {
 
 			logger.info(`Successfully created secret named ${displayName} in ${newName} in ${createdSecret.lastID}`);
 
+			// AuditLog.userId is the INTEGER user_id column, with -1 for "no acting user";
+			// User.id travels as a string.
 			await this.auditBL.logAction({
 				actionType: AuditActionType.CREATE,
 				resourceType: AuditResourceType.SECRET,
 				resourceId: createdSecret.lastID.toString(),
 				resourceName: displayName,
-				userId: user?.id ?? -1,
+				userId: user ? Number(user.id) : -1,
 				userName: user?.fullName ?? 'system',
 				details: `Secret created; filename=${newName}; type=${secretType}`,
 			});
@@ -125,7 +127,7 @@ export class SecretsMetadataBL {
 				resourceType: AuditResourceType.SECRET,
 				resourceId: id.toString(),
 				resourceName: displayName ?? existingSecret.name,
-				userId: user?.id ?? -1,
+				userId: user ? Number(user.id) : -1,
 				userName: user?.fullName ?? 'system',
 				details: `Secret updated; ${displayName !== undefined ? 'displayName_updated; ' : ''}${newFileName !== undefined ? 'fileName_updated; ' : ''}${secretType !== undefined ? `type=${secretType};` : ''}`,
 			});
@@ -180,7 +182,7 @@ export class SecretsMetadataBL {
 				resourceType: AuditResourceType.SECRET,
 				resourceId: id.toString(),
 				resourceName: secretToDelete.name,
-				userId: user?.id ?? -1,
+				userId: user ? Number(user.id) : -1,
 				userName: user?.fullName ?? 'system',
 				details: `Secret deleted; filename=${secretToDelete.fileName}; type=${secretToDelete.type}`,
 			});

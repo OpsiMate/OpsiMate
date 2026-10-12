@@ -73,11 +73,13 @@ describe('forgot password mail failures', () => {
 	test('keeps a newer reset token when an earlier email send fails', async () => {
 		const { db, userRepo, passwordResetsRepo, auditBL } = await createRepositories();
 		await userRepo.createUser('user@example.test', 'password-hash', 'Test User', 'admin');
+		// The promise executor runs synchronously, so the capture is set before the
+		// first await yields — which tsc cannot see on its own.
 		let resolveFirstMailStarted: () => void;
 		const firstMailStarted = new Promise<void>((resolve) => {
 			resolveFirstMailStarted = resolve;
 		});
-		let rejectFirstMail: (reason?: unknown) => void;
+		let rejectFirstMail!: (reason?: unknown) => void;
 		const firstMailPending = new Promise<void>((_, reject) => {
 			rejectFirstMail = reject;
 		});

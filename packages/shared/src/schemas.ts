@@ -53,14 +53,6 @@ export const CustomFieldIdSchema = z.object({
 
 export const RoleSchema = z.nativeEnum(Role);
 
-export const UserSchema = z.object({
-	id: z.number(),
-	email: z.string().email(),
-	fullName: z.string(),
-	role: RoleSchema,
-	createdAt: z.string(),
-});
-
 export const CreateUserSchema = z.object({
 	email: z.string().email(),
 	fullName: z.string().min(1),
@@ -142,6 +134,18 @@ export const ResetPasswordSchema = z.object({
 			message: 'Password must not contain spaces',
 		}),
 });
+
+export const AdminResetPasswordSchema = ResetPasswordSchema.pick({ newPassword: true });
+
+export const AdminUpdateUserSchema = z
+	.object({
+		fullName: z.string().min(1).optional(),
+		email: z.string().email().optional(),
+		role: RoleSchema.optional(),
+	})
+	.refine((val) => val.fullName !== undefined || val.email !== undefined || val.role !== undefined, {
+		message: 'At least one field (fullName, email, or role) must be provided',
+	});
 
 export const CreateDashboardSchema = z.object({
 	name: z.string(),

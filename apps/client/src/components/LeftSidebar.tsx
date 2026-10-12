@@ -1,8 +1,21 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { BarChart3, Bell, BellOff, LayoutDashboard, PhoneCall, Puzzle, Settings, Sparkles, Zap } from 'lucide-react';
+import {
+	BarChart3,
+	Bell,
+	BellOff,
+	BookOpen,
+	LayoutDashboard,
+	PhoneCall,
+	Puzzle,
+	Settings,
+	Sparkles,
+	Zap,
+} from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { API_HOST } from '../lib/api';
 import { isAdmin, isEditor } from '../lib/auth';
+import { isPlaygroundMode } from '../lib/playground';
 import { AppIcon } from './icons/AppIcon';
 import { ALERTS_PATHS } from './LeftSidebar.constants';
 import { PreserveQueryLink } from './PreserveQueryLink';
@@ -20,6 +33,29 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as (typeof ALERTS_PATHS)[number]);
 	const showIntegrations = isEditor();
 	const showSettings = isAdmin();
+	// The playground has no server behind it, so there's no API to document.
+	const apiDocsLink = isPlaygroundMode() ? null : (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<a
+					href={`${API_HOST}/api/docs/`}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label="Open the API documentation"
+					className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md text-foreground"
+				>
+					<BookOpen className="h-5 w-5" />
+				</a>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				align="center"
+				className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
+			>
+				API documentation
+			</TooltipContent>
+		</Tooltip>
+	);
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<PreserveQueryLink
@@ -212,7 +248,10 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 										Star us on GitHub ⭐
 									</TooltipContent>
 								</Tooltip>
+								{!collapsed && apiDocsLink}
 							</div>
+							{/* Collapsed, the row has room for two icons only. */}
+							{collapsed && apiDocsLink}
 
 							<VersionBadge collapsed={collapsed} />
 						</div>

@@ -21,7 +21,9 @@ export const useIntegrationUrls = (integrationId: number | null, tags: string[])
 					if (response.success && response.data) {
 						return response.data;
 					} else {
-						logger.warn(`Failed to fetch dashboards for tag ${tagName}:`, response.error);
+						logger.warn(`Failed to fetch dashboards for tag ${tagName}:`, {
+							extraArgs: { error: response.error },
+						});
 						return [];
 					}
 				} catch (error) {
