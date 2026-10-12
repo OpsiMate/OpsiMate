@@ -1,4 +1,4 @@
-import { AlertType, IntegrationType, Role } from '@OpsiMate/shared';
+import { AlertType, DashboardType, IntegrationType, Role } from '@OpsiMate/shared';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
 
 export type IntegrationRow = {
@@ -41,7 +41,7 @@ export type ServiceRowWithProviderRow = {
 
 export interface DashboardRow {
 	id: string;
-	type: 'services' | 'alerts';
+	type: DashboardType;
 	name: string;
 	description?: string;
 	created_at: string;
