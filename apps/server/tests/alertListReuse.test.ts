@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { AlertStatus } from '@OpsiMate/shared';
 import { AlertBL } from '../src/bl/alerts/alert.bl';
 import { EnrichmentBL } from '../src/bl/enrichments/enrichment.bl';
 import { AuditBL } from '../src/bl/audit/audit.bl';
@@ -34,7 +35,7 @@ const alert = (id: string, extra: Partial<Parameters<AlertBL['insertOrUpdateAler
 	return {
 		id,
 		type: 'Custom' as const,
-		status: 'firing' as const,
+		status: AlertStatus.FIRING,
 		tags: { env: 'prod' },
 		startsAt: now,
 		updatedAt: now,
