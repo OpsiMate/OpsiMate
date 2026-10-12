@@ -1,3 +1,4 @@
+import { Agent as HttpAgent } from 'node:http';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -19,6 +20,9 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
+// Bound simultaneous TCP connections so the 300-request burst stays below the
+// local test server's listen backlog while requests remain concurrently queued.
+const httpAgent = new HttpAgent({ keepAlive: true, maxSockets: 100 });
 
 interface CountRow {
 	n: number;
@@ -36,6 +40,7 @@ const countResolved = (prefix: string): number =>
 const postCustom = (id: string) =>
 	app
 		.post('/api/v1/alerts/custom')
+		.agent(httpAgent)
 		.set('Authorization', `Bearer ${jwtToken}`)
 		.send({ id, alertName: `alert ${id}`, tags: { env: 'test' }, severity: 'warning' });
 
@@ -51,6 +56,7 @@ beforeAll(async () => {
 
 afterAll(() => {
 	db.close();
+	httpAgent.destroy();
 });
 
 describe('ingest batching through the webhook API', () => {

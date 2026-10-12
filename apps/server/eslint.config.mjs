@@ -23,4 +23,14 @@ export default [
 			'no-console': 'warn',
 		},
 	},
+	{
+		files: ['tests/**/*.ts'],
+		rules: {
+			// Supertest types res.body as any, so these unsafe rules add noise in tests.
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+			'@typescript-eslint/no-unsafe-argument': 'off',
+		},
+	},
 ];
