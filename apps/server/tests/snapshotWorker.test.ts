@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { AlertBL } from '../src/bl/alerts/alert.bl';
 import { ActiveListBuilder } from '../src/bl/alerts/activeListBuilder';
@@ -23,7 +23,7 @@ const alert = (id: string, tags: Record<string, string> = {}) => {
 	return {
 		id,
 		type: 'Custom' as const,
-		status: 'firing' as const,
+		status: AlertStatus.FIRING,
 		tags,
 		startsAt: now,
 		updatedAt: now,

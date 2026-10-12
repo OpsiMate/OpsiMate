@@ -86,7 +86,7 @@ export const DashboardRow = ({
 					variant: 'destructive',
 				});
 			}
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error',
 				description: 'Failed to create tag',
