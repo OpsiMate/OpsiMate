@@ -72,7 +72,10 @@ export class UsersController {
 	updateUserRoleHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { email, newRole } = UpdateUserRoleSchema.parse(req.body);
-			await this.userBL.updateUserRole(email, newRole);
+			const updated = await this.userBL.updateUserRole(email, newRole);
+			if (!updated) {
+				return res.status(404).json({ success: false, error: 'User not found' });
+			}
 			return res.status(200).json({ success: true, message: 'User role updated successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
