@@ -1,7 +1,7 @@
 import { SuperTest, Test } from 'supertest';
-import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
+import { Alert, AlertStatus, AlertType, DEFAULT_ALERT_SEVERITY, Logger } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { AlertRow } from '../src/dal/models';
+import { AlertRow, ResolvedAlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
@@ -89,7 +89,7 @@ const seedAlerts = () => {
 	const sampleResolvedAlerts = [
 		{
 			id: 'resolved-1',
-			type: 'Grafana',
+			type: 'Grafana' as AlertType,
 			status: 'resolved',
 			tags: { tag: 'system' },
 			starts_at: new Date(Date.now() - 5 * 3600000).toISOString(), // 5 hours ago
@@ -131,7 +131,10 @@ const seedAlerts = () => {
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
-		tags: row.tags,
+		// The seed writes no severity column, and the repository reads a missing one
+		// back as the default, so the fixture mirrors that.
+		severity: DEFAULT_ALERT_SEVERITY,
+		tags: JSON.parse(row.tags),
 		startsAt: row.starts_at,
 		updatedAt: row.updated_at,
 		alertUrl: row.alert_url,
@@ -145,12 +148,14 @@ const seedAlerts = () => {
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
+		severity: DEFAULT_ALERT_SEVERITY,
 		tags: row.tags,
 		startsAt: row.starts_at,
 		updatedAt: row.updated_at,
 		alertUrl: row.alert_url,
 		alertName: row.alert_name,
 		archivedAt: row.archived_at,
+		createdAt: Date.now().toString(),
 		isSilenced: row.is_dismissed,
 	}));
 
@@ -452,7 +457,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe(payload.id);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.alertName);
 		});
@@ -1247,7 +1252,9 @@ describe('Alerts API', () => {
 			const rowAfter = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
 			expect(rowAfter).toBeUndefined();
 
-			const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertInstanceId);
+			const resolvedRow = db
+				.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
+				.get(alertInstanceId) as ResolvedAlertRow;
 			expect(resolvedRow).toBeDefined();
 			expect(resolvedRow.id).toBe(alertInstanceId);
 		});
@@ -1389,7 +1396,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe('UPTIMEKUMA_4');
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4');
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4') as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(baseMonitor.pathName);
 			expect(row.status).toBe('firing');
@@ -1573,7 +1580,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe(payload.incident.incident_id);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.incident.incident_id);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.incident.incident_id) as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
 			expect(row.status).toBe('firing');
@@ -1603,7 +1610,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId) as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
 			expect(row.status).toBe('firing');
@@ -1635,7 +1642,9 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
 			expect(row).toBeUndefined();
 
-			const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(existingId);
+			const resolvedRow = db
+				.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
+				.get(existingId) as ResolvedAlertRow;
 
 			expect(resolvedRow).toBeDefined();
 			expect(resolvedRow.id).toBe(existingId);
@@ -1738,7 +1747,7 @@ describe('Alerts API', () => {
 			expect(response.body.data.alertId).toBe('0.nzm8u2jxkaq5');
 
 			// Validate DB
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('0.nzm8u2jxkaq5');
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('0.nzm8u2jxkaq5') as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe('mytestforgcp');
 			expect(row.summary).toContain('CPU usage for opsimate');
