@@ -30,8 +30,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
+import { queryKeys, useIntegrations } from '@/hooks/queries';
 import { integrationApi } from '@/lib/api';
 import { canDelete, canManageIntegrations } from '@/lib/permissions';
+import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import { IntegrationType, Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
 import {
@@ -55,6 +57,7 @@ import {
 	Webhook,
 	X,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -239,10 +242,8 @@ const Integrations = () => {
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
 	const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-	const [configuredInstances, setConfiguredInstances] = useState<Record<string, number>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [formData, setFormData] = useState<Record<string, string>>({});
-	const [savedIntegrations, setSavedIntegrations] = useState<SharedIntegration[]>([]);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [integrationToDelete, setIntegrationToDelete] = useState<SharedIntegration | null>(null);
 	const [showGCPSetupModal, setShowGCPSetupModal] = useState(false);
@@ -252,6 +253,22 @@ const Integrations = () => {
 	const [showZabbixSetupModal, setShowZabbixSetupModal] = useState(false);
 	const [showCustomAlertsSetupModal, setShowCustomAlertsSetupModal] = useState(false);
 	const { toast } = useToast();
+	const queryClient = useQueryClient();
+	const { data: savedIntegrations = [] } = useIntegrations();
+
+	// Count how many instances of each integration type are configured
+	const configuredInstances = useMemo(() => {
+		const instances: Record<string, number> = {};
+		savedIntegrations.forEach((integration) => {
+			// Use the integration ID from INTEGRATIONS array that matches this type
+			const matchingIntegrationType = Object.values(IntegrationType).find((type) => type === integration.type);
+			if (matchingIntegrationType) {
+				const id = matchingIntegrationType.toLowerCase();
+				instances[id] = (instances[id] || 0) + 1;
+			}
+		});
+		return instances;
+	}, [savedIntegrations]);
 
 	// Handle URL-based category filtering
 	useEffect(() => {
@@ -266,36 +283,6 @@ const Integrations = () => {
 			}
 		}
 	}, [searchParams]);
-
-	// Fetch saved integrations on component mount
-	useEffect(() => {
-		const fetchIntegrations = async () => {
-			try {
-				const response = await integrationApi.getIntegrations();
-				if (response.success && response.data?.integrations) {
-					setSavedIntegrations(response.data.integrations);
-
-					// Update configured instances based on saved integrations
-					const instances: Record<string, number> = {};
-					response.data.integrations.forEach((integration) => {
-						// Use the integration ID from INTEGRATIONS array that matches this type
-						const matchingIntegrationType = Object.values(IntegrationType).find(
-							(type) => type === integration.type
-						);
-						if (matchingIntegrationType) {
-							const id = matchingIntegrationType.toLowerCase();
-							instances[id] = (instances[id] || 0) + 1;
-						}
-					});
-					setConfiguredInstances(instances);
-				}
-			} catch (error) {
-				logger.error('Failed to fetch integrations:', error);
-			}
-		};
-
-		fetchIntegrations();
-	}, []);
 
 	const filteredIntegrations = useMemo(() => {
 		return INTEGRATIONS.filter((integration) => {
@@ -585,8 +572,7 @@ const Integrations = () => {
 											<Server className="h-3 w-3" />
 											<span>
 												{configuredInstances[integration.id]}{' '}
-												{configuredInstances[integration.id] === 1 ? 'instance' : 'instances'}{' '}
-												configured
+												{pluralize(configuredInstances[integration.id], 'instance')} configured
 											</span>
 										</div>
 									) : (
@@ -773,13 +759,6 @@ const Integrations = () => {
 																title: 'Integration created',
 																description: `${selectedIntegration.name} integration has been successfully created.`,
 															});
-
-															// Update configured instances
-															setConfiguredInstances((prev) => ({
-																...prev,
-																[selectedIntegration.id]:
-																	(prev[selectedIntegration.id] || 0) + 1,
-															}));
 														} else {
 															toast({
 																title: 'Error',
@@ -791,15 +770,9 @@ const Integrations = () => {
 													}
 
 													if (response.success) {
-														// Fetch updated integrations
-														const updatedIntegrations =
-															await integrationApi.getIntegrations();
-														if (
-															updatedIntegrations.success &&
-															updatedIntegrations.data?.integrations
-														) {
-															setSavedIntegrations(updatedIntegrations.data.integrations);
-														}
+														await queryClient.invalidateQueries({
+															queryKey: queryKeys.integrations,
+														});
 
 														// Close the sheet
 														setSelectedIntegration(null);
@@ -1047,18 +1020,7 @@ const Integrations = () => {
 											description: `${integrationToDelete.type} integration has been successfully deleted.`,
 										});
 
-										// Update configured instances
-										const integrationType = integrationToDelete.type.toLowerCase();
-										setConfiguredInstances((prev) => ({
-											...prev,
-											[integrationType]: 0,
-										}));
-
-										// Fetch updated integrations
-										const updatedIntegrations = await integrationApi.getIntegrations();
-										if (updatedIntegrations.success && updatedIntegrations.data?.integrations) {
-											setSavedIntegrations(updatedIntegrations.data.integrations);
-										}
+										await queryClient.invalidateQueries({ queryKey: queryKeys.integrations });
 
 										// Close the sheet
 										setSelectedIntegration(null);

@@ -62,6 +62,8 @@ export const webhookRoutes: ApiRouteDoc[] = [
 			'with `"status": "resolved"` — a resolve needs only `id` and `status`.\n\n' +
 			'A resolve for an alert OpsiMate never saw firing is recorded as a resolved episode when the body is a ' +
 			'full alert (id, alertName, tags); an id-only resolve of an unknown alert is a no-op.\n\n' +
+			'A full-alert resolve of a firing alert also stores the metadata it carries (name, summary, tags, ' +
+			'severity, team, links) on the resolved alert; fields it leaves out keep their firing values.\n\n' +
 			TOKEN_NOTE,
 		auth: 'user',
 		body: CustomWebhookBodySchema,

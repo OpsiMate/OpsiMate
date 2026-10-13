@@ -6,6 +6,7 @@ import {
 	useUnsilenceAlert,
 } from '@/hooks/queries/alerts';
 import { useToast } from '@/hooks/use-toast';
+import { pluralize } from '@/lib/text';
 import { Alert } from '@OpsiMate/shared';
 
 // Single-alert actions plus the one bulk action that stays client-fanned (permanent
@@ -92,12 +93,12 @@ export const useAlertActions = () => {
 			failCount > 0
 				? {
 						title: 'Partial delete',
-						description: `Deleted ${successCount} alert${successCount !== 1 ? 's' : ''}, ${failCount} failed`,
+						description: `Deleted ${successCount} ${pluralize(successCount, 'alert')}, ${failCount} failed`,
 						variant: 'destructive',
 					}
 				: {
 						title: 'Alerts deleted',
-						description: `Permanently deleted ${successCount} alert${successCount !== 1 ? 's' : ''}`,
+						description: `Permanently deleted ${successCount} ${pluralize(successCount, 'alert')}`,
 					}
 		);
 		onComplete();

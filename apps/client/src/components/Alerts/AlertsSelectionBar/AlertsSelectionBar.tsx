@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
+import { pluralize } from '@/lib/text';
 import { Alert } from '@OpsiMate/shared';
 import { BellRing, CheckCircle2, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -130,15 +131,15 @@ export const AlertsSelectionBar = ({
 			<span className="min-w-0 text-sm font-medium">
 				{allMatchingSelected ? (
 					<span className="whitespace-nowrap">
-						All {(matchingTotal ?? selectedAlerts.length).toLocaleString()} matching alert
-						{(matchingTotal ?? selectedAlerts.length) !== 1 ? 's' : ''} selected
+						All {(matchingTotal ?? selectedAlerts.length).toLocaleString()} matching{' '}
+						{pluralize(matchingTotal ?? selectedAlerts.length, 'alert')} selected
 						<span className="ml-2 text-xs text-muted-foreground">
 							— actions apply to every match, loaded or not
 						</span>
 					</span>
 				) : (
 					<span className="whitespace-nowrap">
-						{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+						{selectedAlerts.length} {pluralize(selectedAlerts.length, 'alert')} selected
 						{onSelectAllMatching && matchingTotal !== undefined ? (
 							<Button
 								variant="link"
@@ -163,10 +164,10 @@ export const AlertsSelectionBar = ({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							Delete {selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''}?
+							Delete {selectedAlerts.length} {pluralize(selectedAlerts.length, 'alert')}?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This permanently deletes the selected alert{selectedAlerts.length !== 1 ? 's' : ''} — they
+							This permanently deletes the selected {pluralize(selectedAlerts.length, 'alert')} — they
 							will not appear in the resolved list. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>

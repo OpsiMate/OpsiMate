@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
+import { pluralize } from '@/lib/text';
 import { AuditLog, Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
 import {
 	BellOff,
@@ -33,7 +34,7 @@ import { SilenceResetSettings } from '../components/Settings/SilenceResetSetting
 import { AiSettings } from '../components/Settings/AiSettings';
 import { LdapSettings } from '../components/Settings/LdapSettings';
 import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -689,14 +690,14 @@ const Settings: React.FC = () => {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Multiple Users</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete {selectedUsers.length} user
-							{selectedUsers.length !== 1 ? 's' : ''}? This action cannot be undone.
+							Are you sure you want to delete {selectedUsers.length}{' '}
+							{pluralize(selectedUsers.length, 'user')}? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete}>
-							Delete {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''}
+							Delete {selectedUsers.length} {pluralize(selectedUsers.length, 'user')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -708,6 +709,7 @@ const Settings: React.FC = () => {
 export default Settings;
 
 const AuditLogTable: React.FC = () => {
+	const pageSizeId = useId();
 	const [logs, setLogs] = useState<AuditLog[]>([]);
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(1);
@@ -795,8 +797,11 @@ const AuditLogTable: React.FC = () => {
 		<div>
 			<div className="flex justify-end items-center mb-4">
 				<div className="flex items-center gap-2">
-					<label className="text-sm text-muted-foreground">Items per page:</label>
+					<label htmlFor={pageSizeId} className="text-sm text-muted-foreground">
+						Items per page:
+					</label>
 					<select
+						id={pageSizeId}
 						value={pageSize}
 						onChange={(e) => handlePageSizeChange(Number(e.target.value))}
 						className="border rounded px-3 py-1 text-sm"

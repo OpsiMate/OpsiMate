@@ -29,6 +29,9 @@ const LONG_DATE_TIME: Intl.DateTimeFormatOptions = {
 	...TIME,
 };
 
+// "Aug 11, 2026" — date only, for created/updated dates where the time adds nothing.
+const DATE: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+
 // "08/11/2026, 22:53:07" — the unambiguous form for tooltips and copied values.
 const NUMERIC_DATE_TIME: Intl.DateTimeFormatOptions = {
 	year: 'numeric',
@@ -63,6 +66,9 @@ const format = (value: DateInput, options: Intl.DateTimeFormatOptions, fallback:
 	}
 	return formatter.format(date);
 };
+
+/** "Aug 11, 2026" — date only, no clock. */
+export const formatDate = (value: DateInput, fallback = '—'): string => format(value, DATE, fallback);
 
 /** "22:53:07" — time only, for rows already scoped to today. */
 export const formatTime = (value: DateInput, fallback = '—'): string => format(value, TIME_WITH_SECONDS, fallback);
