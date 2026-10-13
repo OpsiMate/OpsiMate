@@ -21,8 +21,7 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
-// Bound simultaneous TCP connections so the 300-request burst stays below the
-// local test server's listen backlog while requests remain concurrently queued.
+// Keep all 300 requests scheduled while limiting the simultaneous sockets the test server must accept.
 const httpAgent = new HttpAgent({ keepAlive: true, maxSockets: 100 });
 
 interface CountRow {

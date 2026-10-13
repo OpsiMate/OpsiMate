@@ -23,12 +23,36 @@ import { describe, expect, test } from 'vitest';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 
-type LegacyConfig = {
-	mailer?: { templates?: { welcomeTemplate?: { subject?: string } } };
-	server?: { port?: unknown };
-	database?: { path?: unknown };
-	security?: { private_keys_path?: unknown };
-};
+interface WelcomeTemplate {
+	subject?: string;
+}
+
+interface MailerTemplates {
+	welcomeTemplate?: WelcomeTemplate;
+}
+
+interface MailerConfig {
+	templates?: MailerTemplates;
+}
+
+interface ServerConfig {
+	port?: unknown;
+}
+
+interface DatabaseConfig {
+	path?: unknown;
+}
+
+interface SecurityConfig {
+	private_keys_path?: unknown;
+}
+
+interface LegacyConfig {
+	mailer?: MailerConfig;
+	server?: ServerConfig;
+	database?: DatabaseConfig;
+	security?: SecurityConfig;
+}
 
 interface ShippedConfig {
 	// Repo-relative path, so a failure names the file directly.

@@ -1918,8 +1918,9 @@ describe('Alerts API', () => {
 				expect(activeRowAfterDelete).toBeUndefined();
 
 				// Verify alert is in resolved alerts table with resolved status
-				const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(newAlertPayload.id) as
-					ResolvedAlertRow | undefined;
+				const resolvedRow = db
+					.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
+					.get(newAlertPayload.id) as ResolvedAlertRow;
 				expect(resolvedRow).toBeDefined();
 				expect(resolvedRow.id).toBe(newAlertPayload.id);
 				expect(resolvedRow.status).toBe('resolved');
