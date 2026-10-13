@@ -16,6 +16,10 @@ export enum SecretType {
 	KUBECONFIG = 'kubeconfig',
 }
 
+export const DASHBOARD_TYPES = ['services', 'alerts'] as const;
+
+export type DashboardType = (typeof DASHBOARD_TYPES)[number];
+
 export interface User {
 	id: string;
 	email: string;
@@ -329,7 +333,7 @@ export interface DashboardTimeRange {
 
 export interface Dashboard {
 	id: string;
-	type: 'services' | 'alerts';
+	type: DashboardType;
 	name: string;
 	description?: string;
 	filters: Record<string, unknown>;

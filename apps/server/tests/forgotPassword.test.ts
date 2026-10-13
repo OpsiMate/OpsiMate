@@ -6,6 +6,7 @@ import { AuditLogRepository } from '../src/dal/auditLogRepository';
 import { MailClient, MailType } from '../src/dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../src/dal/passwordResetsRepository';
 import { UserRepository } from '../src/dal/userRepository';
+import { Role } from '@OpsiMate/shared';
 
 interface PasswordResetTokenRow {
 	token_hash: string;
@@ -45,7 +46,7 @@ describe('forgot password mail failures', () => {
 
 	test('removes a newly created reset token when sending the email rejects', async () => {
 		const { db, userRepo, passwordResetsRepo, auditBL } = await createRepositories();
-		const user = await userRepo.createUser('user@example.test', 'password-hash', 'Test User', 'admin');
+		const user = await userRepo.createUser('user@example.test', 'password-hash', 'Test User', Role.Admin);
 		let tokenHashAtSend: string | undefined;
 		const mailClient = {
 			sendMail: vi.fn(async () => {
@@ -72,7 +73,7 @@ describe('forgot password mail failures', () => {
 
 	test('keeps a newer reset token when an earlier email send fails', async () => {
 		const { db, userRepo, passwordResetsRepo, auditBL } = await createRepositories();
-		await userRepo.createUser('user@example.test', 'password-hash', 'Test User', 'admin');
+		await userRepo.createUser('user@example.test', 'password-hash', 'Test User', Role.Admin);
 		// The promise executor runs synchronously, so the capture is set before the
 		// first await yields — which tsc cannot see on its own.
 		let resolveFirstMailStarted: () => void;
