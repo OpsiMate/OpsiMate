@@ -630,23 +630,14 @@ export interface HttpActionConfig {
 
 export type ActionConfig = SlackActionConfig | TeamsActionConfig | JiraActionConfig | HttpActionConfig;
 
-export interface ActionLabelMatcher {
-	key: string;
-	value: string;
-}
-
-export interface Action {
+export interface Action extends MatcherCriteria {
 	id: number;
 	name: string;
 	type: ActionType;
 	config: ActionConfig;
-	// Optional alert filter. When both nameContains and labelMatchers are empty, the action
-	// applies to all alerts. Otherwise it only shows on alerts whose name contains nameContains
-	// (when set) AND whose tags match every label matcher.
-	nameContains?: string | null;
-	labelMatchers: ActionLabelMatcher[];
-	// OR groups (see LabelMatcherGroups); when present they supersede labelMatchers.
-	labelMatcherGroups?: LabelMatcherGroups;
+	// With no name or label criteria, the action is offered on every alert. Otherwise,
+	// names match any needle and tags match any label group (see criteriaMatchesAlert).
+	labelMatchers: MutePolicyLabelMatcher[];
 	createdAt: string;
 	updatedAt: string;
 }
