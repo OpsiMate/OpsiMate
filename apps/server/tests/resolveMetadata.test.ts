@@ -150,6 +150,43 @@ describe('POST /alerts/custom resolve with metadata', () => {
 		expect(alert.tags).not.toHaveProperty('host');
 	});
 
+	test('the fix classification is kept unless the resolve sends one', async () => {
+		await postCustom({ id: 'm-fix-kept', ...firing, fix: 'manual' });
+		await postCustom({
+			id: 'm-fix-kept',
+			status: 'resolved',
+			alertName: 'Disk almost full',
+			tags: { env: 'staging' },
+		});
+		expect((await resolvedAlert('m-fix-kept')).tags.fix).toBe('manual');
+
+		await postCustom({ id: 'm-fix-sent', ...firing, fix: 'manual' });
+		await postCustom({
+			id: 'm-fix-sent',
+			status: 'resolved',
+			alertName: 'Disk almost full',
+			tags: { env: 'staging' },
+			fix: 'auto',
+		});
+		expect((await resolvedAlert('m-fix-sent')).tags.fix).toBe('auto');
+	});
+
+	test('a team that came from a tag keeps its tag when the resolve sends no team', async () => {
+		const { team: _team, ...withoutTeamField } = firing;
+		await postCustom({ id: 'm-team-tag', ...withoutTeamField, tags: { env: 'staging', team: 'payments' } });
+
+		await postCustom({
+			id: 'm-team-tag',
+			status: 'resolved',
+			alertName: 'Disk almost full',
+			tags: { env: 'staging' },
+		});
+
+		const alert = await resolvedAlert('m-team-tag');
+		expect(alert.team).toBe('payments');
+		expect(alert.tags.team).toBe('payments');
+	});
+
 	test('severity and team sent as tags count as sent', async () => {
 		await postCustom({ id: 'm-tags', ...firing });
 

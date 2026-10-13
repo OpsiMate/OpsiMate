@@ -859,17 +859,21 @@ export class AlertBL {
 	// fields a firing update rewrites (never startsAt, owner or the silence/dismiss
 	// state). Fields the payload left out keep their stored value, so a lean resolve
 	// can't blank a summary or reset severity to the default. Tags are replaced, as on
-	// a firing update; a full payload always carries them.
+	// a firing update; a full payload always carries them. The tags that carry a field
+	// (fix, team) follow the field: kept unless the resolve sent one.
 	private applySourceMetadata(stored: Alert, incoming: IncomingAlert): Alert {
 		const sent = this.normalizeIncoming(incoming);
 		const severitySent = Boolean(incoming.severity?.trim() || incoming.tags?.['severity']);
 		const teamSent = Boolean(incoming.team?.trim() || incoming.tags?.['team']);
 		const severity = severitySent ? sent.severity : stored.severity;
+		const tags: Record<string, string> = { ...sent.tags, severity };
+		if (!('fix' in tags) && stored.tags.fix !== undefined) tags.fix = stored.tags.fix;
+		if (!teamSent && stored.tags.team !== undefined) tags.team = stored.tags.team;
 		return {
 			...stored,
 			severity,
 			team: teamSent ? sent.team : stored.team,
-			tags: { ...sent.tags, severity },
+			tags,
 			alertName: sent.alertName || stored.alertName,
 			alertUrl: sent.alertUrl || stored.alertUrl,
 			summary: sent.summary || stored.summary,
