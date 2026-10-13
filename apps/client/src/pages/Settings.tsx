@@ -33,7 +33,7 @@ import { SilenceResetSettings } from '../components/Settings/SilenceResetSetting
 import { AiSettings } from '../components/Settings/AiSettings';
 import { LdapSettings } from '../components/Settings/LdapSettings';
 import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -708,6 +708,7 @@ const Settings: React.FC = () => {
 export default Settings;
 
 const AuditLogTable: React.FC = () => {
+	const pageSizeId = useId();
 	const [logs, setLogs] = useState<AuditLog[]>([]);
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(1);
@@ -795,8 +796,11 @@ const AuditLogTable: React.FC = () => {
 		<div>
 			<div className="flex justify-end items-center mb-4">
 				<div className="flex items-center gap-2">
-					<label className="text-sm text-muted-foreground">Items per page:</label>
+					<label htmlFor={pageSizeId} className="text-sm text-muted-foreground">
+						Items per page:
+					</label>
 					<select
+						id={pageSizeId}
 						value={pageSize}
 						onChange={(e) => handlePageSizeChange(Number(e.target.value))}
 						className="border rounded px-3 py-1 text-sm"
