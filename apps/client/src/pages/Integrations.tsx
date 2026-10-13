@@ -32,6 +32,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
 import { integrationApi } from '@/lib/api';
 import { canDelete, canManageIntegrations } from '@/lib/permissions';
+import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import { IntegrationType, Logger, Integration as SharedIntegration } from '@OpsiMate/shared';
 import {
@@ -585,8 +586,7 @@ const Integrations = () => {
 											<Server className="h-3 w-3" />
 											<span>
 												{configuredInstances[integration.id]}{' '}
-												{configuredInstances[integration.id] === 1 ? 'instance' : 'instances'}{' '}
-												configured
+												{pluralize(configuredInstances[integration.id], 'instance')} configured
 											</span>
 										</div>
 									) : (

@@ -20,6 +20,7 @@ import { useUsers } from '@/hooks/queries/users';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/lib/auth';
 import { formatShortDateTime } from '@/lib/datetime';
+import { pluralize } from '@/lib/text';
 import { OncallTeam } from '@OpsiMate/shared';
 import { Pencil, Phone, PhoneCall, Plus, Repeat, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -97,7 +98,7 @@ const Oncall = () => {
 			setFormOpen(false);
 			toast({
 				title: editingTeam ? 'Team updated' : 'Team created',
-				description: `"${draft.name}" now has ${draft.userIds.length} member${draft.userIds.length !== 1 ? 's' : ''}.`,
+				description: `"${draft.name}" now has ${draft.userIds.length} ${pluralize(draft.userIds.length, 'member')}.`,
 			});
 		} catch (err) {
 			if (createdTeamId !== null) {
@@ -251,8 +252,8 @@ const Oncall = () => {
 												{team.rotationIntervalDays ? (
 													<span className="inline-flex items-center gap-1.5 text-sm">
 														<Repeat className="h-3.5 w-3.5 text-muted-foreground" />
-														Every {team.rotationIntervalDays} day
-														{team.rotationIntervalDays !== 1 ? 's' : ''}
+														Every {team.rotationIntervalDays}{' '}
+														{pluralize(team.rotationIntervalDays, 'day')}
 													</span>
 												) : (
 													<span className="text-sm text-muted-foreground">Fixed order</span>

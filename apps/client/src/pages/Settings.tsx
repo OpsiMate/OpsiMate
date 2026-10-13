@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
+import { pluralize } from '@/lib/text';
 import { AuditLog, Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
 import {
 	BellOff,
@@ -689,14 +690,14 @@ const Settings: React.FC = () => {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Multiple Users</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete {selectedUsers.length} user
-							{selectedUsers.length !== 1 ? 's' : ''}? This action cannot be undone.
+							Are you sure you want to delete {selectedUsers.length}{' '}
+							{pluralize(selectedUsers.length, 'user')}? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete}>
-							Delete {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''}
+							Delete {selectedUsers.length} {pluralize(selectedUsers.length, 'user')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
