@@ -58,6 +58,10 @@ jobs:
       - name: Typecheck apps/client
         run: pnpm --filter @OpsiMate/client typecheck
 
+      # The server has no baseline: it must type-check clean (src and tests).
+      - name: Typecheck apps/server
+        run: pnpm --filter @OpsiMate/server typecheck
+
       - name: Format apps/server
         run: pnpm --filter @OpsiMate/server format
 
