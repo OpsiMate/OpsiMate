@@ -13,8 +13,6 @@
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
 		"resolveJsonModule": true,
-		"declaration": true,
-		"declarationMap": true,
 		"sourceMap": true,
 		"allowImportingTsExtensions": true,
 		"noEmit": true,
