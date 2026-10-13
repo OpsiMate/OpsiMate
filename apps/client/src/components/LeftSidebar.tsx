@@ -95,22 +95,22 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				</Button>
 
 				<Button
-					variant={location.pathname === ROUTES.dashboard ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.dashboards ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to={ROUTES.dashboard}>
+					<PreserveQueryLink to={ROUTES.dashboards}>
 						<LayoutDashboard className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === ROUTES.alertInsights ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.insights ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to={ROUTES.alertInsights}>
+					<PreserveQueryLink to={ROUTES.insights}>
 						<BarChart3 className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Insights</span>
 					</PreserveQueryLink>

@@ -1,6 +1,6 @@
 export const ROUTES = {
 	home: '/',
-	dashboard: '/dashboards',
+	dashboards: '/dashboards',
 	settings: '/settings',
 	integrations: '/integrations',
 	profile: '/profile',
@@ -12,6 +12,6 @@ export const ROUTES = {
 	actions: '/actions',
 	enrichments: '/enrichments',
 	forgotPassword: '/forgot-password',
-	resetPasswordByEmail: '/reset-password',
-	alertInsights: '/insights',
-};
+	resetPassword: '/reset-password',
+	insights: '/insights',
+} as const;

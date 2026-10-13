@@ -118,7 +118,7 @@ const Login: React.FC = () => {
 				</Button>
 				<div className="mt-4 text-center">
 					{emailEnabled && (
-						<Link to="/forgot-password" className="text-primary hover:underline text-sm">
+						<Link to={ROUTES.forgotPassword} className="text-primary hover:underline text-sm">
 							Forgot password?
 						</Link>
 					)}

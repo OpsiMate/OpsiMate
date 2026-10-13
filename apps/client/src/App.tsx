@@ -66,9 +66,9 @@ const App: React.FC = () => {
 									<AuthGuard>
 										<Routes>
 											<Route path={ROUTES.home} element={<Alerts />} />
-											<Route path={ROUTES.dashboard} element={<Dashboards />} />
+											<Route path={ROUTES.dashboards} element={<Dashboards />} />
 											<Route
-												path={ROUTES.alertInsights}
+												path={ROUTES.insights}
 												element={
 													<Suspense fallback={null}>
 														<AlertInsights />
@@ -86,10 +86,7 @@ const App: React.FC = () => {
 											<Route path={ROUTES.actions} element={<Actions />} />
 											<Route path={ROUTES.enrichments} element={<Enrichments />} />
 											<Route path={ROUTES.forgotPassword} element={<ForgotPassword />} />
-											<Route
-												path={ROUTES.resetPasswordByEmail}
-												element={<ResetPasswordByEmail />}
-											/>
+											<Route path={ROUTES.resetPassword} element={<ResetPasswordByEmail />} />
 											<Route path="*" element={<NotFound />} />
 										</Routes>
 									</AuthGuard>

@@ -25,7 +25,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 		const isOnRegisterPage = location.pathname === ROUTES.register;
 		const isOnLoginPage = location.pathname === ROUTES.login;
 		const isOnForgotPasswordPage = location.pathname === ROUTES.forgotPassword;
-		const isOnResetPasswordPage = location.pathname === ROUTES.resetPasswordByEmail;
+		const isOnResetPasswordPage = location.pathname === ROUTES.resetPassword;
 
 		if (isLoading) {
 			// Still loading, don't redirect yet

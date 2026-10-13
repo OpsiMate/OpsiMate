@@ -106,11 +106,11 @@ async function apiRequest<T>(
 			if (response.status === 401 && !isPlaygroundMode()) {
 				localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 
-				const authPages = new Set([
+				const authPages = new Set<string>([
 					ROUTES.login,
 					ROUTES.register,
 					ROUTES.forgotPassword,
-					ROUTES.resetPasswordByEmail,
+					ROUTES.resetPassword,
 				]);
 				if (!authPages.has(window.location.pathname)) {
 					window.location.href = `${ROUTES.login}?expired=true`;
