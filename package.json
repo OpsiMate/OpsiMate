@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "start": "pnpm --filter @OpsiMate/server start",
+    "build": "node api.js && turbo run build",
+    "start": "node api.js && pnpm --filter @OpsiMate/server start",
     "start:worker": "pnpm --filter @OpsiMate/server start:worker",
-    "dev": "turbo run dev dev:worker",
+    "dev": "node api.js && turbo run dev dev:worker",
     "dev:clean": "pnpm run clean:cache && pnpm run dev",
     "debug": "turbo run debug",
     "debug:worker": "pnpm --filter @OpsiMate/server debug:worker",
