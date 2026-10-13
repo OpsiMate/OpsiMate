@@ -135,6 +135,20 @@ export interface SourceResolvedEpisode {
 	endsAt?: string;
 }
 
+// How an active alert is being resolved (see AlertBL.resolveActive).
+interface ResolveActiveOptions {
+	// A user's manual resolve: recorded in the history, and the user takes ownership.
+	manualActor?: ManualResolveActor;
+	comment?: string;
+	// The alert as the source described it in its resolve (see applySourceMetadata).
+	sourceAlert?: IncomingAlert;
+}
+
+interface ManualResolveActor {
+	id: string | null;
+	name: string | null;
+}
+
 export interface SourceResolveResult {
 	// An alert that was firing here is now resolved.
 	resolved: boolean;
@@ -795,10 +809,12 @@ export class AlertBL {
 	// the resolve moment when it sent none), resolved at its endsAt (or now) — so the
 	// incident is not silently lost. An id-only resolve, or one for an alert already
 	// resolved, changes nothing: retries must stay harmless.
+	// A firing alert resolved by a full payload takes that payload's metadata with it
+	// (see applySourceMetadata), so the resolved record shows what the source last said.
 	async resolveFromSource(alertId: string, episode?: SourceResolvedEpisode): Promise<SourceResolveResult> {
 		await this.drainIngest();
 		if (await this.alertRepo.getAlert(alertId)) {
-			return { resolved: await this.resolveAlert(alertId), created: false };
+			return { resolved: await this.resolveActive(alertId, { sourceAlert: episode?.alert }), created: false };
 		}
 		if (!episode || (await this.resolvedAlertRepo.getResolvedAlert(alertId))) {
 			logger.warn(`Resolve for ${alertId} with no firing alert; nothing recorded`);
@@ -825,7 +841,9 @@ export class AlertBL {
 			resolvedAt
 		);
 		// A firing committed between the check above and the insert: resolve it normally.
-		if (outcome === 'active') return { resolved: await this.resolveAlert(alertId), created: false };
+		if (outcome === 'active') {
+			return { resolved: await this.resolveActive(alertId, { sourceAlert: episode.alert }), created: false };
+		}
 		if (outcome === 'exists') return { resolved: false, created: false };
 		this.invalidateSnapshots();
 		alertsResolvedTotal.inc({ mode: 'resolve_only' });
@@ -833,11 +851,35 @@ export class AlertBL {
 		return { resolved: false, created: true };
 	}
 
-	async resolveAlert(
-		activeAlertId: string,
-		manualActor?: { id: string | null; name: string | null },
-		comment?: string
-	): Promise<boolean> {
+	async resolveAlert(activeAlertId: string, manualActor?: ManualResolveActor, comment?: string): Promise<boolean> {
+		return this.resolveActive(activeAlertId, { manualActor, comment });
+	}
+
+	// What a source sent along with its resolve, applied over the firing alert: the same
+	// fields a firing update rewrites (never startsAt, owner or the silence/dismiss
+	// state). Fields the payload left out keep their stored value, so a lean resolve
+	// can't blank a summary or reset severity to the default. Tags are replaced, as on
+	// a firing update; a full payload always carries them.
+	private applySourceMetadata(stored: Alert, incoming: IncomingAlert): Alert {
+		const sent = this.normalizeIncoming(incoming);
+		const severitySent = Boolean(incoming.severity?.trim() || incoming.tags?.['severity']);
+		const teamSent = Boolean(incoming.team?.trim() || incoming.tags?.['team']);
+		const severity = severitySent ? sent.severity : stored.severity;
+		return {
+			...stored,
+			severity,
+			team: teamSent ? sent.team : stored.team,
+			tags: { ...sent.tags, severity },
+			alertName: sent.alertName || stored.alertName,
+			alertUrl: sent.alertUrl || stored.alertUrl,
+			summary: sent.summary || stored.summary,
+			runbookUrl: sent.runbookUrl || stored.runbookUrl,
+			links: sent.links?.length ? sent.links : stored.links,
+		};
+	}
+
+	private async resolveActive(activeAlertId: string, options: ResolveActiveOptions): Promise<boolean> {
+		const { manualActor, comment, sourceAlert } = options;
 		await this.drainIngest();
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
@@ -850,7 +892,9 @@ export class AlertBL {
 			}
 
 			// Insert into resolved table
-			await this.resolvedAlertRepo.insertResolvedAlert(alert);
+			await this.resolvedAlertRepo.insertResolvedAlert(
+				sourceAlert ? this.applySourceMetadata(alert, sourceAlert) : alert
+			);
 
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
