@@ -22,6 +22,7 @@ import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMat
 import { describeCriteriaScope, hasMatcherCriteria, MatcherGroupBadges } from '@/components/shared/MatcherGroupsEditor';
 import { SortableTableHead, useTableSort } from '@/components/shared/SortableTable';
 import { Copy, FileText, History, Link2, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { formatDate } from '@/lib/datetime';
 import { useMemo, useState } from 'react';
 
 const MatchBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
@@ -276,9 +277,7 @@ const Enrichments: React.FC = () => {
 												<div className="text-xs text-muted-foreground truncate">
 													{e.lastModifiedBy
 														? `Edited by ${e.lastModifiedBy}${
-																e.updatedAt
-																	? ` · ${new Date(e.updatedAt).toLocaleDateString()}`
-																	: ''
+																e.updatedAt ? ` · ${formatDate(e.updatedAt)}` : ''
 															}`
 														: '—'}
 												</div>
