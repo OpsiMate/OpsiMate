@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { SeveritySetupNote } from '../SeveritySetupNote';
 
 export interface ZabbixSetupModalProps {
@@ -14,6 +14,7 @@ export interface ZabbixSetupModalProps {
 }
 
 export const ZabbixSetupModal = ({ open, onOpenChange }: ZabbixSetupModalProps) => {
+	const id = useId();
 	const { copied: copied, copy: copyWebhook } = useCopyToClipboard();
 	const { copied: copiedScript, copy: copyScript } = useCopyToClipboard();
 	const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
@@ -188,8 +189,14 @@ fi`;
 						{/* URL Inputs */}
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<label className="text-sm font-medium text-foreground">Media Type Name</label>
+								<label
+									htmlFor={`${id}-media-type-name`}
+									className="text-sm font-medium text-foreground"
+								>
+									Media Type Name
+								</label>
 								<Input
+									id={`${id}-media-type-name`}
 									value={mediaTypeName}
 									onChange={(e) => setMediaTypeName(e.target.value)}
 									placeholder="OpsiMate"
@@ -201,8 +208,11 @@ fi`;
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-foreground">Zabbix Server URL</label>
+									<label htmlFor={`${id}-zabbix-url`} className="text-sm font-medium text-foreground">
+										Zabbix Server URL
+									</label>
 									<Input
+										id={`${id}-zabbix-url`}
 										value={zabbixUrlInput}
 										onChange={(e) => setZabbixUrlInput(e.target.value)}
 										placeholder="http://your-zabbix-server:8080"
@@ -211,8 +221,14 @@ fi`;
 									<p className="text-xs text-muted-foreground">Your Zabbix web interface URL</p>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-foreground">OpsiMate Webhook URL</label>
+									<label
+										htmlFor={`${id}-webhook-url`}
+										className="text-sm font-medium text-foreground"
+									>
+										OpsiMate Webhook URL
+									</label>
 									<Input
+										id={`${id}-webhook-url`}
 										value={opsimateUrlInput}
 										onChange={(e) => setOpsimateUrlInput(e.target.value)}
 										placeholder="http://opsimate:3001/api/v1/alerts/custom/zabbix?api_token=opsimate"
@@ -225,8 +241,14 @@ fi`;
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-foreground">Zabbix Username</label>
+									<label
+										htmlFor={`${id}-zabbix-username`}
+										className="text-sm font-medium text-foreground"
+									>
+										Zabbix Username
+									</label>
 									<Input
+										id={`${id}-zabbix-username`}
 										value={zabbixUsername}
 										onChange={(e) => setZabbixUsername(e.target.value)}
 										placeholder="Admin"
@@ -235,8 +257,14 @@ fi`;
 									<p className="text-xs text-muted-foreground">Zabbix admin username</p>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-foreground">Zabbix Password</label>
+									<label
+										htmlFor={`${id}-zabbix-password`}
+										className="text-sm font-medium text-foreground"
+									>
+										Zabbix Password
+									</label>
 									<Input
+										id={`${id}-zabbix-password`}
 										type="password"
 										value={zabbixPassword}
 										onChange={(e) => setZabbixPassword(e.target.value)}

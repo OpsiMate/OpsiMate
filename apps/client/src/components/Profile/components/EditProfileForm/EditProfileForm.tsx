@@ -2,6 +2,7 @@ import { ErrorAlert } from '@/components/ErrorAlert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lock, Save, User, X } from 'lucide-react';
+import { useId } from 'react';
 import { ProfileFormData } from '../../Profile.types';
 
 interface EditProfileFormProps {
@@ -28,6 +29,8 @@ export const EditProfileForm = ({
 	onEdit,
 	isDirectoryAccount = false,
 }: EditProfileFormProps) => {
+	const id = useId();
+
 	if (!isEditing) {
 		return (
 			<div className="flex gap-3 pt-4 border-t">
@@ -88,8 +91,14 @@ export const EditProfileForm = ({
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
 							<div>
-								<label className="text-sm font-semibold text-muted-foreground">New Password</label>
+								<label
+									htmlFor={`${id}-new-password`}
+									className="text-sm font-semibold text-muted-foreground"
+								>
+									New Password
+								</label>
 								<Input
+									id={`${id}-new-password`}
 									type="password"
 									value={formData.newPassword}
 									onChange={(e) => onFormDataChange({ ...formData, newPassword: e.target.value })}
@@ -100,8 +109,14 @@ export const EditProfileForm = ({
 							</div>
 
 							<div>
-								<label className="text-sm font-semibold text-muted-foreground">Confirm Password</label>
+								<label
+									htmlFor={`${id}-confirm-password`}
+									className="text-sm font-semibold text-muted-foreground"
+								>
+									Confirm Password
+								</label>
 								<Input
+									id={`${id}-confirm-password`}
 									type="password"
 									value={formData.confirmPassword}
 									onChange={(e) => onFormDataChange({ ...formData, confirmPassword: e.target.value })}
