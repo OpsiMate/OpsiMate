@@ -1,16 +1,27 @@
-import { describe, test, expect, beforeAll } from 'vitest';
+import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { SuperTest, Test } from 'supertest';
+import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup.ts';
+
+interface UserSummary {
+	email: string;
+	role: string;
+}
 
 describe('PATCH /users/role', () => {
 	let app: SuperTest<Test>;
+	let db: Database.Database;
 	let adminToken: string;
 
 	beforeAll(async () => {
-		const db = await setupDB();
+		db = await setupDB();
 		app = await setupExpressApp(db);
 		// First registered user is an admin
 		adminToken = await setupUserWithToken(app);
+	});
+
+	afterAll(() => {
+		db.close();
 	});
 
 	test('an email that does not exist returns 404', async () => {
@@ -20,6 +31,7 @@ describe('PATCH /users/role', () => {
 			.send({ email: 'nobody@example.com', newRole: 'viewer' });
 		expect(res.status).toBe(404);
 		expect(res.body.success).toBe(false);
+		expect(res.body.error).toBe('User not found');
 	});
 
 	test('an existing user returns 200 and the role is changed', async () => {
@@ -39,7 +51,7 @@ describe('PATCH /users/role', () => {
 		expect(res.body.success).toBe(true);
 
 		const listRes = await app.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
-		const user = listRes.body.data.find((u: { email: string }) => u.email === 'target@example.com');
+		const user = listRes.body.data.find((u: UserSummary) => u.email === 'target@example.com');
 		expect(user.role).toBe('editor');
 	});
 
