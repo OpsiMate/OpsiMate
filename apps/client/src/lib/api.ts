@@ -41,6 +41,7 @@ import {
 	SecretType,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
+import { ROUTES } from './routes';
 
 const logger = new Logger('api');
 const { protocol, hostname, port } = window.location;
@@ -105,9 +106,14 @@ async function apiRequest<T>(
 			if (response.status === 401 && !isPlaygroundMode()) {
 				localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 
-				const authPages = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
+				const authPages = new Set([
+					ROUTES.login,
+					ROUTES.register,
+					ROUTES.forgotPassword,
+					ROUTES.resetPasswordByEmail,
+				]);
 				if (!authPages.has(window.location.pathname)) {
-					window.location.href = '/login?expired=true';
+					window.location.href = `${ROUTES.login}?expired=true`;
 				}
 			}
 

@@ -1,6 +1,7 @@
 import { Logger } from '@OpsiMate/shared';
 import { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { ROUTES } from '@/lib/routes';
 
 const logger = new Logger('NotFound');
 
@@ -18,7 +19,7 @@ const NotFound = () => {
 			<div className="text-center">
 				<h1 className="text-4xl font-bold mb-4 text-foreground">404</h1>
 				<p className="text-xl text-muted-foreground mb-4">Oops! Page not found</p>
-				<Link to="/" className="text-primary hover:text-primary/80 underline">
+				<Link to={ROUTES.home} className="text-primary hover:text-primary/80 underline">
 					Return to Home
 				</Link>
 			</div>

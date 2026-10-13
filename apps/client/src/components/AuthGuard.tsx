@@ -3,6 +3,7 @@ import { useUsersExist } from '@/hooks/queries';
 import { isPlaygroundMode } from '@/lib/playground';
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/lib/routes';
 
 interface AuthGuardProps {
 	children: React.ReactNode;
@@ -21,10 +22,10 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
 		// Check if user is already authenticated
 		const jwt = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-		const isOnRegisterPage = location.pathname === '/register';
-		const isOnLoginPage = location.pathname === '/login';
-		const isOnForgotPasswordPage = location.pathname === '/forgot-password';
-		const isOnResetPasswordPage = location.pathname === '/reset-password';
+		const isOnRegisterPage = location.pathname === ROUTES.register;
+		const isOnLoginPage = location.pathname === ROUTES.login;
+		const isOnForgotPasswordPage = location.pathname === ROUTES.forgotPassword;
+		const isOnResetPasswordPage = location.pathname === ROUTES.resetPasswordByEmail;
 
 		if (isLoading) {
 			// Still loading, don't redirect yet
@@ -38,7 +39,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 			}
 			// Otherwise, redirect to login
 			if (!jwt) {
-				navigate('/login');
+				navigate(ROUTES.login);
 			}
 			return;
 		}
@@ -47,7 +48,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 		if (!usersExist && !jwt) {
 			// Only redirect to register if not already on register page
 			if (!isOnRegisterPage) {
-				navigate('/register');
+				navigate(ROUTES.register);
 			}
 			return;
 		}
@@ -60,14 +61,14 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
 			// Only redirect to login if not already on login page
 			if (!isOnLoginPage) {
-				navigate('/login');
+				navigate(ROUTES.login);
 			}
 			return;
 		}
 
 		// If user is authenticated and trying to access register/login pages, redirect to dashboard
 		if (jwt && (isOnRegisterPage || isOnLoginPage || isOnForgotPasswordPage || isOnResetPasswordPage)) {
-			navigate('/');
+			navigate(ROUTES.home);
 			return;
 		}
 

@@ -8,6 +8,7 @@ import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest, EMAIL_STATUS_URL } from '../lib/api';
 import { isPlaygroundMode } from '../lib/playground';
+import { ROUTES } from '@/lib/routes';
 
 const logger = new Logger('Login');
 
@@ -21,8 +22,8 @@ const Login: React.FC = () => {
 	});
 
 	useEffect(() => {
-		if (localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) && window.location.pathname === '/login') {
-			window.location.href = '/';
+		if (localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) && window.location.pathname === ROUTES.login) {
+			window.location.href = ROUTES.home;
 		}
 
 		if (isPlaygroundMode()) {
@@ -65,7 +66,7 @@ const Login: React.FC = () => {
 				const token = (res.data && res.data.token) || res.token;
 				if (token) {
 					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-					window.location.href = '/';
+					window.location.href = ROUTES.home;
 				} else {
 					logger.error('Login successful but no token received');
 					handleApiResponse({

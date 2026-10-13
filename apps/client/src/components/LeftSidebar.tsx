@@ -21,6 +21,7 @@ import { ALERTS_PATHS } from './LeftSidebar.constants';
 import { PreserveQueryLink } from './PreserveQueryLink';
 import { ProfileButton } from './ProfileButton';
 import { VersionBadge } from './VersionBadge';
+import { ROUTES } from '@/lib/routes';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -59,7 +60,7 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<PreserveQueryLink
-				to="/"
+				to={ROUTES.home}
 				className={cn(
 					'flex items-center h-20 px-5 border-b cursor-pointer transition-all duration-200',
 					collapsed && 'justify-center px-2'
@@ -87,62 +88,62 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/">
+					<PreserveQueryLink to={ROUTES.home}>
 						<Bell className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/dashboards' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.dashboard ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/dashboards">
+					<PreserveQueryLink to={ROUTES.dashboard}>
 						<LayoutDashboard className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/insights' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.alertInsights ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/insights">
+					<PreserveQueryLink to={ROUTES.alertInsights}>
 						<BarChart3 className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Insights</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/mute-policies' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.mutePolicies ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/mute-policies">
+					<PreserveQueryLink to={ROUTES.mutePolicies}>
 						<BellOff className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Mute Policies</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/actions' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.actions ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/actions">
+					<PreserveQueryLink to={ROUTES.actions}>
 						<Zap className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Actions</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/enrichments' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.enrichments ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/enrichments">
+					<PreserveQueryLink to={ROUTES.enrichments}>
 						<Sparkles className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Enrichment</span>
 					</PreserveQueryLink>
@@ -153,14 +154,14 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				<div className={cn('flex flex-col gap-2 items-center')}>
 					{showIntegrations && (
 						<Button
-							variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
+							variant={location.pathname === ROUTES.integrations ? 'default' : 'ghost'}
 							className={cn(
 								'gap-3 h-10 items-center',
 								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
-							<PreserveQueryLink to="/integrations">
+							<PreserveQueryLink to={ROUTES.integrations}>
 								<Puzzle className="h-5 w-5 shrink-0" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
 							</PreserveQueryLink>
@@ -168,28 +169,28 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					)}
 					{showSettings && (
 						<Button
-							variant={location.pathname === '/settings' ? 'default' : 'ghost'}
+							variant={location.pathname === ROUTES.settings ? 'default' : 'ghost'}
 							className={cn(
 								'gap-3 h-10 items-center',
 								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
-							<PreserveQueryLink to="/settings">
+							<PreserveQueryLink to={ROUTES.settings}>
 								<Settings className="h-5 w-5 shrink-0 items-center" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Settings</span>
 							</PreserveQueryLink>
 						</Button>
 					)}
 					<Button
-						variant={location.pathname === '/oncall' ? 'default' : 'ghost'}
+						variant={location.pathname === ROUTES.oncall ? 'default' : 'ghost'}
 						className={cn(
 							'gap-3 h-10 items-center',
 							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 						)}
 						asChild
 					>
-						<PreserveQueryLink to="/oncall">
+						<PreserveQueryLink to={ROUTES.oncall}>
 							<PhoneCall className="h-5 w-5 shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>On-Call</span>
 						</PreserveQueryLink>
