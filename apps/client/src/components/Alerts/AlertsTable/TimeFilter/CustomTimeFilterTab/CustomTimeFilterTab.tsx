@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
+import { formatDate } from '@/lib/datetime';
 import { useId, useState } from 'react';
 import {
 	APPLY_BUTTON_LABEL,
@@ -79,7 +80,7 @@ export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilte
 									className="h-7 flex-1 justify-start text-xs font-normal"
 								>
 									<CalendarIcon className="h-3 w-3 mr-1.5" />
-									{customFrom?.toLocaleDateString() || PICK_DATE_PLACEHOLDER}
+									{formatDate(customFrom, PICK_DATE_PLACEHOLDER)}
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className="w-auto p-0" align="start">
@@ -120,7 +121,7 @@ export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilte
 									className="h-7 flex-1 justify-start text-xs font-normal"
 								>
 									<CalendarIcon className="h-3 w-3 mr-1.5" />
-									{customTo?.toLocaleDateString() || PICK_DATE_PLACEHOLDER}
+									{formatDate(customTo, PICK_DATE_PLACEHOLDER)}
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className="w-auto p-0" align="start">

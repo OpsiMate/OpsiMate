@@ -1,5 +1,6 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useEnrichmentHistory } from '@/hooks/queries/enrichments';
+import { formatLongDateTime } from '@/lib/datetime';
 import { AlertEnrichment } from '@OpsiMate/shared';
 import { EnrichmentHistoryDialogLayout } from './EnrichmentHistoryDialogLayout';
 import { VersionContent } from './VersionContent';
@@ -37,8 +38,7 @@ export const EnrichmentHistoryDialog = ({ enrichment, onOpenChange }: Enrichment
 					<AccordionItem key={version.id} value={String(version.id)}>
 						<AccordionTrigger>
 							<span>
-								Version {version.version} · {version.author} ·{' '}
-								{new Date(version.createdAt).toLocaleString()}
+								Version {version.version} · {version.author} · {formatLongDateTime(version.createdAt)}
 							</span>
 						</AccordionTrigger>
 						<AccordionContent>
