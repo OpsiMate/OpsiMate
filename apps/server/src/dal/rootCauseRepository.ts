@@ -21,6 +21,7 @@ interface RootCauseRow {
 	rated_by: string | null;
 	rated_at: string | null;
 	rating_comment: string | null;
+	episode_starts_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -38,6 +39,8 @@ export interface UpsertRootCauseInput {
 export interface RootCauseRecord extends AlertRootCause {
 	feedbackUpUrl: string | null;
 	feedbackDownUrl: string | null;
+	// Null on rows stored before episodes were tracked.
+	episodeStartsAt: string | null;
 }
 
 const toRecord = (row: RootCauseRow): RootCauseRecord => ({
@@ -52,6 +55,7 @@ const toRecord = (row: RootCauseRow): RootCauseRecord => ({
 	updatedAt: row.updated_at,
 	feedbackUpUrl: row.feedback_up_url,
 	feedbackDownUrl: row.feedback_down_url,
+	episodeStartsAt: row.episode_starts_at,
 });
 
 export class RootCauseRepository {
@@ -71,6 +75,7 @@ export class RootCauseRepository {
 					rated_by TEXT,
 					rated_at TEXT,
 					rating_comment TEXT,
+					episode_starts_at TEXT,
 					created_at TEXT NOT NULL,
 					updated_at TEXT NOT NULL
 				);
@@ -80,20 +85,25 @@ export class RootCauseRepository {
 			if (!columns.some((col) => col.name === 'rating_comment')) {
 				this.db.prepare(`ALTER TABLE alert_root_causes ADD COLUMN rating_comment TEXT`).run();
 			}
+			// Backward compatibility: the firing episode an analysis belongs to arrived later still.
+			if (!columns.some((col) => col.name === 'episode_starts_at')) {
+				this.db.prepare(`ALTER TABLE alert_root_causes ADD COLUMN episode_starts_at TEXT`).run();
+			}
 		});
 	}
 
-	// Replaces any previous analysis for the alert. The old rating is cleared on
-	// purpose: an operator's verdict on the previous content must not silently
-	// endorse (or damn) the new one.
-	async upsert(input: UpsertRootCauseInput): Promise<RootCauseRecord> {
+	// Replaces any previous analysis for the alert, including one hidden because it
+	// belongs to an earlier episode. The old rating is cleared on purpose: an operator's
+	// verdict on the previous content must not silently endorse (or damn) the new one.
+	// episodeStartsAt is the startsAt of the firing episode the analysis is for.
+	async upsert(input: UpsertRootCauseInput, episodeStartsAt: string): Promise<RootCauseRecord> {
 		return runAsync(() => {
 			const now = new Date().toISOString();
 			this.db
 				.prepare(
 					`INSERT INTO alert_root_causes
-						(alert_id, source, content, feedback_up_url, feedback_down_url, rating, rated_by, rated_at, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)
+						(alert_id, source, content, feedback_up_url, feedback_down_url, rating, rated_by, rated_at, episode_starts_at, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)
 					 ON CONFLICT(alert_id) DO UPDATE SET
 						source = excluded.source,
 						content = excluded.content,
@@ -103,9 +113,19 @@ export class RootCauseRepository {
 						rated_by = NULL,
 						rated_at = NULL,
 						rating_comment = NULL,
+						episode_starts_at = excluded.episode_starts_at,
 						updated_at = excluded.updated_at`
 				)
-				.run(input.alertId, input.source, input.content, input.feedbackUpUrl, input.feedbackDownUrl, now, now);
+				.run(
+					input.alertId,
+					input.source,
+					input.content,
+					input.feedbackUpUrl,
+					input.feedbackDownUrl,
+					episodeStartsAt,
+					now,
+					now
+				);
 			const row = this.db
 				.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`)
 				.get(input.alertId) as RootCauseRow;
@@ -140,6 +160,14 @@ export class RootCauseRepository {
 				.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`)
 				.get(alertId) as RootCauseRow;
 			return toRecord(row);
+		});
+	}
+
+	async setEpisode(alertId: string, episodeStartsAt: string): Promise<void> {
+		return runAsync(() => {
+			this.db
+				.prepare(`UPDATE alert_root_causes SET episode_starts_at = ? WHERE alert_id = ?`)
+				.run(episodeStartsAt, alertId);
 		});
 	}
 

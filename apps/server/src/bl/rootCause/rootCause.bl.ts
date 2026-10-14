@@ -54,26 +54,60 @@ const toPublic = (record: RootCauseRecord): AlertRootCause => ({
 	updatedAt: record.updatedAt,
 });
 
+// An analysis is about one firing episode of the alert. When the alert resolves and
+// later fires again under the same id, the old analysis must not show (or be rated)
+// as if it explained the new incident, so it stays hidden until a new one is pushed,
+// which replaces it. Start times are compared as instants: the two alert stores may
+// spell the same moment differently.
+const belongsToEpisode = (record: RootCauseRecord, episodeStartsAt: string): boolean => {
+	const current = new Date(episodeStartsAt).getTime();
+	if (record.episodeStartsAt !== null) {
+		const stored = new Date(record.episodeStartsAt).getTime();
+		return isNaN(current) || isNaN(stored) ? record.episodeStartsAt === episodeStartsAt : stored === current;
+	}
+	// Rows stored before episodes were tracked: an analysis pushed at or after the
+	// episode started is this episode's.
+	return isNaN(current) || new Date(record.updatedAt).getTime() >= current;
+};
+
 export class RootCauseBL {
 	constructor(
 		private rootCauseRepo: RootCauseRepository,
 		private auditBL: AuditBL,
-		// True when the id names a current alert, active or resolved. Injected so this
-		// module needs no view into the alert repositories.
-		private alertExists: (alertId: string) => Promise<boolean>
+		// The startsAt of the alert's current episode, active or resolved; null when no
+		// alert has the id. Injected so this module needs no view into the alert repositories.
+		private episodeStartsAt: (alertId: string) => Promise<string | null>
 	) {}
 
 	async upsert(input: UpsertRootCauseInput): Promise<AlertRootCause> {
-		if (!(await this.alertExists(input.alertId))) {
+		const episodeStartsAt = await this.episodeStartsAt(input.alertId);
+		if (episodeStartsAt === null) {
 			throw new RootCauseNotFoundError(`Alert ${input.alertId} not found`);
 		}
-		const record = await this.rootCauseRepo.upsert(input);
+		const record = await this.rootCauseRepo.upsert(input, episodeStartsAt);
 		return toPublic(record);
 	}
 
 	async get(alertId: string): Promise<AlertRootCause | null> {
-		const record = await this.rootCauseRepo.getByAlertId(alertId);
+		const record = await this.getCurrent(alertId);
 		return record ? toPublic(record) : null;
+	}
+
+	// Unresolving reopens the incident it resolved: its analysis moves to the new episode
+	// the reopen starts. An analysis already hidden (from an earlier episode) stays hidden.
+	async carryToReopenedEpisode(alertId: string, previousStartsAt: string, newStartsAt: string): Promise<void> {
+		const record = await this.rootCauseRepo.getByAlertId(alertId);
+		if (record && belongsToEpisode(record, previousStartsAt)) {
+			await this.rootCauseRepo.setEpisode(alertId, newStartsAt);
+		}
+	}
+
+	// The analysis of the alert's current episode, or null (none, or an earlier episode's).
+	private async getCurrent(alertId: string): Promise<RootCauseRecord | null> {
+		const record = await this.rootCauseRepo.getByAlertId(alertId);
+		if (!record) return null;
+		const episodeStartsAt = await this.episodeStartsAt(alertId);
+		return episodeStartsAt !== null && belongsToEpisode(record, episodeStartsAt) ? record : null;
 	}
 
 	// Stores the verdict FIRST, then fires the sender's callback for it. The stored
@@ -88,6 +122,11 @@ export class RootCauseBL {
 		// The comment is the "what went wrong?" answer — it only makes sense on a
 		// thumbs-down, so a comment sent with 'up' is dropped rather than stored.
 		const storedComment = rating === 'down' && comment ? comment : null;
+		// An earlier episode's analysis is not shown, so it can't be rated either: its
+		// sender would take the verdict as one on the incident the operator is looking at.
+		if (!(await this.getCurrent(alertId))) {
+			throw new RootCauseNotFoundError(`No root cause for alert ${alertId}`);
+		}
 		const updated = await this.rootCauseRepo.setRating(alertId, rating, user.fullName, storedComment);
 		if (!updated) {
 			throw new RootCauseNotFoundError(`No root cause for alert ${alertId}`);

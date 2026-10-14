@@ -101,16 +101,22 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const alertBL = new AlertBL(alertRepo, resolvedAlertRepo, alertCommentsRepo, alertHistoryRepo, userRepo);
 	const integrationBL = new IntegrationBL(integrationRepo, alertBL);
 	// Root causes live in their own table read only on drawer-open — never through the
-	// alerts snapshot. Existence check spans both alert stores: an analysis may arrive
+	// alerts snapshot. The episode lookup spans both alert stores: an analysis may arrive
 	// after the alert already resolved.
 	const rootCauseBL = new RootCauseBL(
 		rootCauseRepo,
 		auditBL,
 		async (alertId) =>
-			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
+			(await alertRepo.getAlert(alertId))?.startsAt ??
+			(await resolvedAlertRepo.getResolvedAlert(alertId))?.startsAt ??
+			null
 	);
-	// Resolve keeps the root cause; only permanent deletion drops it.
+	// Resolve keeps the root cause; a re-fire hides it until a new one is pushed (see
+	// RootCauseBL), an unresolve carries it over, and permanent deletion drops it.
 	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
+	alertBL.setOnAlertReopened((alertId, previousStartsAt, newStartsAt) =>
+		rootCauseBL.carryToReopenedEpisode(alertId, previousStartsAt, newStartsAt)
+	);
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {

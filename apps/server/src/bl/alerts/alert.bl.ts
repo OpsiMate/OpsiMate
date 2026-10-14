@@ -135,6 +135,8 @@ export interface SourceResolvedEpisode {
 	endsAt?: string;
 }
 
+type AlertReopenedCallback = (alertId: string, previousStartsAt: string, newStartsAt: string) => Promise<void>;
+
 // How an active alert is being resolved (see AlertBL.resolveActive).
 interface ResolveActiveOptions {
 	// A user's manual resolve: recorded in the history, and the user takes ownership.
@@ -165,6 +167,13 @@ export class AlertBL {
 
 	setOnAlertPermanentlyDeleted(callback: (alertId: string) => Promise<void>): void {
 		this.onAlertPermanentlyDeleted = callback;
+	}
+
+	// Called after an unresolve moves an alert back to firing with a new startsAt.
+	private onAlertReopened: AlertReopenedCallback | null = null;
+
+	setOnAlertReopened(callback: AlertReopenedCallback): void {
+		this.onAlertReopened = callback;
 	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
@@ -994,6 +1003,12 @@ export class AlertBL {
 			await this.alertRepo.restoreAlert(alert);
 			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 			this.invalidateSnapshots();
+			// Best-effort, like the deletion cleanup: the alert is already firing again.
+			try {
+				await this.onAlertReopened?.(alertId, resolved.startsAt, now);
+			} catch (reopenError) {
+				logger.error(`Satellite update failed for unresolved alert ${alertId}`, reopenError);
+			}
 			await this.recordHistoryEvent(
 				alertId,
 				AlertHistoryEventType.UNRESOLVED,
