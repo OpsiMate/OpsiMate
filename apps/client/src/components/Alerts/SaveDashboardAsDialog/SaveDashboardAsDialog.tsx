@@ -18,6 +18,10 @@ export interface SaveDashboardAsValues {
 	description: string;
 }
 
+// The dashboards list the duplicate check runs against. The server does not enforce
+// unique names, so until the list has loaded successfully nothing can be submitted.
+export type SaveAsNamesStatus = 'loading' | 'ready' | 'error';
+
 export interface SaveDashboardAsDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -26,9 +30,7 @@ export interface SaveDashboardAsDialogProps {
 	sourceDescription: string;
 	// Names already taken, so the copy can't shadow another dashboard in the switcher.
 	existingNames: string[];
-	// The list of names is still loading: the duplicate check would pass anything, so
-	// submitting waits. The server does not enforce unique names.
-	namesLoading?: boolean;
+	namesStatus?: SaveAsNamesStatus;
 	onSubmit: (values: SaveDashboardAsValues) => Promise<void>;
 }
 
@@ -73,26 +75,36 @@ const SaveAsFields = ({ name, onNameChange, nameError, description, onDescriptio
 	</div>
 );
 
+const SUBMIT_LABEL: Record<SaveAsNamesStatus, string> = {
+	loading: 'Loading dashboards…',
+	error: 'Dashboard list unavailable',
+	ready: 'Save as new',
+};
+
 interface SaveAsFormProps extends Omit<SaveDashboardAsDialogProps, 'open' | 'onSubmit'> {
 	submitting: boolean;
 	onSubmit: (values: SaveDashboardAsValues) => void;
 }
 
 // Lives inside DialogContent, which Radix unmounts on close, so every opening starts
-// from a fresh suggestion without an effect re-seeding the fields.
+// from a fresh suggestion.
 const SaveAsForm = ({
 	onOpenChange,
 	sourceName,
 	sourceDescription,
 	existingNames,
-	namesLoading = false,
+	namesStatus = 'ready',
 	submitting,
 	onSubmit,
 }: SaveAsFormProps) => {
-	const [name, setName] = useState(() => suggestCopyName(sourceName, existingNames));
+	// Derived until the user types: a suggestion made while the list was still loading
+	// is replaced by a free one once the names arrive, instead of sitting there flagged
+	// as a duplicate.
+	const [typedName, setTypedName] = useState<string | null>(null);
+	const name = typedName ?? suggestCopyName(sourceName, existingNames);
 	const [description, setDescription] = useState(sourceDescription);
 	const nameError = copyNameError(name, existingNames);
-	const blocked = nameError !== null || namesLoading || submitting;
+	const blocked = nameError !== null || namesStatus !== 'ready' || submitting;
 
 	const handleSubmit = (event: FormEvent) => {
 		event.preventDefault();
@@ -110,7 +122,7 @@ const SaveAsForm = ({
 			</DialogHeader>
 			<SaveAsFields
 				name={name}
-				onNameChange={setName}
+				onNameChange={setTypedName}
 				nameError={nameError}
 				description={description}
 				onDescriptionChange={setDescription}
@@ -120,7 +132,7 @@ const SaveAsForm = ({
 					Cancel
 				</Button>
 				<Button type="submit" disabled={blocked}>
-					{submitting ? 'Saving…' : namesLoading ? 'Loading dashboards…' : 'Save as new'}
+					{submitting ? 'Saving…' : SUBMIT_LABEL[namesStatus]}
 				</Button>
 			</DialogFooter>
 		</form>

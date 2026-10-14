@@ -147,7 +147,7 @@ const mergeFacetsResponses = (a?: AlertFacetsResponse, b?: AlertFacetsResponse):
 
 const Alerts = () => {
 	const { toast } = useToast();
-	const { data: dashboards = [], isPending: dashboardsPending } = useGetDashboards();
+	const { data: dashboards = [], isPending: dashboardsPending, isError: dashboardsFailed } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
 	const deleteDashboardMutation = useDeleteDashboard();
@@ -1581,7 +1581,7 @@ const Alerts = () => {
 				sourceName={dashboardState.name}
 				sourceDescription={dashboardState.description}
 				existingNames={dashboards.map((d) => d.name)}
-				namesLoading={dashboardsPending}
+				namesStatus={dashboardsPending ? 'loading' : dashboardsFailed ? 'error' : 'ready'}
 				onSubmit={handleSaveDashboardAs}
 			/>
 		</DashboardLayout>

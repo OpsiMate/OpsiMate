@@ -44,6 +44,7 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps) => {
 	const [isEditingName, setIsEditingName] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const saveAsRef = useRef<HTMLButtonElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const searchContainerRef = useRef<HTMLDivElement>(null);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -88,8 +89,13 @@ export const DashboardHeader = ({
 		setIsEditingName(true);
 	};
 
-	const handleNameBlur = () => {
+	// Leaving the name input commits the rename (the parent auto-saves it) — unless focus
+	// is moving to Save as, by Tab or by click: that save would write the renamed, edited
+	// view over the open dashboard, the one write Save as exists to avoid. The typed name
+	// stays in state and seeds the dialog instead.
+	const handleNameBlur = (e?: React.FocusEvent<HTMLInputElement>) => {
 		setIsEditingName(false);
+		if (e?.relatedTarget != null && e.relatedTarget === saveAsRef.current) return;
 		onDashboardNameBlur();
 	};
 
@@ -186,6 +192,7 @@ export const DashboardHeader = ({
 
 				{onSaveAs && (
 					<Button
+						ref={saveAsRef}
 						variant="ghost"
 						size="icon"
 						onClick={onSaveAs}
