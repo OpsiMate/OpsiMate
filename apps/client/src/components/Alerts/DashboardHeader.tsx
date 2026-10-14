@@ -189,6 +189,9 @@ export const DashboardHeader = ({
 						variant="ghost"
 						size="icon"
 						onClick={onSaveAs}
+						// Keep the inline name input focused through the click: its blur
+						// auto-saves the open dashboard, which Save as must not do.
+						onMouseDown={(e) => e.preventDefault()}
 						title="Save as new dashboard"
 						aria-label="Save as new dashboard"
 						className="rounded-full h-8 w-8 hover:bg-muted shrink-0"

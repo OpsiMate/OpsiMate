@@ -540,10 +540,10 @@ const Alerts = () => {
 				title: 'Dashboard created',
 				description: `Saved the current view as "${name}". "${dashboardState.name || 'New Dashboard'}" was left unchanged.`,
 			});
-		} catch {
+		} catch (err) {
 			toast({
 				title: 'Error saving dashboard',
-				description: 'Failed to create the new dashboard',
+				description: err instanceof Error ? err.message : 'Failed to create the new dashboard',
 				variant: 'destructive',
 			});
 		}
@@ -1165,6 +1165,10 @@ const Alerts = () => {
 								dashboardName={dashboardState.name}
 								onDashboardNameChange={(name) => updateDashboardField('name', name)}
 								onDashboardNameBlur={() => {
+									// Not while Save as is opening: the blur-save writes the WHOLE view
+									// over the source dashboard, the one write Save as promises not to
+									// make. The typed name reaches the dialog's own Name field instead.
+									if (showSaveAs) return;
 									if (dashboardState.name && dashboardState.name !== initialState.name) {
 										handleSaveDashboard();
 									}
@@ -1577,6 +1581,7 @@ const Alerts = () => {
 				sourceName={dashboardState.name}
 				sourceDescription={dashboardState.description}
 				existingNames={dashboards.map((d) => d.name)}
+				namesLoading={dashboardsPending}
 				onSubmit={handleSaveDashboardAs}
 			/>
 		</DashboardLayout>

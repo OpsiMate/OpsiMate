@@ -26,6 +26,9 @@ export interface SaveDashboardAsDialogProps {
 	sourceDescription: string;
 	// Names already taken, so the copy can't shadow another dashboard in the switcher.
 	existingNames: string[];
+	// The list of names is still loading: the duplicate check would pass anything, so
+	// submitting waits. The server does not enforce unique names.
+	namesLoading?: boolean;
 	onSubmit: (values: SaveDashboardAsValues) => Promise<void>;
 }
 
@@ -70,25 +73,30 @@ const SaveAsFields = ({ name, onNameChange, nameError, description, onDescriptio
 	</div>
 );
 
-type SaveAsFormProps = Omit<SaveDashboardAsDialogProps, 'open'>;
+interface SaveAsFormProps extends Omit<SaveDashboardAsDialogProps, 'open' | 'onSubmit'> {
+	submitting: boolean;
+	onSubmit: (values: SaveDashboardAsValues) => void;
+}
 
 // Lives inside DialogContent, which Radix unmounts on close, so every opening starts
 // from a fresh suggestion without an effect re-seeding the fields.
-const SaveAsForm = ({ onOpenChange, sourceName, sourceDescription, existingNames, onSubmit }: SaveAsFormProps) => {
+const SaveAsForm = ({
+	onOpenChange,
+	sourceName,
+	sourceDescription,
+	existingNames,
+	namesLoading = false,
+	submitting,
+	onSubmit,
+}: SaveAsFormProps) => {
 	const [name, setName] = useState(() => suggestCopyName(sourceName, existingNames));
 	const [description, setDescription] = useState(sourceDescription);
-	const [submitting, setSubmitting] = useState(false);
 	const nameError = copyNameError(name, existingNames);
+	const blocked = nameError !== null || namesLoading || submitting;
 
-	const handleSubmit = async (event: FormEvent) => {
+	const handleSubmit = (event: FormEvent) => {
 		event.preventDefault();
-		if (nameError || submitting) return;
-		setSubmitting(true);
-		try {
-			await onSubmit({ name: name.trim(), description: description.trim() });
-		} finally {
-			setSubmitting(false);
-		}
+		if (!blocked) onSubmit({ name: name.trim(), description: description.trim() });
 	};
 
 	return (
@@ -111,8 +119,8 @@ const SaveAsForm = ({ onOpenChange, sourceName, sourceDescription, existingNames
 				<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
 					Cancel
 				</Button>
-				<Button type="submit" disabled={nameError !== null || submitting}>
-					{submitting ? 'Saving…' : 'Save as new'}
+				<Button type="submit" disabled={blocked}>
+					{submitting ? 'Saving…' : namesLoading ? 'Loading dashboards…' : 'Save as new'}
 				</Button>
 			</DialogFooter>
 		</form>
@@ -123,10 +131,25 @@ const SaveAsForm = ({ onOpenChange, sourceName, sourceDescription, existingNames
 // written to a NEW dashboard under the given name; the one it was derived from keeps
 // its last saved version. Until now the only way out of "I like this but don't want to
 // overwrite what I started from" was to redo the changes on a fresh draft.
-export const SaveDashboardAsDialog = ({ open, onOpenChange, ...formProps }: SaveDashboardAsDialogProps) => (
-	<Dialog open={open} onOpenChange={onOpenChange}>
-		<DialogContent className="sm:max-w-md">
-			<SaveAsForm onOpenChange={onOpenChange} {...formProps} />
-		</DialogContent>
-	</Dialog>
-);
+export const SaveDashboardAsDialog = ({ open, onOpenChange, onSubmit, ...formProps }: SaveDashboardAsDialogProps) => {
+	// Held here, outside the form, so Escape / overlay / X can't close the dialog
+	// mid-request either (the request itself always completes in the caller).
+	const [submitting, setSubmitting] = useState(false);
+
+	const submit = async (values: SaveDashboardAsValues) => {
+		setSubmitting(true);
+		try {
+			await onSubmit(values);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
+			<DialogContent className="sm:max-w-md">
+				<SaveAsForm onOpenChange={onOpenChange} submitting={submitting} onSubmit={submit} {...formProps} />
+			</DialogContent>
+		</Dialog>
+	);
+};

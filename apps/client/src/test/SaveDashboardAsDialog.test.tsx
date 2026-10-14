@@ -73,7 +73,9 @@ describe('SaveDashboardAsDialog', () => {
 		expect(screen.getByRole('alert')).toHaveTextContent('Give the new dashboard a name');
 		expect(submitButton()).toBeDisabled();
 	});
+});
 
+describe('SaveDashboardAsDialog: submit and close', () => {
 	test('submitting hands over the trimmed name and description', async () => {
 		const onSubmit = vi.fn(async () => {});
 		renderDialog({ onSubmit });
@@ -83,6 +85,26 @@ describe('SaveDashboardAsDialog', () => {
 		fireEvent.click(submitButton());
 
 		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'Prod (EU)', description: 'EU only' }));
+	});
+
+	test('cannot submit while the list of names is still loading (the duplicate check would pass anything)', () => {
+		const onSubmit = vi.fn(async () => {});
+		render(
+			<SaveDashboardAsDialog
+				open
+				onOpenChange={noop}
+				sourceName="Prod"
+				sourceDescription=""
+				existingNames={[]}
+				namesLoading
+				onSubmit={onSubmit}
+			/>
+		);
+
+		const button = screen.getByRole('button', { name: 'Loading dashboards…' });
+		expect(button).toBeDisabled();
+		fireEvent.submit(button.closest('form') as HTMLFormElement);
+		expect(onSubmit).not.toHaveBeenCalled();
 	});
 
 	test('Cancel closes without submitting', () => {
@@ -119,6 +141,14 @@ describe('DashboardHeader save-as button', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Save as new dashboard' }));
 
 		expect(onSaveAs).toHaveBeenCalledTimes(1);
+	});
+
+	test('pressing it does not steal focus: the inline name input must not blur-save the source', () => {
+		renderHeader(vi.fn());
+
+		const defaultAllowed = fireEvent.mouseDown(screen.getByRole('button', { name: 'Save as new dashboard' }));
+
+		expect(defaultAllowed).toBe(false);
 	});
 
 	test('is absent on a draft (no handler): Save already creates a dashboard there', () => {
