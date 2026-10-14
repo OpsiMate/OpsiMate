@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
 const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
-const supportsWebStorageFlag =
-	nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 4);
+const supportsWebStorageFlag = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 4);
 
 export default defineConfig({
 	plugins: [react()],
