@@ -37,7 +37,7 @@ export const AlertDetails = ({
 
 			<ScrollArea className="flex-1">
 				<SectionsExpandContext.Provider value={signal}>
-					<AlertDetailsBody alert={alert} historyData={historyData} />
+					<AlertDetailsBody alert={alert} historyData={historyData} isResolved={!isActive} />
 				</SectionsExpandContext.Provider>
 			</ScrollArea>
 
