@@ -16,7 +16,10 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<AlertDialogPrimitive.Overlay
 		className={cn(
-			'fixed inset-0 z-50 bg-gray-500/30 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+			// No backdrop-blur: the blur is recomputed for the whole viewport on every frame behind
+			// the modal, which stutters without GPU compositing (VDI, acceleration off). A dim
+			// separates the modal just as well (reduced motion is handled globally in index.css).
+			'fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
 			className
 		)}
 		{...props}
