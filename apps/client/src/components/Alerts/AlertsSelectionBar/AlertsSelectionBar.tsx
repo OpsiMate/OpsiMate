@@ -39,6 +39,9 @@ export interface AlertsSelectionBarProps {
 	// Offered when the whole loaded list is selected but more alerts match the query —
 	// arming it widens every bulk action to all matchingTotal alerts (Gmail's pattern).
 	onSelectAllMatching?: () => void;
+	// A bulk action is still running: its rows already show the result, but a second
+	// action before it settles could be undone by the first one's rollback or refetch.
+	actionsDisabled?: boolean;
 }
 
 export const AlertsSelectionBar = ({
@@ -54,6 +57,7 @@ export const AlertsSelectionBar = ({
 	matchingTotal,
 	allMatchingSelected,
 	onSelectAllMatching,
+	actionsDisabled = false,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -85,29 +89,48 @@ export const AlertsSelectionBar = ({
 						selectedUserId={null}
 						users={users}
 						onSelect={handleAssignOwner}
+						disabled={actionsDisabled}
 						placeholder="Assign Owner"
 						className="h-8 px-3 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
 					/>
 				)}
 				{allNotSilenced && (
-					<Button variant="outline" size="sm" onClick={onSilenceAll}>
+					<Button variant="outline" size="sm" onClick={onSilenceAll} disabled={actionsDisabled}>
 						Silence all
 					</Button>
 				)}
 				{onUnsilenceAll && allSilenced && (
-					<Button variant="outline" size="sm" onClick={onUnsilenceAll} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onUnsilenceAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<BellRing className="h-3.5 w-3.5" />
 						Unsilence all
 					</Button>
 				)}
 				{onResolveAll && (
-					<Button variant="outline" size="sm" onClick={onResolveAll} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onResolveAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<CheckCircle2 className="h-3.5 w-3.5" />
 						Resolve
 					</Button>
 				)}
 				{onCommentAll && (
-					<Button variant="outline" size="sm" onClick={onCommentAll} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onCommentAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<MessageSquarePlus className="h-3.5 w-3.5" />
 						Comment
 					</Button>
@@ -117,6 +140,7 @@ export const AlertsSelectionBar = ({
 						variant="outline"
 						size="sm"
 						onClick={() => setConfirmDelete(true)}
+						disabled={actionsDisabled}
 						className="gap-1.5 text-destructive hover:text-destructive"
 					>
 						<Trash2 className="h-3.5 w-3.5" />
@@ -126,6 +150,9 @@ export const AlertsSelectionBar = ({
 				<Button variant="outline" size="sm" onClick={onClearSelection}>
 					Clear selection
 				</Button>
+				{actionsDisabled && (
+					<span className="text-xs text-muted-foreground">Finishing the previous action…</span>
+				)}
 			</div>
 
 			<span className="min-w-0 text-sm font-medium">
