@@ -1,13 +1,14 @@
 import { act, renderHook } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { useResizablePanelWidth } from '@/components/Alerts/AlertDetails/AlertDetailsPanel/useResizablePanelWidth';
+import { useResizablePanelWidth } from '@/components/shared/hooks/useResizablePanelWidth';
 
 // The gesture contract: the panel opens at 340px unless a saved width inside
 // [280, 640] exists; a drag measures from the window's right edge when no panel
 // element is rendered (panelRef.current is null in a hook test); the live width
 // never touches localStorage; the chosen width persists exactly once, on
-// pointerup; double-click resets to the default.
+// pointerup; double-click resets to the default. The last block covers the second
+// consumer - the left-docked filter sidebar, which drags the other way.
 
 const STORAGE_KEY = 'opsimate-alert-details-panel-width';
 
@@ -151,5 +152,71 @@ describe('useResizablePanelWidth - reset', () => {
 		});
 		expect(result.current.width).toBe(340);
 		expect(localStorage.getItem(STORAGE_KEY)).toBe('340');
+	});
+});
+
+// The filter sidebar is the second consumer. It docks left, so the same drag reads the
+// pointer from its left edge (x = 0 when a hook test renders no element), and it keeps its
+// own bounds and storage key - widening the filters must never resize the details panel.
+const SIDEBAR_STORAGE_KEY = 'opsimate-alerts-filter-sidebar-width';
+const SIDEBAR_OPTIONS = {
+	dock: 'left',
+	defaultWidth: 192,
+	minWidth: 192,
+	maxWidth: 480,
+	storageKey: SIDEBAR_STORAGE_KEY,
+} as const;
+
+const renderSidebar = () => renderHook(() => useResizablePanelWidth(SIDEBAR_OPTIONS));
+
+describe('useResizablePanelWidth - left-docked sidebar', () => {
+	test('opens at 192 and ignores a stored details-panel width', () => {
+		localStorage.setItem(STORAGE_KEY, '600');
+		const { result } = renderSidebar();
+		expect(result.current.width).toBe(192);
+	});
+
+	test('reads back its own stored width, and falls back outside [192, 480]', () => {
+		localStorage.setItem(SIDEBAR_STORAGE_KEY, '300');
+		expect(renderSidebar().result.current.width).toBe(300);
+		localStorage.setItem(SIDEBAR_STORAGE_KEY, '900');
+		expect(renderSidebar().result.current.width).toBe(192);
+	});
+
+	test('a pointermove sets the width to clientX', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(300);
+		expect(result.current.width).toBe(300);
+	});
+
+	test('the live width clamps to 480 on a far-right move and 192 on a far-left one', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(1200);
+		expect(result.current.width).toBe(480);
+		pointerMove(-50);
+		expect(result.current.width).toBe(192);
+	});
+
+	test('pointerup persists under the sidebar key only', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(300);
+		pointerUp();
+		expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('300');
+		expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+	});
+
+	test('resetWidth restores 192 and persists it', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(300);
+		pointerUp();
+		act(() => {
+			result.current.resetWidth();
+		});
+		expect(result.current.width).toBe(192);
+		expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('192');
 	});
 });

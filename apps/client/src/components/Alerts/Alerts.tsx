@@ -73,7 +73,6 @@ import {
 	useAlertTagKeys,
 	useColumnManagement,
 	useExpandRows,
-	useFilterPanelCollapsed,
 } from './hooks';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
@@ -374,7 +373,6 @@ const Alerts = () => {
 	// the user actually works with; the draft state is persisted per-browser meanwhile.
 	const { splitByAssignment, severityColors } = dashboardState;
 	const { expandRows, toggleExpandRows } = useExpandRows();
-	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
 
@@ -1110,7 +1108,7 @@ const Alerts = () => {
 	return (
 		<DashboardLayout>
 			<div className="flex h-full">
-				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={toggleFilterPanelCollapsed}>
+				<FilterSidebar>
 					<AlertsFilterPanel
 						alerts={currentAlertData}
 						serverFacets={
@@ -1122,7 +1120,6 @@ const Alerts = () => {
 						}
 						filters={dashboardState.filters}
 						onFilterChange={handleFilterChange}
-						collapsed={filterPanelCollapsed}
 						tagKeys={tagKeys}
 						hideStatusFilter={activeTab !== AlertTab.Active}
 					/>
