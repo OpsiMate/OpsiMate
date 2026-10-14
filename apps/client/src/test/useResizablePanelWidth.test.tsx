@@ -6,8 +6,10 @@ import { useResizablePanelWidth } from '@/components/shared/hooks/useResizablePa
 // The gesture contract: the panel opens at 340px unless a saved width inside
 // [280, 640] exists; a drag measures from the window's right edge when no panel
 // element is rendered (panelRef.current is null in a hook test); the live width
-// never touches localStorage; the chosen width persists exactly once, on
-// pointerup; double-click resets to the default. The last block covers the second
+// never touches localStorage; the chosen width persists exactly once, when the drag
+// ends (pointerup, or a pointercancel that never fires pointerup); unmounting releases a
+// drag that is still in flight; storage that throws degrades to the default; and
+// double-click resets to the default. The last block covers the second
 // consumer - the left-docked filter sidebar, which drags the other way.
 
 const STORAGE_KEY = 'opsimate-alert-details-panel-width';
@@ -218,5 +220,65 @@ describe('useResizablePanelWidth - left-docked sidebar', () => {
 		});
 		expect(result.current.width).toBe(192);
 		expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('192');
+	});
+});
+
+describe('useResizablePanelWidth - a drag that never gets released', () => {
+	test('pointercancel ends the drag, unlocks the body and keeps the width it reached', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current);
+		pointerMove(500);
+		act(() => {
+			window.dispatchEvent(new MouseEvent('pointercancel'));
+		});
+		expect(document.body.style.userSelect).toBe('');
+		expect(document.body.style.cursor).toBe('');
+		pointerMove(700);
+		expect(result.current.width).toBe(500);
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('500');
+	});
+
+	test('unmounting mid-drag unlocks the body and drops the listeners', () => {
+		const { result, unmount } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current);
+		pointerMove(500);
+		unmount();
+		expect(document.body.style.userSelect).toBe('');
+		expect(document.body.style.cursor).toBe('');
+		// The handler must be gone: a stray move after unmount would otherwise keep
+		// calling setState on a dead component.
+		pointerMove(700);
+		expect(result.current.width).toBe(500);
+	});
+});
+
+describe('useResizablePanelWidth - storage that refuses', () => {
+	// Safari in private mode and "block all cookies" throw on any storage access, which
+	// would take the whole Alerts page down with it.
+	test('a getItem that throws opens at the default width', () => {
+		const blocked = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+			throw new Error('blocked');
+		});
+		try {
+			const { result } = renderHook(() => useResizablePanelWidth());
+			expect(result.current.width).toBe(340);
+		} finally {
+			blocked.mockRestore();
+		}
+	});
+
+	test('a setItem that throws still finishes the drag', () => {
+		const blocked = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+			throw new Error('quota');
+		});
+		try {
+			const { result } = renderHook(() => useResizablePanelWidth());
+			startDrag(result.current);
+			pointerMove(500);
+			expect(() => pointerUp()).not.toThrow();
+			expect(result.current.width).toBe(500);
+		} finally {
+			blocked.mockRestore();
+		}
 	});
 });
