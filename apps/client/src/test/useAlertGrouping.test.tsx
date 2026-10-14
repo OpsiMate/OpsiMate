@@ -62,7 +62,8 @@ describe('the grouping restored from storage', () => {
 	test('a corrupt stored value falls back to no grouping instead of throwing', () => {
 		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, 'not json');
 
-		expect(() => render()).not.toThrow();
+		// One render covers both claims: an unguarded JSON.parse would throw out of
+		// renderHook and fail here rather than reach the assertion.
 		const { result } = render();
 		expect(result.current.groupByColumns).toEqual([]);
 	});
@@ -98,14 +99,24 @@ describe('controlled mode', () => {
 	});
 
 	test('a change is handed to the parent and storage keeps its old value', () => {
-		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, '["alertName"]');
+		// The stored value differs from the controlled one on purpose: if controlled mode
+		// ever wrote storage, the string changes rather than rewriting what is there.
+		localStorage.setItem(ALERTS_GROUP_BY_STORAGE_KEY, '["disk"]');
 		const onGroupByChange = vi.fn();
+		const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
 		const { result } = render(['alertName'], onGroupByChange);
+
+		expect(storedGroupBy()).toBe('["disk"]');
+		expect(setItem).not.toHaveBeenCalledWith(ALERTS_GROUP_BY_STORAGE_KEY, expect.anything());
 
 		act(() => result.current.setGroupByColumns(['summary']));
 
 		expect(onGroupByChange).toHaveBeenCalledWith(['summary']);
-		expect(storedGroupBy()).toBe('["alertName"]');
+		expect(storedGroupBy()).toBe('["disk"]');
+		expect(setItem).not.toHaveBeenCalledWith(ALERTS_GROUP_BY_STORAGE_KEY, expect.anything());
+
+		setItem.mockRestore();
 	});
 
 	test('a functional updater is resolved against the controlled value, not the stored one', () => {
