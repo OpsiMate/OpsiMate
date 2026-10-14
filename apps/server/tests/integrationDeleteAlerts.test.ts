@@ -33,6 +33,10 @@ interface ResolvedRow extends IdRow {
 	archived_at: string | null;
 }
 
+interface NameRow {
+	name: string;
+}
+
 const insertAlert = (id: string, type: AlertType) => {
 	const now = new Date().toISOString();
 	db.prepare(
@@ -45,7 +49,7 @@ const activeIds = () => (db.prepare('SELECT id FROM alerts ORDER BY id').all() a
 const resolvedIds = () =>
 	(db.prepare('SELECT id FROM alerts_resolved ORDER BY id').all() as IdRow[]).map((row) => row.id);
 const integrationNames = () =>
-	(db.prepare('SELECT name FROM integrations ORDER BY id').all() as { name: string }[]).map((row) => row.name);
+	(db.prepare('SELECT name FROM integrations ORDER BY id').all() as NameRow[]).map((row) => row.name);
 const selectedIds = async (activeAlertIds: Set<string>, alertType: AlertType) =>
 	(await alertRepo.getAlertsNotInIds(activeAlertIds, alertType)).map((alert) => alert.id).sort();
 
@@ -173,7 +177,7 @@ describe('the selection behind that delete', () => {
 		expect(await selectedIds(new Set(['g1', 'g2']), 'Grafana')).toEqual([]);
 	});
 
-	test('resolving a type that has no alerts does not move the auto counter', async () => {
+	test('nothing to resolve does not move the auto counter', async () => {
 		const before = await autoResolvedTotal();
 
 		// Both Grafana alerts are still active, so the empty complement resolves nothing.
