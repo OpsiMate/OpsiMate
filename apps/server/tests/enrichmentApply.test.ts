@@ -28,7 +28,11 @@ const grafanaAlert = (overrides: Partial<Alert> = {}): Alert => ({
 
 // Rules are deliberately NOT given matchAll here: a rule with no criteria matches nothing, so
 // every rule below that is meant to fire spells out how it matches.
-const rule = (overrides: Partial<AlertEnrichment> & { id: number }): AlertEnrichment => ({
+interface RuleOverrides extends Partial<AlertEnrichment> {
+	id: number;
+}
+
+const rule = (overrides: RuleOverrides): AlertEnrichment => ({
 	name: `rule ${overrides.id}`,
 	labelMatchers: [],
 	addFields: [],
@@ -44,16 +48,19 @@ const enricherFor = (...rules: AlertEnrichment[]): EnrichmentBL => {
 };
 
 describe('applyEnrichments — ordering and conflicts', () => {
+	// In every rule pair below the HIGH-priority rule gets the LARGER id. Ranked by priority the
+	// high rule goes first; ranked by id alone the low rule would go first and win the conflicting
+	// key, so the assertions below fail if the comparator stops reading priority.
 	test('the highest-priority rule wins a conflicting field key, whatever order the repository returned', async () => {
 		const high = rule({
-			id: 1,
+			id: 2,
 			name: 'high',
 			priority: 10,
 			matchAll: true,
 			addFields: [{ key: 'team', value: 'platform' }],
 		});
 		const low = rule({
-			id: 2,
+			id: 1,
 			name: 'low',
 			priority: 5,
 			matchAll: true,
@@ -68,8 +75,8 @@ describe('applyEnrichments — ordering and conflicts', () => {
 
 		expect(enriched.tags).toEqual({ team: 'platform', tier: 'gold' });
 		expect(enriched.appliedEnrichments).toEqual([
-			{ id: 1, name: 'high' },
-			{ id: 2, name: 'low' },
+			{ id: 2, name: 'high' },
+			{ id: 1, name: 'low' },
 		]);
 	});
 
@@ -96,9 +103,9 @@ describe('applyEnrichments — ordering and conflicts', () => {
 	});
 
 	test('a lower-priority rule cannot overwrite a key an earlier rule set, but still adds its own', async () => {
-		const first = rule({ id: 1, priority: 10, matchAll: true, addFields: [{ key: 'env', value: 'prod' }] });
+		const first = rule({ id: 2, priority: 10, matchAll: true, addFields: [{ key: 'env', value: 'prod' }] });
 		const second = rule({
-			id: 2,
+			id: 1,
 			priority: 1,
 			matchAll: true,
 			addFields: [
@@ -121,9 +128,9 @@ describe('applyEnrichments — ordering and conflicts', () => {
 	});
 
 	test('a lower-priority rule can match a tag a higher-priority rule added in the same pass', async () => {
-		const addTeam = rule({ id: 1, priority: 10, matchAll: true, addFields: [{ key: 'team', value: 'platform' }] });
+		const addTeam = rule({ id: 2, priority: 10, matchAll: true, addFields: [{ key: 'team', value: 'platform' }] });
 		const needsTeam = rule({
-			id: 2,
+			id: 1,
 			priority: 1,
 			labelMatchers: [{ key: 'team', value: 'platform' }],
 			addFields: [{ key: 'sla', value: '24x7' }],
@@ -131,7 +138,7 @@ describe('applyEnrichments — ordering and conflicts', () => {
 
 		const [chained] = await enricherFor(addTeam, needsTeam).applyEnrichments([grafanaAlert()]);
 		expect(chained.tags).toEqual({ team: 'platform', sla: '24x7' });
-		expect(chained.appliedEnrichments?.map((applied) => applied.id)).toEqual([1, 2]);
+		expect(chained.appliedEnrichments?.map((applied) => applied.id)).toEqual([2, 1]);
 
 		// The second rule on its own matches nothing — the first rule is what made it apply.
 		const [alone] = await enricherFor(needsTeam).applyEnrichments([grafanaAlert()]);
@@ -161,8 +168,8 @@ describe('applyEnrichments — templates', () => {
 	});
 
 	test('summary templates chain, so a later rule sees the summary the previous rule produced', async () => {
-		const ruleA = rule({ id: 1, priority: 10, matchAll: true, summaryTemplate: '[A] {{summary}}' });
-		const ruleB = rule({ id: 2, priority: 5, matchAll: true, summaryTemplate: '[B] {{summary}}' });
+		const ruleA = rule({ id: 2, priority: 10, matchAll: true, summaryTemplate: '[A] {{summary}}' });
+		const ruleB = rule({ id: 1, priority: 5, matchAll: true, summaryTemplate: '[B] {{summary}}' });
 
 		const [enriched] = await enricherFor(ruleA, ruleB).applyEnrichments([grafanaAlert({ summary: 'original' })]);
 
@@ -209,18 +216,18 @@ describe('applyEnrichments — severity', () => {
 
 	test('a lower-priority rule cannot change a severity an earlier rule already set', async () => {
 		const toCritical = rule({
-			id: 1,
+			id: 2,
 			priority: 10,
 			matchAll: true,
 			addFields: [{ key: 'severity', value: 'CRIT' }],
 		});
-		const toInfo = rule({ id: 2, priority: 1, matchAll: true, addFields: [{ key: 'severity', value: 'info' }] });
+		const toInfo = rule({ id: 1, priority: 1, matchAll: true, addFields: [{ key: 'severity', value: 'info' }] });
 
 		const [enriched] = await enricherFor(toCritical, toInfo).applyEnrichments([grafanaAlert()]);
 
 		expect(enriched.severity).toBe(AlertSeverity.CRITICAL);
 		expect(enriched.tags.severity).toBe(AlertSeverity.CRITICAL);
-		expect(enriched.appliedEnrichments?.map((applied) => applied.id)).toEqual([1, 2]);
+		expect(enriched.appliedEnrichments?.map((applied) => applied.id)).toEqual([2, 1]);
 	});
 });
 
@@ -267,13 +274,13 @@ describe('applyEnrichments — links', () => {
 
 	test('chained rules adding the same url leave one link, and the first label wins', async () => {
 		const first = rule({
-			id: 1,
+			id: 2,
 			priority: 10,
 			matchAll: true,
 			addLinks: [{ label: 'Board', icon: '', url: 'https://shared.example.com' }],
 		});
 		const second = rule({
-			id: 2,
+			id: 1,
 			priority: 5,
 			matchAll: true,
 			addLinks: [
