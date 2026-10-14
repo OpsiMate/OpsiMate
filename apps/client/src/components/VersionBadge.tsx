@@ -1,4 +1,5 @@
 import { useAppVersion } from '@/hooks/queries/version';
+import { formatDate } from '@/lib/datetime';
 import { formatVersion, releaseNotesUrl } from '@/lib/version';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@radix-ui/react-tooltip';
@@ -13,7 +14,7 @@ interface VersionBadgeProps {
 const buildDetails = (info: ReturnType<typeof useAppVersion>): string[] => {
 	const lines: string[] = [];
 	if (info.commit) lines.push(`commit ${info.commit.slice(0, 7)}`);
-	if (info.buildDate) lines.push(`built ${new Date(info.buildDate).toLocaleDateString()}`);
+	if (info.buildDate) lines.push(`built ${formatDate(info.buildDate)}`);
 	if (info.mismatch) lines.push(`client ${formatVersion(info.clientVersion)}`);
 	if (info.updateAvailable) lines.push(`v${info.updateAvailable.version} available`);
 	return lines;

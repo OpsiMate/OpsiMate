@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { TableInfoRow, UserRow } from './models';
-import { User, UserAuthSource } from '@OpsiMate/shared';
+import { Role, User, UserAuthSource } from '@OpsiMate/shared';
 
 // How an email maps onto an existing account, for directory provisioning.
 export interface DirectoryAccountLink {
@@ -56,7 +56,7 @@ export class UserRepository {
 		email: string,
 		password_hash: string,
 		full_name: string,
-		role: 'admin' | 'editor' | 'viewer' | 'operation',
+		role: Role,
 		authSource: UserAuthSource = 'local',
 		ldapDn: string | null = null
 	): Promise<{ lastID: number }> {
@@ -85,7 +85,7 @@ export class UserRepository {
 		});
 	}
 
-	async updateUserRole(email: string, newRole: 'admin' | 'editor' | 'viewer' | 'operation'): Promise<boolean> {
+	async updateUserRole(email: string, newRole: Role): Promise<boolean> {
 		return runAsync(() => {
 			const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ?');
 			return stmt.run(newRole, email).changes > 0;

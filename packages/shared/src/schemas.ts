@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IntegrationType, Role, SecretType, RetentionResource } from './types';
+import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES } from './types';
 
 export const CreateIntegrationSchema = z.object({
 	name: z.string().min(1),
@@ -149,7 +149,7 @@ export const AdminUpdateUserSchema = z
 
 export const CreateDashboardSchema = z.object({
 	name: z.string(),
-	type: z.enum(['services', 'alerts']),
+	type: z.enum(DASHBOARD_TYPES),
 	description: z.string().optional(),
 	filters: z.record(z.string(), z.unknown()),
 	visibleColumns: z.array(z.string()),

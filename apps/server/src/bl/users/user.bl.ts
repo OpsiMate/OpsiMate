@@ -92,7 +92,7 @@ export class UserBL {
 			throw new Error('Registration is disabled after first admin');
 		}
 		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-		const result = await this.userRepo.createUser(email, hash, fullName, 'admin');
+		const result = await this.userRepo.createUser(email, hash, fullName, Role.Admin);
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
 		this.onUsersChanged?.();

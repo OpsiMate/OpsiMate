@@ -18,6 +18,7 @@ import {
 } from './ui/alert-dialog';
 import { useCustomFields, useDeleteCustomField } from '../hooks/queries/custom-fields';
 import { useToast } from '@/hooks/use-toast';
+import { formatDate } from '@/lib/datetime';
 import { ServiceCustomField } from '@OpsiMate/shared';
 import { CustomFieldModal } from './CustomFieldModal';
 
@@ -36,7 +37,7 @@ export const CustomFieldsTable: React.FC = () => {
 				title: 'Success',
 				description: `Custom field "${fieldName}" deleted successfully`,
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error',
 				description: `Failed to delete custom field "${fieldName}"`,
@@ -151,7 +152,7 @@ export const CustomFieldsTable: React.FC = () => {
 									<div className="font-medium">{field.name}</div>
 								</TableCell>
 								<TableCell>
-									<Badge variant="secondary">{new Date(field.createdAt).toLocaleDateString()}</Badge>
+									<Badge variant="secondary">{formatDate(field.createdAt)}</Badge>
 								</TableCell>
 								<TableCell>
 									<div className="flex items-center gap-2">

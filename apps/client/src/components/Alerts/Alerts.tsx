@@ -32,6 +32,7 @@ import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
+import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import { AiFilterResult, Alert } from '@OpsiMate/shared';
 import {
@@ -509,7 +510,7 @@ const Alerts = () => {
 				title: 'Dashboard saved',
 				description: 'Your changes have been saved successfully.',
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error saving dashboard',
 				description: 'Failed to save dashboard changes',
@@ -771,7 +772,7 @@ const Alerts = () => {
 						}
 					: {
 							title: labels.title,
-							description: `${labels.verb} ${result.succeeded} alert${result.succeeded !== 1 ? 's' : ''}`,
+							description: `${labels.verb} ${result.succeeded} ${pluralize(result.succeeded, 'alert')}`,
 						}
 			);
 		} catch (err) {
@@ -892,7 +893,7 @@ const Alerts = () => {
 
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
-			title: `Silence ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			title: `Silence ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
 				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer. You take ownership of every silenced alert' +
 				(allMatchingSelected ? ', and matches that are already silenced restart their timer.' : '.') +
@@ -910,7 +911,7 @@ const Alerts = () => {
 
 	const confirmCommentAllSelected = () =>
 		setPendingAction({
-			title: `Comment on ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			title: `Comment on ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
 				'The same comment is added to every selected alert, visible in its comments and history.' +
 				bulkScopeNote,
@@ -926,7 +927,7 @@ const Alerts = () => {
 
 	const confirmResolveAllSelected = () =>
 		setPendingAction({
-			title: `Resolve ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			title: `Resolve ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
 				'The selected alerts move to the Resolved list. You can unresolve them later if needed. An optional comment will be added to every resolved alert.' +
 				bulkScopeNote,
@@ -1049,7 +1050,7 @@ const Alerts = () => {
 			await deleteDashboardMutation.mutateAsync(dashboardState.id);
 			resetDashboard();
 			setShowDashboardSettings(false);
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error deleting dashboard',
 				description: 'Failed to delete dashboard',
@@ -1300,8 +1301,8 @@ const Alerts = () => {
 										<span className="font-semibold">“{dashboardState.query}”</span>
 										<span className="text-muted-foreground">
 											{' '}
-											— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this
-											view
+											— {matchTotal.toLocaleString()} {pluralize(matchTotal, 'match', 'matches')}{' '}
+											in this view
 										</span>
 									</>
 								)}

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/datetime';
 import { Input } from '@/components/ui/input';
+import { pluralize } from '@/lib/text';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -192,7 +193,7 @@ export const RetentionSettings = () => {
 					title: 'Cleanup complete',
 					description:
 						total > 0
-							? `Deleted ${total} row${total !== 1 ? 's' : ''}.${result.vacuumed ? ' Disk space reclaimed.' : ''}`
+							? `Deleted ${total} ${pluralize(total, 'row')}.${result.vacuumed ? ' Disk space reclaimed.' : ''}`
 							: 'Nothing to delete.',
 				});
 			},

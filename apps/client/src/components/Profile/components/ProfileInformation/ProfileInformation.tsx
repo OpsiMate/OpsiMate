@@ -1,5 +1,5 @@
 import { User } from 'lucide-react';
-import { formatDate } from '../../utils/profile.utils';
+import { formatDate } from '@/lib/datetime';
 
 interface ProfileInformationProps {
 	email: string;
