@@ -5,6 +5,7 @@ import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { AlertRootCause } from '@OpsiMate/shared';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { RootCauseRepository } from '../src/dal/rootCauseRepository';
 
 // The "bring your own" root-cause contract: upsert by an external system, on-demand
 // read for the drawer, and operator ratings that are stored locally FIRST and then
@@ -400,17 +401,49 @@ describe('root cause across episodes', () => {
 		expect(await currentRootCause('ep-unresolve')).toBeNull();
 	});
 
-	test('rows stored before episodes were tracked: shown if pushed during the episode, hidden if before it', async () => {
+	test('two re-fires repeating the same future start: the first episode stays hidden', async () => {
+		// The case start times alone can't tell apart: episode 1 starts at F (future), the
+		// first re-fire is stamped "now", and the second re-fire claims F again.
+		const startsAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+		const fireAt = () =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'ep-future-twice', alertName: 'Alert ep-future-twice', tags: {}, startsAt });
+		await fireAt();
+		await putRootCause('ep-future-twice', { content: 'first incident' });
+		await resolve('ep-future-twice');
+		await fireAt();
+		await resolve('ep-future-twice');
+		await fireAt();
+
+		expect(await currentRootCause('ep-future-twice')).toBeNull();
+		expect((await rate('ep-future-twice', 'up')).status).toBe(404);
+	});
+
+	test('repeat firing pushes of a still-firing alert keep its analysis', async () => {
+		await fire('ep-repeat');
+		await putRootCause('ep-repeat', { content: 'still the same incident' });
+		await fire('ep-repeat');
+		await fire('ep-repeat');
+
+		expect((await currentRootCause('ep-repeat'))?.content).toBe('still the same incident');
+	});
+
+	test('upgrade: analyses pushed before the current episode started are hidden, others kept', async () => {
 		await fire('ep-legacy-current');
 		await putRootCause('ep-legacy-current', { content: 'pushed this episode' });
-		db.prepare(`UPDATE alert_root_causes SET episode_starts_at = NULL WHERE alert_id = 'ep-legacy-current'`).run();
-		expect((await currentRootCause('ep-legacy-current'))?.content).toBe('pushed this episode');
-
 		await fire('ep-legacy-old');
 		await putRootCause('ep-legacy-old', { content: 'pushed last episode' });
 		db.prepare(
-			`UPDATE alert_root_causes SET episode_starts_at = NULL, updated_at = '2020-01-01T00:00:00.000Z' WHERE alert_id = 'ep-legacy-old'`
+			`UPDATE alert_root_causes SET updated_at = '2020-01-01T00:00:00.000Z' WHERE alert_id = 'ep-legacy-old'`
 		).run();
+
+		// A database from before the column: drop it and run the table setup again.
+		db.prepare(`ALTER TABLE alert_root_causes DROP COLUMN superseded_at`).run();
+		await new RootCauseRepository(db).initRootCausesTable();
+
+		expect((await currentRootCause('ep-legacy-current'))?.content).toBe('pushed this episode');
 		expect(await currentRootCause('ep-legacy-old')).toBeNull();
 	});
 });

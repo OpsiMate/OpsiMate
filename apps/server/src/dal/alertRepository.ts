@@ -29,8 +29,13 @@ const idsParam = (ids: Iterable<string>): string => JSON.stringify(Array.from(id
 // as that episode's late first half rather than a new episode (see upsertAlertRow).
 export const LATE_FIRING_WINDOW_MS = 15 * MS_PER_MINUTE;
 
+export interface IngestRowResult {
+	changes: number;
+	// The alert was resolved and this row made it fire again: a new episode.
+	refired: boolean;
+}
+
 interface ResolvedCopyRow {
-	starts_at: string | null;
 	archived_at: string | null;
 	updated_at: string;
 	created_at: string | null;
@@ -110,7 +115,7 @@ export class AlertRepository {
 										  is_read=0
 		`);
 		const resolvedCopy = this.db.prepare(
-			`SELECT starts_at, archived_at, updated_at, created_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
+			`SELECT archived_at, updated_at, created_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
 		);
 		const deleteResolved = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
 		this.ingestStatements = { upsert, resolvedCopy, deleteResolved };
@@ -120,7 +125,7 @@ export class AlertRepository {
 	// One row, run INSIDE a transaction the caller owns. An alert id must never live in
 	// both tables: if this alert was previously resolved (manually or by a source) and
 	// is now firing again, drop the resolved copy — the active row is the truth.
-	private upsertAlertRow(alert: IngestAlert): { changes: number } {
+	private upsertAlertRow(alert: IngestAlert): IngestRowResult {
 		const { upsert, resolvedCopy, deleteResolved } = this.getIngestStatements();
 		// Re-fire after a resolve = a new episode. Sources often replay the ORIGINAL
 		// incident startsAt on the re-fire push; trusting that claim would show a
@@ -150,22 +155,13 @@ export class AlertRepository {
 				claimedMs <= resolvedMs &&
 				Date.now() - recordedMs <= LATE_FIRING_WINDOW_MS
 			) {
-				return { changes: 0 };
+				return { changes: 0, refired: false };
 			}
 		}
 		if (resolved) {
 			const resolveMoment = new Date(toIsoUtc(resolved.archived_at ?? resolved.updated_at)).getTime();
 			const claimed = new Date(startsAt).getTime();
-			// A new episode can't start when the previous one did either. The resolve
-			// moment alone misses that: it is second-precision, and a start the sender
-			// put in the future is after it. Episodes are told apart by their start (the
-			// root cause of the last one hides once this one starts), so they must differ.
-			const previousStart = resolved.starts_at ? new Date(toIsoUtc(resolved.starts_at)).getTime() : NaN;
-			if (
-				isNaN(claimed) ||
-				(!isNaN(resolveMoment) && claimed <= resolveMoment) ||
-				(!isNaN(previousStart) && claimed <= previousStart)
-			) {
+			if (isNaN(claimed) || (!isNaN(resolveMoment) && claimed <= resolveMoment)) {
 				startsAt = new Date().toISOString();
 			}
 		}
@@ -185,10 +181,10 @@ export class AlertRepository {
 			alert.runbookUrl || null,
 			alert.links?.length ? JSON.stringify(alert.links) : null
 		);
-		return { changes: result.changes };
+		return { changes: result.changes, refired: resolved !== undefined };
 	}
 
-	async insertOrUpdateAlert(alert: IngestAlert): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: IngestAlert): Promise<IngestRowResult> {
 		const [result] = await this.insertOrUpdateAlerts([alert]);
 		return result;
 	}
@@ -197,9 +193,9 @@ export class AlertRepository {
 	// batch instead of one per webhook. Results are positional. If any row fails the
 	// whole batch rolls back and throws — the queue retries the rows one at a time so
 	// a single bad row can't sink its neighbours.
-	private upsertBatchTx: ((rows: IngestAlert[]) => { changes: number }[]) | null = null;
+	private upsertBatchTx: ((rows: IngestAlert[]) => IngestRowResult[]) | null = null;
 
-	async insertOrUpdateAlerts(alerts: IngestAlert[]): Promise<{ changes: number }[]> {
+	async insertOrUpdateAlerts(alerts: IngestAlert[]): Promise<IngestRowResult[]> {
 		if (alerts.length === 0) return [];
 		return runAsync(() => {
 			// The transaction wrapper is built once: creating it per flush showed up as

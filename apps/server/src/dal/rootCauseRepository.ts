@@ -2,6 +2,7 @@ import { AlertRootCause, RootCauseRating, RootCauseSource } from '@OpsiMate/shar
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { TableInfoRow } from './models';
+import { toIsoUtc } from '../utils/time';
 
 // One row per alert (UNIQUE(alert_id) — which is also the index every read probes by,
 // so lookups stay O(log n) however large this grows; see #897 for why that matters).
@@ -21,7 +22,7 @@ interface RootCauseRow {
 	rated_by: string | null;
 	rated_at: string | null;
 	rating_comment: string | null;
-	episode_starts_at: string | null;
+	superseded_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -39,8 +40,8 @@ export interface UpsertRootCauseInput {
 export interface RootCauseRecord extends AlertRootCause {
 	feedbackUpUrl: string | null;
 	feedbackDownUrl: string | null;
-	// Null on rows stored before episodes were tracked.
-	episodeStartsAt: string | null;
+	// When the alert fired again after the episode this analysis was for (null: current).
+	supersededAt: string | null;
 }
 
 const toRecord = (row: RootCauseRow): RootCauseRecord => ({
@@ -55,8 +56,15 @@ const toRecord = (row: RootCauseRow): RootCauseRecord => ({
 	updatedAt: row.updated_at,
 	feedbackUpUrl: row.feedback_up_url,
 	feedbackDownUrl: row.feedback_down_url,
-	episodeStartsAt: row.episode_starts_at,
+	supersededAt: row.superseded_at,
 });
+
+// An analysis with its alert's current start (see hideAnalysesOfEndedEpisodes).
+interface LegacyRootCauseRow {
+	alert_id: string;
+	updated_at: string;
+	starts_at: string | null;
+}
 
 export class RootCauseRepository {
 	constructor(private db: Database.Database) {}
@@ -75,7 +83,7 @@ export class RootCauseRepository {
 					rated_by TEXT,
 					rated_at TEXT,
 					rating_comment TEXT,
-					episode_starts_at TEXT,
+					superseded_at TEXT,
 					created_at TEXT NOT NULL,
 					updated_at TEXT NOT NULL
 				);
@@ -85,25 +93,26 @@ export class RootCauseRepository {
 			if (!columns.some((col) => col.name === 'rating_comment')) {
 				this.db.prepare(`ALTER TABLE alert_root_causes ADD COLUMN rating_comment TEXT`).run();
 			}
-			// Backward compatibility: the firing episode an analysis belongs to arrived later still.
-			if (!columns.some((col) => col.name === 'episode_starts_at')) {
-				this.db.prepare(`ALTER TABLE alert_root_causes ADD COLUMN episode_starts_at TEXT`).run();
+			// Backward compatibility: hiding an earlier episode's analysis arrived later still.
+			if (!columns.some((col) => col.name === 'superseded_at')) {
+				this.db.prepare(`ALTER TABLE alert_root_causes ADD COLUMN superseded_at TEXT`).run();
+				this.hideAnalysesOfEndedEpisodes();
 			}
 		});
 	}
 
 	// Replaces any previous analysis for the alert, including one hidden because it
-	// belongs to an earlier episode. The old rating is cleared on purpose: an operator's
-	// verdict on the previous content must not silently endorse (or damn) the new one.
-	// episodeStartsAt is the startsAt of the firing episode the analysis is for.
-	async upsert(input: UpsertRootCauseInput, episodeStartsAt: string): Promise<RootCauseRecord> {
+	// belongs to an earlier episode (the new one is the current episode's, so it shows).
+	// The old rating is cleared on purpose: an operator's verdict on the previous
+	// content must not silently endorse (or damn) the new one.
+	async upsert(input: UpsertRootCauseInput): Promise<RootCauseRecord> {
 		return runAsync(() => {
 			const now = new Date().toISOString();
 			this.db
 				.prepare(
 					`INSERT INTO alert_root_causes
-						(alert_id, source, content, feedback_up_url, feedback_down_url, rating, rated_by, rated_at, episode_starts_at, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)
+						(alert_id, source, content, feedback_up_url, feedback_down_url, rating, rated_by, rated_at, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)
 					 ON CONFLICT(alert_id) DO UPDATE SET
 						source = excluded.source,
 						content = excluded.content,
@@ -113,19 +122,10 @@ export class RootCauseRepository {
 						rated_by = NULL,
 						rated_at = NULL,
 						rating_comment = NULL,
-						episode_starts_at = excluded.episode_starts_at,
+						superseded_at = NULL,
 						updated_at = excluded.updated_at`
 				)
-				.run(
-					input.alertId,
-					input.source,
-					input.content,
-					input.feedbackUpUrl,
-					input.feedbackDownUrl,
-					episodeStartsAt,
-					now,
-					now
-				);
+				.run(input.alertId, input.source, input.content, input.feedbackUpUrl, input.feedbackDownUrl, now, now);
 			const row = this.db
 				.prepare(`SELECT * FROM alert_root_causes WHERE alert_id = ?`)
 				.get(input.alertId) as RootCauseRow;
@@ -141,6 +141,8 @@ export class RootCauseRepository {
 		});
 	}
 
+	// A hidden (superseded) analysis is never rated: the condition is in the UPDATE itself,
+	// so a re-fire committing between a caller's read and this write can't slip through.
 	// The comment always follows the verdict: a re-rate without one clears the previous
 	// text, so a stale "what went wrong" never outlives the thumbs-down it explained.
 	async setRating(
@@ -152,7 +154,7 @@ export class RootCauseRepository {
 		return runAsync(() => {
 			const result = this.db
 				.prepare(
-					`UPDATE alert_root_causes SET rating = ?, rated_by = ?, rated_at = ?, rating_comment = ? WHERE alert_id = ?`
+					`UPDATE alert_root_causes SET rating = ?, rated_by = ?, rated_at = ?, rating_comment = ? WHERE alert_id = ? AND superseded_at IS NULL`
 				)
 				.run(rating, ratedBy, new Date().toISOString(), comment, alertId);
 			if (result.changes === 0) return null;
@@ -163,12 +165,46 @@ export class RootCauseRepository {
 		});
 	}
 
-	async setEpisode(alertId: string, episodeStartsAt: string): Promise<void> {
+	// The alerts fired again: their analyses belong to the episodes that just ended.
+	async supersede(alertIds: string[]): Promise<void> {
 		return runAsync(() => {
 			this.db
-				.prepare(`UPDATE alert_root_causes SET episode_starts_at = ? WHERE alert_id = ?`)
-				.run(episodeStartsAt, alertId);
+				.prepare(
+					`UPDATE alert_root_causes SET superseded_at = ?
+					 WHERE superseded_at IS NULL AND alert_id IN (SELECT value FROM json_each(?))`
+				)
+				.run(new Date().toISOString(), JSON.stringify(alertIds));
 		});
+	}
+
+	// One-off, when the column is added: analyses stored before re-fires were tracked are
+	// hidden if they were pushed before the alert's current episode started. The alert
+	// tables exist on any install old enough to have analyses (a fresh one has none).
+	private hideAnalysesOfEndedEpisodes(): void {
+		const tables = this.db
+			.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('alerts', 'alerts_resolved')`)
+			.all();
+		if (tables.length < 2) return;
+		const rows = this.db
+			.prepare(
+				`SELECT r.alert_id, r.updated_at, COALESCE(a.starts_at, ar.starts_at) AS starts_at
+				 FROM alert_root_causes r
+				 LEFT JOIN alerts a ON a.id = r.alert_id
+				 LEFT JOIN alerts_resolved ar ON ar.id = r.alert_id`
+			)
+			.all() as LegacyRootCauseRow[];
+		const ended = rows
+			.filter(
+				(row) =>
+					row.starts_at && new Date(row.updated_at).getTime() < new Date(toIsoUtc(row.starts_at)).getTime()
+			)
+			.map((row) => row.alert_id);
+		if (ended.length === 0) return;
+		this.db
+			.prepare(
+				`UPDATE alert_root_causes SET superseded_at = ? WHERE alert_id IN (SELECT value FROM json_each(?))`
+			)
+			.run(new Date().toISOString(), JSON.stringify(ended));
 	}
 
 	async deleteByAlertId(alertId: string): Promise<void> {
