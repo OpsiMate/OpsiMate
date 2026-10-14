@@ -85,10 +85,10 @@ export class UserRepository {
 		});
 	}
 
-	async updateUserRole(email: string, newRole: Role): Promise<void> {
+	async updateUserRole(email: string, newRole: Role): Promise<boolean> {
 		return runAsync(() => {
 			const stmt = this.db.prepare('UPDATE users SET role = ? WHERE email = ?');
-			stmt.run(newRole, email);
+			return stmt.run(newRole, email).changes > 0;
 		});
 	}
 

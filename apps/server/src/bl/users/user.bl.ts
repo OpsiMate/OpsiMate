@@ -118,8 +118,8 @@ export class UserBL {
 		return user;
 	}
 
-	async updateUserRole(email: string, newRole: Role): Promise<void> {
-		await this.userRepo.updateUserRole(email, newRole);
+	async updateUserRole(email: string, newRole: Role): Promise<boolean> {
+		return this.userRepo.updateUserRole(email, newRole);
 	}
 
 	// A local account always signs in locally — including the first admin, which is the
