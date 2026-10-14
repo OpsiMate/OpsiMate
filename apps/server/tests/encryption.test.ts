@@ -1,4 +1,11 @@
-import { encryptPassword, decryptPassword, warnIfEncryptionKeyInsecure } from '../src/utils/encryption';
+import {
+	encryptPassword,
+	decryptPassword,
+	warnIfEncryptionKeyInsecure,
+	generatePasswordResetInfo,
+	PASSWORD_RESET_TTL_MINUTES,
+} from '../src/utils/encryption';
+import { passwordResetTemplate } from '../src/utils/mailTemplate';
 
 describe('Password Encryption', () => {
 	test('should encrypt and decrypt password correctly', () => {
@@ -52,5 +59,25 @@ describe('Password Encryption', () => {
 			warnIfEncryptionKeyInsecure({ NODE_ENV: 'production', ENCRYPTION_KEY: 'a-strong-secret' })
 		).not.toThrow();
 		expect(() => warnIfEncryptionKeyInsecure({ NODE_ENV: 'development' })).not.toThrow();
+	});
+});
+
+describe('Password reset link lifetime', () => {
+	test('generatePasswordResetInfo expires PASSWORD_RESET_TTL_MINUTES after now', () => {
+		vi.useFakeTimers();
+		try {
+			const now = new Date('2026-01-01T00:00:00Z');
+			vi.setSystemTime(now);
+
+			const { expiresAt } = generatePasswordResetInfo();
+
+			expect(expiresAt.getTime() - now.getTime()).toBe(PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('the reset email states the same lifetime', () => {
+		expect(passwordResetTemplate('https://x')).toContain(`${PASSWORD_RESET_TTL_MINUTES} minutes`);
 	});
 });

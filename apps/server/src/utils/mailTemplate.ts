@@ -1,3 +1,5 @@
+import { PASSWORD_RESET_TTL_MINUTES } from './encryption';
+
 /**
  * Builds the email skeleton with header and footer
  * @param content Main content of the email
@@ -41,7 +43,7 @@ export function passwordResetTemplate(resetUrl: string, userName?: string) {
     </a>
     <p style="color: #718096; margin-top: 24px; font-size: 14px;">
       If you did not request this, you can safely ignore this email.<br/>
-      This link will expire in 15 minutes for your security.
+      This link will expire in ${PASSWORD_RESET_TTL_MINUTES} minutes for your security.
     </p>
   `;
 
