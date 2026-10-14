@@ -350,6 +350,39 @@ describe('root cause across episodes', () => {
 		expect(await currentRootCause('ep-late')).toBeNull();
 	});
 
+	test('a re-fire that repeats the original start is still a new episode', async () => {
+		// Fire, resolve and re-fire within one second: the resolve moment is stored to the
+		// second, so the repeated start is not before it.
+		const startsAt = new Date().toISOString();
+		const fireAt = () =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'ep-replay', alertName: 'Alert ep-replay', tags: {}, startsAt });
+		await fireAt();
+		await putRootCause('ep-replay', { content: 'first incident' });
+		await resolve('ep-replay');
+		await fireAt();
+
+		expect(await currentRootCause('ep-replay')).toBeNull();
+	});
+
+	test('a re-fire that repeats a start in the future is still a new episode', async () => {
+		// A sender with a skewed clock: its start is after the resolve moment.
+		const startsAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+		const fireAt = () =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'ep-future', alertName: 'Alert ep-future', tags: {}, startsAt });
+		await fireAt();
+		await putRootCause('ep-future', { content: 'first incident' });
+		await resolve('ep-future');
+		await fireAt();
+
+		expect(await currentRootCause('ep-future')).toBeNull();
+	});
+
 	test('unresolving reopens the same incident: its analysis stays', async () => {
 		await fire('ep-unresolve');
 		await putRootCause('ep-unresolve', { content: 'resolved by mistake' });

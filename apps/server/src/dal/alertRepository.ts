@@ -30,6 +30,7 @@ const idsParam = (ids: Iterable<string>): string => JSON.stringify(Array.from(id
 export const LATE_FIRING_WINDOW_MS = 15 * MS_PER_MINUTE;
 
 interface ResolvedCopyRow {
+	starts_at: string | null;
 	archived_at: string | null;
 	updated_at: string;
 	created_at: string | null;
@@ -109,7 +110,7 @@ export class AlertRepository {
 										  is_read=0
 		`);
 		const resolvedCopy = this.db.prepare(
-			`SELECT archived_at, updated_at, created_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
+			`SELECT starts_at, archived_at, updated_at, created_at, resolved_without_firing FROM alerts_resolved WHERE id = ?`
 		);
 		const deleteResolved = this.db.prepare(`DELETE FROM alerts_resolved WHERE id = ?`);
 		this.ingestStatements = { upsert, resolvedCopy, deleteResolved };
@@ -155,7 +156,16 @@ export class AlertRepository {
 		if (resolved) {
 			const resolveMoment = new Date(toIsoUtc(resolved.archived_at ?? resolved.updated_at)).getTime();
 			const claimed = new Date(startsAt).getTime();
-			if (isNaN(claimed) || (!isNaN(resolveMoment) && claimed <= resolveMoment)) {
+			// A new episode can't start when the previous one did either. The resolve
+			// moment alone misses that: it is second-precision, and a start the sender
+			// put in the future is after it. Episodes are told apart by their start (the
+			// root cause of the last one hides once this one starts), so they must differ.
+			const previousStart = resolved.starts_at ? new Date(toIsoUtc(resolved.starts_at)).getTime() : NaN;
+			if (
+				isNaN(claimed) ||
+				(!isNaN(resolveMoment) && claimed <= resolveMoment) ||
+				(!isNaN(previousStart) && claimed <= previousStart)
+			) {
 				startsAt = new Date().toISOString();
 			}
 		}
