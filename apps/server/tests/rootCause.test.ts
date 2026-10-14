@@ -3,9 +3,10 @@ import http from 'node:http';
 import { beforeAll, afterAll, describe, expect, test } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
-import { AlertRootCause } from '@OpsiMate/shared';
+import { AlertRootCause, RetentionResource } from '@OpsiMate/shared';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 import { RootCauseRepository } from '../src/dal/rootCauseRepository';
+import { RetentionRepository } from '../src/dal/retentionRepository';
 
 // The "bring your own" root-cause contract: upsert by an external system, on-demand
 // read for the drawer, and operator ratings that are stored locally FIRST and then
@@ -445,5 +446,79 @@ describe('root cause across episodes', () => {
 
 		expect((await currentRootCause('ep-legacy-current'))?.content).toBe('pushed this episode');
 		expect(await currentRootCause('ep-legacy-old')).toBeNull();
+	});
+
+	test('a batch where only some alerts re-fire hides only theirs', async () => {
+		await fire('ep-batch-refired');
+		await putRootCause('ep-batch-refired', { content: 'refired' });
+		await resolve('ep-batch-refired');
+		await fire('ep-batch-firing');
+		await putRootCause('ep-batch-firing', { content: 'still firing' });
+		await fire('ep-batch-resolved');
+		await putRootCause('ep-batch-resolved', { content: 'stays resolved' });
+		await resolve('ep-batch-resolved');
+
+		// Sent together, so the ingest queue commits them in one batch.
+		await Promise.all([fire('ep-batch-firing'), fire('ep-batch-refired'), fire('ep-batch-firing')]);
+
+		expect(await currentRootCause('ep-batch-refired')).toBeNull();
+		expect((await currentRootCause('ep-batch-firing'))?.content).toBe('still firing');
+		expect((await currentRootCause('ep-batch-resolved'))?.content).toBe('stays resolved');
+	});
+
+	test('upgrade: resolved alerts, SQLite timestamps and future starts', async () => {
+		await fire('ep-legacy-resolved');
+		await putRootCause('ep-legacy-resolved', { content: 'pushed before this episode' });
+		await resolve('ep-legacy-resolved');
+		db.prepare(
+			`UPDATE alerts_resolved SET starts_at = '2021-06-01 10:00:00' WHERE id = 'ep-legacy-resolved'`
+		).run();
+		db.prepare(
+			`UPDATE alert_root_causes SET updated_at = '2021-05-31T10:00:00.000Z' WHERE alert_id = 'ep-legacy-resolved'`
+		).run();
+		await fire('ep-legacy-future');
+		await putRootCause('ep-legacy-future', { content: 'sender clock ahead' });
+		db.prepare(`UPDATE alerts SET starts_at = ? WHERE id = 'ep-legacy-future'`).run(
+			new Date(Date.now() + 60 * 60 * 1000).toISOString()
+		);
+
+		db.prepare(`ALTER TABLE alert_root_causes DROP COLUMN superseded_at`).run();
+		await new RootCauseRepository(db).initRootCausesTable();
+
+		expect(await currentRootCause('ep-legacy-resolved')).toBeNull();
+		expect((await currentRootCause('ep-legacy-future'))?.content).toBe('sender clock ahead');
+	});
+});
+
+describe('root cause and retention', () => {
+	test('purging an alert by retention drops its root cause, so a later firing of the id starts clean', async () => {
+		// Its own database: the purge deletes every resolved alert.
+		const ownDb = await setupDB();
+		const ownApp = await setupExpressApp(ownDb);
+		const token = await setupUserWithToken(ownApp);
+		const send = (body: object) =>
+			ownApp.post('/api/v1/alerts/custom').set('Authorization', `Bearer ${token}`).send(body);
+		const read = async (): Promise<AlertRootCause | null> =>
+			(
+				(await ownApp.get('/api/v1/alerts/purged/root-cause').set('Authorization', `Bearer ${token}`))
+					.body as RootCauseBody
+			).data.rootCause;
+
+		await send({ id: 'purged', alertName: 'Purged', tags: {} });
+		await ownApp
+			.put('/api/v1/alerts/purged/root-cause')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ content: 'from long ago' });
+		await send({ id: 'purged', status: 'resolved' });
+
+		const purged = await new RetentionRepository(ownDb).purgeOlderThan(
+			RetentionResource.ResolvedAlerts,
+			new Date(Date.now() + 60 * 1000).toISOString()
+		);
+		expect(purged).toBe(1);
+
+		await send({ id: 'purged', alertName: 'Purged', tags: {} });
+		expect(await read()).toBeNull();
+		ownDb.close();
 	});
 });

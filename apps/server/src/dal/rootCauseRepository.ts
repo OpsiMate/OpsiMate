@@ -193,11 +193,15 @@ export class RootCauseRepository {
 				 LEFT JOIN alerts_resolved ar ON ar.id = r.alert_id`
 			)
 			.all() as LegacyRootCauseRow[];
+		const now = Date.now();
 		const ended = rows
-			.filter(
-				(row) =>
-					row.starts_at && new Date(row.updated_at).getTime() < new Date(toIsoUtc(row.starts_at)).getTime()
-			)
+			.filter((row) => {
+				if (!row.starts_at) return false;
+				const startedMs = new Date(toIsoUtc(row.starts_at)).getTime();
+				// A start in the future (a sender's skewed clock) says nothing about when
+				// the analysis was pushed relative to the episode: keep it.
+				return startedMs <= now && new Date(row.updated_at).getTime() < startedMs;
+			})
 			.map((row) => row.alert_id);
 		if (ended.length === 0) return;
 		this.db
