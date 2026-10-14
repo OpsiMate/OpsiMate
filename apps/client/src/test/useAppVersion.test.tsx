@@ -34,6 +34,15 @@ interface ResponseLike {
 	json: () => Promise<unknown>;
 }
 
+interface EndpointAnswers {
+	server?: ResponseLike;
+	release?: ResponseLike;
+}
+
+interface WrapperProps {
+	children: ReactNode;
+}
+
 const okBody = (body: unknown): ResponseLike => ({ ok: true, status: 200, json: async () => body });
 const statusError = (status = 503): ResponseLike => ({ ok: false, status, json: async () => ({ message: 'down' }) });
 
@@ -45,7 +54,7 @@ const releaseAnswer = (tag: string, htmlUrl?: string): ResponseLike =>
 
 // One stub covering both endpoints, so a test states which answer each gives and any other
 // URL is a failure rather than an unanswered request.
-const stubEndpoints = (answers: { server?: ResponseLike; release?: ResponseLike }) => {
+const stubEndpoints = (answers: EndpointAnswers) => {
 	const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 		const url = String(input);
 		if (url.startsWith('https://api.github.com/')) return (answers.release ?? statusError()) as unknown as Response;
@@ -58,7 +67,7 @@ const stubEndpoints = (answers: { server?: ResponseLike; release?: ResponseLike 
 
 const render = <T,>(hook: () => T) => {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-	const wrapper = ({ children }: { children: ReactNode }) => (
+	const wrapper = ({ children }: WrapperProps) => (
 		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	);
 	// The cache is returned alongside the hook so a test can wait on a query the hook
