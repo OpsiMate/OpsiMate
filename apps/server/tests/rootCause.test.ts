@@ -3,7 +3,10 @@ import http from 'node:http';
 import { beforeAll, afterAll, describe, expect, test } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
+import { AlertRootCause, RetentionResource } from '@OpsiMate/shared';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { RootCauseRepository } from '../src/dal/rootCauseRepository';
+import { RetentionRepository } from '../src/dal/retentionRepository';
 
 // The "bring your own" root-cause contract: upsert by an external system, on-demand
 // read for the drawer, and operator ratings that are stored locally FIRST and then
@@ -43,6 +46,14 @@ const rate = (alertId: string, rating: string, comment?: string) =>
 		.post(`/api/v1/alerts/${alertId}/root-cause/rating`)
 		.set('Authorization', `Bearer ${jwtToken}`)
 		.send(comment === undefined ? { rating } : { rating, comment });
+
+interface RootCauseResult {
+	rootCause: AlertRootCause | null;
+}
+
+interface RootCauseBody {
+	data: RootCauseResult;
+}
 
 interface CallbackPayload {
 	alertId: string;
@@ -273,5 +284,241 @@ describe('root cause API', () => {
 		const put = await putRootCause('rc-resolved', { content: 'post-mortem arrived late' });
 		expect(put.status).toBe(200);
 		expect((await getRootCause('rc-resolved')).body.data.rootCause.content).toBe('post-mortem arrived late');
+	});
+});
+
+// An analysis belongs to one firing episode: after the alert resolves and fires again
+// under the same id, the old one is hidden (and can't be rated) until a new one is
+// pushed, which replaces it.
+describe('root cause across episodes', () => {
+	const fire = (id: string) =>
+		app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id, alertName: `Alert ${id}`, tags: {} });
+	const resolve = (id: string) =>
+		app.post('/api/v1/alerts/custom').set('Authorization', `Bearer ${jwtToken}`).send({ id, status: 'resolved' });
+
+	const currentRootCause = async (id: string): Promise<AlertRootCause | null> =>
+		((await getRootCause(id)).body as RootCauseBody).data.rootCause;
+
+	test('a resolved alert still shows its analysis', async () => {
+		await fire('ep-resolved');
+		await putRootCause('ep-resolved', { content: 'disk filled by logs' });
+		await resolve('ep-resolved');
+
+		expect((await currentRootCause('ep-resolved'))?.content).toBe('disk filled by logs');
+		expect((await rate('ep-resolved', 'up')).status).toBe(200);
+	});
+
+	test('firing again hides the previous episode, and it cannot be rated', async () => {
+		await fire('ep-refire');
+		await putRootCause('ep-refire', { content: 'first incident: bad deploy' });
+		await rate('ep-refire', 'down', 'wrong service');
+		await resolve('ep-refire');
+		await fire('ep-refire');
+
+		expect(await currentRootCause('ep-refire')).toBeNull();
+		expect((await rate('ep-refire', 'up')).status).toBe(404);
+	});
+
+	test('a new analysis for the new episode replaces the hidden one, rating and all', async () => {
+		await fire('ep-replace');
+		await putRootCause('ep-replace', { content: 'first incident: bad deploy' });
+		await rate('ep-replace', 'down', 'wrong service');
+		await resolve('ep-replace');
+		await fire('ep-replace');
+
+		const put = await putRootCause('ep-replace', { content: 'second incident: expired cert' });
+		expect(put.status).toBe(200);
+
+		const rootCause = await currentRootCause('ep-replace');
+		expect(rootCause?.content).toBe('second incident: expired cert');
+		expect(rootCause?.rating).toBeNull();
+		expect(rootCause?.ratingComment).toBeNull();
+		expect((await rate('ep-replace', 'up')).status).toBe(200);
+		expect(db.prepare(`SELECT COUNT(*) AS n FROM alert_root_causes WHERE alert_id = 'ep-replace'`).get()).toEqual({
+			n: 1,
+		});
+	});
+
+	test('an analysis pushed after the resolve is hidden once the alert fires again', async () => {
+		await fire('ep-late');
+		await resolve('ep-late');
+		await putRootCause('ep-late', { content: 'postmortem of the first incident' });
+		expect(await currentRootCause('ep-late')).not.toBeNull();
+
+		await fire('ep-late');
+		expect(await currentRootCause('ep-late')).toBeNull();
+	});
+
+	test('a re-fire that repeats the original start is still a new episode', async () => {
+		// Fire, resolve and re-fire within one second: the resolve moment is stored to the
+		// second, so the repeated start is not before it.
+		const startsAt = new Date().toISOString();
+		const fireAt = () =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'ep-replay', alertName: 'Alert ep-replay', tags: {}, startsAt });
+		await fireAt();
+		await putRootCause('ep-replay', { content: 'first incident' });
+		await resolve('ep-replay');
+		await fireAt();
+
+		expect(await currentRootCause('ep-replay')).toBeNull();
+	});
+
+	test('a re-fire that repeats a start in the future is still a new episode', async () => {
+		// A sender with a skewed clock: its start is after the resolve moment.
+		const startsAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+		const fireAt = () =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'ep-future', alertName: 'Alert ep-future', tags: {}, startsAt });
+		await fireAt();
+		await putRootCause('ep-future', { content: 'first incident' });
+		await resolve('ep-future');
+		await fireAt();
+
+		expect(await currentRootCause('ep-future')).toBeNull();
+	});
+
+	test('unresolving reopens the same incident: its analysis stays', async () => {
+		await fire('ep-unresolve');
+		await putRootCause('ep-unresolve', { content: 'resolved by mistake' });
+		await resolve('ep-unresolve');
+
+		const reopened = await app
+			.patch('/api/v1/alerts/resolved/ep-unresolve/unresolve')
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(reopened.status).toBe(200);
+
+		expect((await currentRootCause('ep-unresolve'))?.content).toBe('resolved by mistake');
+		// ...and a later re-fire still hides it.
+		await resolve('ep-unresolve');
+		await fire('ep-unresolve');
+		expect(await currentRootCause('ep-unresolve')).toBeNull();
+	});
+
+	test('two re-fires repeating the same future start: the first episode stays hidden', async () => {
+		// The case start times alone can't tell apart: episode 1 starts at F (future), the
+		// first re-fire is stamped "now", and the second re-fire claims F again.
+		const startsAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+		const fireAt = () =>
+			app
+				.post('/api/v1/alerts/custom')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ id: 'ep-future-twice', alertName: 'Alert ep-future-twice', tags: {}, startsAt });
+		await fireAt();
+		await putRootCause('ep-future-twice', { content: 'first incident' });
+		await resolve('ep-future-twice');
+		await fireAt();
+		await resolve('ep-future-twice');
+		await fireAt();
+
+		expect(await currentRootCause('ep-future-twice')).toBeNull();
+		expect((await rate('ep-future-twice', 'up')).status).toBe(404);
+	});
+
+	test('repeat firing pushes of a still-firing alert keep its analysis', async () => {
+		await fire('ep-repeat');
+		await putRootCause('ep-repeat', { content: 'still the same incident' });
+		await fire('ep-repeat');
+		await fire('ep-repeat');
+
+		expect((await currentRootCause('ep-repeat'))?.content).toBe('still the same incident');
+	});
+
+	test('upgrade: analyses pushed before the current episode started are hidden, others kept', async () => {
+		await fire('ep-legacy-current');
+		await putRootCause('ep-legacy-current', { content: 'pushed this episode' });
+		await fire('ep-legacy-old');
+		await putRootCause('ep-legacy-old', { content: 'pushed last episode' });
+		db.prepare(
+			`UPDATE alert_root_causes SET updated_at = '2020-01-01T00:00:00.000Z' WHERE alert_id = 'ep-legacy-old'`
+		).run();
+
+		// A database from before the column: drop it and run the table setup again.
+		db.prepare(`ALTER TABLE alert_root_causes DROP COLUMN superseded_at`).run();
+		await new RootCauseRepository(db).initRootCausesTable();
+
+		expect((await currentRootCause('ep-legacy-current'))?.content).toBe('pushed this episode');
+		expect(await currentRootCause('ep-legacy-old')).toBeNull();
+	});
+
+	test('a batch where only some alerts re-fire hides only theirs', async () => {
+		await fire('ep-batch-refired');
+		await putRootCause('ep-batch-refired', { content: 'refired' });
+		await resolve('ep-batch-refired');
+		await fire('ep-batch-firing');
+		await putRootCause('ep-batch-firing', { content: 'still firing' });
+		await fire('ep-batch-resolved');
+		await putRootCause('ep-batch-resolved', { content: 'stays resolved' });
+		await resolve('ep-batch-resolved');
+
+		// Sent together, so the ingest queue commits them in one batch.
+		await Promise.all([fire('ep-batch-firing'), fire('ep-batch-refired'), fire('ep-batch-firing')]);
+
+		expect(await currentRootCause('ep-batch-refired')).toBeNull();
+		expect((await currentRootCause('ep-batch-firing'))?.content).toBe('still firing');
+		expect((await currentRootCause('ep-batch-resolved'))?.content).toBe('stays resolved');
+	});
+
+	test('upgrade: resolved alerts, SQLite timestamps and future starts', async () => {
+		await fire('ep-legacy-resolved');
+		await putRootCause('ep-legacy-resolved', { content: 'pushed before this episode' });
+		await resolve('ep-legacy-resolved');
+		db.prepare(
+			`UPDATE alerts_resolved SET starts_at = '2021-06-01 10:00:00' WHERE id = 'ep-legacy-resolved'`
+		).run();
+		db.prepare(
+			`UPDATE alert_root_causes SET updated_at = '2021-05-31T10:00:00.000Z' WHERE alert_id = 'ep-legacy-resolved'`
+		).run();
+		await fire('ep-legacy-future');
+		await putRootCause('ep-legacy-future', { content: 'sender clock ahead' });
+		db.prepare(`UPDATE alerts SET starts_at = ? WHERE id = 'ep-legacy-future'`).run(
+			new Date(Date.now() + 60 * 60 * 1000).toISOString()
+		);
+
+		db.prepare(`ALTER TABLE alert_root_causes DROP COLUMN superseded_at`).run();
+		await new RootCauseRepository(db).initRootCausesTable();
+
+		expect(await currentRootCause('ep-legacy-resolved')).toBeNull();
+		expect((await currentRootCause('ep-legacy-future'))?.content).toBe('sender clock ahead');
+	});
+});
+
+describe('root cause and retention', () => {
+	test('purging an alert by retention drops its root cause, so a later firing of the id starts clean', async () => {
+		// Its own database: the purge deletes every resolved alert.
+		const ownDb = await setupDB();
+		const ownApp = await setupExpressApp(ownDb);
+		const token = await setupUserWithToken(ownApp);
+		const send = (body: object) =>
+			ownApp.post('/api/v1/alerts/custom').set('Authorization', `Bearer ${token}`).send(body);
+		const read = async (): Promise<AlertRootCause | null> =>
+			(
+				(await ownApp.get('/api/v1/alerts/purged/root-cause').set('Authorization', `Bearer ${token}`))
+					.body as RootCauseBody
+			).data.rootCause;
+
+		await send({ id: 'purged', alertName: 'Purged', tags: {} });
+		await ownApp
+			.put('/api/v1/alerts/purged/root-cause')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ content: 'from long ago' });
+		await send({ id: 'purged', status: 'resolved' });
+
+		const purged = await new RetentionRepository(ownDb).purgeOlderThan(
+			RetentionResource.ResolvedAlerts,
+			new Date(Date.now() + 60 * 1000).toISOString()
+		);
+		expect(purged).toBe(1);
+
+		await send({ id: 'purged', alertName: 'Purged', tags: {} });
+		expect(await read()).toBeNull();
+		ownDb.close();
 	});
 });

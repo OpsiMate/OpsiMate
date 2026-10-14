@@ -1,4 +1,4 @@
-import { AlertRepository, IngestAlert } from '../../dal/alertRepository';
+import { AlertRepository, IngestAlert, IngestRowResult } from '../../dal/alertRepository';
 import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
@@ -165,6 +165,13 @@ export class AlertBL {
 
 	setOnAlertPermanentlyDeleted(callback: (alertId: string) => Promise<void>): void {
 		this.onAlertPermanentlyDeleted = callback;
+	}
+
+	// Called with the ids of resolved alerts an ingest batch made fire again (new episodes).
+	private onAlertsRefired: ((alertIds: string[]) => Promise<void>) | null = null;
+
+	setOnAlertsRefired(callback: (alertIds: string[]) => Promise<void>): void {
+		this.onAlertsRefired = callback;
 	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
@@ -542,9 +549,18 @@ export class AlertBL {
 
 	// One transaction and ONE snapshot invalidation per batch — the two per-webhook
 	// costs that pinned the single core under a burst.
-	private async flushIngestBatch(batch: IngestAlert[]): Promise<{ changes: number }[]> {
+	private async flushIngestBatch(batch: IngestAlert[]): Promise<IngestRowResult[]> {
 		const results = await this.alertRepo.insertOrUpdateAlerts(batch);
 		this.markSnapshotsStale();
+		const refiredIds = batch.filter((_, i) => results[i]?.refired).map((alert) => alert.id);
+		// Best-effort, like the deletion cleanup: the alerts are committed either way.
+		if (refiredIds.length > 0) {
+			try {
+				await this.onAlertsRefired?.(refiredIds);
+			} catch (refireError) {
+				logger.error(`Satellite update failed for ${refiredIds.length} re-fired alert(s)`, refireError);
+			}
+		}
 		ingestBatchSize.observe(batch.length);
 		// In-memory increment; this is the single funnel every webhook source flows
 		// through, so one counter covers all of them.

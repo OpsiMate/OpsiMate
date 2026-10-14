@@ -109,8 +109,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		async (alertId) =>
 			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
 	);
-	// Resolve keeps the root cause; only permanent deletion drops it.
+	// Resolve (and unresolve) keeps the root cause; a re-fire hides it until a new one is
+	// pushed; permanent deletion drops it.
 	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
+	alertBL.setOnAlertsRefired((alertIds) => rootCauseBL.hideForRefiredAlerts(alertIds));
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
