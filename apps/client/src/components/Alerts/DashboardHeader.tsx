@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { cn } from '@/lib/utils';
-import { Plus, RefreshCw, Save, Search, Settings } from 'lucide-react';
+import { CopyPlus, Plus, RefreshCw, Save, Search, Settings } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface DashboardHeaderProps {
@@ -12,6 +12,10 @@ export interface DashboardHeaderProps {
 	onDashboardNameBlur: () => void;
 	isDirty: boolean;
 	onSave: () => void;
+	// Save the current view (changes included) as a NEW dashboard, leaving this one's
+	// saved version alone. Offered only while a saved dashboard is open: on a draft,
+	// Save already creates one.
+	onSaveAs?: () => void;
 	onSettingsClick?: () => void;
 	isRefreshing: boolean;
 	lastRefresh?: Date;
@@ -28,6 +32,7 @@ export const DashboardHeader = ({
 	onDashboardNameBlur,
 	isDirty,
 	onSave,
+	onSaveAs,
 	onSettingsClick,
 	isRefreshing,
 	lastRefresh,
@@ -176,6 +181,19 @@ export const DashboardHeader = ({
 						className="rounded-full h-8 w-8 hover:bg-muted shrink-0"
 					>
 						<Save className="h-4 w-4 text-foreground" />
+					</Button>
+				)}
+
+				{onSaveAs && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onSaveAs}
+						title="Save as new dashboard"
+						aria-label="Save as new dashboard"
+						className="rounded-full h-8 w-8 hover:bg-muted shrink-0"
+					>
+						<CopyPlus className="h-4 w-4 text-foreground" />
 					</Button>
 				)}
 			</div>
