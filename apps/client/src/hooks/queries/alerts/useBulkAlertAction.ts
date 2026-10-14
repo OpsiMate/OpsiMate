@@ -52,6 +52,7 @@ export const useBulkAlertAction = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
+		mutationKey: queryKeys.bulkAlertAction,
 		mutationFn: async (variables: AlertBulkActionRequest) => {
 			const response = await alertsApi.bulkAlertAction(variables);
 			if (!response.success || !response.data) {
