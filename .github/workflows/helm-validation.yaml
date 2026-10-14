@@ -1,23 +1,26 @@
 name: Helm Validator
 
 on:
-    pull_request:
-        branches:
-            - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - infrastructure/helm/**
+      - .github/workflows/helm-validation.yaml
 
 jobs:
-    helm-validation:
-        name: verify Helm format and lint
-        runs-on: ubuntu-latest
+  helm-validation:
+    name: verify Helm format and lint
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v7
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
 
-            - name: Install Helm
-              uses: azure/setup-helm@v5
+      - name: Install Helm
+        uses: azure/setup-helm@v5
 
-            - name: Helm Lint
-              run: |
-                  cd infrastructure/helm/
-                  helm lint .
+      - name: Helm Lint
+        run: |
+          cd infrastructure/helm/
+          helm lint .
