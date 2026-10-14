@@ -680,15 +680,6 @@ export const silenceResetApi = {
 };
 
 /**
- * Playground API endpoints
- */
-export const playgroundApi = {
-	bookDemo: async (payload: { email?: string; trackingId: string }) => {
-		return apiRequest<void>('/playground/book-demo', 'POST', payload);
-	},
-};
-
-/**
  * Secrets API endpoints
  */
 export const secretsApi = {
