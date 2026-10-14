@@ -8,6 +8,10 @@ import { MailClient, MailType } from '../src/dal/external-client/mail-client.ts'
 
 type MailerConfig = NonNullable<OpsimateConfig['mailer']>;
 
+interface MailerConfigHolder {
+	mailerConfig: MailerConfig;
+}
+
 const transportOptions: Record<string, unknown>[] = [];
 const mailOptions: Record<string, unknown>[] = [];
 
@@ -40,7 +44,7 @@ async function sendWith(config: MailerConfig) {
 	const client = new MailClient();
 	// The mailer section is read once, in a field initializer, so the per-case config
 	// is put on the instance rather than coaxed out of the config singleton.
-	(client as unknown as { mailerConfig: MailerConfig }).mailerConfig = config;
+	(client as unknown as MailerConfigHolder).mailerConfig = config;
 	await client.initialize();
 	await client.sendMail({ to: 'someone@example.com', mailType: MailType.PASSWORD_RESET, token: 'reset-token' });
 	return { transport: transportOptions[0], mail: mailOptions[0] };

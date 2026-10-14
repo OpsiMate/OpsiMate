@@ -19,7 +19,6 @@ const MANAGED_ENV_KEYS = [
 	'CONFIG_FILE',
 	'SERVER_HOST',
 	'API_TOKEN',
-	'VM_TRY_WITH_SUDO',
 	'EMAIL_ENABLED',
 	'SMTP_HOST',
 	'SMTP_PORT',
@@ -69,7 +68,6 @@ const expectDefaults = (config: import('../src/config/config').OpsimateConfig) =
 	expect(config.server.port).toBe(3001);
 	expect(config.database.path).toBe('../../data/database/opsimate.db');
 	expect(config.security.private_keys_path).toBe('../../data/private-keys');
-	expect(config.vm.try_with_sudo).toBe(true);
 };
 
 beforeAll(() => {
@@ -110,13 +108,6 @@ describe('the built-in defaults', () => {
 		expectDefaults(loadConfig());
 	});
 
-	test('VM_TRY_WITH_SUDO=false turns sudo attempts off in the default config', async () => {
-		process.env.VM_TRY_WITH_SUDO = 'false';
-
-		const { loadConfig } = await freshConfig();
-		expect(loadConfig().vm.try_with_sudo).toBe(false);
-	});
-
 	test('server.host is SERVER_HOST when set, 0.0.0.0 otherwise', async () => {
 		expect((await freshConfig()).loadConfig().server.host).toBe('0.0.0.0');
 
@@ -150,20 +141,11 @@ describe('a config file', () => {
 		}
 	);
 
-	test('a file with no vm section still tries sudo, and only an explicit false stops it', async () => {
-		process.env.CONFIG_FILE = writeConfigFile(validFile());
-		expect((await freshConfig()).loadConfig().vm).toEqual({ try_with_sudo: true });
-
-		process.env.VM_TRY_WITH_SUDO = 'false';
-		expect((await freshConfig()).loadConfig().vm.try_with_sudo).toBe(false);
-	});
-
-	test('a vm section in the file wins over the environment', async () => {
+	test('a file that still carries a vm section loads, since nothing reads it', async () => {
 		process.env.CONFIG_FILE = writeConfigFile(validFile({ vm: { try_with_sudo: true } }));
-		process.env.VM_TRY_WITH_SUDO = 'false';
 
 		const { loadConfig } = await freshConfig();
-		expect(loadConfig().vm.try_with_sudo).toBe(true);
+		expect(() => loadConfig()).not.toThrow();
 	});
 });
 
