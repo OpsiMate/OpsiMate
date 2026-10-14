@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../../lib/api';
 import { ServiceCustomField } from '@OpsiMate/shared';
 
-export const customFieldsKeys = {
+const customFieldsKeys = {
 	all: ['custom-fields'] as const,
 	lists: () => [...customFieldsKeys.all, 'list'] as const,
 	list: (filters: string) => [...customFieldsKeys.lists(), { filters }] as const,
@@ -23,23 +23,6 @@ export const useCustomFields = () => {
 			}
 			return response.data.customFields;
 		},
-	});
-};
-
-// Get single custom field
-export const useCustomField = (id: number) => {
-	return useQuery({
-		queryKey: customFieldsKeys.detail(id),
-		queryFn: async () => {
-			const response = await apiRequest<{
-				customField: ServiceCustomField;
-			}>(`/custom-fields/${id}`, 'GET');
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to fetch custom field');
-			}
-			return response.data.customField;
-		},
-		enabled: !!id,
 	});
 };
 
@@ -96,37 +79,6 @@ export const useDeleteCustomField = () => {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: customFieldsKeys.lists() });
-		},
-	});
-};
-
-// Upsert custom field value
-export const useUpsertCustomFieldValue = () => {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: async ({
-			serviceId,
-			customFieldId,
-			value,
-		}: {
-			serviceId: number;
-			customFieldId: number;
-			value: string;
-		}) => {
-			const response = await apiRequest('/custom-fields/values', 'POST', {
-				serviceId,
-				customFieldId,
-				value,
-			});
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to update custom field value');
-			}
-			return response.data;
-		},
-		onSuccess: () => {
-			// Invalidate services queries to refresh the service data with updated custom fields
-			queryClient.invalidateQueries({ queryKey: ['services'] });
 		},
 	});
 };
