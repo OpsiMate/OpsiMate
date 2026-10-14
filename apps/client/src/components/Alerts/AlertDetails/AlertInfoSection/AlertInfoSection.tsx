@@ -1,6 +1,6 @@
 import { PersonPicker } from '@/components/PersonPicker';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSetAlertOwner } from '@/hooks/queries/alerts';
+import { useSetAlertOwner, useSetResolvedAlertOwner } from '@/hooks/queries/alerts';
 import { useUsers } from '@/hooks/queries/users';
 import { Alert } from '@OpsiMate/shared';
 import { Sparkle } from 'lucide-react';
@@ -13,13 +13,19 @@ import { getAlertSeverity } from '../../utils/severity.utils';
 
 interface AlertInfoSectionProps {
 	alert: Alert;
+	// The alert is in the resolved list: its owner is set through the resolved endpoint.
+	isResolved?: boolean;
 }
 
-export const AlertInfoSection = ({ alert }: AlertInfoSectionProps) => {
+export const AlertInfoSection = ({ alert, isResolved = false }: AlertInfoSectionProps) => {
 	const integration = resolveAlertIntegration(alert);
 	const fix = getAlertFix(alert);
 	const { data: users = [] } = useUsers();
-	const { mutate: setOwner } = useSetAlertOwner();
+	const { mutate: setActiveOwner } = useSetAlertOwner();
+	const { mutate: setResolvedOwner } = useSetResolvedAlertOwner();
+	// Same rule as the table's owner column: the active endpoint 404s on a resolved alert.
+	// alert.isResolved is the per-row flag of the combined "All" view.
+	const setOwner = isResolved || alert.isResolved ? setResolvedOwner : setActiveOwner;
 
 	const handleOwnerChange = (userId: string | null) => {
 		setOwner({ alertId: alert.id, ownerId: userId });

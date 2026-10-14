@@ -4,6 +4,8 @@ export const queryKeys = {
 	alerts: ['alerts'] as const,
 	resolvedAlerts: ['resolvedAlerts'] as const,
 	alertComments: ['alertComments'] as const,
+	// Mutation key: list polling pauses while one is pending (see useAlerts).
+	bulkAlertAction: ['bulkAlertAction'] as const,
 	alertHistory: (alertId: string) => ['alertHistory', alertId] as const,
 	alertRootCause: (alertId: string) => ['alertRootCause', alertId] as const,
 	providers: ['providers'] as const,

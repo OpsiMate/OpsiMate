@@ -23,12 +23,12 @@ export type AlertCacheSnapshot = [QueryKey, unknown][];
 
 const hasPages = (value: object): value is InfiniteAlertsLike => Array.isArray((value as InfiniteAlertsLike).pages);
 
-// Replaces the alert with this id wherever a list holds it.
-export const updateAlertInCache =
-	(alertId: string, change: (alert: Alert) => Alert) =>
+// Replaces every alert whose id is in the set, wherever a list holds it.
+export const updateAlertsInCache =
+	(alertIds: ReadonlySet<string>, change: (alert: Alert) => Alert) =>
 	(old: unknown): unknown => {
 		if (!old || typeof old !== 'object') return old;
-		const apply = (alert: Alert): Alert => (alert?.id === alertId ? change(alert) : alert);
+		const apply = (alert: Alert): Alert => (alert && alertIds.has(alert.id) ? change(alert) : alert);
 		if (Array.isArray(old)) return (old as Alert[]).map(apply);
 		if (hasPages(old)) {
 			return {
@@ -41,31 +41,36 @@ export const updateAlertInCache =
 		return old;
 	};
 
-// Drops the alert with this id from every list, and takes it off the list's total.
-export const removeAlertFromCache =
-	(alertId: string) =>
+// Drops every alert whose id is in the set from every list, and takes them off the list's total.
+export const removeAlertsFromCache =
+	(alertIds: ReadonlySet<string>) =>
 	(old: unknown): unknown => {
 		if (!old || typeof old !== 'object') return old;
-		const keep = (alert: Alert): boolean => alert?.id !== alertId;
+		const keep = (alert: Alert): boolean => !alert || !alertIds.has(alert.id);
 		if (Array.isArray(old)) return (old as Alert[]).filter(keep);
 		if (hasPages(old)) {
-			let removed = false;
+			let removed = 0;
 			const pages = old.pages.map((page) => {
 				if (!page || !Array.isArray(page.alerts)) return page;
 				const alerts = page.alerts.filter(keep);
 				if (alerts.length === page.alerts.length) return page;
-				removed = true;
+				removed += page.alerts.length - alerts.length;
 				return { ...page, alerts };
 			});
 			// The server's filtered total lives on the first page.
 			const first = pages[0];
-			if (removed && first && typeof first.total === 'number') {
-				pages[0] = { ...first, total: Math.max(0, first.total - 1) };
+			if (removed > 0 && first && typeof first.total === 'number') {
+				pages[0] = { ...first, total: Math.max(0, first.total - removed) };
 			}
-			return removed ? { ...old, pages } : old;
+			return removed > 0 ? { ...old, pages } : old;
 		}
 		return old;
 	};
+
+export const updateAlertInCache = (alertId: string, change: (alert: Alert) => Alert) =>
+	updateAlertsInCache(new Set([alertId]), change);
+
+export const removeAlertFromCache = (alertId: string) => removeAlertsFromCache(new Set([alertId]));
 
 // Cancels in-flight fetches under the prefix (a poll landing after this would overwrite
 // the optimistic state), applies the updater to every query under it, and returns what

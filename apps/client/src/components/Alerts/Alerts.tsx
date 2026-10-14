@@ -760,7 +760,22 @@ const Alerts = () => {
 	) => {
 		// The query is built HERE, not from a memo — the rolling window must be the one
 		// the user is looking at when they confirm, not the one from when they selected.
+		// One bulk action at a time: a second one started before the first settles could be
+		// undone by the first one's rollback (on failure) or refetch (on success). The bar
+		// disables its actions meanwhile; this also covers a confirm dialog left open.
+		if (bulkAction.isPending) {
+			toast({
+				title: 'Previous action still running',
+				description: 'Try again once it finishes.',
+				variant: 'destructive',
+			});
+			return;
+		}
 		const scope = allMatchingSelected ? { query: buildBulkScopeQuery() } : { ids: selectedAlerts.map((a) => a.id) };
+		// Cleared up front: the rows already show the change (optimistic), so a selection
+		// bar still offering actions on them would invite a second request for the same ids.
+		setSelectedAlerts([]);
+		setAllMatchingSelected(false);
 		try {
 			const result = await bulkAction.mutateAsync({ ...vars, ...scope });
 			toast(
@@ -782,8 +797,6 @@ const Alerts = () => {
 				variant: 'destructive',
 			});
 		}
-		setSelectedAlerts([]);
-		setAllMatchingSelected(false);
 	};
 
 	const handleSilenceAllSelected = (silencedUntil?: string | null, comment?: string) =>
@@ -1389,6 +1402,7 @@ const Alerts = () => {
 										// Permanent delete never runs by-filter — it stays on the loaded
 										// selection, so it's hidden while "all matching" is armed.
 										onDeleteAll={allMatchingSelected ? undefined : handleDeleteAllSelected}
+										actionsDisabled={bulkAction.isPending}
 									/>
 								</div>
 							</>
@@ -1492,7 +1506,11 @@ const Alerts = () => {
 							// Data-driven (not tab-driven): resolving an alert while its panel is
 							// open flips the panel to resolved mode in place, and unresolving
 							// flips it back.
-							const selectedIsResolved = resolvedIds.has(syncedSelectedAlert.id);
+							// The active list wins: right after a re-fire the resolved list (slower
+							// poll) can still hold the id for a while.
+							const selectedIsResolved =
+								resolvedIds.has(syncedSelectedAlert.id) &&
+								!alerts.some((alert) => alert.id === syncedSelectedAlert.id);
 							return (
 								<AlertDetailsPanel
 									alert={syncedSelectedAlert}

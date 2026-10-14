@@ -12,8 +12,16 @@ interface MockCommentsWallProps {
 
 // The panel's body, footer and comment wall all fetch; stub them out so this test is about
 // tab behavior alone.
+// The body stub echoes isResolved, which is what proves the panel tells the owner picker
+// which endpoint to use.
+interface MockAlertDetailsBodyProps {
+	isResolved?: boolean;
+}
+
 vi.mock('@/components/Alerts/AlertDetails/AlertDetailsBody', () => ({
-	AlertDetailsBody: () => <div>details-body</div>,
+	AlertDetailsBody: ({ isResolved }: MockAlertDetailsBodyProps) => (
+		<div>{isResolved ? 'details-body:resolved' : 'details-body'}</div>
+	),
 }));
 vi.mock('@/components/Alerts/AlertDetails/AlertFooterActions', () => ({
 	AlertFooterActions: () => <div>footer-actions</div>,
@@ -69,5 +77,19 @@ describe('AlertDetailsPanel tab reset', () => {
 		);
 
 		expect(screen.getByText('comments-wall:a')).toBeInTheDocument();
+	});
+});
+
+describe('AlertDetailsPanel resolved state', () => {
+	test('a resolved alert (isActive false) is passed to the body as resolved', () => {
+		render(<AlertDetailsPanel alert={mkAlert('a')} isActive={false} onClose={noop} />);
+
+		expect(screen.getByText('details-body:resolved')).toBeInTheDocument();
+	});
+
+	test('an active alert is not', () => {
+		render(<AlertDetailsPanel alert={mkAlert('a')} isActive onClose={noop} />);
+
+		expect(screen.getByText('details-body')).toBeInTheDocument();
 	});
 });
