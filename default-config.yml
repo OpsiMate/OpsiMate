@@ -23,13 +23,12 @@ security:
 # 3. Update mailLinkBaseUrl to your actual domain
 mailer:
   enabled: false
-  default_encoding: "UTF-8"
   host: "smtp.gmail.com"  # Replace with your SMTP server
   port: 587                
   secure: false
   mailLinkBaseUrl: "http://localhost:8080" # Base URL for links in emails
   from: "<no-reply@yourdomain.com>"
-  replyTo: "ops@yourdomain.com"
+  # replyTo: "ops@yourdomain.com" # optional Reply-To address
   templates:
     # Block style, not a multi-line flow mapping ({ ... } spanning lines): the closing
     # brace sat at the same indent as its key, which strict YAML parsers reject.

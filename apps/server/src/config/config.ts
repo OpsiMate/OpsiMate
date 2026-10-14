@@ -68,12 +68,8 @@ export interface OpsimateConfig {
 		private_keys_path: string;
 		api_token: string;
 	};
-	vm: {
-		try_with_sudo: boolean;
-	};
 	mailer?: {
 		enabled: boolean;
-		default_encoding?: string;
 		host?: string;
 		port?: number;
 		secure?: boolean;
@@ -125,13 +121,6 @@ export function loadConfig(): OpsimateConfig {
 		throw new Error(`Invalid config file: ${configPath}`);
 	}
 
-	// Set default VM config if not provided
-	if (!config.vm) {
-		config.vm = {
-			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',
-		};
-	}
-
 	// Set default mailer config if not provided
 	if (!config.mailer) {
 		config.mailer = { enabled: false };
@@ -167,9 +156,6 @@ function getDefaultConfig(): OpsimateConfig {
 			private_keys_path: '../../data/private-keys',
 			api_token: process.env.API_TOKEN || 'opsimate',
 		},
-		vm: {
-			try_with_sudo: process.env.VM_TRY_WITH_SUDO !== 'false',
-		},
 		mailer: {
 			enabled: process.env.EMAIL_ENABLED === 'true',
 			host: process.env.SMTP_HOST || undefined,
@@ -195,10 +181,6 @@ export function getDatabaseConfig() {
 
 export function getSecurityConfig() {
 	return loadConfig().security;
-}
-
-export function getVmConfig() {
-	return loadConfig().vm;
 }
 
 export function getMailerConfig() {

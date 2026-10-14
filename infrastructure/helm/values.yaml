@@ -161,8 +161,6 @@ config:
       path: "/app/data/database/opsimate.db"
     security:
       private_keys_path: "/app/data/private-keys"
-    vm:
-      try_with_sudo: false
 
 # -- Service configuration
 service:

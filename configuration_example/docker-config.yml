@@ -18,7 +18,3 @@ database:
 # Security configuration
 security:
   private_keys_path: "/app/data/private-keys"  # SSH private keys directory (mounted volume)
-
-# VM configuration 
-vm:
-  try_with_sudo: true # Run docker commands with sudo
