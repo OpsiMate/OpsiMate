@@ -9,12 +9,12 @@ import { dirname } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const securityConfig = getSecurityConfig();
-
 // storage configuration
 const storage = multer.diskStorage({
 	destination: (_req, _file, cb) => {
-		cb(null, path.resolve(__dirname, '../../', securityConfig.private_keys_path)); // make sure folder exists
+		// Read lazily, at upload time, not at import time: config.ts caches on
+		// first read, and this module used to be the first thing to touch it.
+		cb(null, path.resolve(__dirname, '../../', getSecurityConfig().private_keys_path)); // make sure folder exists
 	},
 	filename: (_req, file, cb) => {
 		cb(null, Date.now() + '-' + file.originalname);
