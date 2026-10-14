@@ -2,6 +2,7 @@ import ForgotPasswordForm from '@/components/ForgotPasswordForm';
 import ForgotPasswordSuccess from '@/components/ForgotPasswordSuccess';
 import { useFormErrors } from '@/hooks/useFormErrors';
 import { apiRequest } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 import { Logger } from '@OpsiMate/shared';
 import { ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
@@ -60,7 +61,10 @@ const ForgotPassword: React.FC = () => {
 					/>
 				)}
 				<div className="mt-6 text-center">
-					<Link to="/login" className="text-primary hover:underline text-sm inline-flex items-center gap-1">
+					<Link
+						to={ROUTES.login}
+						className="text-primary hover:underline text-sm inline-flex items-center gap-1"
+					>
 						<ArrowLeft size={16} />
 						Back to login
 					</Link>

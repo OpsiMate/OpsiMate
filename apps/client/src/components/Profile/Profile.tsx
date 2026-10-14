@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ProfileContent, ProfileLoadingState, ProfileErrorState } from '@/components/Profile/components';
 import { useProfileData, useProfileEdit } from '@/components/Profile/hooks';
+import { ROUTES } from '@/lib/routes';
 
 const Profile: React.FC = () => {
 	const { profile, loading, setProfile } = useProfileData();
@@ -12,7 +13,7 @@ const Profile: React.FC = () => {
 
 	const handleLogout = useCallback(() => {
 		localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-		window.location.href = '/login';
+		window.location.href = ROUTES.login;
 	}, []);
 
 	if (loading) {

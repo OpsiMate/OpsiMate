@@ -17,6 +17,7 @@ import { DashboardWithFavorite } from './Dashboards.types';
 import { filterDashboards, getFavoriteDashboards, toggleFavorite } from './Dashboards.utils';
 import { DashboardsFilter } from './DashboardsFilter';
 import { DashboardsTable } from './DashboardsTable';
+import { ROUTES } from '@/lib/routes';
 
 export const Dashboards = () => {
 	const navigate = useNavigate();
@@ -98,7 +99,7 @@ export const Dashboards = () => {
 				query: dashboard.query || '',
 				timeRange: deserializeTimeRange(dashboard.timeRange),
 			});
-			navigate(`/alerts${location.search}`);
+			navigate(`${ROUTES.alerts}${location.search}`);
 		},
 		[navigate, setInitialState, location.search]
 	);
@@ -162,7 +163,7 @@ export const Dashboards = () => {
 
 	const handleCreateDashboard = useCallback(() => {
 		resetDashboard();
-		navigate(`/alerts${location.search}`);
+		navigate(`${ROUTES.alerts}${location.search}`);
 	}, [navigate, resetDashboard, location.search]);
 
 	return (

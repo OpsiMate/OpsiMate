@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/lib/routes';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,7 +7,7 @@ export const AlertsEmptyState = () => {
 	const navigate = useNavigate();
 
 	const handleGoToIntegrations = () => {
-		navigate('/integrations?category=alerts');
+		navigate(`${ROUTES.integrations}?category=alerts`);
 	};
 
 	return (

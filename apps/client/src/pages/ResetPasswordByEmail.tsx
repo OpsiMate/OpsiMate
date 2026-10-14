@@ -3,6 +3,7 @@ import ResetPasswordByEmailInvalid from '@/components/ResetPasswordByEmailInvali
 import ResetPasswordByEmailSuccess from '@/components/ResetPasswordByEmailSuccess';
 import { useFormErrors } from '@/hooks/useFormErrors';
 import { apiRequest } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 import { ArrowLeft } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -110,7 +111,7 @@ const ResetPasswordByEmail: React.FC = () => {
 					)}
 					<div className="mt-6 text-center">
 						<Link
-							to="/login"
+							to={ROUTES.login}
 							className="text-primary hover:underline text-sm inline-flex items-center gap-1"
 						>
 							<ArrowLeft size={16} />

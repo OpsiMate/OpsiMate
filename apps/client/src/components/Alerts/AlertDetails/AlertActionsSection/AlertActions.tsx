@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ActionSendDialog } from './ActionSendDialog';
+import { ROUTES } from '@/lib/routes';
 
 interface AlertActionsProps {
 	alert: Alert;
@@ -47,7 +48,10 @@ export const AlertActions = ({ alert }: AlertActionsProps) => {
 					)}
 				</button>
 				{expanded && (
-					<Link to="/actions" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+					<Link
+						to={ROUTES.actions}
+						className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+					>
 						Manage
 					</Link>
 				)}
@@ -57,7 +61,7 @@ export const AlertActions = ({ alert }: AlertActionsProps) => {
 				(actions.length === 0 ? (
 					<p className="text-xs text-muted-foreground">
 						No actions configured.{' '}
-						<Link to="/actions" className="underline hover:text-foreground">
+						<Link to={ROUTES.actions} className="underline hover:text-foreground">
 							Create one
 						</Link>{' '}
 						to notify Slack, Teams, Jira, or call a webhook.
