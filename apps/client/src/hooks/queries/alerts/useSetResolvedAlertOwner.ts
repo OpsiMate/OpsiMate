@@ -34,7 +34,7 @@ export const useSetResolvedAlertOwner = () => {
 		onSettled: () => {
 			// Always refetch after error or success to ensure server state
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
-			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
 		},
 	});
 };

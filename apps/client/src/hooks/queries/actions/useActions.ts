@@ -84,7 +84,7 @@ export const useRunAction = () => {
 		},
 		onSuccess: () => {
 			// Running an action records a history event server-side; refresh the open panel.
-			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
 		},
 	});
 };

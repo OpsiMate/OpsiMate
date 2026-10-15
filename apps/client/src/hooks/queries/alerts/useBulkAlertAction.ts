@@ -80,7 +80,7 @@ export const useBulkAlertAction = () => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
 			queryClient.invalidateQueries({ queryKey: queryKeys.alertComments });
-			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
 		},
 	});
 };
