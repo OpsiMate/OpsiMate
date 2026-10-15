@@ -149,7 +149,7 @@ describe('active list reuses unchanged alerts between rebuilds', () => {
 		expect(JSON.parse(third.json)).toEqual(third.value);
 	});
 	test('a rule that throws for one alert leaves that alert unchanged and the list still served', async () => {
-		const original = EnrichmentBL.enrichmentMatchesAlert;
+		const original = EnrichmentBL.enrichmentMatchesAlert.bind(EnrichmentBL);
 		const spy = vi.spyOn(EnrichmentBL, 'enrichmentMatchesAlert').mockImplementation((enrichment, target) => {
 			if (target.id === 'b') throw new Error('broken matcher');
 			return original(enrichment, target);

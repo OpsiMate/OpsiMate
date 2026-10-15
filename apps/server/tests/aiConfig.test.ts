@@ -210,14 +210,15 @@ describe('AI config endpoints', () => {
 		['loopback IPv6', '::1'],
 		['mapped loopback IPv6', '::ffff:127.0.0.1'],
 	])('resolved endpoint check rejects a host resolving to %s', async (_label, address) => {
-		const resolver: EndpointResolver = async () => [{ address }];
+		const resolver: EndpointResolver = () => Promise.resolve([{ address }]);
 		await expect(assertSafeAiEndpointResolved('https://bedrock-proxy.corp.example.com', resolver)).rejects.toThrow(
 			'Endpoint host is not allowed.'
 		);
 	});
 
 	test('resolved endpoint check passes a host resolving to public addresses only', async () => {
-		const resolver: EndpointResolver = async () => [{ address: '52.94.133.131' }, { address: '2600:1f18::1' }];
+		const resolver: EndpointResolver = () =>
+			Promise.resolve([{ address: '52.94.133.131' }, { address: '2600:1f18::1' }]);
 		await expect(
 			assertSafeAiEndpointResolved('https://bedrock-proxy.corp.example.com', resolver)
 		).resolves.toBeUndefined();
