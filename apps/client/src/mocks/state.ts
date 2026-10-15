@@ -17,6 +17,7 @@ import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	Action,
 	Alert,
+	AlertCallback,
 	AlertComment,
 	AlertRootCause,
 	AlertEnrichment,
@@ -55,6 +56,7 @@ export interface PlaygroundState {
 	auditLogs: AuditLog[];
 	mutePolicies: MutePolicy[];
 	actions: Action[];
+	callbacks: AlertCallback[];
 	enrichments: AlertEnrichment[];
 	enrichmentVersions: Record<number, AlertEnrichmentVersion[]>;
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
@@ -235,6 +237,42 @@ const createMutePolicies = (): MutePolicy[] => [
 		endsAt: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
 		schedule: null,
 		reason: 'Load testing in staging',
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+];
+
+// Settings > Callbacks sample: one live receiver, one still off.
+const createCallbacks = (): AlertCallback[] => [
+	{
+		id: 1,
+		name: 'Ticketing sync',
+		url: 'https://tickets.example.com/hooks/opsimate',
+		method: 'POST',
+		headers: { Authorization: 'Bearer ••••••' },
+		bodyTemplate: null,
+		events: ['resolved', 'owner_assigned', 'comment_added'],
+		enabled: true,
+		secret: 'playground-secret-0123456789abcdef',
+		lastStatus: 'success',
+		lastError: null,
+		lastSentAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 2,
+		name: 'Silence audit',
+		url: 'https://audit.example.com/opsimate',
+		method: 'PUT',
+		headers: null,
+		bodyTemplate: '{"event":"{{event}}","alerts":"{{alertIds}}","by":"{{actor.name}}"}',
+		events: ['silenced', 'unsilenced'],
+		enabled: false,
+		secret: 'playground-secret-fedcba9876543210',
+		lastStatus: 'error',
+		lastError: 'HTTP 503 Service Unavailable',
+		lastSentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
 		createdAt: nowIso(),
 		updatedAt: nowIso(),
 	},
@@ -442,6 +480,7 @@ export const playgroundState: PlaygroundState = {
 	auditLogs: createAuditLogs(),
 	mutePolicies: createMutePolicies(),
 	actions: createActions(),
+	callbacks: createCallbacks(),
 	enrichments: initialEnrichments,
 	enrichmentVersions: createEnrichmentVersions(initialEnrichments),
 	alertHistoryEvents: {},

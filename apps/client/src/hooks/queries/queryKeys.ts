@@ -31,6 +31,7 @@ export const queryKeys = {
 	enrichments: ['enrichments'] as const,
 	enrichmentHistory: (id: number) => ['enrichments', id, 'history'] as const,
 	actions: ['actions'] as const,
+	callbacks: ['callbacks'] as const,
 	retention: ['retention'] as const,
 	silenceReset: ['silenceReset'] as const,
 	ai: ['ai'] as const,
