@@ -43,6 +43,9 @@ export interface CallbackDispatcherOptions {
 const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_RETRY_DELAYS_MS = [1_000, 5_000, 30_000];
 const MAX_ERROR_LENGTH = 500;
+// Deliveries waiting per callback while its receiver is slow or down. Beyond this the
+// newest are dropped (logged + counted) rather than holding every payload in memory.
+const MAX_PENDING_PER_CALLBACK = 500;
 
 interface Delivery {
 	callback: AlertCallback;
@@ -69,6 +72,7 @@ const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => set
 export class CallbackDispatcher {
 	private subscriptions: AlertCallback[] = [];
 	private readonly lanes = new Map<number, Promise<void>>();
+	private readonly pending = new Map<number, number>();
 	private readonly batchScope = new AsyncLocalStorage<CallbackEventInput[]>();
 	private readonly fetchImpl: typeof fetch;
 	private readonly requestTimeoutMs: number;
@@ -152,8 +156,20 @@ export class CallbackDispatcher {
 	private enqueue(payload: AlertCallbackPayload): void {
 		for (const callback of this.subscriptions) {
 			if (!callback.events.includes(payload.event)) continue;
+			const waiting = this.pending.get(callback.id) ?? 0;
+			if (waiting >= MAX_PENDING_PER_CALLBACK) {
+				logger.warn(`Callback "${callback.name}" has ${waiting} deliveries waiting; dropping ${payload.event}`);
+				callbacksSentTotal.inc({ event: payload.event, outcome: 'dropped' });
+				continue;
+			}
+			this.pending.set(callback.id, waiting + 1);
 			const lane = this.lanes.get(callback.id) ?? Promise.resolve();
-			const next = lane.then(() => this.deliver({ callback, payload }));
+			// The lane must survive anything deliver throws, or every later delivery for
+			// this callback would chain onto a rejected promise and never run.
+			const next = lane
+				.then(() => this.deliver({ callback, payload }))
+				.catch((error: unknown) => logger.error(`Callback "${callback.name}" delivery crashed`, error))
+				.finally(() => this.pending.set(callback.id, (this.pending.get(callback.id) ?? 1) - 1));
 			this.lanes.set(callback.id, next);
 		}
 	}
@@ -163,10 +179,17 @@ export class CallbackDispatcher {
 		await Promise.all([...this.lanes.values()]);
 	}
 
+	// A delivery queued while the callback was on is skipped if an admin turned it off
+	// (or deleted it, or dropped the event) before its turn came.
+	private stillWanted(callback: AlertCallback, event: AlertCallbackEvent): boolean {
+		return this.subscriptions.some((current) => current.id === callback.id && current.events.includes(event));
+	}
+
 	private async deliver({ callback, payload }: Delivery): Promise<void> {
 		let result: SendResult = { ok: false, message: 'Not sent' };
 		for (let attempt = 0; attempt <= this.retryDelaysMs.length; attempt++) {
 			if (attempt > 0) await this.sleep(this.retryDelaysMs[attempt - 1]);
+			if (!this.stillWanted(callback, payload.event)) return;
 			result = await this.sendOnce(callback, payload);
 			if (result.ok) break;
 			logger.warn(
@@ -192,15 +215,16 @@ export class CallbackDispatcher {
 
 	private async sendOnce(target: CallbackTarget, payload: AlertCallbackPayload): Promise<SendResult> {
 		const body = renderBody(target.bodyTemplate, payload);
+		const sentAt = Math.floor(this.now().getTime() / 1000);
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			'User-Agent': 'OpsiMate-Callback/1',
 			'X-OpsiMate-Event': payload.event,
 			'X-OpsiMate-Delivery': randomUUID(),
+			'X-OpsiMate-Timestamp': String(sentAt),
 		};
 		if (target.secret) {
-			headers['X-OpsiMate-Signature'] =
-				`sha256=${createHmac('sha256', target.secret).update(body).digest('hex')}`;
+			headers['X-OpsiMate-Signature'] = signCallback(target.secret, sentAt, body);
 		}
 		for (const [key, value] of Object.entries(target.headers ?? {})) headers[key] = value;
 
@@ -233,6 +257,11 @@ export class CallbackDispatcher {
 		}
 	}
 }
+
+// The signed string is "<unix seconds>.<body>", so a receiver can refuse a replayed
+// request even when a custom body template carries no timestamp of its own.
+export const signCallback = (secret: string, sentAt: number, body: string): string =>
+	`sha256=${createHmac('sha256', secret).update(`${sentAt}.${body}`).digest('hex')}`;
 
 // The JSON payload, or the body template resolved against it. Template variables: the
 // alert variables actions use (from the first alert) plus the callback ones

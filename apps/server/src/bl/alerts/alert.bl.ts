@@ -472,13 +472,15 @@ export class AlertBL {
 								null;
 							break;
 						case 'unsilence':
-							applied = (await this.unsilenceAlert(id, actor.name)) != null;
+							applied = (await this.unsilenceAlert(id, actor.name, actor.id)) != null;
 							break;
 						case 'resolve':
 							applied = await this.resolveAlert(id, actor, input.comment);
 							break;
 						case 'assignOwner':
-							applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
+							applied =
+								(await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name, actor.id)) !=
+								null;
 							break;
 						case 'comment':
 							// Schema and controller guarantee a body and an acting user here. The
@@ -781,7 +783,7 @@ export class AlertBL {
 				await this.emitCallback('silenced', alert, actor, { silencedUntil: normalizedSilencedUntil, comment });
 				if (actor.id != null && Number.isFinite(Number(actor.id))) {
 					// setAlertOwner also records the "Assigned to …" history event.
-					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
+					alert = (await this.setAlertOwner(id, actor.id, false, actor.name, actor.id)) ?? alert;
 				}
 				if (comment && actor.id != null) {
 					await this.createComment({ alertId: id, userId: actor.id, comment }, actor.name);
@@ -806,7 +808,7 @@ export class AlertBL {
 		}
 	}
 
-	async unsilenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	async unsilenceAlert(id: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
 		try {
 			logger.info(`Unsilenceing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
@@ -814,7 +816,7 @@ export class AlertBL {
 			if (alert) {
 				alertsUnsilencedTotal.inc();
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
-				await this.emitCallback('unsilenced', alert, { id: null, name: actorName ?? null });
+				await this.emitCallback('unsilenced', alert, { id: actorId ?? null, name: actorName ?? null });
 			}
 			return alert;
 		} catch (error) {
@@ -1033,7 +1035,7 @@ export class AlertBL {
 	}
 
 	// Moves a resolved alert back to the active table as firing — the reverse of resolveAlert.
-	async unresolveAlert(alertId: string, actorName?: string | null): Promise<Alert | null> {
+	async unresolveAlert(alertId: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
 		await this.drainIngest();
 		try {
 			logger.info(`Unresolving alert with id: ${alertId}`);
@@ -1071,7 +1073,7 @@ export class AlertBL {
 				'Alert moved back to firing',
 				actorName
 			);
-			await this.emitCallback('unresolved', alert, { id: null, name: actorName ?? null });
+			await this.emitCallback('unresolved', alert, { id: actorId ?? null, name: actorName ?? null });
 
 			logger.info(`Unresolved alert ${alertId}`);
 			return alert;
@@ -1287,7 +1289,8 @@ export class AlertBL {
 		alertId: string,
 		ownerId: string | null,
 		isResolved: boolean,
-		actorName?: string | null
+		actorName?: string | null,
+		actorId?: string | null
 	): Promise<Alert | null> {
 		try {
 			logger.info(`Setting owner ${ownerId} for alert: ${alertId} is Resolved ${isResolved}`);
@@ -1311,7 +1314,7 @@ export class AlertBL {
 					await this.emitCallback(
 						'owner_assigned',
 						updated,
-						{ id: null, name: actorName ?? null },
+						{ id: actorId ?? null, name: actorName ?? null },
 						{ ownerId: String(numericOwnerId), ownerName }
 					);
 				} else {
@@ -1324,7 +1327,7 @@ export class AlertBL {
 					await this.emitCallback(
 						'owner_unassigned',
 						updated,
-						{ id: null, name: actorName ?? null },
+						{ id: actorId ?? null, name: actorName ?? null },
 						{
 							ownerId: null,
 							ownerName: null,

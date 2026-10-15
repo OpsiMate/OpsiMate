@@ -1,4 +1,3 @@
-import { createHmac } from 'node:crypto';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { AlertCallback, AlertCallbackPayload, AuditResourceType } from '@OpsiMate/shared';
@@ -6,6 +5,7 @@ import Database from 'better-sqlite3';
 import { SuperTest, Test } from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { signCallback } from '../src/bl/callbacks/callbackDispatcher';
 
 // End to end: an admin configures a callback on the Settings API, a user changes an
 // alert, and a real HTTP receiver gets the request — AFTER the change is in the
@@ -139,6 +139,50 @@ describe('Callbacks API: configuration', () => {
 		expect(
 			(await createCallback({ name: 'x', url: 'https://a.test', events: ['silenced'], secret: 'short' })).status
 		).toBe(400);
+		expect((await createCallback({ name: 'x', url: 'ftp://a.test/x', events: ['silenced'] })).status).toBe(400);
+		expect(
+			(
+				await createCallback({
+					name: 'x',
+					url: 'https://a.test',
+					events: ['silenced'],
+					headers: { 'Bad Name': 'v' },
+				})
+			).status
+		).toBe(400);
+		expect(
+			(
+				await createCallback({
+					name: 'x',
+					url: 'https://a.test',
+					events: ['silenced'],
+					headers: { 'X-A': 'v\r\nX-B: w' },
+				})
+			).status
+		).toBe(400);
+	});
+
+	test('a partial update leaves enabled and method alone (zod defaults must not re-apply)', async () => {
+		const created = (
+			await createCallback({
+				name: 'Pager',
+				url: 'https://pager.test/hook',
+				method: 'PUT',
+				events: ['silenced'],
+				enabled: true,
+			})
+		).body.data as AlertCallback;
+		expect(created.enabled).toBe(true);
+		expect(created.method).toBe('PUT');
+
+		const renamed = await auth(app.put(`/api/v1/callbacks/${created.id}`)).send({ name: 'Pager 2' });
+		expect(renamed.body.data.enabled).toBe(true);
+		expect(renamed.body.data.method).toBe('PUT');
+
+		const rotated = await auth(app.put(`/api/v1/callbacks/${created.id}`)).send({ secret: 'rotated-secret-xyz' });
+		expect(rotated.body.data.enabled).toBe(true);
+		expect(rotated.body.data.method).toBe('PUT');
+		expect(rotated.body.data.secret).toBe('rotated-secret-xyz');
 	});
 
 	test('update takes partial bodies (the on/off switch), delete removes, unknown ids are 404', async () => {
@@ -159,10 +203,14 @@ describe('Callbacks API: configuration', () => {
 		expect((await auth(app.delete(`/api/v1/callbacks/${created.id}`))).status).toBe(404);
 	});
 
-	test('create, update and delete are audited, without the secret', async () => {
+	test('create, update and delete are audited, without the secret or header values', async () => {
 		const created = (await createCallback({ name: 'Pager', url: 'https://pager.test/hook', events: ['silenced'] }))
 			.body.data as AlertCallback;
-		await auth(app.put(`/api/v1/callbacks/${created.id}`)).send({ enabled: true, secret: 'rotated-secret-1' });
+		await auth(app.put(`/api/v1/callbacks/${created.id}`)).send({
+			enabled: true,
+			secret: 'rotated-secret-1',
+			headers: { Authorization: 'Bearer receiver-token-1' },
+		});
 		await auth(app.delete(`/api/v1/callbacks/${created.id}`));
 
 		const logs = (await auth(app.get('/api/v1/audit'))).body.data.logs as {
@@ -179,6 +227,9 @@ describe('Callbacks API: configuration', () => {
 		const update = logs.find((l) => l.actionType === 'UPDATE');
 		expect(update?.details).toContain('"enabled":true');
 		expect(update?.details).not.toContain('rotated-secret-1');
+		// Header names are logged, never their values (that's where the receiver's token lives).
+		expect(update?.details).toContain('Authorization');
+		expect(update?.details).not.toContain('receiver-token-1');
 	});
 
 	test('POST /callbacks/test sends one sample request and reports the receiver answer', async () => {
@@ -192,7 +243,7 @@ describe('Callbacks API: configuration', () => {
 		expect(received).toHaveLength(1);
 		expect(received[0].headers['x-opsimate-event']).toBe('silenced');
 		expect(received[0].headers['x-opsimate-signature']).toBe(
-			`sha256=${createHmac('sha256', 'probe-secret-1').update(received[0].body).digest('hex')}`
+			signCallback('probe-secret-1', Number(received[0].headers['x-opsimate-timestamp']), received[0].body)
 		);
 		expect(payloadOf(received[0]).alerts[0].alertName).toBe('Test alert from OpsiMate');
 
@@ -223,7 +274,7 @@ describe('Callbacks: delivery on alert changes', () => {
 		expect(silenced.method).toBe('POST');
 		expect(silenced.headers['content-type']).toBe('application/json');
 		expect(silenced.headers['x-opsimate-signature']).toBe(
-			`sha256=${createHmac('sha256', callback.secret).update(silenced.body).digest('hex')}`
+			signCallback(callback.secret, Number(silenced.headers['x-opsimate-timestamp']), silenced.body)
 		);
 		// The row was already silenced when the receiver saw the request.
 		expect(silenced.silencedInDbOnArrival).toBe(true);

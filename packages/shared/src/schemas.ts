@@ -432,33 +432,66 @@ export const ActionIdSchema = z.object({
 // ---- Alert callbacks ----
 const alertCallbackEventSchema = z.enum(ALERT_CALLBACK_EVENTS);
 
-export const CreateAlertCallbackSchema = z.object({
+// Only http(s) can be delivered to; z.url() alone would also save ftp:// or file://.
+const alertCallbackUrlSchema = z
+	.string()
+	.trim()
+	.url('A valid URL is required')
+	.max(2000)
+	.refine((url) => /^https?:\/\//i.test(url), { message: 'URL must start with http:// or https://' });
+
+// Header names as HTTP allows them, values without control characters: a value with a
+// newline could never be sent (fetch rejects it), so refuse it up front.
+const alertCallbackHeadersSchema = z
+	.record(
+		z.string().regex(/^[A-Za-z0-9-]{1,200}$/, 'Header names may only contain letters, digits and dashes'),
+		z
+			.string()
+			.max(4000)
+			// eslint-disable-next-line no-control-regex
+			.refine((value) => !/[\x00-\x1f\x7f]/.test(value), {
+				message: 'Header values cannot contain control characters',
+			})
+	)
+	.optional()
+	.nullable();
+
+// The fields an edit may carry, with no defaults: a partial update must leave what it
+// does not mention alone (zod's .partial() keeps .default(), which would reset `enabled`
+// to false on every rename).
+const alertCallbackFields = {
 	name: z.string().trim().min(1, 'Name is required').max(100),
-	url: z.string().trim().url('A valid URL is required').max(2000),
-	method: z.enum(['POST', 'PUT']).default('POST'),
-	headers: z.record(z.string().min(1).max(200), z.string().max(4000)).optional().nullable(),
+	url: alertCallbackUrlSchema,
+	method: z.enum(['POST', 'PUT']),
+	headers: alertCallbackHeadersSchema,
 	bodyTemplate: z.string().max(10000).optional().nullable(),
 	events: z
 		.array(alertCallbackEventSchema)
 		.min(1, 'Pick at least one event')
 		.max(ALERT_CALLBACK_EVENTS.length)
 		.refine((events) => new Set(events).size === events.length, { message: 'Events must be unique' }),
-	// Opt-in: omitted means off.
-	enabled: z.boolean().default(false),
+	enabled: z.boolean(),
 	// Omitted on create: the server generates one. Sent on update to rotate it.
 	secret: z.string().trim().min(8, 'Secret must be at least 8 characters').max(200).optional(),
+};
+
+export const CreateAlertCallbackSchema = z.object({
+	...alertCallbackFields,
+	method: alertCallbackFields.method.default('POST'),
+	// Opt-in: omitted means off.
+	enabled: alertCallbackFields.enabled.default(false),
 });
 
 // Edits send only what changed (the list's on/off switch sends { enabled } alone).
-export const UpdateAlertCallbackSchema = CreateAlertCallbackSchema.partial();
+export const UpdateAlertCallbackSchema = z.object(alertCallbackFields).partial();
 
 // Sends one sample request with the given configuration — saved or not.
-export const TestAlertCallbackSchema = CreateAlertCallbackSchema.pick({
-	url: true,
-	method: true,
-	headers: true,
-	bodyTemplate: true,
-	secret: true,
+export const TestAlertCallbackSchema = z.object({
+	url: alertCallbackFields.url,
+	method: alertCallbackFields.method.default('POST'),
+	headers: alertCallbackFields.headers,
+	bodyTemplate: alertCallbackFields.bodyTemplate,
+	secret: alertCallbackFields.secret,
 });
 
 export const AlertCallbackIdSchema = z.object({

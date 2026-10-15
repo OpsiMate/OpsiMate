@@ -45,6 +45,9 @@ import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('api/v1/alerts/controller');
 
+// String() — the JWT carries the id as a number; comments and callbacks carry it as text.
+const actorIdOf = (req: AuthenticatedRequest): string | null => (req.user != null ? String(req.user.id) : null);
+
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
 
@@ -246,7 +249,7 @@ export class AlertController {
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName);
+			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
@@ -910,7 +913,7 @@ export class AlertController {
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName);
+			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
 			}
@@ -994,7 +997,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}

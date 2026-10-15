@@ -1,8 +1,7 @@
-import { createHmac } from 'node:crypto';
 import { Alert, AlertCallback, AlertCallbackPayload, AlertSeverity, AlertStatus } from '@OpsiMate/shared';
 import { describe, expect, test, vi } from 'vitest';
 import { AlertCallbackRepository } from '../src/dal/alertCallbackRepository';
-import { CallbackDispatcher, renderBody } from '../src/bl/callbacks/callbackDispatcher';
+import { CallbackDispatcher, renderBody, signCallback } from '../src/bl/callbacks/callbackDispatcher';
 
 // The dispatcher is what keeps callbacks OFF the request path: emit only queues, the
 // HTTP request runs later, per-callback lanes keep a slow receiver from delaying
@@ -138,8 +137,11 @@ describe('CallbackDispatcher: delivery', () => {
 		expect(request.method).toBe('POST');
 		expect(request.headers['X-OpsiMate-Event']).toBe('silenced');
 		expect(request.headers['X-OpsiMate-Delivery']).toMatch(/^[0-9a-f-]{36}$/);
+		expect(request.headers['X-OpsiMate-Timestamp']).toBe(
+			String(Math.floor(Date.parse('2026-10-15T10:00:00.000Z') / 1000))
+		);
 		expect(request.headers['X-OpsiMate-Signature']).toBe(
-			`sha256=${createHmac('sha256', 'top-secret').update(request.body).digest('hex')}`
+			signCallback('top-secret', Number(request.headers['X-OpsiMate-Timestamp']), request.body)
 		);
 		expect(request.headers.Authorization).toBe('Bearer abc');
 		// A user header wins over the default.
@@ -267,6 +269,76 @@ describe('CallbackDispatcher: retries', () => {
 	});
 });
 
+describe('CallbackDispatcher: resilience', () => {
+	test('a crash inside one delivery does not break the lane for the next', async () => {
+		const callback = makeCallback({ events: ['silenced', 'unsilenced'] });
+		const { repo, deliveries } = makeRepo([callback]);
+		let calls = 0;
+		const fetchImpl = (async (): Promise<Response> => {
+			calls++;
+			if (calls === 1) throw new Error('synchronous explosion');
+			return new Response('ok', { status: 200 });
+		}) as unknown as typeof fetch;
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		await dispatcher.flush();
+
+		expect(calls).toBe(2);
+		expect(deliveries.map((d) => d.status)).toEqual(['error', 'success']);
+	});
+
+	test('a delivery queued before the callback was switched off is skipped', async () => {
+		const callback = makeCallback();
+		const { repo, deliveries } = makeRepo([callback]);
+		let release: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const { sent, fetchImpl } = makeFetch();
+		const gatedFetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+			await gate;
+			return fetchImpl(input, init);
+		}) as unknown as typeof fetch;
+		const { dispatcher } = makeDispatcher(repo, gatedFetch);
+		await dispatcher.reload();
+
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a2'), actor });
+		callback.enabled = false;
+		await dispatcher.reload();
+		release();
+		await dispatcher.flush();
+
+		// The first was already in flight; the second never went out.
+		expect(sent).toHaveLength(1);
+		expect(deliveries).toHaveLength(1);
+	});
+
+	test('a backlog beyond the cap sheds new deliveries instead of growing without bound', async () => {
+		const { repo } = makeRepo([makeCallback()]);
+		let release: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const { sent, fetchImpl } = makeFetch();
+		const gatedFetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+			await gate;
+			return fetchImpl(input, init);
+		}) as unknown as typeof fetch;
+		const { dispatcher } = makeDispatcher(repo, gatedFetch);
+		await dispatcher.reload();
+
+		for (let i = 0; i < 520; i++) dispatcher.emit({ event: 'silenced', alert: makeAlert(`a${i}`), actor });
+		release();
+		await dispatcher.flush();
+
+		expect(sent).toHaveLength(500);
+	});
+});
+
 describe('CallbackDispatcher: bulk batching', () => {
 	test('everything emitted inside batched() becomes one request per event with every alert', async () => {
 		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'owner_assigned'] })]);
@@ -387,7 +459,7 @@ describe('CallbackDispatcher: body template and test send', () => {
 		expect(sent).toHaveLength(1);
 		expect(sent[0].method).toBe('PUT');
 		expect(sent[0].headers['X-OpsiMate-Signature']).toBe(
-			`sha256=${createHmac('sha256', 's3cret-value').update(sent[0].body).digest('hex')}`
+			signCallback('s3cret-value', Number(sent[0].headers['X-OpsiMate-Timestamp']), sent[0].body)
 		);
 		expect(parsePayload(sent[0]).event).toBe('silenced');
 	});

@@ -24,6 +24,16 @@ export type CreateCallbackData = Omit<CreateAlertCallbackInput, 'secret'> & { se
 
 export const generateCallbackSecret = (): string => randomBytes(24).toString('hex');
 
+// What an edit writes to the audit log: never the secret, and only the NAMES of headers
+// (a header value is typically the receiver's auth token).
+export const auditableChanges = (data: UpdateAlertCallbackInput): Record<string, unknown> => {
+	const { secret, headers, ...rest } = data;
+	const changes: Record<string, unknown> = { ...rest };
+	if (secret !== undefined) changes.secret = '[rotated]';
+	if (headers !== undefined) changes.headers = headers ? Object.keys(headers) : null;
+	return changes;
+};
+
 export class CallbackBL {
 	constructor(
 		private callbackRepo: AlertCallbackRepository,
@@ -56,9 +66,7 @@ export class CallbackBL {
 		const updated = await this.callbackRepo.getAlertCallbackById(id);
 		if (updated) {
 			await this.dispatcher.reload();
-			// The secret is the one value that must not land in the audit log.
-			const { secret: _secret, ...loggable } = data;
-			await this.recordAudit(AuditActionType.UPDATE, updated, actor, JSON.stringify(loggable));
+			await this.recordAudit(AuditActionType.UPDATE, updated, actor, JSON.stringify(auditableChanges(data)));
 		}
 		return updated;
 	}
