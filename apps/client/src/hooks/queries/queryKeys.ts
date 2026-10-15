@@ -6,7 +6,10 @@ export const queryKeys = {
 	alertComments: ['alertComments'] as const,
 	// Mutation key: list polling pauses while one is pending (see useAlerts).
 	bulkAlertAction: ['bulkAlertAction'] as const,
-	alertHistory: (alertId: string) => ['alertHistory', alertId] as const,
+	// Shared prefix for every alert-history query; invalidations target this so a
+	// mutation can drop all per-alert histories (see useRunAction, useBulkAlertAction, ...).
+	alertHistoryAll: ['alertHistory'] as const,
+	alertHistory: (alertId: string) => [...queryKeys.alertHistoryAll, alertId] as const,
 	alertRootCause: (alertId: string) => ['alertRootCause', alertId] as const,
 	providers: ['providers'] as const,
 	tags: ['tags'] as const,
@@ -32,4 +35,8 @@ export const queryKeys = {
 	silenceReset: ['silenceReset'] as const,
 	ai: ['ai'] as const,
 	ldap: ['ldap'] as const,
+	// Application / server version queries — the shared prefix plus the two concrete keys.
+	appVersion: ['appVersion'] as const,
+	serverVersion: ['appVersion', 'server'] as const,
+	latestRelease: ['appVersion', 'latestRelease'] as const,
 };

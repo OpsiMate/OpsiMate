@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 // queryKeys.alertHistory(...) and the open panel refreshes immediately — no need to reopen it.
 export const useAlertHistory = (alertId: string | undefined): AlertHistory | null => {
 	const { data } = useQuery({
-		queryKey: alertId ? queryKeys.alertHistory(alertId) : ['alertHistory', 'none'],
+		queryKey: alertId ? queryKeys.alertHistory(alertId) : queryKeys.alertHistory('none'),
 		enabled: !!alertId,
 		queryFn: async (): Promise<AlertHistory | null> => {
 			if (!alertId) return null;
