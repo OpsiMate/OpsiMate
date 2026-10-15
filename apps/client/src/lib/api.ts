@@ -39,6 +39,10 @@ import {
 	UpdateAiConfig,
 	AlertAnalytics,
 	SecretType,
+	AlertCallback,
+	AlertCallbackEvent,
+	AlertCallbackMethod,
+	AlertCallbackTestResult,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 import { ROUTES } from './routes';
@@ -633,6 +637,34 @@ export const actionsApi = {
 		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert }),
 	runAction: (id: number, alert: SharedAlert, overrides?: ActionOverrides) =>
 		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides }),
+};
+
+// Alert callbacks (admin only): outbound requests sent after a user changes an alert.
+export type AlertCallbackPayload = {
+	name: string;
+	url: string;
+	method: AlertCallbackMethod;
+	headers?: Record<string, string> | null;
+	bodyTemplate?: string | null;
+	events: AlertCallbackEvent[];
+	enabled: boolean;
+	// Omitted on create (the server generates one); sent to rotate it.
+	secret?: string;
+};
+
+export type AlertCallbackTestPayload = Pick<
+	AlertCallbackPayload,
+	'url' | 'method' | 'headers' | 'bodyTemplate' | 'secret'
+>;
+
+export const callbacksApi = {
+	listCallbacks: () => apiRequest<AlertCallback[]>('/callbacks'),
+	createCallback: (payload: AlertCallbackPayload) => apiRequest<AlertCallback>('/callbacks', 'POST', payload),
+	updateCallback: (id: number, payload: Partial<AlertCallbackPayload>) =>
+		apiRequest<AlertCallback>(`/callbacks/${id}`, 'PUT', payload),
+	deleteCallback: (id: number) => apiRequest<void>(`/callbacks/${id}`, 'DELETE'),
+	testCallback: (payload: AlertCallbackTestPayload) =>
+		apiRequest<AlertCallbackTestResult>('/callbacks/test', 'POST', payload),
 };
 
 export const auditApi = {

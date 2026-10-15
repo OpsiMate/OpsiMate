@@ -27,11 +27,13 @@ import {
 	Sparkle,
 	Trash2,
 	Users,
+	Webhook,
 	X,
 } from 'lucide-react';
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
+import { CallbackSettings } from '../components/Settings/CallbackSettings';
 import { LdapSettings } from '../components/Settings/LdapSettings';
 import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
@@ -62,6 +64,19 @@ import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest, auditApi } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
 import { Role, User } from '../types';
+
+// URL hash → tab, so a link like /settings#callbacks opens that tab (#ldap lives in Users).
+const SETTINGS_TAB_BY_HASH: Record<string, string> = {
+	Users: 'users',
+	Audit_Log: 'audit',
+	retention: 'retention',
+	silences: 'silences',
+	ai: 'ai',
+	callbacks: 'callbacks',
+	ldap: 'users',
+	secrets: 'secrets',
+	'custom-fields': 'custom-fields',
+};
 
 const logger = new Logger('Settings');
 const PAGE_SIZE = 20;
@@ -224,18 +239,7 @@ const Settings: React.FC = () => {
 						{generalError && <ErrorAlert message={generalError} className="mb-6" />}
 
 						<Tabs
-							defaultValue={(function () {
-								const h = (location.hash || '').replace('#', '');
-								if (h === 'Users') return 'users';
-								if (h === 'Audit_Log') return 'audit';
-								if (h === 'retention') return 'retention';
-								if (h === 'silences') return 'silences';
-								if (h === 'ai') return 'ai';
-								if (h === 'ldap') return 'users';
-								if (h === 'secrets') return 'secrets';
-								if (h === 'custom-fields') return 'custom-fields';
-								return 'users';
-							})()}
+							defaultValue={SETTINGS_TAB_BY_HASH[(location.hash || '').replace('#', '')] ?? 'users'}
 							onValueChange={(v) => {
 								const map: Record<string, string> = {
 									users: 'Users',
@@ -243,6 +247,7 @@ const Settings: React.FC = () => {
 									retention: 'retention',
 									silences: 'silences',
 									ai: 'ai',
+									callbacks: 'callbacks',
 									secrets: 'secrets',
 									'custom-fields': 'custom-fields',
 								};
@@ -273,6 +278,10 @@ const Settings: React.FC = () => {
 										<TabsTrigger value="ai" className="justify-start gap-2">
 											<Sparkle className="h-4 w-4" />
 											AI (Beta)
+										</TabsTrigger>
+										<TabsTrigger value="callbacks" className="justify-start gap-2">
+											<Webhook className="h-4 w-4" />
+											Callbacks
 										</TabsTrigger>
 									</TabsList>
 								</div>
@@ -608,6 +617,10 @@ const Settings: React.FC = () => {
 									<TabsContent value="ai" className="space-y-6">
 										<AiSettings />
 										<RootCauseGuide />
+									</TabsContent>
+
+									<TabsContent value="callbacks" className="space-y-6">
+										<CallbackSettings />
 									</TabsContent>
 
 									<TabsContent value="secrets" className="space-y-6">

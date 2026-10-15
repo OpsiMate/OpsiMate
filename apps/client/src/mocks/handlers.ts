@@ -1,6 +1,7 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	AlertCallback,
 	AlertEnrichment,
 	AlertEnrichmentVersion,
 	ROOT_CAUSE_RATING_COMMENT_MAX,
@@ -1385,6 +1386,59 @@ export const handlers = [
 		const id = Number(params.id);
 		playgroundState.actions = playgroundState.actions.filter((a) => a.id !== id);
 		return HttpResponse.json({ success: true, message: 'Action deleted' });
+	}),
+
+	// ==================== CALLBACKS ====================
+	// Configuration only: the sandbox has no server to send from, so nothing is delivered.
+	http.get(`${API_BASE}/callbacks`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.callbacks });
+	}),
+
+	http.post(`${API_BASE}/callbacks`, async ({ request }) => {
+		const body = (await request.json()) as Partial<AlertCallback>;
+		const callback: AlertCallback = {
+			id: randomId(),
+			name: body.name ?? 'Callback',
+			url: body.url ?? '',
+			method: body.method ?? 'POST',
+			headers: body.headers ?? null,
+			bodyTemplate: body.bodyTemplate ?? null,
+			events: body.events ?? [],
+			enabled: body.enabled ?? false,
+			secret: body.secret ?? `playground-secret-${randomId()}`,
+			lastStatus: null,
+			lastError: null,
+			lastSentAt: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+		playgroundState.callbacks = [callback, ...playgroundState.callbacks];
+		return HttpResponse.json({ success: true, data: callback, message: 'Callback created' }, { status: 201 });
+	}),
+
+	http.post(`${API_BASE}/callbacks/test`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { ok: true, statusCode: 200, message: 'Test sent (playground — no real request made).' },
+		});
+	}),
+
+	http.put(`${API_BASE}/callbacks/:id`, async ({ params, request }) => {
+		const id = Number(params.id);
+		const existing = playgroundState.callbacks.find((c) => c.id === id);
+		if (!existing) {
+			return HttpResponse.json({ success: false, error: 'Callback not found' }, { status: 404 });
+		}
+		const body = (await request.json()) as Partial<AlertCallback>;
+		const updated: AlertCallback = { ...existing, ...body, updatedAt: new Date().toISOString() };
+		playgroundState.callbacks = playgroundState.callbacks.map((c) => (c.id === id ? updated : c));
+		return HttpResponse.json({ success: true, data: updated, message: 'Callback updated' });
+	}),
+
+	http.delete(`${API_BASE}/callbacks/:id`, ({ params }) => {
+		const id = Number(params.id);
+		playgroundState.callbacks = playgroundState.callbacks.filter((c) => c.id !== id);
+		return HttpResponse.json({ success: true, message: 'Callback deleted' });
 	}),
 
 	// ==================== ENRICHMENTS ====================
