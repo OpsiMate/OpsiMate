@@ -370,19 +370,21 @@ const sendHttpWithoutWaiting = (parts: HttpRequestParts, actionName: string): Pr
 				);
 			}
 		});
-		req.setTimeout(REQUEST_TIMEOUT_MS);
-		req.on('timeout', () => {
-			// Before the request is out, a stalled connect/send is a failure. After, the
-			// receiver only took longer than we are willing to keep a socket around.
-			if (sent) {
-				gaveUp = true;
-				logger.info(`Action '${actionName}' (not waiting): gave up waiting for a response`);
-				req.destroy();
-			} else {
-				req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / MS_PER_SECOND}s.`));
-			}
+		// Wall-clock deadlines, like the waiting mode's AbortController. req.setTimeout
+		// would not do: it only arms once the socket has connected (a black-holed host
+		// would hang for the OS connect timeout) and it measures inactivity, so a receiver
+		// trickling bytes could hold the socket forever.
+		const sendDeadline = setTimeout(
+			() => req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / MS_PER_SECOND}s.`)),
+			REQUEST_TIMEOUT_MS
+		);
+		let responseDeadline: NodeJS.Timeout | undefined;
+		req.once('close', () => {
+			clearTimeout(sendDeadline);
+			clearTimeout(responseDeadline);
 		});
 		req.once('finish', () => {
+			clearTimeout(sendDeadline);
 			// 'finish' can fire on a socket that already failed its write (a TLS handshake
 			// against a plain-HTTP port surfaces as a write error): the 'error' event only
 			// follows afterwards. That is a failed send, not a sent request.
@@ -398,8 +400,12 @@ const sendHttpWithoutWaiting = (parts: HttpRequestParts, actionName: string): Pr
 			sent = true;
 			resolve({ ok: true, message: `Request sent to ${target.host}; not waiting for a response.` });
 			// The pending response must neither keep the process alive nor hold the socket forever.
-			req.setTimeout(FIRE_AND_FORGET_RESPONSE_WAIT_MS);
-			req.socket?.unref();
+			responseDeadline = setTimeout(() => {
+				gaveUp = true;
+				logger.info(`Action '${actionName}' (not waiting): gave up waiting for a response`);
+				req.destroy();
+			}, FIRE_AND_FORGET_RESPONSE_WAIT_MS).unref();
+			req.socket.unref();
 		});
 		req.end(parts.body);
 	});
