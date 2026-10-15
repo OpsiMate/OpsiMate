@@ -1,23 +1,22 @@
 import { describe, expect, test } from 'vitest';
-import { Alert, collectAlertTagKeys } from '@OpsiMate/shared';
+import { Alert, AlertSeverity, AlertStatus, collectAlertTagKeys } from '@OpsiMate/shared';
 
-const makeAlert = (tags?: unknown): Alert =>
-	({
-		id: Math.floor(Math.random() * 10000),
-		alertName: 'Test Alert',
-		status: 'firing',
-		severity: 'critical',
-		type: 'system',
-		startsAt: '2026-10-14T00:00:00.000Z',
-		updatedAt: '2026-10-14T00:00:00.000Z',
-		alertUrl: '',
-		isSilenced: false,
-		isMuted: false,
-		isRead: false,
-		ownerId: null,
-		createdAt: '2026-10-14 00:00:00',
-		tags: tags as Record<string, string>,
-	}) as Alert;
+const makeAlert = (tags?: unknown): Alert => ({
+	id: 'alert-1',
+	alertName: 'Test Alert',
+	status: AlertStatus.FIRING,
+	severity: AlertSeverity.CRITICAL,
+	type: 'Custom',
+	startsAt: '2026-10-14T00:00:00.000Z',
+	updatedAt: '2026-10-14T00:00:00.000Z',
+	alertUrl: '',
+	isSilenced: false,
+	isMuted: false,
+	isRead: false,
+	ownerId: null,
+	createdAt: '2026-10-14 00:00:00',
+	tags: tags as Record<string, string>,
+});
 
 describe('collectAlertTagKeys', () => {
 	test('returns an empty array when given an empty alerts list', () => {
@@ -97,7 +96,7 @@ describe('collectAlertTagKeys', () => {
 			makeAlert({
 				'z-a': 'val1', // label: "Z A"
 				alpha: 'val2', // label: "Alpha"
-				'b_z': 'val3', // label: "B Z"
+				b_z: 'val3', // label: "B Z"
 				charlie: 'val4', // label: "Charlie"
 			}),
 		];
