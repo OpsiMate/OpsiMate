@@ -20,6 +20,7 @@ import {
 	executeAction,
 	ExecutableAction,
 	previewAction,
+	sendsWithoutWaiting,
 } from './actionExecutor';
 
 const logger = new Logger('bl/action.bl');
@@ -53,7 +54,10 @@ export class ActionBL {
 			buildAlertContext(alert),
 			overrides
 		);
-		actionsRunTotal.inc({ type: action.type, outcome: result.ok ? 'success' : 'error' });
+		// A "don't wait" HTTP action only knows its request went out, so it counts as
+		// `sent` rather than claiming a `success` it never saw.
+		const outcome = !result.ok ? 'error' : sendsWithoutWaiting(action) ? 'sent' : 'success';
+		actionsRunTotal.inc({ type: action.type, outcome });
 
 		// Record the run on the alert's history timeline (best-effort; never block the action).
 		if (alert.id && this.alertHistoryRepo) {

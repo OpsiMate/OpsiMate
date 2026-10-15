@@ -16,6 +16,7 @@ import { useAlerts } from '@/hooks/queries/alerts';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateAction, useTestAction, useUpdateAction } from '@/hooks/queries/actions';
@@ -67,6 +68,7 @@ const rowsToHeaders = (rows: HeaderRow[]): Record<string, string> | null => {
 
 export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialogProps) => {
 	const httpMethodId = useId();
+	const httpFireAndForgetId = useId();
 	const isEdit = !!action;
 	const { toast } = useToast();
 	const createMutation = useCreateAction();
@@ -106,6 +108,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	const [httpMethod, setHttpMethod] = useState<HttpActionMethod>('POST');
 	const [httpHeaders, setHttpHeaders] = useState<HeaderRow[]>([]);
 	const [httpBody, setHttpBody] = useState('');
+	const [httpFireAndForget, setHttpFireAndForget] = useState(false);
 
 	// Template variables offered by the picker under each templated field: the fixed
 	// alert fields plus one alert.tags.<key> per tag key seen on current alerts.
@@ -142,6 +145,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		setHttpMethod('POST');
 		setHttpHeaders([]);
 		setHttpBody('');
+		setHttpFireAndForget(false);
 	};
 
 	useEffect(() => {
@@ -183,6 +187,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 				setHttpMethod(cfg.method ?? 'POST');
 				setHttpHeaders(headersToRows(cfg.headers));
 				setHttpBody(cfg.bodyTemplate ?? '');
+				setHttpFireAndForget(cfg.fireAndForget ?? false);
 			}
 		} else {
 			setName('');
@@ -282,6 +287,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						method: httpMethod,
 						headers: rowsToHeaders(httpHeaders),
 						bodyTemplate: httpBody.trim() || null,
+						fireAndForget: httpFireAndForget,
 					},
 				};
 		}
@@ -694,6 +700,23 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									]}
 									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too):"
 								/>
+								<div className="flex items-start justify-between gap-4 rounded-md border bg-background p-3">
+									<div className="space-y-1">
+										<Label htmlFor={httpFireAndForgetId} className="text-xs">
+											Don't wait for a response
+										</Label>
+										<p className="text-xs text-muted-foreground">
+											Report success as soon as the request is sent, without waiting for the
+											receiver's status. For endpoints that answer only once their work is done.
+											Connection errors are still reported.
+										</p>
+									</div>
+									<Switch
+										id={httpFireAndForgetId}
+										checked={httpFireAndForget}
+										onCheckedChange={setHttpFireAndForget}
+									/>
+								</div>
 							</>
 						)}
 

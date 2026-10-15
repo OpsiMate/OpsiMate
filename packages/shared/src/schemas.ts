@@ -394,6 +394,7 @@ const httpActionConfigSchema = z.object({
 	method: httpMethodSchema,
 	headers: z.record(z.string(), z.string()).optional().nullable(),
 	bodyTemplate: z.string().max(10000).optional().nullable(),
+	fireAndForget: z.boolean().optional().nullable(),
 });
 
 // Optional alert filter shared by every action type. Empty = applies to all alerts.
