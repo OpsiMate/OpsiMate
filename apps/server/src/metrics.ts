@@ -77,6 +77,16 @@ export const actionsRunTotal = new Counter({
 	registers: [metricsRegistry],
 });
 
+// One increment per delivery (after retries), so `error` counts receivers that stayed
+// down, not individual attempts; `dropped` counts payloads shed when a callback's
+// backlog was full.
+export const callbacksSentTotal = new Counter({
+	name: 'opsimate_callbacks_sent_total',
+	help: 'Alert callback deliveries by event and final outcome (success, error after retries, or dropped)',
+	labelNames: ['event', 'outcome'] as const,
+	registers: [metricsRegistry],
+});
+
 export const bulkActionsTotal = new Counter({
 	name: 'opsimate_bulk_actions_total',
 	help: 'Bulk operations executed (one increment per request, whatever its size)',
