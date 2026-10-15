@@ -3,6 +3,9 @@ import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
+	AlertCallbackActor,
+	AlertCallbackDetails,
+	AlertCallbackEvent,
 	AlertComment,
 	AlertHistory,
 	AlertHistoryData,
@@ -28,6 +31,7 @@ import {
 	ingestBatchSize,
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
+import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import { toIsoUtc } from '../../utils/time';
 import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
@@ -172,6 +176,33 @@ export class AlertBL {
 
 	setOnAlertsRefired(callback: (alertIds: string[]) => Promise<void>): void {
 		this.onAlertsRefired = callback;
+	}
+
+	// Outbound callbacks for user-made changes (see CallbackDispatcher). Every emit below
+	// sits AFTER the change and its history entry are committed, and emit itself only
+	// queues: the request that made the change never waits for a receiver.
+	private callbackDispatcher: CallbackDispatcher | null = null;
+
+	setCallbackDispatcher(dispatcher: CallbackDispatcher): void {
+		this.callbackDispatcher = dispatcher;
+	}
+
+	// `alert` may be a loader, for the paths that don't already hold the alert (a comment
+	// only knows its id): it is called only when some enabled callback wants the event.
+	private async emitCallback(
+		event: AlertCallbackEvent,
+		alert: Alert | null | (() => Promise<Alert | null>),
+		actor: AlertCallbackActor,
+		details?: AlertCallbackDetails
+	): Promise<void> {
+		const dispatcher = this.callbackDispatcher;
+		if (!dispatcher?.wants(event)) return;
+		try {
+			const resolved = typeof alert === 'function' ? await alert() : alert;
+			if (resolved) dispatcher.emit({ event, alert: resolved, actor, details });
+		} catch (error) {
+			logger.error(`Failed to emit ${event} callback`, error);
+		}
 	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
@@ -425,47 +456,54 @@ export class AlertBL {
 
 		let succeeded = 0;
 		let failed = 0;
-		for (const id of targetIds) {
-			try {
-				// The single-alert methods signal "no such alert" by returning null/false
-				// rather than throwing — count that as failed too: succeeded must mean the
-				// action actually took effect.
-				let applied = true;
-				switch (input.action) {
-					case 'silence':
-						applied =
-							(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) != null;
-						break;
-					case 'unsilence':
-						applied = (await this.unsilenceAlert(id, actor.name)) != null;
-						break;
-					case 'resolve':
-						applied = await this.resolveAlert(id, actor, input.comment);
-						break;
-					case 'assignOwner':
-						applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
-						break;
-					case 'comment':
-						// Schema and controller guarantee a body and an acting user here. The
-						// comments table deliberately has no FK on alert_id (comments outlive
-						// resolve), so existence is checked explicitly — an unknown id must
-						// count as failed, not insert an orphan row.
-						applied = (await this.alertRepo.getAlert(id)) != null;
-						if (applied) {
-							await this.createComment(
-								{ alertId: id, userId: actor.id as string, comment: input.comment as string },
-								actor.name
-							);
-						}
-						break;
+		// Inside `batched`, the per-alert callbacks the loop emits are collapsed into one
+		// request per event (300 silences = one "silenced" callback, not 300).
+		const applyAll = async (): Promise<void> => {
+			for (const id of targetIds) {
+				try {
+					// The single-alert methods signal "no such alert" by returning null/false
+					// rather than throwing — count that as failed too: succeeded must mean the
+					// action actually took effect.
+					let applied = true;
+					switch (input.action) {
+						case 'silence':
+							applied =
+								(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) !=
+								null;
+							break;
+						case 'unsilence':
+							applied = (await this.unsilenceAlert(id, actor.name)) != null;
+							break;
+						case 'resolve':
+							applied = await this.resolveAlert(id, actor, input.comment);
+							break;
+						case 'assignOwner':
+							applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
+							break;
+						case 'comment':
+							// Schema and controller guarantee a body and an acting user here. The
+							// comments table deliberately has no FK on alert_id (comments outlive
+							// resolve), so existence is checked explicitly — an unknown id must
+							// count as failed, not insert an orphan row.
+							applied = (await this.alertRepo.getAlert(id)) != null;
+							if (applied) {
+								await this.createComment(
+									{ alertId: id, userId: actor.id as string, comment: input.comment as string },
+									actor.name
+								);
+							}
+							break;
+					}
+					if (applied) succeeded++;
+					else failed++;
+				} catch (error) {
+					logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
+					failed++;
 				}
-				if (applied) succeeded++;
-				else failed++;
-			} catch (error) {
-				logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
-				failed++;
 			}
-		}
+		};
+		if (this.callbackDispatcher) await this.callbackDispatcher.batched(applyAll);
+		else await applyAll();
 		logger.info(`Bulk ${input.action}: ${succeeded}/${targetIds.length} succeeded`);
 		bulkActionsTotal.inc({ action: input.action });
 		if (succeeded > 0) bulkAlertsAffectedTotal.inc({ action: input.action }, succeeded);
@@ -740,6 +778,7 @@ export class AlertBL {
 					? `Alert silenced until ${normalizedSilencedUntil}`
 					: 'Alert silenced';
 				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
+				await this.emitCallback('silenced', alert, actor, { silencedUntil: normalizedSilencedUntil, comment });
 				if (actor.id != null && Number.isFinite(Number(actor.id))) {
 					// setAlertOwner also records the "Assigned to …" history event.
 					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
@@ -775,6 +814,7 @@ export class AlertBL {
 			if (alert) {
 				alertsUnsilencedTotal.inc();
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
+				await this.emitCallback('unsilenced', alert, { id: null, name: actorName ?? null });
 			}
 			return alert;
 		} catch (error) {
@@ -930,10 +970,25 @@ export class AlertBL {
 				);
 
 				// Whoever resolved the alert takes ownership of it.
-				if (manualActor.id != null && Number.isFinite(Number(manualActor.id))) {
+				const takesOwnership = manualActor.id != null && Number.isFinite(Number(manualActor.id));
+				if (takesOwnership) {
 					await this.resolvedAlertRepo.updateResolvedAlertOwner(activeAlertId, Number(manualActor.id));
 					this.invalidateSnapshots();
 				}
+
+				// The alert as it now sits in the resolved table.
+				await this.emitCallback(
+					'resolved',
+					{
+						...alert,
+						status: AlertStatus.RESOLVED,
+						isSilenced: false,
+						isResolved: true,
+						ownerId: takesOwnership ? manualActor.id : alert.ownerId,
+					},
+					manualActor,
+					{ comment: comment ?? null }
+				);
 
 				if (comment && manualActor.id != null) {
 					await this.createComment(
@@ -1016,6 +1071,7 @@ export class AlertBL {
 				'Alert moved back to firing',
 				actorName
 			);
+			await this.emitCallback('unresolved', alert, { id: null, name: actorName ?? null });
 
 			logger.info(`Unresolved alert ${alertId}`);
 			return alert;
@@ -1025,10 +1081,15 @@ export class AlertBL {
 		}
 	}
 
-	async deleteResolvedAlert(alertId: string): Promise<void> {
+	async deleteResolvedAlert(alertId: string, actor?: AlertCallbackActor): Promise<void> {
 		await this.drainIngest();
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
+			// The row is gone after the delete, so the callback's snapshot is read first —
+			// only when a callback actually listens.
+			const snapshot = this.callbackDispatcher?.wants('deleted')
+				? await this.resolvedAlertRepo.getResolvedAlert(alertId)
+				: null;
 			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 			// Only a row that actually left the resolved table counts as permanent
 			// deletion — an id naming a still-active alert must not shed its satellites.
@@ -1042,6 +1103,7 @@ export class AlertBL {
 				} catch (cleanupError) {
 					logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
 				}
+				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
 			this.invalidateSnapshots();
 		} catch (error) {
@@ -1246,12 +1308,27 @@ export class AlertBL {
 						`Assigned to ${ownerName}`,
 						actorName
 					);
+					await this.emitCallback(
+						'owner_assigned',
+						updated,
+						{ id: null, name: actorName ?? null },
+						{ ownerId: String(numericOwnerId), ownerName }
+					);
 				} else {
 					await this.recordHistoryEvent(
 						alertId,
 						AlertHistoryEventType.OWNER_UNASSIGNED,
 						'Owner removed',
 						actorName
+					);
+					await this.emitCallback(
+						'owner_unassigned',
+						updated,
+						{ id: null, name: actorName ?? null },
+						{
+							ownerId: null,
+							ownerName: null,
+						}
 					);
 				}
 			}
@@ -1278,6 +1355,14 @@ export class AlertBL {
 			AlertHistoryEventType.COMMENT_ADDED,
 			'Comment added',
 			actorName ?? null
+		);
+		await this.emitCallback(
+			'comment_added',
+			async () =>
+				(await this.alertRepo.getAlert(comment.alertId)) ??
+				(await this.resolvedAlertRepo.getResolvedAlert(comment.alertId)),
+			{ id: comment.userId, name: actorName ?? null },
+			{ comment: comment.comment }
 		);
 		return created;
 	}

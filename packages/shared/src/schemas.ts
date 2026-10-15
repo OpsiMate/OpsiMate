@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES } from './types';
+import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES, ALERT_CALLBACK_EVENTS } from './types';
 
 export const CreateIntegrationSchema = z.object({
 	name: z.string().min(1),
@@ -427,6 +427,42 @@ export const UpdateActionSchema = CreateActionSchema;
 
 export const ActionIdSchema = z.object({
 	actionId: positiveIntegerIdSchema,
+});
+
+// ---- Alert callbacks ----
+const alertCallbackEventSchema = z.enum(ALERT_CALLBACK_EVENTS);
+
+export const CreateAlertCallbackSchema = z.object({
+	name: z.string().trim().min(1, 'Name is required').max(100),
+	url: z.string().trim().url('A valid URL is required').max(2000),
+	method: z.enum(['POST', 'PUT']).default('POST'),
+	headers: z.record(z.string().min(1).max(200), z.string().max(4000)).optional().nullable(),
+	bodyTemplate: z.string().max(10000).optional().nullable(),
+	events: z
+		.array(alertCallbackEventSchema)
+		.min(1, 'Pick at least one event')
+		.max(ALERT_CALLBACK_EVENTS.length)
+		.refine((events) => new Set(events).size === events.length, { message: 'Events must be unique' }),
+	// Opt-in: omitted means off.
+	enabled: z.boolean().default(false),
+	// Omitted on create: the server generates one. Sent on update to rotate it.
+	secret: z.string().trim().min(8, 'Secret must be at least 8 characters').max(200).optional(),
+});
+
+// Edits send only what changed (the list's on/off switch sends { enabled } alone).
+export const UpdateAlertCallbackSchema = CreateAlertCallbackSchema.partial();
+
+// Sends one sample request with the given configuration — saved or not.
+export const TestAlertCallbackSchema = CreateAlertCallbackSchema.pick({
+	url: true,
+	method: true,
+	headers: true,
+	bodyTemplate: true,
+	secret: true,
+});
+
+export const AlertCallbackIdSchema = z.object({
+	callbackId: positiveIntegerIdSchema,
 });
 
 // Body for running an action against a specific alert. Lenient on BOTH axes: extra
