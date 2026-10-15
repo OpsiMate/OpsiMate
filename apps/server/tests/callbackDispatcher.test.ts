@@ -223,6 +223,32 @@ describe('CallbackDispatcher: delivery', () => {
 	});
 });
 
+describe('CallbackDispatcher: redirects', () => {
+	test('a redirect is not followed (the auth headers would travel with it) and counts as a failure', async () => {
+		const callback = makeCallback({ headers: { Authorization: 'Bearer abc' } });
+		const { repo, deliveries } = makeRepo([callback]);
+		const { sent, fetchImpl } = makeFetch([302]);
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+		await dispatcher.flush();
+
+		expect(sent).toHaveLength(1);
+		expect(sent[0].url).toBe('https://receiver.test/hook');
+		expect((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({
+			redirect: 'manual',
+		});
+		expect(deliveries).toEqual([
+			{
+				id: callback.id,
+				status: 'error',
+				error: 'HTTP 302: redirects are not followed, point the callback at the final URL',
+			},
+		]);
+	});
+});
+
 describe('CallbackDispatcher: retries', () => {
 	test('retries with the configured delays and records success once a retry lands', async () => {
 		const callback = makeCallback();

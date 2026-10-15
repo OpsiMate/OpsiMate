@@ -236,8 +236,18 @@ export class CallbackDispatcher {
 				headers,
 				body,
 				signal: controller.signal,
+				// Never follow a redirect: the configured headers carry the receiver's
+				// credentials, and fetch would forward them to wherever the redirect points.
+				redirect: 'manual',
 			});
 			if (res.ok) return { ok: true, statusCode: res.status, message: `Delivered (${res.status})` };
+			if (res.status >= 300 && res.status < 400) {
+				return {
+					ok: false,
+					statusCode: res.status,
+					message: `HTTP ${res.status}: redirects are not followed, point the callback at the final URL`,
+				};
+			}
 			const text = await res.text().catch(() => '');
 			return {
 				ok: false,
