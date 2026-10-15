@@ -193,6 +193,17 @@ describe('executeAction with fireAndForget', () => {
 		expect(error).toHaveBeenCalled();
 	});
 
+	test('https against a plain-HTTP port fails the run instead of claiming "sent"', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const plain = await receiverWith({ delayMs: 10, status: 200 });
+		const result = await executeAction(
+			httpAction({ url: plain.url.replace('http://', 'https://'), fireAndForget: true }),
+			buildSampleContext()
+		);
+		expect(result.ok).toBe(false);
+		expect(result.message).toMatch(/EPROTO|ECONNRESET|closed|wrong version/i);
+	});
+
 	test('an unsupported scheme fails the run instead of hanging', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 		const result = await executeAction(
@@ -259,7 +270,8 @@ describe('fireAndForget over the API', () => {
 	});
 
 	test('the flag is stored, returned, and honoured when the action runs on an alert', async () => {
-		const receiver = await receiverWith({ delayMs: 300, status: 200 });
+		// Generous delay: this path includes the supertest round-trip and the history write.
+		const receiver = await receiverWith({ delayMs: 1000, status: 200 });
 		const created = await authed(app.post('/api/v1/actions')).send({
 			name: 'Trigger the runbook job',
 			type: 'http',

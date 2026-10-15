@@ -25,6 +25,12 @@ const REQUEST_TIMEOUT_MS = 10_000;
 // client goes away. The socket is unref'd meanwhile, so it costs nothing at shutdown.
 const FIRE_AND_FORGET_RESPONSE_WAIT_MS = 5 * MS_PER_MINUTE;
 
+// A fresh connection per "don't wait" request. On a pooled keep-alive socket the
+// receiver may have just closed, the write still succeeds into the kernel buffer and
+// "sent" would be claimed for a request that only ever produces ECONNRESET.
+const noWaitHttpAgent = new http.Agent({ keepAlive: false });
+const noWaitHttpsAgent = new https.Agent({ keepAlive: false });
+
 export interface ExecutableAction {
 	name: string;
 	type: ActionType;
@@ -328,21 +334,36 @@ const sendHttpAndWait = async (parts: HttpRequestParts): Promise<ActionTestResul
 const sendHttpWithoutWaiting = (parts: HttpRequestParts, actionName: string): Promise<ActionTestResult> =>
 	new Promise((resolve, reject) => {
 		const target = new URL(parts.url);
-		const transport = target.protocol === 'https:' ? https : http;
+		const isHttps = target.protocol === 'https:';
+		const transport = isHttps ? https : http;
 		let sent = false;
+		let failed = false;
 		let gaveUp = false;
-		const req = transport.request(target, { method: parts.method, headers: parts.headers }, (res) => {
-			// Nobody is waiting for this; drain it so the socket can be reused, and log it.
+		const fail = (error: Error) => {
+			if (failed) return;
+			failed = true;
+			reject(error);
+		};
+		// Note: unlike fetch, node:http neither follows redirects nor rejects URLs with
+		// userinfo (it turns them into Basic auth). A 3xx is logged with its Location.
+		const options: http.RequestOptions = {
+			method: parts.method,
+			headers: parts.headers,
+			agent: isHttps ? noWaitHttpsAgent : noWaitHttpAgent,
+		};
+		const req = transport.request(target, options, (res) => {
+			// Nobody is waiting for this; drain it so the connection can close, and log it.
 			res.resume();
 			res.on('error', () => undefined);
 			const status = res.statusCode ?? 0;
-			const line = `Action '${actionName}' (not waiting): receiver answered ${status}`;
+			const redirect = res.headers.location ? ` (redirect to ${res.headers.location}, not followed)` : '';
+			const line = `Action '${actionName}' (not waiting): receiver answered ${status}${redirect}`;
 			if (status >= 200 && status < 300) logger.info(line);
 			else logger.warn(line);
 		});
 		req.on('error', (error: Error) => {
 			if (!sent) {
-				reject(error);
+				fail(error);
 			} else if (!gaveUp) {
 				logger.warn(
 					`Action '${actionName}' (not waiting): connection ended before a response: ${error.message}`
@@ -362,6 +383,18 @@ const sendHttpWithoutWaiting = (parts: HttpRequestParts, actionName: string): Pr
 			}
 		});
 		req.once('finish', () => {
+			// 'finish' can fire on a socket that already failed its write (a TLS handshake
+			// against a plain-HTTP port surfaces as a write error): the 'error' event only
+			// follows afterwards. That is a failed send, not a sent request.
+			const socketFailure = req.socket?.errored;
+			if (socketFailure) {
+				fail(socketFailure);
+				return;
+			}
+			if (!req.socket || req.socket.destroyed) {
+				fail(new Error('Connection closed before the request was sent.'));
+				return;
+			}
 			sent = true;
 			resolve({ ok: true, message: `Request sent to ${target.host}; not waiting for a response.` });
 			// The pending response must neither keep the process alive nor hold the socket forever.
