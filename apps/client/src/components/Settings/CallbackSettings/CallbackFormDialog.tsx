@@ -406,8 +406,9 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 						/>
 					)}
 					<p className="text-xs text-muted-foreground">
-						Every request carries X-OpsiMate-Signature: sha256=HMAC-SHA256(body, secret), so the receiver
-						can check it came from OpsiMate.
+						Every request carries X-OpsiMate-Timestamp and X-OpsiMate-Signature:
+						sha256=HMAC-SHA256(&quot;timestamp.body&quot;, secret), so the receiver can check it came from
+						OpsiMate and is not a replay.
 					</p>
 				</div>
 
