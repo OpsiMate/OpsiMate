@@ -37,7 +37,7 @@ export const AlertDetailsPanel = ({
 }: AlertDetailsPanelProps) => {
 	const historyData = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
-	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth();
+	const { width, minWidth, maxWidth, panelRef, startResizing, resetWidth, setWidth } = useResizablePanelWidth();
 	const { signal, broadcast } = useSectionsExpandBroadcast();
 
 	// Selecting a different alert starts a fresh read: back to Details, not whichever tab
@@ -58,6 +58,10 @@ export const AlertDetailsPanel = ({
 				ariaLabel="Resize alert details panel"
 				onPointerDown={startResizing}
 				onDoubleClick={resetWidth}
+				value={width}
+				minValue={minWidth}
+				maxValue={maxWidth}
+				onSetValue={setWidth}
 			/>
 
 			<AlertDetailsHeader

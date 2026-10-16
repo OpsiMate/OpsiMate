@@ -16,7 +16,7 @@ interface FilterSidebarProps {
 }
 
 export const FilterSidebar = ({ children, className }: FilterSidebarProps) => {
-	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth({
+	const { width, minWidth, maxWidth, panelRef, startResizing, resetWidth, setWidth } = useResizablePanelWidth({
 		dock: 'left',
 		defaultWidth: SIDEBAR_DEFAULT_WIDTH,
 		minWidth: SIDEBAR_MIN_WIDTH,
@@ -34,6 +34,10 @@ export const FilterSidebar = ({ children, className }: FilterSidebarProps) => {
 				ariaLabel="Resize filter sidebar"
 				onPointerDown={startResizing}
 				onDoubleClick={resetWidth}
+				value={width}
+				minValue={minWidth}
+				maxValue={maxWidth}
+				onSetValue={setWidth}
 			/>
 		</div>
 	);

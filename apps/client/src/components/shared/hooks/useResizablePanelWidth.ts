@@ -23,11 +23,19 @@ interface ResizablePanelWidthOptions {
 
 interface ResizablePanelWidth {
 	width: number;
+	/** The bounds a keyboard step can travel between, and the range `aria-valuemin`/`aria-valuemax` report. */
+	minWidth: number;
+	maxWidth: number;
 	panelRef: RefObject<HTMLDivElement>;
 	/** Attach to the drag handle's onPointerDown. */
 	startResizing: (e: React.PointerEvent) => void;
 	/** Restore the default width (double-click on the handle). */
 	resetWidth: () => void;
+	/**
+	 * Attach to the drag handle's keyboard step. Clamped here, so a caller that runs off the
+	 * end of the range simply lands on it.
+	 */
+	setWidth: (next: number) => void;
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -65,9 +73,28 @@ export const useResizablePanelWidth = ({
 	maxWidth = MAX_WIDTH,
 	storageKey = WIDTH_STORAGE_KEY,
 }: ResizablePanelWidthOptions = {}): ResizablePanelWidth => {
-	const [width, setWidth] = useState(() => loadSavedWidth(storageKey, defaultWidth, minWidth, maxWidth));
+	const [width, commitWidth] = useState(() => loadSavedWidth(storageKey, defaultWidth, minWidth, maxWidth));
 	const widthRef = useRef(width);
 	const panelRef = useRef<HTMLDivElement>(null);
+
+	const applyWidth = useCallback(
+		(next: number) => {
+			const clamped = clamp(next, minWidth, maxWidth);
+			widthRef.current = clamped;
+			commitWidth(clamped);
+			return clamped;
+		},
+		[minWidth, maxWidth]
+	);
+
+	// A drag moves through applyWidth on every pointermove and saves once, when it lets go;
+	// a keyboard step is a discrete gesture, so it saves on the spot.
+	const setWidth = useCallback(
+		(next: number) => {
+			saveWidth(storageKey, applyWidth(next));
+		},
+		[applyWidth, storageKey]
+	);
 
 	const onPointerMove = useCallback(
 		(e: PointerEvent) => {
@@ -76,11 +103,9 @@ export const useResizablePanelWidth = ({
 			const rect = panelRef.current?.getBoundingClientRect();
 			const dragged =
 				dock === 'right' ? (rect?.right ?? window.innerWidth) - e.clientX : e.clientX - (rect?.left ?? 0);
-			const next = clamp(dragged, minWidth, maxWidth);
-			widthRef.current = next;
-			setWidth(next);
+			applyWidth(dragged);
 		},
-		[dock, minWidth, maxWidth]
+		[dock, applyWidth]
 	);
 
 	// Letting go of the pointer is not the only way a drag ends: a cancelled touch never
@@ -120,10 +145,8 @@ export const useResizablePanelWidth = ({
 	);
 
 	const resetWidth = useCallback(() => {
-		widthRef.current = defaultWidth;
 		setWidth(defaultWidth);
-		saveWidth(storageKey, defaultWidth);
-	}, [defaultWidth, storageKey]);
+	}, [defaultWidth, setWidth]);
 
-	return { width, panelRef, startResizing, resetWidth };
+	return { width, minWidth, maxWidth, panelRef, startResizing, resetWidth, setWidth };
 };

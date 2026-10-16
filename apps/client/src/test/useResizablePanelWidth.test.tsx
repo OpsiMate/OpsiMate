@@ -7,7 +7,8 @@ import { useResizablePanelWidth } from '@/components/shared/hooks/useResizablePa
 // [280, 640] exists; a drag measures from the window's right edge when no panel
 // element is rendered (panelRef.current is null in a hook test); the live width
 // never touches localStorage; the chosen width persists exactly once, when the drag
-// ends (pointerup, or a pointercancel that never fires pointerup); unmounting releases a
+// ends (pointerup, or a pointercancel that never fires pointerup), while a keyboard step is
+// one gesture and saves on the spot; unmounting releases a
 // drag that is still in flight; storage that throws degrades to the default; and
 // double-click resets to the default. The last block covers the second
 // consumer - the left-docked filter sidebar, which drags the other way.
@@ -154,6 +155,31 @@ describe('useResizablePanelWidth - reset', () => {
 		});
 		expect(result.current.width).toBe(340);
 		expect(localStorage.getItem(STORAGE_KEY)).toBe('340');
+	});
+});
+
+describe('useResizablePanelWidth - keyboard step', () => {
+	test('setWidth moves the panel without a drag', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		act(() => {
+			result.current.setWidth(400);
+		});
+		expect(result.current.width).toBe(400);
+		// One keystroke is one discrete gesture, so it persists on the spot — unlike a live
+		// drag, which writes once at the end.
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('400');
+	});
+
+	test('setWidth clamps to the bounds, so the arrow keys cannot run off either end', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		act(() => {
+			result.current.setWidth(9999);
+		});
+		expect(result.current.width).toBe(640);
+		act(() => {
+			result.current.setWidth(-9999);
+		});
+		expect(result.current.width).toBe(280);
 	});
 });
 
