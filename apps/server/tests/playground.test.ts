@@ -59,11 +59,9 @@ describe('POST /api/v1/playground/book-demo', () => {
 		expect(row).toEqual({ email: null, tracking_id: trackingId });
 	});
 
-	test('swallows a mail send failure and still records the request', async () => {
+	test('swallows the unconfigured mail failure and still records the request', async () => {
 		const trackingId = 'mail-failure-demo';
-		const sendMail = vi
-			.spyOn(MailClient.prototype, 'sendMail')
-			.mockRejectedValue(new Error('SMTP delivery failed'));
+		const sendMail = vi.spyOn(MailClient.prototype, 'sendMail');
 
 		try {
 			const response = await app.post('/api/v1/playground/book-demo').send({ trackingId });
