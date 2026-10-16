@@ -36,8 +36,8 @@ describe('POST /api/v1/playground/book-demo', () => {
 		expect(response.body).toEqual({ success: true });
 	});
 
-	test('returns 400 when email is not a string', async () => {
-		const response = await app.post('/api/v1/playground/book-demo').send({ email: 42 });
+	test.each([42, 0])('returns 400 when email is %s', async (email) => {
+		const response = await app.post('/api/v1/playground/book-demo').send({ email });
 
 		expect(response.status).toBe(400);
 		expect(response.body).toEqual({
