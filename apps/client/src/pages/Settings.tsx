@@ -30,6 +30,7 @@ import {
 	X,
 } from 'lucide-react';
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
+import { SettingsSectionHeader } from '../components/Settings/SettingsSectionHeader';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
 import { LdapSettings } from '../components/Settings/LdapSettings';
@@ -280,12 +281,10 @@ const Settings: React.FC = () => {
 									<TabsContent value="users" className="space-y-6">
 										<div className="flex justify-between items-center gap-4">
 											<div className="flex-1">
-												<h2 className="text-2xl font-semibold text-foreground">
-													User Management
-												</h2>
-												<p className="text-muted-foreground">
-													Manage user access and permissions for your Service instance.
-												</p>
+												<SettingsSectionHeader
+													title="User Management"
+													description="Manage user access and permissions for your Service instance."
+												/>
 											</div>
 											<div className="flex gap-2">
 												{selectedUsers.length > 0 && (
@@ -582,10 +581,10 @@ const Settings: React.FC = () => {
 
 									<TabsContent value="audit" className="space-y-6">
 										<div>
-											<h2 className="text-2xl font-semibold text-foreground">Audit Log</h2>
-											<p className="text-muted-foreground">
-												View activity logs for all dashboard operations and user actions.
-											</p>
+											<SettingsSectionHeader
+												title="Audit Log"
+												description="View activity logs for all dashboard operations and user actions."
+											/>
 										</div>
 										<Card>
 											<CardHeader>
