@@ -282,8 +282,8 @@ const Settings: React.FC = () => {
 										<div className="flex justify-between items-center gap-4">
 											<div className="flex-1">
 												<SettingsSectionHeader
-	title="User Management"
-	description="Manage user access and permissions for your Service instance."
+													title="User Management"
+													description="Manage user access and permissions for your Service instance."
 												/>
 											</div>
 											<div className="flex gap-2">
@@ -582,8 +582,8 @@ const Settings: React.FC = () => {
 									<TabsContent value="audit" className="space-y-6">
 										<div>
 											<SettingsSectionHeader
-	title="Audit Log"
-	description="View activity logs for all dashboard operations and user actions."
+												title="Audit Log"
+												description="View activity logs for all dashboard operations and user actions."
 											/>
 										</div>
 										<Card>
