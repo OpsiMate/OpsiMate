@@ -10,6 +10,7 @@ import { Alert } from '@OpsiMate/shared';
 import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2 } from 'lucide-react';
 import { AlertLinkIcon } from '../../../AlertLinkIcon';
 import { getAlertLinks } from '../../../utils/links.utils';
+import { canDelete } from '@/lib/permissions';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -33,13 +34,17 @@ export const RowActions = ({
 	// resolved behaviour (permanent delete, no silence/resolve) even though the table-level
 	// callbacks are shared across active and resolved rows.
 	const isResolvedAlert = Boolean(alert.isResolved);
+	const canShowDelete = !isResolvedAlert || canDelete();
+
 	const isActive = !isResolvedAlert && Boolean(onSilenceAlert);
 	const canToggleSilence =
 		!isResolvedAlert && ((!isSilenced && Boolean(onSilenceAlert)) || (isSilenced && Boolean(onUnsilenceAlert)));
 	// Only resolved rows can be moved back to firing (isActive is false on the Resolved tab
 	// and on resolved rows in the All view).
 	const canUnresolve = !isActive && Boolean(onUnresolveAlert);
-	const hasActions = Boolean(links.length > 0 || onDeleteAlert || canToggleSilence || canUnresolve);
+	const hasActions = Boolean(
+		links.length > 0 || (onDeleteAlert && canShowDelete) || canToggleSilence || canUnresolve
+	);
 
 	const handleToggleSilence = (event: React.MouseEvent) => {
 		event.stopPropagation();
@@ -95,7 +100,7 @@ export const RowActions = ({
 							{link.label}
 						</DropdownMenuItem>
 					))}
-					{links.length > 0 && (onDeleteAlert || canToggleSilence || canUnresolve) && (
+					{links.length > 0 && ((onDeleteAlert && canShowDelete) || canToggleSilence || canUnresolve) && (
 						<DropdownMenuSeparator />
 					)}
 					{canUnresolve && (
@@ -104,7 +109,7 @@ export const RowActions = ({
 							Unresolve
 						</DropdownMenuItem>
 					)}
-					{onDeleteAlert && (
+					{onDeleteAlert && canShowDelete && (
 						<DropdownMenuItem
 							onClick={handleDelete}
 							className={isActive ? '' : 'text-destructive focus:text-destructive'}

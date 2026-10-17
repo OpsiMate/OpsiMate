@@ -1987,6 +1987,35 @@ describe('Alerts API', () => {
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);
 			});
+
+			test('should return 403 when an editor tries to delete a resolved alert', async () => {
+				const email = 'editor-alert-delete@test.com';
+				const password = 'password123';
+
+				await app.post('/api/v1/users').set('Authorization', `Bearer ${jwtToken}`).send({
+					email,
+					fullName: 'Editor User',
+					password,
+					role: 'editor',
+				});
+
+				const loginResponse = await app.post('/api/v1/users/login').send({
+					email,
+					password,
+				});
+
+				expect(loginResponse.status).toBe(200);
+
+				const response = await app
+					.delete(`/api/v1/alerts/resolved/${testResolvedAlerts[0].id}`)
+					.set('Authorization', `Bearer ${loginResponse.body.token}`);
+
+				expect(response.status).toBe(403);
+				expect(response.body).toEqual({
+					success: false,
+					error: 'Forbidden: Admins only',
+				});
+			});
 		});
 
 		describe('POST /api/v1/alerts/:alertId/comments', () => {

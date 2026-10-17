@@ -23,7 +23,7 @@ export default function createAlertRouter(controller: AlertController) {
 	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
 	router.get('/resolved/facets', controller.getResolvedAlertFacets.bind(controller));
 	router.get('/resolved/groups', controller.getResolvedAlertGroupSummaries.bind(controller));
-	router.delete('/resolved/:alertId', controller.deleteResolvedAlert.bind(controller));
+	router.delete('/resolved/:alertId', requireAdmin, controller.deleteResolvedAlert.bind(controller));
 	router.patch('/resolved/:id/owner', controller.setResolvedAlertOwner.bind(controller));
 	router.patch('/resolved/:id/unresolve', controller.unresolveAlert.bind(controller));
 

@@ -77,6 +77,8 @@ import {
 	useFilterPanelCollapsed,
 } from './hooks';
 
+import { canDelete } from '@/lib/permissions';
+
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
 // per-tab counts come from the filtered lists at render time.
 const ALERT_TAB_OPTIONS = [
@@ -1436,7 +1438,9 @@ const Alerts = () => {
 										onCommentAll={confirmCommentAllSelected}
 										// Permanent delete never runs by-filter — it stays on the loaded
 										// selection, so it's hidden while "all matching" is armed.
-										onDeleteAll={allMatchingSelected ? undefined : handleDeleteAllSelected}
+										onDeleteAll={
+											canDelete() && !allMatchingSelected ? handleDeleteAllSelected : undefined
+										}
 										actionsDisabled={bulkAction.isPending}
 									/>
 								</div>
