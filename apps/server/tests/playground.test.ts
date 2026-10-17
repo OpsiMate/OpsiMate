@@ -36,7 +36,7 @@ describe('POST /api/v1/playground/book-demo', () => {
 		expect(response.body).toEqual({ success: true });
 	});
 
-	test.each([42, 0])('returns 400 when email is %s', async (email) => {
+	test.each([42, 0, null, false])('returns 400 when email is %s', async (email) => {
 		const response = await app.post('/api/v1/playground/book-demo').send({ email });
 
 		expect(response.status).toBe(400);
@@ -44,6 +44,23 @@ describe('POST /api/v1/playground/book-demo', () => {
 			success: false,
 			error: 'Email must be a string',
 		});
+	});
+
+	test('accepts a string email', async () => {
+		const trackingId = 'valid-email-demo';
+
+		const response = await app.post('/api/v1/playground/book-demo').send({
+			email: 'garv@example.com',
+			trackingId,
+		});
+
+		const row = db
+			.prepare('SELECT email, tracking_id FROM playground_demos WHERE tracking_id = ?')
+			.get(trackingId) as DemoRow | undefined;
+
+		expect(response.status).toBe(200);
+		expect(response.body).toEqual({ success: true });
+		expect(row).toEqual({ email: 'garv@example.com', tracking_id: trackingId });
 	});
 
 	test('stores a tracking-only request with a null email', async () => {
@@ -59,9 +76,11 @@ describe('POST /api/v1/playground/book-demo', () => {
 		expect(row).toEqual({ email: null, tracking_id: trackingId });
 	});
 
-	test('swallows the unconfigured mail failure and still records the request', async () => {
+	test('swallows the mail failure and still records the request', async () => {
 		const trackingId = 'mail-failure-demo';
-		const sendMail = vi.spyOn(MailClient.prototype, 'sendMail');
+		const sendMail = vi
+			.spyOn(MailClient.prototype, 'sendMail')
+			.mockRejectedValue(new Error('Simulated mail failure'));
 
 		try {
 			const response = await app.post('/api/v1/playground/book-demo').send({ trackingId });
@@ -79,16 +98,32 @@ describe('POST /api/v1/playground/book-demo', () => {
 		}
 	});
 
-	// Keep this last because dropping the table affects the shared in-memory database.
 	test('returns 500 when persistence fails', async () => {
-		db.exec('DROP TABLE playground_demos');
+		const failureDb = await setupDB();
+		let failureApp: SuperTest<Test>;
 
-		const response = await app.post('/api/v1/playground/book-demo').send({ trackingId: 'repository-error-demo' });
+		const initializeMailClient = vi.spyOn(MailClient.prototype, 'initialize').mockResolvedValue();
 
-		expect(response.status).toBe(500);
-		expect(response.body).toEqual({
-			success: false,
-			error: 'Internal server error',
-		});
+		try {
+			failureApp = await setupExpressApp(failureDb);
+		} finally {
+			initializeMailClient.mockRestore();
+		}
+
+		try {
+			failureDb.exec('DROP TABLE playground_demos');
+
+			const response = await failureApp
+				.post('/api/v1/playground/book-demo')
+				.send({ trackingId: 'repository-error-demo' });
+
+			expect(response.status).toBe(500);
+			expect(response.body).toEqual({
+				success: false,
+				error: 'Internal server error',
+			});
+		} finally {
+			failureDb.close();
+		}
 	});
 });
