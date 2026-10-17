@@ -626,6 +626,10 @@ export interface HttpActionConfig {
 	method: HttpActionMethod;
 	headers?: Record<string, string> | null;
 	bodyTemplate?: string | null;
+	// "Don't wait for a response": the run is reported successful as soon as the request
+	// has been sent, without waiting for the receiver's status. For receivers that answer
+	// only once their work is done. Connection errors are still reported. Default false.
+	fireAndForget?: boolean | null;
 }
 
 export type ActionConfig = SlackActionConfig | TeamsActionConfig | JiraActionConfig | HttpActionConfig;
