@@ -45,11 +45,14 @@ export class LdapController {
 
 	testHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const { email } = LdapTestRequestSchema.parse(req.body ?? {});
-			return res.json({ success: true, data: await this.ldapSettingsBL.test(email) });
+			const { email, settings } = LdapTestRequestSchema.parse(req.body ?? {});
+			return res.json({ success: true, data: await this.ldapSettingsBL.test(email, settings) });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof LdapSettingsManagedError) {
+				return res.status(409).json({ success: false, error: error.message });
 			}
 			logger.error('Error testing LDAP settings:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

@@ -111,7 +111,45 @@ describe('LDAP settings API', () => {
 		const res = await app.post('/api/v1/ldap/test').set('Authorization', `Bearer ${token}`).send({});
 		expect(res.status).toBe(200);
 		expect(res.body.data.ok).toBe(false);
-		expect(res.body.data.steps[0].message).toMatch(/Save a server URL/);
+		expect(res.body.data.steps[0].message).toMatch(/Enter a server URL/);
+	});
+
+	test('test connection with unsaved edits runs on the edits and stores nothing', async () => {
+		const res = await app
+			.post('/api/v1/ldap/test')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ settings: { ...COMPLETE, url: 'ldap://127.0.0.1:1', timeoutMs: 1000 } });
+		expect(res.status).toBe(200);
+		expect(res.body.data.ok).toBe(false);
+		// Got past the "enter a URL" check to the real connect attempt: the draft was used.
+		expect(res.body.data.steps[0]).toMatchObject({ step: 'connect', ok: false });
+		expect(res.body.data.steps[0].message).not.toMatch(/Enter a server URL/);
+		expect((await get()).body.data).toMatchObject({ url: '', hasBindPassword: false });
+	});
+
+	test('a test cannot send the stored password to another server without re-entering it', async () => {
+		await put({ ...COMPLETE, enabled: false });
+		const post = (settings: object) =>
+			app.post('/api/v1/ldap/test').set('Authorization', `Bearer ${token}`).send({ settings });
+		const withheld = await post({ url: 'ldap://127.0.0.1:1', timeoutMs: 1000 });
+		expect(withheld.status).toBe(200);
+		expect(withheld.body.data.steps[0]).toMatchObject({ step: 'service_bind', ok: false });
+		expect(withheld.body.data.steps[0].message).toMatch(/Re-enter the service-account password/);
+		// Unrelated edits keep the stored password and get as far as connecting.
+		const kept = await post({ url: COMPLETE.url, searchFilter: '(uid={{email}})', timeoutMs: 1000 });
+		expect(kept.body.data.steps[0].step).toBe('connect');
+		// With the password typed again, so does the redirected draft.
+		const retyped = await post({ url: 'ldap://127.0.0.1:1', bindPassword: 'svc-secret-value', timeoutMs: 1000 });
+		expect(retyped.body.data.steps[0].step).toBe('connect');
+	});
+
+	test('a draft with a bad shape is refused with the offending field', async () => {
+		const res = await app
+			.post('/api/v1/ldap/test')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ settings: { url: 'http://x' } });
+		expect(res.status).toBe(400);
+		expect(JSON.stringify(res.body.details)).toContain('url');
 	});
 
 	test('test connection to an unreachable server fails at the connect step', async () => {

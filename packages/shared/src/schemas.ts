@@ -565,6 +565,9 @@ export const UpdateLdapSettingsSchema = z
 export const LdapTestRequestSchema = z
 	.object({
 		email: z.string().trim().email().optional(),
+		// Unsaved edits to test with (see LdapTestRequest). Same shape as a save, so the
+		// page gets the same field-level errors from a test as it would from a save.
+		settings: UpdateLdapSettingsSchema.optional(),
 	})
 	.strict();
 

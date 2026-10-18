@@ -136,15 +136,16 @@ export class LdapSettingsBL {
 		return toSettings(config, 'database', config.bind_password !== undefined, saved.updated_at);
 	}
 
-	// Test the settings as they are SAVED (enabled or not): what was verified is what
-	// is stored. Optionally look up one user and report the role they would get.
-	async test(email?: string): Promise<LdapTestResult> {
-		const config = isLdapManagedByConfig() ? getLdapConfig() : this.fromRow(await this.repo.getConfig());
+	// Test the settings as saved (enabled or not), or — with a draft from the page — the
+	// unsaved edits laid over them, so a wrong value shows up before anything is stored.
+	// Optionally look up one user and report the role they would get.
+	async test(email?: string, draft?: UpdateLdapSettings): Promise<LdapTestResult> {
+		const { config, passwordWithheld } = await this.configForTest(draft);
 		if (!config.url || !config.search_base) {
 			return {
 				ok: false,
 				latencyMs: 0,
-				steps: [{ step: 'connect', ok: false, message: 'Save a server URL and a search base first.' }],
+				steps: [{ step: 'connect', ok: false, message: 'Enter a server URL and a search base first.' }],
 				user: null,
 			};
 		}
@@ -152,7 +153,15 @@ export class LdapSettingsBL {
 			return {
 				ok: false,
 				latencyMs: 0,
-				steps: [{ step: 'service_bind', ok: false, message: 'A bind DN is set but no password is saved.' }],
+				steps: [
+					{
+						step: 'service_bind',
+						ok: false,
+						message: passwordWithheld
+							? 'Re-enter the service-account password: you changed the server URL, bind DN or TLS settings it is sent with.'
+							: 'A bind DN is set but no password is saved.',
+					},
+				],
 				user: null,
 			};
 		}
@@ -166,6 +175,29 @@ export class LdapSettingsBL {
 				user: null,
 			};
 		}
+	}
+
+	// The stored password travels with a draft only while the draft keeps the server,
+	// bind DN and TLS settings it was saved for — the same rule updateSettings applies —
+	// so a test can't be used to send it somewhere else. Nothing is written.
+	private async configForTest(
+		draft?: UpdateLdapSettings
+	): Promise<{ config: LdapConfig; passwordWithheld: boolean }> {
+		if (isLdapManagedByConfig()) {
+			if (draft) throw new LdapSettingsManagedError();
+			return { config: getLdapConfig(), passwordWithheld: false };
+		}
+		const stored = this.fromRow(await this.repo.getConfig());
+		if (!draft) return { config: stored, passwordWithheld: false };
+		const next = mergeUpdates(stored, draft);
+		if (draft.bindPassword !== undefined) {
+			return { config: { ...next, bind_password: draft.bindPassword ?? undefined }, passwordWithheld: false };
+		}
+		const withheld = stored.bind_password !== undefined && redirectsPassword(stored, next);
+		return {
+			config: { ...next, bind_password: withheld ? undefined : stored.bind_password },
+			passwordWithheld: withheld,
+		};
 	}
 
 	private apply(config: LdapConfig): void {
