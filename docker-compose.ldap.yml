@@ -15,7 +15,8 @@
 # instead and uses ldap://test-ldap:10389 (see the README).
 services:
   test-ldap:
-    image: ghcr.io/rroemhild/docker-test-openldap:master
+    # Pinned: the DNs and passwords documented in the README belong to this version.
+    image: ghcr.io/rroemhild/docker-test-openldap:v2.5.0
     container_name: opsimate-test-ldap
     ports:
       - "127.0.0.1:10389:10389"

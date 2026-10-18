@@ -193,6 +193,23 @@ describe('LdapSettings', () => {
 		expect(saveButton()).toBeEnabled();
 	});
 
+	test('Remove password switches the form off too, even with unsaved edits', async () => {
+		mutateAsync.mockImplementation(async (updates: { bindPassword?: string | null }) => {
+			if (updates.bindPassword === null) {
+				settingsState.current = settings({ enabled: false, hasBindPassword: false });
+			}
+			return settingsState.current;
+		});
+		renderOpen();
+		fireEvent.change(screen.getByLabelText('Name attribute'), { target: { value: 'cn' } });
+		fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+		await waitFor(() => expect(screen.getByRole('switch', { name: /LDAP login off/ })).toBeInTheDocument());
+		expect(screen.queryByText(/takes effect on Save/)).not.toBeInTheDocument();
+		// The unrelated edit survives, and saving it does not try to enable anything.
+		expect(screen.getByLabelText('Name attribute')).toHaveValue('cn');
+		expect(saveButton()).toHaveTextContent(/^Save$/);
+	});
+
 	test('the on/off switch is part of the form and saves with Save', () => {
 		settingsState.current = settings({ enabled: false });
 		renderOpen();

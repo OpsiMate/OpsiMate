@@ -90,7 +90,7 @@ Security notes:
 
 Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same email.
 
-The easiest way to set it up is in the app: **Settings → Users → Directory login (LDAP)**, as an admin. Fill in the connection, service account, search base and group-to-role mapping, **Save**, then **Test connection**. Test with a user's email to see the role they would get. Then switch it on. Changes apply immediately, without a restart. The service-account password is stored encrypted and never shown again, and every change is recorded in the audit log.
+The easiest way to set it up is in the app: **Settings → Users → Directory login (LDAP)**, as an admin. Fill in the connection, service account, search base and group-to-role mapping, press **Test connection** (it runs on what is in the form, before anything is saved; add a user's email to see the role they would get), then switch it on and **Save**. Changes apply immediately, without a restart. The service-account password is stored encrypted and never shown again, and every change is recorded in the audit log.
 
 **Test connection** runs on whatever is in the form, saved or not, and says which step failed (connect, service account, search base, user lookup). When the server refuses a save, the page marks the field it objected to.
 

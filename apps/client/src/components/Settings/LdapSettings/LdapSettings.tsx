@@ -28,6 +28,7 @@ import {
 	XCircle,
 } from 'lucide-react';
 import { ReactNode, useEffect, useRef, useState } from 'react';
+import { SecurityMode, isLdaps, securityModeOf, withSecurityMode } from './securityMode';
 
 // Everything the form edits, as the inputs hold it (group lists as one-per-line text).
 interface LdapForm {
@@ -55,7 +56,7 @@ interface LdapForm {
 
 // Where a server-reported problem is shown: a form field, the password box, the
 // group-mapping block as a whole, or (undefined) only in the summary.
-type ProblemTarget = keyof LdapForm | 'bindPassword' | 'roleMapping';
+type ProblemTarget = keyof LdapForm | 'bindPassword' | 'roleMapping' | 'testEmail';
 
 interface FieldProps {
 	id: string;
@@ -76,10 +77,6 @@ interface TestResultViewProps {
 	draft: boolean;
 }
 
-// How the connection is protected. Derived from the URL scheme and the StartTLS flag
-// rather than stored on its own, so the URL and the choice can never disagree.
-type SecurityMode = 'ldaps' | 'starttls' | 'none';
-
 const NO_DEFAULT_ROLE = 'none';
 
 const STEP_LABELS: Record<string, string> = {
@@ -87,24 +84,6 @@ const STEP_LABELS: Record<string, string> = {
 	service_bind: 'Service account',
 	search_base: 'Search base',
 	user_lookup: 'User lookup',
-};
-
-const isLdaps = (url: string): boolean => /^ldaps:\/\//i.test(url.trim());
-
-// An empty URL counts as LDAPS: the recommended choice, and what picking it would write.
-const securityModeOf = (form: LdapForm): SecurityMode =>
-	form.url.trim() === '' || isLdaps(form.url) ? 'ldaps' : form.startTls ? 'starttls' : 'none';
-
-// Rewrite the URL for the chosen mode: the scheme always, the port only when it is the
-// standard one for the scheme being left (a custom port is kept as typed).
-const withSecurityMode = (form: LdapForm, mode: SecurityMode): LdapForm => {
-	const ldaps = mode === 'ldaps';
-	let url = form.url.trim();
-	url = /^ldaps?:\/\//i.test(url)
-		? url.replace(/^ldaps?:\/\//i, ldaps ? 'ldaps://' : 'ldap://')
-		: `${ldaps ? 'ldaps' : 'ldap'}://${url}`;
-	url = url.replace(ldaps ? /:389$/ : /:636$/, ldaps ? ':636' : ':389');
-	return { ...form, url, startTls: mode === 'starttls' };
 };
 
 const toForm = (data: LdapSettingsData): LdapForm => ({
@@ -174,6 +153,7 @@ const sameForm = (a: LdapForm, b: LdapForm): boolean => JSON.stringify(a) === JS
 // case and underscores ignored.
 const PROBLEM_TARGETS: Record<string, ProblemTarget> = {
 	enabled: 'enabled',
+	email: 'testEmail',
 	url: 'url',
 	starttls: 'url',
 	binddn: 'bindDn',
@@ -341,7 +321,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 		bindPassword.length === 0 &&
 		(form.url.trim().toLowerCase() !== data.url.toLowerCase() ||
 			form.bindDn.trim().toLowerCase() !== data.bindDn.toLowerCase() ||
-			(form.startTls && !isLdaps(form.url)) !== data.startTls ||
+			(form.startTls && !isLdaps(form.url)) !== (data.startTls && !isLdaps(data.url)) ||
 			form.tlsRejectUnauthorized !== data.tlsRejectUnauthorized ||
 			form.tlsCaCert.trim() !== data.tlsCaCert);
 	const fieldError = (target: ProblemTarget): string | undefined => {
@@ -352,7 +332,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 	const clearProblemsFor = (target: ProblemTarget) =>
 		setProblems((current) => current.filter((p) => problemTarget(p) !== target));
 	const set = <K extends keyof LdapForm>(key: K, value: LdapForm[K]) => {
-		setForm({ ...form, [key]: value });
+		setForm((current) => current && { ...current, [key]: value });
 		clearProblemsFor(key);
 	};
 	const text = (key: keyof LdapForm) => ({
@@ -373,10 +353,16 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 	const reportFailure = (title: string, e: unknown) => {
 		const named = e instanceof LdapRequestError ? e.problems : [];
 		setProblems(named);
+		// Only promise a highlight when some problem maps to a visible field.
+		const highlighted = named.filter((p) => problemTarget(p) !== undefined).length;
 		toast({
 			title,
 			description:
-				named.length > 0 ? `Check the highlighted field${named.length > 1 ? 's' : ''}.` : (e as Error).message,
+				highlighted > 0
+					? `Check the highlighted field${highlighted > 1 ? 's' : ''}.`
+					: named.length > 0
+						? named.join('; ')
+						: (e as Error).message,
 			variant: 'destructive',
 		});
 	};
@@ -407,8 +393,13 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 
 	const removePassword = async () => {
 		try {
-			await updateMutation.mutateAsync({ bindPassword: null, enabled: false });
+			const saved = await updateMutation.mutateAsync({ bindPassword: null, enabled: false });
+			// The server switched LDAP off: the form's switch must follow, edits or not.
+			lastSynced.current = toForm(saved);
+			setForm((current) => current && { ...current, enabled: false });
 			setBindPassword('');
+			setTestResult(null);
+			setProblems([]);
 			toast({ title: 'Password removed', description: 'LDAP login is off until a new one is saved.' });
 		} catch (e) {
 			reportFailure('Failed to remove the password', e);
@@ -536,7 +527,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 									value={mode}
 									disabled={locked}
 									onValueChange={(v) => {
-										setForm(withSecurityMode(form, v as SecurityMode));
+										setForm((current) => current && withSecurityMode(current, v as SecurityMode));
 										clearProblemsFor('url');
 									}}
 								>
@@ -557,7 +548,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 								or StartTLS for anything beyond a test setup.
 							</p>
 						)}
-						{mode !== 'none' && (
+						{(mode !== 'none' || fieldError('tlsCaCert')) && (
 							<>
 								<div className="flex items-center gap-2">
 									<Switch
@@ -775,14 +766,22 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 						</p>
 						<div className="flex flex-wrap items-end gap-2">
 							<div className="flex-1 min-w-[14rem]">
-								<Field id="ldap-testEmail" label="Test with a user (optional)">
+								<Field
+									id="ldap-testEmail"
+									label="Test with a user (optional)"
+									error={fieldError('testEmail')}
+								>
 									<Input
 										id="ldap-testEmail"
 										type="email"
 										disabled={busy}
+										aria-invalid={fieldError('testEmail') ? true : undefined}
 										placeholder="someone@example.com"
 										value={testEmail}
-										onChange={(e) => setTestEmail(e.target.value)}
+										onChange={(e) => {
+											setTestEmail(e.target.value);
+											clearProblemsFor('testEmail');
+										}}
 									/>
 								</Field>
 							</div>

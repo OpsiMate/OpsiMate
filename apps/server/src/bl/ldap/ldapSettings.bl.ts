@@ -139,8 +139,15 @@ export class LdapSettingsBL {
 	// Test the settings as saved (enabled or not), or — with a draft from the page — the
 	// unsaved edits laid over them, so a wrong value shows up before anything is stored.
 	// Optionally look up one user and report the role they would get.
-	async test(email?: string, draft?: UpdateLdapSettings): Promise<LdapTestResult> {
+	async test(email?: string, draft?: UpdateLdapSettings, user?: User): Promise<LdapTestResult> {
 		const { config, passwordWithheld } = await this.configForTest(draft);
+		// A draft test is a probe of any host from this server that leaves no audit row
+		// (nothing changed); the log at least says who aimed it where.
+		if (draft) {
+			logger.info(
+				`LDAP test with unsaved settings by ${user?.email ?? 'unknown'} against ${config.url ?? '(no url)'}`
+			);
+		}
 		if (!config.url || !config.search_base) {
 			return {
 				ok: false,
@@ -212,11 +219,17 @@ export class LdapSettingsBL {
 	}
 }
 
+const isLdapsUrl = (url: string | undefined): boolean => /^ldaps:\/\//i.test(url ?? '');
+
+// StartTLS as it takes effect: on ldaps:// the flag does nothing (and the page no
+// longer sends it), so clearing it there changes nothing about where the password goes.
+const effectiveStartTls = (config: LdapConfig): boolean => config.start_tls === true && !isLdapsUrl(config.url);
+
 // Settings that decide where, and how safely, the service-account password is sent.
 const redirectsPassword = (before: LdapConfig, after: LdapConfig): boolean =>
 	(before.url ?? '').toLowerCase() !== (after.url ?? '').toLowerCase() ||
 	(before.bind_dn ?? '').toLowerCase() !== (after.bind_dn ?? '').toLowerCase() ||
-	(before.start_tls === true) !== (after.start_tls === true) ||
+	effectiveStartTls(before) !== effectiveStartTls(after) ||
 	(before.tls?.rejectUnauthorized !== false) !== (after.tls?.rejectUnauthorized !== false) ||
 	(before.tls?.ca ?? '') !== (after.tls?.ca ?? '');
 
