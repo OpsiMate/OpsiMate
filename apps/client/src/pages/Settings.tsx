@@ -709,7 +709,7 @@ const Settings: React.FC = () => {
 
 export default Settings;
 
-const AuditLogTable: React.FC = () => {
+export const AuditLogTable: React.FC = () => {
 	const pageSizeId = useId();
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(10);
