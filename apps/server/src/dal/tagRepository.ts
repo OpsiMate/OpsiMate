@@ -2,14 +2,34 @@ import Database, { Statement } from 'better-sqlite3';
 import { Tag } from '@OpsiMate/shared';
 import { runAsync } from './db';
 
+interface SqliteConstraintError extends Error {
+	code: string;
+}
+
+const isSqliteUniqueConstraintError = (error: unknown): error is SqliteConstraintError =>
+	error instanceof Error && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE';
+
+export class DuplicateTagNameError extends Error {
+	constructor(name: string) {
+		super(`A tag named "${name}" already exists`);
+	}
+}
+
 export class TagRepository {
 	constructor(private db: Database.Database) {}
 
 	async createTag(data: Omit<Tag, 'id' | 'createdAt'>): Promise<{ lastID: number }> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)');
-			const result = stmt.run(data.name, data.color);
-			return { lastID: result.lastInsertRowid as number };
+			try {
+				const stmt = this.db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)');
+				const result = stmt.run(data.name, data.color);
+				return { lastID: result.lastInsertRowid as number };
+			} catch (error) {
+				if (isSqliteUniqueConstraintError(error)) {
+					throw new DuplicateTagNameError(data.name);
+				}
+				throw error;
+			}
 		});
 	}
 
@@ -49,7 +69,14 @@ export class TagRepository {
 			const query = `UPDATE tags
                            SET ${updates.join(', ')}
                            WHERE id = ?`;
-			this.db.prepare(query).run(...values);
+			try {
+				this.db.prepare(query).run(...values);
+			} catch (error) {
+				if (data.name !== undefined && isSqliteUniqueConstraintError(error)) {
+					throw new DuplicateTagNameError(data.name);
+				}
+				throw error;
+			}
 		});
 	}
 

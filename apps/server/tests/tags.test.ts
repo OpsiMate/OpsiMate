@@ -4,6 +4,15 @@ import Database from 'better-sqlite3';
 import { expect } from 'vitest';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
+interface CountRow {
+	count: number;
+}
+
+interface TagNameColorRow {
+	name: string;
+	color: string;
+}
+
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
@@ -69,6 +78,22 @@ describe('Tags API', () => {
 		expect(newTag.color).toBe('#00FF00');
 	});
 
+	test('should reject creating a tag with a duplicate name', async () => {
+		const createRes = await app.post('/api/v1/tags').set('Authorization', `Bearer ${jwtToken}`).send({
+			name: 'Test Tag',
+			color: '#00FF00',
+		});
+
+		expect(createRes.status).toBe(409);
+		expect(createRes.body.success).toBe(false);
+		expect(createRes.body.error).toBe('A tag named "Test Tag" already exists');
+
+		const duplicateCount = db
+			.prepare('SELECT COUNT(*) AS count FROM tags WHERE name = ?')
+			.get('Test Tag') as CountRow;
+		expect(duplicateCount.count).toBe(1);
+	});
+
 	test('should get a tag by ID', async () => {
 		const res = await app.get('/api/v1/tags/1').set('Authorization', `Bearer ${jwtToken}`);
 		expect(res.status).toBe(200);
@@ -99,6 +124,35 @@ describe('Tags API', () => {
 		const updatedTag = getRes.body.data;
 		expect(updatedTag.name).toBe('Updated Tag');
 		expect(updatedTag.color).toBe('#0000FF');
+	});
+
+	test('should reject renaming a tag to a duplicate name', async () => {
+		db.prepare('INSERT INTO tags (id, name, color) VALUES (?, ?, ?)').run(2, 'Second Tag', '#00FF00');
+
+		const updateRes = await app.put('/api/v1/tags/2').set('Authorization', `Bearer ${jwtToken}`).send({
+			name: 'Test Tag',
+			color: '#0000FF',
+		});
+
+		expect(updateRes.status).toBe(409);
+		expect(updateRes.body.success).toBe(false);
+		expect(updateRes.body.error).toBe('A tag named "Test Tag" already exists');
+
+		const unchangedTag = db.prepare('SELECT name, color FROM tags WHERE id = ?').get(2) as TagNameColorRow;
+		expect(unchangedTag).toEqual({ name: 'Second Tag', color: '#00FF00' });
+	});
+
+	test('should update a tag color while keeping its current name', async () => {
+		const updateRes = await app.put('/api/v1/tags/1').set('Authorization', `Bearer ${jwtToken}`).send({
+			name: 'Test Tag',
+			color: '#0000FF',
+		});
+
+		expect(updateRes.status).toBe(200);
+		expect(updateRes.body.success).toBe(true);
+
+		const updatedTag = db.prepare('SELECT name, color FROM tags WHERE id = ?').get(1) as TagNameColorRow;
+		expect(updatedTag).toEqual({ name: 'Test Tag', color: '#0000FF' });
 	});
 
 	test('should delete a tag', async () => {
