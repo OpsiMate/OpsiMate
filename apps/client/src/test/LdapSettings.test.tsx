@@ -156,6 +156,26 @@ describe('LdapSettings', () => {
 		await waitFor(() => expect(screen.getByText(/Tested with your unsaved changes/)).toBeInTheDocument());
 	});
 
+	test('a refused test draft marks the field too (zod nests it under settings.*)', async () => {
+		testAsync.mockImplementation(async () => {
+			throw new LdapRequestError(
+				{
+					success: false,
+					error: 'Validation error',
+					details: [
+						{ path: ['settings', 'url'], message: 'Expected ldap://host[:port] or ldaps://host[:port]' },
+					],
+				},
+				'Failed to run the connection test'
+			);
+		});
+		renderOpen();
+		fireEvent.change(screen.getByLabelText('Server URL'), { target: { value: 'http://x' } });
+		fireEvent.click(testButton());
+		await waitFor(() => expect(screen.getByLabelText('Server URL')).toHaveAttribute('aria-invalid', 'true'));
+		expect(screen.getAllByText(/Expected ldap:\/\/host/)).toHaveLength(2);
+	});
+
 	test('with nothing changed, Test connection tests the saved settings', async () => {
 		renderOpen();
 		fireEvent.click(testButton());

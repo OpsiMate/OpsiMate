@@ -13,7 +13,10 @@ const describe = (detail: unknown): string => {
 	if (typeof detail === 'string') return detail;
 	if (detail && typeof detail === 'object') {
 		const { path, message } = detail as ZodIssueLike;
-		const field = Array.isArray(path) ? path.filter((p) => typeof p === 'string').join('.') : '';
+		const segments = Array.isArray(path) ? path.filter((p): p is string => typeof p === 'string') : [];
+		// A test request carries the draft under `settings`; the field is what matters.
+		if (segments[0] === 'settings' && segments.length > 1) segments.shift();
+		const field = segments.join('.');
 		return field ? `${field}: ${message ?? 'invalid'}` : (message ?? 'invalid');
 	}
 	return String(detail);
