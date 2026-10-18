@@ -2,6 +2,11 @@ import { describe, test, expect, beforeAll } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup.ts';
 
+interface UserRoleRow {
+	id: number;
+	role: string;
+}
+
 describe('admin user PATCH validation', () => {
 	let app: SuperTest<Test>;
 	let adminToken: string;
@@ -27,7 +32,9 @@ describe('admin user PATCH validation', () => {
 	async function getTargetRole(): Promise<string> {
 		const res = await app.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
 		expect(res.status).toBe(200);
-		const user = res.body.data.find((u: { id: number }) => u.id === targetUserId);
+		const users = res.body.data as UserRoleRow[];
+		const user = users.find((row) => row.id === targetUserId);
+		if (!user) throw new Error(`User ${targetUserId} was not found`);
 		return user.role;
 	}
 
