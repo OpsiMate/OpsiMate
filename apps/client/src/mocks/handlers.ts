@@ -2,6 +2,7 @@ import {
 	Alert,
 	AlertBulkActionRequest,
 	AlertCallback,
+	AlertCallbackWithSecret,
 	AlertEnrichment,
 	AlertEnrichmentVersion,
 	ROOT_CAUSE_RATING_COMMENT_MAX,
@@ -1394,8 +1395,9 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: playgroundState.callbacks });
 	}),
 
+	// Like the server, the secret is returned on create and on a rotation only.
 	http.post(`${API_BASE}/callbacks`, async ({ request }) => {
-		const body = (await request.json()) as Partial<AlertCallback>;
+		const body = (await request.json()) as Partial<AlertCallbackWithSecret>;
 		const callback: AlertCallback = {
 			id: randomId(),
 			name: body.name ?? 'Callback',
@@ -1405,7 +1407,6 @@ export const handlers = [
 			bodyTemplate: body.bodyTemplate ?? null,
 			events: body.events ?? [],
 			enabled: body.enabled ?? false,
-			secret: body.secret ?? `playground-secret-${randomId()}`,
 			lastStatus: null,
 			lastError: null,
 			lastSentAt: null,
@@ -1413,7 +1414,11 @@ export const handlers = [
 			updatedAt: new Date().toISOString(),
 		};
 		playgroundState.callbacks = [callback, ...playgroundState.callbacks];
-		return HttpResponse.json({ success: true, data: callback, message: 'Callback created' }, { status: 201 });
+		const created: AlertCallbackWithSecret = {
+			...callback,
+			secret: body.secret ?? `playground-secret-${randomId()}`,
+		};
+		return HttpResponse.json({ success: true, data: created, message: 'Callback created' }, { status: 201 });
 	}),
 
 	http.post(`${API_BASE}/callbacks/test`, () => {
@@ -1429,10 +1434,14 @@ export const handlers = [
 		if (!existing) {
 			return HttpResponse.json({ success: false, error: 'Callback not found' }, { status: 404 });
 		}
-		const body = (await request.json()) as Partial<AlertCallback>;
+		const { secret, ...body } = (await request.json()) as Partial<AlertCallbackWithSecret>;
 		const updated: AlertCallback = { ...existing, ...body, updatedAt: new Date().toISOString() };
 		playgroundState.callbacks = playgroundState.callbacks.map((c) => (c.id === id ? updated : c));
-		return HttpResponse.json({ success: true, data: updated, message: 'Callback updated' });
+		return HttpResponse.json({
+			success: true,
+			data: secret !== undefined ? { ...updated, secret } : updated,
+			message: 'Callback updated',
+		});
 	}),
 
 	http.delete(`${API_BASE}/callbacks/:id`, ({ params }) => {

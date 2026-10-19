@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TemplateVariablePicker } from '@/components/shared';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateCallback, useTestCallback, useUpdateCallback } from '@/hooks/queries/callbacks';
-import { AlertCallbackPayload } from '@/lib/api';
+import { AlertCallbackInput } from '@/lib/api';
 import {
 	ALERT_CALLBACK_EVENT_LABELS,
 	ALERT_CALLBACK_EVENTS,
@@ -27,7 +27,7 @@ import {
 	AlertCallbackMethod,
 	AlertCallbackTestResult,
 } from '@OpsiMate/shared';
-import { CheckCircle2, Copy, Loader2, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
+import { CheckCircle2, Copy, KeyRound, Loader2, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
 import { FormEvent, useId, useRef, useState } from 'react';
 import {
 	CallbackFormErrors,
@@ -42,6 +42,20 @@ export interface CallbackFormDialogProps {
 	onOpenChange: (open: boolean) => void;
 	// Editing an existing callback; absent = creating one.
 	callback?: AlertCallback | null;
+}
+
+interface CallbackFormProps {
+	callback?: AlertCallback | null;
+	onCancel: () => void;
+	// Saved. `secret` is set when this save produced one (create, or a rotation): the one
+	// moment it can be copied.
+	onSaved: (secret: string | undefined) => void;
+}
+
+interface SecretRevealProps {
+	secret: string;
+	rotated: boolean;
+	onDone: () => void;
 }
 
 const METHODS: AlertCallbackMethod[] = ['POST', 'PUT'];
@@ -172,9 +186,68 @@ const TestResultLine = ({ result }: TestResultLineProps) => (
 	</p>
 );
 
+const copyToClipboard = async (value: string, toast: ReturnType<typeof useToast>['toast']) => {
+	try {
+		await navigator.clipboard.writeText(value);
+		toast({ title: 'Secret copied' });
+	} catch {
+		toast({
+			title: 'Could not copy',
+			description: 'Select the secret and copy it by hand.',
+			variant: 'destructive',
+		});
+	}
+};
+
+// Shown once, right after a create or a rotation: the server never returns the secret
+// again (list and get leave it out), so this is where it gets copied to the receiver.
+const SecretReveal = ({ secret, rotated, onDone }: SecretRevealProps) => {
+	const { toast } = useToast();
+	const secretId = useId();
+	return (
+		<div className="space-y-5">
+			<DialogHeader>
+				<DialogTitle>Copy your signing secret</DialogTitle>
+				<DialogDescription>
+					{rotated
+						? 'The secret was rotated. Requests are signed with the new one from now on, so update the receiver.'
+						: 'The callback is saved.'}{' '}
+					This is the only time the secret is shown — it is not stored anywhere you can read it back.
+				</DialogDescription>
+			</DialogHeader>
+			<div className="space-y-2">
+				<Label htmlFor={secretId} className="text-xs">
+					Signing secret
+				</Label>
+				<div className="flex items-center gap-2">
+					<Input id={secretId} value={secret} readOnly className="font-mono text-xs" />
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => void copyToClipboard(secret, toast)}
+						aria-label="Copy secret"
+					>
+						<Copy className="h-3.5 w-3.5 mr-1" /> Copy
+					</Button>
+				</div>
+				<p className="text-xs text-muted-foreground">
+					The receiver checks X-OpsiMate-Signature = sha256=HMAC-SHA256(&quot;timestamp.body&quot;, secret).
+					Lost it? Edit the callback and rotate.
+				</p>
+			</div>
+			<DialogFooter>
+				<Button type="button" onClick={onDone}>
+					Done
+				</Button>
+			</DialogFooter>
+		</div>
+	);
+};
+
 // Lives inside DialogContent, which Radix unmounts on close, so every opening starts
 // from the callback it was given (or blank).
-const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 'open'>) => {
+const CallbackForm = ({ callback, onCancel, onSaved }: CallbackFormProps) => {
 	const { toast } = useToast();
 	const createMutation = useCreateCallback();
 	const updateMutation = useUpdateCallback();
@@ -206,7 +279,7 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 	const isEditing = !!callback;
 	const saving = createMutation.isPending || updateMutation.isPending;
 
-	const buildPayload = (): AlertCallbackPayload => ({
+	const buildPayload = (): AlertCallbackInput => ({
 		name: name.trim(),
 		url: url.trim(),
 		method,
@@ -224,16 +297,18 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 		if (Object.keys(nextErrors).length > 0) return;
 		try {
 			if (callback) {
-				await updateMutation.mutateAsync({ id: callback.id, payload: buildPayload() });
+				// The secret comes back only when this edit rotated it.
+				const updated = await updateMutation.mutateAsync({ id: callback.id, payload: buildPayload() });
 				toast({ title: 'Callback updated' });
+				onSaved(updated.secret);
 			} else {
-				await createMutation.mutateAsync(buildPayload());
+				const created = await createMutation.mutateAsync(buildPayload());
 				toast({
 					title: 'Callback created',
 					description: enabled ? 'It is on and will send from now.' : 'It is off until you turn it on.',
 				});
+				onSaved(created.secret);
 			}
-			onOpenChange(false);
 		} catch (error) {
 			toast({
 				title: isEditing ? 'Could not update callback' : 'Could not create callback',
@@ -258,26 +333,14 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 				method,
 				headers: rowsToHeaders(headerRows),
 				bodyTemplate: bodyTemplate.trim() ? bodyTemplate : null,
-				// The saved secret signs the test unless a new one was typed.
-				secret: secret.trim() || callback?.secret || undefined,
+				// A typed secret signs the test; otherwise the server signs with the saved one
+				// (the page cannot: it never sees it after creation).
+				secret: secret.trim() || undefined,
+				...(callback && !secret.trim() ? { callbackId: callback.id } : {}),
 			});
 			setTestResult(result);
 		} catch (error) {
 			setTestResult({ ok: false, message: error instanceof Error ? error.message : 'Test failed' });
-		}
-	};
-
-	const copySecret = async () => {
-		if (!callback) return;
-		try {
-			await navigator.clipboard.writeText(callback.secret);
-			toast({ title: 'Secret copied' });
-		} catch {
-			toast({
-				title: 'Could not copy',
-				description: 'Select the secret and copy it by hand.',
-				variant: 'destructive',
-			});
 		}
 	};
 
@@ -379,18 +442,18 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 						Signing secret
 					</Label>
 					{isEditing && !rotating ? (
-						<div className="flex items-center gap-2">
-							<Input id={secretId} value={callback.secret} readOnly className="font-mono text-xs" />
+						<div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
+							<p id={secretId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+								<KeyRound className="h-3.5 w-3.5 shrink-0" /> A secret is set. It was shown once, when
+								the callback was created or last rotated.
+							</p>
 							<Button
 								type="button"
 								variant="outline"
 								size="sm"
-								onClick={copySecret}
-								aria-label="Copy secret"
+								className="shrink-0"
+								onClick={() => setRotating(true)}
 							>
-								<Copy className="h-3.5 w-3.5" />
-							</Button>
-							<Button type="button" variant="outline" size="sm" onClick={() => setRotating(true)}>
 								<RefreshCw className="h-3.5 w-3.5 mr-1" /> Rotate
 							</Button>
 						</div>
@@ -442,7 +505,7 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 					Send test
 				</Button>
 				<div className="flex gap-2">
-					<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+					<Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
 						Cancel
 					</Button>
 					<Button type="submit" disabled={saving}>
@@ -455,10 +518,29 @@ const CallbackForm = ({ callback, onOpenChange }: Omit<CallbackFormDialogProps, 
 	);
 };
 
-export const CallbackFormDialog = ({ open, onOpenChange, callback }: CallbackFormDialogProps) => (
-	<Dialog open={open} onOpenChange={onOpenChange}>
-		<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-			<CallbackForm callback={callback} onOpenChange={onOpenChange} />
-		</DialogContent>
-	</Dialog>
-);
+export const CallbackFormDialog = ({ open, onOpenChange, callback }: CallbackFormDialogProps) => {
+	// A save that produced a secret keeps the dialog open on the reveal step.
+	const [revealed, setRevealed] = useState<{ secret: string; rotated: boolean } | null>(null);
+	const close = () => {
+		setRevealed(null);
+		onOpenChange(false);
+	};
+	return (
+		<Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
+			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+				{revealed ? (
+					<SecretReveal secret={revealed.secret} rotated={revealed.rotated} onDone={close} />
+				) : (
+					<CallbackForm
+						callback={callback}
+						onCancel={close}
+						onSaved={(secret) => {
+							if (secret) setRevealed({ secret, rotated: !!callback });
+							else close();
+						}}
+					/>
+				)}
+			</DialogContent>
+		</Dialog>
+	);
+};

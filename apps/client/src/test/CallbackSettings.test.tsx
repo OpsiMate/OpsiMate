@@ -1,5 +1,4 @@
-import { CallbackSettings } from '@/components/Settings/CallbackSettings';
-import { callbackFormErrors, rowsToHeaders } from '@/components/Settings/CallbackSettings';
+import { CallbackSettings, callbackFormErrors, rowsToHeaders } from '@/components/Settings/CallbackSettings';
 import { AlertCallback } from '@OpsiMate/shared';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -51,7 +50,6 @@ const callback = (overrides: Partial<AlertCallback> = {}): AlertCallback => ({
 	bodyTemplate: null,
 	events: ['resolved', 'owner_assigned'],
 	enabled: true,
-	secret: 'abcdef0123456789abcdef0123456789',
 	lastStatus: 'success',
 	lastError: null,
 	lastSentAt: '2026-10-15 09:00:00',
@@ -70,7 +68,8 @@ const renderSettings = () =>
 const dialog = () => screen.getByRole('dialog');
 
 beforeEach(() => {
-	calls.create.mockReset().mockResolvedValue(callback());
+	// Create answers with the generated secret; a plain update answers without one.
+	calls.create.mockReset().mockResolvedValue({ ...callback(), secret: 'generated-secret-0123456789' });
 	calls.update.mockReset().mockResolvedValue(callback());
 	calls.remove.mockReset().mockResolvedValue(undefined);
 	calls.test.mockReset().mockResolvedValue({ ok: true, statusCode: 200, message: 'Delivered (200)' });
@@ -238,7 +237,34 @@ describe('CallbackFormDialog', () => {
 		expect(calls.create).not.toHaveBeenCalled();
 	});
 
-	test('editing prefills the callback, shows its secret and sends the full payload', async () => {
+	test('creating reveals the generated secret once, then the dialog closes on Done', async () => {
+		const d = openNew();
+		fireEvent.change(within(d).getByLabelText('Name'), { target: { value: 'Pager' } });
+		fireEvent.change(within(d).getByLabelText('URL'), { target: { value: 'https://pager.test/hook' } });
+		fireEvent.click(within(d).getByRole('checkbox', { name: 'Silenced' }));
+		fireEvent.click(within(d).getByRole('button', { name: 'Create' }));
+
+		await waitFor(() => expect(within(d).getByText('Copy your signing secret')).toBeInTheDocument());
+		expect(within(d).getByLabelText('Signing secret')).toHaveValue('generated-secret-0123456789');
+		expect(within(d).getByRole('button', { name: 'Copy secret' })).toBeInTheDocument();
+
+		fireEvent.click(within(d).getByRole('button', { name: 'Done' }));
+		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+	});
+
+	test('Send test on a saved callback asks the server to sign with its stored secret', async () => {
+		listState.current = [callback()];
+		renderSettings();
+		fireEvent.click(screen.getByRole('button', { name: 'Edit Ticketing sync' }));
+		const d = dialog();
+		fireEvent.click(within(d).getByRole('button', { name: 'Send test' }));
+
+		await waitFor(() => expect(calls.test).toHaveBeenCalledTimes(1));
+		expect(calls.test.mock.calls[0][0]).toMatchObject({ url: 'https://tickets.example.com/hook', callbackId: 1 });
+		expect((calls.test.mock.calls[0][0] as { secret?: string }).secret).toBeUndefined();
+	});
+
+	test('editing prefills the callback, never shows the secret, and sends the full payload', async () => {
 		listState.current = [callback({ bodyTemplate: '{{payload}}' })];
 		renderSettings();
 		fireEvent.click(screen.getByRole('button', { name: 'Edit Ticketing sync' }));
@@ -249,7 +275,10 @@ describe('CallbackFormDialog', () => {
 		expect(within(d).getByLabelText('Header 1 name')).toHaveValue('Authorization');
 		expect(within(d).getByRole('checkbox', { name: 'Resolved' })).toBeChecked();
 		expect(within(d).getByRole('checkbox', { name: 'Silenced' })).not.toBeChecked();
-		expect(within(d).getByLabelText('Signing secret')).toHaveValue('abcdef0123456789abcdef0123456789');
+		// The secret is not in the list response and is never shown again; only Rotate is offered.
+		expect(within(d).getByText(/A secret is set/)).toBeInTheDocument();
+		expect(within(d).queryByDisplayValue(/abcdef/)).not.toBeInTheDocument();
+		expect(within(d).getByRole('button', { name: 'Rotate' })).toBeInTheDocument();
 		expect(within(d).getByRole('switch', { name: 'Enabled' })).toBeChecked();
 
 		fireEvent.click(within(d).getByRole('checkbox', { name: 'Silenced' }));
@@ -270,8 +299,9 @@ describe('CallbackFormDialog', () => {
 		});
 	});
 
-	test('rotating the secret sends the new one; otherwise the secret is left alone', async () => {
+	test('rotating the secret sends the new one and reveals it once; otherwise the secret is left alone', async () => {
 		listState.current = [callback()];
+		calls.update.mockResolvedValue({ ...callback(), secret: 'brand-new-secret' });
 		renderSettings();
 		fireEvent.click(screen.getByRole('button', { name: 'Edit Ticketing sync' }));
 		const d = dialog();
@@ -284,5 +314,8 @@ describe('CallbackFormDialog', () => {
 		expect((calls.update.mock.calls[0][0] as { payload: { secret?: string } }).payload.secret).toBe(
 			'brand-new-secret'
 		);
+		await waitFor(() => expect(within(d).getByText('Copy your signing secret')).toBeInTheDocument());
+		expect(within(d).getByText(/The secret was rotated/)).toBeInTheDocument();
+		expect(within(d).getByLabelText('Signing secret')).toHaveValue('brand-new-secret');
 	});
 });

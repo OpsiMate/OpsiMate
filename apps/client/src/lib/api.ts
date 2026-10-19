@@ -43,6 +43,7 @@ import {
 	AlertCallbackEvent,
 	AlertCallbackMethod,
 	AlertCallbackTestResult,
+	AlertCallbackWithSecret,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 import { ROUTES } from './routes';
@@ -640,7 +641,8 @@ export const actionsApi = {
 };
 
 // Alert callbacks (admin only): outbound requests sent after a user changes an alert.
-export type AlertCallbackPayload = {
+// (Named Input, not Payload: AlertCallbackPayload in @OpsiMate/shared is what a receiver gets.)
+export type AlertCallbackInput = {
 	name: string;
 	url: string;
 	method: AlertCallbackMethod;
@@ -652,18 +654,25 @@ export type AlertCallbackPayload = {
 	secret?: string;
 };
 
-export type AlertCallbackTestPayload = Pick<
-	AlertCallbackPayload,
+// With no secret typed, callbackId has the server sign the test with that callback's
+// saved secret — the page never sees it after creation.
+export type AlertCallbackTestInput = Pick<
+	AlertCallbackInput,
 	'url' | 'method' | 'headers' | 'bodyTemplate' | 'secret'
->;
+> & {
+	callbackId?: number;
+};
+
+// An update carries the secret back only when this edit rotated it.
+export type AlertCallbackUpdated = AlertCallback & { secret?: string };
 
 export const callbacksApi = {
 	listCallbacks: () => apiRequest<AlertCallback[]>('/callbacks'),
-	createCallback: (payload: AlertCallbackPayload) => apiRequest<AlertCallback>('/callbacks', 'POST', payload),
-	updateCallback: (id: number, payload: Partial<AlertCallbackPayload>) =>
-		apiRequest<AlertCallback>(`/callbacks/${id}`, 'PUT', payload),
+	createCallback: (payload: AlertCallbackInput) => apiRequest<AlertCallbackWithSecret>('/callbacks', 'POST', payload),
+	updateCallback: (id: number, payload: Partial<AlertCallbackInput>) =>
+		apiRequest<AlertCallbackUpdated>(`/callbacks/${id}`, 'PUT', payload),
 	deleteCallback: (id: number) => apiRequest<void>(`/callbacks/${id}`, 'DELETE'),
-	testCallback: (payload: AlertCallbackTestPayload) =>
+	testCallback: (payload: AlertCallbackTestInput) =>
 		apiRequest<AlertCallbackTestResult>('/callbacks/test', 'POST', payload),
 };
 
