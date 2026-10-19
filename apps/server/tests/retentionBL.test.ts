@@ -19,22 +19,27 @@ const config = (overrides: Partial<RetentionConfig> = {}): RetentionConfig => ({
 	...overrides,
 });
 
-const policy = (overrides: Partial<RetentionPolicy> & { resourceType: RetentionResource }): RetentionPolicy => ({
+// resourceType is the only field a caller must supply; everything else defaults.
+type PolicyOverrides = Partial<RetentionPolicy> & Pick<RetentionPolicy, 'resourceType'>;
+
+const policy = (overrides: PolicyOverrides): RetentionPolicy => ({
 	enabled: true,
 	retentionDays: 30,
 	updatedAt: NOW.toISOString(),
 	...overrides,
 });
 
-// A repository stub whose getPolicies/getConfig return the supplied values and whose write
-// methods are spies. purgeOlderThan resolves to a per-resource count by default; individual
-// tests override any method to throw.
-function stubRepo(options: {
+interface StubRepoOptions {
 	policies?: RetentionPolicy[];
 	config?: RetentionConfig;
 	purge?: RetentionRepository['purgeOlderThan'];
 	vacuum?: RetentionRepository['vacuum'];
-}) {
+}
+
+// A repository stub whose getPolicies/getConfig return the supplied values and whose write
+// methods are spies. purgeOlderThan resolves to a per-resource count by default; individual
+// tests override any method to throw.
+function stubRepo(options: StubRepoOptions) {
 	const repo = {
 		getPolicies: vi.fn().mockResolvedValue(options.policies ?? []),
 		getConfig: vi.fn().mockResolvedValue(options.config ?? config()),
@@ -116,25 +121,32 @@ describe('RetentionBL.runCleanup', () => {
 		);
 	});
 
-	test('reports the deletion count per resource in the result', async () => {
+	test('reports the deletion count per resource in the result, including a count of 0', async () => {
 		vi.useFakeTimers({ now: NOW });
-		const purge = vi.fn((resource: RetentionResource) =>
-			Promise.resolve(resource === RetentionResource.AuditLogs ? 5 : 2)
-		);
+		const counts: Record<string, number> = {
+			[RetentionResource.AuditLogs]: 5,
+			[RetentionResource.AlertComments]: 2,
+			[RetentionResource.ActiveAlerts]: 0,
+		};
+		const purge = vi.fn((resource: RetentionResource) => Promise.resolve(counts[resource]));
 		const { bl } = stubRepo({
 			policies: [
 				policy({ resourceType: RetentionResource.AuditLogs }),
 				policy({ resourceType: RetentionResource.AlertComments }),
+				policy({ resourceType: RetentionResource.ActiveAlerts }),
 			],
 			purge,
 		});
 
 		const result = await bl.runCleanup();
 
+		// A resource that purged nothing is still reported, as 0 — not omitted.
 		expect(result.deleted).toEqual({
 			[RetentionResource.AuditLogs]: 5,
 			[RetentionResource.AlertComments]: 2,
+			[RetentionResource.ActiveAlerts]: 0,
 		});
+		expect(result.deleted[RetentionResource.ActiveAlerts]).toBe(0);
 	});
 
 	test('a failure on one resource does not abort the others, and the failed one is omitted', async () => {
@@ -191,6 +203,16 @@ describe('RetentionBL.runCleanup', () => {
 		const r3 = await flagOff.bl.runCleanup();
 		expect(flagOff.repo.vacuum).not.toHaveBeenCalled();
 		expect(r3.vacuumed).toBe(false);
+
+		// (4) flag off, nothing deleted -> no vacuum
+		const flagOffNothing = stubRepo({
+			policies: [policy({ resourceType: RetentionResource.AuditLogs })],
+			config: config({ vacuumAfterCleanup: false }),
+			purge: vi.fn().mockResolvedValue(0),
+		});
+		const r4 = await flagOffNothing.bl.runCleanup();
+		expect(flagOffNothing.repo.vacuum).not.toHaveBeenCalled();
+		expect(r4.vacuumed).toBe(false);
 	});
 
 	test('a failed VACUUM is caught and reported as vacuumed: false', async () => {
