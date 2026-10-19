@@ -1,0 +1,29 @@
+# A throwaway LDAP directory for trying out Directory login (Settings -> Users ->
+# Directory login) without a real Active Directory / OpenLDAP at hand.
+#
+#   docker compose -f docker-compose.ldap.yml up -d
+#
+# It is rroemhild/docker-test-openldap: an OpenLDAP pre-seeded with the Planet Express
+# crew under ou=people,dc=planetexpress,dc=com (admin: cn=admin,dc=planetexpress,dc=com /
+# GoodNewsEveryone), with the memberOf overlay enabled, so group -> role mapping works
+# out of the box. Nothing is kept: `down -v` removes the container and its volumes. Settings to paste into the page are in
+# configuration_example/README.md ("Trying it out with a test directory").
+#
+# Plain LDAP is on 10389 and LDAPS (self-signed certificate) on 10636, on localhost
+# only: the admin password is public, so the directory must not be reachable from
+# other machines. An OpsiMate running in Docker joins the `opsimate-ldap-test` network
+# instead and uses ldap://test-ldap:10389 (see the README).
+services:
+  test-ldap:
+    # Pinned: the DNs and passwords documented in the README belong to this version.
+    image: ghcr.io/rroemhild/docker-test-openldap:v2.5.0
+    container_name: opsimate-test-ldap
+    ports:
+      - "127.0.0.1:10389:10389"
+      - "127.0.0.1:10636:10636"
+    networks:
+      - ldap-test
+
+networks:
+  ldap-test:
+    name: opsimate-ldap-test
