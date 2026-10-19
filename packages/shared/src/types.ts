@@ -982,7 +982,9 @@ export interface AlertCallback {
 // The secret signs every request: X-OpsiMate-Signature: sha256=<hex HMAC-SHA256 of
 // "<timestamp>.<body>">. It comes back from create and from a rotation — the moments
 // an admin has to copy it — and never from list or get.
-export type AlertCallbackWithSecret = AlertCallback & { secret: string };
+export interface AlertCallbackWithSecret extends AlertCallback {
+	secret: string;
+}
 
 // Who made the change. The id is a user id when the request carried one (JWT), null for
 // an API-token caller.

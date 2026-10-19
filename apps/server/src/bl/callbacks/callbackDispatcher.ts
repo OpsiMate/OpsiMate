@@ -28,9 +28,9 @@ export interface CallbackEventInput {
 
 // The request-independent parts of a callback: what the test endpoint sends and what a
 // stored callback resolves to.
-export type CallbackTarget = Pick<AlertCallback, 'url' | 'method' | 'headers' | 'bodyTemplate'> & {
+export interface CallbackTarget extends Pick<AlertCallback, 'url' | 'method' | 'headers' | 'bodyTemplate'> {
 	secret?: string | null;
-};
+}
 
 export interface CallbackDispatcherOptions {
 	fetch?: typeof fetch;

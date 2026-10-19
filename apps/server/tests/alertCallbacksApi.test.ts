@@ -35,6 +35,32 @@ interface ReceivedRequest {
 	receivedAt: number;
 }
 
+// A create body as the API takes it; loose on purpose so validation tests can send bad values.
+type CallbackRequestBody = Record<string, unknown>;
+
+interface AlertDismissedRow {
+	is_dismissed: number;
+}
+
+interface CallbackStatusRow {
+	last_status: string | null;
+}
+
+interface AuditLogEntry {
+	actionType: string;
+	resourceType: string;
+	resourceName: string;
+	details?: string;
+}
+
+// One API call in an alert's life and the callback events (with details) it must fire.
+type ExpectedEvent = [AlertCallbackEvent, Record<string, unknown>];
+
+interface LifecycleStep {
+	run: () => Test;
+	expect: ExpectedEvent[];
+}
+
 let received: ReceivedRequest[] = [];
 let respondWith = 200;
 
@@ -63,9 +89,9 @@ const insertAlert = (id: string, name: string) => {
 };
 
 const auth = (req: Test) => req.set('Authorization', `Bearer ${jwtToken}`);
-const createCallback = (body: object) => auth(app.post('/api/v1/callbacks')).send(body);
+const createCallback = (body: CallbackRequestBody) => auth(app.post('/api/v1/callbacks')).send(body);
 
-const baseCallback = (path: string, events: string[], extra: object = {}) => ({
+const baseCallback = (path: string, events: string[], extra: CallbackRequestBody = {}): CallbackRequestBody => ({
 	name: `Receiver ${path}`,
 	url: `${receiverUrl}${path}`,
 	events,
@@ -88,7 +114,7 @@ beforeAll(async () => {
 			try {
 				const alertId = (JSON.parse(body) as AlertCallbackPayload).alerts?.[0]?.id;
 				const row = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?').get(alertId) as
-					{ is_dismissed: number } | undefined;
+					AlertDismissedRow | undefined;
 				silencedInDbOnArrival = row ? row.is_dismissed === 1 : null;
 			} catch {
 				silencedInDbOnArrival = null;
@@ -226,12 +252,7 @@ describe('Callbacks API: configuration', () => {
 		});
 		await auth(app.delete(`/api/v1/callbacks/${created.id}`));
 
-		const logs = (await auth(app.get('/api/v1/audit'))).body.data.logs as {
-			actionType: string;
-			resourceType: string;
-			resourceName: string;
-			details?: string;
-		}[];
+		const logs = (await auth(app.get('/api/v1/audit'))).body.data.logs as AuditLogEntry[];
 		expect(logs.map((l) => [l.actionType, l.resourceType, l.resourceName]).sort()).toEqual([
 			['CREATE', AuditResourceType.CALLBACK, 'Pager'],
 			['DELETE', AuditResourceType.CALLBACK, 'Pager'],
@@ -345,9 +366,9 @@ describe('Callbacks: delivery on alert changes', () => {
 		await waitFor(
 			() =>
 				(
-					db.prepare('SELECT last_status FROM alert_callbacks WHERE id = ?').get(callback.id) as {
-						last_status: string;
-					}
+					db
+						.prepare('SELECT last_status FROM alert_callbacks WHERE id = ?')
+						.get(callback.id) as CallbackStatusRow
 				).last_status === 'success',
 			'delivery status'
 		);
@@ -478,7 +499,7 @@ describe('Callbacks: delivery on alert changes', () => {
 		expect(action.status).toBe(201);
 		const actionId = action.body.data.id as number;
 
-		const steps: Array<{ run: () => Test; expect: Array<[AlertCallbackEvent, Record<string, unknown>]> }> = [
+		const steps: LifecycleStep[] = [
 			{
 				run: () => auth(app.patch('/api/v1/alerts/cb-all-1/owner')).send({ ownerId: '1' }),
 				expect: [['owner_assigned', { ownerId: '1', ownerName: 'Provider User' }]],
@@ -516,7 +537,7 @@ describe('Callbacks: delivery on alert changes', () => {
 			{ run: () => auth(app.delete('/api/v1/alerts/resolved/cb-all-1')), expect: [['deleted', {}]] },
 		];
 
-		const expected: Array<[AlertCallbackEvent, Record<string, unknown>]> = [];
+		const expected: ExpectedEvent[] = [];
 		for (const [i, step] of steps.entries()) {
 			const res = await step.run();
 			expect(res.status, `step ${i + 1} (${step.expect.map(([event]) => event).join(', ')})`).toBeLessThan(300);

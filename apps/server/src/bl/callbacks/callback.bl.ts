@@ -21,7 +21,10 @@ const logger = new Logger('bl/callbacks/callback.bl');
 const API_TOKEN_ACTOR_ID = 0;
 const API_TOKEN_ACTOR_NAME = 'API Token';
 
-export type CreateCallbackData = Omit<CreateAlertCallbackInput, 'secret'> & { secret?: string };
+// What create takes: the secret is optional (generated when omitted).
+export interface CreateCallbackData extends Omit<CreateAlertCallbackInput, 'secret'> {
+	secret?: string;
+}
 
 export const generateCallbackSecret = (): string => randomBytes(24).toString('hex');
 

@@ -105,10 +105,15 @@ const makeFetch = (statuses: number[] = [200]) => {
 	return { sent, fetchImpl: fetchImpl as unknown as typeof fetch };
 };
 
+interface TestDispatcherOptions {
+	retryDelaysMs?: number[];
+	requestTimeoutMs?: number;
+}
+
 const makeDispatcher = (
 	repo: AlertCallbackRepository,
 	fetchImpl: typeof fetch,
-	options: { retryDelaysMs?: number[]; requestTimeoutMs?: number } = {}
+	options: TestDispatcherOptions = {}
 ) => {
 	const sleeps: number[] = [];
 	const dispatcher = new CallbackDispatcher(repo, {
