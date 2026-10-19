@@ -487,6 +487,25 @@ describe('Callbacks: delivery on alert changes', () => {
 		expect(db.prepare('SELECT 1 FROM alerts_resolved WHERE id = ?').get('cb-comment-1')).toBeUndefined();
 	});
 
+	test('the deprecated sender resolve (DELETE with the API token) fires nothing; a user resolve does', async () => {
+		insertAlert('cb-sender-1', 'Sender resolved');
+		insertAlert('cb-user-1', 'User resolved');
+		await createCallback(baseCallback('/resolve', ['resolved']));
+
+		// A webhook sender reporting recovery through the old route: a source-reported
+		// recovery, which never fires a callback.
+		const bySender = await app
+			.delete('/api/v1/alerts/cb-sender-1')
+			.set('x-api-token', process.env.API_TOKEN ?? 'opsimate');
+		expect(bySender.status).toBe(200);
+		expect(db.prepare('SELECT 1 FROM alerts_resolved WHERE id = ?').get('cb-sender-1')).toBeTruthy();
+
+		expect((await auth(app.delete('/api/v1/alerts/cb-user-1'))).status).toBe(200);
+		await waitFor(() => received.length >= 1, 'user resolve callback');
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(received.map((r) => payloadOf(r).alerts[0].id)).toEqual(['cb-user-1']);
+	});
+
 	test('running an action on an alert fires action_run after the action itself', async () => {
 		insertAlert('cb-action-1', 'Acted on');
 		await createCallback(baseCallback('/cb', ['action_run']));
