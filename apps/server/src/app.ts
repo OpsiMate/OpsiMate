@@ -209,8 +209,6 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// BL
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
-	// Directory login, when configured (config.yml `ldap:` or LDAP_* env). Local
-	// accounts keep signing in locally either way.
 	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
 	// settings saved on the Settings page. Local accounts keep signing in locally either way.
 	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);

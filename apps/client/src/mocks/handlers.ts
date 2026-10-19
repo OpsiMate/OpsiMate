@@ -8,7 +8,8 @@ import {
 	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
 	LdapSettings,
-	UpdateLdapSettings,
+	LdapTestRequestSchema,
+	UpdateLdapSettingsSchema,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -523,27 +524,37 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: ldapSettingsState });
 	}),
 
+	// Validated like the server does, so the page's field-level errors can be seen here.
 	http.put(`${API_BASE}/ldap/settings`, async ({ request }) => {
-		const body = (await request.json().catch(() => ({}))) as UpdateLdapSettings;
-		const { bindPassword, ...rest } = body;
+		const parsed = UpdateLdapSettingsSchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return HttpResponse.json(
+				{ success: false, error: 'Validation error', details: parsed.error.issues },
+				{ status: 400 }
+			);
+		}
+		const { bindPassword, ...rest } = parsed.data;
 		Object.assign(ldapSettingsState, rest);
 		if (bindPassword !== undefined) ldapSettingsState.hasBindPassword = bindPassword !== null;
 		ldapSettingsState.updatedAt = nowIso();
 		return HttpResponse.json({ success: true, data: ldapSettingsState });
 	}),
 
-	http.post(`${API_BASE}/ldap/test`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: {
-				ok: false,
-				latencyMs: 0,
-				steps: [
-					{ step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' },
-				],
-				user: null,
-			},
-		});
+	http.post(`${API_BASE}/ldap/test`, async ({ request }) => {
+		const parsed = LdapTestRequestSchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return HttpResponse.json(
+				{ success: false, error: 'Validation error', details: parsed.error.issues },
+				{ status: 400 }
+			);
+		}
+		// Unsaved edits are tested as the server would: laid over what is stored.
+		const tested = { ...ldapSettingsState, ...parsed.data.settings };
+		const step =
+			!tested.url || !tested.searchBase
+				? { step: 'connect', ok: false, message: 'Enter a server URL and a search base first.' }
+				: { step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' };
+		return HttpResponse.json({ success: true, data: { ok: false, latencyMs: 0, steps: [step], user: null } });
 	}),
 
 	// ==================== ALERTS ====================
