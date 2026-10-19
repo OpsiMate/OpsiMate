@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { usePreviewAction, useRunAction } from '@/hooks/queries/actions';
-import { Action, ActionOverrides, ActionPreview, Alert } from '@OpsiMate/shared';
+import { Action, ActionOverrides, ActionPreview, Alert, HttpActionConfig } from '@OpsiMate/shared';
 import { Loader2, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
@@ -108,6 +108,7 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 	};
 
 	const isLoading = previewMutation.isPending && !preview;
+	const sendsWithoutWaiting = action?.type === 'http' && !!(action.config as HttpActionConfig).fireAndForget;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,6 +200,12 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 										{preview.method} {preview.url}
 									</span>
 								</DestinationRow>
+								{sendsWithoutWaiting && (
+									<p className="text-xs text-muted-foreground">
+										This action doesn't wait for a response: Send reports success once the request
+										is out, whatever the receiver answers later.
+									</p>
+								)}
 								<div className="space-y-2">
 									<Label htmlFor="send-body">Request body</Label>
 									<Textarea

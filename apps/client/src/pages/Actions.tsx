@@ -103,7 +103,7 @@ const summarize = (action: Action): string => {
 		}
 		case 'http': {
 			const cfg = action.config as HttpActionConfig;
-			return `${cfg.method} ${cfg.url}`;
+			return `${cfg.method} ${cfg.url}${cfg.fireAndForget ? ' · fire-and-forget' : ''}`;
 		}
 		default:
 			return '—';

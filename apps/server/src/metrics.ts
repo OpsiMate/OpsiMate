@@ -72,7 +72,7 @@ export const alertsUnsilencedTotal = new Counter({
 
 export const actionsRunTotal = new Counter({
 	name: 'opsimate_actions_run_total',
-	help: 'Actions executed against alerts, by action type and outcome',
+	help: 'Actions executed against alerts, by action type and outcome (success, error, or sent for HTTP actions that do not wait for a response)',
 	labelNames: ['type', 'outcome'] as const,
 	registers: [metricsRegistry],
 });
