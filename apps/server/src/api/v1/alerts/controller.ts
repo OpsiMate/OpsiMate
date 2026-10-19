@@ -45,6 +45,9 @@ import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('api/v1/alerts/controller');
 
+// String() — the JWT carries the id as a number; comments and callbacks carry it as text.
+const actorIdOf = (req: AuthenticatedRequest): string | null => (req.user != null ? String(req.user.id) : null);
+
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
 
@@ -246,7 +249,7 @@ export class AlertController {
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName);
+			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
@@ -869,12 +872,15 @@ export class AlertController {
 			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
 			// the acting user (unlike the integration webhooks, which resolve without one).
 			// The resolver becomes the alert's owner, and an optional resolve note is stored
-			// as a regular comment.
+			// as a regular comment. Webhook senders still call this route with the API token
+			// (no user) to report recovery: that is a source-reported recovery, so it fires
+			// no callback.
 			await this.alertBL.resolveAlert(
 				alertId,
 				// String() — the JWT carries the id as a number; comments store it as TEXT.
 				{ id: req.user != null ? String(req.user.id) : null, name: req.user?.fullName ?? null },
-				comment
+				comment,
+				{ fireCallback: req.user != null }
 			);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {
@@ -910,7 +916,7 @@ export class AlertController {
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName);
+			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
 			}
@@ -921,13 +927,16 @@ export class AlertController {
 		}
 	}
 
-	async deleteResolvedAlert(req: Request, res: Response) {
+	async deleteResolvedAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteResolvedAlert(alertId);
+			await this.alertBL.deleteResolvedAlert(alertId, {
+				id: req.user != null ? String(req.user.id) : null,
+				name: req.user?.fullName ?? null,
+			});
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);
@@ -991,7 +1000,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}

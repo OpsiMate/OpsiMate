@@ -122,7 +122,7 @@ export const buildAlertContext = (alert: AlertContextInput): Record<string, stri
 	);
 };
 
-const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
+export const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
 	if (!template) return '';
 	return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => (key in ctx ? ctx[key] : `{{${key}}}`));
 };
