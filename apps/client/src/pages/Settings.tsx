@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
 import { pluralize } from '@/lib/text';
-import { AuditLog, Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
+import { Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
 import {
 	BellOff,
 	Check,
@@ -54,14 +54,15 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from '../components/ui/alert-dialog';
-import { Badge } from '../components/ui/badge';
+import { Badge, type BadgeProps } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useFormErrors } from '../hooks/useFormErrors';
-import { apiRequest, auditApi } from '../lib/api';
+import { useAuditLogs } from '@/hooks/queries/audit/useAuditLogs';
+import { apiRequest } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
 import { Role, User } from '../types';
 
@@ -746,40 +747,22 @@ const Settings: React.FC = () => {
 
 export default Settings;
 
-const AuditLogTable: React.FC = () => {
+interface ActionBadgeProps {
+	variant: BadgeProps['variant'];
+	className: string;
+}
+
+export const AuditLogTable: React.FC = () => {
 	const pageSizeId = useId();
-	const [logs, setLogs] = useState<AuditLog[]>([]);
-	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(10);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		let mounted = true;
-		setLoading(true);
-
-		auditApi.getAuditLogs(page, pageSize).then((res) => {
-			if (mounted) {
-				if (res?.success && res.data && Array.isArray(res.data.logs)) {
-					setLogs(res.data.logs);
-					setTotal(res.data.total || 0);
-					setError(null);
-				} else {
-					setError(res?.error || 'Failed to fetch audit logs');
-				}
-				setLoading(false);
-			}
-		});
-
-		return () => {
-			mounted = false;
-		};
-	}, [page, pageSize]);
+	const { data, isLoading, error } = useAuditLogs(page, pageSize);
+	const logs = data?.logs ?? [];
+	const total = data?.total ?? 0;
 
 	const totalPages = Math.ceil(total / pageSize);
 
-	const getActionBadgeProps = (action: string) => {
+	const getActionBadgeProps = (action: string): ActionBadgeProps => {
 		switch (action) {
 			case 'CREATE':
 				return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
@@ -853,10 +836,10 @@ const AuditLogTable: React.FC = () => {
 				</div>
 			</div>
 
-			{loading ? (
+			{isLoading ? (
 				<div className="py-8 text-center">Loading audit logs...</div>
 			) : error ? (
-				<ErrorAlert message={error} className="mb-4" />
+				<ErrorAlert message={error.message} className="mb-4" />
 			) : (
 				<>
 					{logs.length === 0 ? (
@@ -883,13 +866,7 @@ const AuditLogTable: React.FC = () => {
 												</span>
 											</TableCell>
 											<TableCell>
-												<Badge
-													variant={
-														actionProps.variant as
-															'default' | 'destructive' | 'outline' | 'secondary'
-													}
-													className={actionProps.className}
-												>
+												<Badge variant={actionProps.variant} className={actionProps.className}>
 													{log.actionType}
 												</Badge>
 											</TableCell>

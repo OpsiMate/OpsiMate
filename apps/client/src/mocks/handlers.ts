@@ -1210,11 +1210,16 @@ export const handlers = [
 	}),
 
 	// ==================== AUDIT ====================
-	http.get(`${API_BASE}/audit`, () => {
+	http.get(`${API_BASE}/audit`, ({ request }) => {
+		const url = new URL(request.url);
+		const page = Number(url.searchParams.get('page') || 1);
+		const pageSize = Number(url.searchParams.get('pageSize') || 10);
+		const start = (page - 1) * pageSize;
+		const sliced = playgroundState.auditLogs.slice(start, start + pageSize);
 		return HttpResponse.json({
 			success: true,
 			data: {
-				logs: playgroundState.auditLogs,
+				logs: sliced,
 				total: playgroundState.auditLogs.length,
 			},
 		});

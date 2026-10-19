@@ -366,19 +366,45 @@ const createEnrichments = (): AlertEnrichment[] => [
 	},
 ];
 
-const createAuditLogs = (): AuditLog[] => [
-	{
-		id: 1,
-		actionType: AuditActionType.CREATE,
-		resourceType: AuditResourceType.PROVIDER,
-		resourceId: '1',
-		resourceName: 'Production API',
-		userId: Number(getPlaygroundUser().id),
-		userName: getPlaygroundUser().fullName,
-		timestamp: nowIso(),
-		details: 'Provider created in playground',
-	},
-];
+const createAuditLogs = (): AuditLog[] => {
+	const user = getPlaygroundUser();
+	const resources = [
+		{ name: 'Production API', type: AuditResourceType.PROVIDER },
+		{ name: 'Grafana EU-West', type: AuditResourceType.PROVIDER },
+		{ name: 'Datadog Cloud', type: AuditResourceType.PROVIDER },
+		{ name: 'Night Mute Policy', type: AuditResourceType.MUTE_POLICY },
+		{ name: 'Weekend Maintenance', type: AuditResourceType.MUTE_POLICY },
+		{ name: 'Incident Dashboard', type: AuditResourceType.DASHBOARD },
+		{ name: 'Kubernetes Cluster Secrets', type: AuditResourceType.SECRET },
+		{ name: 'alex.sre@company.com', type: AuditResourceType.USER },
+		{ name: 'elena.devops@company.com', type: AuditResourceType.USER },
+		{ name: 'Auto-enrich Tag Rule', type: AuditResourceType.ENRICHMENT },
+		{ name: 'Slack Webhook Action', type: AuditResourceType.ACTION },
+		{ name: 'PagerDuty Integration', type: AuditResourceType.PROVIDER },
+	];
+	const actions = [AuditActionType.CREATE, AuditActionType.UPDATE, AuditActionType.DELETE];
+	const actors = [user.fullName, 'Dana Cohen', 'Alex SRE', 'Elena DevOps'];
+
+	const logs: AuditLog[] = [];
+	for (let i = 1; i <= 24; i++) {
+		const res = resources[(i - 1) % resources.length];
+		const action = actions[(i - 1) % actions.length];
+		const actor = actors[(i - 1) % actors.length];
+		const time = new Date(Date.now() - i * 35 * 60 * 1000).toISOString();
+		logs.push({
+			id: i,
+			actionType: action,
+			resourceType: res.type,
+			resourceId: String(i),
+			resourceName: res.name,
+			userId: i,
+			userName: actor,
+			timestamp: time,
+			details: `${action} ${res.name} in playground`,
+		});
+	}
+	return logs;
+};
 
 // The diverse-alerts generator doesn't attach labels, so we add realistic, deterministic
 // tags here. This powers the filter facets, the Labels section, tag-based dashboards, and
