@@ -41,7 +41,7 @@ export const UpdateTagSchema = TagSchema.partial().extend({
 	id: z.number(),
 });
 
-const positiveIntegerIdSchema = z.coerce.number().int().positive();
+export const positiveIntegerIdSchema = z.coerce.number().int().positive();
 
 export const TagIdSchema = z.object({
 	tagId: positiveIntegerIdSchema,
