@@ -527,8 +527,29 @@ describe('Callbacks: delivery on alert changes', () => {
 		const payload = payloadOf(received[1]);
 		expect(payload.event).toBe('action_run');
 		expect(payload.alerts[0].alertName).toBe('Acted on');
-		expect(payload.details).toEqual({ actionName: 'Ping receiver' });
+		expect(payload.details).toEqual({ actionName: 'Ping receiver', ok: true });
 		expect(payload.actor).toEqual({ id: '1', name: 'Provider User' });
+	});
+
+	test('action_run tells a failed run from a successful one', async () => {
+		insertAlert('cb-action-2', 'Acted on, failed');
+		await createCallback(baseCallback('/cb-failed', ['action_run']));
+		const action = await auth(app.post('/api/v1/actions')).send({
+			name: 'Unreachable',
+			type: 'http',
+			// Nothing listens on port 1: the run fails at once.
+			config: { url: 'http://127.0.0.1:1/action', method: 'POST' },
+		});
+		expect(action.status).toBe(201);
+
+		const run = await auth(app.post(`/api/v1/actions/${action.body.data.id}/run`)).send({
+			alert: { id: 'cb-action-2', alertName: 'Acted on, failed' },
+		});
+		expect(run.status).toBe(200);
+		expect(run.body.data.ok).toBe(false);
+
+		await waitFor(() => received.length >= 1, 'action_run callback');
+		expect(payloadOf(received[0]).details).toEqual({ actionName: 'Unreachable', ok: false });
 	});
 
 	test('a body template replaces the JSON payload', async () => {
@@ -591,7 +612,7 @@ describe('Callbacks: delivery on alert changes', () => {
 					auth(app.post(`/api/v1/actions/${actionId}/run`)).send({
 						alert: { id: 'cb-all-1', alertName: 'Everything' },
 					}),
-				expect: [['action_run', { actionName: 'Ping' }]],
+				expect: [['action_run', { actionName: 'Ping', ok: true }]],
 			},
 			{ run: () => auth(app.delete('/api/v1/alerts/cb-all-1')), expect: [['resolved', { comment: null }]] },
 			{

@@ -994,13 +994,16 @@ export interface AlertCallbackActor {
 }
 
 // Event-specific extras. Every key is optional: a silence carries silencedUntil and
-// maybe a comment, an assignment carries the owner, an action run its name.
+// maybe a comment, an assignment carries the owner, an action run its name and outcome.
 export interface AlertCallbackDetails {
 	silencedUntil?: string | null;
 	comment?: string | null;
 	ownerId?: string | null;
 	ownerName?: string | null;
 	actionName?: string | null;
+	// action_run: whether the run succeeded (for an HTTP action that sends without
+	// waiting for a response: that the request went out).
+	ok?: boolean;
 }
 
 // What a receiver gets. One shape for single and bulk changes: `alerts` holds one
