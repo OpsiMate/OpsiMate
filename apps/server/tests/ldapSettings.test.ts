@@ -111,7 +111,79 @@ describe('LDAP settings API', () => {
 		const res = await app.post('/api/v1/ldap/test').set('Authorization', `Bearer ${token}`).send({});
 		expect(res.status).toBe(200);
 		expect(res.body.data.ok).toBe(false);
-		expect(res.body.data.steps[0].message).toMatch(/Save a server URL/);
+		expect(res.body.data.steps[0].message).toMatch(/Enter a server URL/);
+	});
+
+	test('test connection with unsaved edits runs on the edits and stores nothing', async () => {
+		const res = await app
+			.post('/api/v1/ldap/test')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ settings: { ...COMPLETE, url: 'ldap://127.0.0.1:1', timeoutMs: 1000 } });
+		expect(res.status).toBe(200);
+		expect(res.body.data.ok).toBe(false);
+		// Got past the "enter a URL" check to the real connect attempt: the draft was used.
+		expect(res.body.data.steps[0]).toMatchObject({ step: 'connect', ok: false });
+		expect(res.body.data.steps[0].message).not.toMatch(/Enter a server URL/);
+		expect((await get()).body.data).toMatchObject({ url: '', hasBindPassword: false });
+	});
+
+	test('a test cannot send the stored password to another server without re-entering it', async () => {
+		await put({ ...COMPLETE, enabled: false });
+		const post = (settings: object) =>
+			app.post('/api/v1/ldap/test').set('Authorization', `Bearer ${token}`).send({ settings });
+		const withheld = await post({ url: 'ldap://127.0.0.1:1', timeoutMs: 1000 });
+		expect(withheld.status).toBe(200);
+		expect(withheld.body.data.steps[0]).toMatchObject({ step: 'service_bind', ok: false });
+		expect(withheld.body.data.steps[0].message).toMatch(/Re-enter the service-account password/);
+		// Unrelated edits keep the stored password and get as far as connecting.
+		const kept = await post({ url: COMPLETE.url, searchFilter: '(uid={{email}})', timeoutMs: 1000 });
+		expect(kept.body.data.steps[0].step).toBe('connect');
+		// With the password typed again, so does the redirected draft.
+		const retyped = await post({ url: 'ldap://127.0.0.1:1', bindPassword: 'svc-secret-value', timeoutMs: 1000 });
+		expect(retyped.body.data.steps[0].step).toBe('connect');
+	});
+
+	test('the test applies the same redirect rule as a save, for every setting it covers', async () => {
+		await put({ ...COMPLETE, enabled: false });
+		const post = (settings: object) =>
+			app.post('/api/v1/ldap/test').set('Authorization', `Bearer ${token}`).send({ settings });
+		for (const change of [
+			{ url: 'ldap://attacker.example.com:389' },
+			{ bindDn: 'cn=other,dc=example,dc=com' },
+			{ url: 'ldap://ldap.example.com', startTls: true },
+			{ tlsRejectUnauthorized: false },
+			{ tlsCaCert: '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----' },
+		]) {
+			const res = await post({ ...change, timeoutMs: 1000 });
+			expect(res.status).toBe(200);
+			expect(res.body.data.steps[0]).toMatchObject({ step: 'service_bind', ok: false });
+			expect(res.body.data.steps[0].message).toMatch(/Re-enter the service-account password/);
+		}
+		// Removing the password in the draft never falls back to the stored one.
+		const removed = await post({ bindPassword: null, timeoutMs: 1000 });
+		expect(removed.body.data.steps[0]).toMatchObject({ step: 'service_bind', ok: false });
+		expect(removed.body.data.steps[0].message).toMatch(/no password/);
+		expect((await get()).body.data).toMatchObject({ url: COMPLETE.url, hasBindPassword: true });
+	});
+
+	test('clearing a StartTLS flag that was a no-op on ldaps:// is not a redirect', async () => {
+		await put({ ...COMPLETE, startTls: true, enabled: false });
+		// The page always sends startTls: false with ldaps://; this must not demand the password.
+		expect((await put({ startTls: false })).status).toBe(200);
+		const res = await app
+			.post('/api/v1/ldap/test')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ settings: { startTls: false, timeoutMs: 1000 } });
+		expect(res.body.data.steps[0].step).toBe('connect');
+	});
+
+	test('a draft with a bad shape is refused with the offending field', async () => {
+		const res = await app
+			.post('/api/v1/ldap/test')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ settings: { url: 'http://x' } });
+		expect(res.status).toBe(400);
+		expect(JSON.stringify(res.body.details)).toContain('url');
 	});
 
 	test('test connection to an unreachable server fails at the connect step', async () => {
@@ -149,7 +221,8 @@ describe('LDAP settings API', () => {
 		for (const change of [
 			{ url: 'ldap://attacker.example.com:389' },
 			{ bindDn: 'cn=other,dc=example,dc=com' },
-			{ startTls: true },
+			// StartTLS only counts on ldap:// (on ldaps:// it is a no-op, see the test below).
+			{ url: 'ldap://ldap.example.com', startTls: true },
 			{ tlsRejectUnauthorized: false },
 			{ tlsCaCert: '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----' },
 		]) {

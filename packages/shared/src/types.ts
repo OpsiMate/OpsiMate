@@ -869,6 +869,9 @@ export interface LdapTestRequest {
 	// Optional: look this user up too and show the role they would get (no password
 	// is needed or checked).
 	email?: string;
+	// Optional: unsaved edits from the Settings page, laid over the stored settings for
+	// this test only. Nothing is saved. Omitted = test the settings as saved.
+	settings?: UpdateLdapSettings;
 }
 
 export type LdapTestStepName = 'connect' | 'service_bind' | 'search_base' | 'user_lookup';
