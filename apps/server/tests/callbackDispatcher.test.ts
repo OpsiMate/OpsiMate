@@ -483,6 +483,51 @@ describe('CallbackDispatcher: bulk batching', () => {
 		]);
 	});
 
+	test('a bulk keeps its place in line: a single change emitted while it runs is delivered after it', async () => {
+		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'unsilenced'] })]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		let finish: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		const bulk = dispatcher.batched(async () => {
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await gate;
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a2'), actor });
+		});
+		// Another request unsilences a1 while the bulk is still running.
+		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		finish();
+		await bulk;
+		await dispatcher.flush();
+
+		expect(sent.map((r) => [parsePayload(r).event, parsePayload(r).alerts.map((a) => a.id)])).toEqual([
+			['silenced', ['a1', 'a2']],
+			['unsilenced', ['a1']],
+		]);
+	});
+
+	test('a bulk that throws still releases its place in line', async () => {
+		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'unsilenced'] })]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		const bulk = dispatcher.batched(async () => {
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await Promise.resolve();
+			throw new Error('boom');
+		});
+		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		await expect(bulk).rejects.toThrow('boom');
+		await dispatcher.flush();
+
+		expect(sent.map((r) => parsePayload(r).event)).toEqual(['silenced', 'unsilenced']);
+	});
+
 	test('a batch with nothing emitted sends nothing, and the error from the operation propagates', async () => {
 		const { repo } = makeRepo([makeCallback()]);
 		const { sent, fetchImpl } = makeFetch();

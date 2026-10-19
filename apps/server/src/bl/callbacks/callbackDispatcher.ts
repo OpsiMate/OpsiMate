@@ -56,6 +56,23 @@ interface Delivery {
 	deliveryId: string;
 }
 
+// A place in one callback's lane. Its payloads are known at once for a single change;
+// for a bulk change they are filled in when the operation finishes, but the place is
+// taken at the bulk's first emit, so a change emitted meanwhile by another request still
+// reaches the receiver after it. An empty list sends nothing.
+interface QueuedDelivery {
+	payloads: AlertCallbackPayload[] | Promise<AlertCallbackPayload[]>;
+}
+
+// A bulk operation in progress, per event: the alerts collected so far and how to fill
+// the place the event holds in each subscribed callback's lane.
+interface BatchSlot {
+	inputs: CallbackEventInput[];
+	fill: (payloads: AlertCallbackPayload[]) => void;
+}
+
+type Batch = Map<AlertCallbackEvent, BatchSlot>;
+
 interface SendResult {
 	ok: boolean;
 	statusCode?: number;
@@ -77,7 +94,7 @@ export class CallbackDispatcher {
 	private subscriptions: AlertCallbackWithSecret[] = [];
 	private readonly lanes = new Map<number, Promise<void>>();
 	private readonly pending = new Map<number, number>();
-	private readonly batchScope = new AsyncLocalStorage<CallbackEventInput[]>();
+	private readonly batchScope = new AsyncLocalStorage<Batch>();
 	private readonly fetchImpl: typeof fetch;
 	private readonly requestTimeoutMs: number;
 	private readonly retryDelaysMs: number[];
@@ -111,59 +128,77 @@ export class CallbackDispatcher {
 		if (!this.wants(input.event)) return;
 		const batch = this.batchScope.getStore();
 		if (batch) {
-			batch.push(input);
+			this.collect(batch, input);
 			return;
 		}
-		this.enqueue({
+		const payload: AlertCallbackPayload = {
 			event: input.event,
 			timestamp: this.now().toISOString(),
 			actor: input.actor,
 			alerts: [input.alert],
 			details: input.details ?? {},
 			bulk: false,
-		});
+		};
+		this.enqueue(input.event, { payloads: [payload] });
 	}
 
 	// Runs `fn` (a bulk operation) collecting its emits; when it finishes, each event
-	// seen becomes ONE payload carrying every alert it touched. Per-alert details are
-	// the same across a bulk operation, so the first alert's are used.
+	// seen becomes ONE payload carrying every alert it touched, delivered where the
+	// event's first emit stood in line. Per-alert details are the same across a bulk
+	// operation, so the first alert's are used.
 	async batched<T>(fn: () => Promise<T>): Promise<T> {
-		const collected: CallbackEventInput[] = [];
+		const batch: Batch = new Map();
 		try {
-			return await this.batchScope.run(collected, fn);
+			return await this.batchScope.run(batch, fn);
 		} finally {
-			this.flushBatch(collected);
+			// Also when fn throws: the alerts changed before the failure were changed, and
+			// the lanes holding a place for this bulk must not wait forever.
+			this.flushBatch(batch);
 		}
 	}
 
-	private flushBatch(collected: CallbackEventInput[]): void {
-		if (collected.length === 0) return;
-		const byEvent = new Map<AlertCallbackEvent, CallbackEventInput[]>();
-		for (const input of collected) {
-			const list = byEvent.get(input.event) ?? [];
-			list.push(input);
-			byEvent.set(input.event, list);
+	// The first emit of an event takes its place in the lanes; later ones join it.
+	private collect(batch: Batch, input: CallbackEventInput): void {
+		const slot = batch.get(input.event);
+		if (slot) {
+			slot.inputs.push(input);
+			return;
 		}
+		let fill: (payloads: AlertCallbackPayload[]) => void = () => {};
+		const payloads = new Promise<AlertCallbackPayload[]>((resolve) => {
+			fill = resolve;
+		});
+		batch.set(input.event, { inputs: [input], fill });
+		this.enqueue(input.event, { payloads });
+	}
+
+	private flushBatch(batch: Batch): void {
 		const timestamp = this.now().toISOString();
-		for (const [event, inputs] of byEvent) {
-			this.enqueue({
-				event,
-				timestamp,
-				actor: inputs[0].actor,
-				alerts: inputs.map((input) => input.alert),
-				details: inputs[0].details ?? {},
-				bulk: true,
-			});
+		for (const [event, { inputs, fill }] of batch) {
+			fill(
+				inputs.length === 0
+					? []
+					: [
+							{
+								event,
+								timestamp,
+								actor: inputs[0].actor,
+								alerts: inputs.map((input) => input.alert),
+								details: inputs[0].details ?? {},
+								bulk: true,
+							},
+						]
+			);
 		}
 	}
 
-	private enqueue(payload: AlertCallbackPayload): void {
+	private enqueue(event: AlertCallbackEvent, queued: QueuedDelivery): void {
 		for (const callback of this.subscriptions) {
-			if (!callback.events.includes(payload.event)) continue;
+			if (!callback.events.includes(event)) continue;
 			const waiting = this.pending.get(callback.id) ?? 0;
 			if (waiting >= MAX_PENDING_PER_CALLBACK) {
-				logger.warn(`Callback "${callback.name}" has ${waiting} deliveries waiting; dropping ${payload.event}`);
-				callbacksSentTotal.inc({ event: payload.event, outcome: 'dropped' });
+				logger.warn(`Callback "${callback.name}" has ${waiting} deliveries waiting; dropping ${event}`);
+				callbacksSentTotal.inc({ event, outcome: 'dropped' });
 				continue;
 			}
 			this.pending.set(callback.id, waiting + 1);
@@ -171,10 +206,18 @@ export class CallbackDispatcher {
 			// The lane must survive anything deliver throws, or every later delivery for
 			// this callback would chain onto a rejected promise and never run.
 			const next = lane
-				.then(() => this.deliver({ callback, payload, deliveryId: randomUUID() }))
+				.then(() => this.runQueued(callback, queued))
 				.catch((error: unknown) => logger.error(`Callback "${callback.name}" delivery crashed`, error))
 				.finally(() => this.pending.set(callback.id, (this.pending.get(callback.id) ?? 1) - 1));
 			this.lanes.set(callback.id, next);
+		}
+	}
+
+	private async runQueued(callback: AlertCallbackWithSecret, queued: QueuedDelivery): Promise<void> {
+		// A ready payload starts at once (no extra tick): only a bulk's place waits.
+		const payloads = Array.isArray(queued.payloads) ? queued.payloads : await queued.payloads;
+		for (const payload of payloads) {
+			await this.deliver({ callback, payload, deliveryId: randomUUID() });
 		}
 	}
 
