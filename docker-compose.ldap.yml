@@ -6,7 +6,7 @@
 # It is rroemhild/docker-test-openldap: an OpenLDAP pre-seeded with the Planet Express
 # crew under ou=people,dc=planetexpress,dc=com (admin: cn=admin,dc=planetexpress,dc=com /
 # GoodNewsEveryone), with the memberOf overlay enabled, so group -> role mapping works
-# out of the box. Nothing persists; `down` throws it away. Settings to paste into the page are in
+# out of the box. Nothing is kept: `down -v` removes the container and its volumes. Settings to paste into the page are in
 # configuration_example/README.md ("Trying it out with a test directory").
 #
 # Plain LDAP is on 10389 and LDAPS (self-signed certificate) on 10636, on localhost

@@ -115,14 +115,14 @@ Then, in **Settings → Users → Directory login (LDAP)**:
 | Admin groups       | `cn=admin_staff,ou=people,dc=planetexpress,dc=com`                                                                                 |
 | Viewer groups      | `cn=ship_crew,ou=people,dc=planetexpress,dc=com`                                                                                   |
 
-Press **Test connection** with `professor@planetexpress.com` to see the admin role, or `fry@planetexpress.com` for viewer; `zoidberg@planetexpress.com` is in neither group and shows what a refused user looks like. Save, switch LDAP on, sign out, and log in as `fry@planetexpress.com` with password `fry`. The directory listens on `localhost` only (its admin password is public). If OpsiMate itself runs in Docker, attach its container to the `opsimate-ldap-test` network and use the container name instead of `localhost` — this works the same with Docker Desktop and Docker Engine on Linux:
+Press **Test connection** with `professor@planetexpress.com` to see the admin role, or `fry@planetexpress.com` for viewer; `zoidberg@planetexpress.com` is in neither group and shows what a refused user looks like. Switch LDAP on, Save, sign out, and log in as `fry@planetexpress.com` with password `fry`. The directory listens on `localhost` only (its admin password is public). If OpsiMate itself runs in Docker, attach its container to the `opsimate-ldap-test` network and use the container name instead of `localhost` — this works the same with Docker Desktop and Docker Engine on Linux:
 
 ```bash
 docker network connect opsimate-ldap-test <opsimate-server-container>
 # Server URL: ldap://test-ldap:10389  (or ldaps://test-ldap:10636)
 ```
 
-(For Compose-managed OpsiMate, add `opsimate-ldap-test` as an external network on the server service instead.) `docker compose -f docker-compose.ldap.yml down` throws the directory away.
+(For Compose-managed OpsiMate, add `opsimate-ldap-test` as an external network on the server service instead.) `docker compose -f docker-compose.ldap.yml down -v` throws the directory away, volumes included.
 
 For deployments configured as code, you can set the same options on the server instead. If config.yml has an `ldap:` section or any `LDAP_*` variable is set, the server configuration takes priority, and the Settings page shows it read-only.
 

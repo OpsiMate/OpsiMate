@@ -139,10 +139,13 @@ describe('LdapSettings', () => {
 		// Once in the summary, once under the field.
 		expect(screen.getAllByText(/Expected ldap:\/\/host/)).toHaveLength(2);
 		expect(screen.getByLabelText('Search base')).toHaveAttribute('aria-invalid', 'true');
+		// Screen readers read the field's error with the field.
+		expect(screen.getByLabelText('Server URL')).toHaveAccessibleDescription(/Expected ldap:\/\/host/);
 
 		// Editing the field retires its complaint.
 		fireEvent.change(screen.getByLabelText('Server URL'), { target: { value: 'ldaps://ok.example.com' } });
 		expect(screen.getByLabelText('Server URL')).not.toHaveAttribute('aria-invalid');
+		expect(screen.getByLabelText('Server URL')).not.toHaveAttribute('aria-describedby');
 	});
 
 	test('Test connection runs on unsaved edits without saving them', async () => {

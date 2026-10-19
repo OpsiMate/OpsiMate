@@ -190,6 +190,9 @@ const problemTarget = (problem: string): ProblemTarget | undefined => {
 // The part of a problem after the field name, for showing under that field.
 const problemText = (problem: string): string => problem.replace(/^[A-Za-z0-9_.]+:?\s*/, '').trim() || problem;
 
+// The id of a field's error line, so the invalid input can point at it (aria-describedby).
+const errorIdFor = (id: string): string => `${id}-error`;
+
 const Field = ({ id, label, hint, error, children }: FieldProps) => (
 	<div className="space-y-1.5">
 		<Label htmlFor={id} className="text-xs">
@@ -197,7 +200,7 @@ const Field = ({ id, label, hint, error, children }: FieldProps) => (
 		</Label>
 		{children}
 		{error ? (
-			<p className="text-xs text-destructive flex items-start gap-1" role="alert">
+			<p id={errorIdFor(id)} className="text-xs text-destructive flex items-start gap-1" role="alert">
 				<XCircle className="h-3 w-3 mt-0.5 shrink-0" /> {error}
 			</p>
 		) : (
@@ -340,6 +343,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 		value: form[key] as string,
 		disabled: locked,
 		'aria-invalid': fieldError(key) ? true : undefined,
+		'aria-describedby': fieldError(key) ? errorIdFor(`ldap-${key}`) : undefined,
 		onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
 			set(key, e.target.value as LdapForm[typeof key]),
 	});
@@ -619,6 +623,9 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 										autoComplete="new-password"
 										disabled={locked}
 										aria-invalid={fieldError('bindPassword') ? true : undefined}
+										aria-describedby={
+											fieldError('bindPassword') ? errorIdFor('ldap-bindPassword') : undefined
+										}
 										placeholder={
 											data.hasBindPassword
 												? '•••••••• (saved — type to replace it)'
@@ -776,6 +783,9 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 										type="email"
 										disabled={busy}
 										aria-invalid={fieldError('testEmail') ? true : undefined}
+										aria-describedby={
+											fieldError('testEmail') ? errorIdFor('ldap-testEmail') : undefined
+										}
 										placeholder="someone@example.com"
 										value={testEmail}
 										onChange={(e) => {
