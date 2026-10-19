@@ -236,6 +236,34 @@ describe('CallbackDispatcher: delivery', () => {
 	});
 });
 
+describe('CallbackDispatcher: connections', () => {
+	test('the response body is released on success and on a redirect, so the connection can be reused', async () => {
+		for (const status of [200, 302]) {
+			const { repo } = makeRepo([makeCallback()]);
+			let released = false;
+			const fetchImpl: typeof fetch = () =>
+				Promise.resolve(
+					new Response(
+						new ReadableStream<Uint8Array>({
+							pull: (controller) => controller.enqueue(new TextEncoder().encode('chunk')),
+							cancel: () => {
+								released = true;
+							},
+						}),
+						{ status }
+					)
+				);
+			const { dispatcher } = makeDispatcher(repo, fetchImpl);
+			await dispatcher.reload();
+
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await dispatcher.flush();
+
+			expect(released, `HTTP ${status}`).toBe(true);
+		}
+	});
+});
+
 describe('CallbackDispatcher: redirects', () => {
 	test('a user header replaces a default whatever its casing', async () => {
 		const { repo } = makeRepo([makeCallback({ headers: { 'content-type': 'text/plain', 'user-agent': 'mine' } })]);

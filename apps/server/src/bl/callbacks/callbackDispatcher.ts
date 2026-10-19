@@ -92,6 +92,16 @@ interface SendResult {
 const isRetryable = ({ statusCode }: SendResult): boolean =>
 	statusCode === undefined || statusCode >= 500 || statusCode === 408 || statusCode === 429;
 
+// Discards a body nobody reads: until it is consumed or cancelled, undici keeps the
+// connection busy and cannot reuse it for the next request.
+const releaseBody = async (res: Response): Promise<void> => {
+	try {
+		await res.body?.cancel();
+	} catch {
+		// Already consumed or errored: nothing left to release.
+	}
+};
+
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Sends callbacks for alert changes WITHOUT ever being on the request's path.
@@ -326,14 +336,19 @@ export class CallbackDispatcher {
 				// credentials, and fetch would forward them to wherever the redirect points.
 				redirect: 'manual',
 			});
-			if (res.ok) return { ok: true, statusCode: res.status, message: `Delivered (${res.status})` };
+			if (res.ok) {
+				await releaseBody(res);
+				return { ok: true, statusCode: res.status, message: `Delivered (${res.status})` };
+			}
 			if (res.status >= 300 && res.status < 400) {
+				await releaseBody(res);
 				return {
 					ok: false,
 					statusCode: res.status,
 					message: `HTTP ${res.status}: redirects are not followed, point the callback at the final URL`,
 				};
 			}
+			// Reading it also releases it.
 			const text = await res.text().catch(() => '');
 			return {
 				ok: false,
