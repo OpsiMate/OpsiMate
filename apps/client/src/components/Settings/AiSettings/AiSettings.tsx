@@ -119,14 +119,7 @@ export const AiSettings = () => {
 		<div className="space-y-4">
 			<SettingsSectionHeader
 				title="AI (beta)"
-				description={
-					<>
-						Bring your own Amazon Bedrock API key to power upcoming AI features. The key is stored encrypted on
-						your OpsiMate server, never reaches the browser, and is sent only to the endpoint configured here
-						(Amazon Bedrock unless you set a custom one). It can be removed at any time, and no alert data
-						leaves your server until an AI feature is explicitly used.
-					</>
-				}
+				description="Bring your own Amazon Bedrock API key to power upcoming AI features. The key is stored encrypted on your OpsiMate server, never reaches the browser, and is sent only to the endpoint configured here (Amazon Bedrock unless you set a custom one). It can be removed at any time, and no alert data leaves your server until an AI feature is explicitly used."
 			/>
 
 			<Card className="p-4 space-y-4">
