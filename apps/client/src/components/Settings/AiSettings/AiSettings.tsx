@@ -252,8 +252,13 @@ export const AiSettings = () => {
 							)}
 							Test connection
 						</Button>
-						<Button onClick={() => void save()} disabled={updateMutation.isPending || !dirty}>
-							{updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+						<Button
+							onClick={() => void save()}
+							disabled={updateMutation.isPending || !dirty}
+							className="gap-1.5"
+						>
+							{updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+							{updateMutation.isPending ? 'Saving…' : 'Save'}
 						</Button>
 					</div>
 				</div>
