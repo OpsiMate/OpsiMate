@@ -483,6 +483,32 @@ describe('CallbackDispatcher: bulk batching', () => {
 		]);
 	});
 
+	test('a large bulk is split into requests of at most 200 alerts, in order', async () => {
+		const { repo } = makeRepo([makeCallback()]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		await dispatcher.batched(() => {
+			for (let i = 0; i < 450; i++) {
+				dispatcher.emit({ event: 'silenced', alert: makeAlert(`a${i}`), actor, details: { comment: 'mw' } });
+			}
+			return Promise.resolve();
+		});
+		await dispatcher.flush();
+
+		const payloads = sent.map(parsePayload);
+		expect(payloads.map((p) => p.alerts.length)).toEqual([200, 200, 50]);
+		expect(payloads.flatMap((p) => p.alerts.map((a) => a.id))).toEqual(
+			Array.from({ length: 450 }, (_, i) => `a${i}`)
+		);
+		for (const payload of payloads) {
+			expect(payload).toMatchObject({ event: 'silenced', bulk: true, actor, details: { comment: 'mw' } });
+		}
+		// Separate deliveries, each with its own id.
+		expect(new Set(sent.map((r) => r.headers['X-OpsiMate-Delivery'])).size).toBe(3);
+	});
+
 	test('a bulk keeps its place in line: a single change emitted while it runs is delivered after it', async () => {
 		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'unsilenced'] })]);
 		const { sent, fetchImpl } = makeFetch();

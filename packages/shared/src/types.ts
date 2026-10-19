@@ -1004,8 +1004,10 @@ export interface AlertCallbackDetails {
 }
 
 // What a receiver gets. One shape for single and bulk changes: `alerts` holds one
-// alert for a single action and every affected alert for a bulk action (`bulk: true`),
-// so a bulk silence of 300 alerts is one request, not 300.
+// alert for a single action and the affected alerts for a bulk action (`bulk: true`),
+// so a bulk silence of 150 alerts is one request, not 150. A request carries at most
+// 200 alerts: a larger bulk arrives as several requests, in order, each `bulk: true`
+// with the same event, actor and details.
 export interface AlertCallbackPayload {
 	event: AlertCallbackEvent;
 	timestamp: string;

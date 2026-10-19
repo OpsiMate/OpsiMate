@@ -47,6 +47,9 @@ const MAX_ERROR_LENGTH = 500;
 // Deliveries waiting per callback while its receiver is slow or down. Beyond this the
 // newest are dropped (logged + counted) rather than holding every payload in memory.
 const MAX_PENDING_PER_CALLBACK = 500;
+// A bulk payload carries at most this many alerts; a larger bulk is several requests
+// (each `bulk: true`, same event, actor and details), sent in order.
+export const MAX_ALERTS_PER_REQUEST = 200;
 
 interface Delivery {
 	callback: AlertCallbackWithSecret;
@@ -143,9 +146,9 @@ export class CallbackDispatcher {
 	}
 
 	// Runs `fn` (a bulk operation) collecting its emits; when it finishes, each event
-	// seen becomes ONE payload carrying every alert it touched, delivered where the
-	// event's first emit stood in line. Per-alert details are the same across a bulk
-	// operation, so the first alert's are used.
+	// seen becomes ONE payload carrying every alert it touched (split by
+	// MAX_ALERTS_PER_REQUEST), delivered where the event's first emit stood in line.
+	// Per-alert details are the same across a bulk operation, so the first alert's are used.
 	async batched<T>(fn: () => Promise<T>): Promise<T> {
 		const batch: Batch = new Map();
 		try {
@@ -175,20 +178,18 @@ export class CallbackDispatcher {
 	private flushBatch(batch: Batch): void {
 		const timestamp = this.now().toISOString();
 		for (const [event, { inputs, fill }] of batch) {
-			fill(
-				inputs.length === 0
-					? []
-					: [
-							{
-								event,
-								timestamp,
-								actor: inputs[0].actor,
-								alerts: inputs.map((input) => input.alert),
-								details: inputs[0].details ?? {},
-								bulk: true,
-							},
-						]
-			);
+			const payloads: AlertCallbackPayload[] = [];
+			for (let start = 0; start < inputs.length; start += MAX_ALERTS_PER_REQUEST) {
+				payloads.push({
+					event,
+					timestamp,
+					actor: inputs[0].actor,
+					alerts: inputs.slice(start, start + MAX_ALERTS_PER_REQUEST).map((input) => input.alert),
+					details: inputs[0].details ?? {},
+					bulk: true,
+				});
+			}
+			fill(payloads);
 		}
 	}
 
