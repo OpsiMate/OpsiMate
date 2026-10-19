@@ -14,6 +14,14 @@ vi.mock('@/lib/api', () => ({
 
 type AuditResponse = Awaited<ReturnType<typeof auditApi.getAuditLogs>>;
 
+interface WrapperProps {
+	children: ReactNode;
+}
+
+interface HookProps {
+	pageNumber: number;
+}
+
 const auditLog = (id: number): AuditLog => ({
 	id,
 	timestamp: '2026-10-18T10:00:00.000Z',
@@ -30,7 +38,7 @@ const page = (id: number): AuditResponse => ({
 	data: { logs: [auditLog(id)], total: 2 },
 });
 
-const wrapper = ({ children }: { children: ReactNode }) => {
+const wrapper = ({ children }: WrapperProps) => {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: { retry: false },
@@ -55,10 +63,10 @@ describe('useAuditLogs', () => {
 			});
 		});
 
-		const { result, rerender } = renderHook(
-			({ pageNumber }: { pageNumber: number }) => useAuditLogs(pageNumber, 10),
-			{ wrapper, initialProps: { pageNumber: 1 } }
-		);
+		const { result, rerender } = renderHook(({ pageNumber }: HookProps) => useAuditLogs(pageNumber, 10), {
+			wrapper,
+			initialProps: { pageNumber: 1 },
+		});
 
 		await waitFor(() => expect(result.current.data?.logs[0]?.id).toBe(1));
 		expect(result.current.isPlaceholderData).toBe(false);

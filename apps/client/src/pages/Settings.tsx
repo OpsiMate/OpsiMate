@@ -709,6 +709,11 @@ const Settings: React.FC = () => {
 
 export default Settings;
 
+interface ActionBadgeProps {
+	variant: BadgeProps['variant'];
+	className: string;
+}
+
 export const AuditLogTable: React.FC = () => {
 	const pageSizeId = useId();
 	const [page, setPage] = useState(1);
@@ -719,7 +724,7 @@ export const AuditLogTable: React.FC = () => {
 
 	const totalPages = Math.ceil(total / pageSize);
 
-	const getActionBadgeProps = (action: string): { variant: BadgeProps['variant']; className: string } => {
+	const getActionBadgeProps = (action: string): ActionBadgeProps => {
 		switch (action) {
 			case 'CREATE':
 				return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
