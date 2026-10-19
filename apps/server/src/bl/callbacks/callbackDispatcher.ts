@@ -45,7 +45,8 @@ const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_RETRY_DELAYS_MS = [1_000, 5_000, 30_000];
 const MAX_ERROR_LENGTH = 500;
 // Deliveries waiting per callback while its receiver is slow or down. Beyond this the
-// newest are dropped (logged + counted) rather than holding every payload in memory.
+// OLDEST are dropped (logged + counted) rather than holding every payload in memory, so
+// once the receiver is back it ends on the latest state of each alert.
 const MAX_PENDING_PER_CALLBACK = 500;
 // A bulk payload carries at most this many alerts; a larger bulk is several requests
 // (each `bulk: true`, same event, actor and details), sent in order.
@@ -64,7 +65,10 @@ interface Delivery {
 // taken at the bulk's first emit, so a change emitted meanwhile by another request still
 // reaches the receiver after it. An empty list sends nothing.
 interface QueuedDelivery {
+	event: AlertCallbackEvent;
 	payloads: AlertCallbackPayload[] | Promise<AlertCallbackPayload[]>;
+	// Shed from a full backlog: skipped when its turn comes.
+	dropped: boolean;
 }
 
 // A bulk operation in progress, per event: the alerts collected so far and how to fill
@@ -82,6 +86,12 @@ interface SendResult {
 	message: string;
 }
 
+// Worth another attempt: no answer (network error, timeout), a server error, or a
+// receiver asking to come back later (408, 429). Any other 4xx (bad auth, gone, invalid)
+// and a redirect will answer the same way to a retry, so they fail at once.
+const isRetryable = ({ statusCode }: SendResult): boolean =>
+	statusCode === undefined || statusCode >= 500 || statusCode === 408 || statusCode === 429;
+
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Sends callbacks for alert changes WITHOUT ever being on the request's path.
@@ -96,7 +106,8 @@ const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => set
 export class CallbackDispatcher {
 	private subscriptions: AlertCallbackWithSecret[] = [];
 	private readonly lanes = new Map<number, Promise<void>>();
-	private readonly pending = new Map<number, number>();
+	// Per callback, the deliveries queued in its lane that have not started yet.
+	private readonly waiting = new Map<number, QueuedDelivery[]>();
 	private readonly batchScope = new AsyncLocalStorage<Batch>();
 	private readonly fetchImpl: typeof fetch;
 	private readonly requestTimeoutMs: number;
@@ -142,7 +153,7 @@ export class CallbackDispatcher {
 			details: input.details ?? {},
 			bulk: false,
 		};
-		this.enqueue(input.event, { payloads: [payload] });
+		this.enqueue(input.event, [payload]);
 	}
 
 	// Runs `fn` (a bulk operation) collecting its emits; when it finishes, each event
@@ -172,7 +183,7 @@ export class CallbackDispatcher {
 			fill = resolve;
 		});
 		batch.set(input.event, { inputs: [input], fill });
-		this.enqueue(input.event, { payloads });
+		this.enqueue(input.event, payloads);
 	}
 
 	private flushBatch(batch: Batch): void {
@@ -193,28 +204,38 @@ export class CallbackDispatcher {
 		}
 	}
 
-	private enqueue(event: AlertCallbackEvent, queued: QueuedDelivery): void {
+	private enqueue(event: AlertCallbackEvent, payloads: QueuedDelivery['payloads']): void {
 		for (const callback of this.subscriptions) {
 			if (!callback.events.includes(event)) continue;
-			const waiting = this.pending.get(callback.id) ?? 0;
-			if (waiting >= MAX_PENDING_PER_CALLBACK) {
-				logger.warn(`Callback "${callback.name}" has ${waiting} deliveries waiting; dropping ${event}`);
-				callbacksSentTotal.inc({ event, outcome: 'dropped' });
-				continue;
+			const waiting = this.waiting.get(callback.id) ?? [];
+			this.waiting.set(callback.id, waiting);
+			if (waiting.length >= MAX_PENDING_PER_CALLBACK) {
+				const oldest = waiting.shift();
+				if (oldest) {
+					oldest.dropped = true;
+					logger.warn(
+						`Callback "${callback.name}" has ${MAX_PENDING_PER_CALLBACK} deliveries waiting; dropping the oldest (${oldest.event})`
+					);
+					callbacksSentTotal.inc({ event: oldest.event, outcome: 'dropped' });
+				}
 			}
-			this.pending.set(callback.id, waiting + 1);
+			const queued: QueuedDelivery = { event, payloads, dropped: false };
+			waiting.push(queued);
 			const lane = this.lanes.get(callback.id) ?? Promise.resolve();
 			// The lane must survive anything deliver throws, or every later delivery for
 			// this callback would chain onto a rejected promise and never run.
 			const next = lane
 				.then(() => this.runQueued(callback, queued))
-				.catch((error: unknown) => logger.error(`Callback "${callback.name}" delivery crashed`, error))
-				.finally(() => this.pending.set(callback.id, (this.pending.get(callback.id) ?? 1) - 1));
+				.catch((error: unknown) => logger.error(`Callback "${callback.name}" delivery crashed`, error));
 			this.lanes.set(callback.id, next);
 		}
 	}
 
 	private async runQueued(callback: AlertCallbackWithSecret, queued: QueuedDelivery): Promise<void> {
+		if (queued.dropped) return;
+		const waiting = this.waiting.get(callback.id) ?? [];
+		const index = waiting.indexOf(queued);
+		if (index >= 0) waiting.splice(index, 1);
 		// A ready payload starts at once (no extra tick): only a bulk's place waits.
 		const payloads = Array.isArray(queued.payloads) ? queued.payloads : await queued.payloads;
 		for (const payload of payloads) {
@@ -246,6 +267,7 @@ export class CallbackDispatcher {
 			logger.warn(
 				`Callback "${target.name}" (${payload.event}) attempt ${attempt + 1} failed: ${result.message}`
 			);
+			if (!isRetryable(result)) break;
 		}
 		callbacksSentTotal.inc({ event: payload.event, outcome: result.ok ? 'success' : 'error' });
 		try {

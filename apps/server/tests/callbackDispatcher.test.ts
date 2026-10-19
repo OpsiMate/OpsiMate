@@ -313,6 +313,40 @@ describe('CallbackDispatcher: retries', () => {
 		expect(deliveries).toEqual([{ id: callback.id, status: 'error', error: 'HTTP 502 Error - nope' }]);
 	});
 
+	test('a permanent failure (4xx other than 408/429) is not retried', async () => {
+		for (const status of [400, 401, 403, 404, 410, 422]) {
+			const callback = makeCallback();
+			const { repo, deliveries } = makeRepo([callback]);
+			const { sent, fetchImpl } = makeFetch([status, 200]);
+			const { dispatcher, sleeps } = makeDispatcher(repo, fetchImpl, { retryDelaysMs: [1_000, 5_000, 30_000] });
+			await dispatcher.reload();
+
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await dispatcher.flush();
+
+			expect(sent, `HTTP ${status}`).toHaveLength(1);
+			expect(sleeps).toEqual([]);
+			expect(deliveries).toEqual([{ id: callback.id, status: 'error', error: `HTTP ${status} Error - nope` }]);
+		}
+	});
+
+	test('5xx, 408 and 429 are retried', async () => {
+		for (const status of [503, 408, 429]) {
+			const callback = makeCallback();
+			const { repo, deliveries } = makeRepo([callback]);
+			const { sent, fetchImpl } = makeFetch([status, 200]);
+			const { dispatcher, sleeps } = makeDispatcher(repo, fetchImpl, { retryDelaysMs: [1_000, 5_000, 30_000] });
+			await dispatcher.reload();
+
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await dispatcher.flush();
+
+			expect(sent, `HTTP ${status}`).toHaveLength(2);
+			expect(sleeps).toEqual([1_000]);
+			expect(deliveries).toEqual([{ id: callback.id, status: 'success', error: null }]);
+		}
+	});
+
 	test('a callback delivers its events in order, one at a time', async () => {
 		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'unsilenced'] })]);
 		const { sent, fetchImpl } = makeFetch([500, 200, 200]);
@@ -409,7 +443,7 @@ describe('CallbackDispatcher: resilience', () => {
 		expect(deliveries).toHaveLength(1);
 	});
 
-	test('a backlog beyond the cap sheds new deliveries instead of growing without bound', async () => {
+	test('a backlog beyond the cap sheds the OLDEST deliveries, so the receiver ends on the latest state', async () => {
 		const { repo } = makeRepo([makeCallback()]);
 		let release: () => void = () => {};
 		const gate = new Promise<void>((resolve) => {
@@ -428,6 +462,9 @@ describe('CallbackDispatcher: resilience', () => {
 		await dispatcher.flush();
 
 		expect(sent).toHaveLength(500);
+		const ids = sent.map((r) => parsePayload(r).alerts[0].id);
+		expect(ids[0]).toBe('a20');
+		expect(ids[ids.length - 1]).toBe('a519');
 	});
 });
 
