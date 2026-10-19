@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { FilterChange, diffFilterChanges, splitOwnerPaneCounts } from './Alerts.utils';
+import { FilterChange, diffFilterChanges, splitOwnerPaneCounts, getResolvedAlertDeleteHandler } from './Alerts.utils';
 import { ViewNotice, ViewNoticeAction } from './ViewNotice';
 import {
 	useAlertFacets,
@@ -1465,7 +1465,10 @@ const Alerts = () => {
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
-									onDeleteAlert={canDelete() ? confirmDeleteResolvedAlert : undefined}
+									onDeleteAlert={getResolvedAlertDeleteHandler(
+										canDelete(),
+										confirmDeleteResolvedAlert
+									)}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
