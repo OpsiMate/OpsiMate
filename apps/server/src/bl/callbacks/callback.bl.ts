@@ -88,7 +88,14 @@ export class CallbackBL {
 		if (existing) await this.recordAudit(AuditActionType.DELETE, existing, actor);
 	}
 
-	async test(target: CallbackTarget): Promise<AlertCallbackTestResult> {
+	// A typed secret signs the test; otherwise the saved secret of `callbackId` does (the
+	// page never sees that one again, so it cannot send it). Undefined = no such callback.
+	async test(target: CallbackTarget, callbackId?: number): Promise<AlertCallbackTestResult | undefined> {
+		if (!target.secret && callbackId !== undefined) {
+			const stored = await this.callbackRepo.getAlertCallbackWithSecret(callbackId);
+			if (!stored) return undefined;
+			return this.dispatcher.test({ ...target, secret: stored.secret });
+		}
 		return this.dispatcher.test(target);
 	}
 

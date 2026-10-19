@@ -69,13 +69,17 @@ export class CallbackController {
 	testHandler = async (req: Request, res: Response) => {
 		try {
 			const data = TestAlertCallbackSchema.parse(req.body);
-			const result = await this.callbackBL.test({
-				url: data.url,
-				method: data.method,
-				headers: data.headers ?? null,
-				bodyTemplate: data.bodyTemplate ?? null,
-				secret: data.secret ?? null,
-			});
+			const result = await this.callbackBL.test(
+				{
+					url: data.url,
+					method: data.method,
+					headers: data.headers ?? null,
+					bodyTemplate: data.bodyTemplate ?? null,
+					secret: data.secret ?? null,
+				},
+				data.callbackId
+			);
+			if (!result) return res.status(404).json({ success: false, error: 'Callback not found' });
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {

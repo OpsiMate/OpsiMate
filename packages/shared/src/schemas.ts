@@ -486,13 +486,16 @@ export const CreateAlertCallbackSchema = z.object({
 // Edits send only what changed (the list's on/off switch sends { enabled } alone).
 export const UpdateAlertCallbackSchema = z.object(alertCallbackFields).partial();
 
-// Sends one sample request with the given configuration — saved or not.
+// Sends one sample request with the given configuration — saved or not. With no secret
+// typed, `callbackId` signs the request with the saved secret of that callback (the page
+// never sees it after creation).
 export const TestAlertCallbackSchema = z.object({
 	url: alertCallbackFields.url,
 	method: alertCallbackFields.method.default('POST'),
 	headers: alertCallbackFields.headers,
 	bodyTemplate: alertCallbackFields.bodyTemplate,
 	secret: alertCallbackFields.secret,
+	callbackId: positiveIntegerIdSchema.optional(),
 });
 
 export const AlertCallbackIdSchema = z.object({
