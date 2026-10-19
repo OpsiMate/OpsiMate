@@ -78,9 +78,35 @@ const SETTINGS_TAB_BY_HASH: Record<string, string> = {
 	'custom-fields': 'custom-fields',
 };
 
+// Tabs only an admin gets; for anyone else their hash falls back to Users.
+const ADMIN_ONLY_TABS = new Set(['callbacks']);
+
 // Own keys only: a hash like #constructor must not pick up an Object.prototype member.
-const tabForHash = (hash: string): string =>
-	Object.prototype.hasOwnProperty.call(SETTINGS_TAB_BY_HASH, hash) ? SETTINGS_TAB_BY_HASH[hash] : 'users';
+const tabForHash = (hash: string, isAdmin: boolean): string => {
+	const tab = Object.prototype.hasOwnProperty.call(SETTINGS_TAB_BY_HASH, hash) ? SETTINGS_TAB_BY_HASH[hash] : 'users';
+	return !isAdmin && ADMIN_ONLY_TABS.has(tab) ? 'users' : tab;
+};
+
+interface AdminOnlyTabProps {
+	isAdmin: boolean;
+}
+
+// The Callbacks tab exists only for admins (the API is admin-only); the gating lives
+// here so the page component does not grow another branch per admin-only tab.
+const CallbacksTabTrigger = ({ isAdmin }: AdminOnlyTabProps) =>
+	isAdmin ? (
+		<TabsTrigger value="callbacks" className="justify-start gap-2">
+			<Webhook className="h-4 w-4" />
+			Callbacks
+		</TabsTrigger>
+	) : null;
+
+const CallbacksTabContent = ({ isAdmin }: AdminOnlyTabProps) =>
+	isAdmin ? (
+		<TabsContent value="callbacks" className="space-y-6">
+			<CallbackSettings />
+		</TabsContent>
+	) : null;
 
 const logger = new Logger('Settings');
 const PAGE_SIZE = 20;
@@ -243,7 +269,7 @@ const Settings: React.FC = () => {
 						{generalError && <ErrorAlert message={generalError} className="mb-6" />}
 
 						<Tabs
-							defaultValue={tabForHash((location.hash || '').replace('#', ''))}
+							defaultValue={tabForHash((location.hash || '').replace('#', ''), isAdmin)}
 							onValueChange={(v) => {
 								const map: Record<string, string> = {
 									users: 'Users',
@@ -283,12 +309,7 @@ const Settings: React.FC = () => {
 											<Sparkle className="h-4 w-4" />
 											AI (Beta)
 										</TabsTrigger>
-										{isAdmin && (
-											<TabsTrigger value="callbacks" className="justify-start gap-2">
-												<Webhook className="h-4 w-4" />
-												Callbacks
-											</TabsTrigger>
-										)}
+										<CallbacksTabTrigger isAdmin={isAdmin} />
 									</TabsList>
 								</div>
 								<div className="flex-1">
@@ -625,11 +646,7 @@ const Settings: React.FC = () => {
 										<RootCauseGuide />
 									</TabsContent>
 
-									{isAdmin && (
-										<TabsContent value="callbacks" className="space-y-6">
-											<CallbackSettings />
-										</TabsContent>
-									)}
+									<CallbacksTabContent isAdmin={isAdmin} />
 
 									<TabsContent value="secrets" className="space-y-6">
 										<div className="flex justify-between items-center">

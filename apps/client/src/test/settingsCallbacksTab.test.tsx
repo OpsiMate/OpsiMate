@@ -49,11 +49,11 @@ describe('Settings: Callbacks tab', () => {
 		expect(await screen.findByRole('tab', { name: 'Callbacks' })).toHaveAttribute('aria-selected', 'true');
 	});
 
-	test('a non-admin gets no Callbacks tab, even from #callbacks', async () => {
+	test('a non-admin gets no Callbacks tab; #callbacks lands on Users, not a blank page', async () => {
 		userState.role = Role.Editor;
 		window.location.hash = '#callbacks';
 		render(<Settings />);
-		expect(await screen.findByRole('tab', { name: 'Users' })).toBeInTheDocument();
+		expect(await screen.findByRole('tab', { name: 'Users' })).toHaveAttribute('aria-selected', 'true');
 		expect(screen.queryByRole('tab', { name: 'Callbacks' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: /new callback/i })).not.toBeInTheDocument();
 	});
