@@ -1,5 +1,5 @@
 import { LdapSettings } from '@/components/Settings/LdapSettings';
-import { LdapSettings as LdapSettingsData } from '@OpsiMate/shared';
+import { LdapSettings as LdapSettingsData, UpdateLdapSettings } from '@OpsiMate/shared';
 import { LdapRequestError } from '@/hooks/queries/ldap';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -194,7 +194,7 @@ describe('LdapSettings', () => {
 	});
 
 	test('Remove password switches the form off too, even with unsaved edits', async () => {
-		mutateAsync.mockImplementation(async (updates: { bindPassword?: string | null }) => {
+		mutateAsync.mockImplementation(async (updates: UpdateLdapSettings) => {
 			if (updates.bindPassword === null) {
 				settingsState.current = settings({ enabled: false, hasBindPassword: false });
 			}
