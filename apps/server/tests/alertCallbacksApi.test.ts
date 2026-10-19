@@ -135,10 +135,13 @@ beforeAll(async () => {
 	receiverUrl = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}`;
 });
 
-beforeEach(() => {
+beforeEach(async () => {
 	received = [];
 	respondWith = 200;
-	db.exec('DELETE FROM alert_callbacks');
+	// Through the API, not the table: each delete reloads the dispatcher's in-memory
+	// subscriptions, so a callback from an earlier test cannot fire in a later one.
+	const existing = (await auth(app.get('/api/v1/callbacks'))).body.data as AlertCallback[];
+	for (const callback of existing) await auth(app.delete(`/api/v1/callbacks/${callback.id}`));
 	db.exec('DELETE FROM audit_logs');
 });
 
