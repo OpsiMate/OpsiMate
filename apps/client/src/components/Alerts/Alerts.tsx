@@ -1465,7 +1465,7 @@ const Alerts = () => {
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
-									onDeleteAlert={confirmDeleteResolvedAlert}
+									onDeleteAlert={canDelete() ? confirmDeleteResolvedAlert : undefined}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}

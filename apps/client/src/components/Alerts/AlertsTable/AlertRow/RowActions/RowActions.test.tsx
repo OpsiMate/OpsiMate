@@ -1,5 +1,5 @@
-import { Role } from '@OpsiMate/shared';
-import { fireEvent, render, screen } from '@/test/test-utils';
+import { Alert, AlertSeverity, AlertStatus, Role } from '@OpsiMate/shared';
+import { render, screen } from '@/test/test-utils';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getUserRole } from '@/lib/auth';
@@ -7,7 +7,20 @@ import { RowActions } from './RowActions';
 
 vi.mock('@/lib/auth', () => ({ getUserRole: vi.fn() }));
 
-const alert = { id: 'alert-1', isResolved: true, isSilenced: false } as any;
+const alert: Alert = {
+	id: 'alert-1',
+	type: 'Custom',
+	status: AlertStatus.RESOLVED,
+	severity: AlertSeverity.WARNING,
+	tags: {},
+	startsAt: '2026-10-19T00:00:00.000Z',
+	updatedAt: '2026-10-19T00:00:00.000Z',
+	alertUrl: '',
+	alertName: 'Test alert',
+	createdAt: '2026-10-19T00:00:00.000Z',
+	isSilenced: false,
+	isResolved: true,
+};
 
 describe('RowActions permissions', () => {
 	beforeEach(() => {
