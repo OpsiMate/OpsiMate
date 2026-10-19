@@ -17,6 +17,7 @@ import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	Action,
 	Alert,
+	AlertCallback,
 	AlertComment,
 	AlertRootCause,
 	AlertEnrichment,
@@ -55,6 +56,7 @@ export interface PlaygroundState {
 	auditLogs: AuditLog[];
 	mutePolicies: MutePolicy[];
 	actions: Action[];
+	callbacks: AlertCallback[];
 	enrichments: AlertEnrichment[];
 	enrichmentVersions: Record<number, AlertEnrichmentVersion[]>;
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
@@ -74,6 +76,8 @@ export interface OncallTeamState {
 }
 
 const nowIso = () => new Date().toISOString();
+// The server's SQLite CURRENT_TIMESTAMP format (UTC, no zone marker), which the client reads with parseUTCDate.
+const sqliteTimestampAgo = (ms: number) => new Date(Date.now() - ms).toISOString().slice(0, 19).replace('T', ' ');
 
 const createTags = (): Tag[] => [
 	{ id: 1, name: 'production', color: '#DC2626', createdAt: nowIso() },
@@ -235,6 +239,40 @@ const createMutePolicies = (): MutePolicy[] => [
 		endsAt: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
 		schedule: null,
 		reason: 'Load testing in staging',
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+];
+
+// Settings > Callbacks sample: one live receiver, one still off.
+const createCallbacks = (): AlertCallback[] => [
+	{
+		id: 1,
+		name: 'Ticketing sync',
+		url: 'https://tickets.example.com/hooks/opsimate',
+		method: 'POST',
+		headers: { Authorization: 'Bearer ••••••' },
+		bodyTemplate: null,
+		events: ['resolved', 'owner_assigned', 'comment_added'],
+		enabled: true,
+		lastStatus: 'success',
+		lastError: null,
+		lastSentAt: sqliteTimestampAgo(12 * 60 * 1000),
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 2,
+		name: 'Silence audit',
+		url: 'https://audit.example.com/opsimate',
+		method: 'PUT',
+		headers: null,
+		bodyTemplate: '{"event":"{{event}}","alerts":"{{alertIds}}","by":"{{actor.name}}"}',
+		events: ['silenced', 'unsilenced'],
+		enabled: false,
+		lastStatus: 'error',
+		lastError: 'HTTP 503 Service Unavailable',
+		lastSentAt: sqliteTimestampAgo(3 * 24 * 60 * 60 * 1000),
 		createdAt: nowIso(),
 		updatedAt: nowIso(),
 	},
@@ -442,6 +480,7 @@ export const playgroundState: PlaygroundState = {
 	auditLogs: createAuditLogs(),
 	mutePolicies: createMutePolicies(),
 	actions: createActions(),
+	callbacks: createCallbacks(),
 	enrichments: initialEnrichments,
 	enrichmentVersions: createEnrichmentVersions(initialEnrichments),
 	alertHistoryEvents: {},
