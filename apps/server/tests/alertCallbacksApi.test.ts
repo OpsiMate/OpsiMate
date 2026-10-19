@@ -1,7 +1,9 @@
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import {
+	ALERT_CALLBACK_EVENTS,
 	AlertCallback,
+	AlertCallbackEvent,
 	AlertCallbackPayload,
 	AlertCallbackWithSecret,
 	AlertStatus,
@@ -266,6 +268,37 @@ describe('Callbacks API: configuration', () => {
 	});
 });
 
+describe('Callbacks API: test with a saved secret', () => {
+	test('callbackId signs the test with the stored secret; a typed secret wins; unknown id is 404', async () => {
+		const created = (await createCallback(baseCallback('/probe-saved', ['silenced']))).body
+			.data as AlertCallbackWithSecret;
+		const testBody = { url: `${receiverUrl}/probe-saved`, method: 'POST' };
+
+		const saved = await auth(app.post('/api/v1/callbacks/test')).send({ ...testBody, callbackId: created.id });
+		expect(saved.status).toBe(200);
+		expect(saved.body.data.ok).toBe(true);
+		await waitFor(() => received.length >= 1, 'saved-secret test');
+		expect(received[0].headers['x-opsimate-signature']).toBe(
+			signCallback(created.secret, Number(received[0].headers['x-opsimate-timestamp']), received[0].body)
+		);
+
+		const typed = await auth(app.post('/api/v1/callbacks/test')).send({
+			...testBody,
+			callbackId: created.id,
+			secret: 'typed-secret-wins',
+		});
+		expect(typed.status).toBe(200);
+		await waitFor(() => received.length >= 2, 'typed-secret test');
+		expect(received[1].headers['x-opsimate-signature']).toBe(
+			signCallback('typed-secret-wins', Number(received[1].headers['x-opsimate-timestamp']), received[1].body)
+		);
+
+		expect((await auth(app.post('/api/v1/callbacks/test')).send({ ...testBody, callbackId: 987654 })).status).toBe(
+			404
+		);
+	});
+});
+
 describe('Callbacks: delivery on alert changes', () => {
 	test('silencing an alert reaches the receiver after the change is committed, signed, with the actor', async () => {
 		insertAlert('cb-silence-1', 'Disk full');
@@ -428,5 +461,106 @@ describe('Callbacks: delivery on alert changes', () => {
 		expect(received[0].method).toBe('PUT');
 		expect(received[0].headers['x-token']).toBe('abc');
 		expect(received[0].body).toBe('event=unsilenced alert=Templated by=Provider User n=1');
+	});
+
+	// Every event in ALERT_CALLBACK_EVENTS, triggered through the API in one alert's life,
+	// against a callback subscribed to all of them. Adding an event to the list without a
+	// trigger here fails the exhaustiveness check at the end.
+	test('every callback event fires through the API, in order, signed, with its own delivery id', async () => {
+		insertAlert('cb-all-1', 'Everything');
+		const callback = (await createCallback(baseCallback('/all', [...ALERT_CALLBACK_EVENTS]))).body
+			.data as AlertCallbackWithSecret;
+		const action = await auth(app.post('/api/v1/actions')).send({
+			name: 'Ping',
+			type: 'http',
+			config: { url: `${receiverUrl}/action-side-effect`, method: 'POST' },
+		});
+		expect(action.status).toBe(201);
+		const actionId = action.body.data.id as number;
+
+		const steps: Array<{ run: () => Test; expect: Array<[AlertCallbackEvent, Record<string, unknown>]> }> = [
+			{
+				run: () => auth(app.patch('/api/v1/alerts/cb-all-1/owner')).send({ ownerId: '1' }),
+				expect: [['owner_assigned', { ownerId: '1', ownerName: 'Provider User' }]],
+			},
+			{
+				run: () => auth(app.patch('/api/v1/alerts/cb-all-1/owner')).send({ ownerId: null }),
+				expect: [['owner_unassigned', { ownerId: null, ownerName: null }]],
+			},
+			{
+				// Silencing also hands the alert to whoever silenced it.
+				run: () => auth(app.patch('/api/v1/alerts/cb-all-1/silence')).send({ silencedUntil: null }),
+				expect: [
+					['silenced', { silencedUntil: null }],
+					['owner_assigned', { ownerId: '1', ownerName: 'Provider User' }],
+				],
+			},
+			{ run: () => auth(app.patch('/api/v1/alerts/cb-all-1/unsilence')), expect: [['unsilenced', {}]] },
+			{
+				run: () => auth(app.post('/api/v1/alerts/cb-all-1/comments')).send({ comment: 'looking' }),
+				expect: [['comment_added', { comment: 'looking' }]],
+			},
+			{
+				run: () =>
+					auth(app.post(`/api/v1/actions/${actionId}/run`)).send({
+						alert: { id: 'cb-all-1', alertName: 'Everything' },
+					}),
+				expect: [['action_run', { actionName: 'Ping' }]],
+			},
+			{ run: () => auth(app.delete('/api/v1/alerts/cb-all-1')), expect: [['resolved', { comment: null }]] },
+			{
+				run: () => auth(app.patch('/api/v1/alerts/resolved/cb-all-1/unresolve')),
+				expect: [['unresolved', {}]],
+			},
+			{ run: () => auth(app.delete('/api/v1/alerts/cb-all-1')), expect: [['resolved', { comment: null }]] },
+			{ run: () => auth(app.delete('/api/v1/alerts/resolved/cb-all-1')), expect: [['deleted', {}]] },
+		];
+
+		const expected: Array<[AlertCallbackEvent, Record<string, unknown>]> = [];
+		for (const [i, step] of steps.entries()) {
+			const res = await step.run();
+			expect(res.status, `step ${i + 1} (${step.expect.map(([event]) => event).join(', ')})`).toBeLessThan(300);
+			expected.push(...step.expect);
+		}
+		const deliveries = () => received.filter((r) => r.path === '/all');
+		await waitFor(() => deliveries().length >= expected.length, 'every callback event');
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		const all = deliveries();
+		expect(all).toHaveLength(expected.length);
+
+		// Order, payload and transport, request by request.
+		const payloads = all.map(payloadOf);
+		expect(payloads.map((p) => [p.event, p.details])).toEqual(expected);
+		const ids = new Set<string>();
+		for (const [i, request] of all.entries()) {
+			const payload = payloads[i];
+			expect(request.method).toBe('POST');
+			expect(request.headers['content-type']).toBe('application/json');
+			expect(request.headers['x-opsimate-event']).toBe(payload.event);
+			expect(request.headers['x-opsimate-signature']).toBe(
+				signCallback(callback.secret, Number(request.headers['x-opsimate-timestamp']), request.body)
+			);
+			expect(Math.abs(Number(request.headers['x-opsimate-timestamp']) * 1000 - Date.now())).toBeLessThan(60_000);
+			ids.add(request.headers['x-opsimate-delivery'] as string);
+			expect(payload.bulk).toBe(false);
+			expect(payload.actor).toEqual({ id: '1', name: 'Provider User' });
+			expect(payload.alerts.map((a) => a.id)).toEqual(['cb-all-1']);
+			expect(Date.parse(payload.timestamp)).not.toBeNaN();
+		}
+		// Each delivery has its own id (retries would share one, see the dispatcher tests).
+		expect(ids.size).toBe(all.length);
+
+		// The alert's state travels with each event.
+		const byEvent = (event: AlertCallbackEvent) => payloads.filter((p) => p.event === event);
+		expect(byEvent('silenced')[0].alerts[0].isSilenced).toBe(true);
+		expect(byEvent('unsilenced')[0].alerts[0].isSilenced).toBe(false);
+		expect(byEvent('owner_assigned').map((p) => p.alerts[0].ownerId)).toEqual(['1', '1']);
+		expect(byEvent('owner_unassigned')[0].alerts[0].ownerId ?? null).toBeNull();
+		expect(byEvent('resolved').every((p) => p.alerts[0].status === AlertStatus.RESOLVED)).toBe(true);
+		expect(byEvent('unresolved')[0].alerts[0].status).toBe(AlertStatus.FIRING);
+		expect(byEvent('deleted')[0].alerts[0].status).toBe(AlertStatus.RESOLVED);
+
+		// Exhaustiveness: nothing in ALERT_CALLBACK_EVENTS went untested.
+		expect([...new Set(payloads.map((p) => p.event))].sort()).toEqual([...ALERT_CALLBACK_EVENTS].sort());
 	});
 });
