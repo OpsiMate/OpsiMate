@@ -2,6 +2,8 @@ import { CallbackSettings, callbackFormErrors, rowsToHeaders } from '@/component
 import { AlertCallback } from '@OpsiMate/shared';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import type { UpdateCallbackInput } from '@/hooks/queries/callbacks';
+import type { AlertCallbackTestInput } from '@/lib/api';
 import { AllTheProviders } from './TestProviders';
 
 // Settings > Callbacks. The query hooks are mocked at the module boundary: these tests
@@ -19,7 +21,12 @@ interface ListState {
 	current: AlertCallback[];
 }
 
-const { calls, listState } = vi.hoisted((): { calls: MutationCalls; listState: ListState } => ({
+interface HoistedState {
+	calls: MutationCalls;
+	listState: ListState;
+}
+
+const { calls, listState } = vi.hoisted((): HoistedState => ({
 	calls: { create: vi.fn(), update: vi.fn(), remove: vi.fn(), test: vi.fn() },
 	listState: { current: [] },
 }));
@@ -87,6 +94,21 @@ describe('callbackFormErrors and rowsToHeaders', () => {
 			url: 'Enter the URL to send to.',
 		});
 		expect(callbackFormErrors({ name: 'x', url: 'https://a.test/h', events: ['silenced'] })).toEqual({});
+	});
+
+	test("checks the server's limits: name length, header names and values, secret length", () => {
+		const valid = { name: 'x', url: 'https://a.test/h', events: ['silenced' as const] };
+		expect(callbackFormErrors({ ...valid, name: 'n'.repeat(101) }).name).toMatch(/under 100/);
+		expect(callbackFormErrors({ ...valid, url: `https://a.test/${'p'.repeat(2000)}` }).url).toMatch(/2000/);
+		expect(callbackFormErrors({ ...valid, headerRows: [{ key: 'X_Api_Key', value: 'v' }] }).headers).toMatch(
+			/X_Api_Key/
+		);
+		expect(callbackFormErrors({ ...valid, headerRows: [{ key: 'X-Token', value: 'a\nb' }] }).headers).toMatch(
+			/line breaks/
+		);
+		expect(callbackFormErrors({ ...valid, secret: 'short' }).secret).toMatch(/8 to 200/);
+		// Blank rows and an empty secret (keep or generate) are fine.
+		expect(callbackFormErrors({ ...valid, headerRows: [{ key: ' ', value: '' }], secret: '' })).toEqual({});
 	});
 
 	test('blank header rows are dropped and an empty set is sent as null', () => {
@@ -220,6 +242,22 @@ describe('CallbackFormDialog', () => {
 		expect((payload.events as string[]).length).toBe(9);
 	});
 
+	test('a header name the server would refuse shows under the headers and blocks Create and Send test', async () => {
+		const d = openNew();
+		fireEvent.change(within(d).getByLabelText('Name'), { target: { value: 'Keyed' } });
+		fireEvent.change(within(d).getByLabelText('URL'), { target: { value: 'https://keyed.test/' } });
+		fireEvent.click(within(d).getByRole('button', { name: 'All' }));
+		fireEvent.click(within(d).getByRole('button', { name: 'Add' }));
+		fireEvent.change(within(d).getByLabelText('Header 1 name'), { target: { value: 'X_Api_Key' } });
+		fireEvent.change(within(d).getByLabelText('Header 1 value'), { target: { value: 'abc' } });
+
+		fireEvent.click(within(d).getByRole('button', { name: 'Create' }));
+		expect(await within(d).findByText(/X_Api_Key.*letters, digits and dashes/)).toBeInTheDocument();
+		fireEvent.click(within(d).getByRole('button', { name: 'Send test' }));
+		expect(calls.create).not.toHaveBeenCalled();
+		expect(calls.test).not.toHaveBeenCalled();
+	});
+
 	test('Send test uses the current fields and shows the receiver answer, without saving', async () => {
 		const d = openNew();
 		fireEvent.change(within(d).getByLabelText('URL'), { target: { value: 'https://probe.test/x' } });
@@ -261,7 +299,7 @@ describe('CallbackFormDialog', () => {
 
 		await waitFor(() => expect(calls.test).toHaveBeenCalledTimes(1));
 		expect(calls.test.mock.calls[0][0]).toMatchObject({ url: 'https://tickets.example.com/hook', callbackId: 1 });
-		expect((calls.test.mock.calls[0][0] as { secret?: string }).secret).toBeUndefined();
+		expect((calls.test.mock.calls[0][0] as AlertCallbackTestInput).secret).toBeUndefined();
 	});
 
 	test('editing prefills the callback, never shows the secret, and sends the full payload', async () => {
@@ -311,9 +349,7 @@ describe('CallbackFormDialog', () => {
 		fireEvent.click(within(d).getByRole('button', { name: 'Save' }));
 
 		await waitFor(() => expect(calls.update).toHaveBeenCalledTimes(1));
-		expect((calls.update.mock.calls[0][0] as { payload: { secret?: string } }).payload.secret).toBe(
-			'brand-new-secret'
-		);
+		expect((calls.update.mock.calls[0][0] as UpdateCallbackInput).payload.secret).toBe('brand-new-secret');
 		await waitFor(() => expect(within(d).getByText('Copy your signing secret')).toBeInTheDocument());
 		expect(within(d).getByText(/The secret was rotated/)).toBeInTheDocument();
 		expect(within(d).getByLabelText('Signing secret')).toHaveValue('brand-new-secret');

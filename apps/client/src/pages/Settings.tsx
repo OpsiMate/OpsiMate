@@ -78,6 +78,10 @@ const SETTINGS_TAB_BY_HASH: Record<string, string> = {
 	'custom-fields': 'custom-fields',
 };
 
+// Own keys only: a hash like #constructor must not pick up an Object.prototype member.
+const tabForHash = (hash: string): string =>
+	Object.prototype.hasOwnProperty.call(SETTINGS_TAB_BY_HASH, hash) ? SETTINGS_TAB_BY_HASH[hash] : 'users';
+
 const logger = new Logger('Settings');
 const PAGE_SIZE = 20;
 
@@ -239,7 +243,7 @@ const Settings: React.FC = () => {
 						{generalError && <ErrorAlert message={generalError} className="mb-6" />}
 
 						<Tabs
-							defaultValue={SETTINGS_TAB_BY_HASH[(location.hash || '').replace('#', '')] ?? 'users'}
+							defaultValue={tabForHash((location.hash || '').replace('#', ''))}
 							onValueChange={(v) => {
 								const map: Record<string, string> = {
 									users: 'Users',
@@ -279,10 +283,12 @@ const Settings: React.FC = () => {
 											<Sparkle className="h-4 w-4" />
 											AI (Beta)
 										</TabsTrigger>
-										<TabsTrigger value="callbacks" className="justify-start gap-2">
-											<Webhook className="h-4 w-4" />
-											Callbacks
-										</TabsTrigger>
+										{isAdmin && (
+											<TabsTrigger value="callbacks" className="justify-start gap-2">
+												<Webhook className="h-4 w-4" />
+												Callbacks
+											</TabsTrigger>
+										)}
 									</TabsList>
 								</div>
 								<div className="flex-1">
@@ -619,9 +625,11 @@ const Settings: React.FC = () => {
 										<RootCauseGuide />
 									</TabsContent>
 
-									<TabsContent value="callbacks" className="space-y-6">
-										<CallbackSettings />
-									</TabsContent>
+									{isAdmin && (
+										<TabsContent value="callbacks" className="space-y-6">
+											<CallbackSettings />
+										</TabsContent>
+									)}
 
 									<TabsContent value="secrets" className="space-y-6">
 										<div className="flex justify-between items-center">

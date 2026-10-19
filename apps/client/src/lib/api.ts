@@ -642,7 +642,7 @@ export const actionsApi = {
 
 // Alert callbacks (admin only): outbound requests sent after a user changes an alert.
 // (Named Input, not Payload: AlertCallbackPayload in @OpsiMate/shared is what a receiver gets.)
-export type AlertCallbackInput = {
+export interface AlertCallbackInput {
 	name: string;
 	url: string;
 	method: AlertCallbackMethod;
@@ -652,19 +652,21 @@ export type AlertCallbackInput = {
 	enabled: boolean;
 	// Omitted on create (the server generates one); sent to rotate it.
 	secret?: string;
-};
+}
 
 // With no secret typed, callbackId has the server sign the test with that callback's
 // saved secret — the page never sees it after creation.
-export type AlertCallbackTestInput = Pick<
+export interface AlertCallbackTestInput extends Pick<
 	AlertCallbackInput,
 	'url' | 'method' | 'headers' | 'bodyTemplate' | 'secret'
-> & {
+> {
 	callbackId?: number;
-};
+}
 
 // An update carries the secret back only when this edit rotated it.
-export type AlertCallbackUpdated = AlertCallback & { secret?: string };
+export interface AlertCallbackUpdated extends AlertCallback {
+	secret?: string;
+}
 
 export const callbacksApi = {
 	listCallbacks: () => apiRequest<AlertCallback[]>('/callbacks'),

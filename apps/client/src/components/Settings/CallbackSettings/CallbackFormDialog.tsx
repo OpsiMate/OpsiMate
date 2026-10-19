@@ -112,6 +112,12 @@ const EventsPicker = ({ selected, onChange, error }: EventsPickerProps) => {
 	);
 };
 
+// The secret a save just produced, shown once (rotated: it replaced an earlier one).
+interface RevealedSecret {
+	secret: string;
+	rotated: boolean;
+}
+
 interface HeadersEditorProps {
 	rows: HeaderRow[];
 	onChange: (rows: HeaderRow[]) => void;
@@ -292,7 +298,7 @@ const CallbackForm = ({ callback, onCancel, onSaved }: CallbackFormProps) => {
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
-		const nextErrors = callbackFormErrors({ name, url, events });
+		const nextErrors = callbackFormErrors({ name, url, events, headerRows, secret });
 		setErrors(nextErrors);
 		if (Object.keys(nextErrors).length > 0) return;
 		try {
@@ -323,9 +329,12 @@ const CallbackForm = ({ callback, onCancel, onSaved }: CallbackFormProps) => {
 			name: name || 'test',
 			url,
 			events: events.length ? events : ['silenced'],
+			headerRows,
+			secret,
 		});
-		setErrors((current) => ({ ...current, url: nextErrors.url }));
-		if (nextErrors.url) return;
+		const { url: urlError, headers: headersError, secret: secretError } = nextErrors;
+		setErrors((current) => ({ ...current, url: urlError, headers: headersError, secret: secretError }));
+		if (urlError || headersError || secretError) return;
 		setTestResult(null);
 		try {
 			const result = await testMutation.mutateAsync({
@@ -413,7 +422,14 @@ const CallbackForm = ({ callback, onCancel, onSaved }: CallbackFormProps) => {
 
 				<EventsPicker selected={events} onChange={setEvents} error={errors.events} />
 
-				<HeadersEditor rows={headerRows} onChange={setHeaderRows} />
+				<div className="space-y-1">
+					<HeadersEditor rows={headerRows} onChange={setHeaderRows} />
+					{errors.headers && (
+						<p className="text-xs text-destructive" role="alert">
+							{errors.headers}
+						</p>
+					)}
+				</div>
 
 				<div className="space-y-2">
 					<Label htmlFor={bodyId} className="text-xs">
@@ -466,7 +482,13 @@ const CallbackForm = ({ callback, onCancel, onSaved }: CallbackFormProps) => {
 								isEditing ? 'New secret (at least 8 characters)' : 'Leave empty to generate one'
 							}
 							className="font-mono text-xs"
+							aria-invalid={!!errors.secret}
 						/>
+					)}
+					{errors.secret && (
+						<p className="text-xs text-destructive" role="alert">
+							{errors.secret}
+						</p>
 					)}
 					<p className="text-xs text-muted-foreground">
 						Every request carries X-OpsiMate-Timestamp and X-OpsiMate-Signature:
@@ -520,7 +542,7 @@ const CallbackForm = ({ callback, onCancel, onSaved }: CallbackFormProps) => {
 
 export const CallbackFormDialog = ({ open, onOpenChange, callback }: CallbackFormDialogProps) => {
 	// A save that produced a secret keeps the dialog open on the reveal step.
-	const [revealed, setRevealed] = useState<{ secret: string; rotated: boolean } | null>(null);
+	const [revealed, setRevealed] = useState<RevealedSecret | null>(null);
 	const close = () => {
 		setRevealed(null);
 		onOpenChange(false);
