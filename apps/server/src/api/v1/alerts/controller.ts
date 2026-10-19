@@ -872,12 +872,15 @@ export class AlertController {
 			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
 			// the acting user (unlike the integration webhooks, which resolve without one).
 			// The resolver becomes the alert's owner, and an optional resolve note is stored
-			// as a regular comment.
+			// as a regular comment. Webhook senders still call this route with the API token
+			// (no user) to report recovery: that is a source-reported recovery, so it fires
+			// no callback.
 			await this.alertBL.resolveAlert(
 				alertId,
 				// String() — the JWT carries the id as a number; comments store it as TEXT.
 				{ id: req.user != null ? String(req.user.id) : null, name: req.user?.fullName ?? null },
-				comment
+				comment,
+				{ fireCallback: req.user != null }
 			);
 			return res.json({ success: true, message: 'Alert deleted successfully' });
 		} catch (error) {

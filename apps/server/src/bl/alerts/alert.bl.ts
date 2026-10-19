@@ -146,6 +146,15 @@ interface ResolveActiveOptions {
 	comment?: string;
 	// The alert as the source described it in its resolve (see applySourceMetadata).
 	sourceAlert?: IncomingAlert;
+	// False keeps a manual resolve from firing the `resolved` callback (see ManualResolveOptions).
+	fireCallback?: boolean;
+}
+
+export interface ManualResolveOptions {
+	// False for a resolve that is really a source reporting recovery through the manual
+	// route (a webhook sender calling DELETE /alerts/:id with the API token): it is
+	// recorded as before, but fires no callback, like any source-reported recovery.
+	fireCallback?: boolean;
 }
 
 interface ManualResolveActor {
@@ -909,8 +918,13 @@ export class AlertBL {
 		return { resolved: false, created: true };
 	}
 
-	async resolveAlert(activeAlertId: string, manualActor?: ManualResolveActor, comment?: string): Promise<boolean> {
-		return this.resolveActive(activeAlertId, { manualActor, comment });
+	async resolveAlert(
+		activeAlertId: string,
+		manualActor?: ManualResolveActor,
+		comment?: string,
+		options: ManualResolveOptions = {}
+	): Promise<boolean> {
+		return this.resolveActive(activeAlertId, { manualActor, comment, fireCallback: options.fireCallback });
 	}
 
 	// What a source sent along with its resolve, applied over the firing alert: the same
@@ -941,7 +955,7 @@ export class AlertBL {
 	}
 
 	private async resolveActive(activeAlertId: string, options: ResolveActiveOptions): Promise<boolean> {
-		const { manualActor, comment, sourceAlert } = options;
+		const { manualActor, comment, sourceAlert, fireCallback = true } = options;
 		await this.drainIngest();
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
@@ -979,18 +993,20 @@ export class AlertBL {
 				}
 
 				// The alert as it now sits in the resolved table.
-				await this.emitCallback(
-					'resolved',
-					{
-						...alert,
-						status: AlertStatus.RESOLVED,
-						isSilenced: false,
-						isResolved: true,
-						ownerId: takesOwnership ? manualActor.id : alert.ownerId,
-					},
-					manualActor,
-					{ comment: comment ?? null }
-				);
+				if (fireCallback) {
+					await this.emitCallback(
+						'resolved',
+						{
+							...alert,
+							status: AlertStatus.RESOLVED,
+							isSilenced: false,
+							isResolved: true,
+							ownerId: takesOwnership ? manualActor.id : alert.ownerId,
+						},
+						manualActor,
+						{ comment: comment ?? null }
+					);
+				}
 
 				if (comment && manualActor.id != null) {
 					await this.createComment(

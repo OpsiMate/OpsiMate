@@ -96,7 +96,7 @@ export class ActionBL {
 						event: 'action_run',
 						alert: stored,
 						actor,
-						details: { actionName: action.name },
+						details: { actionName: action.name, ok: result.ok },
 					});
 				}
 			} catch (error) {

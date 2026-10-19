@@ -31,6 +31,10 @@ export type CreateAlertCallbackInput = Omit<
 >;
 export type UpdateAlertCallbackInput = Partial<CreateAlertCallbackInput>;
 
+export interface CreateAlertCallbackResult {
+	lastID: number;
+}
+
 const KNOWN_EVENTS = new Set<string>(ALERT_CALLBACK_EVENTS);
 
 const parseEvents = (raw: string): AlertCallbackEvent[] => {
@@ -113,7 +117,7 @@ export class AlertCallbackRepository {
 		});
 	}
 
-	async createAlertCallback(data: CreateAlertCallbackInput): Promise<{ lastID: number }> {
+	async createAlertCallback(data: CreateAlertCallbackInput): Promise<CreateAlertCallbackResult> {
 		return runAsync(() => {
 			const result = this.db
 				.prepare(

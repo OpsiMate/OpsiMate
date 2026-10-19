@@ -982,7 +982,9 @@ export interface AlertCallback {
 // The secret signs every request: X-OpsiMate-Signature: sha256=<hex HMAC-SHA256 of
 // "<timestamp>.<body>">. It comes back from create and from a rotation — the moments
 // an admin has to copy it — and never from list or get.
-export type AlertCallbackWithSecret = AlertCallback & { secret: string };
+export interface AlertCallbackWithSecret extends AlertCallback {
+	secret: string;
+}
 
 // Who made the change. The id is a user id when the request carried one (JWT), null for
 // an API-token caller.
@@ -992,18 +994,23 @@ export interface AlertCallbackActor {
 }
 
 // Event-specific extras. Every key is optional: a silence carries silencedUntil and
-// maybe a comment, an assignment carries the owner, an action run its name.
+// maybe a comment, an assignment carries the owner, an action run its name and outcome.
 export interface AlertCallbackDetails {
 	silencedUntil?: string | null;
 	comment?: string | null;
 	ownerId?: string | null;
 	ownerName?: string | null;
 	actionName?: string | null;
+	// action_run: whether the run succeeded (for an HTTP action that sends without
+	// waiting for a response: that the request went out).
+	ok?: boolean;
 }
 
 // What a receiver gets. One shape for single and bulk changes: `alerts` holds one
-// alert for a single action and every affected alert for a bulk action (`bulk: true`),
-// so a bulk silence of 300 alerts is one request, not 300.
+// alert for a single action and the affected alerts for a bulk action (`bulk: true`),
+// so a bulk silence of 150 alerts is one request, not 150. A request carries at most
+// 200 alerts: a larger bulk arrives as several requests, in order, each `bulk: true`
+// with the same event, actor and details.
 export interface AlertCallbackPayload {
 	event: AlertCallbackEvent;
 	timestamp: string;

@@ -105,10 +105,15 @@ const makeFetch = (statuses: number[] = [200]) => {
 	return { sent, fetchImpl: fetchImpl as unknown as typeof fetch };
 };
 
+interface TestDispatcherOptions {
+	retryDelaysMs?: number[];
+	requestTimeoutMs?: number;
+}
+
 const makeDispatcher = (
 	repo: AlertCallbackRepository,
 	fetchImpl: typeof fetch,
-	options: { retryDelaysMs?: number[]; requestTimeoutMs?: number } = {}
+	options: TestDispatcherOptions = {}
 ) => {
 	const sleeps: number[] = [];
 	const dispatcher = new CallbackDispatcher(repo, {
@@ -231,7 +236,52 @@ describe('CallbackDispatcher: delivery', () => {
 	});
 });
 
+describe('CallbackDispatcher: connections', () => {
+	test('the response body is released on success and on a redirect, so the connection can be reused', async () => {
+		for (const status of [200, 302]) {
+			const { repo } = makeRepo([makeCallback()]);
+			let released = false;
+			const fetchImpl: typeof fetch = () =>
+				Promise.resolve(
+					new Response(
+						new ReadableStream<Uint8Array>({
+							pull: (controller) => controller.enqueue(new TextEncoder().encode('chunk')),
+							cancel: () => {
+								released = true;
+							},
+						}),
+						{ status }
+					)
+				);
+			const { dispatcher } = makeDispatcher(repo, fetchImpl);
+			await dispatcher.reload();
+
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await dispatcher.flush();
+
+			expect(released, `HTTP ${status}`).toBe(true);
+		}
+	});
+});
+
 describe('CallbackDispatcher: redirects', () => {
+	test('a user header replaces a default whatever its casing', async () => {
+		const { repo } = makeRepo([makeCallback({ headers: { 'content-type': 'text/plain', 'user-agent': 'mine' } })]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor, details: { silencedUntil: null } });
+		await dispatcher.flush();
+
+		const sentHeaders = new Headers(sent[0].headers);
+		expect(sentHeaders.get('content-type')).toBe('text/plain');
+		expect(sentHeaders.get('user-agent')).toBe('mine');
+		expect(Object.keys(sent[0].headers).filter((k) => k.toLowerCase() === 'content-type')).toEqual([
+			'content-type',
+		]);
+	});
+
 	test('a redirect is not followed (the auth headers would travel with it) and counts as a failure', async () => {
 		const callback = makeCallback({ headers: { Authorization: 'Bearer abc' } });
 		const { repo, deliveries } = makeRepo([callback]);
@@ -289,6 +339,40 @@ describe('CallbackDispatcher: retries', () => {
 		expect(sent).toHaveLength(3);
 		expect(sleeps).toEqual([10, 20]);
 		expect(deliveries).toEqual([{ id: callback.id, status: 'error', error: 'HTTP 502 Error - nope' }]);
+	});
+
+	test('a permanent failure (4xx other than 408/429) is not retried', async () => {
+		for (const status of [400, 401, 403, 404, 410, 422]) {
+			const callback = makeCallback();
+			const { repo, deliveries } = makeRepo([callback]);
+			const { sent, fetchImpl } = makeFetch([status, 200]);
+			const { dispatcher, sleeps } = makeDispatcher(repo, fetchImpl, { retryDelaysMs: [1_000, 5_000, 30_000] });
+			await dispatcher.reload();
+
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await dispatcher.flush();
+
+			expect(sent, `HTTP ${status}`).toHaveLength(1);
+			expect(sleeps).toEqual([]);
+			expect(deliveries).toEqual([{ id: callback.id, status: 'error', error: `HTTP ${status} Error - nope` }]);
+		}
+	});
+
+	test('5xx, 408 and 429 are retried', async () => {
+		for (const status of [503, 408, 429]) {
+			const callback = makeCallback();
+			const { repo, deliveries } = makeRepo([callback]);
+			const { sent, fetchImpl } = makeFetch([status, 200]);
+			const { dispatcher, sleeps } = makeDispatcher(repo, fetchImpl, { retryDelaysMs: [1_000, 5_000, 30_000] });
+			await dispatcher.reload();
+
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await dispatcher.flush();
+
+			expect(sent, `HTTP ${status}`).toHaveLength(2);
+			expect(sleeps).toEqual([1_000]);
+			expect(deliveries).toEqual([{ id: callback.id, status: 'success', error: null }]);
+		}
 	});
 
 	test('a callback delivers its events in order, one at a time', async () => {
@@ -387,7 +471,7 @@ describe('CallbackDispatcher: resilience', () => {
 		expect(deliveries).toHaveLength(1);
 	});
 
-	test('a backlog beyond the cap sheds new deliveries instead of growing without bound', async () => {
+	test('a backlog beyond the cap sheds the OLDEST deliveries, so the receiver ends on the latest state', async () => {
 		const { repo } = makeRepo([makeCallback()]);
 		let release: () => void = () => {};
 		const gate = new Promise<void>((resolve) => {
@@ -406,6 +490,9 @@ describe('CallbackDispatcher: resilience', () => {
 		await dispatcher.flush();
 
 		expect(sent).toHaveLength(500);
+		const ids = sent.map((r) => parsePayload(r).alerts[0].id);
+		expect(ids[0]).toBe('a20');
+		expect(ids[ids.length - 1]).toBe('a519');
 	});
 });
 
@@ -459,6 +546,77 @@ describe('CallbackDispatcher: bulk batching', () => {
 			['x1', 'x2'],
 			['y1', 'y2', 'y3'],
 		]);
+	});
+
+	test('a large bulk is split into requests of at most 200 alerts, in order', async () => {
+		const { repo } = makeRepo([makeCallback()]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		await dispatcher.batched(() => {
+			for (let i = 0; i < 450; i++) {
+				dispatcher.emit({ event: 'silenced', alert: makeAlert(`a${i}`), actor, details: { comment: 'mw' } });
+			}
+			return Promise.resolve();
+		});
+		await dispatcher.flush();
+
+		const payloads = sent.map(parsePayload);
+		expect(payloads.map((p) => p.alerts.length)).toEqual([200, 200, 50]);
+		expect(payloads.flatMap((p) => p.alerts.map((a) => a.id))).toEqual(
+			Array.from({ length: 450 }, (_, i) => `a${i}`)
+		);
+		for (const payload of payloads) {
+			expect(payload).toMatchObject({ event: 'silenced', bulk: true, actor, details: { comment: 'mw' } });
+		}
+		// Separate deliveries, each with its own id.
+		expect(new Set(sent.map((r) => r.headers['X-OpsiMate-Delivery'])).size).toBe(3);
+	});
+
+	test('a bulk keeps its place in line: a single change emitted while it runs is delivered after it', async () => {
+		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'unsilenced'] })]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		let finish: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		const bulk = dispatcher.batched(async () => {
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await gate;
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a2'), actor });
+		});
+		// Another request unsilences a1 while the bulk is still running.
+		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		finish();
+		await bulk;
+		await dispatcher.flush();
+
+		expect(sent.map((r) => [parsePayload(r).event, parsePayload(r).alerts.map((a) => a.id)])).toEqual([
+			['silenced', ['a1', 'a2']],
+			['unsilenced', ['a1']],
+		]);
+	});
+
+	test('a bulk that throws still releases its place in line', async () => {
+		const { repo } = makeRepo([makeCallback({ events: ['silenced', 'unsilenced'] })]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		const bulk = dispatcher.batched(async () => {
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await Promise.resolve();
+			throw new Error('boom');
+		});
+		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		await expect(bulk).rejects.toThrow('boom');
+		await dispatcher.flush();
+
+		expect(sent.map((r) => parsePayload(r).event)).toEqual(['silenced', 'unsilenced']);
 	});
 
 	test('a batch with nothing emitted sends nothing, and the error from the operation propagates', async () => {
