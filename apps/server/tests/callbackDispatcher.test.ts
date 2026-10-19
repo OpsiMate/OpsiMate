@@ -1,4 +1,4 @@
-import { Alert, AlertCallback, AlertCallbackPayload, AlertSeverity, AlertStatus } from '@OpsiMate/shared';
+import { Alert, AlertCallbackPayload, AlertCallbackWithSecret, AlertSeverity, AlertStatus } from '@OpsiMate/shared';
 import { describe, expect, test, vi } from 'vitest';
 import { AlertCallbackRepository } from '../src/dal/alertCallbackRepository';
 import { CallbackDispatcher, renderBody, signCallback } from '../src/bl/callbacks/callbackDispatcher';
@@ -14,24 +14,31 @@ interface RecordedDelivery {
 }
 
 interface FakeRepo {
-	callbacks: AlertCallback[];
+	callbacks: AlertCallbackWithSecret[];
 	deliveries: RecordedDelivery[];
 	repo: AlertCallbackRepository;
 }
 
-const makeRepo = (callbacks: AlertCallback[]): FakeRepo => {
+// `callbacks` is read on every reload, so a test can edit it to stand in for an admin's save.
+const makeRepo = (callbacks: AlertCallbackWithSecret[]): FakeRepo => {
 	const deliveries: RecordedDelivery[] = [];
 	const repo = {
-		getEnabledAlertCallbacks: async () => callbacks.filter((c) => c.enabled),
-		recordDelivery: async (id: number, status: string, error: string | null) => {
+		getEnabledAlertCallbacks: () => Promise.resolve(callbacks.filter((c) => c.enabled)),
+		recordDelivery: (id: number, status: string, error: string | null) => {
 			deliveries.push({ id, status, error });
+			return Promise.resolve();
 		},
 	} as unknown as AlertCallbackRepository;
 	return { callbacks, deliveries, repo };
 };
 
+// What fetch was called with, as strings.
+const urlOf = (input: string | URL | Request): string =>
+	typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+const bodyOf = (init?: RequestInit): string => (typeof init?.body === 'string' ? init.body : '');
+
 let nextId = 1;
-const makeCallback = (overrides: Partial<AlertCallback> = {}): AlertCallback => ({
+const makeCallback = (overrides: Partial<AlertCallbackWithSecret> = {}): AlertCallbackWithSecret => ({
 	id: nextId++,
 	name: 'Receiver',
 	url: 'https://receiver.test/hook',
@@ -79,10 +86,10 @@ const makeFetch = (statuses: number[] = [200]) => {
 	const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
 		const status = statuses[Math.min(sent.length, statuses.length - 1)];
 		sent.push({
-			url: String(input),
+			url: urlOf(input),
 			method: init?.method ?? 'GET',
 			headers: init?.headers as Record<string, string>,
-			body: String(init?.body),
+			body: bodyOf(init),
 		});
 		if (status === 0) {
 			return new Promise((_resolve, reject) => {
@@ -108,8 +115,9 @@ const makeDispatcher = (
 		fetch: fetchImpl,
 		retryDelaysMs: options.retryDelaysMs ?? [],
 		requestTimeoutMs: options.requestTimeoutMs ?? 5_000,
-		sleep: async (ms) => {
+		sleep: (ms) => {
 			sleeps.push(ms);
+			return Promise.resolve();
 		},
 		now: () => new Date('2026-10-15T10:00:00.000Z'),
 	});
@@ -197,9 +205,9 @@ describe('CallbackDispatcher: delivery', () => {
 		const { repo, deliveries } = makeRepo([stuck, fine]);
 		const sent: SentRequest[] = [];
 		const fineAnswered: string[] = [];
-		const fetchImpl = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-			sent.push({ url: String(input), method: 'POST', headers: {}, body: String(init?.body) });
-			if (String(input).startsWith('https://stuck')) {
+		const fetchImpl: typeof fetch = async (input, init) => {
+			sent.push({ url: urlOf(input), method: 'POST', headers: {}, body: bodyOf(init) });
+			if (urlOf(input).startsWith('https://stuck')) {
 				return new Promise((_resolve, reject) => {
 					init?.signal?.addEventListener('abort', () => {
 						const error = new Error('aborted');
@@ -208,9 +216,9 @@ describe('CallbackDispatcher: delivery', () => {
 					});
 				});
 			}
-			fineAnswered.push(String(input));
+			fineAnswered.push(urlOf(input));
 			return new Response('ok', { status: 200 });
-		}) as unknown as typeof fetch;
+		};
 		const { dispatcher } = makeDispatcher(repo, fetchImpl, { requestTimeoutMs: 20 });
 		await dispatcher.reload();
 
@@ -263,6 +271,9 @@ describe('CallbackDispatcher: retries', () => {
 		expect(sent).toHaveLength(3);
 		expect(sleeps).toEqual([1_000, 5_000]);
 		expect(deliveries).toEqual([{ id: callback.id, status: 'success', error: null }]);
+		// Every attempt carries the same delivery id, so a receiver that handled the first
+		// try (and answered too late) can tell the retry is a repeat.
+		expect(new Set(sent.map((r) => r.headers['X-OpsiMate-Delivery'])).size).toBe(1);
 	});
 
 	test('gives up after the last retry and records the error', async () => {
@@ -292,6 +303,39 @@ describe('CallbackDispatcher: retries', () => {
 
 		// silenced (failed), silenced (retry ok), unsilenced
 		expect(sent.map((r) => r.headers['X-OpsiMate-Event'])).toEqual(['silenced', 'silenced', 'unsilenced']);
+		const ids = sent.map((r) => r.headers['X-OpsiMate-Delivery']);
+		expect(ids[0]).toBe(ids[1]);
+		expect(ids[2]).not.toBe(ids[0]);
+	});
+
+	test('an edit made while a delivery waits applies to it: new URL, rotated secret', async () => {
+		const callback = makeCallback({ events: ['silenced', 'unsilenced'] });
+		const { repo, callbacks } = makeRepo([callback]);
+		let release: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const { sent, fetchImpl } = makeFetch();
+		let calls = 0;
+		// Only the first request is held: it is in flight while the admin saves.
+		const gatedFetch: typeof fetch = async (input, init) => {
+			if (calls++ === 0) await gate;
+			return fetchImpl(input, init);
+		};
+		const { dispatcher } = makeDispatcher(repo, gatedFetch);
+		await dispatcher.reload();
+
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		callbacks[0] = { ...callback, url: 'https://moved.test/hook', secret: 'rotated-secret' };
+		await dispatcher.reload();
+		release();
+		await dispatcher.flush();
+
+		expect(sent.map((r) => r.url)).toEqual(['https://receiver.test/hook', 'https://moved.test/hook']);
+		expect(sent[1].headers['X-OpsiMate-Signature']).toBe(
+			signCallback('rotated-secret', Number(sent[1].headers['X-OpsiMate-Timestamp']), sent[1].body)
+		);
 	});
 });
 
@@ -300,11 +344,11 @@ describe('CallbackDispatcher: resilience', () => {
 		const callback = makeCallback({ events: ['silenced', 'unsilenced'] });
 		const { repo, deliveries } = makeRepo([callback]);
 		let calls = 0;
-		const fetchImpl = (async (): Promise<Response> => {
+		const fetchImpl: typeof fetch = () => {
 			calls++;
-			if (calls === 1) throw new Error('synchronous explosion');
-			return new Response('ok', { status: 200 });
-		}) as unknown as typeof fetch;
+			if (calls === 1) return Promise.reject(new Error('synchronous explosion'));
+			return Promise.resolve(new Response('ok', { status: 200 }));
+		};
 		const { dispatcher } = makeDispatcher(repo, fetchImpl);
 		await dispatcher.reload();
 
@@ -324,10 +368,10 @@ describe('CallbackDispatcher: resilience', () => {
 			release = resolve;
 		});
 		const { sent, fetchImpl } = makeFetch();
-		const gatedFetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+		const gatedFetch: typeof fetch = async (input, init) => {
 			await gate;
 			return fetchImpl(input, init);
-		}) as unknown as typeof fetch;
+		};
 		const { dispatcher } = makeDispatcher(repo, gatedFetch);
 		await dispatcher.reload();
 
@@ -350,10 +394,10 @@ describe('CallbackDispatcher: resilience', () => {
 			release = resolve;
 		});
 		const { sent, fetchImpl } = makeFetch();
-		const gatedFetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+		const gatedFetch: typeof fetch = async (input, init) => {
 			await gate;
 			return fetchImpl(input, init);
-		}) as unknown as typeof fetch;
+		};
 		const { dispatcher } = makeDispatcher(repo, gatedFetch);
 		await dispatcher.reload();
 
@@ -372,13 +416,13 @@ describe('CallbackDispatcher: bulk batching', () => {
 		const { dispatcher } = makeDispatcher(repo, fetchImpl);
 		await dispatcher.reload();
 
-		const result = await dispatcher.batched(async () => {
+		const result = await dispatcher.batched(() => {
 			for (const id of ['a1', 'a2', 'a3']) {
 				dispatcher.emit({ event: 'silenced', alert: makeAlert(id), actor, details: { silencedUntil: null } });
 				dispatcher.emit({ event: 'owner_assigned', alert: makeAlert(id), actor, details: { ownerId: '7' } });
 			}
 			expect(sent).toHaveLength(0);
-			return 'done';
+			return Promise.resolve('done');
 		});
 		expect(result).toBe('done');
 		await dispatcher.flush();
@@ -423,11 +467,11 @@ describe('CallbackDispatcher: bulk batching', () => {
 		const { dispatcher } = makeDispatcher(repo, fetchImpl);
 		await dispatcher.reload();
 
-		await dispatcher.batched(async () => {});
+		await dispatcher.batched(() => Promise.resolve());
 		await expect(
-			dispatcher.batched(async () => {
+			dispatcher.batched(() => {
 				dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
-				throw new Error('boom');
+				return Promise.reject(new Error('boom'));
 			})
 		).rejects.toThrow('boom');
 		await dispatcher.flush();

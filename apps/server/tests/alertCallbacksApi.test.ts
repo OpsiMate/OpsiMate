@@ -1,6 +1,12 @@
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
-import { AlertCallback, AlertCallbackPayload, AuditResourceType } from '@OpsiMate/shared';
+import {
+	AlertCallback,
+	AlertCallbackPayload,
+	AlertCallbackWithSecret,
+	AlertStatus,
+	AuditResourceType,
+} from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { SuperTest, Test } from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
@@ -76,7 +82,7 @@ beforeAll(async () => {
 			body += chunk.toString();
 		});
 		req.on('end', () => {
-			let silencedInDbOnArrival: boolean | null = null;
+			let silencedInDbOnArrival: boolean | null;
 			try {
 				const alertId = (JSON.parse(body) as AlertCallbackPayload).alerts?.[0]?.id;
 				const row = db.prepare('SELECT is_dismissed FROM alerts WHERE id = ?').get(alertId) as
@@ -117,16 +123,19 @@ describe('Callbacks API: configuration', () => {
 	test('a new callback is OFF by default and gets a generated secret', async () => {
 		const res = await createCallback({ name: 'Pager', url: 'https://pager.test/hook', events: ['silenced'] });
 		expect(res.status).toBe(201);
-		const callback: AlertCallback = res.body.data;
+		const callback: AlertCallbackWithSecret = res.body.data;
 		expect(callback.enabled).toBe(false);
 		expect(callback.method).toBe('POST');
 		expect(callback.secret).toMatch(/^[0-9a-f]{48}$/);
 		expect(callback.events).toEqual(['silenced']);
 		expect(callback.lastStatus).toBeNull();
 
+		// The secret is handed out on create (and rotate) only: list and get leave it out.
 		const list = await auth(app.get('/api/v1/callbacks'));
 		expect(list.status).toBe(200);
 		expect(list.body.data.map((c: AlertCallback) => c.id)).toEqual([callback.id]);
+		expect(list.body.data[0]).not.toHaveProperty('secret');
+		expect((await auth(app.get(`/api/v1/callbacks/${callback.id}`))).body.data).not.toHaveProperty('secret');
 	});
 
 	test('validation: a URL, at least one known event, unique events', async () => {
@@ -193,6 +202,8 @@ describe('Callbacks API: configuration', () => {
 		expect(toggled.status).toBe(200);
 		expect(toggled.body.data.enabled).toBe(true);
 		expect(toggled.body.data.url).toBe('https://pager.test/hook');
+		// An edit that does not rotate the secret does not return it.
+		expect(toggled.body.data).not.toHaveProperty('secret');
 
 		const rotated = await auth(app.put(`/api/v1/callbacks/${created.id}`)).send({ secret: 'my-own-secret-value' });
 		expect(rotated.body.data.secret).toBe('my-own-secret-value');
@@ -259,7 +270,7 @@ describe('Callbacks: delivery on alert changes', () => {
 	test('silencing an alert reaches the receiver after the change is committed, signed, with the actor', async () => {
 		insertAlert('cb-silence-1', 'Disk full');
 		const callback = (await createCallback(baseCallback('/silence', ['silenced', 'owner_assigned']))).body
-			.data as AlertCallback;
+			.data as AlertCallbackWithSecret;
 
 		const before = Date.now();
 		const res = await auth(app.patch('/api/v1/alerts/cb-silence-1/silence')).send({ silencedUntil: null });
@@ -346,7 +357,7 @@ describe('Callbacks: delivery on alert changes', () => {
 		expect(payload.event).toBe('resolved');
 		expect(payload.bulk).toBe(true);
 		expect(payload.alerts.map((a) => a.id).sort()).toEqual(['cb-bulk-1', 'cb-bulk-2', 'cb-bulk-3']);
-		expect(payload.alerts.every((a) => a.status === 'resolved')).toBe(true);
+		expect(payload.alerts.every((a) => a.status === AlertStatus.RESOLVED)).toBe(true);
 		expect(payload.actor.name).toBe('Provider User');
 	});
 

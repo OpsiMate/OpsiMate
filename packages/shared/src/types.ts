@@ -627,6 +627,10 @@ export interface HttpActionConfig {
 	method: HttpActionMethod;
 	headers?: Record<string, string> | null;
 	bodyTemplate?: string | null;
+	// "Don't wait for a response": the run is reported successful as soon as the request
+	// has been sent, without waiting for the receiver's status. For receivers that answer
+	// only once their work is done. Connection errors are still reported. Default false.
+	fireAndForget?: boolean | null;
 }
 
 export type ActionConfig = SlackActionConfig | TeamsActionConfig | JiraActionConfig | HttpActionConfig;
@@ -965,14 +969,17 @@ export interface AlertCallback {
 	events: AlertCallbackEvent[];
 	// Off until an admin switches it on: a freshly created callback never sends.
 	enabled: boolean;
-	// Signs every request body: X-OpsiMate-Signature: sha256=<hex HMAC-SHA256 of the body>.
-	secret: string;
 	lastStatus: AlertCallbackDeliveryStatus | null;
 	lastError: string | null;
 	lastSentAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
+
+// The secret signs every request: X-OpsiMate-Signature: sha256=<hex HMAC-SHA256 of
+// "<timestamp>.<body>">. It comes back from create and from a rotation — the moments
+// an admin has to copy it — and never from list or get.
+export type AlertCallbackWithSecret = AlertCallback & { secret: string };
 
 // Who made the change. The id is a user id when the request carried one (JWT), null for
 // an API-token caller.

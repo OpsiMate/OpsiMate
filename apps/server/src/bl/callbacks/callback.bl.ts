@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import {
 	AlertCallback,
 	AlertCallbackTestResult,
+	AlertCallbackWithSecret,
 	AuditActionType,
 	AuditResourceType,
 	Logger,
@@ -49,21 +50,30 @@ export class CallbackBL {
 		return this.callbackRepo.getAlertCallbackById(id);
 	}
 
-	async create(data: CreateCallbackData, actor?: User | null): Promise<AlertCallback> {
+	// The only responses that carry the secret are this one and a rotation: the admin
+	// has to copy it into the receiver, and afterwards it is never shown again.
+	async create(data: CreateCallbackData, actor?: User | null): Promise<AlertCallbackWithSecret> {
 		const { lastID } = await this.callbackRepo.createAlertCallback({
 			...data,
 			secret: data.secret ?? generateCallbackSecret(),
 		});
-		const created = await this.callbackRepo.getAlertCallbackById(lastID);
+		const created = await this.callbackRepo.getAlertCallbackWithSecret(lastID);
 		if (!created) throw new Error('Failed to retrieve created callback');
 		await this.dispatcher.reload();
 		await this.recordAudit(AuditActionType.CREATE, created, actor);
 		return created;
 	}
 
-	async update(id: number, data: UpdateAlertCallbackInput, actor?: User | null): Promise<AlertCallback | undefined> {
+	async update(
+		id: number,
+		data: UpdateAlertCallbackInput,
+		actor?: User | null
+	): Promise<AlertCallback | AlertCallbackWithSecret | undefined> {
 		await this.callbackRepo.updateAlertCallback(id, data);
-		const updated = await this.callbackRepo.getAlertCallbackById(id);
+		const updated =
+			data.secret !== undefined
+				? await this.callbackRepo.getAlertCallbackWithSecret(id)
+				: await this.callbackRepo.getAlertCallbackById(id);
 		if (updated) {
 			await this.dispatcher.reload();
 			await this.recordAudit(AuditActionType.UPDATE, updated, actor, JSON.stringify(auditableChanges(data)));

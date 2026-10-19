@@ -3,6 +3,7 @@ import {
 	ALERT_CALLBACK_EVENTS,
 	AlertCallback,
 	AlertCallbackDeliveryStatus,
+	AlertCallbackWithSecret,
 	AlertCallbackEvent,
 } from '@OpsiMate/shared';
 import { runAsync } from './db';
@@ -25,7 +26,7 @@ interface AlertCallbackRow {
 }
 
 export type CreateAlertCallbackInput = Omit<
-	AlertCallback,
+	AlertCallbackWithSecret,
 	'id' | 'createdAt' | 'updatedAt' | 'lastStatus' | 'lastError' | 'lastSentAt'
 >;
 export type UpdateAlertCallbackInput = Partial<CreateAlertCallbackInput>;
@@ -60,7 +61,9 @@ const parseHeaders = (raw: string | null): Record<string, string> | null => {
 export class AlertCallbackRepository {
 	constructor(private db: Database.Database) {}
 
-	private toShared = (row: AlertCallbackRow): AlertCallback => ({
+	// The full row, secret included: for the dispatcher (which signs with it) and for the
+	// two responses that hand the secret to the admin (create, rotate).
+	private toSharedWithSecret = (row: AlertCallbackRow): AlertCallbackWithSecret => ({
 		id: row.id,
 		name: row.name,
 		url: row.url,
@@ -76,6 +79,12 @@ export class AlertCallbackRepository {
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	});
+
+	// What list and get return: everything but the secret.
+	private toShared = (row: AlertCallbackRow): AlertCallback => {
+		const { secret: _secret, ...callback } = this.toSharedWithSecret(row);
+		return callback;
+	};
 
 	async initAlertCallbacksTable(): Promise<void> {
 		return runAsync(() => {
@@ -134,12 +143,12 @@ export class AlertCallbackRepository {
 		});
 	}
 
-	async getEnabledAlertCallbacks(): Promise<AlertCallback[]> {
+	async getEnabledAlertCallbacks(): Promise<AlertCallbackWithSecret[]> {
 		return runAsync(() => {
 			const rows = this.db
 				.prepare(`SELECT * FROM alert_callbacks WHERE enabled = 1 ORDER BY id`)
 				.all() as AlertCallbackRow[];
-			return rows.map(this.toShared);
+			return rows.map(this.toSharedWithSecret);
 		});
 	}
 
@@ -148,6 +157,14 @@ export class AlertCallbackRepository {
 			const row = this.db.prepare(`SELECT * FROM alert_callbacks WHERE id = ?`).get(id) as
 				AlertCallbackRow | undefined;
 			return row ? this.toShared(row) : undefined;
+		});
+	}
+
+	async getAlertCallbackWithSecret(id: number): Promise<AlertCallbackWithSecret | undefined> {
+		return runAsync(() => {
+			const row = this.db.prepare(`SELECT * FROM alert_callbacks WHERE id = ?`).get(id) as
+				AlertCallbackRow | undefined;
+			return row ? this.toSharedWithSecret(row) : undefined;
 		});
 	}
 

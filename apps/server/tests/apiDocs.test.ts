@@ -252,10 +252,9 @@ describe('documented responses match the real API', () => {
 			.send({ id: 'token-probe', alertName: 'Token probe', tags: {} });
 		const concrete = (path: string): string =>
 			path.replace(':alertId', 'token-probe').replace(':id', 'token-probe').replace(':integrationId', '999999');
+		const caller = api as unknown as HttpMethodCaller;
 		const send = (method: string, path: string) =>
-			(api as unknown as HttpMethodCaller)
-				[method as keyof HttpMethodCaller](concrete(path))
-				.set('x-api-token', token);
+			caller[method as keyof HttpMethodCaller](concrete(path)).set('x-api-token', token);
 
 		for (const route of API_ROUTE_DOCS.filter((doc) => doc.auth === 'user')) {
 			const res = await send(route.method, route.path).send({});
