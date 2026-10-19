@@ -21,6 +21,7 @@ import {
 	ResetPasswordSchema,
 	AdminUpdateUserSchema,
 	AdminResetPasswordSchema,
+	positiveIntegerIdSchema,
 } from '@OpsiMate/shared';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth';
@@ -132,10 +133,11 @@ export class UsersController {
 	};
 
 	deleteUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(routeParam(req, 'id'));
-		if (isNaN(userId)) {
+		const parsedUserId = positiveIntegerIdSchema.safeParse(routeParam(req, 'id'));
+		if (!parsedUserId.success) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
+		const userId = parsedUserId.data;
 		try {
 			const user = await this.userBL.getUserById(userId);
 			if (!user) {
@@ -224,10 +226,11 @@ export class UsersController {
 	};
 
 	updateUserPasswordHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(routeParam(req, 'id'));
-		if (isNaN(userId)) {
+		const parsedUserId = positiveIntegerIdSchema.safeParse(routeParam(req, 'id'));
+		if (!parsedUserId.success) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
+		const userId = parsedUserId.data;
 
 		try {
 			const { newPassword } = AdminResetPasswordSchema.parse(req.body);
@@ -265,10 +268,11 @@ export class UsersController {
 	};
 
 	updateUserHandler = async (req: AuthenticatedRequest, res: Response) => {
-		const userId = parseInt(routeParam(req, 'id'));
-		if (isNaN(userId)) {
+		const parsedUserId = positiveIntegerIdSchema.safeParse(routeParam(req, 'id'));
+		if (!parsedUserId.success) {
 			return res.status(400).json({ success: false, error: 'Invalid user ID' });
 		}
+		const userId = parsedUserId.data;
 
 		try {
 			const { fullName, email, role } = AdminUpdateUserSchema.parse(req.body);
