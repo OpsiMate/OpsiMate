@@ -239,7 +239,14 @@ export class CallbackDispatcher {
 		if (target.secret) {
 			headers['X-OpsiMate-Signature'] = signCallback(target.secret, sentAt, body);
 		}
-		for (const [key, value] of Object.entries(target.headers ?? {})) headers[key] = value;
+		// A user header replaces a default whatever its casing: header names are
+		// case-insensitive, and fetch would otherwise send both values joined.
+		for (const [key, value] of Object.entries(target.headers ?? {})) {
+			for (const existing of Object.keys(headers)) {
+				if (existing.toLowerCase() === key.toLowerCase()) delete headers[existing];
+			}
+			headers[key] = value;
+		}
 
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);

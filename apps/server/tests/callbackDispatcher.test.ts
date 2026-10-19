@@ -232,6 +232,23 @@ describe('CallbackDispatcher: delivery', () => {
 });
 
 describe('CallbackDispatcher: redirects', () => {
+	test('a user header replaces a default whatever its casing', async () => {
+		const { repo } = makeRepo([makeCallback({ headers: { 'content-type': 'text/plain', 'user-agent': 'mine' } })]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor, details: { silencedUntil: null } });
+		await dispatcher.flush();
+
+		const sentHeaders = new Headers(sent[0].headers);
+		expect(sentHeaders.get('content-type')).toBe('text/plain');
+		expect(sentHeaders.get('user-agent')).toBe('mine');
+		expect(Object.keys(sent[0].headers).filter((k) => k.toLowerCase() === 'content-type')).toEqual([
+			'content-type',
+		]);
+	});
+
 	test('a redirect is not followed (the auth headers would travel with it) and counts as a failure', async () => {
 		const callback = makeCallback({ headers: { Authorization: 'Bearer abc' } });
 		const { repo, deliveries } = makeRepo([callback]);
