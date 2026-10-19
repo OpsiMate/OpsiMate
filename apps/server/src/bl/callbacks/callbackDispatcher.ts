@@ -8,6 +8,7 @@ import {
 	AlertCallbackEvent,
 	AlertCallbackPayload,
 	AlertCallbackTestResult,
+	AlertCallbackWithSecret,
 	Logger,
 } from '@OpsiMate/shared';
 import { AlertCallbackRepository } from '../../dal/alertCallbackRepository';
@@ -48,8 +49,11 @@ const MAX_ERROR_LENGTH = 500;
 const MAX_PENDING_PER_CALLBACK = 500;
 
 interface Delivery {
-	callback: AlertCallback;
+	callback: AlertCallbackWithSecret;
 	payload: AlertCallbackPayload;
+	// One id for every attempt of this delivery (X-OpsiMate-Delivery), so a receiver that
+	// handled the first try but answered too late can recognise the retry as a repeat.
+	deliveryId: string;
 }
 
 interface SendResult {
@@ -70,7 +74,7 @@ const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => set
 // - `batched` collapses everything emitted while a bulk operation runs into one
 //   request per event, with every affected alert in `alerts`.
 export class CallbackDispatcher {
-	private subscriptions: AlertCallback[] = [];
+	private subscriptions: AlertCallbackWithSecret[] = [];
 	private readonly lanes = new Map<number, Promise<void>>();
 	private readonly pending = new Map<number, number>();
 	private readonly batchScope = new AsyncLocalStorage<CallbackEventInput[]>();
@@ -167,7 +171,7 @@ export class CallbackDispatcher {
 			// The lane must survive anything deliver throws, or every later delivery for
 			// this callback would chain onto a rejected promise and never run.
 			const next = lane
-				.then(() => this.deliver({ callback, payload }))
+				.then(() => this.deliver({ callback, payload, deliveryId: randomUUID() }))
 				.catch((error: unknown) => logger.error(`Callback "${callback.name}" delivery crashed`, error))
 				.finally(() => this.pending.set(callback.id, (this.pending.get(callback.id) ?? 1) - 1));
 			this.lanes.set(callback.id, next);
@@ -179,21 +183,24 @@ export class CallbackDispatcher {
 		await Promise.all([...this.lanes.values()]);
 	}
 
-	// A delivery queued while the callback was on is skipped if an admin turned it off
-	// (or deleted it, or dropped the event) before its turn came.
-	private stillWanted(callback: AlertCallback, event: AlertCallbackEvent): boolean {
-		return this.subscriptions.some((current) => current.id === callback.id && current.events.includes(event));
+	// The callback as it is NOW, if it still wants the event. A delivery waits in its lane
+	// with the subscription it was queued under; by the time its turn comes an admin may
+	// have moved the URL or rotated the secret (the edit applies), or switched the
+	// callback off, deleted it or dropped the event (the delivery is skipped).
+	private currentSubscription(callbackId: number, event: AlertCallbackEvent): AlertCallbackWithSecret | undefined {
+		return this.subscriptions.find((current) => current.id === callbackId && current.events.includes(event));
 	}
 
-	private async deliver({ callback, payload }: Delivery): Promise<void> {
+	private async deliver({ callback, payload, deliveryId }: Delivery): Promise<void> {
 		let result: SendResult = { ok: false, message: 'Not sent' };
 		for (let attempt = 0; attempt <= this.retryDelaysMs.length; attempt++) {
 			if (attempt > 0) await this.sleep(this.retryDelaysMs[attempt - 1]);
-			if (!this.stillWanted(callback, payload.event)) return;
-			result = await this.sendOnce(callback, payload);
+			const target = this.currentSubscription(callback.id, payload.event);
+			if (!target) return;
+			result = await this.sendOnce(target, payload, deliveryId);
 			if (result.ok) break;
 			logger.warn(
-				`Callback "${callback.name}" (${payload.event}) attempt ${attempt + 1} failed: ${result.message}`
+				`Callback "${target.name}" (${payload.event}) attempt ${attempt + 1} failed: ${result.message}`
 			);
 		}
 		callbacksSentTotal.inc({ event: payload.event, outcome: result.ok ? 'success' : 'error' });
@@ -213,14 +220,20 @@ export class CallbackDispatcher {
 		return this.sendOnce(target, buildSamplePayload(this.now()));
 	}
 
-	private async sendOnce(target: CallbackTarget, payload: AlertCallbackPayload): Promise<SendResult> {
+	private async sendOnce(
+		target: CallbackTarget,
+		payload: AlertCallbackPayload,
+		deliveryId: string = randomUUID()
+	): Promise<SendResult> {
 		const body = renderBody(target.bodyTemplate, payload);
+		// The timestamp and signature are per attempt (a replay check must see a fresh
+		// time); the delivery id is not (see Delivery).
 		const sentAt = Math.floor(this.now().getTime() / 1000);
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			'User-Agent': 'OpsiMate-Callback/1',
 			'X-OpsiMate-Event': payload.event,
-			'X-OpsiMate-Delivery': randomUUID(),
+			'X-OpsiMate-Delivery': deliveryId,
 			'X-OpsiMate-Timestamp': String(sentAt),
 		};
 		if (target.secret) {
