@@ -38,6 +38,24 @@ const contrast = (foreground: Color, background: Color) => {
 	return (values[0] + 0.05) / (values[1] + 0.05);
 };
 
+test('keeps light-theme tokens unchanged', () => {
+	const tokens: Record<string, string> = {};
+	parse(stylesheet).walkRules(':root', (rule) => {
+		rule.walkDecls(/^--(?:primary|primary-foreground|background|card|popover|muted|ring)$/, (declaration) => {
+			tokens[declaration.prop.slice(2)] = declaration.value;
+		});
+	});
+	expect(tokens).toEqual({
+		background: '0 0% 100%',
+		card: '0 0% 100%',
+		popover: '0 0% 100%',
+		primary: '210 100% 13%',
+		'primary-foreground': '0 0% 100%',
+		muted: '220 13% 91%',
+		ring: '210 100% 13%',
+	});
+});
+
 describe.each([':root', '.dark'])('%s primary contrast', (selector) => {
 	const colors = palette(selector);
 	const primary = colors.primary;
