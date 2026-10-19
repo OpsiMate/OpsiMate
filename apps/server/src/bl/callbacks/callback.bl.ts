@@ -28,11 +28,15 @@ export interface CreateCallbackData extends Omit<CreateAlertCallbackInput, 'secr
 
 export const generateCallbackSecret = (): string => randomBytes(24).toString('hex');
 
-// What an edit writes to the audit log: never the secret, and only the NAMES of headers
-// (a header value is typically the receiver's auth token).
+// What an edit writes to the audit log (which non-admins can read): never the secret,
+// only the NAMES of headers (a header value is typically the receiver's auth token), and
+// only THAT the URL or body template changed — receivers carry credentials there too (a
+// Slack webhook path, ?token=, a token in the body).
 export const auditableChanges = (data: UpdateAlertCallbackInput): Record<string, unknown> => {
-	const { secret, headers, ...rest } = data;
+	const { secret, headers, url, bodyTemplate, ...rest } = data;
 	const changes: Record<string, unknown> = { ...rest };
+	if (url !== undefined) changes.url = '[changed]';
+	if (bodyTemplate !== undefined) changes.bodyTemplate = bodyTemplate ? '[changed]' : null;
 	if (secret !== undefined) changes.secret = '[rotated]';
 	if (headers !== undefined) changes.headers = headers ? Object.keys(headers) : null;
 	return changes;

@@ -266,6 +266,52 @@ describe('Callbacks API: configuration', () => {
 		expect(update?.details).not.toContain('receiver-token-1');
 	});
 
+	test('the audit log never holds the URL or body template (receivers carry credentials in them)', async () => {
+		const created = (
+			await createCallback({
+				name: 'Slack',
+				url: 'https://hooks.slack.test/services/T000/B000/create-path-token',
+				events: ['silenced'],
+				bodyTemplate: '{"token":"create-body-token"}',
+			})
+		).body.data as AlertCallback;
+		await auth(app.put(`/api/v1/callbacks/${created.id}`)).send({
+			name: 'Slack 2',
+			url: 'https://hooks.slack.test/services/T000/B000/update-path-token?token=update-query-token',
+			bodyTemplate: '{"token":"update-body-token"}',
+			method: 'PUT',
+			events: ['silenced', 'resolved'],
+			enabled: true,
+		});
+		await auth(app.delete(`/api/v1/callbacks/${created.id}`));
+
+		const logs = (await auth(app.get('/api/v1/audit'))).body.data.logs as AuditLogEntry[];
+		expect(logs).toHaveLength(3);
+		const everything = JSON.stringify(logs);
+		for (const secret of [
+			'create-path-token',
+			'create-body-token',
+			'update-path-token',
+			'update-query-token',
+			'update-body-token',
+		]) {
+			expect(everything).not.toContain(secret);
+		}
+		// The harmless fields still say what changed.
+		const update = JSON.parse(logs.find((l) => l.actionType === 'UPDATE')?.details ?? '{}') as Record<
+			string,
+			unknown
+		>;
+		expect(update).toEqual({
+			name: 'Slack 2',
+			url: '[changed]',
+			bodyTemplate: '[changed]',
+			method: 'PUT',
+			events: ['silenced', 'resolved'],
+			enabled: true,
+		});
+	});
+
 	test('POST /callbacks/test sends one sample request and reports the receiver answer', async () => {
 		const ok = await auth(app.post('/api/v1/callbacks/test')).send({
 			url: `${receiverUrl}/probe`,
