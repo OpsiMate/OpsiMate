@@ -175,4 +175,16 @@ export class OncallRepository {
 			replace();
 		});
 	}
+
+	// Which of the given ids belong to an existing user, used to reject unknown ids up front.
+	async getExistingUserIds(userIds: number[]): Promise<number[]> {
+		return runAsync(() => {
+			if (userIds.length === 0) return [];
+			const placeholders = userIds.map(() => '?').join(', ');
+			const rows = this.db.prepare(`SELECT id FROM users WHERE id IN (${placeholders})`).all(...userIds) as {
+				id: number;
+			}[];
+			return rows.map((row) => row.id);
+		});
+	}
 }

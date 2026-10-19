@@ -265,3 +265,41 @@ describe('on-call team ids and missing teams', () => {
 		}
 	});
 });
+
+describe('setting members with unknown user ids', () => {
+	const putMembers = (teamId: number, userIds: number[]) =>
+		app
+			.put(`/api/v1/oncall/teams/${teamId}/members`)
+			.set('Authorization', `Bearer ${adminToken}`)
+			.send({ userIds });
+
+	test('an unknown id answers 400 and names it, a mixed list too', async () => {
+		const teamId = await createTeam('Unknown Ids', null, [annId]);
+
+		const unknown = await putMembers(teamId, [987654]);
+		expect(unknown.status).toBe(400);
+		expect(unknown.body.success).toBe(false);
+		expect(unknown.body.error).toContain('987654');
+
+		const mixed = await putMembers(teamId, [annId, 987654]);
+		expect(mixed.status).toBe(400);
+		expect(mixed.body.error).toContain('987654');
+	});
+
+	test('a rejected request keeps the previous members in order', async () => {
+		const teamId = await createTeam('Keep Members', null, [annId, boId]);
+
+		await putMembers(teamId, [987654]);
+
+		const team = await bl.getTeam(teamId);
+		expect(priorityOrder(team as OncallTeam)).toEqual(['Ann Alpha 1', 'Bo Bravo 2']);
+	});
+
+	test('a list of existing users still answers 200', async () => {
+		const teamId = await createTeam('Valid Members', null, [annId]);
+
+		const res = await putMembers(teamId, [boId, cyId]);
+		expect(res.status).toBe(200);
+		expect(res.body.data.team.members).toHaveLength(2);
+	});
+});

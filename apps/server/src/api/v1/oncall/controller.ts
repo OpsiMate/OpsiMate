@@ -1,6 +1,6 @@
 import { Logger, OncallTeamMembersSchema, OncallTeamSchema, positiveIntegerIdSchema } from '@OpsiMate/shared';
 import { Response } from 'express';
-import { DuplicateTeamNameError, OncallBL } from '../../../bl/oncall/oncall.bl';
+import { DuplicateTeamNameError, OncallBL, UnknownUserIdsError } from '../../../bl/oncall/oncall.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
 import { routeParam } from '../../../utils/routeParams';
@@ -94,6 +94,9 @@ export class OncallController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof UnknownUserIdsError) {
+				return res.status(400).json({ success: false, error: error.message });
 			}
 			logger.error('Error setting on-call team members', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
