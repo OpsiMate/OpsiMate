@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Request, Response } from 'express';
 import {
 	AlertHistory,
@@ -13,7 +13,12 @@ import {
 } from '@OpsiMate/shared';
 import { AlertBL, IncomingAlert } from '../../../bl/alerts/alert.bl';
 import {
+	ALERT_QUERY_PARAM_KEYS,
 	AlertAnalyticsParamsSchema,
+	AlertBulkActionSchema,
+	AlertFacetsParamsSchema,
+	AlertGroupsParamsSchema,
+	AlertListQueryParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
@@ -32,15 +37,6 @@ import { isZodError } from '../../../utils/isZodError.ts';
 import { routeParam } from '../../../utils/routeParams.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
-import crypto from 'crypto';
-import {
-	ALERT_QUERY_PARAM_KEYS,
-	AlertBulkActionSchema,
-	AlertFacetsParamsSchema,
-	AlertGroupsParamsSchema,
-	AlertListQueryParamsSchema,
-} from './models';
-import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('api/v1/alerts/controller');
@@ -169,7 +165,7 @@ export class AlertController {
 			success: true,
 			data: { alerts: page.items, total: page.total, nextCursor: page.nextCursor },
 		});
-		const etag = `"${crypto.createHash('sha1').update(body).digest('hex')}"`;
+		const etag = `"${createHash('sha1').update(body).digest('hex')}"`;
 		res.set('ETag', etag);
 		res.set('Cache-Control', 'no-cache');
 		if (ifNoneMatchSatisfied(req.headers['if-none-match'], etag)) {
