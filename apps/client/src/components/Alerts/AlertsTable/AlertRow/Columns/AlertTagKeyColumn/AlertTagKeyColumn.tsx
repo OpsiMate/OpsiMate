@@ -1,3 +1,4 @@
+import { TextWithFlags } from '@/components/shared/TextWithFlags';
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -34,7 +35,9 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, 
 					{/* truncate must sit on a child of the badge's inline-flex container
 					    for the ellipsis to render on long values; expanded wraps but
 					    caps at 6 lines */}
-					<span className={expanded ? 'break-all line-clamp-6' : 'truncate'}>{value}</span>
+					<span className={expanded ? 'break-all line-clamp-6' : 'truncate'}>
+						<TextWithFlags text={value} />
+					</span>
 				</Badge>
 			) : (
 				<span className="text-foreground text-xs">-</span>

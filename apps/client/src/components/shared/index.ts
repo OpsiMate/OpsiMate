@@ -1,6 +1,7 @@
 export { ColumnSettingsModal } from './ColumnSettingsModal';
 export { FilterPanel } from './FilterPanel';
 export { FormattedText, stripHtml, containsHtml } from './FormattedText';
+export { TextWithFlags, containsFlag, splitFlags } from './TextWithFlags';
 export type { ActiveFilters, FilterFacet, FilterFacets, FilterPanelConfig } from './FilterPanel';
 export { FilterSidebar } from './FilterSidebar';
 export { UnsavedChangesDialog } from './UnsavedChangesDialog';
