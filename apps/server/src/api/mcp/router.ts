@@ -1,7 +1,7 @@
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { Request, Response, Router } from 'express';
-import { Logger, MCP_PATH } from '@OpsiMate/shared';
+import { Logger } from '@OpsiMate/shared';
 import { authenticateReadOnly } from '../../middleware/auth';
 import { createRateLimit } from '../../middleware/rateLimit';
 import { McpDeps } from './deps';
@@ -20,9 +20,7 @@ import { createMcpServer } from './server';
 
 const logger = new Logger('api/mcp/router');
 
-// Re-exported for app.ts (the compression filter) — the value lives in shared, next to
-// the tool list, so the Settings guide prints the same path.
-export { MCP_PATH };
+export const MCP_PATH = '/api/mcp';
 
 export const mcpEnabled = (env: NodeJS.ProcessEnv = process.env): boolean =>
 	(env.MCP_ENABLED ?? '').trim().toLowerCase() !== 'false';

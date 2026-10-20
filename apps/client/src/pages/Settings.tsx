@@ -36,7 +36,6 @@ import { AiSettings } from '../components/Settings/AiSettings';
 import { CallbackSettings } from '../components/Settings/CallbackSettings';
 import { LdapSettings } from '../components/Settings/LdapSettings';
 import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
-import { McpGuide } from '../components/Settings/AiSettings/McpGuide';
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -67,15 +66,13 @@ import { apiRequest } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
 import { Role, User } from '../types';
 
-// URL hash → tab, so a link like /settings#callbacks opens that tab (#ldap lives in Users,
-// #mcp in AI).
+// URL hash → tab, so a link like /settings#callbacks opens that tab (#ldap lives in Users).
 const SETTINGS_TAB_BY_HASH: Record<string, string> = {
 	Users: 'users',
 	Audit_Log: 'audit',
 	retention: 'retention',
 	silences: 'silences',
 	ai: 'ai',
-	mcp: 'ai',
 	callbacks: 'callbacks',
 	ldap: 'users',
 	secrets: 'secrets',
@@ -648,7 +645,6 @@ const Settings: React.FC = () => {
 									<TabsContent value="ai" className="space-y-6">
 										<AiSettings />
 										<RootCauseGuide />
-										<McpGuide />
 									</TabsContent>
 
 									<CallbacksTabContent isAdmin={isAdmin} />

@@ -8,4 +8,3 @@ export * from './alerts/computeAlertAnalytics';
 export * from './alerts/alertGroups';
 export * from './alerts/timePresets';
 export * from './mutePolicy.utils';
-export * from './mcp';

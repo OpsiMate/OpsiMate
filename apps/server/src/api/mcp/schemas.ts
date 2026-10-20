@@ -17,10 +17,7 @@ export const filtersInputSchema = z
 			'to see what exists.'
 	);
 
-// The alerts time window: either an absolute [from, to] or a rolling "last N minutes". An
-// alert is IN a window when it was firing at some point inside it ([startsAt, updatedAt]
-// overlaps the window) — the alerts page's meaning, not "started inside it": a problem
-// that began yesterday and is still open shows up in "last hour".
+// The alerts time window: either an absolute [from, to] or a rolling "last N minutes".
 export const timeWindowInputShape = {
 	from: z.iso
 		.datetime({ offset: true })
@@ -36,11 +33,7 @@ export const timeWindowInputShape = {
 		.min(1)
 		.max(7 * 24 * 60)
 		.optional()
-		.describe(
-			'Rolling window ending now, in minutes (1..10080 = 7 days). Not with from/to. A window selects alerts ' +
-				'that were firing at some point inside it (an alert that started earlier and is still open counts), ' +
-				'exactly like the alerts page; `startsAt` then shows the firing episode current at the window end.'
-		),
+		.describe('Rolling window ending now, in minutes (1..10080 = 7 days). Not with from/to.'),
 };
 
 export const includeInputSchema = z
