@@ -36,6 +36,7 @@ import { LdapSettingsBL } from './bl/ldap/ldapSettings.bl';
 import { LdapConfigRepository } from './dal/ldapConfigRepository';
 import { LdapController } from './api/v1/ldap/controller';
 import { apiDocsEnabled, createApiDocsRouter } from './api/openapi/serve';
+import { createMcpRouter, MCP_PATH, mcpEnabled } from './api/mcp/router';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
@@ -138,8 +139,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// The alerts payload is large, repetitive JSON polled every few seconds by every
 	// open client — the highest-volume traffic this server produces, and it compresses
-	// roughly tenfold.
-	app.use(compression());
+	// roughly tenfold. Never the MCP endpoint: its streamed (SSE) responses must reach the
+	// client as they are written, and compression would buffer them.
+	app.use(compression({ filter: (req, res) => req.path !== MCP_PATH && compression.filter(req, res) }));
 	// The alerts routes accept large bodies — a bulk action over an explicit selection
 	// carries thousands of ids, and webhook batches (Grafana) grow with the sender's
 	// group size. Scoped to that router so the pre-auth surface (login, register,
@@ -268,8 +270,11 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
+	const version = process.env.APP_VERSION?.trim() || 'dev';
 	// API reference: /api/docs (Swagger UI) and /api/openapi.json.
-	if (apiDocsEnabled()) app.use(createApiDocsRouter(process.env.APP_VERSION?.trim() || 'dev'));
+	if (apiDocsEnabled()) app.use(createApiDocsRouter(version));
+	// MCP endpoint for AI assistants: POST /api/mcp (read-only tools over the same BLs).
+	if (mcpEnabled()) app.use(createMcpRouter({ alertBL, dashboardBL, rootCauseBL, version }));
 	app.use(
 		'/api/v1',
 		createV1Router(
