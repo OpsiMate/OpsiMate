@@ -30,8 +30,14 @@ interface DashboardsResult {
 	dashboards: McpDashboardSummary[];
 }
 
+interface ResolvedWindowRow {
+	from: string | null;
+	to: string | null;
+}
+
 interface DashboardResult {
 	dashboard: McpDashboardSummary;
+	window: ResolvedWindowRow;
 	description: string;
 }
 
@@ -85,9 +91,21 @@ interface AlertNameRow {
 	episodes: number;
 }
 
+interface AnalyticsRange {
+	from: string | null;
+	to: string;
+}
+
 interface AnalyticsResult {
 	scope: AnalyticsScope;
+	range: AnalyticsRange;
 	byName: AlertNameRow[];
+}
+
+interface DashboardSeed {
+	name: string;
+	filters: Record<string, unknown>;
+	timeRange?: Record<string, string | null>;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -124,6 +142,29 @@ const callError = async (name: string, args: Record<string, unknown>): Promise<s
 };
 
 const ids = (page: McpAlertPage | undefined): string[] => (page?.items ?? []).map((alert) => alert.id);
+
+// A dashboard as the UI saves it (the REST API stores `filters` as given), returning its id.
+const createDashboard = async (seed: DashboardSeed): Promise<string> => {
+	const res = await request(app)
+		.post('/api/v1/dashboards')
+		.set('Authorization', `Bearer ${adminJwt}`)
+		.send({
+			type: 'alerts',
+			description: '',
+			visibleColumns: ['alertName'],
+			query: '',
+			groupBy: [],
+			...seed,
+			timeRange: { from: null, to: null, preset: null, ...seed.timeRange },
+		})
+		.expect(200);
+	return String(res.body.data.id);
+};
+
+// The UTC calendar day a window's `to` (now, ceiled to the minute) belongs to, as its
+// midnight: a minute before `to` is still the same day, even right after midnight.
+const utcMidnightBefore = (to: string | null): string =>
+	new Date(Date.parse(to ?? '') - 60_000).toISOString().slice(0, 10) + 'T00:00:00.000Z';
 
 beforeAll(async () => {
 	db = await setupDB();
@@ -449,6 +490,27 @@ describe('legacy rows', () => {
 		const page = await call<AlertListsResult>('search_alerts', { filters: { 'tagKey:env': ['legacy'] } });
 		expect(ids(page.active)).toEqual(['mcp-legacy']);
 		expect(page.active?.items[0].alertUrl).toBe('');
+
+		// The shared analytics engine sorts alert names with localeCompare and cannot take a
+		// null one (a pre-existing limit outside the MCP layer); give the row its name back
+		// so the analytics tests below are not tripped by this fixture.
+		db.prepare('UPDATE alerts SET alert_name = ? WHERE id = ?').run('Legacy', 'mcp-legacy');
+	});
+});
+
+describe('time zone default', () => {
+	test('a "today" dashboard starts at UTC midnight when no timeZone is given', async () => {
+		// The schema says "Default: UTC"; the shared resolver's own default is the process
+		// zone, so without the explicit default this depends on where the server runs.
+		const id = await createDashboard({ name: 'Since midnight', filters: {}, timeRange: { preset: 'today' } });
+		const result = await call<DashboardResult>('get_dashboard', { id });
+		expect(result.window.from).toBe(utcMidnightBefore(result.window.to));
+
+		const analytics = await call<AnalyticsResult>('get_alert_analytics', { dashboardId: id });
+		expect(analytics.range.from).toBe(utcMidnightBefore(analytics.range.to));
+
+		const london = await call<DashboardResult>('get_dashboard', { id, timeZone: 'Asia/Tokyo' });
+		expect(london.window.from).not.toBe(result.window.from);
 	});
 });
 

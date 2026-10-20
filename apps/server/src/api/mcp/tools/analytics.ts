@@ -7,7 +7,7 @@ import { dashboardAlertScope, resolveDashboardRef } from '../dashboardLookup';
 import { McpDeps } from '../deps';
 import { READ_ONLY_ANNOTATIONS, toolError, toolResult } from '../results';
 import { filtersInputSchema, timeWindowInputShape, timeZoneInputSchema } from '../schemas';
-import { resolveWindowArgs, timeZoneProblem } from '../timeWindow';
+import { effectiveTimeZone, resolveWindowArgs, timeZoneProblem } from '../timeWindow';
 
 // The Insights aggregates, trimmed for a conversation: the per-name table keeps its top
 // rows and the tag research drops its day series (the charts), keeping the per-value table.
@@ -118,7 +118,8 @@ export const registerAnalyticsTools = (server: McpServer, deps: McpDeps): void =
 			const analytics = await deps.alertBL.getAlertAnalytics({
 				from: window.from,
 				to: window.to,
-				timeZone,
+				// Day buckets are cut in this zone too; the schema promises UTC when none is given.
+				timeZone: effectiveTimeZone(timeZone),
 				filters: Object.keys(scopeFilters).length > 0 ? scopeFilters : undefined,
 				search: scopeSearch,
 				tagKey: tagKey?.trim() || undefined,

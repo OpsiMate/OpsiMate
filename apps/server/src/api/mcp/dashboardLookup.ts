@@ -8,7 +8,7 @@ import {
 	ResolvedTimeWindow,
 } from '@OpsiMate/shared';
 import { parseDashboardFilters } from './project';
-import { toCoarseWindow } from './timeWindow';
+import { effectiveTimeZone, toCoarseWindow } from './timeWindow';
 
 // Finding a dashboard the way a person names it, and turning it into the alerts query it
 // stands for — the same filters + search + rolling window the UI applies when it is open.
@@ -82,11 +82,13 @@ export interface DashboardScopeOptions {
 }
 
 // The dashboard's rolling window right now, coarse to the minute like the client's. A
-// stored absolute range is kept exactly.
+// stored absolute range is kept exactly. No zone means UTC (see effectiveTimeZone), not
+// the server's zone as the shared resolver would default to.
 export const resolveDashboardWindow = (dashboard: Dashboard, timeZone: string | undefined): ResolvedTimeWindow => {
 	const range = dashboard.timeRange;
-	if (!range || !isQuickTimePreset(range.preset)) return resolveDashboardTimeRange(range, { timeZone });
-	const resolved = resolveDashboardTimeRange(range, { timeZone });
+	const options = { timeZone: effectiveTimeZone(timeZone) };
+	if (!range || !isQuickTimePreset(range.preset)) return resolveDashboardTimeRange(range, options);
+	const resolved = resolveDashboardTimeRange(range, options);
 	return toCoarseWindow(resolved.from ? new Date(resolved.from) : null, resolved.to ? new Date(resolved.to) : null);
 };
 

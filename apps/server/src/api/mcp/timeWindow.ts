@@ -50,6 +50,12 @@ export const resolveWindowArgs = (args: TimeWindowArgs, now: Date = new Date()):
 	return { ok: true, window: { from: args.from ?? null, to: args.to ?? null } };
 };
 
+// The schema promises "Default: UTC" for every timeZone input, so every call into the
+// shared resolvers (whose own default is the process-local zone) goes through this: a
+// "today" dashboard read from a server in Jerusalem starts at UTC midnight, as documented.
+export const DEFAULT_TIME_ZONE = 'UTC';
+export const effectiveTimeZone = (timeZone: string | undefined): string => timeZone?.trim() || DEFAULT_TIME_ZONE;
+
 // The problem with a caller-supplied IANA zone, or null when the runtime knows it.
 // resolveQuickPreset throws a RangeError on an unknown zone, so this runs first.
 export const timeZoneProblem = (timeZone: string | undefined): string | null => {
