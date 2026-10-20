@@ -47,6 +47,41 @@ const enricherFor = (...rules: AlertEnrichment[]): EnrichmentBL => {
 	return new EnrichmentBL(repo as unknown as EnrichmentRepository, {} as unknown as AuditBL);
 };
 
+describe('applyEnrichments — flags and the exists matcher', () => {
+	// {{flag.<code>}} needs no label: the rule author names the code. Windows users can't
+	// type a flag emoji, so this is how a site gets one.
+	test('{{flag.il}} in a field value becomes the flag; alerts the rule does not match are left alone', async () => {
+		const flags = rule({
+			id: 1,
+			name: 'IL flag',
+			labelMatchers: [{ key: 'site', value: 'IL' }],
+			addFields: [{ key: 'site', value: 'IL {{flag.il}}' }],
+		});
+		const [il, us] = await enricherFor(flags).applyEnrichments([
+			grafanaAlert({ id: 'il', tags: { site: 'IL' } }),
+			grafanaAlert({ id: 'us', tags: { site: 'US' } }),
+		]);
+		expect(il.tags.site).toBe('IL 🇮🇱');
+		expect(us.tags.site).toBe('US');
+		expect(us.appliedEnrichments).toBeUndefined();
+	});
+
+	test('an exists matcher matches every alert that carries the label, whatever its value', async () => {
+		const tagged = rule({
+			id: 2,
+			name: 'has a site',
+			labelMatchers: [{ key: 'site', value: '', op: 'exists' }],
+			addFields: [{ key: 'scoped', value: 'yes' }],
+		});
+		const [il, none] = await enricherFor(tagged).applyEnrichments([
+			grafanaAlert({ id: 'il', tags: { site: 'IL' } }),
+			grafanaAlert({ id: 'none', tags: { env: 'prod' } }),
+		]);
+		expect(il.tags.scoped).toBe('yes');
+		expect(none.tags).toEqual({ env: 'prod' });
+	});
+});
+
 describe('applyEnrichments — ordering and conflicts', () => {
 	// In every rule pair below the HIGH-priority rule gets the LARGER id. Ranked by priority the
 	// high rule goes first; ranked by id alone the low rule would go first and win the conflicting

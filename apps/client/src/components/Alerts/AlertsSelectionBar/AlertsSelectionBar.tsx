@@ -20,7 +20,7 @@ export interface AlertsSelectionBarProps {
 	selectedAlerts: Alert[];
 	onClearSelection: () => void;
 	onSilenceAll: () => void;
-	// Shown instead of "Silence all" when EVERY selected alert is already silenced.
+	// Shown instead of "Silence" when EVERY selected alert is already silenced.
 	onUnsilenceAll?: () => void;
 	onAssignOwnerAll?: (ownerId: string | null) => void;
 	onResolveAll?: () => void;
@@ -29,7 +29,7 @@ export interface AlertsSelectionBarProps {
 	onDeleteAll?: () => void;
 	// True when the current view has matching alerts that are NOT loaded (the "N of M"
 	// banner is showing). Bulk actions apply only to the loaded selection, so the scope
-	// must be explicit — otherwise "Silence all" on a select-all reads as "silence every
+	// must be explicit — otherwise "Silence" on a select-all reads as "silence every
 	// matching alert" when it silences only the loaded page.
 	hasUnloadedMatches?: boolean;
 	// Total alerts matching the view's full query (server-counted), when known.
@@ -67,8 +67,10 @@ export const AlertsSelectionBar = ({
 	}
 
 	// Silence/unsilence are offered only on uniform selections: all-active gets
-	// "Silence all", all-silenced gets "Unsilence all", a mixed selection gets
-	// neither — the outcome of a bulk action on a mix is too easy to misread.
+	// "Silence", all-silenced gets "Unsilence", a mixed selection gets neither — the
+	// outcome of a bulk action on a mix is too easy to misread. Named for the action
+	// alone, like Resolve and Delete: the count beside them says what it applies to, and
+	// "all" belongs to the "Select all N matching" link.
 	const allNotSilenced = selectedAlerts.every((alert) => !alert.isSilenced);
 	const allSilenced = selectedAlerts.every((alert) => alert.isSilenced);
 
@@ -96,7 +98,7 @@ export const AlertsSelectionBar = ({
 				)}
 				{allNotSilenced && (
 					<Button variant="outline" size="sm" onClick={onSilenceAll} disabled={actionsDisabled}>
-						Silence all
+						Silence
 					</Button>
 				)}
 				{onUnsilenceAll && allSilenced && (
@@ -108,7 +110,7 @@ export const AlertsSelectionBar = ({
 						className="gap-1.5"
 					>
 						<BellRing className="h-3.5 w-3.5" />
-						Unsilence all
+						Unsilence
 					</Button>
 				)}
 				{onResolveAll && (
