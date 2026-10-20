@@ -16,8 +16,9 @@ const HAS_FLAG_PAIR = /\p{Regional_Indicator}{2}/u;
 // Vite emits one asset per flag (?no-inline: never a data URI in the bundle, which would
 // add ~400 KB for flags most pages never show) and this module holds only their URLs; a
 // flag's SVG is fetched the first time it is shown. The node_modules path is relative to
-// this file so the glob survives pnpm's symlinked layout.
-const FLAG_URLS = import.meta.glob<string>('../../../../node_modules/country-flag-icons/3x2/*.svg', {
+// this file so the glob survives pnpm's symlinked layout. Only the two-letter country
+// files: the package also ships subdivision flags (GB-ENG, ES-CT) no emoji pair spells.
+const FLAG_URLS = import.meta.glob<string>('../../../../node_modules/country-flag-icons/3x2/[A-Z][A-Z].svg', {
 	query: '?no-inline',
 	import: 'default',
 	eager: true,
@@ -34,6 +35,10 @@ export const flagEmojiToCode = (emoji: string): string =>
 	[...emoji].map((char) => String.fromCharCode((char.codePointAt(0) ?? 0) - REGIONAL_INDICATOR_A + 65)).join('');
 
 export const flagUrlFor = (code: string): string | undefined => flagUrlByCode.get(code.toUpperCase());
+
+// How many flags the bundle knows. Exposed for the test that guards the glob: if the
+// node_modules layout ever stops matching, the build still succeeds — with zero flags.
+export const bundledFlagCount = (): number => flagUrlByCode.size;
 
 export type TextSegment = { type: 'text'; text: string } | { type: 'flag'; emoji: string; code: string };
 
@@ -61,7 +66,8 @@ interface TextWithFlagsProps {
 // The text with every flag emoji drawn as an inline SVG the height of the surrounding
 // text. Flags are 3:2, so the width is fixed too: the cell does not shift when a flag
 // seen for the first time finishes loading. A pair with no flag for it (an unassigned
-// code) stays as the emoji.
+// code) stays as the emoji. The alt text is the country code: on Windows — the platform
+// this exists for — screen readers would otherwise spell the emoji out letter by letter.
 export const TextWithFlags = ({ text, className }: TextWithFlagsProps) => {
 	if (!containsFlag(text)) return <>{text}</>;
 	return (
@@ -74,7 +80,7 @@ export const TextWithFlags = ({ text, className }: TextWithFlagsProps) => {
 					<img
 						key={index}
 						src={url}
-						alt={segment.emoji}
+						alt={segment.code}
 						title={segment.code}
 						className={cn('inline-block h-[1em] w-[1.5em] align-[-0.125em] rounded-[1px]', className)}
 						draggable={false}

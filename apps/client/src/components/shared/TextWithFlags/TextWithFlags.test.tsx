@@ -1,6 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import { flagEmojiToCode, flagUrlFor, splitFlags, TextWithFlags } from './TextWithFlags';
+import {
+	bundledFlagCount,
+	containsFlag,
+	flagEmojiToCode,
+	flagUrlFor,
+	splitFlags,
+	TextWithFlags,
+} from './TextWithFlags';
 
 // Windows renders flag emoji as two boxed letters; this component draws the flag from a
 // bundled SVG instead. The contract: text is split correctly, the SVG is the right
@@ -26,6 +33,26 @@ describe('TextWithFlags', () => {
 		expect(splitFlags('no flags here')).toEqual([{ type: 'text', text: 'no flags here' }]);
 	});
 
+	test('pairs regional indicators left to right; a leftover single letter stays text', () => {
+		// Four in a row are two flags, never a spurious middle pair.
+		expect(splitFlags('🇮🇱🇺🇸')).toEqual([
+			{ type: 'flag', emoji: '🇮🇱', code: 'IL' },
+			{ type: 'flag', emoji: '🇺🇸', code: 'US' },
+		]);
+		expect(splitFlags('🇮🇱🇺')).toEqual([
+			{ type: 'flag', emoji: '🇮🇱', code: 'IL' },
+			{ type: 'text', text: '🇺' },
+		]);
+		expect(containsFlag('🇺')).toBe(false);
+		expect(containsFlag('a 🇺🇸')).toBe(true);
+	});
+
+	test('the glob actually found the flag set', () => {
+		// A moved node_modules layout would leave the map empty and every flag boxed; the
+		// package ships ~250 country flags.
+		expect(bundledFlagCount()).toBeGreaterThan(200);
+	});
+
 	test('has an SVG for the bundled countries (case-insensitive), none for an unassigned code', () => {
 		// Only that each country resolves to its own asset; the URL's shape is Vite's business.
 		expect(flagUrlFor('IL')).toBeTruthy();
@@ -34,10 +61,10 @@ describe('TextWithFlags', () => {
 		expect(flagUrlFor('ZZ')).toBeUndefined();
 	});
 
-	test('renders "IL 🇮🇱" as the text plus an inline flag image, keeping the emoji as alt text', () => {
+	test('renders "IL 🇮🇱" as the text plus an inline flag image named by its country code', () => {
 		render(<TextWithFlags text="IL 🇮🇱" />);
 		expect(screen.getByText('IL')).toBeInTheDocument();
-		const img = screen.getByRole('img', { name: '🇮🇱' });
+		const img = screen.getByRole('img', { name: 'IL' });
 		expect(img).toHaveAttribute('title', 'IL');
 		expect(img.getAttribute('src')).toBe(flagUrlFor('IL'));
 	});
