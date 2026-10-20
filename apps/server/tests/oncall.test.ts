@@ -291,8 +291,10 @@ describe('setting members with unknown user ids', () => {
 
 		await putMembers(teamId, [987654]);
 
-		const team = await bl.getTeam(teamId);
-		expect(priorityOrder(team as OncallTeam)).toEqual(['Ann Alpha 1', 'Bo Bravo 2']);
+		const list = await app.get('/api/v1/oncall/teams').set('Authorization', `Bearer ${adminToken}`);
+		expect(list.status).toBe(200);
+		const fromList = (list.body.data.teams as OncallTeam[]).find((team) => team.id === teamId);
+		expect(priorityOrder(fromList as OncallTeam)).toEqual(['Ann Alpha 1', 'Bo Bravo 2']);
 	});
 
 	test('a list of existing users still answers 200', async () => {

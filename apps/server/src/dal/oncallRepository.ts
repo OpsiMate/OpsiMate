@@ -8,6 +8,10 @@ export interface OncallTeamUpdate {
 	rotationIntervalDays?: number | null;
 }
 
+interface UserIdRow {
+	id: number;
+}
+
 export class OncallRepository {
 	private db: Database.Database;
 
@@ -181,9 +185,9 @@ export class OncallRepository {
 		return runAsync(() => {
 			if (userIds.length === 0) return [];
 			const placeholders = userIds.map(() => '?').join(', ');
-			const rows = this.db.prepare(`SELECT id FROM users WHERE id IN (${placeholders})`).all(...userIds) as {
-				id: number;
-			}[];
+			const rows = this.db
+				.prepare(`SELECT id FROM users WHERE id IN (${placeholders})`)
+				.all(...userIds) as UserIdRow[];
 			return rows.map((row) => row.id);
 		});
 	}
