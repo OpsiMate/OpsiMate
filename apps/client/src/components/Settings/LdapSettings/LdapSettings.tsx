@@ -7,8 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useLdapSettings, useTestLdapConnection, useUpdateLdapSettings } from '@/hooks/queries/ldap';
-import { useToast } from '@/components/ui/use-toast';
 import { LdapRequestError, useLdapSettings, useTestLdapConnection, useUpdateLdapSettings } from '@/hooks/queries/ldap';
 import {
 	LdapRoleGroups,
