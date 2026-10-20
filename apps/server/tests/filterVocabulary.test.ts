@@ -62,9 +62,34 @@ describe('validateFilters', () => {
 		expect(result.problems).toHaveLength(2);
 	});
 
-	test('alertName and tag values are free text and pass through untouched', () => {
-		const filters = { alertName: ['anything'], 'tagKey:env': ['PROD', 'nowhere'], '!tagKey:region': ['eu'] };
-		expect(validateFilters(filters, facets)).toEqual({ ok: true, filters });
+	test('alertName, owner and tag values are free text: known ones canonicalised, the rest as given', () => {
+		expect(
+			validateFilters(
+				{
+					alertName: ['db down', 'anything'],
+					'tagKey:env': ['PROD', 'nowhere'],
+					'!tagKey:region': ['eu'],
+					owner: ['idan l', 'Nobody', 'unassigned'],
+				},
+				facets
+			)
+		).toEqual({
+			ok: true,
+			filters: {
+				alertName: ['DB down', 'anything'],
+				'tagKey:env': ['prod', 'nowhere'],
+				'!tagKey:region': ['eu'],
+				owner: ['Idan L', 'Nobody', 'Unassigned'],
+			},
+		});
+	});
+
+	test('an owner the read list does not carry is not an error', () => {
+		// Owner facets come from the list being read; a user who only owns resolved alerts
+		// must still be a valid filter on the active list.
+		expect(
+			validateFilters({ owner: ['Resolved Only'] }, { ...facets, facets: { ...facets.facets, owner: {} } })
+		).toEqual({ ok: true, filters: { owner: ['Resolved Only'] } });
 	});
 
 	test('values are deduplicated after canonicalisation', () => {

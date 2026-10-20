@@ -559,6 +559,45 @@ describe('include "all" is the All tab', () => {
 	});
 });
 
+describe('cursors', () => {
+	test('a cursor the tools did not return is rejected, not an empty page', async () => {
+		// The engine reads an unparseable cursor as a bare alert id and pages from where it
+		// would sort: an empty page under a non-zero total, which reads as "no more".
+		for (const cursor of ['garbage', JSON.stringify({ v: null }), JSON.stringify(['x'])]) {
+			expect(await callError('search_alerts', { filters: { 'tagKey:team': ['search'] }, cursor })).toContain(
+				'not one this tool returned'
+			);
+		}
+		expect(await callError('get_dashboard_alerts', { id: dashboardId, cursor: 'garbage' })).toContain(
+			'not one this tool returned'
+		);
+		// A real cursor still pages.
+		const first = await call<AlertListsResult>('search_alerts', {
+			filters: { 'tagKey:team': ['search'] },
+			limit: 4,
+		});
+		const second = await call<AlertListsResult>('search_alerts', {
+			filters: { 'tagKey:team': ['search'] },
+			limit: 4,
+			cursor: first.active?.nextCursor ?? '',
+		});
+		expect(ids(second.active)).toEqual(['mcp-page-5']);
+	});
+});
+
+describe('case-insensitive filter values', () => {
+	test('tag and alertName values are canonicalised against what exists', async () => {
+		// Newest first (the default sort), so the recent warning precedes the old critical.
+		const byTag = await call<AlertListsResult>('search_alerts', { filters: { 'tagKey:env': ['PROD'] } });
+		expect(ids(byTag.active)).toEqual(['mcp-recent-warn', 'mcp-old-crit']);
+		const byName = await call<AlertListsResult>('search_alerts', { filters: { alertName: ['disk 80%'] } });
+		expect(ids(byName.active)).toEqual(['mcp-recent-warn']);
+		// An owner the active list does not carry is free text, not an error.
+		const nobody = await call<AlertListsResult>('search_alerts', { filters: { owner: ['Nobody'] } });
+		expect(nobody.total).toBe(0);
+	});
+});
+
 describe('resolveDashboardRef', () => {
 	const dashboard = (id: number, name: string): Dashboard => ({
 		id: String(id),

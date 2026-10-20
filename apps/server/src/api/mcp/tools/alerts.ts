@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { knownFilterValues, STATIC_FIELD_VALUES, validateFilters } from '../../../bl/alerts/filterVocabulary';
-import { AlertListName, listsFor, loadFacets, queryList, toPage } from '../alertLists';
+import { AlertListName, cursorProblem, listsFor, loadFacets, queryList, toPage } from '../alertLists';
 import { McpDeps } from '../deps';
 import { toAlertSummary, toCommentSummary } from '../project';
 import { READ_ONLY_ANNOTATIONS, toolError, toolResult } from '../results';
@@ -36,8 +36,10 @@ export const registerAlertTools = (server: McpServer, deps: McpDeps): void => {
 				'Alerts matching a filter record, a free-text search and/or a time window — the same query the ' +
 				'alerts page runs, so results agree with the UI. `filters` keys are fields (status, severity, type, ' +
 				'owner, alertName, "tagKey:<key>"), values are display values such as "Critical", "Firing" or ' +
-				'"Unassigned"; "!field" excludes. Unknown fields or values are rejected with the known ones listed; ' +
-				'list_alert_filter_values shows what exists. `search` matches alert names and summaries. Reads the ' +
+				'"Unassigned"; "!field" excludes. Values match case-insensitively: an unknown field, status, severity ' +
+				'or type is rejected with the known ones listed, while owner, alertName and tag values are free text ' +
+				'(an unknown one matches nothing). list_alert_filter_values shows what exists. `search` matches ' +
+				'alert names and summaries. Reads the ' +
 				'active list by default; include "resolved" for the archive, "all" for both (each paged on its own). ' +
 				'Sorted by startsAt, newest first, unless `sort`/`dir` say otherwise.',
 			inputSchema: z.object({
@@ -69,6 +71,8 @@ export const registerAlertTools = (server: McpServer, deps: McpDeps): void => {
 			if (include === 'all' && cursor !== undefined) {
 				return toolError('A cursor pages one list: call again with include "active" or "resolved".');
 			}
+			const badCursor = cursorProblem(cursor);
+			if (badCursor) return toolError(badCursor);
 			const validated = validateFilters(filters ?? {}, await loadFacets(deps, include));
 			if (!validated.ok) return toolError(validated.problems.join('\n'));
 			const owners = await deps.alertBL.getOwners();

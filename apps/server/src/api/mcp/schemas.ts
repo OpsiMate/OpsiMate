@@ -13,8 +13,9 @@ export const filtersInputSchema = z
 			'Fields: status (Firing, Silenced, Muted, Resolved), severity (Critical, Warning, Info), type ' +
 			'(Custom, Grafana, Datadog, ...), owner (a user\'s full name, or "Unassigned"), alertName, and ' +
 			'"tagKey:<key>" for a tag (e.g. "tagKey:env"). Prefix a field with "!" to exclude instead: ' +
-			'{"!status": ["Silenced"]}. Values are matched case-insensitively; call list_alert_filter_values ' +
-			'to see what exists.'
+			'{"!status": ["Silenced"]}. Values are matched case-insensitively against what exists: an unknown ' +
+			'status, severity or type is rejected; an unknown owner, alertName or tag value is free text that ' +
+			'matches nothing. Call list_alert_filter_values to see what exists.'
 	);
 
 // The alerts time window: either an absolute [from, to] or a rolling "last N minutes".

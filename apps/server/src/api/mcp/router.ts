@@ -37,8 +37,11 @@ export const createMcpRouter = (deps: McpDeps): Router => {
 	};
 
 	// Explicit methods (not router.all) so the route audit in apiDocs.test.ts sees exactly
-	// what is served. GET and DELETE are the protocol's session operations; stateless
-	// serving answers them with 405, which is the correct signal to a client.
+	// what is served. GET and DELETE are the protocol's session operations (the SSE
+	// stream and session close), which a stateless server does not offer: they are
+	// mounted so the SDK handler answers them with 405, the protocol's signal for "no
+	// sessions here", rather than Express's 404. HEAD rides along with GET, as Express
+	// always routes it.
 	const router = Router();
 	router.post(MCP_PATH, authenticateReadOnly, serve);
 	router.get(MCP_PATH, authenticateReadOnly, serve);

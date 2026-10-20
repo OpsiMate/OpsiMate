@@ -15,6 +15,26 @@ export const listsFor = (include: AlertListInclude): AlertListName[] =>
 export const queryList = (deps: McpDeps, list: AlertListName, query: AlertListQuery) =>
 	list === 'resolved' ? deps.alertBL.queryResolvedAlerts(query) : deps.alertBL.queryAlerts(query);
 
+// A cursor is only ever what a tool returned: encodeAlertCursor's JSON with a string
+// id. The engine reads anything else as a bare alert id, finds no such row and starts
+// the page where that id would sort — an empty page under a non-zero total, which an
+// assistant would read as "no more results". Rejected up front instead, naming the fix.
+export const cursorProblem = (cursor: string | undefined): string | null => {
+	if (cursor === undefined) return null;
+	try {
+		const parsed: unknown = JSON.parse(cursor);
+		if (typeof parsed === 'object' && parsed !== null && 'id' in parsed && typeof parsed.id === 'string') {
+			return null;
+		}
+	} catch {
+		// Not JSON at all.
+	}
+	return (
+		"The cursor is not one this tool returned: pass the previous page's nextCursor unchanged, " +
+		'or omit it for the first page.'
+	);
+};
+
 export const toPage = (
 	items: Alert[],
 	total: number,

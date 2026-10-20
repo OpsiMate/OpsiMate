@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { Alert, DASHBOARD_TYPES } from '@OpsiMate/shared';
 import { z } from 'zod';
-import { AlertListName, countAlerts, listsFor, queryList, toPage } from '../alertLists';
+import { AlertListName, countAlerts, cursorProblem, listsFor, queryList, toPage } from '../alertLists';
 import {
 	DashboardAlertScope,
 	dashboardAlertScope,
@@ -126,6 +126,8 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 			if (include === 'all' && cursor !== undefined) {
 				return toolError('A cursor pages one list: call again with include "active" or "resolved".');
 			}
+			const badCursor = cursorProblem(cursor);
+			if (badCursor) return toolError(badCursor);
 			const found = resolveDashboardRef(await deps.dashboardBL.getAllDashboards(), { id, name });
 			if (!found.ok) return toolError(found.message);
 			const { dashboard } = found;
@@ -149,8 +151,10 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 				pages[list] = toPage(page.items, page.total, page.nextCursor, owners);
 			}
 
-			// The summary reads the unpaged result (the same cached query without a page), so
-			// it costs nothing new until the set is too large to be worth holding.
+			// The summary needs every matching alert, so it is a second, unpaged query per
+			// list (its own cache key — a page's query is cached under its limit/cursor), run
+			// only while the set is small enough to be worth holding; the totals above come
+			// from the paged queries and gate it.
 			const total = Object.values(pages).reduce((sum, page) => sum + page.total, 0);
 			let summary: McpAlertCounts | undefined;
 			let summaryNote: string | undefined;

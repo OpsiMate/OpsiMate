@@ -78,22 +78,41 @@ const ALWAYS_KNOWN_VALUES: Record<string, string[]> = {
 	owner: ['Unassigned'],
 };
 
+// Fields whose values are free text rather than a vocabulary to enforce: any value is a
+// legitimate match-nothing filter. alertName and tags because the name space is open;
+// owner because its facets come from the list being read, so a user who only owns
+// resolved alerts would be "unknown" to a search of the active list — a false rejection
+// that is simpler to avoid than to build the owner vocabulary from both lists on every
+// call. Known values are still canonicalised, so the case-insensitive promise holds.
+const isFreeTextField = (field: string): boolean => field === 'alertName' || field === 'owner' || isTagKeyColumn(field);
+
 const describeValues = (values: string[]): string => values.map((v) => `"${v}"`).join(', ');
+
+// lower-cased value -> the casing the alerts carry, for one field.
+const canonicalValues = (field: string, facets: AlertFacetsResult): Map<string, string> =>
+	new Map(
+		[...new Set([...knownFilterValues(field, facets), ...(ALWAYS_KNOWN_VALUES[field] ?? [])])].map((v) => [
+			v.toLowerCase(),
+			v,
+		])
+	);
 
 // The strict counterpart of sanitizeFilters for callers that can act on an error: every
 // field must be a filterable column and every value one the field currently carries
 // (matched case-insensitively, returned in canonical casing). Unknown entries are
 // reported with what WOULD be accepted rather than dropped, so an assistant can repair
-// its call instead of silently getting a wider result. alertName and tag values are free
-// text (any value is a legitimate match-nothing filter) and pass through untouched.
+// its call instead of silently getting a wider result. Free-text fields (see
+// isFreeTextField) take any value: a known one in its canonical casing, an unknown one
+// as given.
 export const validateFilters = (raw: Record<string, string[]>, facets: AlertFacetsResult): FilterValidation => {
 	const knownFields = new Set<string>([...BASE_ALERT_FACET_FIELDS, ...Object.keys(facets.facets)]);
 	const filters: Record<string, string[]> = {};
 	const problems: string[] = [];
 	for (const [key, values] of Object.entries(raw)) {
 		const baseField = key.startsWith('!') ? key.slice(1) : key;
-		if (baseField === 'alertName' || isTagKeyColumn(baseField)) {
-			filters[key] = values;
+		if (isFreeTextField(baseField)) {
+			const canonical = canonicalValues(baseField, facets);
+			filters[key] = [...new Set(values.map((v) => canonical.get(v.toLowerCase()) ?? v))];
 			continue;
 		}
 		if (!knownFields.has(baseField)) {
@@ -106,10 +125,8 @@ export const validateFilters = (raw: Record<string, string[]>, facets: AlertFace
 			);
 			continue;
 		}
-		const knownValues = [
-			...new Set([...knownFilterValues(baseField, facets), ...(ALWAYS_KNOWN_VALUES[baseField] ?? [])]),
-		];
-		const canonical = new Map(knownValues.map((v) => [v.toLowerCase(), v]));
+		const canonical = canonicalValues(baseField, facets);
+		const knownValues = [...canonical.values()];
 		const unknown = values.filter((v) => !canonical.has(v.toLowerCase()));
 		if (unknown.length > 0) {
 			problems.push(
