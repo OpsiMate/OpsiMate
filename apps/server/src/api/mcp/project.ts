@@ -5,11 +5,18 @@ import {
 	Dashboard,
 	getAlertFilterFieldValue,
 	getOwnerDisplayName,
+	HIDDEN_TAG_KEYS,
 } from '@OpsiMate/shared';
 import { McpAlertComment, McpAlertSummary, McpDashboardSummary } from './schemas';
 
 // Projections of the API shapes for an assistant: the fields that describe the thing,
 // without the ones that only drive the UI (column layout, read markers, raw owner ids).
+
+// The tags a user sees: the severity and fix tags are internal mirrors of first-class
+// fields (the UI hides them everywhere, and they are no "tagKey:" filter field), so an
+// assistant must not learn them as tags to filter by.
+const visibleTags = (tags: Record<string, string> | undefined): Record<string, string> =>
+	Object.fromEntries(Object.entries(tags ?? {}).filter(([key]) => !HIDDEN_TAG_KEYS.has(key)));
 
 // Status and severity are the DISPLAY values (Firing/Silenced/Muted/Resolved, Critical/
 // Warning/Info) — the same strings the filters accept, so what a tool shows can be
@@ -23,7 +30,7 @@ export const toAlertSummary = (alert: Alert, owners: AlertOwnerInfo[]): McpAlert
 	type: getAlertFilterFieldValue(alert, 'type', owners) ?? alert.type,
 	owner: getOwnerDisplayName(alert.ownerId, owners),
 	team: alert.team ?? null,
-	tags: alert.tags ?? {},
+	tags: visibleTags(alert.tags),
 	summary: alert.summary ?? null,
 	startsAt: alert.startsAt,
 	updatedAt: alert.updatedAt,

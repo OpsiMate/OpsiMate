@@ -319,6 +319,8 @@ describe('dashboards', () => {
 		expect(result.summary).toEqual({ total: 1, bySeverity: { Critical: 1 }, byStatus: { Firing: 1 } });
 		expect(result.active?.items[0]).toMatchObject({ severity: 'Critical', status: 'Firing', owner: 'Unassigned' });
 		expect(result.active?.items[0]).not.toHaveProperty('ownerId');
+		// The internal severity mirror tag is not a tag an assistant should see or filter by.
+		expect(result.active?.items[0].tags).toEqual({ env: 'prod' });
 	});
 
 	test('include "resolved" reads the archive after a resolve webhook', async () => {
