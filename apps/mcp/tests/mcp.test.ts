@@ -97,10 +97,23 @@ afterAll(async () => {
 });
 
 describe('reaching the server', () => {
-	test('health says where OpsiMate is', async () => {
+	test('health says the process is up, and not where OpsiMate is (it is unauthenticated)', async () => {
 		const res = await fetch(new URL('/health', mcpUrl));
 		expect(res.status).toBe(200);
-		expect(await res.json()).toMatchObject({ status: 'ok', opsimateUrl: opsimate.url, path: '/mcp' });
+		const body = (await res.json()) as Record<string, unknown>;
+		expect(body).toMatchObject({ status: 'ok', path: '/mcp' });
+		expect(JSON.stringify(body)).not.toContain(opsimate.url);
+	});
+
+	test('a malformed body is a JSON-RPC parse error, not an HTML page', async () => {
+		const res = await fetch(mcpUrl, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', 'x-api-token': API_TOKEN },
+			body: '{"jsonrpc":',
+		});
+		expect(res.status).toBe(400);
+		expect(res.headers.get('content-type')).toContain('application/json');
+		expect(await res.json()).toEqual({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null });
 	});
 
 	test('no credentials: 401 from the MCP server itself, OpsiMate is never called', async () => {

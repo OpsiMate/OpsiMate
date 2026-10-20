@@ -82,17 +82,29 @@ export const createHttpApp = (config: McpConfig, options: HttpAppOptions = {}): 
 
 	const app = express();
 	app.disable('x-powered-by');
+	// Unauthenticated, so it says only that the process is up: where OpsiMate lives is
+	// an internal address that belongs in the startup log, not on a public port.
 	app.get('/health', (_req, res) => {
-		res.json({
-			status: 'ok',
-			version: config.version,
-			opsimateUrl: config.opsimateUrl,
-			path: config.path,
-		});
+		res.json({ status: 'ok', version: config.version, path: config.path });
 	});
 	app.post(config.path, requireCredentials, rateLimit, express.json({ limit: '1mb' }), serve);
 	app.get(config.path, requireCredentials, rateLimit, serve);
 	app.delete(config.path, requireCredentials, rateLimit, serve);
+	// express.json() rejects a malformed or oversized body by throwing; Express's default
+	// handler would answer with HTML (and a stack trace outside production). An MCP client
+	// expects JSON-RPC.
+	app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+		const status = typeof error === 'object' && error !== null ? (error as { status?: number }).status : undefined;
+		if (status === 400 || status === 413) {
+			res.status(status).json({
+				jsonrpc: '2.0',
+				error: { code: -32700, message: status === 413 ? 'Request body too large' : 'Parse error' },
+				id: null,
+			});
+			return;
+		}
+		next(error);
+	});
 	return app;
 };
 

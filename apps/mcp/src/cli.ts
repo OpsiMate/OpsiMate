@@ -17,7 +17,14 @@ const logger = new Logger('mcp/cli');
 const main = (): void => {
 	const args = process.argv.slice(2);
 	const urlIndex = args.indexOf('--url');
-	if (urlIndex >= 0 && args[urlIndex + 1]) process.env.OPSIMATE_URL = args[urlIndex + 1];
+	if (urlIndex >= 0) {
+		const url = args[urlIndex + 1];
+		if (!url || url.startsWith('--')) {
+			process.stderr.write('opsimate-mcp: --url needs a value, the OpsiMate URL (e.g. http://localhost:3001).\n');
+			process.exit(2);
+		}
+		process.env.OPSIMATE_URL = url;
+	}
 	const config = readConfig();
 
 	if (args.includes('--stdio')) {
