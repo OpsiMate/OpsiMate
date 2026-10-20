@@ -1561,7 +1561,13 @@ const Alerts = () => {
 									onClose={() => setSelectedAlert(null)}
 									onSilence={confirmSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
-									onDelete={selectedIsResolved ? confirmDeleteResolvedAlert : confirmResolveAlert}
+									onDelete={
+										selectedIsResolved
+											? canDelete()
+												? confirmDeleteResolvedAlert
+												: undefined
+											: confirmResolveAlert
+									}
 									onUnresolve={handleUnresolveAlert}
 								/>
 							);

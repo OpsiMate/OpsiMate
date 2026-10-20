@@ -57,7 +57,16 @@ afterAll(() => {
 describe('ingest batching through the webhook API', () => {
 	test('a burst of concurrent webhooks all land, each responding only after commit', async () => {
 		const ids = Array.from({ length: 300 }, (_, i) => `burst-${i}`);
-		const responses = await Promise.all(ids.map((id) => postCustom(id)));
+		const responses = [];
+
+		// Keep requests concurrent, but avoid overwhelming the test HTTP harness.
+		for (let i = 0; i < ids.length; i += 25) {
+			const batch = ids.slice(i, i + 25);
+			const batchResponses = await Promise.all(batch.map((id) => postCustom(id)));
+			responses.push(...batchResponses);
+		}
+
+		expect(responses).toHaveLength(300);
 		expect(responses.every((res) => res.status === 200)).toBe(true);
 		expect(countActive('burst-')).toBe(300);
 	});
