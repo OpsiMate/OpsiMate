@@ -4,11 +4,11 @@ import { AutocompleteInput } from './AutocompleteInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { getLabelMatcherGroups, getNameNeedles, MatcherCriteria } from '@OpsiMate/shared';
+import { getLabelMatcherGroups, getNameNeedles, MatcherCriteria, MutePolicyLabelMatcher } from '@OpsiMate/shared';
 import { Fragment, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-export type MatcherRow = { key: string; value: string; op?: 'equals' | 'contains' | 'exists' };
+export type MatcherRow = Pick<MutePolicyLabelMatcher, 'key' | 'value' | 'op'>;
 
 // Autocomplete source: the tag keys seen on current alerts and, per key, the values seen.
 export interface MatcherSuggestion {
@@ -113,7 +113,6 @@ export const MatcherGroupsEditor = ({
 											onValueChange={(op) =>
 												updateRow(groupIdx, rowIdx, {
 													op: op === 'contains' || op === 'exists' ? op : undefined,
-													...(op === 'exists' ? { value: '' } : {}),
 												})
 											}
 											disabled={disabled}
@@ -206,6 +205,10 @@ export const cleanMatcherGroups = (groups: MatcherRow[][]): MatcherRow[][] =>
 		)
 		.filter((group) => group.length > 0);
 
+// One matcher as the user reads it: "site exists", "team ~ db", "env=prod".
+export const describeMatcher = (m: MutePolicyLabelMatcher): string =>
+	m.op === 'exists' ? `${m.key} exists` : m.op === 'contains' ? `${m.key} ~ ${m.value}` : `${m.key}=${m.value}`;
+
 // List-page badges for an entity's matcher groups: k=v badges per group, an OR chip
 // between groups. Callers render their own name-contains / match-all / empty badges.
 export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) => {
@@ -223,8 +226,7 @@ export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) 
 							variant="outline"
 							className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md"
 						>
-							{m.key}
-							{m.op === 'exists' ? ' exists' : m.op === 'contains' ? ` ~ ${m.value}` : `=${m.value}`}
+							{describeMatcher(m)}
 						</Badge>
 					))}
 				</Fragment>
@@ -242,13 +244,7 @@ export const hasMatcherCriteria = (criteria: MatcherCriteria): boolean => getLab
 // equal, which reads as the sort being broken.
 export const describeMatcherCriteria = (criteria: MatcherCriteria): string =>
 	getLabelMatcherGroups(criteria)
-		.map((group) =>
-			group
-				.map((m) =>
-					m.op === 'exists' ? `${m.key} exists` : `${m.key}${m.op === 'contains' ? '~' : '='}${m.value}`
-				)
-				.join(' AND ')
-		)
+		.map((group) => group.map(describeMatcher).join(' AND '))
 		.join(' OR ');
 
 // The name needles in the badge's own wording, so a sort key built from this reads in

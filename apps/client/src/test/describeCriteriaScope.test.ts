@@ -23,7 +23,7 @@ describe('describeCriteriaScope', () => {
 				[{ key: 'env', value: 'staging' }],
 			],
 		} as unknown as MatcherCriteria;
-		expect(describeCriteriaScope(criteria)).toBe('env=prod AND team~db OR env=staging');
+		expect(describeCriteriaScope(criteria)).toBe('env=prod AND team ~ db OR env=staging');
 	});
 
 	test('name and labels appear in the order the cell renders them', () => {
