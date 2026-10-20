@@ -104,11 +104,19 @@ const releaseBody = async (res: Response): Promise<void> => {
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+// A macrotask boundary. A promise chain alone is not enough to stay off the request's
+// path: its callbacks run as microtasks, inside the same tick as the handler, before the
+// response is written. setImmediate runs after the event loop's I/O phase, so the
+// response goes out first and the payload is serialized and signed afterwards.
+const afterCurrentTick = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
 // Sends callbacks for alert changes WITHOUT ever being on the request's path.
 //
 // - `emit` is synchronous and cheap: it only looks up the in-memory list of enabled
-//   callbacks (reloaded on every edit) and queues a delivery. The HTTP request runs
-//   later, on its own; the API response never waits for a receiver.
+//   callbacks (reloaded on every edit) and queues a delivery. Serializing, signing and
+//   sending happen on a later tick (afterCurrentTick), after the handler's response has
+//   been written; the API response never waits for a receiver, nor for the JSON of a
+//   200-alert bulk.
 // - Deliveries are serialized PER CALLBACK (a lane each), so one slow or retrying
 //   receiver never delays another, and a receiver sees a callback's events in order.
 // - `batched` collapses everything emitted while a bulk operation runs into one
@@ -232,9 +240,13 @@ export class CallbackDispatcher {
 			const queued: QueuedDelivery = { event, payloads, dropped: false };
 			waiting.push(queued);
 			const lane = this.lanes.get(callback.id) ?? Promise.resolve();
+			// Taken now, so the delivery starts no earlier than the turn after this emit
+			// (whatever the lane is doing), i.e. after the request's response is written.
+			const turn = afterCurrentTick();
 			// The lane must survive anything deliver throws, or every later delivery for
 			// this callback would chain onto a rejected promise and never run.
 			const next = lane
+				.then(() => turn)
 				.then(() => this.runQueued(callback, queued))
 				.catch((error: unknown) => logger.error(`Callback "${callback.name}" delivery crashed`, error));
 			this.lanes.set(callback.id, next);
@@ -246,8 +258,17 @@ export class CallbackDispatcher {
 		const waiting = this.waiting.get(callback.id) ?? [];
 		const index = waiting.indexOf(queued);
 		if (index >= 0) waiting.splice(index, 1);
-		// A ready payload starts at once (no extra tick): only a bulk's place waits.
-		const payloads = Array.isArray(queued.payloads) ? queued.payloads : await queued.payloads;
+		// A ready payload starts now. A bulk's place waits for the operation to finish — and
+		// then one more turn: the turn taken at its first emit passed long ago (the bulk
+		// awaited a write per alert), and the bulk route writes its response only after
+		// `batched` returns, which is when the payloads resolve.
+		let payloads: AlertCallbackPayload[];
+		if (Array.isArray(queued.payloads)) {
+			payloads = queued.payloads;
+		} else {
+			payloads = await queued.payloads;
+			await afterCurrentTick();
+		}
 		for (const payload of payloads) {
 			await this.deliver({ callback, payload, deliveryId: randomUUID() });
 		}

@@ -131,6 +131,10 @@ const makeDispatcher = (
 
 const parsePayload = (request: SentRequest): AlertCallbackPayload => JSON.parse(request.body) as AlertCallbackPayload;
 
+// Deliveries start on the event-loop turn after emit (so the request's response goes out
+// first); a test that wants the first request "in flight" waits for that turn.
+const nextTurn = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
 describe('CallbackDispatcher: delivery', () => {
 	test('sends the JSON payload with the event, signature and custom headers; emit itself does not wait', async () => {
 		const { repo } = makeRepo([
@@ -141,6 +145,10 @@ describe('CallbackDispatcher: delivery', () => {
 		await dispatcher.reload();
 
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor, details: { silencedUntil: null } });
+		expect(sent).toHaveLength(0);
+		// Nor after any number of microtasks: the handler's remaining awaits and its
+		// response write all happen before the payload is even serialized.
+		for (let i = 0; i < 5; i++) await Promise.resolve();
 		expect(sent).toHaveLength(0);
 
 		await dispatcher.flush();
@@ -411,6 +419,7 @@ describe('CallbackDispatcher: retries', () => {
 
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
 		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		await nextTurn();
 		callbacks[0] = { ...callback, url: 'https://moved.test/hook', secret: 'rotated-secret' };
 		await dispatcher.reload();
 		release();
@@ -461,6 +470,7 @@ describe('CallbackDispatcher: resilience', () => {
 
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a2'), actor });
+		await nextTurn();
 		callback.enabled = false;
 		await dispatcher.reload();
 		release();
@@ -523,6 +533,30 @@ describe('CallbackDispatcher: bulk batching', () => {
 		const assigned = parsePayload(sent[1]);
 		expect(assigned.event).toBe('owner_assigned');
 		expect(assigned.alerts).toHaveLength(3);
+	});
+
+	test('a bulk that awaits I/O after its first emit still sends only after the turn it returns on', async () => {
+		const { repo } = makeRepo([makeCallback()]);
+		const { sent, fetchImpl } = makeFetch();
+		const { dispatcher } = makeDispatcher(repo, fetchImpl);
+		await dispatcher.reload();
+
+		// Like bulkAlertAction: one write (an I/O turn) per alert, so the turn taken at the
+		// first emit is over long before the operation finishes.
+		await dispatcher.batched(async () => {
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
+			await nextTurn();
+			dispatcher.emit({ event: 'silenced', alert: makeAlert('a2'), actor });
+			await nextTurn();
+		});
+		// `batched` has returned: this is where the route writes its response. Nothing has
+		// been serialized or sent yet, through any number of microtasks.
+		for (let i = 0; i < 5; i++) await Promise.resolve();
+		expect(sent).toHaveLength(0);
+
+		await dispatcher.flush();
+		expect(sent).toHaveLength(1);
+		expect(parsePayload(sent[0]).alerts.map((a) => a.id)).toEqual(['a1', 'a2']);
 	});
 
 	test('two bulk operations running at once keep their alerts apart', async () => {
