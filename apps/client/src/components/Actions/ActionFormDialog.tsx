@@ -26,6 +26,8 @@ import {
 	ActionType,
 	ALERT_TEMPLATE_VARIABLES,
 	alertTagTemplateVariable,
+	flagTemplateVariable,
+	looksLikeCountryCode,
 	HttpActionConfig,
 	HttpActionMethod,
 	JiraActionConfig,
@@ -113,7 +115,19 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	// Template variables offered by the picker under each templated field: the fixed
 	// alert fields plus one alert.tags.<key> per tag key seen on current alerts.
 	const templateVariables = useMemo(
-		() => [...ALERT_TEMPLATE_VARIABLES, ...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key))],
+		() => [
+			...ALERT_TEMPLATE_VARIABLES,
+			...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key)),
+			// {{flag.<code>}} for every two-letter code seen in a label value (flag.il -> 🇮🇱).
+			...[
+				...new Set(
+					matcherSuggestions
+						.flatMap((tk) => tk.values)
+						.filter(looksLikeCountryCode)
+						.map((value) => flagTemplateVariable(value))
+				),
+			].sort(),
+		],
 		[matcherSuggestions]
 	);
 

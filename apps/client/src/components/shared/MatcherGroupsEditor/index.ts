@@ -1,6 +1,7 @@
 export {
 	cleanMatcherGroups,
 	describeCriteriaScope,
+	describeMatcher,
 	describeMatcherCriteria,
 	hasMatcherCriteria,
 	MatcherGroupBadges,
