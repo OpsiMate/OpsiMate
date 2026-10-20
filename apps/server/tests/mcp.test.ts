@@ -7,6 +7,7 @@ import { AddressInfo } from 'node:net';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { resolveDashboardRef } from '../src/api/mcp/dashboardLookup';
+import { parseDashboardFilters } from '../src/api/mcp/project';
 import { mcpEnabled } from '../src/api/mcp/router';
 import { McpAlertCounts, McpAlertPage, McpAlertSummary, McpDashboardSummary } from '../src/api/mcp/schemas';
 import { AppMode, createApp } from '../src/app';
@@ -511,6 +512,26 @@ describe('time zone default', () => {
 
 		const london = await call<DashboardResult>('get_dashboard', { id, timeZone: 'Asia/Tokyo' });
 		expect(london.window.from).not.toBe(result.window.from);
+	});
+});
+
+describe('stored filter records', () => {
+	test('parseDashboardFilters keeps a bare string as a one-value filter and drops the rest', () => {
+		expect(
+			parseDashboardFilters({ severity: 'Critical', status: ['Firing'], count: 3, bad: ['x', 1], none: null })
+		).toEqual({ severity: ['Critical'], status: ['Firing'] });
+		expect(parseDashboardFilters(null)).toEqual({});
+	});
+
+	test('a dashboard saved with a bare-string filter narrows like the UI does', async () => {
+		// The REST API accepts `severity: 'Critical'` and the client narrows by it; the
+		// MCP view must not drop it and show every severity.
+		const id = await createDashboard({ name: 'Bare string', filters: { severity: 'Critical', junk: 42 } });
+		const result = await call<AlertListsResult>('get_dashboard_alerts', { id });
+		expect(ids(result.active)).toEqual(['mcp-old-crit']);
+		const shown = await call<DashboardResult>('get_dashboard', { id });
+		expect(shown.dashboard.filters).toEqual({ severity: ['Critical'] });
+		expect(shown.description).toContain('severity is "Critical"');
 	});
 });
 

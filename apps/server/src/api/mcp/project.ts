@@ -53,14 +53,19 @@ export const toAlertSummary = (alert: Alert, owners: AlertOwnerInfo[]): McpAlert
 });
 
 // The stored filter record is `Record<string, unknown>` (the client writes it, the server
-// only stores it). Only `field -> string[]` entries are filters; anything else is junk a
-// stale client left behind and is dropped, as the query engine would ignore it anyway.
+// only stores it). A filter is `field -> string[]`; the REST API also accepts a bare
+// string (`severity: 'Critical'`), which the shared engine reads as that one value, so it
+// is kept as a one-element list rather than dropped — dropping it would show a dashboard
+// WIDER than the UI does. Anything else is junk a stale client left behind and is
+// dropped, as the query engine would ignore it anyway.
 export const parseDashboardFilters = (
 	filters: Record<string, unknown> | null | undefined
 ): Record<string, string[]> => {
 	const parsed: Record<string, string[]> = {};
 	for (const [field, values] of Object.entries(filters ?? {})) {
-		if (Array.isArray(values) && values.every((value): value is string => typeof value === 'string')) {
+		if (typeof values === 'string') {
+			parsed[field] = [values];
+		} else if (Array.isArray(values) && values.every((value): value is string => typeof value === 'string')) {
 			parsed[field] = values;
 		}
 	}
