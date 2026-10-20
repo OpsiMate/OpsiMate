@@ -10,11 +10,23 @@ const MCP_URL = `${API_HOST}${MCP_PATH}`;
 const CLAUDE_CODE_EXAMPLE = `claude mcp add --transport http opsimate ${MCP_URL} \\
   --header "x-api-token: {your_api_token}"`;
 
-// Cursor, Windsurf, VS Code and most other clients read this shape (file name varies:
-// .cursor/mcp.json, mcp.json, settings.json → "mcp.servers").
+// The "mcpServers" shape: Cursor (.cursor/mcp.json), Windsurf, and a project's .mcp.json read
+// by Claude Code. "type": "http" names the transport for the clients that need it.
 const MCP_JSON_EXAMPLE = `{
   "mcpServers": {
     "opsimate": {
+      "type": "http",
+      "url": "${MCP_URL}",
+      "headers": { "x-api-token": "{your_api_token}" }
+    }
+  }
+}`;
+
+// VS Code keeps its own shape: a top-level "servers" object, in .vscode/mcp.json.
+const VSCODE_EXAMPLE = `{
+  "servers": {
+    "opsimate": {
+      "type": "http",
       "url": "${MCP_URL}",
       "headers": { "x-api-token": "{your_api_token}" }
     }
@@ -22,12 +34,20 @@ const MCP_JSON_EXAMPLE = `{
 }`;
 
 // Clients whose config only starts a local process (Claude Desktop's claude_desktop_config.json)
-// reach a remote HTTP server through the mcp-remote bridge.
+// reach a remote HTTP server through the mcp-remote bridge. The token goes in the process
+// environment, not in its arguments: other users of the machine can read a process's
+// command line, not its environment. A plain http:// address that is not this machine
+// needs the bridge's --allow-http (it refuses to send credentials in clear otherwise).
+const isLoopback = (url: string): boolean => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])([:/]|$)/i.test(url);
+const MCP_REMOTE_NEEDS_ALLOW_HTTP = /^http:\/\//i.test(MCP_URL) && !isLoopback(MCP_URL);
 const MCP_REMOTE_EXAMPLE = `{
   "mcpServers": {
     "opsimate": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "${MCP_URL}", "--header", "x-api-token:{your_api_token}"]
+      "args": ["-y", "mcp-remote", "${MCP_URL}", "--header", "x-api-token:\${OPSIMATE_API_TOKEN}"${
+			MCP_REMOTE_NEEDS_ALLOW_HTTP ? ', "--allow-http"' : ''
+		}],
+      "env": { "OPSIMATE_API_TOKEN": "{your_api_token}" }
     }
   }
 }`;
@@ -144,14 +164,25 @@ export const McpGuide = () => (
 						copyLabel="Copy the Claude Code command"
 					/>
 					<ClientSnippet
-						heading="Cursor, Windsurf, VS Code and other clients with an mcp.json"
-						note="Streamable HTTP with a header. The file name differs per client (.cursor/mcp.json, mcp.json, or the editor's settings)."
+						heading="Cursor, Windsurf, and a project's .mcp.json (Claude Code)"
+						note="The mcpServers shape: .cursor/mcp.json for Cursor, Windsurf's mcp_config.json, or a .mcp.json at a repository root that Claude Code picks up."
 						code={MCP_JSON_EXAMPLE}
 						copyLabel="Copy the mcp.json entry"
 					/>
 					<ClientSnippet
+						heading="VS Code"
+						note="VS Code uses a top-level servers object: put this in .vscode/mcp.json (or the user profile's mcp.json)."
+						code={VSCODE_EXAMPLE}
+						copyLabel="Copy the VS Code entry"
+					/>
+					<ClientSnippet
 						heading="Claude Desktop and other clients that only start a local process"
-						note="The mcp-remote bridge turns the local stdio connection into HTTP requests to this server."
+						note={
+							'The mcp-remote bridge turns the local stdio connection into HTTP requests to this server. The token is read from the environment (env), never put on the command line, where other users of the machine could see it.' +
+							(MCP_REMOTE_NEEDS_ALLOW_HTTP
+								? ' This server is reached over plain http:// from another machine, so the bridge needs --allow-http; prefer HTTPS for anything beyond a trusted private network.'
+								: '')
+						}
 						code={MCP_REMOTE_EXAMPLE}
 						copyLabel="Copy the mcp-remote entry"
 					/>
