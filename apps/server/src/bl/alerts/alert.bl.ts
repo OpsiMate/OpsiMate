@@ -169,6 +169,12 @@ export interface SourceResolveResult {
 	created: boolean;
 }
 
+export interface AlertLookup {
+	alert: Alert;
+	// Which list it came from: false for a firing alert, true for one in resolved history.
+	resolved: boolean;
+}
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -344,11 +350,27 @@ export class AlertBL {
 		return this.resolvedSnapshot.get();
 	}
 
+	// One alert by id, read off the same cached lists the list endpoints serve — so it
+	// carries the fetch-time fields (isMuted, lastComment, appliedEnrichments) the row
+	// repositories know nothing about. The active list is checked first: an id present
+	// in both is an alert that fired again, and the live copy is the one that matters.
+	async findAlertById(alertId: string): Promise<AlertLookup | null> {
+		const active = (await this.activeSnapshot.get()).value.find((alert) => alert.id === alertId);
+		if (active) return { alert: active, resolved: false };
+		const resolved = (await this.resolvedSnapshot.get()).value.find((alert) => alert.id === alertId);
+		return resolved ? { alert: resolved, resolved: true } : null;
+	}
+
 	// Owner ids are numeric in the DB but string-typed on alerts; the engine compares
 	// strings, so the mapping happens once here.
 	private async getOwnerInfos(): Promise<AlertOwnerInfo[]> {
 		const users = await this.userRepo.getAllUsers();
 		return users.map((u) => ({ id: String(u.id), fullName: u.fullName }));
+	}
+
+	// The cached owner list the query engine resolves owner ids against.
+	async getOwners(): Promise<AlertOwnerInfo[]> {
+		return (await this.ownersSnapshot.get()).value;
 	}
 
 	// Server-side execution of the client's own query engine over the cached snapshot:

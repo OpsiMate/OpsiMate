@@ -1,5 +1,6 @@
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
+import { DashboardTimeRange } from '@OpsiMate/shared';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 let app: SuperTest<Test>;
@@ -217,5 +218,55 @@ describe('Dashboards API — toolbar toggle persistence', () => {
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ ...base, name: 'bad toggle', severityColors: 'yes' });
 		expect(created.status).toBe(400);
+	});
+});
+
+describe('GET /dashboards/:dashboardId', () => {
+	interface SavedDashboard {
+		id: string | number;
+		name: string;
+		filters: Record<string, string[]>;
+		query: string;
+		timeRange?: DashboardTimeRange;
+	}
+
+	test('returns the saved dashboard with its filters, query and time range', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				name: 'Prod DB',
+				type: 'alerts' as const,
+				description: '',
+				filters: { severity: ['critical'], '!status': ['Resolved'] },
+				visibleColumns: ['type', 'alertName'],
+				query: 'postgres',
+				groupBy: [],
+				timeRange: { from: null, to: null, preset: 'last1h' },
+			});
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const res = await app.get(`/api/v1/dashboards/${id}`).set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		const saved = res.body.data as SavedDashboard;
+		expect(String(saved.id)).toBe(id);
+		expect(saved.name).toBe('Prod DB');
+		expect(saved.filters).toEqual({ severity: ['critical'], '!status': ['Resolved'] });
+		expect(saved.query).toBe('postgres');
+		expect(saved.timeRange).toEqual({ from: null, to: null, preset: 'last1h' });
+	});
+
+	test('an unknown id is a 404', async () => {
+		const res = await app.get('/api/v1/dashboards/999999').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(404);
+		expect(res.body).toEqual({ success: false, error: 'Dashboard not found' });
+	});
+
+	test('a malformed id is a 400, not a 500', async () => {
+		const res = await app.get('/api/v1/dashboards/not-a-number').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(400);
+		expect(res.body.success).toBe(false);
 	});
 });

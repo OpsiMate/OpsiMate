@@ -59,6 +59,22 @@ export const alertRoutes: ApiRouteDoc[] = [
 		responses: listResponses,
 	},
 	{
+		method: 'get',
+		path: '/api/v1/alerts/:alertId',
+		tag: 'Alerts',
+		summary: 'Get one alert',
+		description:
+			'Looks in the firing list first, then in resolved history; `resolved` says where it was found. The alert ' +
+			'carries the same fetch-time fields as the list endpoints (`isMuted`, `lastComment`, `appliedEnrichments`).',
+		auth: 'user',
+		params: AlertIdParam,
+		responses: {
+			200: { description: 'OK', schema: okEnvelope(z.object({ alert: AlertSchema, resolved: z.boolean() })) },
+			401: errors.unauthorized,
+			404: errors.notFound,
+		},
+	},
+	{
 		method: 'delete',
 		path: '/api/v1/alerts/:alertId',
 		tag: 'Alerts',
