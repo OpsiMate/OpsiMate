@@ -94,7 +94,8 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 		{
 			title: 'Alerts of a dashboard',
 			description:
-				'The alerts a dashboard shows right now: its filters, query and time range applied to the active ' +
+				'The alerts a dashboard shows right now: its filters, query and time range (alerts that were firing ' +
+				'at some point inside the window, as on the alerts page) applied to the active ' +
 				'list (include "active", the default), the resolved archive ("resolved" — the dashboard\'s status ' +
 				'filter is suspended there, as in the UI), or both ("all"). Pages of `limit` alerts, newest first; ' +
 				'pass the page\'s nextCursor as `cursor` to continue (with "all", page one list at a time by ' +

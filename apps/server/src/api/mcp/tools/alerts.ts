@@ -37,7 +37,9 @@ export const registerAlertTools = (server: McpServer, deps: McpDeps): void => {
 				'alerts page runs, so results agree with the UI. `filters` keys are fields (status, severity, type, ' +
 				'owner, alertName, "tagKey:<key>"), values are display values such as "Critical", "Firing" or ' +
 				'"Unassigned"; "!field" excludes. Unknown fields or values are rejected with the known ones listed; ' +
-				'list_alert_filter_values shows what exists. `search` matches alert names and summaries. Reads the ' +
+				'list_alert_filter_values shows what exists. `search` matches alert names and summaries. A time ' +
+				'window (from/to or lastMinutes) keeps the alerts that were firing at some point inside it — one ' +
+				'that started before the window and is still open counts, as on the alerts page. Reads the ' +
 				'active list by default; include "resolved" for the archive, "all" for both (each paged on its own). ' +
 				'Sorted by startsAt, newest first, unless `sort`/`dir` say otherwise.',
 			inputSchema: z.object({
