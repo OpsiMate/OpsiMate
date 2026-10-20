@@ -1,5 +1,8 @@
 import {
+	buildAboutList,
+	buildChecklist,
 	collectBrowserDiagnostics,
+	describeBrowser,
 	DiagnosticsEnvironment,
 	formatBrowserDiagnostics,
 	MINIMUM_BROWSERS,
@@ -96,5 +99,61 @@ describe('formatBrowserDiagnostics', () => {
 		);
 		expect(text).toContain('server 0.0.120, client 0.0.120, http://localhost:8080');
 		expect(text).toContain('findings: none');
+	});
+});
+
+describe('describeBrowser', () => {
+	test('names the browser and OS the way a person would', () => {
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/110.0.5481.178 Safari/537.36 Edg/110.0.1587.63'
+			)
+		).toBe('Microsoft Edge 110 on Windows');
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36'
+			)
+		).toBe('Chrome 140 on macOS');
+		expect(describeBrowser('Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0')).toBe(
+			'Firefox 128 on Linux'
+		);
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.4 Safari/605.1.15'
+			)
+		).toBe('Safari 17 on macOS');
+		expect(describeBrowser('something else')).toBe('Unknown browser on an unknown OS');
+	});
+});
+
+describe('buildChecklist and buildAboutList', () => {
+	test('a healthy browser is all green or grey; an old one marks the color checks red with the fix', () => {
+		const healthy = buildChecklist(collectBrowserDiagnostics(env()));
+		expect(healthy.map((item) => item.status)).not.toContain('problem');
+		const old = buildChecklist(collectBrowserDiagnostics(env({ supports: () => false })));
+		const byId = Object.fromEntries(old.map((item) => [item.id, item]));
+		expect(byId.oklch.status).toBe('problem');
+		expect(byId.oklch.detail).toContain(MINIMUM_BROWSERS);
+		expect(byId.colorMix.status).toBe('problem');
+		expect(byId.hover.status).toBe('ok');
+	});
+
+	test('a Contrast theme is a problem; a touch-only pointer reads as hover problem + pointer info', () => {
+		const items = buildChecklist(
+			collectBrowserDiagnostics(env({ matches: (q) => q === '(forced-colors: active)' }))
+		);
+		const byId = Object.fromEntries(items.map((item) => [item.id, item]));
+		expect(byId.forcedColors.status).toBe('problem');
+		expect(byId.hover.status).toBe('problem');
+		expect(byId.pointer.status).toBe('info');
+	});
+
+	test('the about list is plain words: browser name, versions, screen and zoom', () => {
+		const about = buildAboutList(collectBrowserDiagnostics(env()), versions, 'https://opsimate.example.com');
+		const byLabel = Object.fromEntries(about.map((item) => [item.label, item.value]));
+		expect(byLabel.Browser).toBe('Chrome 140 on Windows');
+		expect(byLabel.OpsiMate).toBe('server 0.0.120, client 0.0.120');
+		expect(byLabel.Screen).toBe('1920 × 1080, window 1600 × 900, zoom 125%');
+		expect(byLabel.Touch).toBe('no');
 	});
 });

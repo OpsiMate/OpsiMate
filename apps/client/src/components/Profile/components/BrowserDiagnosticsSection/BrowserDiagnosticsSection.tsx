@@ -1,35 +1,45 @@
 import { useAppVersion } from '@/hooks/queries/version';
 import { useBrowserDiagnostics } from '@/hooks/useBrowserDiagnostics';
-import { formatBrowserDiagnostics } from '@/lib/browserDiagnostics';
-import { AlertTriangle, CheckCircle2, Stethoscope } from 'lucide-react';
+import { buildAboutList, buildChecklist, ChecklistStatus, formatBrowserDiagnostics } from '@/lib/browserDiagnostics';
+import { AlertTriangle, CheckCircle2, ChevronRight, Info, Stethoscope, XCircle } from 'lucide-react';
 
-// Profile page: what this browser can and cannot do, printed in full (see
-// lib/browserDiagnostics). When something on screen looks wrong on one machine, the
-// person sends a screenshot or selects the block — no copy button to find, nothing to
-// run. Findings come first, in plain language; the raw block follows for support.
+// Profile page: what this browser can and cannot do, as a checklist a person reads
+// (see lib/browserDiagnostics). When something on screen looks wrong on one machine,
+// the person sends a screenshot — nothing to find or run. Findings come first, then the
+// checks, then the facts support asks for; the raw report is folded away at the bottom.
 //
-// The findings are styled with literal sRGB colors (hex), not the Tailwind palette: the
-// palette is oklch(), which is exactly what the browsers these findings are about cannot
-// render — the warning would be invisible on the machines that need it.
+// Status colors are literal sRGB hex, not the Tailwind palette: the palette is oklch(),
+// which is exactly what the browsers these findings are about cannot render — a red ✗
+// drawn in oklch would be invisible on the machines that need it.
+const STATUS_ICON: Record<ChecklistStatus, { Icon: typeof CheckCircle2; className: string; label: string }> = {
+	ok: { Icon: CheckCircle2, className: 'text-[#047857] dark:text-[#6ee7b7]', label: 'OK' },
+	problem: { Icon: XCircle, className: 'text-[#b91c1c] dark:text-[#fca5a5]', label: 'Problem' },
+	info: { Icon: Info, className: 'text-[#6b7280] dark:text-[#9ca3af]', label: 'Info' },
+};
+
 export const BrowserDiagnosticsSection = () => {
 	const info = useAppVersion();
 	const diagnostics = useBrowserDiagnostics();
-	const text = formatBrowserDiagnostics(
-		diagnostics,
-		{ server: info.serverKnown ? info.version : null, commit: info.commit, client: info.clientVersion },
-		window.location.origin
-	);
+	const versions = {
+		server: info.serverKnown ? info.version : null,
+		commit: info.commit,
+		client: info.clientVersion,
+	};
+	const checklist = buildChecklist(diagnostics);
+	const about = buildAboutList(diagnostics, versions, window.location.origin);
+	const report = formatBrowserDiagnostics(diagnostics, versions, window.location.origin);
 
 	return (
 		<div className="space-y-4 border-t pt-6">
 			<div className="flex items-center gap-3">
 				<Stethoscope className="h-5 w-5 text-muted-foreground" />
-				<h3 className="font-semibold">Browser diagnostics</h3>
+				<h3 className="font-semibold">Browser check</h3>
 			</div>
 			<p className="text-sm text-muted-foreground">
-				If colors, icons or hover effects look wrong on this machine, this is what support needs. The findings
-				say what this browser will show differently; the block below is the full report.
+				If colors, icons or hover effects look wrong on this computer, this page shows why. Send a screenshot of
+				it to support.
 			</p>
+
 			{diagnostics.findings.length > 0 ? (
 				<ul className="space-y-2" aria-label="Browser findings">
 					{diagnostics.findings.map((finding) => (
@@ -45,15 +55,46 @@ export const BrowserDiagnosticsSection = () => {
 			) : (
 				<p className="flex items-center gap-2 text-sm text-[#047857] dark:text-[#6ee7b7]">
 					<CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-					No known rendering issue detected in this browser.
+					Everything this page depends on is supported by this browser.
 				</p>
 			)}
-			<pre
-				aria-label="Browser diagnostics report"
-				className="select-all whitespace-pre-wrap break-words rounded-lg border bg-muted p-3 text-xs font-mono text-foreground"
-			>
-				{text}
-			</pre>
+
+			<ul className="divide-y rounded-lg border" aria-label="Browser checks">
+				{checklist.map((item) => {
+					const { Icon, className, label } = STATUS_ICON[item.status];
+					return (
+						<li key={item.id} className="flex items-start gap-3 px-3 py-2">
+							<Icon className={`h-4 w-4 mt-0.5 shrink-0 ${className}`} aria-label={label} role="img" />
+							<div className="min-w-0">
+								<div className="text-sm font-medium text-foreground">{item.label}</div>
+								<div className="text-xs text-muted-foreground">{item.detail}</div>
+							</div>
+						</li>
+					);
+				})}
+			</ul>
+
+			<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" aria-label="About this browser">
+				{about.map((item) => (
+					<div key={item.label} className="contents">
+						<dt className="text-muted-foreground">{item.label}</dt>
+						<dd className="text-foreground break-words">{item.value}</dd>
+					</div>
+				))}
+			</dl>
+
+			<details className="group text-xs">
+				<summary className="flex cursor-pointer items-center gap-1 text-muted-foreground hover:text-foreground">
+					<ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" aria-hidden />
+					Technical details for support
+				</summary>
+				<pre
+					aria-label="Browser diagnostics report"
+					className="mt-2 select-all whitespace-pre-wrap break-words rounded-lg border bg-muted p-3 font-mono text-foreground"
+				>
+					{report}
+				</pre>
+			</details>
 		</div>
 	);
 };

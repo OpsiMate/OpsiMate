@@ -142,3 +142,140 @@ export const formatBrowserDiagnostics = (
 			: 'findings: none — no known rendering issue detected',
 	].join('\n');
 };
+
+// "Microsoft Edge 110 on Windows" from a user-agent string: what a person recognises.
+// Order matters — Edge and Opera also say "Chrome", Chrome also says "Safari".
+export const describeBrowser = (userAgent: string): string => {
+	const ua = userAgent;
+	const pick = (...pairs: Array<[string, RegExp]>): string | null => {
+		for (const [name, pattern] of pairs) {
+			const match = pattern.exec(ua);
+			if (match) return `${name} ${match[1].split('.')[0]}`;
+		}
+		return null;
+	};
+	const browser =
+		pick(
+			['Microsoft Edge', /Edg\/([\d.]+)/],
+			['Opera', /OPR\/([\d.]+)/],
+			['Firefox', /Firefox\/([\d.]+)/],
+			['Chrome', /Chrome\/([\d.]+)/],
+			['Safari', /Version\/([\d.]+).*Safari/]
+		) ?? 'Unknown browser';
+	const os = /Windows NT 10/.test(ua)
+		? 'Windows'
+		: /Windows/.test(ua)
+			? 'Windows (older)'
+			: /Mac OS X/.test(ua) && !/iPhone|iPad/.test(ua)
+				? 'macOS'
+				: /iPhone|iPad/.test(ua)
+					? 'iOS'
+					: /Android/.test(ua)
+						? 'Android'
+						: /Linux|X11/.test(ua)
+							? 'Linux'
+							: 'an unknown OS';
+	return `${browser} on ${os}`;
+};
+
+export type ChecklistStatus = 'ok' | 'problem' | 'info';
+
+export interface ChecklistItem {
+	id: string;
+	// What is checked, in a user's words.
+	label: string;
+	status: ChecklistStatus;
+	// What the answer means for what they see.
+	detail: string;
+}
+
+// The checks as a list a person reads top to bottom: green when the UI will look right,
+// red when it will not, grey for a preference that only explains a look.
+export const buildChecklist = ({ checks }: BrowserDiagnostics): ChecklistItem[] => [
+	{
+		id: 'oklch',
+		label: 'Modern colors (oklch)',
+		status: checks.oklch ? 'ok' : 'problem',
+		detail: checks.oklch
+			? 'Icon and badge colors display as designed.'
+			: `Status, severity and fix icons lose their colors. The browser is too old — needs ${MINIMUM_BROWSERS}.`,
+	},
+	{
+		id: 'colorMix',
+		label: 'Color blending (color-mix)',
+		status: checks.colorMix ? 'ok' : 'problem',
+		detail: checks.colorMix
+			? 'Hover and selection tints display as designed.'
+			: 'Hover and selection tints on buttons and rows disappear. The browser is too old.',
+	},
+	{
+		id: 'hover',
+		label: 'Mouse hover',
+		status: checks.hoverCapable ? 'ok' : 'problem',
+		detail: checks.hoverCapable
+			? 'Buttons and rows react when the pointer is over them.'
+			: 'The browser reports no hover (touch screen, or a remote/virtual session): buttons only change when clicked.',
+	},
+	{
+		id: 'pointer',
+		label: 'Precise pointer (mouse or trackpad)',
+		status: checks.finePointer ? 'ok' : 'info',
+		detail: checks.finePointer
+			? 'A mouse or trackpad is in use.'
+			: 'No precise pointer detected (touch, or a remote session).',
+	},
+	{
+		id: 'forcedColors',
+		label: 'Windows Contrast theme',
+		status: checks.forcedColors ? 'problem' : 'ok',
+		detail: checks.forcedColors
+			? 'A High Contrast theme is on: Windows replaces page colors, so colored icons and tints show in system colors.'
+			: 'Off — page colors are shown as designed.',
+	},
+	{
+		id: 'dark',
+		label: 'Dark mode preferred by the system',
+		status: 'info',
+		detail: checks.darkScheme ? 'Yes.' : 'No.',
+	},
+	{
+		id: 'motion',
+		label: 'Reduced motion requested',
+		status: 'info',
+		detail: checks.reducedMotion ? 'Yes — animations are kept to a minimum.' : 'No.',
+	},
+	{
+		id: 'contrast',
+		label: 'More contrast requested',
+		status: 'info',
+		detail: checks.moreContrast ? 'Yes.' : 'No.',
+	},
+];
+
+export interface AboutItem {
+	label: string;
+	value: string;
+}
+
+// "About this browser": the facts support asks for, in plain words.
+export const buildAboutList = (
+	diagnostics: BrowserDiagnostics,
+	versions: DiagnosticsVersions,
+	origin: string
+): AboutItem[] => {
+	const { environment } = diagnostics;
+	return [
+		{ label: 'Browser', value: describeBrowser(environment.userAgent) },
+		{
+			label: 'OpsiMate',
+			value: `server ${versions.server === null ? 'unknown (not loaded)' : versions.server}, client ${versions.client}`,
+		},
+		{ label: 'Address', value: origin },
+		{
+			label: 'Screen',
+			value: `${environment.screen.width} × ${environment.screen.height}, window ${environment.viewport.width} × ${environment.viewport.height}, zoom ${Math.round(environment.devicePixelRatio * 100)}%`,
+		},
+		{ label: 'Touch', value: environment.maxTouchPoints > 0 ? `yes (${environment.maxTouchPoints} points)` : 'no' },
+		{ label: 'Language & time zone', value: `${environment.language}, ${environment.timeZone}` },
+	];
+};

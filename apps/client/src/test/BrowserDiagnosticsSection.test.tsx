@@ -1,5 +1,5 @@
 import { BrowserDiagnosticsSection } from '@/components/Profile/components/BrowserDiagnosticsSection';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { AllTheProviders } from './TestProviders';
 
@@ -12,7 +12,15 @@ describe('BrowserDiagnosticsSection', () => {
 				<BrowserDiagnosticsSection />
 			</AllTheProviders>
 		);
-		expect(screen.getByRole('heading', { name: 'Browser diagnostics' })).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Browser check' })).toBeInTheDocument();
+		// The checklist a person reads, with a status icon per row.
+		const checks = screen.getByRole('list', { name: 'Browser checks' });
+		expect(within(checks).getAllByRole('listitem')).toHaveLength(8);
+		expect(within(checks).getByText('Modern colors (oklch)')).toBeInTheDocument();
+		expect(within(checks).getAllByRole('img', { name: /OK|Problem|Info/ }).length).toBe(8);
+		expect(screen.getByText('Browser')).toBeInTheDocument();
+		// The raw report is still there for support, folded away.
+		expect(screen.getByText('Technical details for support')).toBeInTheDocument();
 		const report = screen.getByLabelText('Browser diagnostics report').textContent ?? '';
 		expect(report.startsWith('OpsiMate browser diagnostics')).toBe(true);
 		expect(report).toMatch(/^server .*, client .*, http:\/\/localhost/m);
@@ -46,7 +54,7 @@ describe('BrowserDiagnosticsSection', () => {
 		// jsdom has no CSS.supports / matchMedia, so it reads as an old, non-hovering browser —
 		// the findings list shows, not the all-clear.
 		const findings = screen.queryByRole('list', { name: 'Browser findings' });
-		const allClear = screen.queryByText(/No known rendering issue/);
+		const allClear = screen.queryByText(/Everything this page depends on is supported/);
 		expect(Boolean(findings) !== Boolean(allClear)).toBe(true);
 	});
 });
