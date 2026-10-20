@@ -8,6 +8,8 @@ export default function createAlertRouter(controller: AlertController) {
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
 	router.get('/facets', controller.getAlertFacets.bind(controller));
+	// Owner names for the owner ids alerts carry (what the facets already show as names)
+	router.get('/owners', controller.getAlertOwners.bind(controller));
 	router.get('/analytics', controller.getAlertAnalytics.bind(controller));
 	router.get('/groups', controller.getAlertGroupSummaries.bind(controller));
 
