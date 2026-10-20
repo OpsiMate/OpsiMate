@@ -1,5 +1,5 @@
 import { BrowserDiagnosticsSection } from '@/components/Profile/components/BrowserDiagnosticsSection';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { AllTheProviders } from './TestProviders';
 
@@ -19,6 +19,22 @@ describe('BrowserDiagnosticsSection', () => {
 		expect(report).toContain('css oklch:');
 		expect(report).toContain('hover capable:');
 		expect(report).toMatch(/findings:/);
+	});
+
+	test('re-collects when the window changes, so the report is never stale', () => {
+		render(
+			<AllTheProviders>
+				<BrowserDiagnosticsSection />
+			</AllTheProviders>
+		);
+		const report = () => screen.getByLabelText('Browser diagnostics report').textContent ?? '';
+		const before = window.innerWidth;
+		expect(report()).toContain(`viewport ${before}x`);
+		act(() => {
+			Object.defineProperty(window, 'innerWidth', { value: before + 123, configurable: true });
+			window.dispatchEvent(new Event('resize'));
+		});
+		expect(report()).toContain(`viewport ${before + 123}x`);
 	});
 
 	test('states a verdict: either the findings or that nothing is wrong', () => {

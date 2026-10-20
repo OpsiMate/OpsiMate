@@ -1,14 +1,19 @@
 import { useAppVersion } from '@/hooks/queries/version';
-import { collectBrowserDiagnostics, formatBrowserDiagnostics } from '@/lib/browserDiagnostics';
+import { useBrowserDiagnostics } from '@/hooks/useBrowserDiagnostics';
+import { formatBrowserDiagnostics } from '@/lib/browserDiagnostics';
 import { AlertTriangle, CheckCircle2, Stethoscope } from 'lucide-react';
 
 // Profile page: what this browser can and cannot do, printed in full (see
 // lib/browserDiagnostics). When something on screen looks wrong on one machine, the
 // person sends a screenshot or selects the block — no copy button to find, nothing to
 // run. Findings come first, in plain language; the raw block follows for support.
+//
+// The findings are styled with literal sRGB colors (hex), not the Tailwind palette: the
+// palette is oklch(), which is exactly what the browsers these findings are about cannot
+// render — the warning would be invisible on the machines that need it.
 export const BrowserDiagnosticsSection = () => {
 	const info = useAppVersion();
-	const diagnostics = collectBrowserDiagnostics();
+	const diagnostics = useBrowserDiagnostics();
 	const text = formatBrowserDiagnostics(
 		diagnostics,
 		{ server: info.version, commit: info.commit, client: info.clientVersion },
@@ -30,7 +35,7 @@ export const BrowserDiagnosticsSection = () => {
 					{diagnostics.findings.map((finding) => (
 						<li
 							key={finding}
-							className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
+							className="flex items-start gap-2 rounded-md border border-[#f59e0b] bg-[#fffbeb] p-3 text-sm text-[#92400e] dark:border-[#b45309] dark:bg-[#451a03] dark:text-[#fde68a]"
 						>
 							<AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
 							<span>{finding}</span>
@@ -38,7 +43,7 @@ export const BrowserDiagnosticsSection = () => {
 					))}
 				</ul>
 			) : (
-				<p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+				<p className="flex items-center gap-2 text-sm text-[#047857] dark:text-[#6ee7b7]">
 					<CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
 					No known rendering issue detected in this browser.
 				</p>
