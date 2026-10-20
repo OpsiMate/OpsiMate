@@ -109,7 +109,13 @@ export class ActionController {
 			if (!action) {
 				return res.status(404).json({ success: false, error: 'Action not found' });
 			}
-			const result = await this.actionBL.runOnAlert(action, alert, overrides, req.user?.fullName);
+			const result = await this.actionBL.runOnAlert(
+				action,
+				alert,
+				overrides,
+				req.user?.fullName,
+				req.user != null ? String(req.user.id) : null
+			);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {

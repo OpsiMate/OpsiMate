@@ -2,6 +2,10 @@ import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp } from './setup.ts';
 
+interface UserIdRow {
+	id: number;
+}
+
 describe('Authentication API', () => {
 	let app: SuperTest<Test>;
 	let db: Database.Database;
@@ -168,7 +172,8 @@ describe('Authentication API', () => {
 		expect(delRes.body.success).toBe(true);
 		// User should not be in list
 		const usersRes = await app.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
-		expect(usersRes.body.data.find((u: any) => u.id === userId)).toBeUndefined();
+		const users = usersRes.body.data as UserIdRow[];
+		expect(users.find((user) => user.id === userId)).toBeUndefined();
 	});
 
 	test('non-admin cannot delete a user', async () => {

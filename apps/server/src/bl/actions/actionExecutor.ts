@@ -5,16 +5,31 @@ import {
 	ActionTestResult,
 	ActionType,
 	HttpActionConfig,
+	HttpActionMethod,
 	JiraActionConfig,
 	Logger,
 	SlackActionConfig,
 	TeamsActionConfig,
 } from '@OpsiMate/shared';
-import { MS_PER_MINUTE } from '../../utils/time';
+import http from 'node:http';
+import https from 'node:https';
+import { MS_PER_MINUTE, MS_PER_SECOND } from '../../utils/time';
 
 const logger = new Logger('bl/actions/actionExecutor');
 
 const REQUEST_TIMEOUT_MS = 10_000;
+
+// How long a "don't wait for a response" request keeps its connection open for the
+// answer nobody is waiting for. Long on purpose: the mode exists for receivers that
+// answer only once their work is done, and some frameworks cancel that work when the
+// client goes away. The socket is unref'd meanwhile, so it costs nothing at shutdown.
+const FIRE_AND_FORGET_RESPONSE_WAIT_MS = 5 * MS_PER_MINUTE;
+
+// A fresh connection per "don't wait" request. On a pooled keep-alive socket the
+// receiver may have just closed, the write still succeeds into the kernel buffer and
+// "sent" would be claimed for a request that only ever produces ECONNRESET.
+const noWaitHttpAgent = new http.Agent({ keepAlive: false });
+const noWaitHttpsAgent = new https.Agent({ keepAlive: false });
 
 export interface ExecutableAction {
 	name: string;
@@ -107,7 +122,7 @@ export const buildAlertContext = (alert: AlertContextInput): Record<string, stri
 	);
 };
 
-const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
+export const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
 	if (!template) return '';
 	return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => (key in ctx ? ctx[key] : `{{${key}}}`));
 };
@@ -274,11 +289,15 @@ const sendJira = async (cfg: JiraActionConfig, summary: string, description: str
 	return { ok: true, statusCode: res.status, message: key ? `Created Jira issue ${key}.` : 'Jira issue created.' };
 };
 
-const sendHttp = async (
-	cfg: HttpActionConfig,
-	body: string,
-	ctx: Record<string, string>
-): Promise<ActionTestResult> => {
+// The fully resolved HTTP request, shared by both send modes.
+interface HttpRequestParts {
+	url: string;
+	method: HttpActionMethod;
+	headers: Record<string, string>;
+	body?: string;
+}
+
+const buildHttpRequest = (cfg: HttpActionConfig, body: string, ctx: Record<string, string>): HttpRequestParts => {
 	const url = resolvePlaceholders(cfg.url, ctx);
 	const headers: Record<string, string> = {};
 	for (const [key, value] of Object.entries(cfg.headers ?? {})) {
@@ -288,7 +307,11 @@ const sendHttp = async (
 	if (hasBody && !Object.keys(headers).some((h) => h.toLowerCase() === 'content-type')) {
 		headers['Content-Type'] = 'application/json';
 	}
-	const res = await fetchWithTimeout(url, { method: cfg.method, headers, body: hasBody ? body : undefined });
+	return { url, method: cfg.method, headers, body: hasBody ? body : undefined };
+};
+
+const sendHttpAndWait = async (parts: HttpRequestParts): Promise<ActionTestResult> => {
+	const res = await fetchWithTimeout(parts.url, { method: parts.method, headers: parts.headers, body: parts.body });
 	const respText = await res.text().catch(() => '');
 	return {
 		ok: res.ok,
@@ -297,6 +320,108 @@ const sendHttp = async (
 			? `Request succeeded (${res.status} ${res.statusText}).`
 			: `Request failed: ${res.status} ${res.statusText}${respText ? ` - ${respText.slice(0, 200)}` : ''}`,
 	};
+};
+
+// "Don't wait for a response": the result is decided the moment the request has been
+// handed to the network, so a receiver that answers only once its work is done (or
+// never) cannot hold up the user. Everything that can go wrong BEFORE that point — a
+// wrong host, a refused port, a TLS failure, a connect timeout — still fails the run,
+// exactly as in the waiting mode. The response, when it arrives, is only logged.
+//
+// Built on node:http rather than fetch because fetch has no "request sent" moment:
+// its promise settles on response headers, and aborting it to stop waiting would also
+// tear down the connection the receiver may still be working behind.
+const sendHttpWithoutWaiting = (parts: HttpRequestParts, actionName: string): Promise<ActionTestResult> =>
+	new Promise((resolve, reject) => {
+		const target = new URL(parts.url);
+		const isHttps = target.protocol === 'https:';
+		const transport = isHttps ? https : http;
+		let sent = false;
+		let failed = false;
+		let gaveUp = false;
+		const fail = (error: Error) => {
+			if (failed) return;
+			failed = true;
+			reject(error);
+		};
+		// Note: unlike fetch, node:http neither follows redirects nor rejects URLs with
+		// userinfo (it turns them into Basic auth). A 3xx is logged with its Location.
+		const options: http.RequestOptions = {
+			method: parts.method,
+			headers: parts.headers,
+			agent: isHttps ? noWaitHttpsAgent : noWaitHttpAgent,
+		};
+		const req = transport.request(target, options, (res) => {
+			// Nobody is waiting for this; drain it so the connection can close, and log it.
+			res.resume();
+			res.on('error', () => undefined);
+			const status = res.statusCode ?? 0;
+			const redirect = res.headers.location ? ` (redirect to ${res.headers.location}, not followed)` : '';
+			const line = `Action '${actionName}' (not waiting): receiver answered ${status}${redirect}`;
+			if (status >= 200 && status < 300) logger.info(line);
+			else logger.warn(line);
+		});
+		req.on('error', (error: Error) => {
+			if (!sent) {
+				fail(error);
+			} else if (!gaveUp) {
+				logger.warn(
+					`Action '${actionName}' (not waiting): connection ended before a response: ${error.message}`
+				);
+			}
+		});
+		// Wall-clock deadlines, like the waiting mode's AbortController. req.setTimeout
+		// would not do: it only arms once the socket has connected (a black-holed host
+		// would hang for the OS connect timeout) and it measures inactivity, so a receiver
+		// trickling bytes could hold the socket forever.
+		const sendDeadline = setTimeout(
+			() => req.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / MS_PER_SECOND}s.`)),
+			REQUEST_TIMEOUT_MS
+		);
+		let responseDeadline: NodeJS.Timeout | undefined;
+		req.once('close', () => {
+			clearTimeout(sendDeadline);
+			clearTimeout(responseDeadline);
+		});
+		req.once('finish', () => {
+			clearTimeout(sendDeadline);
+			// 'finish' can fire on a socket that already failed its write (a TLS handshake
+			// against a plain-HTTP port surfaces as a write error): the 'error' event only
+			// follows afterwards. That is a failed send, not a sent request.
+			const socketFailure = req.socket?.errored;
+			if (socketFailure) {
+				fail(socketFailure);
+				return;
+			}
+			if (!req.socket || req.socket.destroyed) {
+				fail(new Error('Connection closed before the request was sent.'));
+				return;
+			}
+			sent = true;
+			resolve({ ok: true, message: `Request sent to ${target.host}; not waiting for a response.` });
+			// The pending response must neither keep the process alive nor hold the socket forever.
+			responseDeadline = setTimeout(() => {
+				gaveUp = true;
+				logger.info(`Action '${actionName}' (not waiting): gave up waiting for a response`);
+				req.destroy();
+			}, FIRE_AND_FORGET_RESPONSE_WAIT_MS).unref();
+			req.socket.unref();
+		});
+		req.end(parts.body);
+	});
+
+// True when this action is configured to report success as soon as its request is sent.
+export const sendsWithoutWaiting = (action: ExecutableAction): boolean =>
+	action.type === 'http' && !!(action.config as HttpActionConfig).fireAndForget;
+
+const sendHttp = (
+	action: ExecutableAction,
+	cfg: HttpActionConfig,
+	body: string,
+	ctx: Record<string, string>
+): Promise<ActionTestResult> => {
+	const parts = buildHttpRequest(cfg, body, ctx);
+	return cfg.fireAndForget ? sendHttpWithoutWaiting(parts, action.name) : sendHttpAndWait(parts);
 };
 
 export const executeAction = async (
@@ -319,7 +444,7 @@ export const executeAction = async (
 			case 'jira':
 				return await sendJira(action.config as JiraActionConfig, summary, description);
 			case 'http':
-				return await sendHttp(action.config as HttpActionConfig, body, ctx);
+				return await sendHttp(action, action.config as HttpActionConfig, body, ctx);
 			default:
 				return { ok: false, message: `Unsupported action type: ${String(action.type)}` };
 		}

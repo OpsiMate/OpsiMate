@@ -157,10 +157,7 @@ describe('Custom Fields API', () => {
 			.post('/api/v1/custom-fields')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ name: 'Owner' });
-		const second = await app
-			.post('/api/v1/custom-fields')
-			.set('Authorization', `Bearer ${jwtToken}`)
-			.send({ name: 'Team' });
+		await app.post('/api/v1/custom-fields').set('Authorization', `Bearer ${jwtToken}`).send({ name: 'Team' });
 
 		const res = await app
 			.put(`/api/v1/custom-fields/${first.body.data.id}`)

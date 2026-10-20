@@ -17,6 +17,7 @@ import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	Action,
 	Alert,
+	AlertCallback,
 	AlertComment,
 	AlertRootCause,
 	AlertEnrichment,
@@ -55,6 +56,7 @@ export interface PlaygroundState {
 	auditLogs: AuditLog[];
 	mutePolicies: MutePolicy[];
 	actions: Action[];
+	callbacks: AlertCallback[];
 	enrichments: AlertEnrichment[];
 	enrichmentVersions: Record<number, AlertEnrichmentVersion[]>;
 	// Per-alert history events appended live as the user acts in the sandbox (ownership,
@@ -74,6 +76,8 @@ export interface OncallTeamState {
 }
 
 const nowIso = () => new Date().toISOString();
+// The server's SQLite CURRENT_TIMESTAMP format (UTC, no zone marker), which the client reads with parseUTCDate.
+const sqliteTimestampAgo = (ms: number) => new Date(Date.now() - ms).toISOString().slice(0, 19).replace('T', ' ');
 
 const createTags = (): Tag[] => [
 	{ id: 1, name: 'production', color: '#DC2626', createdAt: nowIso() },
@@ -240,6 +244,40 @@ const createMutePolicies = (): MutePolicy[] => [
 	},
 ];
 
+// Settings > Callbacks sample: one live receiver, one still off.
+const createCallbacks = (): AlertCallback[] => [
+	{
+		id: 1,
+		name: 'Ticketing sync',
+		url: 'https://tickets.example.com/hooks/opsimate',
+		method: 'POST',
+		headers: { Authorization: 'Bearer ••••••' },
+		bodyTemplate: null,
+		events: ['resolved', 'owner_assigned', 'comment_added'],
+		enabled: true,
+		lastStatus: 'success',
+		lastError: null,
+		lastSentAt: sqliteTimestampAgo(12 * 60 * 1000),
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+	{
+		id: 2,
+		name: 'Silence audit',
+		url: 'https://audit.example.com/opsimate',
+		method: 'PUT',
+		headers: null,
+		bodyTemplate: '{"event":"{{event}}","alerts":"{{alertIds}}","by":"{{actor.name}}"}',
+		events: ['silenced', 'unsilenced'],
+		enabled: false,
+		lastStatus: 'error',
+		lastError: 'HTTP 503 Service Unavailable',
+		lastSentAt: sqliteTimestampAgo(3 * 24 * 60 * 60 * 1000),
+		createdAt: nowIso(),
+		updatedAt: nowIso(),
+	},
+];
+
 const createActions = (): Action[] => [
 	{
 		id: 1,
@@ -328,19 +366,45 @@ const createEnrichments = (): AlertEnrichment[] => [
 	},
 ];
 
-const createAuditLogs = (): AuditLog[] => [
-	{
-		id: 1,
-		actionType: AuditActionType.CREATE,
-		resourceType: AuditResourceType.PROVIDER,
-		resourceId: '1',
-		resourceName: 'Production API',
-		userId: Number(getPlaygroundUser().id),
-		userName: getPlaygroundUser().fullName,
-		timestamp: nowIso(),
-		details: 'Provider created in playground',
-	},
-];
+const createAuditLogs = (): AuditLog[] => {
+	const user = getPlaygroundUser();
+	const resources = [
+		{ name: 'Production API', type: AuditResourceType.PROVIDER },
+		{ name: 'Grafana EU-West', type: AuditResourceType.PROVIDER },
+		{ name: 'Datadog Cloud', type: AuditResourceType.PROVIDER },
+		{ name: 'Night Mute Policy', type: AuditResourceType.MUTE_POLICY },
+		{ name: 'Weekend Maintenance', type: AuditResourceType.MUTE_POLICY },
+		{ name: 'Incident Dashboard', type: AuditResourceType.DASHBOARD },
+		{ name: 'Kubernetes Cluster Secrets', type: AuditResourceType.SECRET },
+		{ name: 'alex.sre@company.com', type: AuditResourceType.USER },
+		{ name: 'elena.devops@company.com', type: AuditResourceType.USER },
+		{ name: 'Auto-enrich Tag Rule', type: AuditResourceType.ENRICHMENT },
+		{ name: 'Slack Webhook Action', type: AuditResourceType.ACTION },
+		{ name: 'PagerDuty Integration', type: AuditResourceType.PROVIDER },
+	];
+	const actions = [AuditActionType.CREATE, AuditActionType.UPDATE, AuditActionType.DELETE];
+	const actors = [user.fullName, 'Dana Cohen', 'Alex SRE', 'Elena DevOps'];
+
+	const logs: AuditLog[] = [];
+	for (let i = 1; i <= 24; i++) {
+		const res = resources[(i - 1) % resources.length];
+		const action = actions[(i - 1) % actions.length];
+		const actor = actors[(i - 1) % actors.length];
+		const time = new Date(Date.now() - i * 35 * 60 * 1000).toISOString();
+		logs.push({
+			id: i,
+			actionType: action,
+			resourceType: res.type,
+			resourceId: String(i),
+			resourceName: res.name,
+			userId: i,
+			userName: actor,
+			timestamp: time,
+			details: `${action} ${res.name} in playground`,
+		});
+	}
+	return logs;
+};
 
 // The diverse-alerts generator doesn't attach labels, so we add realistic, deterministic
 // tags here. This powers the filter facets, the Labels section, tag-based dashboards, and
@@ -442,6 +506,7 @@ export const playgroundState: PlaygroundState = {
 	auditLogs: createAuditLogs(),
 	mutePolicies: createMutePolicies(),
 	actions: createActions(),
+	callbacks: createCallbacks(),
 	enrichments: initialEnrichments,
 	enrichmentVersions: createEnrichmentVersions(initialEnrichments),
 	alertHistoryEvents: {},

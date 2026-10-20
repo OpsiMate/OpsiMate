@@ -40,6 +40,12 @@ const ADMIN_ROUTES = [
 	['delete', '/api/v1/users/999'],
 	['patch', '/api/v1/users/999/reset-password'],
 	['patch', '/api/v1/users/999'],
+	['get', '/api/v1/callbacks'],
+	['post', '/api/v1/callbacks'],
+	['post', '/api/v1/callbacks/test'],
+	['get', '/api/v1/callbacks/1'],
+	['put', '/api/v1/callbacks/1'],
+	['delete', '/api/v1/callbacks/1'],
 ] as const;
 
 // supertest's agent type doesn't expose its verb methods in a form we can index by a

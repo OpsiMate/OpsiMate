@@ -72,8 +72,18 @@ export const alertsUnsilencedTotal = new Counter({
 
 export const actionsRunTotal = new Counter({
 	name: 'opsimate_actions_run_total',
-	help: 'Actions executed against alerts, by action type and outcome',
+	help: 'Actions executed against alerts, by action type and outcome (success, error, or sent for HTTP actions that do not wait for a response)',
 	labelNames: ['type', 'outcome'] as const,
+	registers: [metricsRegistry],
+});
+
+// One increment per delivery (after retries), so `error` counts receivers that stayed
+// down, not individual attempts; `dropped` counts payloads shed when a callback's
+// backlog was full.
+export const callbacksSentTotal = new Counter({
+	name: 'opsimate_callbacks_sent_total',
+	help: 'Alert callback deliveries by event and final outcome (success, error after retries, or dropped)',
+	labelNames: ['event', 'outcome'] as const,
 	registers: [metricsRegistry],
 });
 

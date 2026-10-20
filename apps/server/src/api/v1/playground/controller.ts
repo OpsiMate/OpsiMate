@@ -11,7 +11,7 @@ export class PlaygroundController {
 		try {
 			const { email, trackingId } = req.body as { email?: string; trackingId?: string };
 
-			if (email && typeof email !== 'string') {
+			if (email !== undefined && typeof email !== 'string') {
 				return res.status(400).json({ success: false, error: 'Email must be a string' });
 			}
 
