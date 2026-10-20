@@ -53,6 +53,9 @@ jobs:
       - name: Lint apps/client
         run: pnpm --filter @OpsiMate/client lint
 
+      - name: Lint apps/mcp
+        run: pnpm --filter @OpsiMate/mcp lint
+
       # vite build strips types, so tsc is the only thing that type-checks the client.
       # Gates on NEW errors vs a committed baseline (the pre-existing backlog).
       - name: Typecheck apps/client
@@ -61,6 +64,9 @@ jobs:
       # The server has no baseline: it must type-check clean (src and tests).
       - name: Typecheck apps/server
         run: pnpm --filter @OpsiMate/server typecheck
+
+      - name: Typecheck apps/mcp
+        run: pnpm --filter @OpsiMate/mcp typecheck
 
       - name: Format apps/server
         run: pnpm --filter @OpsiMate/server format
@@ -74,11 +80,17 @@ jobs:
       - name: Format apps/client
         run: pnpm --filter @OpsiMate/client format
 
+      - name: Format apps/mcp
+        run: pnpm --filter @OpsiMate/mcp format
+
       - name: Test apps/server
         run: pnpm --filter @OpsiMate/server test
 
       - name: Test apps/client
         run: pnpm --filter @OpsiMate/client test:run
+
+      - name: Test apps/mcp
+        run: pnpm --filter @OpsiMate/mcp test
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
