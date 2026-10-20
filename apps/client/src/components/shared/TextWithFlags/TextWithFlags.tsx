@@ -9,6 +9,9 @@ import { cn } from '@/lib/utils';
 
 const REGIONAL_INDICATOR_A = 0x1f1e6;
 const FLAG_PAIR = /\p{Regional_Indicator}{2}/gu;
+// The same test without the global flag (a global regex keeps lastIndex between calls),
+// shared so the hot path — every tag cell — allocates nothing.
+const HAS_FLAG_PAIR = /\p{Regional_Indicator}{2}/u;
 
 // Vite emits one asset per flag (?no-inline: never a data URI in the bundle, which would
 // add ~400 KB for flags most pages never show) and this module holds only their URLs; a
@@ -48,7 +51,7 @@ export const splitFlags = (text: string): TextSegment[] => {
 	return segments;
 };
 
-export const containsFlag = (text: string): boolean => new RegExp(FLAG_PAIR.source, 'u').test(text);
+export const containsFlag = (text: string): boolean => HAS_FLAG_PAIR.test(text);
 
 interface TextWithFlagsProps {
 	text: string;
@@ -56,7 +59,9 @@ interface TextWithFlagsProps {
 }
 
 // The text with every flag emoji drawn as an inline SVG the height of the surrounding
-// text. A pair with no flag for it (e.g. an unassigned code) stays as the emoji.
+// text. Flags are 3:2, so the width is fixed too: the cell does not shift when a flag
+// seen for the first time finishes loading. A pair with no flag for it (an unassigned
+// code) stays as the emoji.
 export const TextWithFlags = ({ text, className }: TextWithFlagsProps) => {
 	if (!containsFlag(text)) return <>{text}</>;
 	return (
@@ -71,7 +76,7 @@ export const TextWithFlags = ({ text, className }: TextWithFlagsProps) => {
 						src={url}
 						alt={segment.emoji}
 						title={segment.code}
-						className={cn('inline-block h-[1em] w-auto align-[-0.125em] rounded-[1px]', className)}
+						className={cn('inline-block h-[1em] w-[1.5em] align-[-0.125em] rounded-[1px]', className)}
 						draggable={false}
 					/>
 				);
