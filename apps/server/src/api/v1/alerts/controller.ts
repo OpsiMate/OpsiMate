@@ -858,6 +858,36 @@ export class AlertController {
 	}
 	// endregion
 
+	// Firing alerts first, then resolved history; `resolved` tells the caller which.
+	// The users alerts can be assigned to, as id + display name: lets a client outside the
+	// UI (the MCP server) show owner names without the admin-only users list. The owner
+	// facet already exposes these names, so nothing new is disclosed.
+	async getAlertOwners(_req: Request, res: Response) {
+		try {
+			return res.json({ success: true, data: await this.alertBL.getOwners() });
+		} catch (error) {
+			logger.error('Error getting alert owners:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getAlert(req: Request, res: Response) {
+		try {
+			const alertId = routeParam(req, 'alertId');
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			const lookup = await this.alertBL.findAlertById(alertId);
+			if (!lookup) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			return res.json({ success: true, data: lookup });
+		} catch (error) {
+			logger.error('Error getting alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = routeParam(req, 'alertId');

@@ -59,6 +59,39 @@ export const alertRoutes: ApiRouteDoc[] = [
 		responses: listResponses,
 	},
 	{
+		method: 'get',
+		path: '/api/v1/alerts/owners',
+		tag: 'Alerts',
+		summary: 'Alert owners',
+		description:
+			'The users alerts can be assigned to, as `id` and `fullName` — to turn the `ownerId` an alert carries ' +
+			'into a name without the admin-only users list. The owner facet already shows these names.',
+		auth: 'user',
+		responses: {
+			200: {
+				description: 'OK',
+				schema: okEnvelope(z.array(z.object({ id: z.string(), fullName: z.string() }))),
+			},
+			401: errors.unauthorized,
+		},
+	},
+	{
+		method: 'get',
+		path: '/api/v1/alerts/:alertId',
+		tag: 'Alerts',
+		summary: 'Get one alert',
+		description:
+			'Looks in the firing list first, then in resolved history; `resolved` says where it was found. The alert ' +
+			'carries the same fetch-time fields as the list endpoints (`isMuted`, `lastComment`, `appliedEnrichments`).',
+		auth: 'user',
+		params: AlertIdParam,
+		responses: {
+			200: { description: 'OK', schema: okEnvelope(z.object({ alert: AlertSchema, resolved: z.boolean() })) },
+			401: errors.unauthorized,
+			404: errors.notFound,
+		},
+	},
+	{
 		method: 'delete',
 		path: '/api/v1/alerts/:alertId',
 		tag: 'Alerts',

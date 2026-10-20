@@ -189,11 +189,17 @@ export const UpdateCommentSchema = z.object({
 	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
 });
 
-const labelMatcherSchema = z.object({
-	key: z.string().min(1, 'Label key is required').max(200),
-	value: z.string().min(1, 'Label value is required').max(500),
-	op: z.enum(['equals', 'contains']).optional(),
-});
+// "exists" needs no value (the tag just has to be present); the other operators do.
+const labelMatcherSchema = z
+	.object({
+		key: z.string().min(1, 'Label key is required').max(200),
+		value: z.string().max(500),
+		op: z.enum(['equals', 'contains', 'exists']).optional(),
+	})
+	.refine((matcher) => matcher.op === 'exists' || matcher.value.length > 0, {
+		message: 'Label value is required',
+		path: ['value'],
+	});
 
 const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 

@@ -943,7 +943,7 @@ const Alerts = () => {
 				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer. You take ownership of every silenced alert' +
 				(allMatchingSelected ? ', and matches that are already silenced restart their timer.' : '.') +
 				bulkScopeNote,
-			confirmLabel: 'Silence all',
+			confirmLabel: 'Silence',
 			withSilenceDuration: true,
 			withComment: true,
 			commentLabel: 'Silence comment',

@@ -1,24 +1,13 @@
-export type QuickPreset =
-	| 'last1m'
-	| 'last2m'
-	| 'last5m'
-	| 'last15m'
-	| 'last30m'
-	| 'last1h'
-	| 'last2h'
-	| 'last6h'
-	| 'last12h'
-	| 'last24h'
-	| 'today'
-	| 'last2d'
-	| 'last3d'
-	| 'last5d'
-	| 'last7d';
+import type { QuickPresetWindow, QuickTimePreset } from '@OpsiMate/shared';
+
+// The preset names live in shared with their labels and window lengths, so the server
+// resolves a saved dashboard's preset exactly as this filter does.
+export type QuickPreset = QuickTimePreset;
 
 export interface PresetConfig {
 	label: string;
 	value: QuickPreset;
-	getRange: () => { from: Date; to: Date };
+	getRange: () => QuickPresetWindow;
 }
 
 export interface TimeRange {
