@@ -131,6 +131,10 @@ const makeDispatcher = (
 
 const parsePayload = (request: SentRequest): AlertCallbackPayload => JSON.parse(request.body) as AlertCallbackPayload;
 
+// Deliveries start on the event-loop turn after emit (so the request's response goes out
+// first); a test that wants the first request "in flight" waits for that turn.
+const nextTurn = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
 describe('CallbackDispatcher: delivery', () => {
 	test('sends the JSON payload with the event, signature and custom headers; emit itself does not wait', async () => {
 		const { repo } = makeRepo([
@@ -141,6 +145,10 @@ describe('CallbackDispatcher: delivery', () => {
 		await dispatcher.reload();
 
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor, details: { silencedUntil: null } });
+		expect(sent).toHaveLength(0);
+		// Nor after any number of microtasks: the handler's remaining awaits and its
+		// response write all happen before the payload is even serialized.
+		for (let i = 0; i < 5; i++) await Promise.resolve();
 		expect(sent).toHaveLength(0);
 
 		await dispatcher.flush();
@@ -411,6 +419,7 @@ describe('CallbackDispatcher: retries', () => {
 
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
 		dispatcher.emit({ event: 'unsilenced', alert: makeAlert('a1'), actor });
+		await nextTurn();
 		callbacks[0] = { ...callback, url: 'https://moved.test/hook', secret: 'rotated-secret' };
 		await dispatcher.reload();
 		release();
@@ -461,6 +470,7 @@ describe('CallbackDispatcher: resilience', () => {
 
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a1'), actor });
 		dispatcher.emit({ event: 'silenced', alert: makeAlert('a2'), actor });
+		await nextTurn();
 		callback.enabled = false;
 		await dispatcher.reload();
 		release();
