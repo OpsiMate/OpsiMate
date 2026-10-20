@@ -73,7 +73,7 @@ describe('resolveQuickPreset', () => {
 		expected.setHours(0, 0, 0, 0);
 		const { from, to } = resolveQuickPreset('today', { now });
 		expect(from.getTime()).toBe(expected.getTime());
-		expect(to).toBe(now);
+		expect(to.getTime()).toBe(now.getTime());
 	});
 
 	test('today in UTC starts at 00:00Z', () => {
@@ -103,6 +103,32 @@ describe('resolveQuickPreset', () => {
 			timeZone: 'Asia/Jerusalem',
 		});
 		expect(from.toISOString()).toBe('2024-03-28T22:00:00.000Z');
+	});
+
+	test('a day whose midnight happens twice starts at the first one (Cuba falls back 01:00 → 00:00)', () => {
+		// 2024-11-03: 00:00 CDT (04:00Z) is the day's first instant; 00:00 CST (05:00Z) comes an
+		// hour later. A browser in Havana answers 04:00Z, so the server must too.
+		const { from } = resolveQuickPreset('today', {
+			now: new Date('2024-11-03T17:00:00.000Z'),
+			timeZone: 'America/Havana',
+		});
+		expect(from.toISOString()).toBe('2024-11-03T04:00:00.000Z');
+	});
+
+	test('a day with no midnight starts at its first instant (Chile springs forward 00:00 → 01:00)', () => {
+		// 2024-09-08: the clock goes from 23:59:59 (-04) straight to 01:00 (-03), so the day's
+		// first instant is 04:00Z — also what setHours(0, 0, 0, 0) gives in Santiago.
+		const { from } = resolveQuickPreset('today', {
+			now: new Date('2024-09-08T15:00:00.000Z'),
+			timeZone: 'America/Santiago',
+		});
+		expect(from.toISOString()).toBe('2024-09-08T04:00:00.000Z');
+	});
+
+	test("returns fresh Date instances, never the caller's own clock", () => {
+		const { to } = resolveQuickPreset('last1h', { now });
+		expect(to.getTime()).toBe(now.getTime());
+		expect(to).not.toBe(now);
 	});
 
 	test('defaults now to the wall clock', () => {
