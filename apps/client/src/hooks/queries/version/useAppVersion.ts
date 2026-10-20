@@ -57,6 +57,9 @@ export const useAppVersion = () => {
 	const cmp = latest.data ? compareVersions(version, latest.data.version) : null;
 	return {
 		version,
+		// False until the server has answered: `version` is then the CLIENT's build, standing
+		// in — callers that report "the server version" must say so instead of printing it.
+		serverKnown: server.data !== undefined,
 		commit: server.data?.commit ?? null,
 		buildDate: server.data?.buildDate ?? null,
 		clientVersion: CLIENT_VERSION,

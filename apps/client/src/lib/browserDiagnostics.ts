@@ -112,7 +112,9 @@ export const collectBrowserDiagnostics = (
 };
 
 export interface DiagnosticsVersions {
-	server: string;
+	// null when the server has not answered: better "unknown" than the client's build
+	// wearing the server's label.
+	server: string | null;
 	commit: string | null;
 	client: string;
 }
@@ -128,7 +130,7 @@ export const formatBrowserDiagnostics = (
 	const { checks, environment, findings } = diagnostics;
 	return [
 		'OpsiMate browser diagnostics',
-		`server ${versions.server}${versions.commit ? ` (${versions.commit.slice(0, 7)})` : ''}, client ${versions.client}, ${origin}`,
+		`server ${versions.server === null ? 'unknown (not loaded)' : versions.server}${versions.server !== null && versions.commit ? ` (${versions.commit.slice(0, 7)})` : ''}, client ${versions.client}, ${origin}`,
 		`browser: ${environment.userAgent}`,
 		`platform: ${environment.platform || 'unknown'}, language ${environment.language}, time zone ${environment.timeZone}`,
 		`screen ${environment.screen.width}x${environment.screen.height} @${environment.devicePixelRatio}x, viewport ${environment.viewport.width}x${environment.viewport.height}, touch points ${environment.maxTouchPoints}`,

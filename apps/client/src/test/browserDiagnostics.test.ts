@@ -78,6 +78,16 @@ describe('formatBrowserDiagnostics', () => {
 		expect(text).toContain('findings:\n- Browser too old');
 	});
 
+	test('an unanswered server version is "unknown", never the client build in disguise', () => {
+		const text = formatBrowserDiagnostics(
+			collectBrowserDiagnostics(env()),
+			{ server: null, commit: 'abc1234def', client: '0.0.120' },
+			'http://localhost:8080'
+		);
+		expect(text).toContain('server unknown (not loaded), client 0.0.120');
+		expect(text).not.toContain('abc1234');
+	});
+
 	test('says so when nothing is wrong', () => {
 		const text = formatBrowserDiagnostics(
 			collectBrowserDiagnostics(env()),

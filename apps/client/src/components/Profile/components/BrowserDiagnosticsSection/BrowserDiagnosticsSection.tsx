@@ -16,7 +16,7 @@ export const BrowserDiagnosticsSection = () => {
 	const diagnostics = useBrowserDiagnostics();
 	const text = formatBrowserDiagnostics(
 		diagnostics,
-		{ server: info.version, commit: info.commit, client: info.clientVersion },
+		{ server: info.serverKnown ? info.version : null, commit: info.commit, client: info.clientVersion },
 		window.location.origin
 	);
 
