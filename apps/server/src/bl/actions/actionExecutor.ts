@@ -10,6 +10,7 @@ import {
 	Logger,
 	SlackActionConfig,
 	TeamsActionConfig,
+	flagEmojiForCode,
 } from '@OpsiMate/shared';
 import http from 'node:http';
 import https from 'node:https';
@@ -69,6 +70,8 @@ const expandContext = (fields: Record<string, string>, tags: Record<string, stri
 		ctx[`label.${key}`] = String(value);
 		ctx[`tag.${key}`] = String(value);
 		ctx[`alert.tags.${key}`] = String(value);
+		// {{flag.<key>}}: the flag for a two-letter country-code label, '' otherwise.
+		ctx[`flag.${key}`] = flagEmojiForCode(String(value));
 	}
 	return ctx;
 };
@@ -96,7 +99,7 @@ export const buildSampleContext = (): Record<string, string> => {
 			url: 'https://example.com/alerts/test-alert-1',
 			runbookUrl: 'https://example.com/runbooks/demo-service',
 		},
-		{ env: 'prod', team: 'platform' }
+		{ env: 'prod', team: 'platform', site: 'IL' }
 	);
 };
 

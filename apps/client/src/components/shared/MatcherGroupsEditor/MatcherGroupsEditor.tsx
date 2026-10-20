@@ -8,7 +8,7 @@ import { getLabelMatcherGroups, getNameNeedles, MatcherCriteria } from '@OpsiMat
 import { Fragment, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-export type MatcherRow = { key: string; value: string; op?: 'equals' | 'contains' };
+export type MatcherRow = { key: string; value: string; op?: 'equals' | 'contains' | 'exists' };
 
 // Autocomplete source: the tag keys seen on current alerts and, per key, the values seen.
 export interface MatcherSuggestion {
@@ -106,13 +106,14 @@ export const MatcherGroupsEditor = ({
 											suggestions={keySuggestions}
 											onChange={(key) => updateRow(groupIdx, rowIdx, { key })}
 										/>
-										{/* Comparison operator: exact equality or case-insensitive
-										    substring ("contains"). */}
+										{/* Comparison operator: exact equality, case-insensitive
+										    substring ("contains"), or presence ("exists", no value). */}
 										<Select
-											value={row.op === 'contains' ? 'contains' : 'equals'}
+											value={row.op ?? 'equals'}
 											onValueChange={(op) =>
 												updateRow(groupIdx, rowIdx, {
-													op: op === 'contains' ? 'contains' : undefined,
+													op: op === 'contains' || op === 'exists' ? op : undefined,
+													...(op === 'exists' ? { value: '' } : {}),
 												})
 											}
 											disabled={disabled}
@@ -126,12 +127,13 @@ export const MatcherGroupsEditor = ({
 											<SelectContent>
 												<SelectItem value="equals">=</SelectItem>
 												<SelectItem value="contains">contains</SelectItem>
+												<SelectItem value="exists">exists</SelectItem>
 											</SelectContent>
 										</Select>
 										<AutocompleteInput
-											placeholder={valuePlaceholder}
-											value={row.value}
-											disabled={disabled}
+											placeholder={row.op === 'exists' ? 'any value' : valuePlaceholder}
+											value={row.op === 'exists' ? '' : row.value}
+											disabled={disabled || row.op === 'exists'}
 											aria-label="Matcher value"
 											// Scoped to THIS row's key — only the chosen key's
 											// values, never all at once.
@@ -194,12 +196,13 @@ export const cleanMatcherGroups = (groups: MatcherRow[][]): MatcherRow[][] =>
 			group
 				.map((m) => ({
 					key: m.key.trim(),
-					value: m.value.trim(),
+					// "exists" ignores the value; store it empty so the row reads as what it is.
+					value: m.op === 'exists' ? '' : m.value.trim(),
 					// The op must survive cleaning — omitting it silently turns every
 					// "contains" matcher back into equals at save time.
-					...(m.op === 'contains' ? { op: 'contains' as const } : {}),
+					...(m.op === 'contains' || m.op === 'exists' ? { op: m.op } : {}),
 				}))
-				.filter((m) => m.key && m.value)
+				.filter((m) => m.key && (m.value || m.op === 'exists'))
 		)
 		.filter((group) => group.length > 0);
 
@@ -221,8 +224,7 @@ export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) 
 							className="font-mono text-xs max-w-full whitespace-normal break-all rounded-md"
 						>
 							{m.key}
-							{m.op === 'contains' ? ' ~ ' : '='}
-							{m.value}
+							{m.op === 'exists' ? ' exists' : m.op === 'contains' ? ` ~ ${m.value}` : `=${m.value}`}
 						</Badge>
 					))}
 				</Fragment>
@@ -240,7 +242,13 @@ export const hasMatcherCriteria = (criteria: MatcherCriteria): boolean => getLab
 // equal, which reads as the sort being broken.
 export const describeMatcherCriteria = (criteria: MatcherCriteria): string =>
 	getLabelMatcherGroups(criteria)
-		.map((group) => group.map((m) => `${m.key}${m.op === 'contains' ? '~' : '='}${m.value}`).join(' AND '))
+		.map((group) =>
+			group
+				.map((m) =>
+					m.op === 'exists' ? `${m.key} exists` : `${m.key}${m.op === 'contains' ? '~' : '='}${m.value}`
+				)
+				.join(' AND ')
+		)
 		.join(' OR ');
 
 // The name needles in the badge's own wording, so a sort key built from this reads in

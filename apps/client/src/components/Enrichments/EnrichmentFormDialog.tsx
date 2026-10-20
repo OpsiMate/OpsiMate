@@ -24,7 +24,9 @@ import {
 	AlertEnrichment,
 	AlertLink,
 	ALERT_TEMPLATE_VARIABLES,
+	alertFlagTemplateVariable,
 	alertTagTemplateVariable,
+	looksLikeCountryCode,
 	getNameNeedles,
 } from '@OpsiMate/shared';
 import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
@@ -217,7 +219,14 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const { data: alerts = [] } = useAlerts();
 	const matcherSuggestions = useAlertTagKeys(alerts);
 	const templateVariables = useMemo(
-		() => [...ALERT_TEMPLATE_VARIABLES, ...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key))],
+		() => [
+			...ALERT_TEMPLATE_VARIABLES,
+			...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key)),
+			// {{flag.<key>}} only for labels whose values look like country codes.
+			...matcherSuggestions
+				.filter((tk) => tk.values.some(looksLikeCountryCode))
+				.map((tk) => alertFlagTemplateVariable(tk.key)),
+		],
 		[matcherSuggestions]
 	);
 
@@ -427,9 +436,10 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							/>
 							<p className="text-xs text-muted-foreground">
 								Replaces the alert summary. Use {'{{summary}}'} for the current summary, plus alert
-								fields like {'{{name}}'} and {'{{severity}}'} and any label as {'{{label.<key>}}'} — the
-								same variables action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists)
-								are rendered in the alert details.
+								fields like {'{{name}}'} and {'{{severity}}'}, any label as {'{{label.<key>}}'}, and{' '}
+								{'{{flag.<key>}}'} for the flag of a two-letter country-code label (IL → 🇮🇱) — the same
+								variables action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists) are
+								rendered in the alert details.
 							</p>
 						</div>
 

@@ -411,10 +411,12 @@ export interface RateRootCauseResult {
 export interface MutePolicyLabelMatcher {
 	key: string;
 	value: string;
-	// How the value compares against the alert's tag: exact equality (default) or
-	// case-insensitive substring. Absent = equals, so every stored row keeps meaning
-	// what it meant.
-	op?: 'equals' | 'contains';
+	// How the value compares against the alert's tag: exact equality (default),
+	// case-insensitive substring, or "exists" — the tag is present with any value (the
+	// value is then ignored; one rule can cover every alert that carries a label, e.g.
+	// to decorate `site` whatever it is). Absent = equals, so every stored row keeps
+	// meaning what it meant.
+	op?: 'equals' | 'contains' | 'exists';
 }
 
 // OR groups of label matchers: an entity matches an alert when ANY group matches, and a
@@ -448,6 +450,7 @@ export const getLabelMatcherGroups = (criteria: MatcherCriteria): LabelMatcherGr
 
 const matcherMatchesTagValue = (m: MutePolicyLabelMatcher, tagValue: string | undefined): boolean => {
 	if (tagValue === undefined) return false;
+	if (m.op === 'exists') return true;
 	if (m.op === 'contains') return String(tagValue).toLowerCase().includes(m.value.toLowerCase());
 	return String(tagValue) === m.value;
 };
@@ -597,6 +600,24 @@ export const ALERT_TEMPLATE_VARIABLES = [
 ] as const;
 
 export const alertTagTemplateVariable = (tagKey: string): string => `label.${tagKey}`;
+
+// {{flag.<key>}}: the flag emoji for a label whose value is a two-letter country code,
+// so a template can write "{{label.site}} {{flag.site}}" and get "IL 🇮🇱" without anyone
+// typing an emoji (Windows has no flag picker and renders them as letters anyway; the
+// UI draws them as SVGs).
+export const alertFlagTemplateVariable = (tagKey: string): string => `flag.${tagKey}`;
+
+export const looksLikeCountryCode = (value: string): boolean => /^[A-Za-z]{2}$/.test(value.trim());
+
+// 🇮🇱 for "IL" (case-insensitive); '' for anything that is not two letters, so a
+// template over a label that is not a code degrades to its text.
+const REGIONAL_INDICATOR_A = 0x1f1e6;
+export const flagEmojiForCode = (value: string): string => {
+	if (!looksLikeCountryCode(value)) return '';
+	return String.fromCodePoint(
+		...[...value.trim().toUpperCase()].map((letter) => REGIONAL_INDICATOR_A + letter.charCodeAt(0) - 65)
+	);
+};
 
 export type HttpActionMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 

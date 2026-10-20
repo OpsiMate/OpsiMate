@@ -51,6 +51,15 @@ describe('alert template variables', () => {
 		expect(ctx['label.env']).toBe('prod');
 	});
 
+	test('{{flag.<key>}} is the flag of a two-letter label, empty for anything else', () => {
+		const ctx = buildAlertContext({ ...fullAlert, tags: { site: 'il', env: 'prod', region: 'eu-west-1' } });
+		expect(ctx['flag.site']).toBe('🇮🇱');
+		expect(ctx['flag.env']).toBe('');
+		expect(ctx['flag.region']).toBe('');
+		// The Test button's sample alert carries a code too, so a template using it previews a flag.
+		expect(buildSampleContext()['flag.site']).toBe('🇮🇱');
+	});
+
 	test('alert.* and tag.* aliases keep older templates resolving', () => {
 		const ctx = buildAlertContext(fullAlert);
 		expect(ctx['alert.name']).toBe('CPU high');

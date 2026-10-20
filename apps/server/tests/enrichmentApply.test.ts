@@ -47,6 +47,29 @@ const enricherFor = (...rules: AlertEnrichment[]): EnrichmentBL => {
 	return new EnrichmentBL(repo as unknown as EnrichmentRepository, {} as unknown as AuditBL);
 };
 
+describe('applyEnrichments — one rule for every site', () => {
+	// The flag story: a single rule matching "site exists" decorates whatever the site is,
+	// without anyone typing an emoji; alerts without a site are left alone.
+	test('an exists matcher with {{label.site}} {{flag.site}} decorates every site, and only alerts that have one', async () => {
+		const flags = rule({
+			id: 1,
+			name: 'site flags',
+			labelMatchers: [{ key: 'site', value: '', op: 'exists' }],
+			addFields: [{ key: 'site', value: '{{label.site}} {{flag.site}}' }],
+		});
+		const enricher = enricherFor(flags);
+		const [il, us, none] = await enricher.applyEnrichments([
+			grafanaAlert({ id: 'il', tags: { site: 'IL' } }),
+			grafanaAlert({ id: 'us', tags: { site: 'us' } }),
+			grafanaAlert({ id: 'none', tags: { env: 'prod' } }),
+		]);
+		expect(il.tags.site).toBe('IL 🇮🇱');
+		expect(us.tags.site).toBe('us 🇺🇸');
+		expect(none.tags).toEqual({ env: 'prod' });
+		expect(none.appliedEnrichments).toBeUndefined();
+	});
+});
+
 describe('applyEnrichments — ordering and conflicts', () => {
 	// In every rule pair below the HIGH-priority rule gets the LARGER id. Ranked by priority the
 	// high rule goes first; ranked by id alone the low rule would go first and win the conflicting
