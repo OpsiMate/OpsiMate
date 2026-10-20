@@ -22,23 +22,32 @@ const visibleTags = (tags: Record<string, string> | undefined): Record<string, s
 // Warning/Info) — the same strings the filters accept, so what a tool shows can be
 // pasted straight back into a filter. The owner id becomes the user's name for the
 // same reason.
+//
+// The `Alert` type declares alertName, alertUrl, startsAt, updatedAt and type as plain
+// strings, but the columns behind them are nullable TEXT (in `alerts` and
+// `alerts_resolved` alike) and the DAL maps them raw, so a legacy row can carry null in
+// any of them. The SDK validates `structuredContent` against the output schema and turns
+// a mismatch into a tool error for the WHOLE page, so one such row must not fail every
+// page it lands on. One rule for every string here: a required string is '' when the
+// row has none; a field that is nullable in the schema (team, summary, silencedUntil,
+// lastComment, runbookUrl) stays null, because there "none" is the meaning.
 export const toAlertSummary = (alert: Alert, owners: AlertOwnerInfo[]): McpAlertSummary => ({
 	id: alert.id,
-	alertName: alert.alertName,
-	status: getAlertFilterFieldValue(alert, 'status', owners) ?? alert.status,
-	severity: getAlertFilterFieldValue(alert, 'severity', owners) ?? alert.severity,
-	type: getAlertFilterFieldValue(alert, 'type', owners) ?? alert.type,
+	alertName: alert.alertName ?? '',
+	status: getAlertFilterFieldValue(alert, 'status', owners) ?? alert.status ?? '',
+	severity: getAlertFilterFieldValue(alert, 'severity', owners) ?? alert.severity ?? '',
+	type: getAlertFilterFieldValue(alert, 'type', owners) ?? alert.type ?? '',
 	owner: getOwnerDisplayName(alert.ownerId, owners),
 	team: alert.team ?? null,
 	tags: visibleTags(alert.tags),
 	summary: alert.summary ?? null,
-	startsAt: alert.startsAt,
-	updatedAt: alert.updatedAt,
+	startsAt: alert.startsAt ?? '',
+	updatedAt: alert.updatedAt ?? '',
 	isSilenced: alert.isSilenced,
 	silencedUntil: alert.silencedUntil ?? null,
 	isMuted: alert.isMuted ?? false,
 	lastComment: alert.lastComment ?? null,
-	alertUrl: alert.alertUrl,
+	alertUrl: alert.alertUrl ?? '',
 	runbookUrl: alert.runbookUrl ?? null,
 	links: alert.links ?? [],
 });

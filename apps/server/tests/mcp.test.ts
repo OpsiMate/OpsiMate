@@ -423,6 +423,35 @@ describe('alerts', () => {
 	});
 });
 
+describe('legacy rows', () => {
+	test('an alert with NULL text columns still projects (required strings become "")', async () => {
+		// Pre-column rows carry NULL in alert_url, alert_name, starts_at...; the DAL maps
+		// them raw. The SDK validates structuredContent against the output schema, so one
+		// such row must not fail every page that contains it.
+		await request(app)
+			.post('/api/v1/alerts/custom')
+			.set('x-api-token', apiToken)
+			.send({
+				id: 'mcp-legacy',
+				alertName: 'Legacy',
+				severity: 'warning',
+				tags: { env: 'legacy' },
+				startsAt: ago(2),
+			})
+			.expect(200);
+		db.prepare(
+			'UPDATE alerts SET alert_url = NULL, alert_name = NULL, starts_at = NULL, summary = NULL WHERE id = ?'
+		).run('mcp-legacy');
+
+		const one = await call<AlertResult>('get_alert', { id: 'mcp-legacy', includeHistory: false });
+		expect(one.alert).toMatchObject({ id: 'mcp-legacy', alertUrl: '', alertName: '', startsAt: '', summary: null });
+
+		const page = await call<AlertListsResult>('search_alerts', { filters: { 'tagKey:env': ['legacy'] } });
+		expect(ids(page.active)).toEqual(['mcp-legacy']);
+		expect(page.active?.items[0].alertUrl).toBe('');
+	});
+});
+
 describe('resolveDashboardRef', () => {
 	const dashboard = (id: number, name: string): Dashboard => ({
 		id: String(id),
