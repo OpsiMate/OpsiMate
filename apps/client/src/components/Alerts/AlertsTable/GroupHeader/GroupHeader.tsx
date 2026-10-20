@@ -1,3 +1,4 @@
+import { TextWithFlags } from '@/components/shared/TextWithFlags';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -60,7 +61,9 @@ export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderPr
 				{item.count}
 			</Badge>
 			<span className="font-semibold text-sm mr-2 text-foreground">{fieldLabel}:</span>
-			<span className="text-sm text-foreground/80">{item.value}</span>
+			<span className="text-sm text-foreground/80">
+				<TextWithFlags text={item.value} />
+			</span>
 		</div>
 	);
 };

@@ -1,3 +1,4 @@
+import { TextWithFlags } from './TextWithFlags';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -386,7 +387,7 @@ export const FilterPanel = ({
 																			)}
 																			title={label}
 																		>
-																			{label}
+																			<TextWithFlags text={label} />
 																		</span>
 																		{/* Hover/focus swap: idle rows show only a pinned
 																		    state icon + count so the label keeps the width;

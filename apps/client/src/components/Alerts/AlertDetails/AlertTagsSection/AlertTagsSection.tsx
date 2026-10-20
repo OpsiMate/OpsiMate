@@ -1,3 +1,4 @@
+import { TextWithFlags } from '@/components/shared/TextWithFlags';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@OpsiMate/shared';
 import { getAlertTagEntries } from '../../utils/alertTags.utils';
@@ -35,7 +36,7 @@ export const AlertTagsSection = ({ alert }: AlertTagsSectionProps) => {
 					    splitting key/colon/value into separate flex items. break-all handles
 					    unbroken tokens like URLs and pod names. */}
 					<span className="break-all">
-						<span className="font-medium text-foreground">{key}</span>: {value}
+						<span className="font-medium text-foreground">{key}</span>: <TextWithFlags text={value} />
 					</span>
 				</Badge>
 			))}
