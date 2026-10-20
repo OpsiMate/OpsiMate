@@ -3,6 +3,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server';
 import { Request, Response, Router } from 'express';
 import { Logger } from '@OpsiMate/shared';
 import { authenticateReadOnly } from '../../middleware/auth';
+import { createRateLimit } from '../../middleware/rateLimit';
 import { McpDeps } from './deps';
 import { createMcpServer } from './server';
 
@@ -12,6 +13,10 @@ import { createMcpServer } from './server';
 // behind any load balancer. Every tool is read-only, so the auth guard is the read-only
 // one: the instance API token, or any user's JWT (Viewers included). Set
 // MCP_ENABLED=false to turn it off.
+//
+// Rate limited per caller (user, or the API token): an assistant in a loop can issue
+// requests far faster than a person, and get_alert_analytics is real CPU per call.
+// MCP_RATE_LIMIT_PER_MINUTE sets the limit (default 240; 0 = none).
 
 const logger = new Logger('api/mcp/router');
 
@@ -19,6 +24,16 @@ export const MCP_PATH = '/api/mcp';
 
 export const mcpEnabled = (env: NodeJS.ProcessEnv = process.env): boolean =>
 	(env.MCP_ENABLED ?? '').trim().toLowerCase() !== 'false';
+
+export const DEFAULT_MCP_RATE_LIMIT_PER_MINUTE = 240;
+
+// Unset or unparseable = the default; a non-negative integer is taken as is (0 = no limit).
+export const mcpRateLimitPerMinute = (env: NodeJS.ProcessEnv = process.env): number => {
+	const raw = (env.MCP_RATE_LIMIT_PER_MINUTE ?? '').trim();
+	if (raw === '') return DEFAULT_MCP_RATE_LIMIT_PER_MINUTE;
+	const parsed = Number(raw);
+	return Number.isInteger(parsed) && parsed >= 0 ? parsed : DEFAULT_MCP_RATE_LIMIT_PER_MINUTE;
+};
 
 export const createMcpRouter = (deps: McpDeps): Router => {
 	const handler = createMcpHandler(() => createMcpServer(deps), {
@@ -39,9 +54,11 @@ export const createMcpRouter = (deps: McpDeps): Router => {
 	// Explicit methods (not router.all) so the route audit in apiDocs.test.ts sees exactly
 	// what is served. GET and DELETE are the protocol's session operations; stateless
 	// serving answers them with 405, which is the correct signal to a client.
+	// After auth, so the bucket is the caller's (and a 401 never counts).
+	const rateLimit = createRateLimit({ maxPerWindow: mcpRateLimitPerMinute(), windowMs: 60_000 });
 	const router = Router();
-	router.post(MCP_PATH, authenticateReadOnly, serve);
-	router.get(MCP_PATH, authenticateReadOnly, serve);
-	router.delete(MCP_PATH, authenticateReadOnly, serve);
+	router.post(MCP_PATH, authenticateReadOnly, rateLimit, serve);
+	router.get(MCP_PATH, authenticateReadOnly, rateLimit, serve);
+	router.delete(MCP_PATH, authenticateReadOnly, rateLimit, serve);
 	return router;
 };

@@ -7,7 +7,7 @@ import { AddressInfo } from 'node:net';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { resolveDashboardRef } from '../src/api/mcp/dashboardLookup';
-import { mcpEnabled } from '../src/api/mcp/router';
+import { mcpEnabled, mcpRateLimitPerMinute } from '../src/api/mcp/router';
 import { McpAlertCounts, McpAlertPage, McpAlertSummary, McpDashboardSummary } from '../src/api/mcp/schemas';
 import { AppMode, createApp } from '../src/app';
 import { getSecurityConfig } from '../src/config/config';
@@ -263,6 +263,41 @@ describe('reaching the endpoint', () => {
 		const headers = { 'x-api-token': apiToken, accept: 'application/json, text/event-stream' };
 		expect((await fetch(mcpUrl, { method: 'GET', headers })).status).toBeLessThan(500);
 		expect((await fetch(mcpUrl, { method: 'DELETE', headers })).status).toBeLessThan(500);
+	});
+
+	test('the endpoint is rate limited per caller (MCP_RATE_LIMIT_PER_MINUTE)', async () => {
+		expect(mcpRateLimitPerMinute({})).toBe(240);
+		expect(mcpRateLimitPerMinute({ MCP_RATE_LIMIT_PER_MINUTE: '0' })).toBe(0);
+		expect(mcpRateLimitPerMinute({ MCP_RATE_LIMIT_PER_MINUTE: ' 30 ' })).toBe(30);
+		expect(mcpRateLimitPerMinute({ MCP_RATE_LIMIT_PER_MINUTE: 'lots' })).toBe(240);
+		expect(mcpRateLimitPerMinute({ MCP_RATE_LIMIT_PER_MINUTE: '-5' })).toBe(240);
+
+		const saved = process.env.MCP_RATE_LIMIT_PER_MINUTE;
+		process.env.MCP_RATE_LIMIT_PER_MINUTE = '2';
+		const limitedDb = await setupDB();
+		try {
+			const limitedApp = await createApp(limitedDb, AppMode.SERVER);
+			if (!limitedApp) throw new Error('createApp returned no app');
+			const post = (headers: Record<string, string>) =>
+				request(limitedApp)
+					.post('/api/mcp')
+					.set({ accept: 'application/json, text/event-stream', ...headers })
+					.send(initialize);
+			// Two for the API token, then 429 with Retry-After; the request is not served.
+			expect((await post({ 'x-api-token': apiToken })).status).toBe(200);
+			expect((await post({ 'x-api-token': apiToken })).status).toBe(200);
+			const refused = await post({ 'x-api-token': apiToken });
+			expect(refused.status).toBe(429);
+			expect(refused.headers['retry-after']).toBe('60');
+			expect(refused.body).toMatchObject({ success: false });
+			// A user's own bucket is untouched by the token's; no credentials are still a 401.
+			expect((await post({ Authorization: `Bearer ${viewerJwt}` })).status).toBe(200);
+			expect((await post({})).status).toBe(401);
+		} finally {
+			if (saved === undefined) delete process.env.MCP_RATE_LIMIT_PER_MINUTE;
+			else process.env.MCP_RATE_LIMIT_PER_MINUTE = saved;
+			limitedDb.close();
+		}
 	});
 
 	test('MCP_ENABLED=false removes the endpoint', async () => {
