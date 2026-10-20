@@ -258,8 +258,17 @@ export class CallbackDispatcher {
 		const waiting = this.waiting.get(callback.id) ?? [];
 		const index = waiting.indexOf(queued);
 		if (index >= 0) waiting.splice(index, 1);
-		// A ready payload starts now; only a bulk's place waits for the operation to finish.
-		const payloads = Array.isArray(queued.payloads) ? queued.payloads : await queued.payloads;
+		// A ready payload starts now. A bulk's place waits for the operation to finish — and
+		// then one more turn: the turn taken at its first emit passed long ago (the bulk
+		// awaited a write per alert), and the bulk route writes its response only after
+		// `batched` returns, which is when the payloads resolve.
+		let payloads: AlertCallbackPayload[];
+		if (Array.isArray(queued.payloads)) {
+			payloads = queued.payloads;
+		} else {
+			payloads = await queued.payloads;
+			await afterCurrentTick();
+		}
 		for (const payload of payloads) {
 			await this.deliver({ callback, payload, deliveryId: randomUUID() });
 		}
