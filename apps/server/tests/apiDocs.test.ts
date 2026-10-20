@@ -28,7 +28,9 @@ interface OpenApiParameter {
 }
 
 const key = (route: RecordedRoute): string => `${route.method.toUpperCase()} ${route.path}`;
-const isDocsPage = (path: string): boolean => path === '/api/openapi.json' || path.startsWith('/api/docs');
+// The docs pages, and /api/mcp: JSON-RPC (MCP) rather than REST, documented on its own page.
+const isNonRestEndpoint = (path: string): boolean =>
+	path === '/api/openapi.json' || path.startsWith('/api/docs') || path === '/api/mcp';
 
 let db: Database.Database;
 let app: Awaited<ReturnType<typeof createApp>>;
@@ -43,7 +45,9 @@ beforeAll(async () => {
 		recorder.stop();
 	}
 	if (!app) throw new Error('createApp returned no app');
-	appRoutes = recorder.routesOf(app).filter((route) => route.path.startsWith('/api/') && !isDocsPage(route.path));
+	appRoutes = recorder
+		.routesOf(app)
+		.filter((route) => route.path.startsWith('/api/') && !isNonRestEndpoint(route.path));
 });
 
 afterAll(() => db.close());
