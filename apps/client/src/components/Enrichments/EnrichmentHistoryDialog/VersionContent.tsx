@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { describeMatcher } from '@/components/shared/MatcherGroupsEditor';
 import { AlertEnrichment, getLabelMatcherGroups, getNameNeedles } from '@OpsiMate/shared';
 
 interface VersionContentProps {
@@ -28,7 +29,7 @@ export const VersionContent = ({ enrichment }: VersionContentProps) => (
 				))}
 				{getLabelMatcherGroups(enrichment).map((group, groupIndex) => (
 					<Badge key={groupIndex} variant="outline">
-						{group.map((matcher) => `${matcher.key}=${matcher.value}`).join(' and ')}
+						{group.map(describeMatcher).join(' and ')}
 					</Badge>
 				))}
 			</div>

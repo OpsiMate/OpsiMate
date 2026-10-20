@@ -1,5 +1,7 @@
 import {
 	Action,
+	Alert,
+	AlertCallbackActor,
 	AlertHistoryEventType,
 	ActionOverrides,
 	ActionPreview,
@@ -13,6 +15,7 @@ import { ActionRepository, CreateActionInput, UpdateActionInput } from '../../da
 import { actionsRunTotal } from '../../metrics';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import {
 	AlertContextInput,
 	buildAlertContext,
@@ -28,11 +31,19 @@ const logger = new Logger('bl/action.bl');
 const API_TOKEN_ACTOR_ID = 0;
 const API_TOKEN_ACTOR_NAME = 'API Token';
 
+// Lets a run fire the `action_run` callback with the alert as stored (the run request
+// only carries the fields the templates need).
+export interface ActionCallbackHooks {
+	dispatcher: CallbackDispatcher;
+	lookupAlert: (alertId: string) => Promise<Alert | null>;
+}
+
 export class ActionBL {
 	constructor(
 		private actionRepo: ActionRepository,
 		private auditBL: AuditBL,
-		private alertHistoryRepo?: AlertHistoryRepository
+		private alertHistoryRepo?: AlertHistoryRepository,
+		private callbacks?: ActionCallbackHooks
 	) {}
 
 	async test(data: ExecutableAction): Promise<ActionTestResult> {
@@ -47,7 +58,8 @@ export class ActionBL {
 		action: Action,
 		alert: AlertContextInput,
 		overrides?: ActionOverrides,
-		actorName?: string | null
+		actorName?: string | null,
+		actorId?: string | null
 	): Promise<ActionTestResult> {
 		const result = await executeAction(
 			{ name: action.name, type: action.type, config: action.config },
@@ -70,6 +82,25 @@ export class ActionBL {
 				});
 			} catch {
 				// Swallow: history logging must not affect the action result.
+			}
+		}
+
+		// Callbacks hear about the run once it is on the timeline. Best-effort too, and
+		// only the lookup is awaited: delivery itself never waits on anything.
+		if (alert.id && this.callbacks?.dispatcher.wants('action_run')) {
+			try {
+				const stored = await this.callbacks.lookupAlert(alert.id);
+				if (stored) {
+					const actor: AlertCallbackActor = { id: actorId ?? null, name: actorName ?? null };
+					this.callbacks.dispatcher.emit({
+						event: 'action_run',
+						alert: stored,
+						actor,
+						details: { actionName: action.name, ok: result.ok },
+					});
+				}
+			} catch (error) {
+				logger.error(`Failed to emit action_run callback for alert ${alert.id}`, error);
 			}
 		}
 

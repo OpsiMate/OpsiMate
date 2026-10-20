@@ -1,21 +1,5 @@
 import { z } from 'zod';
 
-export interface GcpIncident {
-	policy_user_labels?: Record<string, string>;
-	incident_id: string;
-	resource_id?: string;
-	resource_name?: string;
-	policy_name?: string;
-	condition_name?: string;
-	state: 'open' | 'acknowledged' | 'closed';
-	started_at: string | number;
-	url: string;
-	summary?: string;
-	documentation?: {
-		content?: string;
-	};
-}
-
 export const GcpIncidentSchema = z.object({
 	policy_user_labels: z.record(z.string(), z.string()).optional(),
 	incident_id: z.string(),
@@ -35,11 +19,6 @@ export const GcpIncidentSchema = z.object({
 		})
 		.optional(),
 });
-
-export interface GcpAlertWebhook {
-	version?: string | number;
-	incident: GcpIncident;
-}
 
 export const GcpAlertWebhookSchema = z.object({
 	version: z.union([z.string(), z.number()]).optional(),
@@ -180,8 +159,6 @@ export const DatadogAlertWebhookSchema = z
 	})
 	.passthrough();
 
-export type DatadogAlertWebhook = z.infer<typeof DatadogAlertWebhookSchema>;
-
 // Payload sent by a Grafana "Webhook" contact point (unified alerting). It carries a batch of
 // alerts, each with its own firing/resolved status. This matches both real notifications and
 // the "Test" button payload from Grafana.
@@ -213,26 +190,11 @@ export const GrafanaWebhookSchema = z
 	})
 	.passthrough();
 
-export type GrafanaWebhook = z.infer<typeof GrafanaWebhookSchema>;
-export type GrafanaWebhookAlert = z.infer<typeof GrafanaWebhookAlertSchema>;
-
 export const SetAlertOwnerSchema = z.object({
 	ownerId: z.string().nullable(),
 });
 
 const dateString = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date');
-
-export interface UptimeKumaHeartbeat {
-	monitorID: number;
-	status: 0 | 1 | 2; // 0 = down, 1 = up, 2 = pending
-	time: string; // "2025-11-29 15:20:31.368"
-	msg: string;
-	important: boolean;
-	retries: number;
-	timezone: string;
-	timezoneOffset: string;
-	localDateTime: string;
-}
 
 export const UptimeKumaHeartbeatSchema = z.object({
 	monitorID: z.number(),
@@ -248,91 +210,11 @@ export const UptimeKumaHeartbeatSchema = z.object({
 	localDateTime: dateString,
 });
 
-export interface UptimeKumaTag {
-	id: number;
-	name: string;
-	value?: string;
-}
-
 export const UptimeKumaTagSchema = z.object({
 	id: z.number(),
 	name: z.string(),
 	value: z.string().optional(),
 });
-
-export interface UptimeKumaMonitor {
-	tags: UptimeKumaTag[];
-	id: number;
-	name: string;
-	description: string | null;
-	path: string[];
-	pathName: string;
-	parent: number | null;
-	childrenIDs: number[];
-	url: string | null;
-	method: string | null;
-	hostname: string | null;
-	port: number | null;
-	maxretries: number;
-	weight: number;
-	active: boolean;
-	forceInactive: boolean;
-	type: string;
-	timeout: number;
-	interval: number;
-	retryInterval: number;
-	resendInterval: number;
-	keyword: string | null;
-	invertKeyword: boolean;
-	expiryNotification: boolean;
-	ignoreTls: boolean;
-	upsideDown: boolean;
-	packetSize: number;
-	maxredirects: number;
-	accepted_statuscodes: string[];
-	dns_resolve_type: string;
-	dns_resolve_server: string;
-	dns_last_result: string | null;
-	docker_container: string;
-	docker_host: string | null;
-	proxyId: number | null;
-	notificationIDList: Record<string, boolean>;
-	maintenance: boolean;
-	mqttTopic: string;
-	mqttSuccessMessage: string;
-	mqttCheckType: string;
-	databaseQuery: string | null;
-	authMethod: string | null;
-	grpcUrl: string | null;
-	grpcProtobuf: string | null;
-	grpcMethod: string | null;
-	grpcServiceName: string | null;
-	grpcEnableTls: boolean;
-	radiusCalledStationId: string | null;
-	radiusCallingStationId: string | null;
-	game: string | null;
-	gamedigGivenPortOnly: boolean;
-	httpBodyEncoding: string | null;
-	jsonPath: string | null;
-	expectedValue: string | null;
-	kafkaProducerTopic: string | null;
-	kafkaProducerBrokers: string[];
-	kafkaProducerSsl: boolean;
-	kafkaProducerAllowAutoTopicCreation: boolean;
-	kafkaProducerMessage: string | null;
-	screenshot: string | null;
-	cacheBust: boolean;
-	remote_browser: string | null;
-	snmpOid: string | null;
-	jsonPathOperator: string | null;
-	snmpVersion: string;
-	smtpSecurity: string | null;
-	ipFamily: number | null;
-	ping_numeric: boolean;
-	ping_count: number;
-	ping_per_request_timeout: number;
-	includeSensitiveData: boolean;
-}
 
 // Only the fields the handler reads are required. Uptime Kuma's monitor object
 // carries 40+ type-specific fields (mqttTopic, databaseQuery, dns_resolve_server, ...)
@@ -345,19 +227,11 @@ export const UptimeKumaMonitorSchema = z.object({
 	tags: z.array(UptimeKumaTagSchema).optional().default([]),
 });
 
-export interface UptimeKumaWebhookPayload {
-	heartbeat: UptimeKumaHeartbeat;
-	monitor: UptimeKumaMonitor;
-	msg: string;
-}
-
 export const UptimeKumaWebhookPayloadSchema = z.object({
 	heartbeat: UptimeKumaHeartbeatSchema,
 	monitor: UptimeKumaMonitorSchema,
 	msg: z.string(),
 });
-
-export type UptimeKumaWebhookTestPayload = Partial<z.infer<typeof UptimeKumaWebhookPayloadSchema>>;
 
 /**
  * Zabbix webhook payload
@@ -388,30 +262,6 @@ export type UptimeKumaWebhookTestPayload = Partial<z.infer<typeof UptimeKumaWebh
  *   "trigger_url": "{TRIGGER.URL}"
  * }
  */
-export interface ZabbixWebhookPayload {
-	event_id?: string;
-	event_name?: string;
-	host_name?: string;
-	host_ip?: string;
-	trigger_id?: string;
-	trigger_name?: string;
-	trigger_severity?: string;
-	trigger_status?: string; // "PROBLEM" or "OK"
-	event_date?: string;
-	event_time?: string;
-	event_value?: string; // "1" for problem, "0" for resolved
-	event_tags?: string;
-	item_name?: string;
-	item_value?: string;
-	alert_message?: string;
-	event_recovery_date?: string;
-	event_recovery_time?: string;
-	zabbix_url?: string; // Base URL of the Zabbix server
-	trigger_url?: string; // Direct URL to the trigger (from {TRIGGER.URL} macro)
-	// Allow additional fields
-	[key: string]: string | undefined;
-}
-
 export const ZabbixWebhookPayloadSchema = z
 	.object({
 		event_id: z.string().optional(),
@@ -538,5 +388,3 @@ export const AlertBulkActionSchema = z
 	.refine((v) => v.action !== 'assignOwner' || v.ownerId !== undefined, {
 		message: 'The assignOwner action requires ownerId (null to unassign)',
 	});
-
-export type AlertBulkAction = z.infer<typeof AlertBulkActionSchema>;

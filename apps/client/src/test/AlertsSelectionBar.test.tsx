@@ -31,7 +31,7 @@ const renderBar = (actionsDisabled?: boolean) =>
 	);
 
 const actionButtons = () =>
-	['Assign Owner', 'Silence all', 'Resolve', 'Comment', 'Delete'].map((name) =>
+	['Assign Owner', 'Silence', 'Resolve', 'Comment', 'Delete'].map((name) =>
 		screen.getByRole('button', { name: new RegExp(name) })
 	);
 

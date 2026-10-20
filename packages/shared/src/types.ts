@@ -280,6 +280,7 @@ export enum AuditResourceType {
 	LDAP = 'LDAP',
 	MUTE_POLICY = 'MUTE_POLICY',
 	ROOT_CAUSE = 'ROOT_CAUSE',
+	CALLBACK = 'CALLBACK',
 	// Add more as needed
 }
 
@@ -410,10 +411,12 @@ export interface RateRootCauseResult {
 export interface MutePolicyLabelMatcher {
 	key: string;
 	value: string;
-	// How the value compares against the alert's tag: exact equality (default) or
-	// case-insensitive substring. Absent = equals, so every stored row keeps meaning
-	// what it meant.
-	op?: 'equals' | 'contains';
+	// How the value compares against the alert's tag: exact equality (default),
+	// case-insensitive substring, or "exists" — the tag is present with any value (the
+	// value is then ignored; one rule can cover every alert that carries a label, e.g.
+	// to decorate `site` whatever it is). Absent = equals, so every stored row keeps
+	// meaning what it meant.
+	op?: 'equals' | 'contains' | 'exists';
 }
 
 // OR groups of label matchers: an entity matches an alert when ANY group matches, and a
@@ -447,6 +450,7 @@ export const getLabelMatcherGroups = (criteria: MatcherCriteria): LabelMatcherGr
 
 const matcherMatchesTagValue = (m: MutePolicyLabelMatcher, tagValue: string | undefined): boolean => {
 	if (tagValue === undefined) return false;
+	if (m.op === 'exists') return true;
 	if (m.op === 'contains') return String(tagValue).toLowerCase().includes(m.value.toLowerCase());
 	return String(tagValue) === m.value;
 };
@@ -596,6 +600,32 @@ export const ALERT_TEMPLATE_VARIABLES = [
 ] as const;
 
 export const alertTagTemplateVariable = (tagKey: string): string => `label.${tagKey}`;
+
+// {{flag.<code>}}: the flag emoji for a two-letter country code, from the code alone —
+// {{flag.il}} or {{flag.IL}} is 🇮🇱 — so a template can write "IL {{flag.il}}" without
+// anyone typing an emoji (Windows has no flag picker and renders them as letters anyway;
+// the UI draws them as SVGs). No label is consulted.
+export const FLAG_TEMPLATE_PREFIX = 'flag.';
+export const flagTemplateVariable = (code: string): string => `${FLAG_TEMPLATE_PREFIX}${code.trim().toLowerCase()}`;
+
+export const looksLikeCountryCode = (value: string): boolean => /^[A-Za-z]{2}$/.test(value.trim());
+
+// 🇮🇱 for "IL" (case-insensitive); '' for anything that is not two letters.
+const REGIONAL_INDICATOR_A = 0x1f1e6;
+export const flagEmojiForCode = (value: string): string => {
+	if (!looksLikeCountryCode(value)) return '';
+	return String.fromCodePoint(
+		...[...value.trim().toUpperCase()].map((letter) => REGIONAL_INDICATOR_A + letter.charCodeAt(0) - 65)
+	);
+};
+
+// The flag a template variable names, or undefined when it is not a flag variable.
+// "flag.il" -> 🇮🇱; "flag.prod" and "label.site" -> undefined.
+export const flagForTemplateVariable = (variable: string): string | undefined => {
+	if (!variable.startsWith(FLAG_TEMPLATE_PREFIX)) return undefined;
+	const code = variable.slice(FLAG_TEMPLATE_PREFIX.length);
+	return looksLikeCountryCode(code) ? flagEmojiForCode(code) : undefined;
+};
 
 export type HttpActionMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -869,6 +899,9 @@ export interface LdapTestRequest {
 	// Optional: look this user up too and show the role they would get (no password
 	// is needed or checked).
 	email?: string;
+	// Optional: unsaved edits from the Settings page, laid over the stored settings for
+	// this test only. Nothing is saved. Omitted = test the settings as saved.
+	settings?: UpdateLdapSettings;
 }
 
 export type LdapTestStepName = 'connect' | 'service_bind' | 'search_base' | 'user_lookup';
@@ -916,3 +949,120 @@ export interface RetentionRunResult {
 	deleted: Partial<Record<RetentionResource, number>>;
 	vacuumed: boolean;
 }
+
+// ---- Alert callbacks ----
+// An outbound HTTP request sent AFTER a user changes an alert (silence, resolve, assign,
+// comment, …). Each callback subscribes to a set of events; every event mirrors one
+// entry the change writes to the alert's history timeline, so "what fires a callback"
+// and "what shows in History" are the same list. Automatic changes (a source reporting
+// recovery, a silence expiring, the daily reset) never fire a callback. Delivery happens
+// after the change is committed and never delays the request that made it.
+export const ALERT_CALLBACK_EVENTS = [
+	'silenced',
+	'unsilenced',
+	'resolved',
+	'unresolved',
+	'owner_assigned',
+	'owner_unassigned',
+	'comment_added',
+	'action_run',
+	'deleted',
+] as const;
+
+export type AlertCallbackEvent = (typeof ALERT_CALLBACK_EVENTS)[number];
+
+export const ALERT_CALLBACK_EVENT_LABELS: Record<AlertCallbackEvent, string> = {
+	silenced: 'Silenced',
+	unsilenced: 'Unsilenced',
+	resolved: 'Resolved',
+	unresolved: 'Moved back to firing',
+	owner_assigned: 'Owner assigned',
+	owner_unassigned: 'Owner removed',
+	comment_added: 'Comment added',
+	action_run: 'Action run',
+	deleted: 'Resolved alert deleted',
+};
+
+export type AlertCallbackMethod = 'POST' | 'PUT';
+
+export type AlertCallbackDeliveryStatus = 'success' | 'error';
+
+export interface AlertCallback {
+	id: number;
+	name: string;
+	url: string;
+	method: AlertCallbackMethod;
+	// Sent on every request, after the defaults (Content-Type, X-OpsiMate-*). The place
+	// for a receiver's auth token.
+	headers: Record<string, string> | null;
+	// Optional replacement for the JSON payload, with {{...}} variables (see
+	// ALERT_CALLBACK_TEMPLATE_VARIABLES). Null sends the AlertCallbackPayload as JSON.
+	bodyTemplate: string | null;
+	events: AlertCallbackEvent[];
+	// Off until an admin switches it on: a freshly created callback never sends.
+	enabled: boolean;
+	lastStatus: AlertCallbackDeliveryStatus | null;
+	lastError: string | null;
+	lastSentAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+// The secret signs every request: X-OpsiMate-Signature: sha256=<hex HMAC-SHA256 of
+// "<timestamp>.<body>">. It comes back from create and from a rotation — the moments
+// an admin has to copy it — and never from list or get.
+export interface AlertCallbackWithSecret extends AlertCallback {
+	secret: string;
+}
+
+// Who made the change. The id is a user id when the request carried one (JWT), null for
+// an API-token caller.
+export interface AlertCallbackActor {
+	id: string | null;
+	name: string | null;
+}
+
+// Event-specific extras. Every key is optional: a silence carries silencedUntil and
+// maybe a comment, an assignment carries the owner, an action run its name and outcome.
+export interface AlertCallbackDetails {
+	silencedUntil?: string | null;
+	comment?: string | null;
+	ownerId?: string | null;
+	ownerName?: string | null;
+	actionName?: string | null;
+	// action_run: whether the run succeeded (for an HTTP action that sends without
+	// waiting for a response: that the request went out).
+	ok?: boolean;
+}
+
+// What a receiver gets. One shape for single and bulk changes: `alerts` holds one
+// alert for a single action and the affected alerts for a bulk action (`bulk: true`),
+// so a bulk silence of 150 alerts is one request, not 150. A request carries at most
+// 200 alerts: a larger bulk arrives as several requests, in order, each `bulk: true`
+// with the same event, actor and details.
+export interface AlertCallbackPayload {
+	event: AlertCallbackEvent;
+	timestamp: string;
+	actor: AlertCallbackActor;
+	alerts: Alert[];
+	details: AlertCallbackDetails;
+	bulk: boolean;
+}
+
+export interface AlertCallbackTestResult {
+	ok: boolean;
+	statusCode?: number;
+	message: string;
+}
+
+// Variables a body template can use, on top of the alert variables shared with actions
+// (ALERT_TEMPLATE_VARIABLES, taken from the first alert of the payload).
+export const ALERT_CALLBACK_TEMPLATE_VARIABLES = [
+	'event',
+	'timestamp',
+	'actor.name',
+	'actor.id',
+	'count',
+	'alertIds',
+	'payload',
+] as const;

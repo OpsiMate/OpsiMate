@@ -1,14 +1,17 @@
-import { getPresetConfig, getPresetLabel } from './TimeFilter.constants';
+import { isQuickTimePreset, resolveQuickPreset } from '@OpsiMate/shared';
+import { getPresetLabel } from './TimeFilter.constants';
 import { TimeRange } from './TimeFilter.types';
+
+export interface ResolvedTimeRange {
+	from: Date | null;
+	to: Date | null;
+}
 
 // Quick presets are stored as the preset alone (from/to null) and materialized here at
 // FILTER time, so "Last 1 hour" / "Today" are rolling windows anchored to now — not
 // snapshots of the moment the preset was clicked. Only 'custom' carries absolute dates.
-export const resolveTimeRange = (range: TimeRange): { from: Date | null; to: Date | null } => {
-	if (range.preset && range.preset !== 'custom') {
-		const config = getPresetConfig(range.preset);
-		if (config) return config.getRange();
-	}
+export const resolveTimeRange = (range: TimeRange): ResolvedTimeRange => {
+	if (isQuickTimePreset(range.preset)) return resolveQuickPreset(range.preset);
 	return { from: range.from, to: range.to };
 };
 

@@ -1,12 +1,15 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	AlertCallback,
+	AlertCallbackWithSecret,
 	AlertEnrichment,
 	AlertEnrichmentVersion,
 	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
 	LdapSettings,
-	UpdateLdapSettings,
+	LdapTestRequestSchema,
+	UpdateLdapSettingsSchema,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -521,27 +524,37 @@ export const handlers = [
 		return HttpResponse.json({ success: true, data: ldapSettingsState });
 	}),
 
+	// Validated like the server does, so the page's field-level errors can be seen here.
 	http.put(`${API_BASE}/ldap/settings`, async ({ request }) => {
-		const body = (await request.json().catch(() => ({}))) as UpdateLdapSettings;
-		const { bindPassword, ...rest } = body;
+		const parsed = UpdateLdapSettingsSchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return HttpResponse.json(
+				{ success: false, error: 'Validation error', details: parsed.error.issues },
+				{ status: 400 }
+			);
+		}
+		const { bindPassword, ...rest } = parsed.data;
 		Object.assign(ldapSettingsState, rest);
 		if (bindPassword !== undefined) ldapSettingsState.hasBindPassword = bindPassword !== null;
 		ldapSettingsState.updatedAt = nowIso();
 		return HttpResponse.json({ success: true, data: ldapSettingsState });
 	}),
 
-	http.post(`${API_BASE}/ldap/test`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: {
-				ok: false,
-				latencyMs: 0,
-				steps: [
-					{ step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' },
-				],
-				user: null,
-			},
-		});
+	http.post(`${API_BASE}/ldap/test`, async ({ request }) => {
+		const parsed = LdapTestRequestSchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return HttpResponse.json(
+				{ success: false, error: 'Validation error', details: parsed.error.issues },
+				{ status: 400 }
+			);
+		}
+		// Unsaved edits are tested as the server would: laid over what is stored.
+		const tested = { ...ldapSettingsState, ...parsed.data.settings };
+		const step =
+			!tested.url || !tested.searchBase
+				? { step: 'connect', ok: false, message: 'Enter a server URL and a search base first.' }
+				: { step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' };
+		return HttpResponse.json({ success: true, data: { ok: false, latencyMs: 0, steps: [step], user: null } });
 	}),
 
 	// ==================== ALERTS ====================
@@ -1197,11 +1210,16 @@ export const handlers = [
 	}),
 
 	// ==================== AUDIT ====================
-	http.get(`${API_BASE}/audit`, () => {
+	http.get(`${API_BASE}/audit`, ({ request }) => {
+		const url = new URL(request.url);
+		const page = Number(url.searchParams.get('page') || 1);
+		const pageSize = Number(url.searchParams.get('pageSize') || 10);
+		const start = (page - 1) * pageSize;
+		const sliced = playgroundState.auditLogs.slice(start, start + pageSize);
 		return HttpResponse.json({
 			success: true,
 			data: {
-				logs: playgroundState.auditLogs,
+				logs: sliced,
 				total: playgroundState.auditLogs.length,
 			},
 		});
@@ -1385,6 +1403,67 @@ export const handlers = [
 		const id = Number(params.id);
 		playgroundState.actions = playgroundState.actions.filter((a) => a.id !== id);
 		return HttpResponse.json({ success: true, message: 'Action deleted' });
+	}),
+
+	// ==================== CALLBACKS ====================
+	// Configuration only: the sandbox has no server to send from, so nothing is delivered.
+	http.get(`${API_BASE}/callbacks`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.callbacks });
+	}),
+
+	// Like the server, the secret is returned on create and on a rotation only.
+	http.post(`${API_BASE}/callbacks`, async ({ request }) => {
+		const body = (await request.json()) as Partial<AlertCallbackWithSecret>;
+		const callback: AlertCallback = {
+			id: randomId(),
+			name: body.name ?? 'Callback',
+			url: body.url ?? '',
+			method: body.method ?? 'POST',
+			headers: body.headers ?? null,
+			bodyTemplate: body.bodyTemplate ?? null,
+			events: body.events ?? [],
+			enabled: body.enabled ?? false,
+			lastStatus: null,
+			lastError: null,
+			lastSentAt: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+		playgroundState.callbacks = [callback, ...playgroundState.callbacks];
+		const created: AlertCallbackWithSecret = {
+			...callback,
+			secret: body.secret ?? `playground-secret-${randomId()}`,
+		};
+		return HttpResponse.json({ success: true, data: created, message: 'Callback created' }, { status: 201 });
+	}),
+
+	http.post(`${API_BASE}/callbacks/test`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { ok: true, statusCode: 200, message: 'Test sent (playground — no real request made).' },
+		});
+	}),
+
+	http.put(`${API_BASE}/callbacks/:id`, async ({ params, request }) => {
+		const id = Number(params.id);
+		const existing = playgroundState.callbacks.find((c) => c.id === id);
+		if (!existing) {
+			return HttpResponse.json({ success: false, error: 'Callback not found' }, { status: 404 });
+		}
+		const { secret, ...body } = (await request.json()) as Partial<AlertCallbackWithSecret>;
+		const updated: AlertCallback = { ...existing, ...body, updatedAt: new Date().toISOString() };
+		playgroundState.callbacks = playgroundState.callbacks.map((c) => (c.id === id ? updated : c));
+		return HttpResponse.json({
+			success: true,
+			data: secret !== undefined ? { ...updated, secret } : updated,
+			message: 'Callback updated',
+		});
+	}),
+
+	http.delete(`${API_BASE}/callbacks/:id`, ({ params }) => {
+		const id = Number(params.id);
+		playgroundState.callbacks = playgroundState.callbacks.filter((c) => c.id !== id);
+		return HttpResponse.json({ success: true, message: 'Callback deleted' });
 	}),
 
 	// ==================== ENRICHMENTS ====================

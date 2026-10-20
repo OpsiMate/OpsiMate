@@ -10,6 +10,7 @@ import {
 	Logger,
 	SlackActionConfig,
 	TeamsActionConfig,
+	flagForTemplateVariable,
 } from '@OpsiMate/shared';
 import http from 'node:http';
 import https from 'node:https';
@@ -122,9 +123,18 @@ export const buildAlertContext = (alert: AlertContextInput): Record<string, stri
 	);
 };
 
-const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
+// One template variable's value: the alert context first; then {{flag.<code>}}, which
+// needs no alert at all (🇮🇱 for flag.il); undefined for anything unknown, which the
+// callers leave literal so a typo is visible rather than silently blank.
+export const resolveTemplateVariable = (key: string, ctx: Record<string, string>): string | undefined =>
+	key in ctx ? ctx[key] : flagForTemplateVariable(key);
+
+export const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
 	if (!template) return '';
-	return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => (key in ctx ? ctx[key] : `{{${key}}}`));
+	return template.replace(
+		/\{\{\s*([\w.]+)\s*\}\}/g,
+		(_match, key: string) => resolveTemplateVariable(key, ctx) ?? `{{${key}}}`
+	);
 };
 
 // The concrete, ready-to-send text fields after template resolution. Only some are used per type.

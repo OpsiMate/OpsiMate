@@ -85,24 +85,11 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 		onClose();
 	}, [clearErrors, onClose]);
 
-	React.useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				handleClose();
-			} else if (e.key === 'Enter' && !resetting && newPassword && confirmPassword) {
-				e.preventDefault();
-				handleReset();
-			}
-		};
-
-		if (isOpen) {
-			window.addEventListener('keydown', handleKeyDown);
-		}
-
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown);
-		};
-	}, [isOpen, resetting, newPassword, confirmPassword, handleClose, handleReset]);
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (resetting || !newPassword || !confirmPassword) return;
+		handleReset();
+	};
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleClose}>
@@ -117,7 +104,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 
 				{generalError && <ErrorAlert message={generalError} />}
 
-				<div className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">
 						<Label htmlFor="new-password">New Password</Label>
 						<Input
@@ -139,16 +126,16 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ user, is
 							placeholder="Confirm new password"
 						/>
 					</div>
-				</div>
 
-				<DialogFooter>
-					<Button variant="ghost" onClick={handleClose} disabled={resetting}>
-						Cancel
-					</Button>
-					<Button onClick={handleReset} disabled={resetting || !newPassword || !confirmPassword}>
-						{resetting ? 'Resetting...' : 'Reset Password'}
-					</Button>
-				</DialogFooter>
+					<DialogFooter>
+						<Button type="button" variant="ghost" onClick={handleClose} disabled={resetting}>
+							Cancel
+						</Button>
+						<Button type="submit" disabled={resetting || !newPassword || !confirmPassword}>
+							{resetting ? 'Resetting...' : 'Reset Password'}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

@@ -5,6 +5,7 @@ import {
 	IntegrationResponse,
 	IntegrationTagsquerySchema,
 	Logger,
+	positiveIntegerIdSchema,
 } from '@OpsiMate/shared';
 import { IntegrationBL, IntegrationNotFoundError } from '../../../bl/integrations/integration.bl';
 import { isZodError } from '../../../utils/isZodError';
@@ -83,10 +84,11 @@ export class IntegrationController {
 
 	updateIntegration = async (req: Request, res: Response) => {
 		try {
-			const integrationId = parseInt(routeParam(req, 'integrationId'));
-			if (isNaN(integrationId)) {
+			const parsedIntegrationId = positiveIntegerIdSchema.safeParse(routeParam(req, 'integrationId'));
+			if (!parsedIntegrationId.success) {
 				return res.status(400).json({ success: false, error: 'Invalid integration ID' });
 			}
+			const integrationId = parsedIntegrationId.data;
 
 			const validatedData = CreateIntegrationSchema.parse(req.body);
 			const updatedIntegration = await this.integrationBL.updateIntegration(integrationId, validatedData);
@@ -110,10 +112,11 @@ export class IntegrationController {
 
 	deleteIntegration = async (req: Request, res: Response) => {
 		try {
-			const integrationId = parseInt(routeParam(req, 'integrationId'));
-			if (isNaN(integrationId)) {
+			const parsedIntegrationId = positiveIntegerIdSchema.safeParse(routeParam(req, 'integrationId'));
+			if (!parsedIntegrationId.success) {
 				return res.status(400).json({ success: false, error: 'Invalid integration ID' });
 			}
+			const integrationId = parsedIntegrationId.data;
 
 			await this.integrationBL.deleteIntegration(integrationId);
 			return res.json({ success: true, message: 'Integration deleted successfully' });

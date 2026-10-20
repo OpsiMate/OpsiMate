@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { CreateTagSchema, UpdateTagSchema, TagIdSchema, Logger } from '@OpsiMate/shared';
-import { TagRepository } from '../../../dal/tagRepository';
+import { DuplicateTagNameError, TagRepository } from '../../../dal/tagRepository';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/tags/controller');
@@ -45,6 +45,8 @@ export class TagController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else if (error instanceof DuplicateTagNameError) {
+				return res.status(409).json({ success: false, error: error.message });
 			} else {
 				logger.error('Error creating tag:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -69,6 +71,8 @@ export class TagController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else if (error instanceof DuplicateTagNameError) {
+				return res.status(409).json({ success: false, error: error.message });
 			} else {
 				logger.error('Error updating tag:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
