@@ -140,12 +140,27 @@ kubectl get svc -n opsimate
 | `frontend.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `frontend.port` | Container port | `8080` |
 
+### MCP server (optional)
+
+The container AI assistants connect to; it reads alerts and dashboards through the backend's API with each caller's own token. See `configuration_example/README.md`.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `mcp.enabled` | Deploy the MCP server | `false` |
+| `mcp.replicaCount` | Number of replicas | `1` |
+| `mcp.image.repository` | Image repository | `opsimate/mcp` |
+| `mcp.image.tag` | Image tag | `latest` |
+| `mcp.port` | Container port | `3100` |
+| `mcp.env.OPSIMATE_URL` | OpsiMate's URL from the cluster (empty = the chart's backend service) | `""` |
+| `mcp.env.MCP_RATE_LIMIT_PER_MINUTE` | Requests per caller per minute (`0` = none) | `"240"` |
+
 ### Services
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `service.frontend.type` | Frontend service type | `LoadBalancer` |
 | `service.backend.type` | Backend service type | `ClusterIP` |
+| `service.mcp.type` | MCP service type (when `mcp.enabled`) | `ClusterIP` |
 
 ### Persistence
 

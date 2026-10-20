@@ -1,0 +1,17 @@
+{{- if .Values.mcp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opsimate.mcp.serviceName" . }}
+  labels:
+    {{- include "opsimate.mcp.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.mcp.type }}
+  ports:
+    - port: {{ .Values.mcp.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "opsimate.mcp.selectorLabels" . | nindent 4 }}
+{{- end }}
