@@ -2,6 +2,7 @@ import { ErrorAlert } from '@/components/ErrorAlert';
 import { Card, CardContent } from '@/components/ui/card';
 import { User } from '@OpsiMate/shared';
 import { AccountSection } from '../AccountSection';
+import { BrowserDiagnosticsSection } from '../BrowserDiagnosticsSection';
 import { EditProfileForm } from '../EditProfileForm';
 import { ProfileHeader } from '../ProfileHeader';
 import { ProfileInformation } from '../ProfileInformation';
@@ -63,6 +64,8 @@ export const ProfileContent = ({
 							onEdit={onEdit}
 							isDirectoryAccount={profile.authSource === 'ldap'}
 						/>
+
+						<BrowserDiagnosticsSection />
 
 						<AccountSection onLogout={onLogout} />
 					</CardContent>

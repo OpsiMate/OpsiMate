@@ -6,3 +6,4 @@ export { ThemePreferences } from './ThemePreferences';
 export { ProfileContent } from './ProfileContent';
 export { ProfileLoadingState } from './ProfileLoadingState';
 export { ProfileErrorState } from './ProfileErrorState';
+export { BrowserDiagnosticsSection } from './BrowserDiagnosticsSection';

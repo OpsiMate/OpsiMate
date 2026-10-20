@@ -94,6 +94,7 @@ describe('useAppVersion', () => {
 		const { result } = render(() => useAppVersion());
 
 		expect(result.current.version).toBe(MOCKED_CLIENT_VERSION);
+		expect(result.current.serverKnown).toBe(false);
 		expect(result.current.commit).toBeNull();
 		expect(result.current.buildDate).toBeNull();
 		expect(result.current.mismatch).toBe(false);
@@ -107,6 +108,7 @@ describe('useAppVersion', () => {
 		await waitFor(() => expect(result.current.commit).toBe('a1b2c3d'));
 
 		expect(result.current.version).toBe('1.3.0');
+		expect(result.current.serverKnown).toBe(true);
 		expect(result.current.buildDate).toBe('2026-10-01T00:00:00.000Z');
 		// The client's own build stays visible underneath, because the difference is the point.
 		expect(result.current.clientVersion).toBe(MOCKED_CLIENT_VERSION);
