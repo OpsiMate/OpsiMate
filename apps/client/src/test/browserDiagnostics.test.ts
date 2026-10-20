@@ -43,16 +43,20 @@ describe('collectBrowserDiagnostics', () => {
 		expect(result.findings[0]).toContain(MINIMUM_BROWSERS);
 	});
 
-	test('a Windows Contrast theme and a non-hovering pointer each get their own finding', () => {
-		const result = collectBrowserDiagnostics(
-			env({ matches: (query) => query === '(forced-colors: active)', maxTouchPoints: 10 })
-		);
+	test('a Windows Contrast theme and a non-hovering mouse each get their own finding', () => {
+		const result = collectBrowserDiagnostics(env({ matches: (query) => query === '(forced-colors: active)' }));
 		expect(result.checks.forcedColors).toBe(true);
 		expect(result.checks.hoverCapable).toBe(false);
 		expect(result.findings.map((f) => f.split(':')[0])).toEqual([
 			'A Windows Contrast (High Contrast) theme is active',
-			'The pointer reports it cannot hover (touch device, or a remote/virtual session)',
+			'The pointer reports it cannot hover (a remote/virtual session, most likely)',
 		]);
+	});
+
+	test('no hover on a touch screen is how touch works, not a finding', () => {
+		const result = collectBrowserDiagnostics(env({ matches: () => false, maxTouchPoints: 10 }));
+		expect(result.checks.hoverCapable).toBe(false);
+		expect(result.findings).toEqual([]);
 	});
 
 	test('a missing API counts as unsupported rather than throwing', () => {
@@ -124,6 +128,29 @@ describe('describeBrowser', () => {
 		).toBe('Safari 17 on macOS');
 		expect(describeBrowser('something else')).toBe('Unknown browser on an unknown OS');
 	});
+
+	test('recognises the mobile builds that hide behind Chrome/Safari tokens', () => {
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 CriOS/140.0.7339.0 Mobile/15E148 Safari/604.1'
+			)
+		).toBe('Chrome 140 on iOS');
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 FxiOS/128.0 Mobile/15E148 Safari/605.1.15'
+			)
+		).toBe('Firefox 128 on iOS');
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36 EdgA/140.0.0.0'
+			)
+		).toBe('Microsoft Edge 140 on Android');
+		expect(
+			describeBrowser(
+				'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36 SamsungBrowser/27.0'
+			)
+		).toBe('Samsung Internet 27 on Android');
+	});
 });
 
 describe('buildChecklist and buildAboutList', () => {
@@ -138,7 +165,7 @@ describe('buildChecklist and buildAboutList', () => {
 		expect(byId.hover.status).toBe('ok');
 	});
 
-	test('a Contrast theme is a problem; a touch-only pointer reads as hover problem + pointer info', () => {
+	test('a Contrast theme is a problem; no hover is a problem without a touch screen, info with one', () => {
 		const items = buildChecklist(
 			collectBrowserDiagnostics(env({ matches: (q) => q === '(forced-colors: active)' }))
 		);
@@ -146,6 +173,9 @@ describe('buildChecklist and buildAboutList', () => {
 		expect(byId.forcedColors.status).toBe('problem');
 		expect(byId.hover.status).toBe('problem');
 		expect(byId.pointer.status).toBe('info');
+
+		const touch = buildChecklist(collectBrowserDiagnostics(env({ matches: () => false, maxTouchPoints: 10 })));
+		expect(touch.find((item) => item.id === 'hover')?.status).toBe('info');
 	});
 
 	test('the about list is plain words: browser name, versions, screen and zoom', () => {

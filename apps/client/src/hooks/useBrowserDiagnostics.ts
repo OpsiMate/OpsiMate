@@ -12,10 +12,10 @@ const WATCHED_QUERIES = [
 	'(prefers-contrast: more)',
 ];
 
-// The diagnostics as of NOW: collected once on mount and again whenever the window is
-// resized or a watched media query flips, so the printed report never describes a state
-// the browser has since left. (Collected in an effect, not during render, so a render
-// for an unrelated reason does not re-run every probe.)
+// The diagnostics as of NOW: collected once, on first render, and again whenever the
+// window is resized or a watched media query flips, so the printed report never describes
+// a state the browser has since left. (Held in state rather than recomputed each render,
+// so a render for an unrelated reason does not re-run every probe.)
 export const useBrowserDiagnostics = (): BrowserDiagnostics => {
 	const [diagnostics, setDiagnostics] = useState<BrowserDiagnostics>(() => collectBrowserDiagnostics());
 

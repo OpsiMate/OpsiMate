@@ -36,15 +36,14 @@ export const BrowserDiagnosticsSection = () => {
 	const checklist = buildChecklist(diagnostics);
 	const about = buildAboutList(diagnostics, versions, window.location.origin);
 	const report = formatBrowserDiagnostics(diagnostics, versions, window.location.origin);
-	const problems = diagnostics.findings.length;
+	// Counted from the checklist, so the header agrees with the red rows below it (one
+	// finding can cover two checks, as the "too old" one does for oklch and color-mix).
+	const problems = checklist.filter((item) => item.status === 'problem').length;
 	const verdict = problems > 0 ? `${problems} problem${problems > 1 ? 's' : ''} found` : 'All good';
 
 	return (
 		<details className="group/section border-t pt-6">
-			<summary
-				className="flex cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden"
-				aria-label={`Browser check: ${verdict}`}
-			>
+			<summary className="flex cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
 				<Stethoscope className="h-5 w-5 text-muted-foreground" />
 				<h3 className="font-semibold">Browser check</h3>
 				<span className={cn('rounded-full border px-2 py-0.5 text-xs', problems > 0 ? AMBER : GREEN)}>
@@ -62,7 +61,7 @@ export const BrowserDiagnosticsSection = () => {
 					screenshot of it to support.
 				</p>
 
-				{problems > 0 ? (
+				{diagnostics.findings.length > 0 ? (
 					<ul className="space-y-2" aria-label="Browser findings">
 						{diagnostics.findings.map((finding) => (
 							<li
@@ -114,7 +113,9 @@ export const BrowserDiagnosticsSection = () => {
 						<ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" aria-hidden />
 						Technical details for support
 					</summary>
+					{/* role=region: aria-label is not permitted on a bare <pre>. */}
 					<pre
+						role="region"
 						aria-label="Browser diagnostics report"
 						className="mt-2 select-all whitespace-pre-wrap break-words rounded-lg border bg-muted p-3 font-mono text-foreground"
 					>

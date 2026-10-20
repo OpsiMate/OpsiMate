@@ -102,9 +102,11 @@ export const collectBrowserDiagnostics = (
 			'A Windows Contrast (High Contrast) theme is active: the OS replaces page colors, so colored icons and hover backgrounds show in system colors.'
 		);
 	}
-	if (!checks.hoverCapable) {
+	// No hover on a touch screen is how touch works, not a fault; with no touch screen it
+	// is a remote/virtual session misreporting the mouse — the case worth flagging.
+	if (!checks.hoverCapable && env.maxTouchPoints === 0) {
 		findings.push(
-			'The pointer reports it cannot hover (touch device, or a remote/virtual session): hover styles never apply, so buttons only change on click.'
+			'The pointer reports it cannot hover (a remote/virtual session, most likely): hover styles never apply, so buttons only change on click.'
 		);
 	}
 	const { supports: _supports, matches: _matches, ...environment } = env;
@@ -154,12 +156,15 @@ export const describeBrowser = (userAgent: string): string => {
 		}
 		return null;
 	};
+	// Mobile builds carry their own tokens (EdgA/EdgiOS, CriOS, FxiOS, SamsungBrowser) and
+	// otherwise look like Chrome or Safari; they go first.
 	const browser =
 		pick(
-			['Microsoft Edge', /Edg\/([\d.]+)/],
+			['Microsoft Edge', /Edg(?:A|iOS)?\/([\d.]+)/],
 			['Opera', /OPR\/([\d.]+)/],
-			['Firefox', /Firefox\/([\d.]+)/],
-			['Chrome', /Chrome\/([\d.]+)/],
+			['Samsung Internet', /SamsungBrowser\/([\d.]+)/],
+			['Firefox', /(?:Firefox|FxiOS)\/([\d.]+)/],
+			['Chrome', /(?:Chrome|CriOS)\/([\d.]+)/],
 			['Safari', /Version\/([\d.]+).*Safari/]
 		) ?? 'Unknown browser';
 	const os = /Windows NT 10/.test(ua)
@@ -191,7 +196,7 @@ export interface ChecklistItem {
 
 // The checks as a list a person reads top to bottom: green when the UI will look right,
 // red when it will not, grey for a preference that only explains a look.
-export const buildChecklist = ({ checks }: BrowserDiagnostics): ChecklistItem[] => [
+export const buildChecklist = ({ checks, environment }: BrowserDiagnostics): ChecklistItem[] => [
 	{
 		id: 'oklch',
 		label: 'Modern colors (oklch)',
@@ -211,10 +216,14 @@ export const buildChecklist = ({ checks }: BrowserDiagnostics): ChecklistItem[] 
 	{
 		id: 'hover',
 		label: 'Mouse hover',
-		status: checks.hoverCapable ? 'ok' : 'problem',
+		// A touch screen with no hover is expected (grey); no hover and no touch is a
+		// remote/virtual session misreporting the mouse (red) — the same rule as the finding.
+		status: checks.hoverCapable ? 'ok' : environment.maxTouchPoints > 0 ? 'info' : 'problem',
 		detail: checks.hoverCapable
 			? 'Buttons and rows react when the pointer is over them.'
-			: 'The browser reports no hover (touch screen, or a remote/virtual session): buttons only change when clicked.',
+			: environment.maxTouchPoints > 0
+				? 'Touch screen without hover: buttons change when tapped.'
+				: 'The browser reports no hover (a remote/virtual session, most likely): buttons only change when clicked.',
 	},
 	{
 		id: 'pointer',

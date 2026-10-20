@@ -1,6 +1,6 @@
 import { BrowserDiagnosticsSection } from '@/components/Profile/components/BrowserDiagnosticsSection';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { AllTheProviders } from './TestProviders';
 
 // The profile page prints the diagnostics in full: a verdict a person can read, and the
@@ -17,8 +17,8 @@ describe('BrowserDiagnosticsSection', () => {
 		const section = screen.getByText('Browser check').closest('details');
 		expect(section).not.toBeNull();
 		expect(section).not.toHaveAttribute('open');
-		// The verdict sits in the header, readable without opening.
-		expect(screen.getByLabelText(/^Browser check: (All good|\d+ problems? found)$/)).toBeInTheDocument();
+		// The verdict sits in the header, readable without opening, and counts the red rows.
+		const verdict = within(section!.querySelector('summary')!).getByText(/^(All good|\d+ problems? found)$/);
 		fireEvent.click(screen.getByText('Browser check'));
 		expect(section).toHaveAttribute('open');
 		// The checklist a person reads, with a status icon per row.
@@ -26,6 +26,8 @@ describe('BrowserDiagnosticsSection', () => {
 		expect(within(checks).getAllByRole('listitem')).toHaveLength(8);
 		expect(within(checks).getByText('Modern colors (oklch)')).toBeInTheDocument();
 		expect(within(checks).getAllByRole('img', { name: /OK|Problem|Info/ }).length).toBe(8);
+		const red = within(checks).queryAllByRole('img', { name: 'Problem' }).length;
+		expect(verdict.textContent).toBe(red > 0 ? `${red} problem${red > 1 ? 's' : ''} found` : 'All good');
 		expect(screen.getByText('Browser')).toBeInTheDocument();
 		// The raw report is still there for support, folded away.
 		expect(screen.getByText('Technical details for support')).toBeInTheDocument();
@@ -35,6 +37,11 @@ describe('BrowserDiagnosticsSection', () => {
 		expect(report).toContain('css oklch:');
 		expect(report).toContain('hover capable:');
 		expect(report).toMatch(/findings:/);
+	});
+
+	const originalInnerWidth = window.innerWidth;
+	afterEach(() => {
+		Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true, writable: true });
 	});
 
 	test('re-collects when the window changes, so the report is never stale', () => {
@@ -59,8 +66,8 @@ describe('BrowserDiagnosticsSection', () => {
 				<BrowserDiagnosticsSection />
 			</AllTheProviders>
 		);
-		// jsdom has no CSS.supports / matchMedia, so it reads as an old, non-hovering browser —
-		// the findings list shows, not the all-clear.
+		// jsdom has no CSS.supports (and its matchMedia stub matches nothing), so it reads as
+		// an old, non-hovering browser — the findings list shows, not the all-clear.
 		const findings = screen.queryByRole('list', { name: 'Browser findings' });
 		const allClear = screen.queryByText(/Everything this page depends on is supported/);
 		expect(Boolean(findings) !== Boolean(allClear)).toBe(true);
