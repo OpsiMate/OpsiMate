@@ -20,6 +20,7 @@ import { AppIcon } from './icons/AppIcon';
 import { ALERTS_PATHS } from './LeftSidebar.constants';
 import { PreserveQueryLink } from './PreserveQueryLink';
 import { ProfileButton } from './ProfileButton';
+import { BrowserDiagnosticsButton } from './BrowserDiagnosticsButton';
 import { VersionBadge } from './VersionBadge';
 import { ROUTES } from '@/lib/routes';
 
@@ -254,7 +255,10 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							{/* Collapsed, the row has room for two icons only. */}
 							{collapsed && apiDocsLink}
 
-							<VersionBadge collapsed={collapsed} />
+							<div className="flex items-center gap-1">
+								<VersionBadge collapsed={collapsed} />
+								{!collapsed && <BrowserDiagnosticsButton />}
+							</div>
 						</div>
 					</TooltipProvider>
 				</div>
