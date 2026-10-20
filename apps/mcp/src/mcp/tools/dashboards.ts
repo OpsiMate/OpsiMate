@@ -140,10 +140,14 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 
 			const pages: Partial<Record<AlertListName, McpAlertPage>> = {};
 			const scopes = new Map<AlertListName, DashboardAlertScope>();
+			// One window for the whole call: resolved per list it could straddle a minute
+			// boundary, and the reported window would not be the one that was queried.
+			const window = resolveDashboardWindow(dashboard, timeZone);
 			for (const list of listsFor(include)) {
 				const scope = dashboardAlertScope(dashboard, {
 					timeZone,
 					resolved: list === 'resolved',
+					window,
 				});
 				scopes.set(list, scope);
 				const page = await queryList(deps, list, {
@@ -187,7 +191,7 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 			return toolResult({
 				dashboard: toDashboardSummary(dashboard),
 				include,
-				window: resolveDashboardWindow(dashboard, timeZone),
+				window,
 				...pages,
 				summary,
 				summaryNote,

@@ -15,8 +15,10 @@ export const credentialsFromHeaders = (headers: IncomingHttpHeaders): CallerCred
 	const apiToken = headers['x-api-token'];
 	if (typeof apiToken === 'string' && apiToken.trim() !== '') return { header: ['x-api-token', apiToken] };
 	const authorization = headers.authorization;
-	if (typeof authorization === 'string' && /^Bearer\s+\S/.test(authorization)) {
-		return { header: ['authorization', authorization] };
+	// The scheme is case-insensitive on the wire (RFC 7235); OpsiMate compares the exact
+	// string "Bearer ", so the prefix is normalised before it is forwarded.
+	if (typeof authorization === 'string' && /^Bearer\s+\S/i.test(authorization)) {
+		return { header: ['authorization', authorization.replace(/^Bearer\s+/i, 'Bearer ')] };
 	}
 	return null;
 };

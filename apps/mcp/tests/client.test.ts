@@ -57,6 +57,16 @@ describe('OpsiMateClient', () => {
 		expect(call.headers['x-api-token']).toBe('tok');
 	});
 
+	test('keeps a path prefix in the OpsiMate URL (a reverse proxy at /opsimate)', async () => {
+		const { calls, fetchImpl } = stubFetch(() => ok({ alerts: [], total: 0 }));
+		await new OpsiMateClient(
+			'https://host.test/opsimate',
+			{ header: ['x-api-token', 'tok'] },
+			{ fetch: fetchImpl }
+		).queryAlerts({ filters: {} });
+		expect(calls[0].url.origin + calls[0].url.pathname).toBe('https://host.test/opsimate/api/v1/alerts');
+	});
+
 	test('a query without a limit asks for the largest page, so "everything" is not the server default', async () => {
 		const { calls, fetchImpl } = stubFetch(() => ok({ alerts: [] }));
 		const page = await client(fetchImpl).queryResolvedAlerts({ filters: {} });
@@ -128,6 +138,26 @@ describe('OpsiMateClient', () => {
 				});
 			});
 		await expect(client(hanging, 20).getOwners()).rejects.toMatchObject({
+			message: expect.stringContaining('timed out'),
+		});
+		// Headers arrive, the body never does: the same deadline applies.
+		const stalledBody: typeof fetch = (_input, init) =>
+			Promise.resolve(
+				new Response(
+					new ReadableStream({
+						start(controller) {
+							init?.signal?.addEventListener('abort', () => {
+								const error = new Error('aborted');
+								error.name = 'AbortError';
+								controller.error(error);
+							});
+						},
+					}),
+					{ status: 200 }
+				)
+			);
+		await expect(client(stalledBody, 20).getOwners()).rejects.toMatchObject({
+			status: 0,
 			message: expect.stringContaining('timed out'),
 		});
 	});

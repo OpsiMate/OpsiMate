@@ -33,6 +33,10 @@ describe('credentials', () => {
 		expect(credentialsFromHeaders({ authorization: 'Bearer j.w.t' })).toEqual({
 			header: ['authorization', 'Bearer j.w.t'],
 		});
+		// The scheme is case-insensitive on the wire; OpsiMate wants it spelled "Bearer".
+		expect(credentialsFromHeaders({ authorization: 'bearer j.w.t' })).toEqual({
+			header: ['authorization', 'Bearer j.w.t'],
+		});
 		expect(credentialsFromHeaders({ authorization: 'Basic abc' })).toBeNull();
 		expect(credentialsFromHeaders({ 'x-api-token': '  ' })).toBeNull();
 		expect(credentialsFromHeaders({})).toBeNull();

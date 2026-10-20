@@ -44,8 +44,9 @@ export const createHttpApp = (config: McpConfig, options: HttpAppOptions = {}): 
 		onerror: (error) => logger.error('MCP adapter failed', error),
 	});
 
-	// Who is calling, before anything is parsed. Set on the request for the limiter and
-	// the log line; refused outright when absent (OpsiMate would refuse it too).
+	// Who is calling, before the body is parsed: an anonymous or throttled caller must not
+	// cost a 1 MB JSON parse. Set on the request for the limiter and the log line; refused
+	// outright when absent (OpsiMate would refuse it too).
 	const requireCredentials = (req: Request, res: Response, next: NextFunction): void => {
 		const credentials = credentialsFromHeaders(req.headers);
 		if (!credentials) {
@@ -89,7 +90,7 @@ export const createHttpApp = (config: McpConfig, options: HttpAppOptions = {}): 
 			path: config.path,
 		});
 	});
-	app.post(config.path, express.json({ limit: '1mb' }), requireCredentials, rateLimit, serve);
+	app.post(config.path, requireCredentials, rateLimit, express.json({ limit: '1mb' }), serve);
 	app.get(config.path, requireCredentials, rateLimit, serve);
 	app.delete(config.path, requireCredentials, rateLimit, serve);
 	return app;

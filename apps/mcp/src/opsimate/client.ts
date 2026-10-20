@@ -157,7 +157,9 @@ export class OpsiMateClient {
 	}
 
 	private async get<T>(path: string, params: QueryParams = {}): Promise<T> {
-		const url = new URL(path, `${this.baseUrl}/`);
+		// Relative to the base, so a prefix in OPSIMATE_URL (https://host/opsimate) survives:
+		// an absolute path would replace it.
+		const url = new URL(path.replace(/^\/+/, ''), `${this.baseUrl.replace(/\/+$/, '')}/`);
 		for (const [key, value] of Object.entries(params)) {
 			if (value !== undefined) url.searchParams.set(key, value);
 		}
@@ -165,18 +167,21 @@ export class OpsiMateClient {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 		let response: Response;
+		let text: string;
 		try {
 			response = await this.fetchImpl(url, {
 				headers: { accept: 'application/json', [name]: value },
 				signal: controller.signal,
 			});
+			// The body counts against the same deadline: headers that arrive and a body that
+			// never does would otherwise hang the tool call forever.
+			text = await response.text();
 		} catch (error) {
 			const reason = error instanceof Error && error.name === 'AbortError' ? 'timed out' : describe(error);
 			throw new OpsiMateApiError(0, path, `OpsiMate at ${this.baseUrl} could not be reached (${reason}).`);
 		} finally {
 			clearTimeout(timer);
 		}
-		const text = await response.text();
 		let body: Envelope<T> | undefined;
 		try {
 			body = JSON.parse(text) as Envelope<T>;

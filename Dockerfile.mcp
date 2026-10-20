@@ -44,5 +44,7 @@ ENV NODE_ENV=production \
     OPSIMATE_URL=http://backend:3001 \
     MCP_PORT=3100
 EXPOSE 3100
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:3100/health >/dev/null || exit 1
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- "http://127.0.0.1:${MCP_PORT:-3100}/health" >/dev/null || exit 1
+# Nothing here needs root: an unprivileged port, no files written.
+USER node
 CMD ["node", "apps/mcp/dist/cli.js"]

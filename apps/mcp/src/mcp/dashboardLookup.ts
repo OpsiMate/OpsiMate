@@ -85,6 +85,8 @@ export interface DashboardScopeOptions {
 	timeZone: string | undefined;
 	// The resolved archive rather than the active list.
 	resolved: boolean;
+	// A window already resolved for this call, so several scopes share one "now".
+	window?: ResolvedTimeWindow;
 }
 
 // The dashboard's rolling window right now, coarse to the minute like the client's. A
@@ -104,7 +106,7 @@ export const dashboardAlertScope = (dashboard: Dashboard, options: DashboardScop
 	return {
 		filters: options.resolved ? rest : parseDashboardFilters(dashboard.filters),
 		search: dashboard.query?.trim() || undefined,
-		window: resolveDashboardWindow(dashboard, options.timeZone),
+		window: options.window ?? resolveDashboardWindow(dashboard, options.timeZone),
 	};
 };
 
