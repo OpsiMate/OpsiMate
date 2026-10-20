@@ -9,7 +9,7 @@ const deferred = <T>() => {
 
 describe('SnapshotCache', () => {
 	test('serves the cached snapshot within the TTL — one compute for many gets', async () => {
-		const compute = vi.fn(async () => [1, 2, 3]);
+		const compute = vi.fn(() => Promise.resolve([1, 2, 3]));
 		const cache = new SnapshotCache(compute, 60_000);
 
 		const first = await cache.get();
@@ -24,7 +24,7 @@ describe('SnapshotCache', () => {
 	test('recomputes after the TTL expires', async () => {
 		vi.useFakeTimers();
 		try {
-			const compute = vi.fn(async () => Date.now());
+			const compute = vi.fn(() => Promise.resolve(Date.now()));
 			const cache = new SnapshotCache(compute, 1000);
 
 			await cache.get();
@@ -38,7 +38,7 @@ describe('SnapshotCache', () => {
 	});
 
 	test('ttl <= 0 disables caching entirely', async () => {
-		const compute = vi.fn(async () => 'x');
+		const compute = vi.fn(() => Promise.resolve('x'));
 		const cache = new SnapshotCache(compute, 0);
 
 		await cache.get();
@@ -63,7 +63,7 @@ describe('SnapshotCache', () => {
 
 	test('invalidate forces the next get to recompute', async () => {
 		let n = 0;
-		const compute = vi.fn(async () => ++n);
+		const compute = vi.fn(() => Promise.resolve(++n));
 		const cache = new SnapshotCache(compute, 60_000);
 
 		expect((await cache.get()).value).toBe(1);
@@ -110,7 +110,7 @@ describe('SnapshotCache', () => {
 
 	test('etag derives from content: unchanged data keeps it, changed data rotates it', async () => {
 		let value = ['a'];
-		const cache = new SnapshotCache(async () => value, 0);
+		const cache = new SnapshotCache(() => Promise.resolve(value), 0);
 
 		const first = await cache.get();
 		const same = await cache.get();
@@ -122,17 +122,14 @@ describe('SnapshotCache', () => {
 	});
 
 	test('json is the serialized value, computed once per snapshot', async () => {
-		const cache = new SnapshotCache(async () => ({ list: [1, 2] }), 60_000);
+		const cache = new SnapshotCache(() => Promise.resolve({ list: [1, 2] }), 60_000);
 		const snapshot = await cache.get();
 		expect(JSON.parse(snapshot.json)).toEqual({ list: [1, 2] });
 	});
 
 	test('a failed compute is not cached and the next get retries', async () => {
 		let fail = true;
-		const compute = vi.fn(async () => {
-			if (fail) throw new Error('db down');
-			return 'recovered';
-		});
+		const compute = vi.fn(() => (fail ? Promise.reject(new Error('db down')) : Promise.resolve('recovered')));
 		const cache = new SnapshotCache(compute, 60_000);
 
 		await expect(cache.get()).rejects.toThrow('db down');
@@ -147,7 +144,7 @@ describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
 
 	test('inside the refresh window a stale-marked snapshot is served with no rebuild', async () => {
 		let n = 0;
-		const compute = vi.fn(async () => ++n);
+		const compute = vi.fn(() => Promise.resolve(++n));
 		const cache = new SnapshotCache(compute, 60_000, 1000);
 
 		expect((await cache.get()).value).toBe(1);
@@ -161,7 +158,7 @@ describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
 		vi.useFakeTimers({ toFake: ['Date'] });
 		try {
 			let n = 0;
-			const compute = vi.fn(async () => ++n);
+			const compute = vi.fn(() => Promise.resolve(++n));
 			const cache = new SnapshotCache(compute, 60_000, 1000);
 
 			expect((await cache.get()).value).toBe(1);
@@ -187,7 +184,7 @@ describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
 		vi.useFakeTimers({ toFake: ['Date'] });
 		try {
 			let n = 0;
-			const compute = vi.fn(async () => ++n);
+			const compute = vi.fn(() => Promise.resolve(++n));
 			const cache = new SnapshotCache(compute, 60_000, 1000);
 			await cache.get();
 			cache.markStale();
@@ -267,7 +264,7 @@ describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
 		vi.useFakeTimers({ toFake: ['Date'] });
 		try {
 			let n = 0;
-			const compute = vi.fn(async () => ++n);
+			const compute = vi.fn(() => Promise.resolve(++n));
 			const cache = new SnapshotCache(compute, 1000);
 			await cache.get();
 			cache.markStale();
@@ -295,7 +292,7 @@ describe('SnapshotCache with a fingerprint', () => {
 		];
 		const stringify = vi.spyOn(JSON, 'stringify');
 		try {
-			const cache = new SnapshotCache(async () => items, 60_000, 60_000, { fingerprint });
+			const cache = new SnapshotCache(() => Promise.resolve(items), 60_000, 60_000, { fingerprint });
 			const snapshot = await cache.get();
 			expect(stringify).not.toHaveBeenCalled();
 			expect(snapshot.json).toBe('[{"id":"a","v":1},{"id":"b","v":2}]');
@@ -308,7 +305,7 @@ describe('SnapshotCache with a fingerprint', () => {
 
 	test('same fingerprint, same etag across recomputes; a changed value rotates it', async () => {
 		let items: Item[] = [{ id: 'a', v: 1 }];
-		const cache = new SnapshotCache(async () => items, 0, 0, { fingerprint });
+		const cache = new SnapshotCache(() => Promise.resolve(items), 0, 0, { fingerprint });
 		const first = await cache.get();
 		items = [{ id: 'a', v: 1 }]; // different objects, same content
 		expect((await cache.get()).etag).toBe(first.etag);

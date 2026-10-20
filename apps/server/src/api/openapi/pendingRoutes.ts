@@ -88,6 +88,13 @@ export const PENDING_API_ROUTES: PendingRoute[] = [
 	{ method: 'get', path: '/api/v1/enrichments/:enrichmentId' },
 	{ method: 'put', path: '/api/v1/enrichments/:enrichmentId' },
 	{ method: 'delete', path: '/api/v1/enrichments/:enrichmentId' },
+	// callbacks
+	{ method: 'get', path: '/api/v1/callbacks' },
+	{ method: 'post', path: '/api/v1/callbacks' },
+	{ method: 'post', path: '/api/v1/callbacks/test' },
+	{ method: 'get', path: '/api/v1/callbacks/:callbackId' },
+	{ method: 'put', path: '/api/v1/callbacks/:callbackId' },
+	{ method: 'delete', path: '/api/v1/callbacks/:callbackId' },
 	// actions
 	{ method: 'get', path: '/api/v1/actions' },
 	{ method: 'post', path: '/api/v1/actions' },

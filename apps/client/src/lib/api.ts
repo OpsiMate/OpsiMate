@@ -39,6 +39,11 @@ import {
 	UpdateAiConfig,
 	AlertAnalytics,
 	SecretType,
+	AlertCallback,
+	AlertCallbackEvent,
+	AlertCallbackMethod,
+	AlertCallbackTestResult,
+	AlertCallbackWithSecret,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 import { ROUTES } from './routes';
@@ -633,6 +638,44 @@ export const actionsApi = {
 		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert }),
 	runAction: (id: number, alert: SharedAlert, overrides?: ActionOverrides) =>
 		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides }),
+};
+
+// Alert callbacks (admin only): outbound requests sent after a user changes an alert.
+// (Named Input, not Payload: AlertCallbackPayload in @OpsiMate/shared is what a receiver gets.)
+export interface AlertCallbackInput {
+	name: string;
+	url: string;
+	method: AlertCallbackMethod;
+	headers?: Record<string, string> | null;
+	bodyTemplate?: string | null;
+	events: AlertCallbackEvent[];
+	enabled: boolean;
+	// Omitted on create (the server generates one); sent to rotate it.
+	secret?: string;
+}
+
+// With no secret typed, callbackId has the server sign the test with that callback's
+// saved secret — the page never sees it after creation.
+export interface AlertCallbackTestInput extends Pick<
+	AlertCallbackInput,
+	'url' | 'method' | 'headers' | 'bodyTemplate' | 'secret'
+> {
+	callbackId?: number;
+}
+
+// An update carries the secret back only when this edit rotated it.
+export interface AlertCallbackUpdated extends AlertCallback {
+	secret?: string;
+}
+
+export const callbacksApi = {
+	listCallbacks: () => apiRequest<AlertCallback[]>('/callbacks'),
+	createCallback: (payload: AlertCallbackInput) => apiRequest<AlertCallbackWithSecret>('/callbacks', 'POST', payload),
+	updateCallback: (id: number, payload: Partial<AlertCallbackInput>) =>
+		apiRequest<AlertCallbackUpdated>(`/callbacks/${id}`, 'PUT', payload),
+	deleteCallback: (id: number) => apiRequest<void>(`/callbacks/${id}`, 'DELETE'),
+	testCallback: (payload: AlertCallbackTestInput) =>
+		apiRequest<AlertCallbackTestResult>('/callbacks/test', 'POST', payload),
 };
 
 export const auditApi = {

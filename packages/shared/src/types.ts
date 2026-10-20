@@ -280,6 +280,7 @@ export enum AuditResourceType {
 	LDAP = 'LDAP',
 	MUTE_POLICY = 'MUTE_POLICY',
 	ROOT_CAUSE = 'ROOT_CAUSE',
+	CALLBACK = 'CALLBACK',
 	// Add more as needed
 }
 
@@ -869,6 +870,9 @@ export interface LdapTestRequest {
 	// Optional: look this user up too and show the role they would get (no password
 	// is needed or checked).
 	email?: string;
+	// Optional: unsaved edits from the Settings page, laid over the stored settings for
+	// this test only. Nothing is saved. Omitted = test the settings as saved.
+	settings?: UpdateLdapSettings;
 }
 
 export type LdapTestStepName = 'connect' | 'service_bind' | 'search_base' | 'user_lookup';
@@ -916,3 +920,120 @@ export interface RetentionRunResult {
 	deleted: Partial<Record<RetentionResource, number>>;
 	vacuumed: boolean;
 }
+
+// ---- Alert callbacks ----
+// An outbound HTTP request sent AFTER a user changes an alert (silence, resolve, assign,
+// comment, …). Each callback subscribes to a set of events; every event mirrors one
+// entry the change writes to the alert's history timeline, so "what fires a callback"
+// and "what shows in History" are the same list. Automatic changes (a source reporting
+// recovery, a silence expiring, the daily reset) never fire a callback. Delivery happens
+// after the change is committed and never delays the request that made it.
+export const ALERT_CALLBACK_EVENTS = [
+	'silenced',
+	'unsilenced',
+	'resolved',
+	'unresolved',
+	'owner_assigned',
+	'owner_unassigned',
+	'comment_added',
+	'action_run',
+	'deleted',
+] as const;
+
+export type AlertCallbackEvent = (typeof ALERT_CALLBACK_EVENTS)[number];
+
+export const ALERT_CALLBACK_EVENT_LABELS: Record<AlertCallbackEvent, string> = {
+	silenced: 'Silenced',
+	unsilenced: 'Unsilenced',
+	resolved: 'Resolved',
+	unresolved: 'Moved back to firing',
+	owner_assigned: 'Owner assigned',
+	owner_unassigned: 'Owner removed',
+	comment_added: 'Comment added',
+	action_run: 'Action run',
+	deleted: 'Resolved alert deleted',
+};
+
+export type AlertCallbackMethod = 'POST' | 'PUT';
+
+export type AlertCallbackDeliveryStatus = 'success' | 'error';
+
+export interface AlertCallback {
+	id: number;
+	name: string;
+	url: string;
+	method: AlertCallbackMethod;
+	// Sent on every request, after the defaults (Content-Type, X-OpsiMate-*). The place
+	// for a receiver's auth token.
+	headers: Record<string, string> | null;
+	// Optional replacement for the JSON payload, with {{...}} variables (see
+	// ALERT_CALLBACK_TEMPLATE_VARIABLES). Null sends the AlertCallbackPayload as JSON.
+	bodyTemplate: string | null;
+	events: AlertCallbackEvent[];
+	// Off until an admin switches it on: a freshly created callback never sends.
+	enabled: boolean;
+	lastStatus: AlertCallbackDeliveryStatus | null;
+	lastError: string | null;
+	lastSentAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+// The secret signs every request: X-OpsiMate-Signature: sha256=<hex HMAC-SHA256 of
+// "<timestamp>.<body>">. It comes back from create and from a rotation — the moments
+// an admin has to copy it — and never from list or get.
+export interface AlertCallbackWithSecret extends AlertCallback {
+	secret: string;
+}
+
+// Who made the change. The id is a user id when the request carried one (JWT), null for
+// an API-token caller.
+export interface AlertCallbackActor {
+	id: string | null;
+	name: string | null;
+}
+
+// Event-specific extras. Every key is optional: a silence carries silencedUntil and
+// maybe a comment, an assignment carries the owner, an action run its name and outcome.
+export interface AlertCallbackDetails {
+	silencedUntil?: string | null;
+	comment?: string | null;
+	ownerId?: string | null;
+	ownerName?: string | null;
+	actionName?: string | null;
+	// action_run: whether the run succeeded (for an HTTP action that sends without
+	// waiting for a response: that the request went out).
+	ok?: boolean;
+}
+
+// What a receiver gets. One shape for single and bulk changes: `alerts` holds one
+// alert for a single action and the affected alerts for a bulk action (`bulk: true`),
+// so a bulk silence of 150 alerts is one request, not 150. A request carries at most
+// 200 alerts: a larger bulk arrives as several requests, in order, each `bulk: true`
+// with the same event, actor and details.
+export interface AlertCallbackPayload {
+	event: AlertCallbackEvent;
+	timestamp: string;
+	actor: AlertCallbackActor;
+	alerts: Alert[];
+	details: AlertCallbackDetails;
+	bulk: boolean;
+}
+
+export interface AlertCallbackTestResult {
+	ok: boolean;
+	statusCode?: number;
+	message: string;
+}
+
+// Variables a body template can use, on top of the alert variables shared with actions
+// (ALERT_TEMPLATE_VARIABLES, taken from the first alert of the payload).
+export const ALERT_CALLBACK_TEMPLATE_VARIABLES = [
+	'event',
+	'timestamp',
+	'actor.name',
+	'actor.id',
+	'count',
+	'alertIds',
+	'payload',
+] as const;

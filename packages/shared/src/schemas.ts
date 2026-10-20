@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES } from './types';
+import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES, ALERT_CALLBACK_EVENTS } from './types';
 
 export const CreateIntegrationSchema = z.object({
 	name: z.string().min(1),
@@ -41,7 +41,7 @@ export const UpdateTagSchema = TagSchema.partial().extend({
 	id: z.number(),
 });
 
-const positiveIntegerIdSchema = z.coerce.number().int().positive();
+export const positiveIntegerIdSchema = z.coerce.number().int().positive();
 
 export const TagIdSchema = z.object({
 	tagId: positiveIntegerIdSchema,
@@ -430,6 +430,78 @@ export const ActionIdSchema = z.object({
 	actionId: positiveIntegerIdSchema,
 });
 
+// ---- Alert callbacks ----
+const alertCallbackEventSchema = z.enum(ALERT_CALLBACK_EVENTS);
+
+// Only http(s) can be delivered to; z.url() alone would also save ftp:// or file://.
+const alertCallbackUrlSchema = z
+	.string()
+	.trim()
+	.url('A valid URL is required')
+	.max(2000)
+	.refine((url) => /^https?:\/\//i.test(url), { message: 'URL must start with http:// or https://' });
+
+// Header names as HTTP allows them, values without control characters: a value with a
+// newline could never be sent (fetch rejects it), so refuse it up front.
+const alertCallbackHeadersSchema = z
+	.record(
+		z.string().regex(/^[A-Za-z0-9-]{1,200}$/, 'Header names may only contain letters, digits and dashes'),
+		z
+			.string()
+			.max(4000)
+			// eslint-disable-next-line no-control-regex
+			.refine((value) => !/[\x00-\x1f\x7f]/.test(value), {
+				message: 'Header values cannot contain control characters',
+			})
+	)
+	.optional()
+	.nullable();
+
+// The fields an edit may carry, with no defaults: a partial update must leave what it
+// does not mention alone (zod's .partial() keeps .default(), which would reset `enabled`
+// to false on every rename).
+const alertCallbackFields = {
+	name: z.string().trim().min(1, 'Name is required').max(100),
+	url: alertCallbackUrlSchema,
+	method: z.enum(['POST', 'PUT']),
+	headers: alertCallbackHeadersSchema,
+	bodyTemplate: z.string().max(10000).optional().nullable(),
+	events: z
+		.array(alertCallbackEventSchema)
+		.min(1, 'Pick at least one event')
+		.max(ALERT_CALLBACK_EVENTS.length)
+		.refine((events) => new Set(events).size === events.length, { message: 'Events must be unique' }),
+	enabled: z.boolean(),
+	// Omitted on create: the server generates one. Sent on update to rotate it.
+	secret: z.string().trim().min(8, 'Secret must be at least 8 characters').max(200).optional(),
+};
+
+export const CreateAlertCallbackSchema = z.object({
+	...alertCallbackFields,
+	method: alertCallbackFields.method.default('POST'),
+	// Opt-in: omitted means off.
+	enabled: alertCallbackFields.enabled.default(false),
+});
+
+// Edits send only what changed (the list's on/off switch sends { enabled } alone).
+export const UpdateAlertCallbackSchema = z.object(alertCallbackFields).partial();
+
+// Sends one sample request with the given configuration — saved or not. With no secret
+// typed, `callbackId` signs the request with the saved secret of that callback (the page
+// never sees it after creation).
+export const TestAlertCallbackSchema = z.object({
+	url: alertCallbackFields.url,
+	method: alertCallbackFields.method.default('POST'),
+	headers: alertCallbackFields.headers,
+	bodyTemplate: alertCallbackFields.bodyTemplate,
+	secret: alertCallbackFields.secret,
+	callbackId: positiveIntegerIdSchema.optional(),
+});
+
+export const AlertCallbackIdSchema = z.object({
+	callbackId: positiveIntegerIdSchema,
+});
+
 // Body for running an action against a specific alert. Lenient on BOTH axes: extra
 // alert fields pass through, and every known field tolerates null — real alerts carry
 // nulls (custom alerts have type: null, many have no URL), and the executor already
@@ -565,6 +637,9 @@ export const UpdateLdapSettingsSchema = z
 export const LdapTestRequestSchema = z
 	.object({
 		email: z.string().trim().email().optional(),
+		// Unsaved edits to test with (see LdapTestRequest). Same shape as a save, so the
+		// page gets the same field-level errors from a test as it would from a save.
+		settings: UpdateLdapSettingsSchema.optional(),
 	})
 	.strict();
 
