@@ -1,5 +1,5 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { Dashboard } from '@OpsiMate/shared';
+import { Dashboard, MCP_TOOLS } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import express from 'express';
 import http from 'node:http';
@@ -16,15 +16,8 @@ import { setupDB } from './setup';
 // The MCP endpoint end to end: a real app on a real port, driven by the official MCP client
 // over Streamable HTTP, with data seeded through the REST API the way an installation's is.
 
-const TOOL_NAMES = [
-	'get_alert',
-	'get_alert_analytics',
-	'get_dashboard',
-	'get_dashboard_alerts',
-	'list_alert_filter_values',
-	'list_dashboards',
-	'search_alerts',
-];
+// The shared list is what the Settings guide shows people; it must be exactly what is served.
+const TOOL_NAMES = MCP_TOOLS.map((tool) => tool.name).sort();
 
 interface DashboardsResult {
 	dashboards: McpDashboardSummary[];
@@ -251,6 +244,10 @@ describe('reaching the endpoint', () => {
 	test('tools/list is the seven read-only tools, each with an output schema', async () => {
 		const { tools } = await client.listTools();
 		expect(tools.map((tool) => tool.name).sort()).toEqual(TOOL_NAMES);
+		// Titles match the shared list too, so the guide names tools the way the client shows them.
+		for (const info of MCP_TOOLS) {
+			expect(tools.find((tool) => tool.name === info.name)?.title, info.name).toBe(info.title);
+		}
 		for (const tool of tools) {
 			expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
 			expect(tool.outputSchema, tool.name).toBeDefined();

@@ -70,6 +70,13 @@ docker run -d \
   OpsiMate
 ```
 
+## AI assistants (MCP)
+
+OpsiMate serves a read-only [Model Context Protocol](https://modelcontextprotocol.io) endpoint at `POST /api/mcp` (Streamable HTTP, stateless), so an assistant such as Claude Code, Claude Desktop or Cursor can answer questions about your dashboards and alerts. It authenticates with the API token (`x-api-token`, the `security.api_token` of the configuration) or any user's login token — Viewers included, because every tool only reads. Nothing an assistant does through it can change an alert.
+
+- `claude mcp add --transport http opsimate http://<host>:3001/api/mcp --header "x-api-token: <token>"` connects Claude Code; **Settings → AI → AI assistants (MCP)** in the app has ready-to-paste snippets for other clients, with this deployment's URL filled in.
+- Set `MCP_ENABLED=false` on the server to remove the endpoint (404).
+
 ## LDAP / Active Directory Login
 
 OpsiMate can sign users in against an LDAP directory (OpenLDAP, Active Directory, FreeIPA, ...).

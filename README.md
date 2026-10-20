@@ -115,9 +115,11 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 ```
 
 **Access the application:**
+
 - **Backend:** [http://localhost:3001](http://localhost:3001)
 - **Client:** [http://localhost:8080](http://localhost:8080)
 - **API reference:** [http://localhost:3001/api/docs](http://localhost:3001/api/docs) — Swagger UI with "Try it out"; the OpenAPI document is at `/api/openapi.json` (set `API_DOCS_ENABLED=false` to turn both off)
+- **AI assistants (MCP):** `http://localhost:3001/api/mcp` — a read-only [MCP](https://modelcontextprotocol.io) endpoint for Claude Code, Claude Desktop, Cursor and other assistants: dashboards, alerts, comments, root causes and analytics through seven tools. Connect with `claude mcp add --transport http opsimate http://localhost:3001/api/mcp --header "x-api-token: <token>"`; Settings → AI has snippets for other clients (set `MCP_ENABLED=false` to turn it off)
 
 The first account you register becomes the admin.
 
@@ -127,11 +129,11 @@ A Helm chart lives in [`infrastructure/helm`](infrastructure/helm); Terraform fo
 
 ### Volume Mounts (optional but recommended)
 
-| Volume | Purpose | Required For |
-|--------|---------|--------------|
-| `/app/data/database` | SQLite database persistence | Backend + Worker |
+| Volume                   | Purpose                             | Required For     |
+| ------------------------ | ----------------------------------- | ---------------- |
+| `/app/data/database`     | SQLite database persistence         | Backend + Worker |
 | `/app/data/private-keys` | SSH private keys for authentication | Backend + Worker |
-| `/app/config/config.yml` | Custom configuration | Backend + Worker |
+| `/app/config/config.yml` | Custom configuration                | Backend + Worker |
 
 ### Configuration
 
@@ -168,12 +170,14 @@ Bigger areas where help is welcome: new alert sources, the incident-management w
 ## Roadmap
 
 **Recently shipped**
+
 - 📈 Alert Insights — MTTR / MTTA / volume trends, hourly on short windows
 - 🧠 Root cause analysis via API, with operator ratings fed back to the sender
 - 🤖 AI-powered alert search
 - ⚡ Server-side query engine — the queue stays fast at 10K+ alerts
 
 **Next**
+
 - 🤖 **Built-in investigation agent** — one-click root cause that actually looks at your cluster, logs and metrics ([HolmesGPT](https://holmesgpt.dev) integration, in design)
 - 🔄 **Incidents** — group related alerts into a named incident with a timeline and postmortem
 - 📣 **Alert routing** — escalation to Slack / on-call by severity and team
