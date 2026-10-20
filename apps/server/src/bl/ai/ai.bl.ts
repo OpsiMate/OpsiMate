@@ -14,6 +14,7 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import { AiConfigRepository } from '../../dal/aiConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
+import { buildVocabulary, sanitizeFilters } from '../alerts/filterVocabulary';
 
 const logger = new Logger('bl/ai.bl');
 
@@ -458,54 +459,6 @@ export class AiValidationError extends Error {}
 // Anything NOT wrapped in this stays a generic 500 — internal error text is never
 // forwarded to clients.
 export class BedrockCallError extends Error {}
-
-// Fields whose values are a fixed enum rather than whatever currently exists: "not
-// silenced" must validate even when nothing is silenced right now, and "resolved
-// alerts" even when the archive is empty. Everything else (tags, types, owners)
-// validates against the live vocabulary only.
-const STATIC_FIELD_VALUES: Record<string, string[]> = {
-	status: ['Firing', 'Muted', 'Silenced', 'Resolved'],
-	severity: ['Critical', 'Warning', 'Info'],
-};
-
-// The grounding sent to the model: every filterable field with its live values (plus
-// the static enums above). Values are capped per field to keep the prompt small;
-// alertName is deliberately excluded — name matching belongs in `search`, and
-// thousands of names would bloat every call.
-const VOCAB_VALUE_CAP = 60;
-const buildVocabulary = (facets: AlertFacetsResult): Record<string, string[]> => {
-	const vocabulary: Record<string, string[]> = { ...STATIC_FIELD_VALUES };
-	for (const [field, counts] of Object.entries(facets.facets)) {
-		if (field === 'alertName') continue;
-		const merged = new Set([...(vocabulary[field] ?? []), ...Object.keys(counts)]);
-		vocabulary[field] = [...merged].slice(0, VOCAB_VALUE_CAP);
-	}
-	return vocabulary;
-};
-
-// Keep only fields that exist and, per field, only values the vocabulary actually
-// contains (case-insensitive in, canonical casing out). "!field" exclusion keys
-// validate against the same base field.
-const sanitizeFilters = (
-	raw: Record<string, unknown> | undefined,
-	facets: AlertFacetsResult
-): Record<string, string[]> => {
-	const result: Record<string, string[]> = {};
-	if (!raw) return result;
-	for (const [key, values] of Object.entries(raw)) {
-		if (!Array.isArray(values)) continue;
-		const baseField = key.startsWith('!') ? key.slice(1) : key;
-		const knownValues = [...(STATIC_FIELD_VALUES[baseField] ?? []), ...Object.keys(facets.facets[baseField] ?? {})];
-		if (knownValues.length === 0 || baseField === 'alertName') continue;
-		const canonical = new Map(knownValues.map((v) => [v.toLowerCase(), v]));
-		const kept = values
-			.filter((v): v is string => typeof v === 'string')
-			.map((v) => canonical.get(v.toLowerCase()))
-			.filter((v): v is string => v !== undefined);
-		if (kept.length > 0) result[key] = [...new Set(kept)];
-	}
-	return result;
-};
 
 // Local alias so the encrypt call site reads symmetrically with decryptPassword.
 const encrypt = (value: string): string => {
