@@ -4,6 +4,8 @@ import {
 	AiStatus,
 	AiTestResult,
 	AlertFacetsResult,
+	buildVocabulary,
+	sanitizeFilters,
 	AuditActionType,
 	AuditResourceType,
 	Logger,
@@ -14,7 +16,6 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import { AiConfigRepository } from '../../dal/aiConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
-import { buildVocabulary, sanitizeFilters } from '../alerts/filterVocabulary';
 
 const logger = new Logger('bl/ai.bl');
 

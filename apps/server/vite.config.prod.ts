@@ -48,9 +48,6 @@ export default defineConfig({
 				'@OpsiMate/shared',
 				// Read from disk at runtime (its static files are served as-is), so never bundled.
 				'swagger-ui-dist',
-				// Dual CJS/ESM packages with their own dependency graph; resolved from node_modules.
-				'@modelcontextprotocol/server',
-				'@modelcontextprotocol/node',
 			],
 		},
 		minify: false,

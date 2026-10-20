@@ -30,8 +30,6 @@
 	"dependencies": {
 		"@OpsiMate/custom-actions": "workspace:*",
 		"@OpsiMate/shared": "workspace:*",
-		"@modelcontextprotocol/node": "2.1.1",
-		"@modelcontextprotocol/server": "2.3.1",
 		"@types/cors": "^2.8.19",
 		"@types/jsonwebtoken": "^9.0.10",
 		"bcrypt": "^6.0.0",
@@ -53,7 +51,6 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@modelcontextprotocol/client": "2.3.1",
 		"@types/bcrypt": "^6.0.0",
 		"@types/better-sqlite3": "^9.6.0",
 		"@types/compression": "^1.8.1",

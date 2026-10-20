@@ -1,10 +1,11 @@
-import { AlertFacetsResult, BASE_ALERT_FACET_FIELDS, isTagKeyColumn } from '@OpsiMate/shared';
+import { AlertFacetsResult, BASE_ALERT_FACET_FIELDS } from './alertQuery';
+import { isTagKeyColumn } from './alertView';
 
 // The vocabulary of the alerts filter record (field -> accepted display values, "!field"
 // for exclusion), as the live facets describe it. Shared by everything that accepts a
 // filter record from outside the UI: the AI filter-from-text feature (which drops what
 // it cannot validate — a hallucinated value must never reach the query engine) and the
-// MCP tools (which reject it with the known values, so the caller can correct itself).
+// MCP server (which rejects it with the known values, so the caller can correct itself).
 
 // Fields whose values are a fixed enum rather than whatever currently exists: "not
 // silenced" must validate even when nothing is silenced right now, and "resolved

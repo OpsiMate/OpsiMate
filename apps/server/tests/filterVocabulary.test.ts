@@ -1,6 +1,5 @@
-import { AlertFacetsResult } from '@OpsiMate/shared';
+import { AlertFacetsResult, buildVocabulary, sanitizeFilters, validateFilters } from '@OpsiMate/shared';
 import { describe, expect, test } from 'vitest';
-import { buildVocabulary, sanitizeFilters, validateFilters } from '../src/bl/alerts/filterVocabulary';
 
 // The filter vocabulary shared by the AI filter-from-text feature (drops what it cannot
 // validate) and the MCP tools (rejects it, naming what would be accepted).

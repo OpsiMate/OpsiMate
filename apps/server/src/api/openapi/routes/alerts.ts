@@ -60,6 +60,23 @@ export const alertRoutes: ApiRouteDoc[] = [
 	},
 	{
 		method: 'get',
+		path: '/api/v1/alerts/owners',
+		tag: 'Alerts',
+		summary: 'Alert owners',
+		description:
+			'The users alerts can be assigned to, as `id` and `fullName` — to turn the `ownerId` an alert carries ' +
+			'into a name without the admin-only users list. The owner facet already shows these names.',
+		auth: 'user',
+		responses: {
+			200: {
+				description: 'OK',
+				schema: okEnvelope(z.array(z.object({ id: z.string(), fullName: z.string() }))),
+			},
+			401: errors.unauthorized,
+		},
+	},
+	{
+		method: 'get',
 		path: '/api/v1/alerts/:alertId',
 		tag: 'Alerts',
 		summary: 'Get one alert',
