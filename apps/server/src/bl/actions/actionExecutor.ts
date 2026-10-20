@@ -10,7 +10,7 @@ import {
 	Logger,
 	SlackActionConfig,
 	TeamsActionConfig,
-	flagEmojiForCode,
+	flagForTemplateVariable,
 } from '@OpsiMate/shared';
 import http from 'node:http';
 import https from 'node:https';
@@ -70,8 +70,6 @@ const expandContext = (fields: Record<string, string>, tags: Record<string, stri
 		ctx[`label.${key}`] = String(value);
 		ctx[`tag.${key}`] = String(value);
 		ctx[`alert.tags.${key}`] = String(value);
-		// {{flag.<key>}}: the flag for a two-letter country-code label, '' otherwise.
-		ctx[`flag.${key}`] = flagEmojiForCode(String(value));
 	}
 	return ctx;
 };
@@ -99,7 +97,7 @@ export const buildSampleContext = (): Record<string, string> => {
 			url: 'https://example.com/alerts/test-alert-1',
 			runbookUrl: 'https://example.com/runbooks/demo-service',
 		},
-		{ env: 'prod', team: 'platform', site: 'IL' }
+		{ env: 'prod', team: 'platform' }
 	);
 };
 
@@ -125,9 +123,18 @@ export const buildAlertContext = (alert: AlertContextInput): Record<string, stri
 	);
 };
 
+// One template variable's value: the alert context first; then {{flag.<code>}}, which
+// needs no alert at all (🇮🇱 for flag.il); undefined for anything unknown, which the
+// callers leave literal so a typo is visible rather than silently blank.
+export const resolveTemplateVariable = (key: string, ctx: Record<string, string>): string | undefined =>
+	key in ctx ? ctx[key] : flagForTemplateVariable(key);
+
 export const resolvePlaceholders = (template: string | null | undefined, ctx: Record<string, string>): string => {
 	if (!template) return '';
-	return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => (key in ctx ? ctx[key] : `{{${key}}}`));
+	return template.replace(
+		/\{\{\s*([\w.]+)\s*\}\}/g,
+		(_match, key: string) => resolveTemplateVariable(key, ctx) ?? `{{${key}}}`
+	);
 };
 
 // The concrete, ready-to-send text fields after template resolution. Only some are used per type.

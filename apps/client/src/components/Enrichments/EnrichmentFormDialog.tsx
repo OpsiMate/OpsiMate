@@ -24,8 +24,8 @@ import {
 	AlertEnrichment,
 	AlertLink,
 	ALERT_TEMPLATE_VARIABLES,
-	alertFlagTemplateVariable,
 	alertTagTemplateVariable,
+	flagTemplateVariable,
 	looksLikeCountryCode,
 	getNameNeedles,
 } from '@OpsiMate/shared';
@@ -222,10 +222,15 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 		() => [
 			...ALERT_TEMPLATE_VARIABLES,
 			...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key)),
-			// {{flag.<key>}} only for labels whose values look like country codes.
-			...matcherSuggestions
-				.filter((tk) => tk.values.some(looksLikeCountryCode))
-				.map((tk) => alertFlagTemplateVariable(tk.key)),
+			// {{flag.<code>}} for every two-letter code seen in a label value (flag.il -> 🇮🇱).
+			...[
+				...new Set(
+					matcherSuggestions
+						.flatMap((tk) => tk.values)
+						.filter(looksLikeCountryCode)
+						.map((value) => flagTemplateVariable(value))
+				),
+			].sort(),
 		],
 		[matcherSuggestions]
 	);
@@ -437,9 +442,9 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							<p className="text-xs text-muted-foreground">
 								Replaces the alert summary. Use {'{{summary}}'} for the current summary, plus alert
 								fields like {'{{name}}'} and {'{{severity}}'}, any label as {'{{label.<key>}}'}, and{' '}
-								{'{{flag.<key>}}'} for the flag of a two-letter country-code label (IL → 🇮🇱) — the same
-								variables action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists) are
-								rendered in the alert details.
+								{'{{flag.<code>}}'} for a country flag ({'{{flag.il}}'} → 🇮🇱) — the same variables
+								action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists) are rendered in
+								the alert details.
 							</p>
 						</div>
 

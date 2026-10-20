@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { ALERT_TEMPLATE_VARIABLES } from '@OpsiMate/shared';
-import { buildAlertContext, buildSampleContext } from '../src/bl/actions/actionExecutor';
+import { buildAlertContext, buildSampleContext, resolvePlaceholders } from '../src/bl/actions/actionExecutor';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // Template-variable contract of actions AND enrichments (both resolve through
@@ -51,13 +51,12 @@ describe('alert template variables', () => {
 		expect(ctx['label.env']).toBe('prod');
 	});
 
-	test('{{flag.<key>}} is the flag of a two-letter label, empty for anything else', () => {
-		const ctx = buildAlertContext({ ...fullAlert, tags: { site: 'il', env: 'prod', region: 'eu-west-1' } });
-		expect(ctx['flag.site']).toBe('🇮🇱');
-		expect(ctx['flag.env']).toBe('');
-		expect(ctx['flag.region']).toBe('');
-		// The Test button's sample alert carries a code too, so a template using it previews a flag.
-		expect(buildSampleContext()['flag.site']).toBe('🇮🇱');
+	test('{{flag.<code>}} is the flag for the code itself, no label needed; a non-code stays literal', () => {
+		const ctx = buildAlertContext(fullAlert);
+		expect(resolvePlaceholders('IL {{flag.il}} / {{flag.US}} / {{ flag.De }}', ctx)).toBe('IL 🇮🇱 / 🇺🇸 / 🇩🇪');
+		expect(resolvePlaceholders('{{flag.prod}} {{flag.i}}', ctx)).toBe('{{flag.prod}} {{flag.i}}');
+		// A label named like a flag variable wins, so nothing existing changes meaning.
+		expect(resolvePlaceholders('{{flag.il}}', { 'flag.il': 'custom' })).toBe('custom');
 	});
 
 	test('alert.* and tag.* aliases keep older templates resolving', () => {

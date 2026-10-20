@@ -601,22 +601,30 @@ export const ALERT_TEMPLATE_VARIABLES = [
 
 export const alertTagTemplateVariable = (tagKey: string): string => `label.${tagKey}`;
 
-// {{flag.<key>}}: the flag emoji for a label whose value is a two-letter country code,
-// so a template can write "{{label.site}} {{flag.site}}" and get "IL 🇮🇱" without anyone
-// typing an emoji (Windows has no flag picker and renders them as letters anyway; the
-// UI draws them as SVGs).
-export const alertFlagTemplateVariable = (tagKey: string): string => `flag.${tagKey}`;
+// {{flag.<code>}}: the flag emoji for a two-letter country code, from the code alone —
+// {{flag.il}} or {{flag.IL}} is 🇮🇱 — so a template can write "IL {{flag.il}}" without
+// anyone typing an emoji (Windows has no flag picker and renders them as letters anyway;
+// the UI draws them as SVGs). No label is consulted.
+export const FLAG_TEMPLATE_PREFIX = 'flag.';
+export const flagTemplateVariable = (code: string): string => `${FLAG_TEMPLATE_PREFIX}${code.trim().toLowerCase()}`;
 
 export const looksLikeCountryCode = (value: string): boolean => /^[A-Za-z]{2}$/.test(value.trim());
 
-// 🇮🇱 for "IL" (case-insensitive); '' for anything that is not two letters, so a
-// template over a label that is not a code degrades to its text.
+// 🇮🇱 for "IL" (case-insensitive); '' for anything that is not two letters.
 const REGIONAL_INDICATOR_A = 0x1f1e6;
 export const flagEmojiForCode = (value: string): string => {
 	if (!looksLikeCountryCode(value)) return '';
 	return String.fromCodePoint(
 		...[...value.trim().toUpperCase()].map((letter) => REGIONAL_INDICATOR_A + letter.charCodeAt(0) - 65)
 	);
+};
+
+// The flag a template variable names, or undefined when it is not a flag variable.
+// "flag.il" -> 🇮🇱; "flag.prod" and "label.site" -> undefined.
+export const flagForTemplateVariable = (variable: string): string | undefined => {
+	if (!variable.startsWith(FLAG_TEMPLATE_PREFIX)) return undefined;
+	const code = variable.slice(FLAG_TEMPLATE_PREFIX.length);
+	return looksLikeCountryCode(code) ? flagEmojiForCode(code) : undefined;
 };
 
 export type HttpActionMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';

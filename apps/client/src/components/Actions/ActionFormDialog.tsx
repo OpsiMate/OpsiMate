@@ -25,8 +25,8 @@ import {
 	Action,
 	ActionType,
 	ALERT_TEMPLATE_VARIABLES,
-	alertFlagTemplateVariable,
 	alertTagTemplateVariable,
+	flagTemplateVariable,
 	looksLikeCountryCode,
 	HttpActionConfig,
 	HttpActionMethod,
@@ -118,10 +118,15 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		() => [
 			...ALERT_TEMPLATE_VARIABLES,
 			...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key)),
-			// {{flag.<key>}} only for labels whose values look like country codes.
-			...matcherSuggestions
-				.filter((tk) => tk.values.some(looksLikeCountryCode))
-				.map((tk) => alertFlagTemplateVariable(tk.key)),
+			// {{flag.<code>}} for every two-letter code seen in a label value (flag.il -> 🇮🇱).
+			...[
+				...new Set(
+					matcherSuggestions
+						.flatMap((tk) => tk.values)
+						.filter(looksLikeCountryCode)
+						.map((value) => flagTemplateVariable(value))
+				),
+			].sort(),
 		],
 		[matcherSuggestions]
 	);
