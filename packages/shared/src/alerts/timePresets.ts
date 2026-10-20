@@ -74,17 +74,30 @@ interface WallClock {
 	second: number;
 }
 
+// One formatter per zone: building one is the expensive part, and a server resolving
+// presets on users' behalf asks for the same few zones over and over.
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+const formatterFor = (timeZone: string): Intl.DateTimeFormat => {
+	let formatter = formatters.get(timeZone);
+	if (!formatter) {
+		formatter = new Intl.DateTimeFormat('en-US', {
+			timeZone,
+			hourCycle: 'h23',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+		});
+		formatters.set(timeZone, formatter);
+	}
+	return formatter;
+};
+
 const wallClockIn = (instant: Date, timeZone: string): WallClock => {
-	const parts = new Intl.DateTimeFormat('en-US', {
-		timeZone,
-		hourCycle: 'h23',
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-	}).formatToParts(instant);
+	const parts = formatterFor(timeZone).formatToParts(instant);
 	const field = (type: Intl.DateTimeFormatPartTypes): number =>
 		Number(parts.find((part) => part.type === type)?.value ?? 0);
 	return {
@@ -105,13 +118,32 @@ const zoneOffsetMs = (instant: Date, timeZone: string): number => {
 	return asUtc - (instant.getTime() - instant.getMilliseconds());
 };
 
-// Midnight of `now`'s calendar day in `timeZone`. The offset is read at `now` and again at
-// the candidate midnight, so a DST change earlier today still lands on the right instant.
+const sameCalendarDay = (a: WallClock, b: WallClock): boolean =>
+	a.year === b.year && a.month === b.month && a.day === b.day;
+
+// Midnight of `now`'s calendar day in `timeZone` — the FIRST instant of that day, which is
+// what a browser's setHours(0, 0, 0, 0) gives. A DST change on the day itself makes the
+// naive "midnight minus the offset at now" wrong, so the offset is read again at the
+// candidate and just before it, and the earliest instant that still reads as 00:00 of the
+// day wins (Cuba repeats 00:00–01:00 when it falls back; the first one is the day's start).
+// A day with no 00:00 at all (a zone that springs forward at midnight) starts at the
+// earliest instant that reads as that day.
 const startOfDayIn = (now: Date, timeZone: string): Date => {
 	const wall = wallClockIn(now, timeZone);
 	const midnightAsUtc = Date.UTC(wall.year, wall.month - 1, wall.day);
-	const candidate = new Date(midnightAsUtc - zoneOffsetMs(now, timeZone));
-	return new Date(midnightAsUtc - zoneOffsetMs(candidate, timeZone));
+	const first = new Date(midnightAsUtc - zoneOffsetMs(now, timeZone));
+	const second = new Date(midnightAsUtc - zoneOffsetMs(first, timeZone));
+	const probes = [first, second, new Date(second.getTime() - 1), new Date(first.getTime() - 1)];
+	const candidates = probes
+		.map((probe) => new Date(midnightAsUtc - zoneOffsetMs(probe, timeZone)))
+		.sort((a, b) => a.getTime() - b.getTime());
+	const exact = candidates.find((candidate) => {
+		const at = wallClockIn(candidate, timeZone);
+		return sameCalendarDay(at, wall) && at.hour === 0 && at.minute === 0 && at.second === 0;
+	});
+	if (exact) return exact;
+	const onTheDay = candidates.find((candidate) => sameCalendarDay(wallClockIn(candidate, timeZone), wall));
+	return onTheDay ?? second;
 };
 
 const startOfDay = (now: Date, timeZone: string | undefined): Date => {
@@ -129,8 +161,9 @@ export const resolveQuickPreset = (
 ): QuickPresetWindow => {
 	const now = options.now ?? new Date();
 	const { durationMs } = getQuickTimePresetConfig(preset);
-	if (durationMs === null) return { from: startOfDay(now, options.timeZone), to: now };
-	return { from: new Date(now.getTime() - durationMs), to: now };
+	// Fresh Date instances: a caller that adjusts the window must not move its own clock.
+	if (durationMs === null) return { from: startOfDay(now, options.timeZone), to: new Date(now) };
+	return { from: new Date(now.getTime() - durationMs), to: new Date(now) };
 };
 
 // A stored dashboard time range as the alerts query engine wants it. Quick presets are

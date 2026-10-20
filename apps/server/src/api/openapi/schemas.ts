@@ -1,5 +1,6 @@
 import {
 	Alert,
+	AppliedEnrichment,
 	AlertComment,
 	AlertSeverity,
 	AlertStatus,
@@ -21,6 +22,10 @@ const ALERT_TYPES = [
 	'Datadog',
 	'Zabbix',
 ] as const satisfies readonly AlertType[];
+
+const AppliedEnrichmentSchema: z.ZodType<AppliedEnrichment> = z
+	.object({ id: z.number().int(), name: z.string() })
+	.meta({ id: 'AppliedEnrichment' });
 
 const AlertLinkSchema = z.object({
 	label: z.string(),
@@ -49,6 +54,13 @@ export const AlertSchema: z.ZodType<Alert> = z
 		isRead: z.boolean().optional(),
 		isMuted: z.boolean().optional().describe('An active mute policy matches this alert'),
 		lastComment: z.string().nullable().optional(),
+		appliedEnrichments: z
+			.array(AppliedEnrichmentSchema)
+			.optional()
+			.describe('The enrichment rules that matched this alert and added fields or links'),
+		firingTimes: z.array(z.string()).optional().describe('ISO-8601 instants of each time the alert fired'),
+		isResolved: z.boolean().optional(),
+		ownerId: z.string().nullable().optional().describe('The user id of the owner; null or absent when unassigned'),
 	})
 	.meta({ id: 'Alert' });
 
