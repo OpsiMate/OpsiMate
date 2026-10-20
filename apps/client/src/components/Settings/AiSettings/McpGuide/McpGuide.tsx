@@ -200,7 +200,9 @@ export const McpGuide = () => (
 					<li className="flex items-start gap-1.5">
 						<Plug className="h-3.5 w-3.5 mt-0.5 shrink-0" />
 						<span>
-							Stateless Streamable HTTP: no sessions to store, works behind any load balancer. Set{' '}
+							Stateless Streamable HTTP: no sessions to store, works behind any load balancer. Each caller
+							(a user, or the API token) gets 240 requests a minute, then 429 until the minute is over —{' '}
+							<span className="font-mono">MCP_RATE_LIMIT_PER_MINUTE</span> changes it (0 = no limit). Set{' '}
 							<span className="font-mono">MCP_ENABLED=false</span> on the server to remove the endpoint.
 						</span>
 					</li>

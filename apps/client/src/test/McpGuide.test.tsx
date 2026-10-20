@@ -36,5 +36,6 @@ describe('McpGuide', () => {
 		expect(screen.getByRole('button', { name: 'Copy the mcp.json entry' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Copy the mcp-remote entry' })).toBeInTheDocument();
 		expect(screen.getByText(/MCP_ENABLED=false/)).toBeInTheDocument();
+		expect(screen.getByText(/MCP_RATE_LIMIT_PER_MINUTE/)).toBeInTheDocument();
 	});
 });
