@@ -1,5 +1,5 @@
 import { BrowserDiagnosticsSection } from '@/components/Profile/components/BrowserDiagnosticsSection';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { AllTheProviders } from './TestProviders';
 
@@ -13,6 +13,14 @@ describe('BrowserDiagnosticsSection', () => {
 			</AllTheProviders>
 		);
 		expect(screen.getByRole('heading', { name: 'Browser check' })).toBeInTheDocument();
+		// Collapsed by default; the header alone carries the verdict. Clicking opens it.
+		const section = screen.getByText('Browser check').closest('details');
+		expect(section).not.toBeNull();
+		expect(section).not.toHaveAttribute('open');
+		// The verdict sits in the header, readable without opening.
+		expect(screen.getByLabelText(/^Browser check: (All good|\d+ problems? found)$/)).toBeInTheDocument();
+		fireEvent.click(screen.getByText('Browser check'));
+		expect(section).toHaveAttribute('open');
 		// The checklist a person reads, with a status icon per row.
 		const checks = screen.getByRole('list', { name: 'Browser checks' });
 		expect(within(checks).getAllByRole('listitem')).toHaveLength(8);
