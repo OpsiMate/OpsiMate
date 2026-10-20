@@ -14,7 +14,7 @@ on:
       images:
         description: "Comma-separated image names under the opsimate org"
         required: false
-        default: "backend,frontend"
+        default: "backend,frontend,mcp"
       retag_source:
         description: "Existing tag to copy from (leave empty to skip re-tagging)"
         required: false

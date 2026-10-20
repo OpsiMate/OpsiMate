@@ -159,6 +159,17 @@ jobs:
             -f Dockerfile.client \
             --push .
 
+      - name: Build and Push MCP Image (${{ matrix.arch }})
+        run: |
+          docker buildx build \
+            --platform ${{ matrix.platform }} \
+            --build-arg APP_VERSION=${{ needs.version.outputs.version }} \
+            --build-arg APP_COMMIT=${{ github.sha }} \
+            --build-arg APP_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            -t opsimate/mcp:${{ needs.version.outputs.version }}-${{ matrix.arch }} \
+            -f Dockerfile.mcp \
+            --push .
+
   # Stitch the per-arch images into the multi-arch tags users actually pull
   # (:<version> and :latest). Runs only after BOTH arch builds succeeded, so a
   # failed arch can never leave a half-populated release tag.
@@ -176,7 +187,7 @@ jobs:
       - name: Create Multi-Arch Manifests
         run: |
           VERSION=${{ needs.version.outputs.version }}
-          for image in backend frontend; do
+          for image in backend frontend mcp; do
             docker buildx imagetools create \
               -t opsimate/$image:$VERSION \
               -t opsimate/$image:latest \
