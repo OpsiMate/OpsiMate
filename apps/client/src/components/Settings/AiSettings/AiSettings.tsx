@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAiConfig, useTestAiConnection, useUpdateAiConfig } from '@/hooks/queries/ai';
 import { AiTestResult } from '@OpsiMate/shared';
 import { CheckCircle2, KeyRound, Loader2, PlugZap, XCircle } from 'lucide-react';

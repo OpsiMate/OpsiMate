@@ -4,7 +4,7 @@ import { formatDateTime } from '@/lib/datetime';
 import { Input } from '@/components/ui/input';
 import { pluralize } from '@/lib/text';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
 	useRetentionSettings,
 	useRunRetention,
