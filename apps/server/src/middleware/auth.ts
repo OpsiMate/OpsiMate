@@ -9,7 +9,26 @@ export interface AuthenticatedRequest extends Request {
 	user?: User;
 }
 
+interface AuthenticateOptions {
+	// Skip the Viewer edit-method check: for a route whose POSTs never write.
+	readOnly: boolean;
+}
+
 export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+	return authenticate(req, res, next, { readOnly: false });
+}
+
+/**
+ * The same credentials and precedence as `authenticateJWT`, but any role may use any
+ * method. For routes that only read even though they are called with POST (an RPC-style
+ * endpoint such as MCP), where the Viewer edit-method 403 would lock Viewers out of a
+ * read. Must never guard a route that writes.
+ */
+export function authenticateReadOnly(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+	return authenticate(req, res, next, { readOnly: true });
+}
+
+function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction, options: AuthenticateOptions) {
 	const apiToken = req.headers['x-api-token'] || req.query.api_token;
 	const bearerToken = req.headers.authorization || '';
 
@@ -26,7 +45,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
 	}
 
 	// Otherwise, use JWT
-	return authenticateUserJWT(bearerToken, req, res, next);
+	return authenticateUserJWT(bearerToken, req, res, next, options);
 }
 
 /**
@@ -49,7 +68,13 @@ function authenticateApiToken(apiToken: string, res: Response, next: NextFunctio
 	return next();
 }
 
-function authenticateUserJWT(bearerToken: string, req: AuthenticatedRequest, res: Response, next: NextFunction) {
+function authenticateUserJWT(
+	bearerToken: string,
+	req: AuthenticatedRequest,
+	res: Response,
+	next: NextFunction,
+	options: AuthenticateOptions
+) {
 	const token = bearerToken.split(' ')[1];
 
 	try {
@@ -58,7 +83,7 @@ function authenticateUserJWT(bearerToken: string, req: AuthenticatedRequest, res
 
 		// Viewer edit restrictions
 		const editMethods = ['PUT', 'PATCH', 'DELETE', 'POST'];
-		if (editMethods.includes(req.method) && payload.role === Role.Viewer) {
+		if (!options.readOnly && editMethods.includes(req.method) && payload.role === Role.Viewer) {
 			return res.status(403).json({ success: false, error: 'Forbidden: Viewer users cannot edit data' });
 		}
 
