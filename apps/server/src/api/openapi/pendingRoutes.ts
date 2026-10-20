@@ -31,6 +31,7 @@ export const PENDING_API_ROUTES: PendingRoute[] = [
 	{ method: 'put', path: '/api/v1/dashboards/:dashboardId' },
 	{ method: 'delete', path: '/api/v1/dashboards/:dashboardId' },
 	{ method: 'get', path: '/api/v1/dashboards/tags' },
+	{ method: 'get', path: '/api/v1/dashboards/:dashboardId' },
 	{ method: 'get', path: '/api/v1/dashboards/:dashboardId/tags' },
 	{ method: 'post', path: '/api/v1/dashboards/:dashboardId/tags' },
 	{ method: 'delete', path: '/api/v1/dashboards/:dashboardId/tags/:tagId' },

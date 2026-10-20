@@ -20,6 +20,25 @@ export class DashboardController {
 		}
 	};
 
+	getDashboardHandler = async (req: Request, res: Response) => {
+		try {
+			const { dashboardId } = DashboardIdSchema.parse({ dashboardId: req.params.dashboardId });
+
+			const dashboard = await this.dashboardBL.getDashboardById(String(dashboardId));
+			if (!dashboard) {
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
+			}
+
+			return res.json({ success: true, data: dashboard });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error getting dashboard:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
 	createDashboardHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const user = req.user;
