@@ -1,5 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/server';
-import { AlertAnalytics } from '@OpsiMate/shared';
+import {
+	AlertAnalytics,
+	AlertNameStats,
+	AnalyticsOverview,
+	AnalyticsRange,
+	AnalyticsReliability,
+	TagValueStats,
+} from '@OpsiMate/shared';
 import { z } from 'zod';
 import { validateFilters } from '../../../bl/alerts/filterVocabulary';
 import { loadFacets } from '../alertLists';
@@ -10,8 +17,29 @@ import { filtersInputSchema, timeWindowInputShape, timeZoneInputSchema } from '.
 import { effectiveTimeZone, resolveWindowArgs, timeZoneProblem } from '../timeWindow';
 
 // The Insights aggregates, trimmed for a conversation: the per-name table keeps its top
-// rows and the tag research drops its day series (the charts), keeping the per-value table.
+// rows, and the tag research drops its day series (the charts) and keeps the top rows of
+// its per-value table — a high-cardinality tag (pod, instance) would otherwise send
+// thousands of rows twice over, as structured content and as text.
 const BY_NAME_MAX = 20;
+const TAG_VALUES_MAX = 50;
+
+interface CompactTagInsights {
+	key: string;
+	values: TagValueStats[];
+	valuesTotal: number;
+	taggedEpisodes: number;
+	untaggedEpisodes: number;
+	topValues: string[];
+}
+
+interface CompactAnalytics {
+	range: AnalyticsRange;
+	overview: AnalyticsOverview;
+	reliability: AnalyticsReliability;
+	byName: AlertNameStats[];
+	byNameTotal: number;
+	tagInsights?: CompactTagInsights;
+}
 
 const alertNameStatsSchema = z.object({
 	name: z.string(),
@@ -24,7 +52,7 @@ const alertNameStatsSchema = z.object({
 	lastSeen: z.string(),
 });
 
-const compactAnalytics = (analytics: AlertAnalytics) => ({
+const compactAnalytics = (analytics: AlertAnalytics): CompactAnalytics => ({
 	range: analytics.range,
 	overview: analytics.overview,
 	reliability: analytics.reliability,
@@ -33,7 +61,9 @@ const compactAnalytics = (analytics: AlertAnalytics) => ({
 	tagInsights: analytics.tagInsights
 		? {
 				key: analytics.tagInsights.key,
-				values: analytics.tagInsights.values,
+				// Already ordered by episodes, most first.
+				values: analytics.tagInsights.values.slice(0, TAG_VALUES_MAX),
+				valuesTotal: analytics.tagInsights.values.length,
 				taggedEpisodes: analytics.tagInsights.taggedEpisodes,
 				untaggedEpisodes: analytics.tagInsights.untaggedEpisodes,
 				topValues: analytics.tagInsights.topValues,
@@ -50,9 +80,10 @@ export const registerAnalyticsTools = (server: McpServer, deps: McpDeps): void =
 				'Aggregates over the alert history for a time window (the Insights page): episode volume by day/' +
 				'hour/weekday and severity, top alert names, tags and responders, reliability metrics (MTTR, MTTA, ' +
 				'MTBF, re-fire rate, ack coverage) with previous-period deltas, and a per-alert-name table (top 20 by ' +
-				'episodes). Scope it to a dashboard (`dashboardId` or `dashboardName`: its filters, query and, ' +
+				'episodes; `byNameTotal` says how many there are). Scope it to a dashboard (`dashboardId` or `dashboardName`: its filters, query and, ' +
 				'unless a window is given, its time range), or to explicit `filters`/`search`. No window means all ' +
-				'time. `tagKey` adds a per-value breakdown for that tag. Durations are milliseconds.',
+				'time. `tagKey` adds a per-value breakdown for that tag (top 50 values; `valuesTotal` says how many). ' +
+				'Durations are milliseconds.',
 			inputSchema: z.object({
 				...timeWindowInputShape,
 				timeZone: timeZoneInputSchema,
