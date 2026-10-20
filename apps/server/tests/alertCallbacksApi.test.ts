@@ -63,6 +63,8 @@ interface LifecycleStep {
 
 let received: ReceivedRequest[] = [];
 let respondWith = 200;
+// How long the receiver sits on a request before answering (a slow receiver).
+let holdResponseMs = 0;
 
 const payloadOf = (request: ReceivedRequest): AlertCallbackPayload => JSON.parse(request.body) as AlertCallbackPayload;
 
@@ -127,8 +129,12 @@ beforeAll(async () => {
 				silencedInDbOnArrival,
 				receivedAt: Date.now(),
 			});
-			res.statusCode = respondWith;
-			res.end(respondWith >= 400 ? 'receiver says no' : 'ok');
+			const answer = () => {
+				res.statusCode = respondWith;
+				res.end(respondWith >= 400 ? 'receiver says no' : 'ok');
+			};
+			if (holdResponseMs > 0) setTimeout(answer, holdResponseMs);
+			else answer();
 		});
 	});
 	await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve));
@@ -138,6 +144,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	received = [];
 	respondWith = 200;
+	holdResponseMs = 0;
 	// Through the API, not the table: each delete reloads the dispatcher's in-memory
 	// subscriptions, so a callback from an earlier test cannot fire in a later one.
 	const existing = (await auth(app.get('/api/v1/callbacks'))).body.data as AlertCallback[];
@@ -425,6 +432,34 @@ describe('Callbacks: delivery on alert changes', () => {
 		expect(stored.lastStatus).toBe('success');
 		expect(stored.lastError).toBeNull();
 		expect(stored.lastSentAt).toBeTruthy();
+	});
+
+	// The guarantee the feature rests on, measured: a receiver that takes 1.5 s to answer
+	// must not add to the time the user's request takes.
+	test('a slow receiver does not slow the request that triggered it', async () => {
+		insertAlert('cb-slow-1', 'Slow receiver');
+		await createCallback(baseCallback('/slow', ['silenced']));
+		holdResponseMs = 1_500;
+
+		const before = Date.now();
+		const res = await auth(app.patch('/api/v1/alerts/cb-slow-1/silence')).send({ silencedUntil: null });
+		const elapsed = Date.now() - before;
+		expect(res.status).toBe(200);
+		// Well under the receiver's delay. (Generous for a loaded CI box; a request that
+		// waited for the receiver would take >= 1.5 s.)
+		expect(elapsed).toBeLessThan(500);
+
+		// The delivery still happens, and its status lands once the receiver answers.
+		await waitFor(() => received.some((r) => r.path === '/slow'), 'slow callback request');
+		await waitFor(
+			() =>
+				(
+					db.prepare(`SELECT last_status FROM alert_callbacks WHERE url LIKE '%/slow'`).get() as
+						{ last_status: string | null } | undefined
+				)?.last_status === 'success',
+			'slow callback status',
+			5_000
+		);
 	});
 
 	test('a disabled callback and a callback on another event stay silent', async () => {
