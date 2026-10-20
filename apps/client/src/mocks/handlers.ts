@@ -1225,44 +1225,6 @@ export const handlers = [
 		});
 	}),
 
-	// ==================== CUSTOM ACTIONS ====================
-	http.get(`${API_BASE}/custom-actions`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: { actions: playgroundState.customActions },
-		});
-	}),
-
-	http.post(`${API_BASE}/custom-actions`, async ({ request }) => {
-		const body = (await request.json()) as (typeof playgroundState.customActions)[0];
-		const newAction = { ...body, id: randomId() };
-		playgroundState.customActions.push(newAction);
-		return HttpResponse.json({ success: true, data: { id: newAction.id } });
-	}),
-
-	http.put(`${API_BASE}/custom-actions/:id`, async ({ params, request }) => {
-		const id = Number(params.id);
-		const body = (await request.json()) as Partial<(typeof playgroundState.customActions)[0]>;
-		const action = playgroundState.customActions.find((a) => a.id === id);
-
-		if (!action) {
-			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
-		}
-
-		Object.assign(action, body);
-		return HttpResponse.json({ success: true });
-	}),
-
-	http.delete(`${API_BASE}/custom-actions/:id`, ({ params }) => {
-		const id = Number(params.id);
-		playgroundState.customActions = playgroundState.customActions.filter((a) => a.id !== id);
-		return HttpResponse.json({ success: true });
-	}),
-
-	http.post(`${API_BASE}/custom-actions/run`, () => {
-		return HttpResponse.json({ success: true });
-	}),
-
 	// ==================== SECRETS (stub) ====================
 	http.get(`${API_BASE}/secrets`, () => {
 		return HttpResponse.json({ success: true, data: { secrets: [] } });

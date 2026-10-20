@@ -1,5 +1,5 @@
 src/App.tsx: error TS2322: Type '{ children: Element; future: { v7_startTransition: boolean; v7_relativeSplatPath: boolean; }; }' is not assignable to type 'IntrinsicAttributes & BrowserRouterProps'.
-src/components/Dashboards/Dashboards.tsx: error TS2345: Argument of type '{ id: string; name: string; type: "services" | "alerts"; description: string; visibleColumns: string[]; filters: Record<string, string[]>; columnOrder: string[]; groupBy: string[]; query: string; timeRange: TimeRange; }' is not assignable to parameter of type 'DashboardState'.
+src/components/Dashboards/Dashboards.tsx: error TS2345: Argument of type '{ id: string; name: string; type: "alerts" | "services"; description: string; visibleColumns: string[]; filters: Record<string, string[]>; columnOrder: string[]; groupBy: string[]; query: string; timeRange: TimeRange; }' is not assignable to parameter of type 'DashboardState'.
 src/components/shared/FormattedText.tsx: error TS2503: Cannot find namespace 'DOMPurify'.
 src/lib/errorMapper.ts: error TS2339: Property 'details' does not exist on type 'unknown'.
 src/lib/errorMapper.ts: error TS2339: Property 'error' does not exist on type 'unknown'.
