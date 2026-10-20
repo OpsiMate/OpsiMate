@@ -95,8 +95,10 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 			title: 'Alerts of a dashboard',
 			description:
 				'The alerts a dashboard shows right now: its filters, query and time range applied to the active ' +
-				'list (include "active", the default), the resolved archive ("resolved" — the dashboard\'s status ' +
-				'filter is suspended there, as in the UI), or both ("all"). Pages of `limit` alerts, newest first; ' +
+				'list (include "active", the default: the Active tab, with the dashboard\'s status filter), the ' +
+				'resolved archive ("resolved") or both ("all") — for those two the status filter is suspended, as ' +
+				'on the UI\'s Resolved and All tabs, so "all" lists silenced or muted alerts a dashboard filtered to ' +
+				'"Firing" hides on its Active tab. Pages of `limit` alerts, newest first; ' +
 				'pass the page\'s nextCursor as `cursor` to continue (with "all", page one list at a time by ' +
 				'calling again with include "active" or "resolved"). `summary` counts every matching alert by ' +
 				'severity and status, so the total picture never needs paging.',
@@ -132,7 +134,9 @@ export const registerDashboardTools = (server: McpServer, deps: McpDeps): void =
 			const pages: Partial<Record<AlertListName, McpAlertPage>> = {};
 			const scopes = new Map<AlertListName, DashboardAlertScope>();
 			for (const list of listsFor(include)) {
-				const scope = dashboardAlertScope(dashboard, { timeZone, resolved: list === 'resolved' });
+				// The status filter narrows only the Active tab's view; "resolved" and "all"
+				// read both lists with it suspended, exactly as the UI's tabs do.
+				const scope = dashboardAlertScope(dashboard, { timeZone, suspendStatus: include !== 'active' });
 				scopes.set(list, scope);
 				const page = await queryList(deps, list, {
 					filters: scope.filters,

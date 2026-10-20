@@ -77,8 +77,10 @@ export interface DashboardAlertScope {
 
 export interface DashboardScopeOptions {
 	timeZone: string | undefined;
-	// The resolved archive rather than the active list.
-	resolved: boolean;
+	// Drop the dashboard's status / "!status" entries: what the UI does on its Resolved
+	// and All tabs (see Alerts.tsx statusSuspendedFilters). Only the Active tab narrows
+	// by status.
+	suspendStatus: boolean;
 }
 
 // The dashboard's rolling window right now, coarse to the minute like the client's. A
@@ -92,13 +94,15 @@ export const resolveDashboardWindow = (dashboard: Dashboard, timeZone: string | 
 	return toCoarseWindow(resolved.from ? new Date(resolved.from) : null, resolved.to ? new Date(resolved.to) : null);
 };
 
-// The query a dashboard means. For the RESOLVED list the status filter is suspended, as
-// the UI does: a dashboard filtered to "Firing" still shows its resolved alerts under the
-// Resolved tab, and a status filter would otherwise empty that list.
+// The query a dashboard means. With the status filter suspended, as the UI's Resolved
+// and All tabs run: a dashboard filtered to "Firing" still shows its resolved alerts
+// under the Resolved tab (a status filter would otherwise empty that list), and the All
+// tab shows every status of BOTH lists — a dashboard that hides silenced alerts shows
+// them there.
 export const dashboardAlertScope = (dashboard: Dashboard, options: DashboardScopeOptions): DashboardAlertScope => {
 	const { status: _status, ['!status']: _notStatus, ...rest } = parseDashboardFilters(dashboard.filters);
 	return {
-		filters: options.resolved ? rest : parseDashboardFilters(dashboard.filters),
+		filters: options.suspendStatus ? rest : parseDashboardFilters(dashboard.filters),
 		search: dashboard.query?.trim() || undefined,
 		window: resolveDashboardWindow(dashboard, options.timeZone),
 	};

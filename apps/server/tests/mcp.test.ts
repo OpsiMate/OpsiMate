@@ -535,6 +535,30 @@ describe('stored filter records', () => {
 	});
 });
 
+describe('include "all" is the All tab', () => {
+	test('the status filter is suspended for the active list too', async () => {
+		// The UI's All tab reads both lists with the status filter suspended (Alerts.tsx
+		// statusSuspendedFilters), so "all" must show the alerts the Active tab hides.
+		await request(app)
+			.patch('/api/v1/alerts/mcp-page-5/silence')
+			.set('Authorization', `Bearer ${adminJwt}`)
+			.send({})
+			.expect(200);
+		const id = await createDashboard({ name: 'Silenced only', filters: { status: ['Silenced'] } });
+
+		const active = await call<AlertListsResult>('get_dashboard_alerts', { id, include: 'active' });
+		expect(ids(active.active)).toEqual(['mcp-page-5']);
+		expect(active.summary?.byStatus).toEqual({ Silenced: 1 });
+
+		const all = await call<AlertListsResult>('get_dashboard_alerts', { id, include: 'all' });
+		expect(ids(all.active)).toContain('mcp-page-5');
+		expect(ids(all.active)).toContain('mcp-page-1');
+		expect(ids(all.resolved)).toEqual(['mcp-recent-crit']);
+		expect(all.summary?.byStatus).toMatchObject({ Silenced: 1, Resolved: 1 });
+		expect(all.summary?.byStatus.Firing).toBeGreaterThan(1);
+	});
+});
+
 describe('resolveDashboardRef', () => {
 	const dashboard = (id: number, name: string): Dashboard => ({
 		id: String(id),

@@ -103,7 +103,7 @@ export const registerAnalyticsTools = (server: McpServer, deps: McpDeps): void =
 					name: dashboardName,
 				});
 				if (!found.ok) return toolError(found.message);
-				const scope = dashboardAlertScope(found.dashboard, { timeZone, resolved: false });
+				const scope = dashboardAlertScope(found.dashboard, { timeZone, suspendStatus: false });
 				scopeFilters = scope.filters;
 				scopeSearch = scope.search;
 				dashboardLabel = found.dashboard.name;
