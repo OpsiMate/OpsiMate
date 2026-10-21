@@ -38,7 +38,9 @@ export const SendFieldsForm = ({ body, original, fields, onChange }: SendFieldsF
 						<Label htmlFor={id} className="text-xs">
 							{label}
 							{field.label?.trim() && (
-								<span className="ml-2 font-mono text-[10px] text-muted-foreground">{field.path}</span>
+								<span className="ml-2 font-mono text-[10px] text-muted-foreground">
+									{pathLabel(field.path)}
+								</span>
 							)}
 						</Label>
 						{typeof was === 'boolean' ? (
