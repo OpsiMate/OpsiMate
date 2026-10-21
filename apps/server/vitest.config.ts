@@ -20,6 +20,8 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@OpsiMate/shared': path.resolve(__dirname, '../../packages/shared/src'),
+			// The MCP server's source, for the test that runs it against a real OpsiMate.
+			'@OpsiMate/mcp': path.resolve(__dirname, '../mcp/src'),
 		},
 	},
 });

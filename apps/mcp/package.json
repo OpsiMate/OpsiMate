@@ -1,0 +1,50 @@
+{
+	"name": "@OpsiMate/mcp",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"bin": {
+		"opsimate-mcp": "./dist/cli.js"
+	},
+	"exports": {
+		".": "./dist/index.js"
+	},
+	"scripts": {
+		"build": "vite build --config vite.config.prod.ts",
+		"dev": "tsx watch src/cli.ts",
+		"start": "node dist/cli.js",
+		"clean": "rm -rf dist",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "eslint src tests --ext .ts --max-warnings=0",
+		"lint-fix": "eslint src tests --ext .ts --fix",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"format": "prettier --check .",
+		"format-fix": "prettier --write .",
+		"check": "pnpm run format && pnpm run lint",
+		"fix": "pnpm run format-fix && pnpm run lint-fix"
+	},
+	"lint-staged": {
+		"*": "prettier --write --ignore-unknown"
+	},
+	"dependencies": {
+		"@OpsiMate/shared": "workspace:*",
+		"@modelcontextprotocol/node": "2.1.1",
+		"@modelcontextprotocol/server": "2.3.1",
+		"express": "^5.2.1",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@modelcontextprotocol/client": "2.3.1",
+		"@types/express": "^5.0.6",
+		"@types/node": "^26.6.4",
+		"@types/supertest": "^7.2.1",
+		"eslint": "^10.12.0",
+		"supertest": "^7.3.1",
+		"tsx": "^4.23.15",
+		"typescript": "^5.9.3",
+		"vite": "^8.3.3",
+		"vitest": "^4.1.10"
+	}
+}

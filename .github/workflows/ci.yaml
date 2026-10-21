@@ -53,6 +53,9 @@ jobs:
       - name: Lint apps/client
         run: pnpm --filter @OpsiMate/client lint
 
+      - name: Lint apps/mcp
+        run: pnpm --filter @OpsiMate/mcp lint
+
       # vite build strips types, so tsc is the only thing that type-checks the client.
       # Gates on NEW errors vs a committed baseline (the pre-existing backlog).
       - name: Typecheck apps/client
@@ -61,6 +64,9 @@ jobs:
       # The server has no baseline: it must type-check clean (src and tests).
       - name: Typecheck apps/server
         run: pnpm --filter @OpsiMate/server typecheck
+
+      - name: Typecheck apps/mcp
+        run: pnpm --filter @OpsiMate/mcp typecheck
 
       - name: Format apps/server
         run: pnpm --filter @OpsiMate/server format
@@ -74,11 +80,17 @@ jobs:
       - name: Format apps/client
         run: pnpm --filter @OpsiMate/client format
 
+      - name: Format apps/mcp
+        run: pnpm --filter @OpsiMate/mcp format
+
       - name: Test apps/server
         run: pnpm --filter @OpsiMate/server test
 
       - name: Test apps/client
         run: pnpm --filter @OpsiMate/client test:run
+
+      - name: Test apps/mcp
+        run: pnpm --filter @OpsiMate/mcp test
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
@@ -90,3 +102,38 @@ jobs:
           retention-days: 7
           # The server suite doesn't emit files here yet; don't warn when the dir is empty.
           if-no-files-found: ignore
+
+  # The MCP image is otherwise built only at release time; a Dockerfile that no longer
+  # builds would surface weeks after the change that broke it. Build it here and make
+  # sure the runtime stage really starts: /health answers and an MCP initialize round-
+  # trips through the installed SDK.
+  mcp-image:
+    name: Build MCP image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Build image
+        run: docker build -f Dockerfile.mcp -t opsimate/mcp:ci .
+
+      - name: Smoke test the container
+        run: |
+          docker run -d --name mcp -p 3100:3100 opsimate/mcp:ci
+          for i in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:3100/health && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3100/health | grep -q '"status":"ok"'
+          curl -fsS -X POST http://127.0.0.1:3100/mcp \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H 'x-api-token: ci-smoke' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            | grep -q '"serverInfo"'
+          # Runs as the unprivileged node user, not root.
+          test "$(docker exec mcp id -u)" = "1000"
+
+      - name: Container logs
+        if: failure()
+        run: docker logs mcp || true
