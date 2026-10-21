@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { coerceFieldValue, fieldValueText, getAtPath, pathLabel, setAtPath } from '@/lib/jsonFields';
 import type { HttpEditableField } from '@OpsiMate/shared';
 import { ChevronRight } from 'lucide-react';
-import { useId } from 'react';
+import { InputHTMLAttributes, useId, useState } from 'react';
 
 interface SendFieldsFormProps {
 	// The rendered request body, parsed. Edits are written back into a copy of it.
@@ -16,6 +16,34 @@ interface SendFieldsFormProps {
 	fields: HttpEditableField[];
 	onChange: (nextBody: unknown) => void;
 }
+
+// A one-line field for a value that is coerced back to the body's type as it is typed. The
+// text the sender typed is kept while it still means the current value, so "1." and "0."
+// survive the keystroke on the way to 1.5 or 0.05 (coercing "1." to the number 1 and
+// rendering that would eat the dot).
+const FieldInput = ({
+	value,
+	was,
+	onCommit,
+	...rest
+}: {
+	value: unknown;
+	was: unknown;
+	onCommit: (text: string) => void;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) => {
+	const [draft, setDraft] = useState<string | null>(null);
+	const shown = draft !== null && Object.is(coerceFieldValue(was, draft), value) ? draft : fieldValueText(value);
+	return (
+		<Input
+			{...rest}
+			value={shown}
+			onChange={(e) => {
+				setDraft(e.target.value);
+				onCommit(e.target.value);
+			}}
+		/>
+	);
+};
 
 // The Send dialog's form for an HTTP action whose author marked fields the sender may
 // change: one labelled input per field, prefilled from the rendered request, the rest of
@@ -61,10 +89,11 @@ export const SendFieldsForm = ({ body, original, fields, onChange }: SendFieldsF
 								className="text-sm"
 							/>
 						) : (
-							<Input
+							<FieldInput
 								id={id}
-								value={fieldValueText(current)}
-								onChange={(e) => set(e.target.value)}
+								value={current}
+								was={was}
+								onCommit={set}
 								inputMode={typeof was === 'number' ? 'decimal' : undefined}
 								className="h-9 text-sm"
 							/>

@@ -43,6 +43,28 @@ const buildHugeTemplate = (): string => {
 };
 
 describe('huge templates', () => {
+	test('a decimal can be typed one key at a time into a number field', async () => {
+		const user = userEvent.setup();
+		let body: Record<string, unknown> = { ratio: 2 };
+		const onChange = vi.fn((next: unknown) => {
+			body = next as Record<string, unknown>;
+			rerender(
+				<SendFieldsForm body={body} original={{ ratio: 2 }} fields={[{ path: '/ratio' }]} onChange={onChange} />
+			);
+		});
+		const { rerender } = render(
+			<SendFieldsForm body={body} original={{ ratio: 2 }} fields={[{ path: '/ratio' }]} onChange={onChange} />
+		);
+		const field = screen.getByLabelText('ratio');
+		await user.clear(field);
+		await user.type(field, '1.5');
+		expect(field).toHaveValue('1.5');
+		expect(body.ratio).toBe(1.5);
+		await user.type(field, '0');
+		expect(field).toHaveValue('1.50');
+		expect(body.ratio).toBe(1.5);
+	});
+
 	const template = buildHugeTemplate();
 
 	test('is a realistic worst case, and every leaf gets a pointer that reads back the same value', () => {
