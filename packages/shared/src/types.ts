@@ -652,6 +652,14 @@ export interface JiraActionConfig {
 	descriptionTemplate?: string | null;
 }
 
+export interface HttpEditableField {
+	path: string;
+	// Shown instead of the path; "Comment for the ticket" rather than "fields.comment".
+	label?: string | null;
+	// A larger text box, for notes rather than one-liners.
+	multiline?: boolean | null;
+}
+
 export interface HttpActionConfig {
 	url: string;
 	method: HttpActionMethod;
@@ -661,6 +669,10 @@ export interface HttpActionConfig {
 	// newlines in an alert's summary cannot break it); the template must parse as JSON.
 	// 'text' (and actions saved before the field existed): plain substitution.
 	bodyFormat?: HttpBodyFormat | null;
+	// Body fields the person sending the action may change in the Send dialog (a "user
+	// comment" left empty in the template, a label to override). Paths into the JSON body,
+	// dotted, list items by index: "comment", "labels.site", "tags.0". Only for JSON bodies.
+	editableFields?: HttpEditableField[] | null;
 	// "Don't wait for a response": the run is reported successful as soon as the request
 	// has been sent, without waiting for the receiver's status. For receivers that answer
 	// only once their work is done. Connection errors are still reported. Default false.

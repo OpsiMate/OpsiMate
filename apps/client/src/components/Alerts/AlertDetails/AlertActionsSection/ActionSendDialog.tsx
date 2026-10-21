@@ -14,8 +14,9 @@ import { useToast } from '@/hooks/use-toast';
 import { usePreviewAction, useRunAction } from '@/hooks/queries/actions';
 import { Action, ActionOverrides, ActionPreview, Alert, HttpActionConfig } from '@OpsiMate/shared';
 import { Loader2, Send } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
+import { SendFieldsForm } from './SendFieldsForm';
 
 interface ActionSendDialogProps {
 	open: boolean;
@@ -109,6 +110,26 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 
 	const isLoading = previewMutation.isPending && !preview;
 	const sendsWithoutWaiting = action?.type === 'http' && !!(action.config as HttpActionConfig).fireAndForget;
+	// The author marked fields the sender may change: show just those, prefilled from the
+	// rendered JSON, and send the body with the edits written in. Falls back to the raw body
+	// when the rendered request is not JSON after all.
+	const editableFields = action?.type === 'http' ? ((action.config as HttpActionConfig).editableFields ?? []) : [];
+	const parseBody = (text: string): unknown => {
+		try {
+			return JSON.parse(text) as unknown;
+		} catch {
+			return undefined;
+		}
+	};
+	const parsedBody = useMemo(
+		(): unknown => (editableFields.length === 0 ? undefined : parseBody(body)),
+		[body, editableFields.length]
+	);
+	const renderedBody = useMemo(
+		(): unknown => (preview?.type === 'http' && editableFields.length > 0 ? parseBody(preview.body) : undefined),
+		[preview, editableFields.length]
+	);
+	const fieldsForm = parsedBody !== undefined && parsedBody !== null && typeof parsedBody === 'object';
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,16 +227,25 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 										is out, whatever the receiver answers later.
 									</p>
 								)}
-								<div className="space-y-2">
-									<Label htmlFor="send-body">Request body</Label>
-									<Textarea
-										id="send-body"
-										value={body}
-										onChange={(e) => setBody(e.target.value)}
-										rows={8}
-										className="font-mono text-xs"
+								{fieldsForm ? (
+									<SendFieldsForm
+										body={parsedBody}
+										original={renderedBody}
+										fields={editableFields}
+										onChange={(next) => setBody(JSON.stringify(next, null, 2))}
 									/>
-								</div>
+								) : (
+									<div className="space-y-2">
+										<Label htmlFor="send-body">Request body</Label>
+										<Textarea
+											id="send-body"
+											value={body}
+											onChange={(e) => setBody(e.target.value)}
+											rows={8}
+											className="font-mono text-xs"
+										/>
+									</div>
+								)}
 							</>
 						)}
 					</div>
