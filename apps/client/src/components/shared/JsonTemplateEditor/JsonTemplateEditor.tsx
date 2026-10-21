@@ -38,6 +38,8 @@ export interface JsonTemplateEditorProps {
 	textareaId: string;
 	textareaRef: RefObject<HTMLTextAreaElement | null>;
 	textareaPlaceholder?: string;
+	// id of the visible label for the whole editor; names the form group and the textarea.
+	ariaLabelledBy?: string;
 	// The field(s) a template-variable picker should insert into right now: the focused
 	// row's value in form mode, the textarea in text mode. Reported whenever they change.
 	onTargetsChange?: (targets: TemplateFieldTarget[]) => void;
@@ -67,6 +69,7 @@ export const JsonTemplateEditor = ({
 	textareaId,
 	textareaRef,
 	textareaPlaceholder,
+	ariaLabelledBy,
 	onTargetsChange,
 }: JsonTemplateEditorProps) => {
 	const initial = useMemo(() => templateToTree(value), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -280,7 +283,11 @@ export const JsonTemplateEditor = ({
 			</div>
 
 			{mode === 'form' && tree ? (
-				<div className="rounded-md border bg-background p-2 space-y-1">
+				<div
+					className="rounded-md border bg-background p-2 space-y-1"
+					role="group"
+					aria-labelledby={ariaLabelledBy}
+				>
 					{tree.children.length === 0 ? (
 						<p className="px-1 py-2 text-xs text-muted-foreground">No fields yet.</p>
 					) : (
@@ -320,6 +327,7 @@ export const JsonTemplateEditor = ({
 					rows={6}
 					className={cn('font-mono text-xs', problem && 'border-destructive')}
 					aria-invalid={problem !== null}
+					aria-labelledby={ariaLabelledBy}
 				/>
 			)}
 		</div>

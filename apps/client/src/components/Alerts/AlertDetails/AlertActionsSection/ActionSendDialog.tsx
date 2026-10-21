@@ -13,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { usePreviewAction, useRunAction } from '@/hooks/queries/actions';
 import { Action, ActionOverrides, ActionPreview, Alert, HttpActionConfig } from '@OpsiMate/shared';
+import { JsonTemplateEditor } from '@/components/shared/JsonTemplateEditor';
 import { Loader2, Send } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 
 interface ActionSendDialogProps {
@@ -46,6 +47,7 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 	const [summary, setSummary] = useState('');
 	const [description, setDescription] = useState('');
 	const [body, setBody] = useState('');
+	const bodyRef = useRef<HTMLTextAreaElement>(null);
 
 	useEffect(() => {
 		if (!open || !action) return;
@@ -109,6 +111,10 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 
 	const isLoading = previewMutation.isPending && !preview;
 	const sendsWithoutWaiting = action?.type === 'http' && !!(action.config as HttpActionConfig).fireAndForget;
+	// A JSON body is shown as a form (fields the person can change before sending) — the
+	// rendered request, not the template, so what they see is what goes out. An action
+	// whose body is declared plain text keeps the text box.
+	const bodyAsForm = action?.type === 'http' && (action.config as HttpActionConfig).bodyFormat !== 'text';
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -207,14 +213,28 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 									</p>
 								)}
 								<div className="space-y-2">
-									<Label htmlFor="send-body">Request body</Label>
-									<Textarea
-										id="send-body"
-										value={body}
-										onChange={(e) => setBody(e.target.value)}
-										rows={8}
-										className="font-mono text-xs"
-									/>
+									<Label htmlFor="send-body" id="send-body-label">
+										Request body
+									</Label>
+									{bodyAsForm ? (
+										<JsonTemplateEditor
+											value={body}
+											onChange={setBody}
+											variables={[]}
+											problem={null}
+											textareaId="send-body"
+											textareaRef={bodyRef}
+											ariaLabelledBy="send-body-label"
+										/>
+									) : (
+										<Textarea
+											id="send-body"
+											value={body}
+											onChange={(e) => setBody(e.target.value)}
+											rows={8}
+											className="font-mono text-xs"
+										/>
+									)}
 								</div>
 							</>
 						)}
