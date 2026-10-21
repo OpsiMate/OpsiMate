@@ -89,6 +89,17 @@ It holds no credentials of its own: each MCP client authenticates with the API t
 - `GET /health` on the container reports that it is up and its version (not the OpsiMate URL: the endpoint is unauthenticated).
 - The rate limit is a fair-use limit per credential for assistants that loop, not an abuse control: a caller with a different token gets its own bucket. Keep the endpoint inside your network or behind the same gateway as OpsiMate.
 
+## Login with a Short Name
+
+Typing a full email at every login is tedious when everyone shares one domain. Set the installation's domain and a bare name completes to an address before the normal login runs:
+
+```yaml
+login:
+  default_email_domain: company.com # or LOGIN_DEFAULT_EMAIL_DOMAIN=company.com
+```
+
+`idan` then signs in as `idan@company.com` — local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Anything typed with an `@` is used as is, so people with another domain still sign in with their full email. Unset, the login takes the full email only, as before. The login page shows what a bare name will mean as it is typed.
+
 ## LDAP / Active Directory Login
 
 OpsiMate can sign users in against an LDAP directory (OpenLDAP, Active Directory, FreeIPA, ...).

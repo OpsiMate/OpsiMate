@@ -77,7 +77,9 @@ export const RegisterSchema = CreateUserSchema.omit({ role: true });
 // password, not to presenting one — and directory (LDAP) passwords follow the
 // directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z.object({
-	email: z.string().email(),
+	// The email, or a bare name the server completes with the installation's default
+	// login domain (login.default_email_domain); which of the two is the server's call.
+	email: z.string().trim().min(1).max(320),
 	// No maximum: none of the password-setting paths has one, so a cap here could
 	// lock out a password that was accepted when set. express.json's body limit
 	// (100kb) already bounds the request.

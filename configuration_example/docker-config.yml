@@ -18,3 +18,8 @@ database:
 # Security configuration
 security:
   private_keys_path: "/app/data/private-keys"  # SSH private keys directory (mounted volume)
+
+# Login with a short name: a name typed without "@" signs in as <name>@<this domain>.
+# Unset = the full email is required. Also LOGIN_DEFAULT_EMAIL_DOMAIN.
+# login:
+#   default_email_domain: company.com
