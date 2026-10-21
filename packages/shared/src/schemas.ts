@@ -555,8 +555,19 @@ const alertContextSchema = z
 	})
 	.passthrough();
 
+// Who is looking: lets {{startsAt.display}} and friends render in the sender's own time
+// zone and locale, as the alerts table did for them.
+export const ActionViewerSchema = z
+	.object({
+		timeZone: z.string().trim().max(100).optional().nullable(),
+		locale: z.string().trim().max(35).optional().nullable(),
+	})
+	.optional()
+	.nullable();
+
 export const PreviewActionSchema = z.object({
 	alert: alertContextSchema,
+	viewer: ActionViewerSchema,
 });
 
 const actionOverridesSchema = z.object({
@@ -570,6 +581,7 @@ const actionOverridesSchema = z.object({
 export const RunActionSchema = z.object({
 	alert: alertContextSchema,
 	overrides: actionOverridesSchema.optional(),
+	viewer: ActionViewerSchema,
 });
 
 export const UpdateRetentionPolicySchema = z

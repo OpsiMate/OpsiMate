@@ -44,6 +44,7 @@ import {
 	AlertCallbackMethod,
 	AlertCallbackTestResult,
 	AlertCallbackWithSecret,
+	ViewerFormatting,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 import { ROUTES } from './routes';
@@ -627,17 +628,25 @@ export type ActionPayload = {
 	labelMatcherGroups?: { key: string; value: string }[][];
 };
 
+// The viewer's zone and locale travel with an action so {{startsAt.display}} and friends
+// render the way the alerts table rendered them for this person.
+export const viewerFormatting = (): ViewerFormatting => ({
+	timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+	locale: navigator.language,
+});
+
 export const actionsApi = {
 	listActions: () => apiRequest<Action[]>('/actions'),
 	getAction: (id: number) => apiRequest<Action>(`/actions/${id}`),
 	createAction: (payload: ActionPayload) => apiRequest<Action>('/actions', 'POST', payload),
 	updateAction: (id: number, payload: ActionPayload) => apiRequest<Action>(`/actions/${id}`, 'PUT', payload),
 	deleteAction: (id: number) => apiRequest<void>(`/actions/${id}`, 'DELETE'),
-	testAction: (payload: ActionPayload) => apiRequest<ActionTestResult>('/actions/test', 'POST', payload),
+	testAction: (payload: ActionPayload) =>
+		apiRequest<ActionTestResult>('/actions/test', 'POST', { ...payload, viewer: viewerFormatting() }),
 	previewAction: (id: number, alert: SharedAlert) =>
-		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert }),
+		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert, viewer: viewerFormatting() }),
 	runAction: (id: number, alert: SharedAlert, overrides?: ActionOverrides) =>
-		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides }),
+		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides, viewer: viewerFormatting() }),
 };
 
 // Alert callbacks (admin only): outbound requests sent after a user changes an alert.

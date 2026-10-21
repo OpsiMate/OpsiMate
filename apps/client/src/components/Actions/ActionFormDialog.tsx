@@ -775,7 +775,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										{ ref: httpBodyRef, value: httpBody, onChange: setHttpBody },
 										{ ref: httpUrlRef, value: httpUrl, onChange: setHttpUrl },
 									]}
-									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too):"
+									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too). {{startsAt}} is the exact ISO instant; {{startsAt.display}} is the time as the alerts table shows it to the sender:"
 								/>
 								<div className="flex items-start justify-between gap-4 rounded-md border bg-background p-3">
 									<div className="space-y-1">
