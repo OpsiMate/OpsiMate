@@ -405,6 +405,18 @@ const httpActionConfigSchema = z
 		headers: z.record(z.string(), z.string()).optional().nullable(),
 		bodyTemplate: z.string().max(10000).optional().nullable(),
 		bodyFormat: z.enum(['json', 'text']).optional().nullable(),
+		editableFields: z
+			.array(
+				z.object({
+					// A JSON Pointer into the body ("/labels/site", "/tags/0").
+					path: z.string().trim().min(1).max(200).regex(/^\//, 'A field path starts with "/"'),
+					label: z.string().trim().max(100).optional().nullable(),
+					multiline: z.boolean().optional().nullable(),
+				})
+			)
+			.max(50)
+			.optional()
+			.nullable(),
 		fireAndForget: z.boolean().optional().nullable(),
 	})
 	// A JSON body must be JSON (with its placeholders read as strings): a missing comma is

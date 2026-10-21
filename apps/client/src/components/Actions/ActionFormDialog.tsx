@@ -37,8 +37,10 @@ import {
 	getNameNeedles,
 	looksLikeJson,
 	validateJsonTemplate,
+	HttpEditableField,
 } from '@OpsiMate/shared';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
+import { EditableFieldsPicker } from '@/components/Actions/EditableFieldsPicker';
 import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -115,6 +117,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	const [httpHeaders, setHttpHeaders] = useState<HeaderRow[]>([]);
 	const [httpBody, setHttpBody] = useState('');
 	const [httpFireAndForget, setHttpFireAndForget] = useState(false);
+	const [httpEditableFields, setHttpEditableFields] = useState<HttpEditableField[]>([]);
 	// On for a new action (the body is JSON in almost every case). An action saved before
 	// the field existed loads as text: its behaviour does not change until the user says so.
 	const [httpBodyIsJson, setHttpBodyIsJson] = useState(true);
@@ -210,6 +213,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 				setHttpBody(cfg.bodyTemplate ?? '');
 				setHttpBodyIsJson(cfg.bodyFormat === 'json');
 				setHttpFireAndForget(cfg.fireAndForget ?? false);
+				setHttpEditableFields(cfg.editableFields ?? []);
 			}
 		} else {
 			setName('');
@@ -217,6 +221,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 			setNameContainsAny([]);
 			setMatcherGroups([]);
 			setHttpBodyIsJson(true);
+			setHttpEditableFields([]);
 		}
 	}, [open, action]);
 
@@ -318,6 +323,8 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						headers: rowsToHeaders(httpHeaders),
 						bodyTemplate: httpBody.trim() || null,
 						bodyFormat: httpBodyIsJson ? 'json' : 'text',
+						// Only meaningful for a JSON body: the Send dialog reads them off the rendered JSON.
+						editableFields: httpBodyIsJson && httpEditableFields.length > 0 ? httpEditableFields : null,
 						fireAndForget: httpFireAndForget,
 					},
 				};
@@ -752,6 +759,16 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										</p>
 									)}
 								</div>
+								{httpBodyIsJson && (
+									<div className="space-y-2 rounded-md border bg-background p-3">
+										<Label className="text-xs">Fields the sender can change</Label>
+										<EditableFieldsPicker
+											template={httpBody}
+											value={httpEditableFields}
+											onChange={setHttpEditableFields}
+										/>
+									</div>
+								)}
 								<TemplateVariablePicker
 									variables={templateVariables}
 									targets={[

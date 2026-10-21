@@ -139,3 +139,59 @@ export const renderJsonTemplate = (template: string, resolve: TemplateResolver):
 	// Keep the template's shape: pretty when it was written over several lines.
 	return template.includes('\n') ? JSON.stringify(filled, null, 2) : JSON.stringify(filled);
 };
+
+// A bare placeholder ({{count}} outside any string) as a value in a parsed template: the
+// form editor shows it as "variable (raw)" and the serializer writes it back bare.
+export class RawPlaceholder {
+	constructor(public readonly key: string) {}
+}
+
+const restore = (node: unknown, tokens: Tokenized): unknown => {
+	if (typeof node === 'string') {
+		const whole = tokens.sentinels.get(node);
+		if (whole?.bare) return new RawPlaceholder(whole.key);
+		return node.replace(tokens.sentinelPattern, (sentinel) => {
+			const placeholder = tokens.sentinels.get(sentinel);
+			return placeholder ? `{{${placeholder.key}}}` : sentinel;
+		});
+	}
+	if (Array.isArray(node)) return node.map((item) => restore(item, tokens));
+	if (node !== null && typeof node === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+			out[restore(key, tokens) as string] = restore(value, tokens);
+		}
+		return out;
+	}
+	return node;
+};
+
+// The template as a JSON value with its placeholders kept: "{{name}} fired" stays that
+// string, a bare {{count}} becomes a RawPlaceholder. Throws when the template is not JSON.
+export const parseJsonTemplate = (template: string): unknown => {
+	const tokens = tokenize(template);
+	return restore(JSON.parse(tokens.text) as unknown, tokens);
+};
+
+// The inverse: a value from parseJsonTemplate (or edited from it) back to template text,
+// RawPlaceholders written bare. Pretty-printed with two spaces, the way people write them.
+export const serializeJsonTemplate = (value: unknown, pretty = true): string => {
+	const nonce = Math.random().toString(36).slice(2, 10);
+	const raws = new Map<string, string>();
+	const text = JSON.stringify(
+		value,
+		(_key, node: unknown) => {
+			if (node instanceof RawPlaceholder) {
+				const sentinel = `__raw_${nonce}_${raws.size}__`;
+				raws.set(sentinel, node.key);
+				return sentinel;
+			}
+			return node;
+		},
+		pretty ? 2 : undefined
+	);
+	return text.replace(
+		new RegExp(`"__raw_${nonce}_\\d+__"`, 'g'),
+		(quoted) => `{{${raws.get(quoted.slice(1, -1)) ?? ''}}}`
+	);
+};
