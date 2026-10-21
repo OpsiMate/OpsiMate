@@ -106,6 +106,56 @@ describe('HTTP action templating over the API', () => {
 		expect(preview.body.data.body).toBe('{"alert":"Disk full","tag":"prod"}');
 	});
 
+	test('a JSON body: quotes in a value are escaped in preview, and a broken template is refused at save', async () => {
+		const created = await post('/api/v1/actions', {
+			name: 'JSON body',
+			type: 'http',
+			config: {
+				url: 'https://api.example.com/x?name={{name}}',
+				method: 'POST',
+				bodyTemplate: '{"alert":"{{name}}","summary":"{{summary}}"}',
+				bodyFormat: 'json',
+			},
+		});
+		expect(created.status).toBe(201);
+		const preview = await post(`/api/v1/actions/${created.body.data.id}/preview`, {
+			alert: { id: 'q-1', alertName: 'Disk "sda" full', status: 'firing', summary: 'line one\nline "two"' },
+		});
+		expect(preview.status).toBe(200);
+		expect(JSON.parse(preview.body.data.body)).toEqual({
+			alert: 'Disk "sda" full',
+			summary: 'line one\nline "two"',
+		});
+		// Spaces and quotes in a URL value are percent-encoded; the URL's own structure is kept.
+		expect(preview.body.data.url).toBe('https://api.example.com/x?name=Disk%20%22sda%22%20full');
+
+		const broken = await post('/api/v1/actions', {
+			name: 'Broken JSON body',
+			type: 'http',
+			config: {
+				url: 'https://api.example.com/x',
+				method: 'POST',
+				bodyTemplate: '{"alert":"{{name}}" "oops":1}',
+				bodyFormat: 'json',
+			},
+		});
+		expect(broken.status).toBe(400);
+		expect(JSON.stringify(broken.body)).toContain('Body is not valid JSON');
+
+		// Text mode accepts anything and substitutes as written.
+		const text = await post('/api/v1/actions', {
+			name: 'Text body',
+			type: 'http',
+			config: {
+				url: 'https://api.example.com/x',
+				method: 'POST',
+				bodyTemplate: 'name={{name}}',
+				bodyFormat: 'text',
+			},
+		});
+		expect(text.status).toBe(201);
+	});
+
 	test('an alert with null fields previews fine — nulls must not 400 the context schema', async () => {
 		const created = await post('/api/v1/actions', {
 			name: 'Null-tolerant preview',
