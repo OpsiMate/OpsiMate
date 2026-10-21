@@ -1,3 +1,4 @@
+import type { HttpBodyFormat } from './jsonTemplate';
 export enum IntegrationType {
 	Grafana = 'Grafana',
 	Kibana = 'Kibana',
@@ -656,6 +657,10 @@ export interface HttpActionConfig {
 	method: HttpActionMethod;
 	headers?: Record<string, string> | null;
 	bodyTemplate?: string | null;
+	// 'json': the body is a JSON template and values are inserted JSON-safely (quotes and
+	// newlines in an alert's summary cannot break it); the template must parse as JSON.
+	// 'text' (and actions saved before the field existed): plain substitution.
+	bodyFormat?: HttpBodyFormat | null;
 	// "Don't wait for a response": the run is reported successful as soon as the request
 	// has been sent, without waiting for the receiver's status. For receivers that answer
 	// only once their work is done. Connection errors are still reported. Default false.

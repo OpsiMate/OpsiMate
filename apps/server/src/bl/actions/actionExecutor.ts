@@ -11,6 +11,7 @@ import {
 	SlackActionConfig,
 	TeamsActionConfig,
 	flagForTemplateVariable,
+	renderJsonTemplate,
 } from '@OpsiMate/shared';
 import http from 'node:http';
 import https from 'node:https';
@@ -175,10 +176,39 @@ const renderFields = (action: ExecutableAction, ctx: Record<string, string>): Re
 		case 'http':
 		default: {
 			const cfg = action.config as HttpActionConfig;
-			return { ...base, body: resolvePlaceholders(cfg.bodyTemplate, ctx) };
+			return { ...base, body: renderHttpBody(cfg, ctx) };
 		}
 	}
 };
+
+// JSON bodies are filled in as JSON (see shared/jsonTemplate), so quotes and newlines in
+// a value cannot break the request. A JSON-mode template that is not valid JSON (saved
+// through the API without validation) falls back to text substitution rather than failing
+// the run. Text mode is plain substitution, as it always was.
+export const renderHttpBody = (cfg: HttpActionConfig, ctx: Record<string, string>): string => {
+	if (cfg.bodyFormat === 'json' && cfg.bodyTemplate?.trim()) {
+		try {
+			return renderJsonTemplate(cfg.bodyTemplate, (key) => resolveTemplateVariable(key, ctx));
+		} catch {
+			// fall through to text substitution
+		}
+	}
+	return resolvePlaceholders(cfg.bodyTemplate, ctx);
+};
+
+// A value placed in a URL must not break it: spaces, quotes and non-ASCII are
+// percent-encoded; URL structure characters (/ ? & = #) are left alone so a variable that
+// holds a whole path or URL still works; already-encoded %XX sequences are kept as is.
+export const resolveUrlPlaceholders = (template: string, ctx: Record<string, string>): string =>
+	template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key: string) => {
+		const value = resolveTemplateVariable(key, ctx);
+		if (value === undefined) return `{{${key}}}`;
+		return encodeURI(value).replace(/%25(?=[0-9A-Fa-f]{2})/g, '%');
+	});
+
+// A header value cannot contain a line break (header injection); nothing else is changed.
+const resolveHeaderPlaceholders = (template: string, ctx: Record<string, string>): string =>
+	resolvePlaceholders(template, ctx).replace(/[\r\n]+/g, ' ');
 
 // Returns the exact content that would be sent, with templates resolved against the given context.
 export const previewAction = (action: ExecutableAction, ctx: Record<string, string>): ActionPreview => {
@@ -206,7 +236,7 @@ export const previewAction = (action: ExecutableAction, ctx: Record<string, stri
 		case 'http':
 		default: {
 			const cfg = action.config as HttpActionConfig;
-			return { type: 'http', method: cfg.method, url: resolvePlaceholders(cfg.url, ctx), body: f.body };
+			return { type: 'http', method: cfg.method, url: resolveUrlPlaceholders(cfg.url, ctx), body: f.body };
 		}
 	}
 };
@@ -308,10 +338,10 @@ interface HttpRequestParts {
 }
 
 const buildHttpRequest = (cfg: HttpActionConfig, body: string, ctx: Record<string, string>): HttpRequestParts => {
-	const url = resolvePlaceholders(cfg.url, ctx);
+	const url = resolveUrlPlaceholders(cfg.url, ctx);
 	const headers: Record<string, string> = {};
 	for (const [key, value] of Object.entries(cfg.headers ?? {})) {
-		headers[key] = resolvePlaceholders(value, ctx);
+		headers[key] = resolveHeaderPlaceholders(value, ctx);
 	}
 	const hasBody = ['POST', 'PUT', 'PATCH'].includes(cfg.method) && !!body;
 	if (hasBody && !Object.keys(headers).some((h) => h.toLowerCase() === 'content-type')) {

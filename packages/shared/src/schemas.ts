@@ -1,3 +1,4 @@
+import { validateJsonTemplate } from './jsonTemplate';
 import { z } from 'zod';
 import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES, ALERT_CALLBACK_EVENTS } from './types';
 
@@ -395,13 +396,24 @@ const jiraActionConfigSchema = z.object({
 	descriptionTemplate: z.string().max(5000).optional().nullable(),
 });
 
-const httpActionConfigSchema = z.object({
-	url: z.string().url('A valid URL is required'),
-	method: httpMethodSchema,
-	headers: z.record(z.string(), z.string()).optional().nullable(),
-	bodyTemplate: z.string().max(10000).optional().nullable(),
-	fireAndForget: z.boolean().optional().nullable(),
-});
+const httpActionConfigSchema = z
+	.object({
+		url: z.string().url('A valid URL is required'),
+		method: httpMethodSchema,
+		headers: z.record(z.string(), z.string()).optional().nullable(),
+		bodyTemplate: z.string().max(10000).optional().nullable(),
+		bodyFormat: z.enum(['json', 'text']).optional().nullable(),
+		fireAndForget: z.boolean().optional().nullable(),
+	})
+	// A JSON body must be JSON (with its placeholders read as strings): a missing comma is
+	// caught here, at save, not on the first alert.
+	.superRefine((cfg, ctx) => {
+		if (cfg.bodyFormat !== 'json' || !cfg.bodyTemplate?.trim()) return;
+		const problem = validateJsonTemplate(cfg.bodyTemplate);
+		if (problem) {
+			ctx.addIssue({ code: 'custom', path: ['bodyTemplate'], message: `Body is not valid JSON: ${problem}` });
+		}
+	});
 
 // Optional alert filter shared by every action type. Empty = applies to all alerts.
 const actionMatchFields = {
