@@ -4,7 +4,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
-import { ReactNode, RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+	forwardRef,
+	ReactNode,
+	RefObject,
+	TextareaHTMLAttributes,
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import type { TemplateFieldTarget } from '../TemplateVariablePicker';
 import {
 	addChild,
@@ -27,6 +39,34 @@ import {
 // MAX_FORM_NODES): the text then stays the editor, with the reason said once.
 
 export type JsonTemplateEditorMode = 'form' | 'text';
+
+// A text value as a one-line field that grows with its content: a summary that runs to
+// three lines is read in full instead of scrolled inside a 32px box.
+const GrowingTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+	({ className, value, ...props }, forwardedRef) => {
+		const inner = useRef<HTMLTextAreaElement | null>(null);
+		useLayoutEffect(() => {
+			const el = inner.current;
+			if (!el) return;
+			el.style.height = '0px';
+			el.style.height = `${Math.max(32, el.scrollHeight)}px`;
+		}, [value]);
+		return (
+			<Textarea
+				{...props}
+				value={value}
+				rows={1}
+				ref={(el) => {
+					inner.current = el;
+					if (typeof forwardedRef === 'function') forwardedRef(el);
+					else if (forwardedRef) forwardedRef.current = el;
+				}}
+				className={cn('min-h-8 resize-none overflow-hidden py-1.5 font-mono text-xs leading-5', className)}
+			/>
+		);
+	}
+);
+GrowingTextarea.displayName = 'GrowingTextarea';
 
 export interface JsonTemplateEditorProps {
 	value: string;
@@ -107,8 +147,8 @@ export const JsonTemplateEditor = ({
 	);
 
 	// One ref object per row value input, so the variable picker can find the focused one.
-	const valueRefs = useRef(new Map<string, RefObject<HTMLInputElement | null>>());
-	const refFor = (id: string): RefObject<HTMLInputElement | null> => {
+	const valueRefs = useRef(new Map<string, RefObject<HTMLTextAreaElement | null>>());
+	const refFor = (id: string): RefObject<HTMLTextAreaElement | null> => {
 		let ref = valueRefs.current.get(id);
 		if (!ref) {
 			ref = { current: null };
@@ -145,7 +185,7 @@ export const JsonTemplateEditor = ({
 		return (
 			<li key={node.id} className="space-y-1">
 				<div
-					className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)_auto] items-center gap-2"
+					className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)_auto] items-start gap-2"
 					style={{ paddingLeft: `${depth * 16}px` }}
 				>
 					{parent.type === 'object' ? (
@@ -178,7 +218,7 @@ export const JsonTemplateEditor = ({
 						</SelectContent>
 					</Select>
 					{node.type === 'string' && (
-						<Input
+						<GrowingTextarea
 							ref={(el) => {
 								refFor(node.id).current = el;
 							}}
@@ -186,7 +226,6 @@ export const JsonTemplateEditor = ({
 							onChange={(e) => emit(updateNode(tree!, node.id, { value: e.target.value }))}
 							placeholder="value — {{variables}} allowed"
 							aria-label="Field value"
-							className="h-8 font-mono text-xs"
 						/>
 					)}
 					{node.type === 'number' && (
