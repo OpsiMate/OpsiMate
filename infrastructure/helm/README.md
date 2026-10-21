@@ -10,10 +10,10 @@ A production-ready Helm chart for deploying OpsiMate on Kubernetes.
 
 ## Understanding Local vs Production
 
-| Environment | Frontend | Backend | Why |
-|-------------|----------|---------|-----|
+| Environment       | Frontend              | Backend               | Why                                 |
+| ----------------- | --------------------- | --------------------- | ----------------------------------- |
 | **Local Testing** | LoadBalancer (public) | LoadBalancer (public) | Browser needs direct access to both |
-| **Production** | ClusterIP (private) | ClusterIP (private) | Ingress routes traffic internally |
+| **Production**    | ClusterIP (private)   | ClusterIP (private)   | Ingress routes traffic internally   |
 
 **Why is backend public in local testing?**
 
@@ -97,94 +97,96 @@ kubectl get svc -n opsimate
 #    Backend:  http://localhost:3001 (API)
 ```
 
-
 ## Configuration
 
 ### Namespace
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `namespace.create` | Create the namespace | `true` |
-| `namespace.name` | Namespace name | `opsimate` |
+| Parameter          | Description          | Default    |
+| ------------------ | -------------------- | ---------- |
+| `namespace.create` | Create the namespace | `true`     |
+| `namespace.name`   | Namespace name       | `opsimate` |
 
 ### Backend
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `backend.replicaCount` | Number of replicas | `1` |
-| `backend.image.repository` | Image repository | `opsimate/backend` |
-| `backend.image.tag` | Image tag | `latest` |
-| `backend.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `backend.port` | Container port | `3001` |
-| `backend.resources.limits.cpu` | CPU limit | `500m` |
-| `backend.resources.limits.memory` | Memory limit | `512Mi` |
-| `backend.resources.requests.cpu` | CPU request | `100m` |
-| `backend.resources.requests.memory` | Memory request | `128Mi` |
+| Parameter                           | Description        | Default            |
+| ----------------------------------- | ------------------ | ------------------ |
+| `backend.replicaCount`              | Number of replicas | `1`                |
+| `backend.image.repository`          | Image repository   | `opsimate/backend` |
+| `backend.image.tag`                 | Image tag          | `latest`           |
+| `backend.image.pullPolicy`          | Image pull policy  | `IfNotPresent`     |
+| `backend.port`                      | Container port     | `3001`             |
+| `backend.resources.limits.cpu`      | CPU limit          | `500m`             |
+| `backend.resources.limits.memory`   | Memory limit       | `512Mi`            |
+| `backend.resources.requests.cpu`    | CPU request        | `100m`             |
+| `backend.resources.requests.memory` | Memory request     | `128Mi`            |
 
 ### Worker
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `worker.replicaCount` | Number of replicas | `1` |
-| `worker.image.repository` | Image repository | `opsimate/backend` |
-| `worker.image.tag` | Image tag | `latest` |
-| `worker.command` | Override command | `["node", "apps/server/dist/worker.js"]` |
+| Parameter                 | Description        | Default                                  |
+| ------------------------- | ------------------ | ---------------------------------------- |
+| `worker.replicaCount`     | Number of replicas | `1`                                      |
+| `worker.image.repository` | Image repository   | `opsimate/backend`                       |
+| `worker.image.tag`        | Image tag          | `latest`                                 |
+| `worker.command`          | Override command   | `["node", "apps/server/dist/worker.js"]` |
 
 ### Frontend
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `frontend.replicaCount` | Number of replicas | `1` |
-| `frontend.image.repository` | Image repository | `opsimate/frontend` |
-| `frontend.image.tag` | Image tag | `latest` |
-| `frontend.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `frontend.port` | Container port | `8080` |
+| Parameter                   | Description        | Default             |
+| --------------------------- | ------------------ | ------------------- |
+| `frontend.replicaCount`     | Number of replicas | `1`                 |
+| `frontend.image.repository` | Image repository   | `opsimate/frontend` |
+| `frontend.image.tag`        | Image tag          | `latest`            |
+| `frontend.image.pullPolicy` | Image pull policy  | `IfNotPresent`      |
+| `frontend.port`             | Container port     | `8080`              |
 
 ### MCP server (optional)
 
 The container AI assistants connect to; it reads alerts and dashboards through the backend's API with each caller's own token. See `configuration_example/README.md`.
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `mcp.enabled` | Deploy the MCP server | `false` |
-| `mcp.replicaCount` | Number of replicas | `1` |
-| `mcp.image.repository` | Image repository | `opsimate/mcp` |
-| `mcp.image.tag` | Image tag | `latest` |
-| `mcp.port` | Container port | `3100` |
-| `mcp.env.OPSIMATE_URL` | OpsiMate's URL from the cluster (empty = the chart's backend service) | `""` |
-| `mcp.env.MCP_RATE_LIMIT_PER_MINUTE` | Requests per caller per minute (`0` = none) | `"240"` |
+| Parameter                           | Description                                                           | Default        |
+| ----------------------------------- | --------------------------------------------------------------------- | -------------- |
+| `mcp.enabled`                       | Deploy the MCP server                                                 | `false`        |
+| `mcp.replicaCount`                  | Number of replicas                                                    | `1`            |
+| `mcp.image.repository`              | Image repository                                                      | `opsimate/mcp` |
+| `mcp.image.tag`                     | Image tag                                                             | `latest`       |
+| `mcp.image.pullPolicy`              | Image pull policy                                                     | `IfNotPresent` |
+| `mcp.port`                          | Container port                                                        | `3100`         |
+| `mcp.env.OPSIMATE_URL`              | OpsiMate's URL from the cluster (empty = the chart's backend service) | `""`           |
+| `mcp.env.MCP_RATE_LIMIT_PER_MINUTE` | Requests per caller per minute (`0` = none)                           | `"240"`        |
 
 ### Services
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `service.frontend.type` | Frontend service type | `LoadBalancer` |
-| `service.backend.type` | Backend service type | `ClusterIP` |
-| `service.mcp.type` | MCP service type (when `mcp.enabled`) | `ClusterIP` |
+| Parameter               | Description                           | Default        |
+| ----------------------- | ------------------------------------- | -------------- |
+| `service.frontend.type` | Frontend service type                 | `LoadBalancer` |
+| `service.backend.type`  | Backend service type                  | `ClusterIP`    |
+| `service.mcp.type`      | MCP service type (when `mcp.enabled`) | `ClusterIP`    |
+
+To reach the MCP server through the Ingress, add a path for it next to the backend's: `{ path: /mcp, pathType: Prefix, service: mcp }` — assistants then connect to `https://<your-host>/mcp`.
 
 ### Persistence
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `persistence.enabled` | Enable persistence | `true` |
-| `persistence.storageClass` | Storage class | `""` (default) |
-| `persistence.accessMode` | Access mode | `ReadWriteOnce` |
-| `persistence.size` | Volume size | `2Gi` |
+| Parameter                  | Description        | Default         |
+| -------------------------- | ------------------ | --------------- |
+| `persistence.enabled`      | Enable persistence | `true`          |
+| `persistence.storageClass` | Storage class      | `""` (default)  |
+| `persistence.accessMode`   | Access mode        | `ReadWriteOnce` |
+| `persistence.size`         | Volume size        | `2Gi`           |
 
 ### Secrets
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `secrets.apiToken` | API authentication token | `opsimate` |
-| `secrets.existingSecret` | Use existing secret | `""` |
+| Parameter                | Description              | Default    |
+| ------------------------ | ------------------------ | ---------- |
+| `secrets.apiToken`       | API authentication token | `opsimate` |
+| `secrets.existingSecret` | Use existing secret      | `""`       |
 
 ### Ingress
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `ingress.enabled` | Enable ingress | `false` |
-| `ingress.className` | Ingress class | `nginx` |
-| `ingress.hosts[0].host` | Hostname | `opsimate.example.com` |
+| Parameter               | Description    | Default                |
+| ----------------------- | -------------- | ---------------------- |
+| `ingress.enabled`       | Enable ingress | `false`                |
+| `ingress.className`     | Ingress class  | `nginx`                |
+| `ingress.hosts[0].host` | Hostname       | `opsimate.example.com` |
 
 ## Deployment Scenarios
 
@@ -209,6 +211,7 @@ helm install opsimate . -f values-local.yaml -n opsimate --create-namespace
 ```
 
 Access:
+
 - Frontend: http://localhost:8080
 - Backend API: http://localhost:3001
 
@@ -292,7 +295,6 @@ ingress:
 ```bash
 helm install opsimate . -f values-eks.yaml -n opsimate --create-namespace
 ```
-
 
 ## Useful Commands
 

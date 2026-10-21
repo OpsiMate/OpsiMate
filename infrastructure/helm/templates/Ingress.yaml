@@ -41,6 +41,10 @@ spec:
                 name: {{ include "opsimate.backend.serviceName" $ }}
                 port:
                   number: {{ $.Values.backend.port }}
+                {{- else if eq .service "mcp" }}
+                name: {{ include "opsimate.mcp.serviceName" $ }}
+                port:
+                  number: {{ $.Values.mcp.port }}
                 {{- end }}
           {{- end }}
     {{- end }}

@@ -1,7 +1,8 @@
 // The MCP server (apps/mcp, its own container) as clients see it: the path it serves at and
-// the tools it offers. One list for the server (which registers them), its tests (which
-// check the registered set is exactly this one) and the Settings guide (which describes
-// them to the person connecting an assistant), so none of the three can drift.
+// the tools it offers. The server registers its tools by hand (apps/mcp/src/mcp/tools); its
+// tests check that the registered set is exactly this list, and the Settings guide describes
+// this list to the person connecting an assistant — so the guide cannot drift from the
+// server without a test failing.
 
 export const MCP_PATH = '/mcp';
 // The port the mcp container publishes by default (docker-compose, Helm).

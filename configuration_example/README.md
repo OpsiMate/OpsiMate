@@ -85,7 +85,7 @@ It holds no credentials of its own: each MCP client authenticates with the API t
 | `OPSIMATE_TIMEOUT_MS`       | `15000`               | How long one call to OpsiMate may take                                            |
 
 - **Connect Claude Code:** `claude mcp add --transport http opsimate http://<host>:3100/mcp --header "x-api-token: <token>"`. **Settings → AI → AI assistants (MCP)** in the app has ready-to-paste snippets for Cursor, VS Code and Claude Desktop.
-- **Clients that start a local process** (Claude Desktop) run the same image over stdio, with the credential in the environment rather than on the command line: `docker run -i --rm -e OPSIMATE_API_TOKEN opsimate/mcp node apps/mcp/dist/cli.js --stdio --url http://host.docker.internal:3001`.
+- **Clients that start a local process** (Claude Desktop) run the same image over stdio, with the credential in the environment rather than on the command line: `docker run -i --rm -e OPSIMATE_API_TOKEN --add-host=host.docker.internal:host-gateway opsimate/mcp node apps/mcp/dist/cli.js --stdio --url http://host.docker.internal:3001` (the `--add-host` is what makes `host.docker.internal` resolve on Linux Docker Engine; Docker Desktop does it by itself).
 - `GET /health` on the container reports that it is up and its version (not the OpsiMate URL: the endpoint is unauthenticated).
 - The rate limit is a fair-use limit per credential for assistants that loop, not an abuse control: a caller with a different token gets its own bucket. Keep the endpoint inside your network or behind the same gateway as OpsiMate.
 

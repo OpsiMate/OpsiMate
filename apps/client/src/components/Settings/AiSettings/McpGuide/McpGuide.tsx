@@ -12,7 +12,8 @@ const { protocol, hostname } = window.location;
 export const DEFAULT_MCP_URL = `${protocol}//${hostname}:${MCP_DEFAULT_PORT}${MCP_PATH}`;
 
 // Where a process in a container on this machine reaches OpsiMate: "localhost" there is
-// the container itself.
+// the container itself. Docker Desktop resolves host.docker.internal by itself; Docker
+// Engine on Linux only with the --add-host mapping in the snippet (harmless elsewhere).
 const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(hostname);
 const OPSIMATE_URL_FOR_CONTAINER = isLocalHost ? 'http://host.docker.internal:3001' : API_HOST;
 
@@ -50,7 +51,8 @@ const STDIO_EXAMPLE = `{
   "mcpServers": {
     "opsimate": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "OPSIMATE_API_TOKEN", "opsimate/mcp",
+      "args": ["run", "-i", "--rm", "-e", "OPSIMATE_API_TOKEN",
+               "--add-host=host.docker.internal:host-gateway", "opsimate/mcp",
                "node", "apps/mcp/dist/cli.js", "--stdio", "--url", "${OPSIMATE_URL_FOR_CONTAINER}"],
       "env": { "OPSIMATE_API_TOKEN": "{your_api_token}" }
     }

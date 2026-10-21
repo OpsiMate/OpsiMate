@@ -32,11 +32,14 @@ describe('McpGuide', () => {
 		render(<McpGuide />);
 		const stdio = screen.getByText(/"--stdio"/).textContent ?? '';
 		expect(stdio).toContain('"command": "docker"');
-		expect(stdio).toContain('"-e", "OPSIMATE_API_TOKEN", "opsimate/mcp"');
+		expect(stdio).toContain('"-e", "OPSIMATE_API_TOKEN",');
+		expect(stdio).toContain('"opsimate/mcp",');
 		expect(stdio).toContain('"env": { "OPSIMATE_API_TOKEN": "{your_api_token}" }');
 		expect(stdio).not.toMatch(/OPSIMATE_API_TOKEN=\{/);
 		// jsdom runs on localhost: inside a container that is the container itself.
 		expect(stdio).toContain('"--url", "http://host.docker.internal:3001"');
+		// Linux Docker Engine resolves host.docker.internal only with this mapping.
+		expect(stdio).toContain('"--add-host=host.docker.internal:host-gateway"');
 	});
 
 	test('lists every tool the server offers, by name, with copy buttons on the snippets', () => {
