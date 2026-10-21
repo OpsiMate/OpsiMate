@@ -9,3 +9,4 @@ export * from './alerts/alertGroups';
 export * from './alerts/timePresets';
 export * from './mutePolicy.utils';
 export * from './alerts/filterVocabulary';
+export * from './jsonTemplate';
