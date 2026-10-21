@@ -17,6 +17,30 @@ import { Loader2, Send } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { SendFieldsForm } from './SendFieldsForm';
+import { getAtPath, setAtPath } from '@/lib/jsonFields';
+
+// A chosen field whose variable this alert has no value for ({{label.priority}} with no
+// such tag) renders as that placeholder, literally. The sender is about to type it in,
+// so it starts empty rather than making them delete the braces first.
+const clearUnresolvedFields = (body: string, action: Action): string => {
+	const fields = action.type === 'http' ? ((action.config as HttpActionConfig).editableFields ?? []) : [];
+	if (fields.length === 0) return body;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(body) as unknown;
+	} catch {
+		return body;
+	}
+	let changed = false;
+	for (const field of fields) {
+		const value = getAtPath(parsed, field.path);
+		if (typeof value === 'string' && /^\{\{\s*[\w.]+\s*\}\}$/.test(value)) {
+			parsed = setAtPath(parsed, field.path, '');
+			changed = true;
+		}
+	}
+	return changed ? JSON.stringify(parsed, null, 2) : body;
+};
 
 interface ActionSendDialogProps {
 	open: boolean;
@@ -65,7 +89,7 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 					setSummary(p.summary);
 					setDescription(p.description);
 				} else if (p.type === 'http') {
-					setBody(p.body);
+					setBody(clearUnresolvedFields(p.body, action));
 				}
 			})
 			.catch((err) => setError(err instanceof Error ? err.message : 'Failed to build preview'));

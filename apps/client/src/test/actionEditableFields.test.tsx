@@ -181,6 +181,25 @@ describe('ActionSendDialog: only the chosen fields', () => {
 		});
 	});
 
+	test('a chosen field whose variable has no value for this alert starts empty', async () => {
+		previewMutateAsync.mockResolvedValue({
+			type: 'http',
+			method: 'POST',
+			url: 'https://example.com/hook',
+			body: JSON.stringify({ title: 'x', priority: '{{label.priority}}' }),
+		});
+		render(
+			<ActionSendDialog
+				open
+				onOpenChange={vi.fn()}
+				action={httpAction({ editableFields: [{ path: 'priority', label: 'Priority' }] })}
+				alert={alert}
+			/>
+		);
+		expect(await screen.findByLabelText(/Priority/)).toHaveValue('');
+		expect(screen.getByLabelText('Full request body')).toHaveTextContent('"priority": ""');
+	});
+
 	test('without chosen fields the raw body box is shown, as before', async () => {
 		previewMutateAsync.mockResolvedValue({
 			type: 'http',
