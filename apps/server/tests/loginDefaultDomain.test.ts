@@ -89,8 +89,12 @@ describe('UserBL login with a default domain', () => {
 describe('login API without a default domain', () => {
 	let app: SuperTest<Test>;
 	let db: Database.Database;
+	// The app reads LOGIN_DEFAULT_EMAIL_DOMAIN when it is built: a developer's shell that
+	// has it set would make "admin" resolve, and the 401 below a 200.
+	const envDomain = process.env.LOGIN_DEFAULT_EMAIL_DOMAIN;
 
 	beforeAll(async () => {
+		delete process.env.LOGIN_DEFAULT_EMAIL_DOMAIN;
 		db = await setupDB();
 		app = await setupExpressApp(db);
 		await app
@@ -98,7 +102,10 @@ describe('login API without a default domain', () => {
 			.send({ email: 'admin@acme.test', fullName: 'Admin', password: 'securepassword' });
 	});
 
-	afterAll(() => db.close());
+	afterAll(() => {
+		if (envDomain !== undefined) process.env.LOGIN_DEFAULT_EMAIL_DOMAIN = envDomain;
+		db.close();
+	});
 
 	test('a bare name is not a validation error — it is simply not a known login', async () => {
 		const res = await app.post('/api/v1/users/login').send({ email: 'admin', password: 'securepassword' });
