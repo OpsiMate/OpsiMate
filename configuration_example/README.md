@@ -70,6 +70,25 @@ docker run -d \
   OpsiMate
 ```
 
+## AI assistants (MCP)
+
+OpsiMate ships a [Model Context Protocol](https://modelcontextprotocol.io) server as its own container, `opsimate/mcp` (the `mcp` service in `docker-compose.yml`; `mcp.enabled` in the Helm chart). An assistant such as Claude Code, Claude Desktop or Cursor connects to it and can answer questions about your dashboards and alerts. Everything it offers is read-only.
+
+It holds no credentials of its own: each MCP client authenticates with the API token (`x-api-token`, the `security.api_token` of the configuration) or a user's login token, and the container forwards that to OpsiMate's REST API as received. A Viewer stays a Viewer, and OpsiMate's logs see the real caller. Tokens in the query string are refused.
+
+| Variable                    | Default               | Meaning                                                                           |
+| --------------------------- | --------------------- | --------------------------------------------------------------------------------- |
+| `OPSIMATE_URL`              | `http://backend:3001` | Where OpsiMate's API is, as seen from the container                               |
+| `MCP_PORT` / `MCP_HOST`     | `3100` / `0.0.0.0`    | Where the Streamable HTTP endpoint listens                                        |
+| `MCP_PATH`                  | `/mcp`                | The endpoint's path                                                               |
+| `MCP_RATE_LIMIT_PER_MINUTE` | `240`                 | Requests per caller per minute; `0` = no limit. Over it: `429` with `Retry-After` |
+| `OPSIMATE_TIMEOUT_MS`       | `15000`               | How long one call to OpsiMate may take                                            |
+
+- **Connect Claude Code:** `claude mcp add --transport http opsimate http://<host>:3100/mcp --header "x-api-token: <token>"`. **Settings → AI → AI assistants (MCP)** in the app has ready-to-paste snippets for Cursor, VS Code and Claude Desktop.
+- **Clients that start a local process** (Claude Desktop) run the same image over stdio, with the credential in the environment rather than on the command line: `docker run -i --rm -e OPSIMATE_API_TOKEN --add-host=host.docker.internal:host-gateway opsimate/mcp node apps/mcp/dist/cli.js --stdio --url http://host.docker.internal:3001` (the `--add-host` is what makes `host.docker.internal` resolve on Linux Docker Engine; Docker Desktop does it by itself).
+- `GET /health` on the container reports that it is up and its version (not the OpsiMate URL: the endpoint is unauthenticated).
+- The rate limit is a fair-use limit per credential for assistants that loop, not an abuse control: a caller with a different token gets its own bucket. Keep the endpoint inside your network or behind the same gateway as OpsiMate.
+
 ## LDAP / Active Directory Login
 
 OpsiMate can sign users in against an LDAP directory (OpenLDAP, Active Directory, FreeIPA, ...).

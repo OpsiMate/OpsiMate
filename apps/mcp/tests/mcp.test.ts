@@ -1,4 +1,5 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { MCP_TOOLS } from '@OpsiMate/shared';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -11,15 +12,8 @@ import { ago, API_TOKEN, FakeOpsiMate, startFakeOpsiMate, VIEWER_JWT } from './f
 // a real port, a fake OpsiMate behind it that runs the real query engine and records the
 // credentials it was given.
 
-const TOOL_NAMES = [
-	'get_alert',
-	'get_alert_analytics',
-	'get_dashboard',
-	'get_dashboard_alerts',
-	'list_alert_filter_values',
-	'list_dashboards',
-	'search_alerts',
-];
+// The shared list is what the Settings guide shows people; it must be exactly what is served.
+const TOOL_NAMES = MCP_TOOLS.map((tool) => tool.name).sort();
 
 interface AlertListsResult {
 	include: string;
@@ -127,6 +121,9 @@ describe('reaching the server', () => {
 	test('tools/list is the seven read-only tools, each with an output schema', async () => {
 		const { tools } = await client.listTools();
 		expect(tools.map((tool) => tool.name).sort()).toEqual(TOOL_NAMES);
+		for (const info of MCP_TOOLS) {
+			expect(tools.find((tool) => tool.name === info.name)?.title, info.name).toBe(info.title);
+		}
 		for (const tool of tools) {
 			expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
 			expect(tool.outputSchema, tool.name).toBeDefined();

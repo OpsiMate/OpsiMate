@@ -1,3 +1,5 @@
+import { MCP_DEFAULT_PORT, MCP_PATH } from '@OpsiMate/shared';
+
 // Everything the MCP server is told from outside: where OpsiMate is, how to listen, and
 // (stdio mode only) which credential to use. Read once at startup.
 
@@ -16,8 +18,8 @@ export interface McpConfig {
 	opsimateTimeoutMs: number;
 }
 
-export const DEFAULT_PORT = 3100;
-export const DEFAULT_PATH = '/mcp';
+export const DEFAULT_PORT = MCP_DEFAULT_PORT;
+export const DEFAULT_PATH = MCP_PATH;
 export const DEFAULT_RATE_LIMIT_PER_MINUTE = 240;
 export const DEFAULT_OPSIMATE_TIMEOUT_MS = 15_000;
 
