@@ -2,8 +2,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { listTemplateFields, pathLabel, TemplateField } from '@/lib/jsonFields';
 import type { HttpEditableField } from '@OpsiMate/shared';
-import { AlertTriangle, PencilLine } from 'lucide-react';
-import { useMemo } from 'react';
+import { AlertTriangle, PencilLine, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+// The schema's cap on editableFields; the Send dialog is a form, not a second JSON editor.
+export const MAX_EDITABLE_FIELDS = 50;
 
 interface EditableFieldsPickerProps {
 	// The JSON body template as typed; its leaves are what can be ticked.
@@ -18,6 +21,19 @@ interface EditableFieldsPickerProps {
 export const EditableFieldsPicker = ({ template, value, onChange }: EditableFieldsPickerProps) => {
 	const fields = useMemo(() => listTemplateFields(template), [template]);
 	const byPath = new Map(value.map((f) => [f.path, f]));
+	// A body with dozens of fields is filtered rather than scrolled through; ticked fields
+	// always stay visible so nothing chosen is out of sight.
+	const [filter, setFilter] = useState('');
+	const needle = filter.trim().toLowerCase();
+	const shown = needle
+		? fields.filter(
+				(f) =>
+					byPath.has(f.path) ||
+					pathLabel(f.path).toLowerCase().includes(needle) ||
+					f.sample.toLowerCase().includes(needle)
+			)
+		: fields;
+	const atLimit = value.length >= MAX_EDITABLE_FIELDS;
 	// Ticked earlier, but no longer in the template (renamed or removed): shown so it can be
 	// unticked rather than silently kept and then ignored at send time.
 	const orphans = value.filter((f) => !fields.some((t) => t.path === f.path));
@@ -45,20 +61,43 @@ export const EditableFieldsPicker = ({ template, value, onChange }: EditableFiel
 				Tick the fields a person may change when sending this action. Everything else goes out as written; a
 				ticked field is prefilled with its value and can be edited — an empty field becomes a free-text box.
 			</p>
-			<ul className="divide-y rounded-md border bg-background" aria-label="Fields the sender can change">
-				{fields.map((field) => {
+			{fields.length > 12 && (
+				<div className="relative">
+					<Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+					<Input
+						value={filter}
+						onChange={(e) => setFilter(e.target.value)}
+						placeholder={`Filter ${fields.length} fields…`}
+						aria-label="Filter fields"
+						className="h-8 pl-7 text-xs"
+					/>
+				</div>
+			)}
+			<ul
+				className="divide-y rounded-md border bg-background max-h-80 overflow-y-auto"
+				aria-label="Fields the sender can change"
+			>
+				{shown.length === 0 && (
+					<li className="px-3 py-2 text-xs text-muted-foreground">No field matches "{filter}".</li>
+				)}
+				{shown.map((field) => {
 					const picked = byPath.get(field.path);
 					return (
 						<li key={field.path} className="px-3 py-2 space-y-2">
 							<label className="flex items-center gap-2 cursor-pointer">
 								<Checkbox
 									checked={picked !== undefined}
+									disabled={picked === undefined && atLimit}
 									onCheckedChange={(v) => toggle(field, v === true)}
 									aria-label={`Sender can change ${pathLabel(field.path)}`}
 								/>
 								<span className="font-mono text-xs">{pathLabel(field.path)}</span>
-								<span className="text-xs text-muted-foreground truncate">
-									{field.sample === '' ? '(empty)' : field.sample}
+								<span className="text-xs text-muted-foreground truncate" title={field.sample}>
+									{field.sample === ''
+										? '(empty)'
+										: field.sample.length > 60
+											? `${field.sample.slice(0, 60)}…`
+											: field.sample}
 								</span>
 							</label>
 							{picked && (
@@ -105,7 +144,8 @@ export const EditableFieldsPicker = ({ template, value, onChange }: EditableFiel
 			{value.length > 0 && (
 				<p className="flex items-center gap-1 text-xs text-muted-foreground">
 					<PencilLine className="h-3.5 w-3.5" aria-hidden />
-					{value.length} field{value.length > 1 ? 's' : ''} the sender can change.
+					{value.length} field{value.length > 1 ? 's' : ''} the sender can change
+					{atLimit ? ` — that is the limit (${MAX_EDITABLE_FIELDS}).` : '.'}
 				</p>
 			)}
 		</div>

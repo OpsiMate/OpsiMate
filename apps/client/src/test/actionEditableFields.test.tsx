@@ -60,25 +60,25 @@ beforeEach(() => {
 describe('jsonFields', () => {
 	test('lists the leaves of a template in order, with their kind and sample', () => {
 		expect(listTemplateFields(TEMPLATE).map((f) => [f.path, f.kind, f.sample])).toEqual([
-			['title', 'string', '[{{severity}}] {{name}}'],
-			['comment', 'string', ''],
-			['urgent', 'boolean', 'false'],
-			['labels.env', 'string', '{{label.env}}'],
-			['labels.site', 'string', '{{label.site}}'],
-			['count', 'variable', '{{label.count}}'],
+			['/title', 'string', '[{{severity}}] {{name}}'],
+			['/comment', 'string', ''],
+			['/urgent', 'boolean', 'false'],
+			['/labels/env', 'string', '{{label.env}}'],
+			['/labels/site', 'string', '{{label.site}}'],
+			['/count', 'variable', '{{label.count}}'],
 		]);
 		expect(listTemplateFields('{"a":')).toEqual([]);
-		expect(pathLabel('tags.0')).toBe('tags › #1');
+		expect(pathLabel('/tags/0')).toBe('tags › #1');
 	});
 
 	test('reads and writes by path without touching the rest, keeping the field type', () => {
 		const body = { a: { b: 1 }, list: ['x', 'y'], flag: true };
-		expect(getAtPath(body, 'a.b')).toBe(1);
-		expect(getAtPath(body, 'list.1')).toBe('y');
-		const next = setAtPath(body, 'a.b', coerceFieldValue(1, '42')) as typeof body;
+		expect(getAtPath(body, '/a/b')).toBe(1);
+		expect(getAtPath(body, '/list/1')).toBe('y');
+		const next = setAtPath(body, '/a/b', coerceFieldValue(1, '42')) as typeof body;
 		expect(next.a.b).toBe(42);
 		expect(body.a.b).toBe(1);
-		expect(setAtPath(body, 'list.0', 'z')).toMatchObject({ list: ['z', 'y'] });
+		expect(setAtPath(body, '/list/0', 'z')).toMatchObject({ list: ['z', 'y'] });
 		expect(coerceFieldValue(true, 'false')).toBe(false);
 		expect(coerceFieldValue('text', '7')).toBe('7');
 		expect(coerceFieldValue(1, 'not a number')).toBe('not a number');
@@ -102,8 +102,8 @@ describe('ActionFormDialog: fields the sender can change', () => {
 		await waitFor(() => expect(updateMutateAsync).toHaveBeenCalledTimes(1));
 		const config = updateMutateAsync.mock.calls[0][0].payload.config as HttpActionConfig;
 		expect(config.editableFields).toEqual([
-			{ path: 'comment', label: 'Note for the ticket', multiline: true },
-			{ path: 'labels.site' },
+			{ path: '/comment', label: 'Note for the ticket', multiline: true },
+			{ path: '/labels/site' },
 		]);
 	});
 
@@ -112,7 +112,7 @@ describe('ActionFormDialog: fields the sender can change', () => {
 			<ActionFormDialog
 				open
 				onOpenChange={vi.fn()}
-				action={httpAction({ editableFields: [{ path: 'gone' }, { path: 'comment' }] })}
+				action={httpAction({ editableFields: [{ path: '/gone' }, { path: '/comment' }] })}
 			/>
 		);
 		expect(screen.getByText(/not in the body any more/)).toBeInTheDocument();
@@ -146,10 +146,10 @@ describe('ActionSendDialog: only the chosen fields', () => {
 				onOpenChange={vi.fn()}
 				action={httpAction({
 					editableFields: [
-						{ path: 'comment', label: 'Note for the ticket', multiline: true },
-						{ path: 'labels.site' },
-						{ path: 'urgent' },
-						{ path: 'count' },
+						{ path: '/comment', label: 'Note for the ticket', multiline: true },
+						{ path: '/labels/site' },
+						{ path: '/urgent' },
+						{ path: '/count' },
 					],
 				})}
 				alert={alert}
@@ -192,7 +192,7 @@ describe('ActionSendDialog: only the chosen fields', () => {
 			<ActionSendDialog
 				open
 				onOpenChange={vi.fn()}
-				action={httpAction({ editableFields: [{ path: 'priority', label: 'Priority' }] })}
+				action={httpAction({ editableFields: [{ path: '/priority', label: 'Priority' }] })}
 				alert={alert}
 			/>
 		);

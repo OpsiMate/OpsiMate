@@ -408,7 +408,8 @@ const httpActionConfigSchema = z
 		editableFields: z
 			.array(
 				z.object({
-					path: z.string().trim().min(1).max(200),
+					// A JSON Pointer into the body ("/labels/site", "/tags/0").
+					path: z.string().trim().min(1).max(200).regex(/^\//, 'A field path starts with "/"'),
 					label: z.string().trim().max(100).optional().nullable(),
 					multiline: z.boolean().optional().nullable(),
 				})
