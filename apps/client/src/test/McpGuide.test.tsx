@@ -26,6 +26,12 @@ describe('McpGuide', () => {
 		expect(mcpJson).toContain('"mcpServers"');
 		expect(mcpJson).toContain('"type": "http"');
 		expect(vscode).toContain('"servers"');
+		// No snippet asks for the token itself: the command and the project files read it from
+		// the environment (a committed .mcp.json or shell history must not carry it).
+		expect(screen.getByText(/claude mcp add/).textContent).toContain('"x-api-token: $OPSIMATE_API_TOKEN"');
+		expect(screen.getByText(/claude mcp add/).textContent).not.toContain('{your_api_token}');
+		expect(mcpJson).toContain('"x-api-token": "${OPSIMATE_API_TOKEN}"');
+		expect(vscode).toContain('"x-api-token": "${env:OPSIMATE_API_TOKEN}"');
 	});
 
 	test('the stdio snippet runs the image with the token in env, never in args, and reaches OpsiMate from the container', () => {

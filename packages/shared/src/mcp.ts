@@ -31,7 +31,7 @@ export const MCP_TOOLS: readonly McpToolInfo[] = [
 		name: 'get_dashboard_alerts',
 		title: 'Alerts of a dashboard',
 		summary:
-			'What a dashboard shows right now — active, resolved or both — paged, with counts by severity and status.',
+			'What a dashboard shows right now — active, resolved or both — paged, with counts by severity and status when the result is within the summary limit (20,000 alerts).',
 	},
 	{
 		name: 'search_alerts',

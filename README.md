@@ -119,7 +119,7 @@ curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/star
 - **Backend:** [http://localhost:3001](http://localhost:3001)
 - **Client:** [http://localhost:8080](http://localhost:8080)
 - **API reference:** [http://localhost:3001/api/docs](http://localhost:3001/api/docs) — Swagger UI with "Try it out"; the OpenAPI document is at `/api/openapi.json` (set `API_DOCS_ENABLED=false` to turn both off)
-- **AI assistants (MCP):** `http://localhost:3100/mcp` — the `mcp` container, a read-only [MCP](https://modelcontextprotocol.io) server for Claude Code, Claude Desktop, Cursor and other assistants: dashboards, alerts, comments, root causes and analytics through seven tools, read from the backend with each caller's own token. Connect with `claude mcp add --transport http opsimate http://localhost:3100/mcp --header "x-api-token: <token>"`; Settings → AI has snippets for other clients. Don't want it? Remove the `mcp` service
+- **AI assistants (MCP):** `http://localhost:3100/mcp` — the `mcp` container, a read-only [MCP](https://modelcontextprotocol.io) server for Claude Code, Claude Desktop, Cursor and other assistants: dashboards, alerts, comments, root causes and analytics through seven tools, read from the backend with each caller's own token. Connect with `claude mcp add --transport http opsimate http://localhost:3100/mcp --header "x-api-token: <token>"`; Settings → AI has snippets for other clients. Don't want it? Remove the `mcp` service Existing installs: fetch the latest `docker-compose.yml` first — `scripts/start-docker.sh` keeps the one you have, and older files have no `mcp` service.
 
 The first account you register becomes the admin.
 

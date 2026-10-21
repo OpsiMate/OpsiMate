@@ -17,28 +17,33 @@ export const DEFAULT_MCP_URL = `${protocol}//${hostname}:${MCP_DEFAULT_PORT}${MC
 const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(hostname);
 const OPSIMATE_URL_FOR_CONTAINER = isLocalHost ? 'http://host.docker.internal:3001' : API_HOST;
 
+// The token comes from the shell's environment, so it is not typed into the command (and
+// into shell history); setting OPSIMATE_API_TOKEN is the user's own secrets step.
 const CLAUDE_CODE_EXAMPLE = `claude mcp add --transport http opsimate ${DEFAULT_MCP_URL} \\
-  --header "x-api-token: {your_api_token}"`;
+  --header "x-api-token: $OPSIMATE_API_TOKEN"`;
 
 // The "mcpServers" shape: Cursor (.cursor/mcp.json), Windsurf, and a project's .mcp.json read
-// by Claude Code. "type": "http" names the transport for the clients that need it.
+// by Claude Code. "type": "http" names the transport for the clients that need it. Claude
+// Code expands ${OPSIMATE_API_TOKEN} from the environment, so a committed .mcp.json carries
+// no secret; clients without expansion take the literal token in a file kept out of git.
 const MCP_JSON_EXAMPLE = `{
   "mcpServers": {
     "opsimate": {
       "type": "http",
       "url": "${DEFAULT_MCP_URL}",
-      "headers": { "x-api-token": "{your_api_token}" }
+      "headers": { "x-api-token": "\${OPSIMATE_API_TOKEN}" }
     }
   }
 }`;
 
-// VS Code keeps its own shape: a top-level "servers" object, in .vscode/mcp.json.
+// VS Code keeps its own shape: a top-level "servers" object, in .vscode/mcp.json, and reads
+// environment variables with its own ${env:...} syntax.
 const VSCODE_EXAMPLE = `{
   "servers": {
     "opsimate": {
       "type": "http",
       "url": "${DEFAULT_MCP_URL}",
-      "headers": { "x-api-token": "{your_api_token}" }
+      "headers": { "x-api-token": "\${env:OPSIMATE_API_TOKEN}" }
     }
   }
 }`;
@@ -172,19 +177,19 @@ export const McpGuide = () => (
 				<div className="space-y-4">
 					<ClientSnippet
 						heading="Claude Code"
-						note="One command; the token is kept in Claude Code's own settings."
+						note="One command. Set OPSIMATE_API_TOKEN in your shell first (your secrets manager, or ~/.zshrc) so the token is not typed into the command or saved in shell history; Claude Code then keeps it in its own settings."
 						code={CLAUDE_CODE_EXAMPLE}
 						copyLabel="Copy the Claude Code command"
 					/>
 					<ClientSnippet
 						heading="Cursor, Windsurf, and a project's .mcp.json (Claude Code)"
-						note="The mcpServers shape: .cursor/mcp.json for Cursor, Windsurf's mcp_config.json, or a .mcp.json at a repository root that Claude Code picks up."
+						note="The mcpServers shape: .cursor/mcp.json for Cursor, Windsurf's mcp_config.json, or a .mcp.json at a repository root that Claude Code picks up. Claude Code fills ${OPSIMATE_API_TOKEN} from your environment, so the file can be committed; Cursor and Windsurf need the token itself there — use the user-level file (~/.cursor/mcp.json), not one inside a repository."
 						code={MCP_JSON_EXAMPLE}
 						copyLabel="Copy the mcp.json entry"
 					/>
 					<ClientSnippet
 						heading="VS Code"
-						note="VS Code uses a top-level servers object: put this in .vscode/mcp.json (or the user profile's mcp.json)."
+						note="VS Code uses a top-level servers object: put this in .vscode/mcp.json (or the user profile's mcp.json). ${env:OPSIMATE_API_TOKEN} is read from your environment, so no token lands in the file."
 						code={VSCODE_EXAMPLE}
 						copyLabel="Copy the VS Code entry"
 					/>
