@@ -1,3 +1,4 @@
+import { getLoginDefaultEmailDomain } from './config/config';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import compression from 'compression';
@@ -208,7 +209,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	initMetrics(db);
 
 	// BL
-	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
+	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL, getLoginDefaultEmailDomain());
 	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
 	// settings saved on the Settings page. Local accounts keep signing in locally either way.
 	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);

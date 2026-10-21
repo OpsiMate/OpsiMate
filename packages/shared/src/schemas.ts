@@ -1,3 +1,4 @@
+import { validateJsonTemplate } from './jsonTemplate';
 import { z } from 'zod';
 import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES, ALERT_CALLBACK_EVENTS } from './types';
 
@@ -76,7 +77,9 @@ export const RegisterSchema = CreateUserSchema.omit({ role: true });
 // password, not to presenting one — and directory (LDAP) passwords follow the
 // directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z.object({
-	email: z.string().email(),
+	// The email, or a bare name the server completes with the installation's default
+	// login domain (login.default_email_domain); which of the two is the server's call.
+	email: z.string().trim().min(1).max(320),
 	// No maximum: none of the password-setting paths has one, so a cap here could
 	// lock out a password that was accepted when set. express.json's body limit
 	// (100kb) already bounds the request.
@@ -395,13 +398,36 @@ const jiraActionConfigSchema = z.object({
 	descriptionTemplate: z.string().max(5000).optional().nullable(),
 });
 
-const httpActionConfigSchema = z.object({
-	url: z.string().url('A valid URL is required'),
-	method: httpMethodSchema,
-	headers: z.record(z.string(), z.string()).optional().nullable(),
-	bodyTemplate: z.string().max(10000).optional().nullable(),
-	fireAndForget: z.boolean().optional().nullable(),
-});
+const httpActionConfigSchema = z
+	.object({
+		url: z.string().url('A valid URL is required'),
+		method: httpMethodSchema,
+		headers: z.record(z.string(), z.string()).optional().nullable(),
+		bodyTemplate: z.string().max(10000).optional().nullable(),
+		bodyFormat: z.enum(['json', 'text']).optional().nullable(),
+		editableFields: z
+			.array(
+				z.object({
+					// A JSON Pointer into the body ("/labels/site", "/tags/0").
+					path: z.string().trim().min(1).max(200).regex(/^\//, 'A field path starts with "/"'),
+					label: z.string().trim().max(100).optional().nullable(),
+					multiline: z.boolean().optional().nullable(),
+				})
+			)
+			.max(50)
+			.optional()
+			.nullable(),
+		fireAndForget: z.boolean().optional().nullable(),
+	})
+	// A JSON body must be JSON (with its placeholders read as strings): a missing comma is
+	// caught here, at save, not on the first alert.
+	.superRefine((cfg, ctx) => {
+		if (cfg.bodyFormat !== 'json' || !cfg.bodyTemplate?.trim()) return;
+		const problem = validateJsonTemplate(cfg.bodyTemplate);
+		if (problem) {
+			ctx.addIssue({ code: 'custom', path: ['bodyTemplate'], message: `Body is not valid JSON: ${problem}` });
+		}
+	});
 
 // Optional alert filter shared by every action type. Empty = applies to all alerts.
 const actionMatchFields = {

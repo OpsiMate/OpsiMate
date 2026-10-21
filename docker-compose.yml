@@ -8,7 +8,7 @@ services:
     image: opsimate/backend:latest
     container_name: opsimate-backend
     ports:
-      - "3001:3001"        
+      - "3001:3001"
     volumes:
       - ./data/database:/app/data/database
       - ./data/private-keys:/app/data/private-keys
@@ -36,13 +36,31 @@ services:
       - CONFIG_FILE=/app/config/config.yml
     restart: unless-stopped
 
+  # AI assistants (Claude Code, Cursor, Claude Desktop...) connect to this; it reads
+  # alerts and dashboards from the backend with each caller's own token.
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    image: opsimate/mcp:latest
+    container_name: opsimate-mcp
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=production
+      - OPSIMATE_URL=http://backend:3001
+      - MCP_PORT=3100
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   frontend:
     image: opsimate/frontend:latest
     container_name: opsimate-frontend
     ports:
-      - "8080:8080"        
+      - "8080:8080"
     environment:
       - NODE_ENV=production
-      - API_URL=http://backend:3001   
+      - API_URL=http://backend:3001
       - HOST=0.0.0.0
     restart: unless-stopped

@@ -17,6 +17,7 @@ import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateAction, useTestAction, useUpdateAction } from '@/hooks/queries/actions';
@@ -34,8 +35,12 @@ import {
 	SlackActionConfig,
 	TeamsActionConfig,
 	getNameNeedles,
+	looksLikeJson,
+	validateJsonTemplate,
+	HttpEditableField,
 } from '@OpsiMate/shared';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
+import { EditableFieldsPicker } from '@/components/Actions/EditableFieldsPicker';
 import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -71,6 +76,7 @@ const rowsToHeaders = (rows: HeaderRow[]): Record<string, string> | null => {
 export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialogProps) => {
 	const httpMethodId = useId();
 	const httpFireAndForgetId = useId();
+	const httpBodyProblemId = useId();
 	const isEdit = !!action;
 	const { toast } = useToast();
 	const createMutation = useCreateAction();
@@ -111,6 +117,10 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	const [httpHeaders, setHttpHeaders] = useState<HeaderRow[]>([]);
 	const [httpBody, setHttpBody] = useState('');
 	const [httpFireAndForget, setHttpFireAndForget] = useState(false);
+	const [httpEditableFields, setHttpEditableFields] = useState<HttpEditableField[]>([]);
+	// On for a new action (the body is JSON in almost every case). An action saved before
+	// the field existed loads as text: its behaviour does not change until the user says so.
+	const [httpBodyIsJson, setHttpBodyIsJson] = useState(true);
 
 	// Template variables offered by the picker under each templated field: the fixed
 	// alert fields plus one alert.tags.<key> per tag key seen on current alerts.
@@ -201,15 +211,25 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 				setHttpMethod(cfg.method ?? 'POST');
 				setHttpHeaders(headersToRows(cfg.headers));
 				setHttpBody(cfg.bodyTemplate ?? '');
+				setHttpBodyIsJson(cfg.bodyFormat === 'json');
 				setHttpFireAndForget(cfg.fireAndForget ?? false);
+				setHttpEditableFields(cfg.editableFields ?? []);
 			}
 		} else {
 			setName('');
 			setType('slack');
 			setNameContainsAny([]);
 			setMatcherGroups([]);
+			setHttpBodyIsJson(true);
+			setHttpEditableFields([]);
 		}
 	}, [open, action]);
+
+	// Why the JSON body cannot be saved, or null. Shown under the body field as it is typed.
+	const httpBodyProblem = useMemo(
+		() => (httpBodyIsJson && httpBody.trim() ? validateJsonTemplate(httpBody) : null),
+		[httpBodyIsJson, httpBody]
+	);
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
@@ -227,11 +247,12 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 					jiraIssueType.trim().length > 0
 				);
 			case 'http':
-				return httpUrl.trim().length > 0;
+				return httpUrl.trim().length > 0 && httpBodyProblem === null;
 			default:
 				return false;
 		}
 	}, [
+		httpBodyProblem,
 		name,
 		type,
 		slackWebhookUrl,
@@ -301,6 +322,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						method: httpMethod,
 						headers: rowsToHeaders(httpHeaders),
 						bodyTemplate: httpBody.trim() || null,
+						bodyFormat: httpBodyIsJson ? 'json' : 'text',
+						// Only meaningful for a JSON body: the Send dialog reads them off the rendered JSON.
+						editableFields: httpBodyIsJson && httpEditableFields.length > 0 ? httpEditableFields : null,
 						fireAndForget: httpFireAndForget,
 					},
 				};
@@ -704,8 +728,47 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										onChange={(e) => setHttpBody(e.target.value)}
 										rows={4}
 										className="font-mono text-xs"
+										aria-invalid={httpBodyProblem !== null}
+										aria-describedby={httpBodyProblem ? httpBodyProblemId : undefined}
 									/>
+									{httpBodyProblem && (
+										<p id={httpBodyProblemId} className="text-xs text-destructive" role="alert">
+											Body is not valid JSON: {httpBodyProblem}
+										</p>
+									)}
+									<label className="flex items-start gap-2 cursor-pointer">
+										<Checkbox
+											checked={httpBodyIsJson}
+											onCheckedChange={(v) => setHttpBodyIsJson(v === true)}
+											aria-label="Body is JSON"
+											className="mt-0.5"
+										/>
+										<span className="space-y-0.5">
+											<span className="block text-xs font-medium">Body is JSON</span>
+											<span className="block text-xs text-muted-foreground">
+												{httpBodyIsJson
+													? 'Values are inserted JSON-safely — quotes and line breaks in an alert cannot break the request. Keep {{…}} inside quotes, or bare for a number.'
+													: 'Values are pasted in as plain text, exactly as written.'}
+											</span>
+										</span>
+									</label>
+									{!httpBodyIsJson && looksLikeJson(httpBody) && (
+										<p className="text-xs text-[#92400e] dark:text-[#fde68a]">
+											This looks like JSON — tick "Body is JSON" so quotes in values don't break
+											the request.
+										</p>
+									)}
 								</div>
+								{httpBodyIsJson && (
+									<div className="space-y-2 rounded-md border bg-background p-3">
+										<Label className="text-xs">Fields the sender can change</Label>
+										<EditableFieldsPicker
+											template={httpBody}
+											value={httpEditableFields}
+											onChange={setHttpEditableFields}
+										/>
+									</div>
+								)}
 								<TemplateVariablePicker
 									variables={templateVariables}
 									targets={[
