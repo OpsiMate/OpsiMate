@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { cleanMatcherGroups, MatcherGroupsEditor } from '@/components/shared/MatcherGroupsEditor';
 import { cleanNameMatchers, NameMatchersEditor } from '@/components/shared/NameMatchersEditor';
-import { TemplateVariablePicker } from '@/components/shared';
+import { JsonTemplateEditor, TemplateVariablePicker, type TemplateFieldTarget } from '@/components/shared';
 import { useAlerts } from '@/hooks/queries/alerts';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
@@ -118,6 +118,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	// On for a new action (the body is JSON in almost every case). An action saved before
 	// the field existed loads as text: its behaviour does not change until the user says so.
 	const [httpBodyIsJson, setHttpBodyIsJson] = useState(true);
+	// Where the variable chips insert for the body: the JSON editor's focused row value in
+	// form mode, the textarea otherwise (it reports whichever applies).
+	const [httpBodyTargets, setHttpBodyTargets] = useState<TemplateFieldTarget[]>([]);
 
 	// Template variables offered by the picker under each templated field: the fixed
 	// alert fields plus one alert.tags.<key> per tag key seen on current alerts.
@@ -713,17 +716,28 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 									<Label htmlFor="http-body" className="text-xs">
 										Request body template (optional)
 									</Label>
-									<Textarea
-										id="http-body"
-										ref={httpBodyRef}
-										placeholder={'{\n  "text": "{{name}} fired"\n}'}
-										value={httpBody}
-										onChange={(e) => setHttpBody(e.target.value)}
-										rows={4}
-										className="font-mono text-xs"
-										aria-invalid={httpBodyProblem !== null}
-										aria-describedby={httpBodyProblem ? httpBodyProblemId : undefined}
-									/>
+									{httpBodyIsJson ? (
+										<JsonTemplateEditor
+											value={httpBody}
+											onChange={setHttpBody}
+											variables={templateVariables}
+											problem={httpBodyProblem}
+											textareaId="http-body"
+											textareaRef={httpBodyRef}
+											textareaPlaceholder={'{\n  "text": "{{name}} fired"\n}'}
+											onTargetsChange={setHttpBodyTargets}
+										/>
+									) : (
+										<Textarea
+											id="http-body"
+											ref={httpBodyRef}
+											placeholder={'{\n  "text": "{{name}} fired"\n}'}
+											value={httpBody}
+											onChange={(e) => setHttpBody(e.target.value)}
+											rows={4}
+											className="font-mono text-xs"
+										/>
+									)}
 									{httpBodyProblem && (
 										<p id={httpBodyProblemId} className="text-xs text-destructive" role="alert">
 											Body is not valid JSON: {httpBodyProblem}
@@ -755,7 +769,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 								<TemplateVariablePicker
 									variables={templateVariables}
 									targets={[
-										{ ref: httpBodyRef, value: httpBody, onChange: setHttpBody },
+										...(httpBodyIsJson
+											? httpBodyTargets
+											: [{ ref: httpBodyRef, value: httpBody, onChange: setHttpBody }]),
 										{ ref: httpUrlRef, value: httpUrl, onChange: setHttpUrl },
 									]}
 									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too):"

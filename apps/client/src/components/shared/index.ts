@@ -8,3 +8,4 @@ export { UnsavedChangesDialog } from './UnsavedChangesDialog';
 export { PlaygroundBanner } from './PlaygroundBanner';
 export { TemplateVariablePicker } from './TemplateVariablePicker';
 export type { TemplateFieldTarget, TemplateVariablePickerProps } from './TemplateVariablePicker';
+export { JsonTemplateEditor } from './JsonTemplateEditor';
