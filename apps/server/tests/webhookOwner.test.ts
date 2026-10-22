@@ -24,13 +24,19 @@ describe('owner from the webhook (API)', () => {
 	const API_TOKEN = 'opsimate';
 
 	const post = (path: string, body: object) => app.post(`${path}?api_token=${API_TOKEN}`).send(body);
-	const alertById = async (id: string) => {
+	interface OwnedAlert {
+		ownerId: string | null;
+	}
+	const alertById = async (id: string): Promise<OwnedAlert> => {
 		const res = await app.get(`/api/v1/alerts/${id}`).set('Authorization', `Bearer ${jwt}`);
-		return res.body.data.alert ?? res.body.data;
+		const data = res.body.data as { alert?: OwnedAlert } & OwnedAlert;
+		return data.alert ?? data;
 	};
 	const historyOf = async (id: string): Promise<string[]> => {
 		const res = await app.get(`/api/v1/alerts/${id}/history`).set('Authorization', `Bearer ${jwt}`);
-		return (res.body.data.data ?? res.body.data).map((e: { description: string }) => e.description);
+		const data = res.body.data as { data?: { description: string }[] } | { description: string }[];
+		const events = Array.isArray(data) ? data : (data.data ?? []);
+		return events.map((e) => e.description);
 	};
 
 	beforeAll(async () => {
