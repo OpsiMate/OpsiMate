@@ -148,7 +148,8 @@ export const MutePolicyFormDialog = ({ open, onOpenChange, mutePolicy }: MutePol
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
 		const hasNameMatcher = nameContainsAny.some((n) => n.trim().length > 0);
-		const hasLabelMatchers = matcherGroups.some((g) => g.some((m) => m.key.trim() && m.value.trim()));
+		// Same rule as the save path, so an "exists" row (no value) counts as a matcher.
+		const hasLabelMatchers = cleanMatcherGroups(matcherGroups).length > 0;
 		if (!matchAll && !hasNameMatcher && !hasLabelMatchers) return false;
 		if (mode === 'recurring') {
 			if (daysOfWeek.length === 0) return false;

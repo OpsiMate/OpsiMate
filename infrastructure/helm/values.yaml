@@ -129,6 +129,56 @@ frontend:
     initialDelaySeconds: 5
     periodSeconds: 5
 
+# -- MCP server: lets AI assistants (Claude Code, Cursor, Claude Desktop...) read alerts
+# and dashboards through the backend's API with each caller's own token. Off by default.
+mcp:
+  # -- Deploy the MCP server
+  enabled: false
+  # -- Number of replicas
+  replicaCount: 1
+
+  image:
+    # -- Image repository
+    repository: opsimate/mcp
+    # -- Image tag (defaults to chart appVersion)
+    tag: latest
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+
+  # -- Container port
+  port: 3100
+
+  # -- Environment variables
+  env:
+    NODE_ENV: production
+    # -- OpsiMate's URL as seen from the cluster; empty = this chart's backend service
+    OPSIMATE_URL: ""
+    # -- Requests per caller per minute (0 = no limit)
+    MCP_RATE_LIMIT_PER_MINUTE: "240"
+
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
 # -- Persistence configuration
 persistence:
   # -- Enable persistence
@@ -169,6 +219,9 @@ service:
     type: ClusterIP
   backend:
     # -- Backend service type (LoadBalancer for local testing, ClusterIP for production with Ingress)
+    type: ClusterIP
+  mcp:
+    # -- MCP service type (only when mcp.enabled)
     type: ClusterIP
 
 # -- Ingress configuration

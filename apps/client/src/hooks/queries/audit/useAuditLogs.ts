@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { auditApi } from '@/lib/api';
 import { queryKeys } from '../queryKeys';
 
@@ -12,5 +12,6 @@ export const useAuditLogs = (page = 1, pageSize = 20) => {
 			}
 			return response.data || { logs: [], total: 0 };
 		},
+		placeholderData: keepPreviousData,
 	});
 };

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Request, Response } from 'express';
 import {
 	AlertHistory,
@@ -11,9 +11,14 @@ import {
 	UpsertRootCauseSchema,
 	RateRootCauseSchema,
 } from '@OpsiMate/shared';
-import { AlertBL, IncomingAlert } from '../../../bl/alerts/alert.bl';
+import { AlertBL, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
 import {
+	ALERT_QUERY_PARAM_KEYS,
 	AlertAnalyticsParamsSchema,
+	AlertBulkActionSchema,
+	AlertFacetsParamsSchema,
+	AlertGroupsParamsSchema,
+	AlertListQueryParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
@@ -32,18 +37,12 @@ import { isZodError } from '../../../utils/isZodError.ts';
 import { routeParam } from '../../../utils/routeParams.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
-import crypto from 'crypto';
-import {
-	ALERT_QUERY_PARAM_KEYS,
-	AlertBulkActionSchema,
-	AlertFacetsParamsSchema,
-	AlertGroupsParamsSchema,
-	AlertListQueryParamsSchema,
-} from './models';
-import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
 const logger: Logger = new Logger('api/v1/alerts/controller');
+
+// String() — the JWT carries the id as a number; comments and callbacks carry it as text.
+const actorIdOf = (req: AuthenticatedRequest): string | null => (req.user != null ? String(req.user.id) : null);
 
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
@@ -166,7 +165,7 @@ export class AlertController {
 			success: true,
 			data: { alerts: page.items, total: page.total, nextCursor: page.nextCursor },
 		});
-		const etag = `"${crypto.createHash('sha1').update(body).digest('hex')}"`;
+		const etag = `"${createHash('sha1').update(body).digest('hex')}"`;
 		res.set('ETag', etag);
 		res.set('Cache-Control', 'no-cache');
 		if (ifNoneMatchSatisfied(req.headers['if-none-match'], etag)) {
@@ -246,7 +245,7 @@ export class AlertController {
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName);
+			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
@@ -315,7 +314,7 @@ export class AlertController {
 				tags[tag.name] = tag.value || 'unknown';
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: monitorId,
 				type: 'UptimeKuma',
 				status: AlertStatus.FIRING,
@@ -330,7 +329,7 @@ export class AlertController {
 
 			return res.status(200).json({
 				success: true,
-				data: { alertId: monitorId, updated: true },
+				data: { alertId: monitorId, updated: true, ...(owner ? { owner } : {}) },
 			});
 		} catch (error) {
 			if (isZodError(error)) {
@@ -443,7 +442,7 @@ export class AlertController {
 				alertUrl = `${baseUrl}/tr_events.php?triggerid=${payload.trigger_id}&eventid=${payload.event_id}`;
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Zabbix',
 				status: AlertStatus.FIRING,
@@ -458,7 +457,7 @@ export class AlertController {
 
 			return res.status(200).json({
 				success: true,
-				data: { alertId, updated: true },
+				data: { alertId, updated: true, ...(owner ? { owner } : {}) },
 			});
 		} catch (error) {
 			if (isZodError(error)) {
@@ -484,10 +483,11 @@ export class AlertController {
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
+			let owner: WebhookOwnerOutcome | undefined;
 			if (incident.state.toLowerCase() === 'closed') {
 				await this.alertBL.resolveAlert(incident.incident_id);
 			} else {
-				await this.alertBL.insertOrUpdateAlert({
+				({ owner } = await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
@@ -504,9 +504,11 @@ export class AlertController {
 						// ever produced a working runbook button.
 						{ label: 'Documentation', icon: '', url: incident.documentation?.content },
 					]),
-				});
+				}));
 			}
-			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
+			return res
+				.status(200)
+				.json({ success: true, data: { alertId: incident.incident_id, ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -545,7 +547,7 @@ export class AlertController {
 					.filter((pair): pair is [string, string] => pair.length === 2) ?? []
 			);
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
@@ -562,7 +564,7 @@ export class AlertController {
 				links: AlertController.buildLinks([{ label: 'View in Datadog', icon: 'datadog', url: payload.link }]),
 			});
 
-			return res.status(200).json({ success: true, data: { alertId } });
+			return res.status(200).json({ success: true, data: { alertId, ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -634,6 +636,7 @@ export class AlertController {
 			summary: alert.summary,
 			runbookUrl: alert.runbookUrl,
 			links: alert.links,
+			owner: alert.owner,
 		};
 	}
 
@@ -667,6 +670,8 @@ export class AlertController {
 			logger.info(`Got grafana webhook with ${alerts.length} alert(s)`);
 
 			const processedIds: string[] = [];
+			// Per alert, what became of an `owner` label, when one was sent.
+			const owners: Record<string, string> = {};
 
 			for (const alert of alerts) {
 				const labels = alert.labels || {};
@@ -720,11 +725,15 @@ export class AlertController {
 					continue;
 				}
 
-				await this.alertBL.insertOrUpdateAlert(incoming);
+				const { owner } = await this.alertBL.insertOrUpdateAlert(incoming);
+				if (owner) owners[alertId] = owner;
 				processedIds.push(alertId);
 			}
 
-			return res.status(200).json({ success: true, data: { processed: processedIds } });
+			return res.status(200).json({
+				success: true,
+				data: { processed: processedIds, ...(Object.keys(owners).length > 0 ? { owners } : {}) },
+			});
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -764,10 +773,13 @@ export class AlertController {
 			}
 
 			const alert = HttpAlertWebhookSchema.parse(req.body);
-			await this.alertBL.insertOrUpdateAlert(
+			const { owner } = await this.alertBL.insertOrUpdateAlert(
 				AlertController.customToIncoming(alert, alert.startsAt || new Date().toISOString())
 			);
-			return res.status(200).json({ success: true, data: { alertId: alert.id, status: 'firing' } });
+			// `owner` says what became of the one sent: assigned, kept (already owned), not_found.
+			return res
+				.status(200)
+				.json({ success: true, data: { alertId: alert.id, status: 'firing', ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -859,6 +871,36 @@ export class AlertController {
 	}
 	// endregion
 
+	// Firing alerts first, then resolved history; `resolved` tells the caller which.
+	// The users alerts can be assigned to, as id + display name: lets a client outside the
+	// UI (the MCP server) show owner names without the admin-only users list. The owner
+	// facet already exposes these names, so nothing new is disclosed.
+	async getAlertOwners(_req: Request, res: Response) {
+		try {
+			return res.json({ success: true, data: await this.alertBL.getOwners() });
+		} catch (error) {
+			logger.error('Error getting alert owners:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getAlert(req: Request, res: Response) {
+		try {
+			const alertId = routeParam(req, 'alertId');
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			const lookup = await this.alertBL.findAlertById(alertId);
+			if (!lookup) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			return res.json({ success: true, data: lookup });
+		} catch (error) {
+			logger.error('Error getting alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = routeParam(req, 'alertId');
@@ -869,19 +911,22 @@ export class AlertController {
 			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
 			// the acting user (unlike the integration webhooks, which resolve without one).
 			// The resolver becomes the alert's owner, and an optional resolve note is stored
-			// as a regular comment.
+			// as a regular comment. Webhook senders still call this route with the API token
+			// (no user) to report recovery: that is a source-reported recovery, so it fires
+			// no callback.
 			await this.alertBL.resolveAlert(
 				alertId,
 				// String() — the JWT carries the id as a number; comments store it as TEXT.
 				{ id: req.user != null ? String(req.user.id) : null, name: req.user?.fullName ?? null },
-				comment
+				comment,
+				{ fireCallback: req.user != null }
 			);
-			return res.json({ success: true, message: 'Alert deleted successfully' });
+			return res.json({ success: true, message: 'Alert resolved successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
-			logger.error('Error deleting alert:', error);
+			logger.error('Error resolving alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -910,7 +955,7 @@ export class AlertController {
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName);
+			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
 			}
@@ -921,13 +966,16 @@ export class AlertController {
 		}
 	}
 
-	async deleteResolvedAlert(req: Request, res: Response) {
+	async deleteResolvedAlert(req: AuthenticatedRequest, res: Response) {
 		try {
 			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteResolvedAlert(alertId);
+			await this.alertBL.deleteResolvedAlert(alertId, {
+				id: req.user != null ? String(req.user.id) : null,
+				name: req.user?.fullName ?? null,
+			});
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);
@@ -991,7 +1039,7 @@ export class AlertController {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}

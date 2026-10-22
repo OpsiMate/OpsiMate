@@ -1,0 +1,75 @@
+{{- if .Values.mcp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsimate.fullname" . }}-mcp
+  labels:
+    {{- include "opsimate.mcp.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.mcp.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "opsimate.mcp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "opsimate.mcp.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "opsimate.serviceAccountName" . }}
+      containers:
+        - name: mcp
+          image: "{{ .Values.mcp.image.repository }}:{{ .Values.mcp.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.mcp.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.port }}
+              protocol: TCP
+          # No credentials of its own: every MCP client's token is forwarded to OpsiMate.
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.mcp.env.NODE_ENV | quote }}
+            - name: OPSIMATE_URL
+              value: {{ include "opsimate.mcp.opsimateUrl" . | quote }}
+            - name: MCP_PORT
+              value: {{ .Values.mcp.port | quote }}
+            - name: MCP_RATE_LIMIT_PER_MINUTE
+              value: {{ .Values.mcp.env.MCP_RATE_LIMIT_PER_MINUTE | quote }}
+          {{- if .Values.mcp.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.mcp.livenessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.mcp.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.mcp.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.mcp.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.mcp.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.mcp.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.mcp.readinessProbe.periodSeconds }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.mcp.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

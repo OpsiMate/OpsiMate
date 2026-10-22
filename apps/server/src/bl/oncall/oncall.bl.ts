@@ -12,6 +12,12 @@ export class DuplicateTeamNameError extends Error {
 		super(`A team named "${name}" already exists`);
 	}
 }
+// Thrown when a member list names user ids that do not exist (the API maps it to 400).
+export class UnknownUserIdsError extends Error {
+	constructor(public readonly userIds: number[]) {
+		super(`Unknown user ids: ${userIds.join(', ')}`);
+	}
+}
 
 export class OncallBL {
 	constructor(private oncallRepo: OncallRepository) {}
@@ -131,10 +137,17 @@ export class OncallBL {
 			logger.info(`Setting members for on-call team ${teamId}: [${userIds.join(', ')}]`);
 			const existing = await this.oncallRepo.getTeam(teamId);
 			if (!existing) return null;
+			const existingIds = await this.oncallRepo.getExistingUserIds(userIds);
+			const unknownIds = userIds.filter((id) => !existingIds.includes(id));
+			if (unknownIds.length > 0) {
+				throw new UnknownUserIdsError(unknownIds);
+			}
 			await this.oncallRepo.setTeamMembers(teamId, userIds);
 			return this.getTeam(teamId);
 		} catch (error) {
-			logger.error(`Error setting members for on-call team ${teamId}`, error);
+			if (!(error instanceof UnknownUserIdsError)) {
+				logger.error(`Error setting members for on-call team ${teamId}`, error);
+			}
 			throw error;
 		}
 	}

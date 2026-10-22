@@ -91,6 +91,12 @@ export interface OpsimateConfig {
 		};
 	};
 	ldap?: LdapConfig;
+	login?: {
+		// Typing a name without "@" at login means <name>@<this domain>, so people need not
+		// type their full address every time. One domain per installation. Env:
+		// LOGIN_DEFAULT_EMAIL_DOMAIN. Unset = login takes the full email only.
+		default_email_domain?: string;
+	};
 }
 
 let cachedConfig: OpsimateConfig | null = null;
@@ -194,6 +200,14 @@ export function isEmailEnabled(): boolean {
 
 export function getLdapConfig(): LdapConfig {
 	return loadConfig().ldap ?? { enabled: false };
+}
+
+// The domain appended to a login name typed without "@", or null when the feature is
+// off. config.yml first, then LOGIN_DEFAULT_EMAIL_DOMAIN; a leading "@" is tolerated.
+export function getLoginDefaultEmailDomain(): string | null {
+	const raw = loadConfig().login?.default_email_domain ?? process.env.LOGIN_DEFAULT_EMAIL_DOMAIN;
+	const domain = raw?.trim().replace(/^@/, '').toLowerCase();
+	return domain ? domain : null;
 }
 
 const LDAP_ROLES = ['admin', 'editor', 'operation', 'viewer'] as const;

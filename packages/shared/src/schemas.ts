@@ -1,5 +1,6 @@
+import { validateJsonTemplate } from './jsonTemplate';
 import { z } from 'zod';
-import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES } from './types';
+import { IntegrationType, Role, SecretType, RetentionResource, DASHBOARD_TYPES, ALERT_CALLBACK_EVENTS } from './types';
 
 export const CreateIntegrationSchema = z.object({
 	name: z.string().min(1),
@@ -41,7 +42,7 @@ export const UpdateTagSchema = TagSchema.partial().extend({
 	id: z.number(),
 });
 
-const positiveIntegerIdSchema = z.coerce.number().int().positive();
+export const positiveIntegerIdSchema = z.coerce.number().int().positive();
 
 export const TagIdSchema = z.object({
 	tagId: positiveIntegerIdSchema,
@@ -76,7 +77,9 @@ export const RegisterSchema = CreateUserSchema.omit({ role: true });
 // password, not to presenting one — and directory (LDAP) passwords follow the
 // directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z.object({
-	email: z.string().email(),
+	// The email, or a bare name the server completes with the installation's default
+	// login domain (login.default_email_domain); which of the two is the server's call.
+	email: z.string().trim().min(1).max(320),
 	// No maximum: none of the password-setting paths has one, so a cap here could
 	// lock out a password that was accepted when set. express.json's body limit
 	// (100kb) already bounds the request.
@@ -189,11 +192,17 @@ export const UpdateCommentSchema = z.object({
 	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
 });
 
-const labelMatcherSchema = z.object({
-	key: z.string().min(1, 'Label key is required').max(200),
-	value: z.string().min(1, 'Label value is required').max(500),
-	op: z.enum(['equals', 'contains']).optional(),
-});
+// "exists" needs no value (the tag just has to be present); the other operators do.
+const labelMatcherSchema = z
+	.object({
+		key: z.string().min(1, 'Label key is required').max(200),
+		value: z.string().max(500),
+		op: z.enum(['equals', 'contains', 'exists']).optional(),
+	})
+	.refine((matcher) => matcher.op === 'exists' || matcher.value.length > 0, {
+		message: 'Label value is required',
+		path: ['value'],
+	});
 
 const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -389,13 +398,36 @@ const jiraActionConfigSchema = z.object({
 	descriptionTemplate: z.string().max(5000).optional().nullable(),
 });
 
-const httpActionConfigSchema = z.object({
-	url: z.string().url('A valid URL is required'),
-	method: httpMethodSchema,
-	headers: z.record(z.string(), z.string()).optional().nullable(),
-	bodyTemplate: z.string().max(10000).optional().nullable(),
-	fireAndForget: z.boolean().optional().nullable(),
-});
+const httpActionConfigSchema = z
+	.object({
+		url: z.string().url('A valid URL is required'),
+		method: httpMethodSchema,
+		headers: z.record(z.string(), z.string()).optional().nullable(),
+		bodyTemplate: z.string().max(10000).optional().nullable(),
+		bodyFormat: z.enum(['json', 'text']).optional().nullable(),
+		editableFields: z
+			.array(
+				z.object({
+					// A JSON Pointer into the body ("/labels/site", "/tags/0").
+					path: z.string().trim().min(1).max(200).regex(/^\//, 'A field path starts with "/"'),
+					label: z.string().trim().max(100).optional().nullable(),
+					multiline: z.boolean().optional().nullable(),
+				})
+			)
+			.max(50)
+			.optional()
+			.nullable(),
+		fireAndForget: z.boolean().optional().nullable(),
+	})
+	// A JSON body must be JSON (with its placeholders read as strings): a missing comma is
+	// caught here, at save, not on the first alert.
+	.superRefine((cfg, ctx) => {
+		if (cfg.bodyFormat !== 'json' || !cfg.bodyTemplate?.trim()) return;
+		const problem = validateJsonTemplate(cfg.bodyTemplate);
+		if (problem) {
+			ctx.addIssue({ code: 'custom', path: ['bodyTemplate'], message: `Body is not valid JSON: ${problem}` });
+		}
+	});
 
 // Optional alert filter shared by every action type. Empty = applies to all alerts.
 const actionMatchFields = {
@@ -430,6 +462,78 @@ export const ActionIdSchema = z.object({
 	actionId: positiveIntegerIdSchema,
 });
 
+// ---- Alert callbacks ----
+const alertCallbackEventSchema = z.enum(ALERT_CALLBACK_EVENTS);
+
+// Only http(s) can be delivered to; z.url() alone would also save ftp:// or file://.
+const alertCallbackUrlSchema = z
+	.string()
+	.trim()
+	.url('A valid URL is required')
+	.max(2000)
+	.refine((url) => /^https?:\/\//i.test(url), { message: 'URL must start with http:// or https://' });
+
+// Header names as HTTP allows them, values without control characters: a value with a
+// newline could never be sent (fetch rejects it), so refuse it up front.
+const alertCallbackHeadersSchema = z
+	.record(
+		z.string().regex(/^[A-Za-z0-9-]{1,200}$/, 'Header names may only contain letters, digits and dashes'),
+		z
+			.string()
+			.max(4000)
+			// eslint-disable-next-line no-control-regex
+			.refine((value) => !/[\x00-\x1f\x7f]/.test(value), {
+				message: 'Header values cannot contain control characters',
+			})
+	)
+	.optional()
+	.nullable();
+
+// The fields an edit may carry, with no defaults: a partial update must leave what it
+// does not mention alone (zod's .partial() keeps .default(), which would reset `enabled`
+// to false on every rename).
+const alertCallbackFields = {
+	name: z.string().trim().min(1, 'Name is required').max(100),
+	url: alertCallbackUrlSchema,
+	method: z.enum(['POST', 'PUT']),
+	headers: alertCallbackHeadersSchema,
+	bodyTemplate: z.string().max(10000).optional().nullable(),
+	events: z
+		.array(alertCallbackEventSchema)
+		.min(1, 'Pick at least one event')
+		.max(ALERT_CALLBACK_EVENTS.length)
+		.refine((events) => new Set(events).size === events.length, { message: 'Events must be unique' }),
+	enabled: z.boolean(),
+	// Omitted on create: the server generates one. Sent on update to rotate it.
+	secret: z.string().trim().min(8, 'Secret must be at least 8 characters').max(200).optional(),
+};
+
+export const CreateAlertCallbackSchema = z.object({
+	...alertCallbackFields,
+	method: alertCallbackFields.method.default('POST'),
+	// Opt-in: omitted means off.
+	enabled: alertCallbackFields.enabled.default(false),
+});
+
+// Edits send only what changed (the list's on/off switch sends { enabled } alone).
+export const UpdateAlertCallbackSchema = z.object(alertCallbackFields).partial();
+
+// Sends one sample request with the given configuration — saved or not. With no secret
+// typed, `callbackId` signs the request with the saved secret of that callback (the page
+// never sees it after creation).
+export const TestAlertCallbackSchema = z.object({
+	url: alertCallbackFields.url,
+	method: alertCallbackFields.method.default('POST'),
+	headers: alertCallbackFields.headers,
+	bodyTemplate: alertCallbackFields.bodyTemplate,
+	secret: alertCallbackFields.secret,
+	callbackId: positiveIntegerIdSchema.optional(),
+});
+
+export const AlertCallbackIdSchema = z.object({
+	callbackId: positiveIntegerIdSchema,
+});
+
 // Body for running an action against a specific alert. Lenient on BOTH axes: extra
 // alert fields pass through, and every known field tolerates null — real alerts carry
 // nulls (custom alerts have type: null, many have no URL), and the executor already
@@ -451,8 +555,19 @@ const alertContextSchema = z
 	})
 	.passthrough();
 
+// Who is looking: lets {{startsAt.display}} and friends render in the sender's own time
+// zone and locale, as the alerts table did for them.
+export const ActionViewerSchema = z
+	.object({
+		timeZone: z.string().trim().max(100).optional().nullable(),
+		locale: z.string().trim().max(35).optional().nullable(),
+	})
+	.optional()
+	.nullable();
+
 export const PreviewActionSchema = z.object({
 	alert: alertContextSchema,
+	viewer: ActionViewerSchema,
 });
 
 const actionOverridesSchema = z.object({
@@ -466,6 +581,7 @@ const actionOverridesSchema = z.object({
 export const RunActionSchema = z.object({
 	alert: alertContextSchema,
 	overrides: actionOverridesSchema.optional(),
+	viewer: ActionViewerSchema,
 });
 
 export const UpdateRetentionPolicySchema = z
@@ -565,6 +681,9 @@ export const UpdateLdapSettingsSchema = z
 export const LdapTestRequestSchema = z
 	.object({
 		email: z.string().trim().email().optional(),
+		// Unsaved edits to test with (see LdapTestRequest). Same shape as a save, so the
+		// page gets the same field-level errors from a test as it would from a save.
+		settings: UpdateLdapSettingsSchema.optional(),
 	})
 	.strict();
 

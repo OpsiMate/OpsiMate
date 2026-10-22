@@ -12,7 +12,7 @@ import {
 	User,
 } from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
-import { buildAlertContext } from '../actions/actionExecutor';
+import { buildAlertContext, resolveTemplateVariable } from '../actions/actionExecutor';
 import { AuditBL } from '../audit/audit.bl';
 import { PreparedRules } from '../alerts/preparedRules';
 
@@ -134,12 +134,15 @@ export class EnrichmentBL {
 	// Templates may reference the alert's current values; enrichments chain in order, so a
 	// later rule's {{summary}} sees the previous rule's output. The vocabulary is the
 	// same one action templates use — {{summary}}, {{name}}, {{status}}, {{severity}},
-	// {{label.<key>}}, ... — via buildAlertContext, reused verbatim so the two systems
-	// cannot drift (it also accepts the alert.*/tag.* aliases). Unknown placeholders are
-	// left as-is.
+	// {{label.<key>}}, {{flag.<code>}}, ... — via buildAlertContext and
+	// resolveTemplateVariable, reused verbatim so the two systems cannot drift (it also
+	// accepts the alert.*/tag.* aliases). Unknown placeholders are left as-is.
 	private static resolveTemplate(template: string, alert: Alert): string {
 		const ctx = buildAlertContext(alert);
-		return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) => (key in ctx ? ctx[key] : match));
+		return template.replace(
+			/\{\{\s*([\w.]+)\s*\}\}/g,
+			(match, key: string) => resolveTemplateVariable(key, ctx) ?? match
+		);
 	}
 
 	// claimedKeys tracks fields already set by a higher-priority rule in this pass, so the

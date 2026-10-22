@@ -38,6 +38,15 @@ export class TooManyLoginAttemptsError extends Error {
 }
 
 export const DEFAULT_LDAP_MAX_FAILURES = 5;
+
+// What was typed at login, as the email the account is keyed on: a name without "@"
+// becomes <name>@<default domain> when an installation has one. Anything with "@" (or
+// no domain configured) is taken as typed, and fails the lookup as it always did.
+export const completeLoginIdentifier = (identifier: string, defaultDomain: string | null | undefined): string => {
+	const typed = identifier.trim();
+	if (!defaultDomain || typed === '' || typed.includes('@')) return typed;
+	return `${typed}@${defaultDomain}`;
+};
 const LDAP_FAILURE_WINDOW_MS = 15 * MS_PER_MINUTE;
 // 65,536 buckets ≈ 768 KB, fixed.
 const LDAP_FAILURE_BUCKETS = 1 << 16;
@@ -83,7 +92,9 @@ export class UserBL {
 		private userRepo: UserRepository,
 		private mailClient: MailClient,
 		private passwordResetsRepo: PasswordResetsRepository,
-		private auditBL: AuditBL
+		private auditBL: AuditBL,
+		// See completeLoginIdentifier; null = login takes the full email only.
+		private loginDefaultEmailDomain: string | null = null
 	) {}
 
 	async register(email: string, fullName: string, password: string): Promise<User> {
@@ -126,7 +137,8 @@ export class UserBL {
 	// way in when the directory is down or misconfigured. Anyone else is checked against
 	// LDAP when it is enabled; on success their OpsiMate account is created, or brought
 	// in step with the directory (name, role), and they are signed in.
-	async login(email: string, password: string): Promise<User> {
+	async login(identifier: string, password: string): Promise<User> {
+		const email = completeLoginIdentifier(identifier, this.loginDefaultEmailDomain);
 		const normalizedEmail = email.trim().toLowerCase();
 		const existing =
 			(await this.userRepo.loginVerification(email)) ??
@@ -155,6 +167,31 @@ export class UserBL {
 			throw new Error(NOT_ALLOWED_LOGIN);
 		}
 		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
+	}
+
+	// The account for an email, for something that is not a login — a webhook naming an
+	// alert's owner. A local or already-provisioned account is found as is (any letter
+	// case). Otherwise, with LDAP on, the directory is asked, and a user in a mapped group
+	// is provisioned now exactly as their first login would (they log in later as usual).
+	// null when nobody matches, or the directory is down (an alert must still be ingested).
+	async findOrProvisionUserByEmail(email: string): Promise<User | null> {
+		const normalized = email.trim().toLowerCase();
+		if (!normalized) return null;
+		const link = await this.userRepo.findDirectoryLink(normalized);
+		if (link) return this.userRepo.getUserById(link.id);
+		if (!this.ldap) return null;
+		try {
+			const identity = await this.ldap.lookup(normalized);
+			if (!identity) return null;
+			if (!identity.role) {
+				logger.warn(`Directory user ${normalized} is in none of the mapped groups; not provisioned`);
+				return null;
+			}
+			return await this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
+		} catch (error) {
+			logger.warn(`Could not resolve ${normalized} in the directory: ${(error as Error).message}`);
+			return null;
+		}
 	}
 
 	private async provisionDirectoryUser(email: string, fullName: string, role: Role, dn: string): Promise<User> {

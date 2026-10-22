@@ -49,12 +49,12 @@ describe('forgot password mail failures', () => {
 		const user = await userRepo.createUser('user@example.test', 'password-hash', 'Test User', Role.Admin);
 		let tokenHashAtSend: string | undefined;
 		const mailClient = {
-			sendMail: vi.fn(async () => {
+			sendMail: vi.fn(() => {
 				const record = db
 					.prepare('SELECT token_hash FROM password_resets WHERE user_id = ?')
 					.get(user.lastID) as PasswordResetTokenRow | undefined;
 				tokenHashAtSend = record?.token_hash;
-				throw new Error('SMTP delivery failed');
+				return Promise.reject(new Error('SMTP delivery failed'));
 			}),
 		} as unknown as MailClient;
 		const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
@@ -92,8 +92,9 @@ describe('forgot password mail failures', () => {
 		} as unknown as MailClient;
 		let secondToken: string | undefined;
 		const secondMailClient = {
-			sendMail: vi.fn(async (options: SentMailOptions) => {
+			sendMail: vi.fn((options: SentMailOptions) => {
 				secondToken = options.token;
+				return Promise.resolve();
 			}),
 		} as unknown as MailClient;
 		const firstUserBL = new UserBL(userRepo, firstMailClient, passwordResetsRepo, auditBL);
@@ -115,16 +116,15 @@ describe('forgot password mail failures', () => {
 
 	test('registers successfully when a non-blocking welcome email rejects', async () => {
 		const { db, userRepo, passwordResetsRepo, auditBL } = await createRepositories();
-		const mailClient = {
-			sendMail: vi.fn().mockRejectedValue(new Error('SMTP delivery failed')),
-		} as unknown as MailClient;
+		const sendMail = vi.fn().mockRejectedValue(new Error('SMTP delivery failed'));
+		const mailClient = { sendMail } as unknown as MailClient;
 		const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 
 		try {
 			await expect(userBL.register('user@example.test', 'Test User', 'password')).resolves.toMatchObject({
 				email: 'user@example.test',
 			});
-			expect(mailClient.sendMail).toHaveBeenCalledWith({
+			expect(sendMail).toHaveBeenCalledWith({
 				to: 'user@example.test',
 				mailType: MailType.WELCOME,
 				userName: 'Test User',

@@ -1,8 +1,12 @@
+import { WebhookOwnerResolver } from './webhookOwnerResolver';
 import { AlertRepository, IngestAlert, IngestRowResult } from '../../dal/alertRepository';
 import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
+	AlertCallbackActor,
+	AlertCallbackDetails,
+	AlertCallbackEvent,
 	AlertComment,
 	AlertHistory,
 	AlertHistoryData,
@@ -28,6 +32,7 @@ import {
 	ingestBatchSize,
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
+import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import { toIsoUtc } from '../../utils/time';
 import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
@@ -126,7 +131,16 @@ const listFingerprints = new WeakMap<Alert[], string>();
 const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
 
 // An alert as a webhook hands it in: severity still free-form (see normalizeIncoming).
-export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string };
+export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & {
+	severity?: string;
+	// Who the source says owns this alert: an email, or a bare name the default login
+	// domain completes. The generic webhook's top-level `owner`; every source also reads
+	// an `owner` tag. Applied only when the alert has no owner yet — never unassigns.
+	owner?: string | null;
+};
+
+// What became of a webhook's `owner`, reported back to the sender.
+export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found';
 
 // What a webhook knows about an alert it reports as resolved (see resolveFromSource).
 export interface SourceResolvedEpisode {
@@ -142,6 +156,15 @@ interface ResolveActiveOptions {
 	comment?: string;
 	// The alert as the source described it in its resolve (see applySourceMetadata).
 	sourceAlert?: IncomingAlert;
+	// False keeps a manual resolve from firing the `resolved` callback (see ManualResolveOptions).
+	fireCallback?: boolean;
+}
+
+export interface ManualResolveOptions {
+	// False for a resolve that is really a source reporting recovery through the manual
+	// route (a webhook sender calling DELETE /alerts/:id with the API token): it is
+	// recorded as before, but fires no callback, like any source-reported recovery.
+	fireCallback?: boolean;
 }
 
 interface ManualResolveActor {
@@ -154,6 +177,12 @@ export interface SourceResolveResult {
 	resolved: boolean;
 	// No alert was firing: the episode the source described was recorded as resolved.
 	created: boolean;
+}
+
+export interface AlertLookup {
+	alert: Alert;
+	// Which list it came from: false for a firing alert, true for one in resolved history.
+	resolved: boolean;
 }
 
 export class AlertBL {
@@ -172,6 +201,33 @@ export class AlertBL {
 
 	setOnAlertsRefired(callback: (alertIds: string[]) => Promise<void>): void {
 		this.onAlertsRefired = callback;
+	}
+
+	// Outbound callbacks for user-made changes (see CallbackDispatcher). Every emit below
+	// sits AFTER the change and its history entry are committed, and emit itself only
+	// queues: the request that made the change never waits for a receiver.
+	private callbackDispatcher: CallbackDispatcher | null = null;
+
+	setCallbackDispatcher(dispatcher: CallbackDispatcher): void {
+		this.callbackDispatcher = dispatcher;
+	}
+
+	// `alert` may be a loader, for the paths that don't already hold the alert (a comment
+	// only knows its id): it is called only when some enabled callback wants the event.
+	private async emitCallback(
+		event: AlertCallbackEvent,
+		alert: Alert | null | (() => Promise<Alert | null>),
+		actor: AlertCallbackActor,
+		details?: AlertCallbackDetails
+	): Promise<void> {
+		const dispatcher = this.callbackDispatcher;
+		if (!dispatcher?.wants(event)) return;
+		try {
+			const resolved = typeof alert === 'function' ? await alert() : alert;
+			if (resolved) dispatcher.emit({ event, alert: resolved, actor, details });
+		} catch (error) {
+			logger.error(`Failed to emit ${event} callback`, error);
+		}
 	}
 
 	// One compute per TTL window serves every poller in it; every write path below calls
@@ -225,6 +281,8 @@ export class AlertBL {
 	// useSnapshotWorker moves it to a worker thread and this one only patches deltas.
 	private readonly inlineBuilder: ActiveListBuilder;
 	private snapshotWorker: SnapshotWorkerClient | null = null;
+
+	private webhookOwnerResolver: WebhookOwnerResolver | null = null;
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -304,11 +362,27 @@ export class AlertBL {
 		return this.resolvedSnapshot.get();
 	}
 
+	// One alert by id, read off the same cached lists the list endpoints serve — so it
+	// carries the fetch-time fields (isMuted, lastComment, appliedEnrichments) the row
+	// repositories know nothing about. The active list is checked first: an id present
+	// in both is an alert that fired again, and the live copy is the one that matters.
+	async findAlertById(alertId: string): Promise<AlertLookup | null> {
+		const active = (await this.activeSnapshot.get()).value.find((alert) => alert.id === alertId);
+		if (active) return { alert: active, resolved: false };
+		const resolved = (await this.resolvedSnapshot.get()).value.find((alert) => alert.id === alertId);
+		return resolved ? { alert: resolved, resolved: true } : null;
+	}
+
 	// Owner ids are numeric in the DB but string-typed on alerts; the engine compares
 	// strings, so the mapping happens once here.
 	private async getOwnerInfos(): Promise<AlertOwnerInfo[]> {
 		const users = await this.userRepo.getAllUsers();
 		return users.map((u) => ({ id: String(u.id), fullName: u.fullName }));
+	}
+
+	// The cached owner list the query engine resolves owner ids against.
+	async getOwners(): Promise<AlertOwnerInfo[]> {
+		return (await this.ownersSnapshot.get()).value;
 	}
 
 	// Server-side execution of the client's own query engine over the cached snapshot:
@@ -425,47 +499,56 @@ export class AlertBL {
 
 		let succeeded = 0;
 		let failed = 0;
-		for (const id of targetIds) {
-			try {
-				// The single-alert methods signal "no such alert" by returning null/false
-				// rather than throwing — count that as failed too: succeeded must mean the
-				// action actually took effect.
-				let applied = true;
-				switch (input.action) {
-					case 'silence':
-						applied =
-							(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) != null;
-						break;
-					case 'unsilence':
-						applied = (await this.unsilenceAlert(id, actor.name)) != null;
-						break;
-					case 'resolve':
-						applied = await this.resolveAlert(id, actor, input.comment);
-						break;
-					case 'assignOwner':
-						applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
-						break;
-					case 'comment':
-						// Schema and controller guarantee a body and an acting user here. The
-						// comments table deliberately has no FK on alert_id (comments outlive
-						// resolve), so existence is checked explicitly — an unknown id must
-						// count as failed, not insert an orphan row.
-						applied = (await this.alertRepo.getAlert(id)) != null;
-						if (applied) {
-							await this.createComment(
-								{ alertId: id, userId: actor.id as string, comment: input.comment as string },
-								actor.name
-							);
-						}
-						break;
+		// Inside `batched`, the per-alert callbacks the loop emits are collapsed into one
+		// request per event (300 silences = one "silenced" callback, not 300).
+		const applyAll = async (): Promise<void> => {
+			for (const id of targetIds) {
+				try {
+					// The single-alert methods signal "no such alert" by returning null/false
+					// rather than throwing — count that as failed too: succeeded must mean the
+					// action actually took effect.
+					let applied = true;
+					switch (input.action) {
+						case 'silence':
+							applied =
+								(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) !=
+								null;
+							break;
+						case 'unsilence':
+							applied = (await this.unsilenceAlert(id, actor.name, actor.id)) != null;
+							break;
+						case 'resolve':
+							applied = await this.resolveAlert(id, actor, input.comment);
+							break;
+						case 'assignOwner':
+							applied =
+								(await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name, actor.id)) !=
+								null;
+							break;
+						case 'comment':
+							// Schema and controller guarantee a body and an acting user here. The
+							// comments table deliberately has no FK on alert_id (comments outlive
+							// resolve), so existence is checked explicitly — an unknown id must
+							// count as failed, not insert an orphan row.
+							applied = (await this.alertRepo.getAlert(id)) != null;
+							if (applied) {
+								await this.createComment(
+									{ alertId: id, userId: actor.id as string, comment: input.comment as string },
+									actor.name
+								);
+							}
+							break;
+					}
+					if (applied) succeeded++;
+					else failed++;
+				} catch (error) {
+					logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
+					failed++;
 				}
-				if (applied) succeeded++;
-				else failed++;
-			} catch (error) {
-				logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
-				failed++;
 			}
-		}
+		};
+		if (this.callbackDispatcher) await this.callbackDispatcher.batched(applyAll);
+		else await applyAll();
 		logger.info(`Bulk ${input.action}: ${succeeded}/${targetIds.length} succeeded`);
 		bulkActionsTotal.inc({ action: input.action });
 		if (succeeded > 0) bulkAlertsAffectedTotal.inc({ action: input.action }, succeeded);
@@ -526,10 +609,12 @@ export class AlertBL {
 		// otherwise none. Unlike severity there is no fixed scale — any name is kept.
 		const team = alert.team?.trim() || alert.tags?.['team'] || null;
 		const tags = { ...(alert.tags ?? {}), severity };
-		return { ...alert, tags, severity, team };
+		// `owner` is a request handled after the row is committed, not a column.
+		const { owner: _owner, ...row } = alert;
+		return { ...row, tags, severity, team };
 	}
 
-	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number; owner?: WebhookOwnerOutcome }> {
 		try {
 			// debug, not info: at thousands of webhooks a second a per-alert info line is
 			// itself a measurable cost (synchronous console writes) and floods the log; the
@@ -540,11 +625,48 @@ export class AlertBL {
 			// right after the POST still sees the alert). The repository atomically drops
 			// any resolved copy of this id — a re-firing alert must never show as both
 			// firing and resolved.
-			return await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
+			const result = await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
+			const requested = (alert.owner ?? alert.tags?.['owner'])?.trim();
+			if (!requested) return result;
+			return { ...result, owner: await this.applyWebhookOwner(alert, requested) };
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
+	}
+
+	// The owner a webhook named, applied once the row is committed. A default, not an
+	// authority: it fills an empty owner and never replaces one — a person's manual
+	// assignment survives every re-fire, and a missing or changed value unassigns nobody.
+	// Writes the history line the UI shows; fires no owner_assigned callback (that is for
+	// a person's decision — and the receiver is often the monitor that sent this).
+	private async applyWebhookOwner(alert: IncomingAlert, requested: string): Promise<WebhookOwnerOutcome> {
+		if (!this.webhookOwnerResolver) return 'not_found';
+		try {
+			const current = await this.alertRepo.getAlert(alert.id);
+			if (current?.ownerId) return 'kept';
+			const user = await this.webhookOwnerResolver.resolve(requested);
+			if (!user) {
+				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook matches no user`);
+				return 'not_found';
+			}
+			await this.alertRepo.updateAlertOwner(alert.id, Number(user.id));
+			this.markSnapshotsStale();
+			await this.recordHistoryEvent(
+				alert.id,
+				AlertHistoryEventType.OWNER_ASSIGNED,
+				`Assigned to ${user.fullName} from the ${alert.type} webhook`,
+				`${alert.type} webhook`
+			);
+			return 'assigned';
+		} catch (error) {
+			logger.error(`Alert ${alert.id}: applying the webhook owner failed`, error);
+			return 'not_found';
+		}
+	}
+
+	setWebhookOwnerResolver(resolver: WebhookOwnerResolver): void {
+		this.webhookOwnerResolver = resolver;
 	}
 
 	// One transaction and ONE snapshot invalidation per batch — the two per-webhook
@@ -740,9 +862,10 @@ export class AlertBL {
 					? `Alert silenced until ${normalizedSilencedUntil}`
 					: 'Alert silenced';
 				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
+				await this.emitCallback('silenced', alert, actor, { silencedUntil: normalizedSilencedUntil, comment });
 				if (actor.id != null && Number.isFinite(Number(actor.id))) {
 					// setAlertOwner also records the "Assigned to …" history event.
-					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
+					alert = (await this.setAlertOwner(id, actor.id, false, actor.name, actor.id)) ?? alert;
 				}
 				if (comment && actor.id != null) {
 					await this.createComment({ alertId: id, userId: actor.id, comment }, actor.name);
@@ -767,18 +890,19 @@ export class AlertBL {
 		}
 	}
 
-	async unsilenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	async unsilenceAlert(id: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
 		try {
-			logger.info(`Unsilenceing alert with id: ${id}`);
+			logger.info(`Unsilencing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
 			this.invalidateSnapshots();
 			if (alert) {
 				alertsUnsilencedTotal.inc();
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
+				await this.emitCallback('unsilenced', alert, { id: actorId ?? null, name: actorName ?? null });
 			}
 			return alert;
 		} catch (error) {
-			logger.error('Error unsilenceing alert', error);
+			logger.error('Error unsilencing alert', error);
 			throw error;
 		}
 	}
@@ -867,8 +991,13 @@ export class AlertBL {
 		return { resolved: false, created: true };
 	}
 
-	async resolveAlert(activeAlertId: string, manualActor?: ManualResolveActor, comment?: string): Promise<boolean> {
-		return this.resolveActive(activeAlertId, { manualActor, comment });
+	async resolveAlert(
+		activeAlertId: string,
+		manualActor?: ManualResolveActor,
+		comment?: string,
+		options: ManualResolveOptions = {}
+	): Promise<boolean> {
+		return this.resolveActive(activeAlertId, { manualActor, comment, fireCallback: options.fireCallback });
 	}
 
 	// What a source sent along with its resolve, applied over the firing alert: the same
@@ -899,7 +1028,7 @@ export class AlertBL {
 	}
 
 	private async resolveActive(activeAlertId: string, options: ResolveActiveOptions): Promise<boolean> {
-		const { manualActor, comment, sourceAlert } = options;
+		const { manualActor, comment, sourceAlert, fireCallback = true } = options;
 		await this.drainIngest();
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
@@ -930,9 +1059,26 @@ export class AlertBL {
 				);
 
 				// Whoever resolved the alert takes ownership of it.
-				if (manualActor.id != null && Number.isFinite(Number(manualActor.id))) {
+				const takesOwnership = manualActor.id != null && Number.isFinite(Number(manualActor.id));
+				if (takesOwnership) {
 					await this.resolvedAlertRepo.updateResolvedAlertOwner(activeAlertId, Number(manualActor.id));
 					this.invalidateSnapshots();
+				}
+
+				// The alert as it now sits in the resolved table.
+				if (fireCallback) {
+					await this.emitCallback(
+						'resolved',
+						{
+							...alert,
+							status: AlertStatus.RESOLVED,
+							isSilenced: false,
+							isResolved: true,
+							ownerId: takesOwnership ? manualActor.id : alert.ownerId,
+						},
+						manualActor,
+						{ comment: comment ?? null }
+					);
 				}
 
 				if (comment && manualActor.id != null) {
@@ -978,7 +1124,7 @@ export class AlertBL {
 	}
 
 	// Moves a resolved alert back to the active table as firing — the reverse of resolveAlert.
-	async unresolveAlert(alertId: string, actorName?: string | null): Promise<Alert | null> {
+	async unresolveAlert(alertId: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
 		await this.drainIngest();
 		try {
 			logger.info(`Unresolving alert with id: ${alertId}`);
@@ -1016,6 +1162,7 @@ export class AlertBL {
 				'Alert moved back to firing',
 				actorName
 			);
+			await this.emitCallback('unresolved', alert, { id: actorId ?? null, name: actorName ?? null });
 
 			logger.info(`Unresolved alert ${alertId}`);
 			return alert;
@@ -1025,10 +1172,15 @@ export class AlertBL {
 		}
 	}
 
-	async deleteResolvedAlert(alertId: string): Promise<void> {
+	async deleteResolvedAlert(alertId: string, actor?: AlertCallbackActor): Promise<void> {
 		await this.drainIngest();
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
+			// The row is gone after the delete, so the callback's snapshot is read first —
+			// only when a callback actually listens.
+			const snapshot = this.callbackDispatcher?.wants('deleted')
+				? await this.resolvedAlertRepo.getResolvedAlert(alertId)
+				: null;
 			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 			// Only a row that actually left the resolved table counts as permanent
 			// deletion — an id naming a still-active alert must not shed its satellites.
@@ -1042,6 +1194,7 @@ export class AlertBL {
 				} catch (cleanupError) {
 					logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
 				}
+				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
 			this.invalidateSnapshots();
 		} catch (error) {
@@ -1225,7 +1378,8 @@ export class AlertBL {
 		alertId: string,
 		ownerId: string | null,
 		isResolved: boolean,
-		actorName?: string | null
+		actorName?: string | null,
+		actorId?: string | null
 	): Promise<Alert | null> {
 		try {
 			logger.info(`Setting owner ${ownerId} for alert: ${alertId} is Resolved ${isResolved}`);
@@ -1246,12 +1400,27 @@ export class AlertBL {
 						`Assigned to ${ownerName}`,
 						actorName
 					);
+					await this.emitCallback(
+						'owner_assigned',
+						updated,
+						{ id: actorId ?? null, name: actorName ?? null },
+						{ ownerId: String(numericOwnerId), ownerName }
+					);
 				} else {
 					await this.recordHistoryEvent(
 						alertId,
 						AlertHistoryEventType.OWNER_UNASSIGNED,
 						'Owner removed',
 						actorName
+					);
+					await this.emitCallback(
+						'owner_unassigned',
+						updated,
+						{ id: actorId ?? null, name: actorName ?? null },
+						{
+							ownerId: null,
+							ownerName: null,
+						}
 					);
 				}
 			}
@@ -1278,6 +1447,14 @@ export class AlertBL {
 			AlertHistoryEventType.COMMENT_ADDED,
 			'Comment added',
 			actorName ?? null
+		);
+		await this.emitCallback(
+			'comment_added',
+			async () =>
+				(await this.alertRepo.getAlert(comment.alertId)) ??
+				(await this.resolvedAlertRepo.getResolvedAlert(comment.alertId)),
+			{ id: comment.userId, name: actorName ?? null },
+			{ comment: comment.comment }
 		);
 		return created;
 	}

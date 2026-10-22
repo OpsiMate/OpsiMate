@@ -16,8 +16,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"lint": "eslint src --ext .ts --max-warnings=0",
-		"lint-fix": "eslint src --ext .ts --fix",
+		"lint": "eslint src tests --ext .ts --max-warnings=0",
+		"lint-fix": "eslint src tests --ext .ts --fix",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"format": "prettier --check .",
 		"format-fix": "prettier --write .",
@@ -51,6 +51,8 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
+		"@OpsiMate/mcp": "workspace:*",
+		"@modelcontextprotocol/client": "2.3.1",
 		"@types/bcrypt": "^6.0.0",
 		"@types/better-sqlite3": "^9.6.0",
 		"@types/compression": "^1.8.1",
