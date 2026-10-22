@@ -841,7 +841,7 @@ export class AlertBL {
 
 	async unsilenceAlert(id: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
 		try {
-			logger.info(`Unsilenceing alert with id: ${id}`);
+			logger.info(`Unsilencing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
 			this.invalidateSnapshots();
 			if (alert) {
@@ -851,7 +851,7 @@ export class AlertBL {
 			}
 			return alert;
 		} catch (error) {
-			logger.error('Error unsilenceing alert', error);
+			logger.error('Error unsilencing alert', error);
 			throw error;
 		}
 	}

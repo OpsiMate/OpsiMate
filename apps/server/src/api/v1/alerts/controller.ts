@@ -908,12 +908,12 @@ export class AlertController {
 				comment,
 				{ fireCallback: req.user != null }
 			);
-			return res.json({ success: true, message: 'Alert deleted successfully' });
+			return res.json({ success: true, message: 'Alert resolved successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
-			logger.error('Error deleting alert:', error);
+			logger.error('Error resolving alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
