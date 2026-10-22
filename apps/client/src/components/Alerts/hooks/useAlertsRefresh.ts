@@ -22,9 +22,11 @@ export const useAlertsRefresh = (
 
 		const interval = setInterval(() => {
 			// Join a fetch that is still running instead of cancelling it: a cancelled manual
-			// refresh resolves with the old, successful result and hides its error.
-			refetch({ cancelRefetch: false });
-			setLastRefresh(new Date());
+			// refresh resolves with the old, successful result and hides its error. The joined
+			// fetch can still fail, so move lastRefresh only once it has succeeded.
+			void refetch({ cancelRefetch: false }).then((result) => {
+				if (!result.isError) setLastRefresh(new Date());
+			});
 		}, ACTIVE_ALERTS_POLL_MS);
 
 		return () => clearInterval(interval);

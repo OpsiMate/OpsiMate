@@ -113,6 +113,38 @@ describe('useAlertsRefresh auto-refresh', () => {
 		expect(refetch).toHaveBeenCalledTimes(1);
 		expect(refetch).toHaveBeenCalledWith({ cancelRefetch: false });
 	});
+
+	test('a tick moves lastRefresh forward only after its fetch succeeds', async () => {
+		const refetch = vi.fn().mockResolvedValue(resultOf({ status: 'success' }));
+		const { result } = renderHook(() => useAlertsRefresh(refetch));
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(ACTIVE_ALERTS_POLL_MS);
+		});
+
+		expect(result.current.lastRefresh).toEqual(new Date(START.getTime() + ACTIVE_ALERTS_POLL_MS));
+	});
+
+	test('a tick that joins a pending manual refresh which then fails leaves lastRefresh alone', async () => {
+		const pending = deferred();
+		const refetch = vi.fn().mockReturnValue(pending.promise);
+		const { result } = renderHook(() => useAlertsRefresh(refetch));
+
+		let refresh: Promise<void> = Promise.resolve();
+		act(() => {
+			refresh = result.current.handleManualRefresh();
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(ACTIVE_ALERTS_POLL_MS);
+		});
+		await act(async () => {
+			pending.resolve(resultOf({ status: 'error' }));
+			await refresh;
+		});
+
+		expect(toast).toHaveBeenCalledWith(ERROR_TOAST);
+		expect(result.current.lastRefresh).toEqual(START);
+	});
 });
 
 describe('useAlertsRefresh isRefreshing', () => {
