@@ -41,10 +41,15 @@ const formatter = (options: Intl.DateTimeFormatOptions, viewer: ViewerFormatting
 	try {
 		return new Intl.DateTimeFormat(locale, { ...options, timeZone });
 	} catch {
+		// Drop one of the two at a time: an unknown zone should not also cost the locale.
 		try {
-			return new Intl.DateTimeFormat(undefined, { ...options, timeZone });
+			return new Intl.DateTimeFormat(locale, options);
 		} catch {
-			return new Intl.DateTimeFormat(undefined, options);
+			try {
+				return new Intl.DateTimeFormat(undefined, { ...options, timeZone });
+			} catch {
+				return new Intl.DateTimeFormat(undefined, options);
+			}
 		}
 	}
 };

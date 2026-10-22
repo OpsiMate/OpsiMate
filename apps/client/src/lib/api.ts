@@ -632,7 +632,8 @@ export type ActionPayload = {
 // render the way the alerts table rendered them for this person.
 export const viewerFormatting = (): ViewerFormatting => ({
 	timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-	locale: navigator.language,
+	// The locale Intl actually resolves — what the table's own formatters use — not the UI language.
+	locale: Intl.DateTimeFormat().resolvedOptions().locale,
 });
 
 export const actionsApi = {
