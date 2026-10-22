@@ -1,5 +1,4 @@
 import { AUTH_TOKEN_STORAGE_KEY } from './auth';
-import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	AiConfig,
 	AiFilterResult,
@@ -810,39 +809,6 @@ export const secretsApi = {
 				error: error instanceof Error ? error.message : 'Unknown error occurred',
 			};
 		}
-	},
-};
-
-/**
- * Custom Actions API endpoints
- */
-export const customActionsApi = {
-	getActions: () => {
-		return apiRequest<{ actions: CustomAction[] }>('/custom-actions');
-	},
-
-	getActionById: (actionId: number) => {
-		return apiRequest<CustomAction>(`/custom-actions/${actionId}`);
-	},
-
-	createAction: (action: CustomAction) => {
-		return apiRequest<{ id: number }>('/custom-actions', 'POST', action);
-	},
-
-	updateAction: (actionId: number, action: CustomAction) => {
-		return apiRequest<void>(`/custom-actions/${actionId}`, 'PUT', action);
-	},
-
-	deleteAction: (actionId: number) => {
-		return apiRequest<void>(`/custom-actions/${actionId}`, 'DELETE');
-	},
-
-	runForProvider: (providerId: number, actionId: number) => {
-		return apiRequest<void>(`/custom-actions/run/provider/${providerId}/${actionId}`, 'POST');
-	},
-
-	runForService: (serviceId: number, actionId: number) => {
-		return apiRequest<void>(`/custom-actions/run/service/${serviceId}/${actionId}`, 'POST');
 	},
 };
 

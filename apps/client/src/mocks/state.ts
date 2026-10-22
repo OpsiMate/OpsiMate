@@ -13,7 +13,6 @@ interface MockSavedView {
 	searchTerm: string;
 	isDefault: number;
 }
-import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	Action,
 	Alert,
@@ -52,7 +51,6 @@ export interface PlaygroundState {
 	views: MockSavedView[];
 	activeViewId: string | null;
 	users: User[];
-	customActions: CustomAction[];
 	auditLogs: AuditLog[];
 	mutePolicies: MutePolicy[];
 	actions: Action[];
@@ -192,28 +190,6 @@ const createOncallTeams = (): OncallTeamState[] => [
 		rotationIntervalDays: null,
 		rotationAnchor: nowIso(),
 		userIds: ['1', '2'],
-	},
-];
-
-const createCustomActions = (): CustomAction[] => [
-	{
-		id: 1,
-		name: 'Restart container',
-		description: 'Restart the selected service container',
-		type: 'bash',
-		target: 'service',
-		script: 'docker restart {{serviceName}}',
-	},
-	{
-		id: 2,
-		name: 'Notify Slack',
-		description: 'Send a Slack webhook',
-		type: 'http',
-		target: 'provider',
-		url: 'https://hooks.slack.com/services/T000/B000/XXXX',
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: '{"text":"A demo action executed"}',
 	},
 ];
 
@@ -502,7 +478,6 @@ export const playgroundState: PlaygroundState = {
 	views: createViews(),
 	activeViewId: 'v-1',
 	users: createUsers(),
-	customActions: createCustomActions(),
 	auditLogs: createAuditLogs(),
 	mutePolicies: createMutePolicies(),
 	actions: createActions(),
