@@ -270,3 +270,203 @@ describe('GET /dashboards/:dashboardId', () => {
 		expect(res.body.success).toBe(false);
 	});
 });
+
+describe('Dashboards API — schema validation (PR #1218)', () => {
+	const validBase = {
+		name: 'validation test',
+		type: 'alerts' as const,
+		description: '',
+		filters: {},
+		visibleColumns: ['type', 'alertName'],
+		query: '',
+		groupBy: [],
+	};
+
+	test('POST rejects empty name', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '' });
+		expect(res.status).toBe(400);
+	});
+
+	test('POST rejects whitespace-only name', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '   ' });
+		expect(res.status).toBe(400);
+	});
+
+	test('POST rejects name exceeding 200 chars', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'a'.repeat(201) });
+		expect(res.status).toBe(400);
+	});
+
+	test('POST accepts name at exactly 200 chars', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'a'.repeat(200) });
+		expect(res.status).toBe(200);
+	});
+
+	test('POST rejects description exceeding 1000 chars', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, description: 'a'.repeat(1001) });
+		expect(res.status).toBe(400);
+	});
+
+	test('POST rejects query exceeding 10000 chars', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, query: 'a'.repeat(10001) });
+		expect(res.status).toBe(400);
+	});
+
+	test('POST rejects non-ISO timeRange.from', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: 'not-a-date', to: null, preset: null },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('POST rejects non-ISO timeRange.to', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: 'yesterday', preset: null },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('POST accepts timeRange with nulls', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: null, preset: null },
+			});
+		expect(res.status).toBe(200);
+	});
+
+	test('POST accepts valid ISO timeRange', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: {
+					from: '2026-01-01T00:00:00Z',
+					to: '2026-12-31T23:59:59Z',
+					preset: null,
+				},
+			});
+		expect(res.status).toBe(200);
+	});
+
+	test('POST accepts preset at exactly 50 chars', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: null, preset: 'a'.repeat(50) },
+			});
+		expect(res.status).toBe(200);
+	});
+
+	test('POST rejects preset exceeding 50 chars', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: null, preset: 'a'.repeat(51) },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('PUT rejects empty name and leaves stored name unchanged', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'original name' });
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const res = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '' });
+		expect(res.status).toBe(400);
+
+		const list = await app.get('/api/v1/dashboards').set('Authorization', `Bearer ${jwtToken}`);
+		const dashboard = (list.body.data as { id: string | number; name: string }[]).find((d) => String(d.id) === id);
+		expect(dashboard?.name).toBe('original name');
+	});
+
+	test('PUT rejects whitespace-only name', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'whitespace test' });
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const res = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '   ' });
+		expect(res.status).toBe(400);
+	});
+
+	test('PUT rejects non-ISO timeRange.from', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'timeRange PUT test' });
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const res = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: 'invalid', to: null, preset: null },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('PUT accepts timeRange with nulls', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'timeRange nulls PUT test' });
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const res = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: null, preset: null },
+			});
+		expect(res.status).toBe(200);
+	});
+});
