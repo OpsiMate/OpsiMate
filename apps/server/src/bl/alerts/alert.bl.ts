@@ -1,3 +1,4 @@
+import { WebhookOwnerResolver } from './webhookOwnerResolver';
 import { AlertRepository, IngestAlert, IngestRowResult } from '../../dal/alertRepository';
 import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
@@ -130,7 +131,16 @@ const listFingerprints = new WeakMap<Alert[], string>();
 const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
 
 // An alert as a webhook hands it in: severity still free-form (see normalizeIncoming).
-export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string };
+export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & {
+	severity?: string;
+	// Who the source says owns this alert: an email, or a bare name the default login
+	// domain completes. The generic webhook's top-level `owner`; every source also reads
+	// an `owner` tag. Applied only when the alert has no owner yet — never unassigns.
+	owner?: string | null;
+};
+
+// What became of a webhook's `owner`, reported back to the sender.
+export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found';
 
 // What a webhook knows about an alert it reports as resolved (see resolveFromSource).
 export interface SourceResolvedEpisode {
@@ -271,6 +281,8 @@ export class AlertBL {
 	// useSnapshotWorker moves it to a worker thread and this one only patches deltas.
 	private readonly inlineBuilder: ActiveListBuilder;
 	private snapshotWorker: SnapshotWorkerClient | null = null;
+
+	private webhookOwnerResolver: WebhookOwnerResolver | null = null;
 
 	constructor(
 		private alertRepo: AlertRepository,
@@ -597,10 +609,12 @@ export class AlertBL {
 		// otherwise none. Unlike severity there is no fixed scale — any name is kept.
 		const team = alert.team?.trim() || alert.tags?.['team'] || null;
 		const tags = { ...(alert.tags ?? {}), severity };
-		return { ...alert, tags, severity, team };
+		// `owner` is a request handled after the row is committed, not a column.
+		const { owner: _owner, ...row } = alert;
+		return { ...row, tags, severity, team };
 	}
 
-	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number }> {
+	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number; owner?: WebhookOwnerOutcome }> {
 		try {
 			// debug, not info: at thousands of webhooks a second a per-alert info line is
 			// itself a measurable cost (synchronous console writes) and floods the log; the
@@ -611,11 +625,48 @@ export class AlertBL {
 			// right after the POST still sees the alert). The repository atomically drops
 			// any resolved copy of this id — a re-firing alert must never show as both
 			// firing and resolved.
-			return await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
+			const result = await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
+			const requested = (alert.owner ?? alert.tags?.['owner'])?.trim();
+			if (!requested) return result;
+			return { ...result, owner: await this.applyWebhookOwner(alert, requested) };
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
+	}
+
+	// The owner a webhook named, applied once the row is committed. A default, not an
+	// authority: it fills an empty owner and never replaces one — a person's manual
+	// assignment survives every re-fire, and a missing or changed value unassigns nobody.
+	// Writes the history line the UI shows; fires no owner_assigned callback (that is for
+	// a person's decision — and the receiver is often the monitor that sent this).
+	private async applyWebhookOwner(alert: IncomingAlert, requested: string): Promise<WebhookOwnerOutcome> {
+		if (!this.webhookOwnerResolver) return 'not_found';
+		try {
+			const current = await this.alertRepo.getAlert(alert.id);
+			if (current?.ownerId) return 'kept';
+			const user = await this.webhookOwnerResolver.resolve(requested);
+			if (!user) {
+				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook matches no user`);
+				return 'not_found';
+			}
+			await this.alertRepo.updateAlertOwner(alert.id, Number(user.id));
+			this.markSnapshotsStale();
+			await this.recordHistoryEvent(
+				alert.id,
+				AlertHistoryEventType.OWNER_ASSIGNED,
+				`Assigned to ${user.fullName} from the ${alert.type} webhook`,
+				`${alert.type} webhook`
+			);
+			return 'assigned';
+		} catch (error) {
+			logger.error(`Alert ${alert.id}: applying the webhook owner failed`, error);
+			return 'not_found';
+		}
+	}
+
+	setWebhookOwnerResolver(resolver: WebhookOwnerResolver): void {
+		this.webhookOwnerResolver = resolver;
 	}
 
 	// One transaction and ONE snapshot invalidation per batch — the two per-webhook

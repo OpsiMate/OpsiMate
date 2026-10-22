@@ -169,6 +169,31 @@ export class UserBL {
 		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
 	}
 
+	// The account for an email, for something that is not a login — a webhook naming an
+	// alert's owner. A local or already-provisioned account is found as is (any letter
+	// case). Otherwise, with LDAP on, the directory is asked, and a user in a mapped group
+	// is provisioned now exactly as their first login would (they log in later as usual).
+	// null when nobody matches, or the directory is down (an alert must still be ingested).
+	async findOrProvisionUserByEmail(email: string): Promise<User | null> {
+		const normalized = email.trim().toLowerCase();
+		if (!normalized) return null;
+		const link = await this.userRepo.findDirectoryLink(normalized);
+		if (link) return this.userRepo.getUserById(link.id);
+		if (!this.ldap) return null;
+		try {
+			const identity = await this.ldap.lookup(normalized);
+			if (!identity) return null;
+			if (!identity.role) {
+				logger.warn(`Directory user ${normalized} is in none of the mapped groups; not provisioned`);
+				return null;
+			}
+			return await this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
+		} catch (error) {
+			logger.warn(`Could not resolve ${normalized} in the directory: ${(error as Error).message}`);
+			return null;
+		}
+	}
+
 	private async provisionDirectoryUser(email: string, fullName: string, role: Role, dn: string): Promise<User> {
 		const link = await this.userRepo.findDirectoryLink(email);
 		if (link && link.authSource !== 'ldap') {

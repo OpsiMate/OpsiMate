@@ -1,4 +1,5 @@
 import { getLoginDefaultEmailDomain } from './config/config';
+import { WebhookOwnerResolver } from './bl/alerts/webhookOwnerResolver';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import compression from 'compression';
@@ -210,6 +211,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 
 	// BL
 	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL, getLoginDefaultEmailDomain());
+	// A webhook's `owner` becomes an assignment: local users, and directory users through
+	// whatever LDAP setup is active (none → local users only).
+	const webhookOwnerResolver = new WebhookOwnerResolver(userBL, getLoginDefaultEmailDomain);
+	alertBL.setWebhookOwnerResolver(webhookOwnerResolver);
 	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
 	// settings saved on the Settings page. Local accounts keep signing in locally either way.
 	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);
@@ -234,7 +239,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	// User renames/creates/deletes change owner names in columns, sort and facets.
-	userBL.setOnUsersChanged(() => alertBL.invalidateOwners());
+	userBL.setOnUsersChanged(() => {
+		alertBL.invalidateOwners();
+		webhookOwnerResolver.clear();
+	});
 	// Outbound callbacks for user-made alert changes. Fired by AlertBL / ActionBL after a
 	// change is committed, delivered off the request path (see CallbackDispatcher).
 	const callbackDispatcher = new CallbackDispatcher(alertCallbackRepo);

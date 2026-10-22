@@ -633,6 +633,7 @@ export class AlertController {
 			summary: alert.summary,
 			runbookUrl: alert.runbookUrl,
 			links: alert.links,
+			owner: alert.owner,
 		};
 	}
 
@@ -666,6 +667,8 @@ export class AlertController {
 			logger.info(`Got grafana webhook with ${alerts.length} alert(s)`);
 
 			const processedIds: string[] = [];
+			// Per alert, what became of an `owner` label, when one was sent.
+			const owners: Record<string, string> = {};
 
 			for (const alert of alerts) {
 				const labels = alert.labels || {};
@@ -719,11 +722,15 @@ export class AlertController {
 					continue;
 				}
 
-				await this.alertBL.insertOrUpdateAlert(incoming);
+				const { owner } = await this.alertBL.insertOrUpdateAlert(incoming);
+				if (owner) owners[alertId] = owner;
 				processedIds.push(alertId);
 			}
 
-			return res.status(200).json({ success: true, data: { processed: processedIds } });
+			return res.status(200).json({
+				success: true,
+				data: { processed: processedIds, ...(Object.keys(owners).length > 0 ? { owners } : {}) },
+			});
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -763,10 +770,13 @@ export class AlertController {
 			}
 
 			const alert = HttpAlertWebhookSchema.parse(req.body);
-			await this.alertBL.insertOrUpdateAlert(
+			const { owner } = await this.alertBL.insertOrUpdateAlert(
 				AlertController.customToIncoming(alert, alert.startsAt || new Date().toISOString())
 			);
-			return res.status(200).json({ success: true, data: { alertId: alert.id, status: 'firing' } });
+			// `owner` says what became of the one sent: assigned, kept (already owned), not_found.
+			return res
+				.status(200)
+				.json({ success: true, data: { alertId: alert.id, status: 'firing', ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
