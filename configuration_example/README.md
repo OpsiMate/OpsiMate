@@ -89,6 +89,14 @@ It holds no credentials of its own: each MCP client authenticates with the API t
 - `GET /health` on the container reports that it is up and its version (not the OpsiMate URL: the endpoint is unauthenticated).
 - The rate limit is a fair-use limit per credential for assistants that loop, not an abuse control: a caller with a different token gets its own bucket. Keep the endpoint inside your network or behind the same gateway as OpsiMate.
 
+## Alert Owner from the Webhook
+
+A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/custom`) takes a top-level `owner`, and every integration (Grafana, Datadog, Zabbix, GCP, Uptime Kuma) reads an `owner` label/tag. The value is a user's email, or a bare name when `login.default_email_domain` is set (`dana` → `dana@company.com`).
+
+- Local users are matched by email. With LDAP on, a directory user who has never logged in is looked up with the service account and, when in a mapped group, provisioned on the spot — exactly as their first login would.
+- The owner is a default, not an authority: it fills an **empty** owner only. A re-send with another name, or with no name at all, never replaces or removes an owner a person set by hand.
+- Nobody matching, or the directory being down, never fails the webhook: the alert is stored unassigned and the response's `owner` field says `not_found` (otherwise `assigned` or `kept`). No `owner_assigned` callback fires for a webhook owner — that is for a person's decision.
+
 ## Login with a Short Name
 
 Typing a full email at every login is tedious when everyone shares one domain. Set the installation's domain and a bare name completes to an address before the normal login runs:

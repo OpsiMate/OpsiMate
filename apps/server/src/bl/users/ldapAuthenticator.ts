@@ -119,6 +119,50 @@ export class LdapAuthenticator {
 		};
 	}
 
+	// Who the directory says this email is — entry, name, groups, role — read with the
+	// service account and no proof from the person. For assigning an alert to someone who
+	// has never logged in (webhook `owner`): the same rules as a login (one entry, listing
+	// that address, in a mapped group) minus the password. null = not a directory user.
+	async lookup(email: string): Promise<LdapIdentity | null> {
+		const client = this.createClient();
+		try {
+			await this.startTlsIfConfigured(client);
+			await this.bindServiceAccount(client);
+			const entry = await this.locate(client, email, 'lookup');
+			if (!entry) return null;
+			const groups = await this.groupsOf(client, entry);
+			return {
+				dn: entry.dn,
+				email: email.trim().toLowerCase(),
+				fullName: this.fullNameOf(entry, email),
+				groups,
+				role: resolveLdapRole(groups, this.config.role_mapping, this.config.default_role),
+			};
+		} catch (error) {
+			if (error instanceof LdapUnavailableError) throw error;
+			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
+		} finally {
+			await client.unbind().catch(() => undefined);
+		}
+	}
+
+	// The one entry for an email, or null: not found, ambiguous (two entries share it), or
+	// an entry that matched the filter without listing that address itself (an entry whose
+	// self-editable mail attribute names someone else must not stand in for them).
+	private async locate(client: LdapClientLike, email: string, purpose: string): Promise<Entry | null> {
+		const searchEntries = await this.findEntries(client, email);
+		if (searchEntries.length !== 1) {
+			if (searchEntries.length > 1) logger.warn(`LDAP: more than one entry matches ${email}; ${purpose} refused`);
+			return null;
+		}
+		const entry = searchEntries[0];
+		if (!this.listsEmail(entry, email)) {
+			logger.warn(`LDAP: entry ${entry.dn} matched ${email} but does not list that address; ${purpose} refused`);
+			return null;
+		}
+		return entry;
+	}
+
 	// null = unknown user or wrong password (the caller says "invalid email or
 	// password" either way). Throws LdapUnavailableError when the directory can't answer.
 	async authenticate(email: string, password: string): Promise<LdapIdentity | null> {
@@ -130,21 +174,10 @@ export class LdapAuthenticator {
 		try {
 			await this.startTlsIfConfigured(client);
 			await this.bindServiceAccount(client);
-			const searchEntries = await this.findEntries(client, email);
-			// Not found, or ambiguous (two entries share the email): refuse rather than guess.
-			if (searchEntries.length !== 1) {
-				if (searchEntries.length > 1) logger.warn(`LDAP: more than one entry matches ${email}; login refused`);
-				return null;
-			}
-			const entry = searchEntries[0];
-			// The account is keyed on the email that was typed, and the entry must list that
-			// exact address itself: otherwise an entry whose (self-editable) mail attribute
-			// names someone else, or a custom filter matching some other attribute, could
-			// sign in to that other person's OpsiMate account.
-			if (!this.listsEmail(entry, email)) {
-				logger.warn(`LDAP: entry ${entry.dn} matched ${email} but does not list that address; login refused`);
-				return null;
-			}
+			// Not found, ambiguous, or not listing the typed address: refuse rather than
+			// guess (see locate).
+			const entry = await this.locate(client, email, 'login');
+			if (!entry) return null;
 
 			try {
 				await client.bind(entry.dn, password);
