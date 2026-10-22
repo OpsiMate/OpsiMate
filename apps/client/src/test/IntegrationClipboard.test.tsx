@@ -7,7 +7,7 @@ import { CustomAlertsSetupModal } from '@/components/Integrations/CustomAlertsSe
 import { ZabbixSetupModal } from '@/components/Integrations/ZabbixSetupModal/ZabbixSetupModal';
 
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
-vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
 const writeText = vi.fn();
 beforeEach(() => {
