@@ -21,7 +21,9 @@ export const useAlertsRefresh = (
 		if (shouldPause) return;
 
 		const interval = setInterval(() => {
-			refetch();
+			// Join a fetch that is still running instead of cancelling it: a cancelled manual
+			// refresh resolves with the old, successful result and hides its error.
+			refetch({ cancelRefetch: false });
 			setLastRefresh(new Date());
 		}, ACTIVE_ALERTS_POLL_MS);
 
@@ -31,7 +33,9 @@ export const useAlertsRefresh = (
 	const handleManualRefresh = async () => {
 		setIsRefreshing(true);
 		try {
-			await refetch();
+			// refetch() resolves with an error result instead of throwing, so check it here.
+			const result = await refetch();
+			if (result.isError) throw result.error;
 			setLastRefresh(new Date());
 			toast({
 				title: 'Alerts refreshed',
