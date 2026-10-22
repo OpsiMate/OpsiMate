@@ -11,7 +11,7 @@ import {
 	UpsertRootCauseSchema,
 	RateRootCauseSchema,
 } from '@OpsiMate/shared';
-import { AlertBL, IncomingAlert } from '../../../bl/alerts/alert.bl';
+import { AlertBL, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
 import {
 	ALERT_QUERY_PARAM_KEYS,
 	AlertAnalyticsParamsSchema,
@@ -314,7 +314,7 @@ export class AlertController {
 				tags[tag.name] = tag.value || 'unknown';
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: monitorId,
 				type: 'UptimeKuma',
 				status: AlertStatus.FIRING,
@@ -329,7 +329,7 @@ export class AlertController {
 
 			return res.status(200).json({
 				success: true,
-				data: { alertId: monitorId, updated: true },
+				data: { alertId: monitorId, updated: true, ...(owner ? { owner } : {}) },
 			});
 		} catch (error) {
 			if (isZodError(error)) {
@@ -442,7 +442,7 @@ export class AlertController {
 				alertUrl = `${baseUrl}/tr_events.php?triggerid=${payload.trigger_id}&eventid=${payload.event_id}`;
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Zabbix',
 				status: AlertStatus.FIRING,
@@ -457,7 +457,7 @@ export class AlertController {
 
 			return res.status(200).json({
 				success: true,
-				data: { alertId, updated: true },
+				data: { alertId, updated: true, ...(owner ? { owner } : {}) },
 			});
 		} catch (error) {
 			if (isZodError(error)) {
@@ -483,10 +483,11 @@ export class AlertController {
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
+			let owner: WebhookOwnerOutcome | undefined;
 			if (incident.state.toLowerCase() === 'closed') {
 				await this.alertBL.resolveAlert(incident.incident_id);
 			} else {
-				await this.alertBL.insertOrUpdateAlert({
+				({ owner } = await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
@@ -503,9 +504,11 @@ export class AlertController {
 						// ever produced a working runbook button.
 						{ label: 'Documentation', icon: '', url: incident.documentation?.content },
 					]),
-				});
+				}));
 			}
-			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
+			return res
+				.status(200)
+				.json({ success: true, data: { alertId: incident.incident_id, ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -544,7 +547,7 @@ export class AlertController {
 					.filter((pair): pair is [string, string] => pair.length === 2) ?? []
 			);
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
@@ -561,7 +564,7 @@ export class AlertController {
 				links: AlertController.buildLinks([{ label: 'View in Datadog', icon: 'datadog', url: payload.link }]),
 			});
 
-			return res.status(200).json({ success: true, data: { alertId } });
+			return res.status(200).json({ success: true, data: { alertId, ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
