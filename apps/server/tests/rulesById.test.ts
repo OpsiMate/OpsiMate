@@ -120,9 +120,7 @@ describe.each(resources)('$name by id', ({ basePath, table, notFoundError, creat
 
 		expect(putRes.status).toBe(200);
 		expect(putRes.body.success).toBe(true);
-		const { updatedAt: _ignoredPut, ...putData } = putRes.body.data;
-		const { updatedAt: _ignoredBefore, ...beforeData } = before.body.data;
-		expect(putData).toEqual(beforeData);
+		expect(putRes.body.data).toEqual(before.body.data);
 	});
 
 	test('PUT updates the resource', async () => {
