@@ -107,7 +107,7 @@ describe('RetentionSettings toggles', () => {
 		policyMutate.mock.calls[0][1]?.onError?.(new Error('boom'));
 
 		expect(destructiveToasts()).toEqual([
-			expect.objectContaining({ description: expect.stringContaining('boom') }),
+			expect.objectContaining({ title: 'Failed to save', description: expect.stringContaining('boom') }),
 		]);
 	});
 
@@ -128,7 +128,7 @@ describe('RetentionSettings toggles', () => {
 		configMutate.mock.calls[0][1]?.onError?.(new Error('boom'));
 
 		expect(destructiveToasts()).toEqual([
-			expect.objectContaining({ description: expect.stringContaining('boom') }),
+			expect.objectContaining({ title: 'Failed to save', description: expect.stringContaining('boom') }),
 		]);
 	});
 
