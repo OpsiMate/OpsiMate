@@ -97,7 +97,13 @@ const PolicyRow = ({ policy }: { policy: RetentionPolicy }) => {
 	};
 
 	const toggleEnabled = (enabled: boolean) => {
-		updatePolicy({ resourceType: policy.resourceType, updates: { enabled } });
+		updatePolicy(
+			{ resourceType: policy.resourceType, updates: { enabled } },
+			{
+				onError: (e) =>
+					toast({ title: 'Failed to save', description: (e as Error).message, variant: 'destructive' }),
+			}
+		);
 	};
 
 	return (
@@ -182,7 +188,13 @@ export const RetentionSettings = () => {
 	};
 
 	const toggleVacuum = (vacuumAfterCleanup: boolean) => {
-		updateConfig({ vacuumAfterCleanup });
+		updateConfig(
+			{ vacuumAfterCleanup },
+			{
+				onError: (e) =>
+					toast({ title: 'Failed to save', description: (e as Error).message, variant: 'destructive' }),
+			}
+		);
 	};
 
 	const handleRunNow = () => {

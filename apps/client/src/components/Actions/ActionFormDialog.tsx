@@ -74,6 +74,7 @@ const rowsToHeaders = (rows: HeaderRow[]): Record<string, string> | null => {
 };
 
 export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialogProps) => {
+	const typeId = useId();
 	const httpMethodId = useId();
 	const httpFireAndForgetId = useId();
 	const httpBodyProblemId = useId();
@@ -398,9 +399,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label>Type</Label>
+							<Label htmlFor={typeId}>Type</Label>
 							<Select value={type} onValueChange={(v) => setType(v as ActionType)}>
-								<SelectTrigger>
+								<SelectTrigger id={typeId}>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
@@ -678,6 +679,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 												>
 													<Input
 														placeholder="Header (e.g. Content-Type)"
+														aria-label={`Header ${idx + 1} name`}
 														value={header.key}
 														onChange={(e) =>
 															setHttpHeaders((h) =>
@@ -690,6 +692,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 													<span className="text-muted-foreground text-sm">:</span>
 													<Input
 														placeholder="Value (e.g. application/json)"
+														aria-label={`Header ${idx + 1} value`}
 														value={header.value}
 														onChange={(e) =>
 															setHttpHeaders((h) =>
@@ -707,7 +710,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 														onClick={() =>
 															setHttpHeaders((h) => h.filter((_, i) => i !== idx))
 														}
-														aria-label="Remove header"
+														aria-label={`Remove header ${idx + 1}`}
 													>
 														<Trash2 className="h-4 w-4" />
 													</Button>
@@ -775,7 +778,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										{ ref: httpBodyRef, value: httpBody, onChange: setHttpBody },
 										{ ref: httpUrlRef, value: httpUrl, onChange: setHttpUrl },
 									]}
-									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too):"
+									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too). {{startsAt}} is the exact ISO instant; {{startsAt.display}} is the time as the alerts table shows it to the sender:"
 								/>
 								<div className="flex items-start justify-between gap-4 rounded-md border bg-background p-3">
 									<div className="space-y-1">

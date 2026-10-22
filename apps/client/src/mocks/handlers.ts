@@ -732,7 +732,7 @@ export const handlers = [
 		if (!resolvePlaygroundAlert(params.alertId as string, body?.comment)) {
 			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
-		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
+		return HttpResponse.json({ success: true, message: 'Alert resolved successfully' });
 	}),
 
 	// One request over many alerts — by explicit ids or by a query resolved against the
@@ -981,14 +981,11 @@ export const handlers = [
 		const dashboardIndex = playgroundState.dashboards.findIndex((d) => d.id === id);
 
 		if (dashboardIndex === -1) {
-			return HttpResponse.json(
-				{ success: false, error: 'dashboard not found or could not be deleted' },
-				{ status: 404 }
-			);
+			return HttpResponse.json({ success: false, error: 'Dashboard not found' }, { status: 404 });
 		}
 
 		playgroundState.dashboards.splice(dashboardIndex, 1);
-		return HttpResponse.json({ success: true, message: 'dashboards deleted successfully' });
+		return HttpResponse.json({ success: true, message: 'Dashboard deleted successfully' });
 	}),
 
 	// Dashboard Tags
@@ -1223,44 +1220,6 @@ export const handlers = [
 				total: playgroundState.auditLogs.length,
 			},
 		});
-	}),
-
-	// ==================== CUSTOM ACTIONS ====================
-	http.get(`${API_BASE}/custom-actions`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: { actions: playgroundState.customActions },
-		});
-	}),
-
-	http.post(`${API_BASE}/custom-actions`, async ({ request }) => {
-		const body = (await request.json()) as (typeof playgroundState.customActions)[0];
-		const newAction = { ...body, id: randomId() };
-		playgroundState.customActions.push(newAction);
-		return HttpResponse.json({ success: true, data: { id: newAction.id } });
-	}),
-
-	http.put(`${API_BASE}/custom-actions/:id`, async ({ params, request }) => {
-		const id = Number(params.id);
-		const body = (await request.json()) as Partial<(typeof playgroundState.customActions)[0]>;
-		const action = playgroundState.customActions.find((a) => a.id === id);
-
-		if (!action) {
-			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
-		}
-
-		Object.assign(action, body);
-		return HttpResponse.json({ success: true });
-	}),
-
-	http.delete(`${API_BASE}/custom-actions/:id`, ({ params }) => {
-		const id = Number(params.id);
-		playgroundState.customActions = playgroundState.customActions.filter((a) => a.id !== id);
-		return HttpResponse.json({ success: true });
-	}),
-
-	http.post(`${API_BASE}/custom-actions/run`, () => {
-		return HttpResponse.json({ success: true });
 	}),
 
 	// ==================== SECRETS (stub) ====================

@@ -30,6 +30,7 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
   "summary": "CPU usage exceeded 90% threshold",
   "severity": "critical",
   "fix": "manual",
+  "owner": "dana@company.com",
   "startsAt": "2024-01-15T10:30:00Z",
   "links": [
     { "label": "OpsiMate demo", "icon": "", "url": "https://demo.opsimate.dev/" },
@@ -207,6 +208,20 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 											<td className="p-3 text-muted-foreground">
 												critical / warning / info (free-form synonyms accepted — P1, error,
 												disaster, ...); defaults to warning
+											</td>
+										</tr>
+										<tr>
+											<td className="p-3 font-mono text-xs">owner</td>
+											<td className="p-3">
+												<span className="text-muted-foreground">No</span>
+											</td>
+											<td className="p-3 text-muted-foreground">
+												Who owns the alert: a user's email, or a bare name when a default login
+												domain is configured. Directory (LDAP) users are matched even before
+												their first login. Fills an empty owner only — a re-send never replaces
+												or removes an owner someone set by hand. The response says what
+												happened: assigned / kept / not_found. An <code>owner</code> tag does
+												the same for the other integrations.
 											</td>
 										</tr>
 										<tr>

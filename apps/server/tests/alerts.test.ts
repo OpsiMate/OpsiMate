@@ -280,7 +280,7 @@ describe('Alerts API', () => {
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should handle unsilenceing an already active alert', async () => {
+		test('should handle unsilencing an already active alert', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1' (not silenced)
 			expect(testAlerts[0].isSilenced).toBe(false);
 

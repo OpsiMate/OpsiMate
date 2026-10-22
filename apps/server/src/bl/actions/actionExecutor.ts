@@ -12,6 +12,8 @@ import {
 	TeamsActionConfig,
 	flagForTemplateVariable,
 	renderJsonTemplate,
+	ViewerFormatting,
+	formatAlertTimestampDisplay,
 } from '@OpsiMate/shared';
 import http from 'node:http';
 import https from 'node:https';
@@ -80,11 +82,15 @@ const expandContext = (fields: Record<string, string>, tags: Record<string, stri
 // run must resolve the same variables a real run would, or a template that works in Test
 // ships with literal {{...}} left in it. Timestamps are chronological: created/started
 // in the past, updated now.
-export const buildSampleContext = (): Record<string, string> => {
+export const buildSampleContext = (viewer?: ViewerFormatting | null): Record<string, string> => {
 	const now = Date.now();
 	const fiveMinutesAgo = new Date(now - 5 * MS_PER_MINUTE).toISOString();
 	return expandContext(
 		{
+			...displayTimestamps(
+				{ startsAt: fiveMinutesAgo, updatedAt: new Date(now).toISOString(), createdAt: fiveMinutesAgo },
+				viewer
+			),
 			name: 'Test alert from OpsiMate',
 			id: 'test-alert-1',
 			status: 'firing',
@@ -102,10 +108,25 @@ export const buildSampleContext = (): Record<string, string> => {
 	);
 };
 
+// {{startsAt.display}} etc.: the timestamps as the alerts table shows them to the viewer.
+// Without a viewer (automatic runs, callbacks) they render in the server's zone.
+const displayTimestamps = (
+	alert: Pick<AlertContextInput, 'startsAt' | 'updatedAt' | 'createdAt'>,
+	viewer?: ViewerFormatting | null
+): Record<string, string> => ({
+	'startsAt.display': formatAlertTimestampDisplay(alert.startsAt, viewer ?? undefined),
+	'updatedAt.display': formatAlertTimestampDisplay(alert.updatedAt, viewer ?? undefined),
+	'createdAt.display': formatAlertTimestampDisplay(alert.createdAt, viewer ?? undefined),
+});
+
 // Context built from a real alert, used when running an action against an alert.
-export const buildAlertContext = (alert: AlertContextInput): Record<string, string> => {
+export const buildAlertContext = (
+	alert: AlertContextInput,
+	viewer?: ViewerFormatting | null
+): Record<string, string> => {
 	return expandContext(
 		{
+			...displayTimestamps(alert, viewer),
 			name: alert.alertName ?? '',
 			id: alert.id ?? '',
 			status: alert.status ?? '',

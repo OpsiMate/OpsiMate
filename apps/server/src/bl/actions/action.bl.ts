@@ -10,6 +10,7 @@ import {
 	AuditResourceType,
 	Logger,
 	User,
+	ViewerFormatting,
 } from '@OpsiMate/shared';
 import { ActionRepository, CreateActionInput, UpdateActionInput } from '../../dal/actionRepository';
 import { actionsRunTotal } from '../../metrics';
@@ -46,12 +47,15 @@ export class ActionBL {
 		private callbacks?: ActionCallbackHooks
 	) {}
 
-	async test(data: ExecutableAction): Promise<ActionTestResult> {
-		return executeAction(data, buildSampleContext());
+	async test(data: ExecutableAction, viewer?: ViewerFormatting | null): Promise<ActionTestResult> {
+		return executeAction(data, buildSampleContext(viewer));
 	}
 
-	previewForAlert(action: Action, alert: AlertContextInput): ActionPreview {
-		return previewAction({ name: action.name, type: action.type, config: action.config }, buildAlertContext(alert));
+	previewForAlert(action: Action, alert: AlertContextInput, viewer?: ViewerFormatting | null): ActionPreview {
+		return previewAction(
+			{ name: action.name, type: action.type, config: action.config },
+			buildAlertContext(alert, viewer)
+		);
 	}
 
 	async runOnAlert(
@@ -59,11 +63,12 @@ export class ActionBL {
 		alert: AlertContextInput,
 		overrides?: ActionOverrides,
 		actorName?: string | null,
-		actorId?: string | null
+		actorId?: string | null,
+		viewer?: ViewerFormatting | null
 	): Promise<ActionTestResult> {
 		const result = await executeAction(
 			{ name: action.name, type: action.type, config: action.config },
-			buildAlertContext(alert),
+			buildAlertContext(alert, viewer),
 			overrides
 		);
 		// A "don't wait" HTTP action only knows its request went out, so it counts as

@@ -72,6 +72,10 @@ export const HttpAlertWebhookSchema = z.object({
 	alertUrl: z.string().url().optional(),
 	alertName: z.string(),
 	summary: z.string().optional(),
+	// Who owns the alert: an email, or a bare name completed with login.default_email_domain.
+	// Optional; applied only when the alert has no owner yet, never unassigns. An `owner` tag
+	// does the same for sources whose payload has no field for it.
+	owner: z.string().trim().max(320).optional(),
 	// Deprecated in favor of `links` — still accepted; folds in as the "Runbook" entry.
 	runbookUrl: z.string().url().optional(),
 	links: z.array(AlertLinkSchema).max(20).optional(),
