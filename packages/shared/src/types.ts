@@ -596,6 +596,12 @@ export const ALERT_TEMPLATE_VARIABLES = [
 	'startsAt',
 	'updatedAt',
 	'createdAt',
+	// The same instants as the alerts table shows them to the person sending the action
+	// (today → "17:15:53", older → "10/20/2026, 17:15:53", their zone and locale). The
+	// bare names stay exact ISO timestamps for receivers that parse them.
+	'startsAt.display',
+	'updatedAt.display',
+	'createdAt.display',
 	'url',
 	'runbookUrl',
 ] as const;
