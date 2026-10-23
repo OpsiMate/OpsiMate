@@ -25,6 +25,10 @@ interface Receiver {
 	stop: () => Promise<void>;
 }
 
+interface CountRow {
+	c: number;
+}
+
 const startReceiver = async (status: number): Promise<Receiver> => {
 	const receiver: Receiver = { url: '', received: [], stop: () => Promise.resolve() };
 	const server = http.createServer((req, res) => {
@@ -184,7 +188,7 @@ describe('POST /api/v1/actions/test', () => {
 		const successBefore = await runCount('success');
 		const errorBefore = await runCount('error');
 		const sentBefore = await runCount('sent');
-		const historyBefore = (db.prepare('SELECT COUNT(*) AS c FROM alert_history_events').get() as { c: number }).c;
+		const historyBefore = (db.prepare('SELECT COUNT(*) AS c FROM alert_history_events').get() as CountRow).c;
 
 		const res = await authed(app.post('/api/v1/actions/test')).send({
 			name: 'Leave no trace',
@@ -198,7 +202,7 @@ describe('POST /api/v1/actions/test', () => {
 		expect(await runCount('error')).toBe(errorBefore);
 		expect(await runCount('sent')).toBe(sentBefore);
 
-		const historyAfter = (db.prepare('SELECT COUNT(*) AS c FROM alert_history_events').get() as { c: number }).c;
+		const historyAfter = (db.prepare('SELECT COUNT(*) AS c FROM alert_history_events').get() as CountRow).c;
 		expect(historyAfter).toBe(historyBefore);
 
 		const listed = await authed(app.get('/api/v1/actions'));
