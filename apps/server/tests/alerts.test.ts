@@ -1988,6 +1988,75 @@ describe('Alerts API', () => {
 				expect(response.body.success).toBe(false);
 			});
 
+			test('should return 404 when the resolved alert does not exist', async () => {
+				const response = await app
+					.delete('/api/v1/alerts/resolved/never-seen')
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Resolved alert not found');
+			});
+
+			test('should return 404 when deleting the same resolved alert twice', async () => {
+				const id = 'resolved-delete-twice';
+				db.prepare(
+					`
+			INSERT INTO alerts_resolved
+			(id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at,
+			is_dismissed)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`
+				).run(
+					id,
+					'resolved',
+					'{}',
+					new Date().toISOString(),
+					new Date().toISOString(),
+					'https://example.com/delete-twice',
+					'Delete Twice Test',
+					'First 200, second 404',
+					'https://runbook.com/delete-twice',
+					new Date().toISOString(),
+					0
+				);
+
+				const first = await app
+					.delete(`/api/v1/alerts/resolved/${id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(first.status).toBe(200);
+				expect(first.body.success).toBe(true);
+
+				const second = await app
+					.delete(`/api/v1/alerts/resolved/${id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(second.status).toBe(404);
+				expect(second.body.success).toBe(false);
+				expect(second.body.error).toBe('Resolved alert not found');
+			});
+
+			test('should return 404 for a firing alert id and leave the alert in place', async () => {
+				const response = await app
+					.delete(`/api/v1/alerts/resolved/${testAlerts[0].id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.success).toBe(false);
+
+				const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(testAlerts[0].id);
+				expect(row).toBeDefined();
+			});
+
+			test('should keep answering 200 for a webhook resolve of an unknown id', async () => {
+				const response = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ id: 'never-seen-resolve', status: 'resolved' });
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+			});
+
 			test('should return 403 when an editor tries to delete a resolved alert', async () => {
 				const email = 'editor-alert-delete@test.com';
 				const password = 'password123';

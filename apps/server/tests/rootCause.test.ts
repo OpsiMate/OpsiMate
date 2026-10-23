@@ -268,10 +268,12 @@ describe('root cause API', () => {
 
 	test('deleting a RESOLVED id that is actually active does not shed the root cause', async () => {
 		// rc-2 is active. DELETE /alerts/resolved/:id against it removes zero resolved
-		// rows — the permanent-deletion cascade must not fire.
+		// rows — the permanent-deletion cascade must not fire, and the route answers
+		// 404 because nothing was deleted.
 		await putRootCause('rc-2', { content: 'must survive a no-op resolved delete' });
 		const del = await app.delete('/api/v1/alerts/resolved/rc-2').set('Authorization', `Bearer ${jwtToken}`);
-		expect(del.status).toBe(200);
+		expect(del.status).toBe(404);
+		expect(del.body.success).toBe(false);
 		expect((await getRootCause('rc-2')).body.data.rootCause).not.toBeNull();
 	});
 
