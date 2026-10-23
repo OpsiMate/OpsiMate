@@ -208,8 +208,10 @@
 		--popover: 222 15% 10%;
 		--popover-foreground: 0 0% 98%;
 
-		--primary: 210 100% 25%;
-		--primary-foreground: 0 0% 100%;
+		/* Primary also colours small text/icons, including translucent avatar surfaces.
+		   Bright blue keeps those readable; filled controls use dark ink rather than white. */
+		--primary: 210 100% 65%;
+		--primary-foreground: 222 15% 8%;
 
 		--secondary: 174 100% 32%;
 		--secondary-foreground: 0 0% 100%;
@@ -228,7 +230,7 @@
 
 		--border: 222 15% 20%;
 		--input: 222 15% 18%;
-		--ring: 210 100% 35%;
+		--ring: 210 100% 65%;
 
 		--sidebar-background: 222 15% 10%;
 		--sidebar-foreground: 0 0% 100%;
