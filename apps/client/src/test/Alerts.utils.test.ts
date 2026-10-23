@@ -1,6 +1,10 @@
 import { AlertGroupSummaryNode } from '@OpsiMate/shared';
 import { describe, expect, test } from 'vitest';
-import { diffFilterChanges, splitOwnerPaneCounts } from '@/components/Alerts/Alerts.utils';
+import {
+	diffFilterChanges,
+	splitOwnerPaneCounts,
+	getResolvedAlertDeleteHandler,
+} from '@/components/Alerts/Alerts.utils';
 
 const node = (value: string, count: number): AlertGroupSummaryNode =>
 	({
@@ -104,5 +108,19 @@ describe('diffAddedFilters on suspended-status tabs', () => {
 	test('non-status additions still surface on a suspended tab', () => {
 		const added = diffFilterChanges(suspend({ status: ['Firing'], severity: ['Critical'] }), {});
 		expect(added.map((a) => a.field)).toEqual(['severity']);
+	});
+});
+
+describe('Resolved alert delete handler permissions', () => {
+	test('provides the delete handler for Admin', () => {
+		const handler = () => {};
+
+		expect(getResolvedAlertDeleteHandler(true, handler)).toBe(handler);
+	});
+
+	test('hides the delete handler for Editor', () => {
+		const handler = () => {};
+
+		expect(getResolvedAlertDeleteHandler(false, handler)).toBeUndefined();
 	});
 });
