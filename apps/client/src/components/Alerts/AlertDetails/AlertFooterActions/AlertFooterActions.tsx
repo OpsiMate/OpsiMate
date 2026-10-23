@@ -28,10 +28,13 @@ export const AlertFooterActions = ({
 					<Flame className="h-3 w-3" />
 					Unresolve
 				</Button>
-				<Button variant="destructive" size="sm" className="gap-2" onClick={() => onDelete?.(alert.id)}>
-					<Trash2 className="h-3 w-3" />
-					Delete Alert
-				</Button>
+
+				{onDelete && (
+					<Button variant="destructive" size="sm" className="gap-2" onClick={() => onDelete(alert.id)}>
+						<Trash2 className="h-3 w-3" />
+						Delete Alert
+					</Button>
+				)}
 			</div>
 		);
 	}

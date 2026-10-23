@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { FilterChange, diffFilterChanges, splitOwnerPaneCounts } from './Alerts.utils';
+import { FilterChange, diffFilterChanges, splitOwnerPaneCounts, getResolvedAlertDeleteHandler } from './Alerts.utils';
 import { ViewNotice, ViewNoticeAction } from './ViewNotice';
 import {
 	useAlertFacets,
@@ -76,6 +76,8 @@ import {
 	useExpandRows,
 	useFilterPanelCollapsed,
 } from './hooks';
+
+import { canDelete } from '@/lib/permissions';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
 // per-tab counts come from the filtered lists at render time.
@@ -1436,7 +1438,9 @@ const Alerts = () => {
 										onCommentAll={confirmCommentAllSelected}
 										// Permanent delete never runs by-filter — it stays on the loaded
 										// selection, so it's hidden while "all matching" is armed.
-										onDeleteAll={allMatchingSelected ? undefined : handleDeleteAllSelected}
+										onDeleteAll={
+											canDelete() && !allMatchingSelected ? handleDeleteAllSelected : undefined
+										}
 										actionsDisabled={bulkAction.isPending}
 									/>
 								</div>
@@ -1461,7 +1465,10 @@ const Alerts = () => {
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
-									onDeleteAlert={confirmDeleteResolvedAlert}
+									onDeleteAlert={getResolvedAlertDeleteHandler(
+										canDelete(),
+										confirmDeleteResolvedAlert
+									)}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -1554,7 +1561,13 @@ const Alerts = () => {
 									onClose={() => setSelectedAlert(null)}
 									onSilence={confirmSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
-									onDelete={selectedIsResolved ? confirmDeleteResolvedAlert : confirmResolveAlert}
+									onDelete={
+										selectedIsResolved
+											? canDelete()
+												? confirmDeleteResolvedAlert
+												: undefined
+											: confirmResolveAlert
+									}
 									onUnresolve={handleUnresolveAlert}
 								/>
 							);
