@@ -1179,7 +1179,6 @@ export class AlertBL {
 	 */
 	async deleteResolvedAlert(alertId: string, actor?: AlertCallbackActor): Promise<boolean> {
 		await this.drainIngest();
-		let deleted = 0;
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
 			// The row is gone after the delete, so the callback's snapshot is read first —
@@ -1187,7 +1186,7 @@ export class AlertBL {
 			const snapshot = this.callbackDispatcher?.wants('deleted')
 				? await this.resolvedAlertRepo.getResolvedAlert(alertId)
 				: null;
-			deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
+			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 			// Only a row that actually left the resolved table counts as permanent
 			// deletion — an id naming a still-active alert must not shed its satellites.
 			// Satellite cleanup is BEST-EFFORT: the alert row is already gone, so a
@@ -1203,11 +1202,11 @@ export class AlertBL {
 				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
 			this.invalidateSnapshots();
+			return deleted > 0;
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
 			throw error;
 		}
-		return deleted > 0;
 	}
 	// endregion
 
