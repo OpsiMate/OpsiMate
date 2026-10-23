@@ -1,3 +1,5 @@
+import { PanelResizeHandle } from '@/components/shared/PanelResizeHandle';
+import { useResizablePanelWidth } from '@/components/shared/hooks/useResizablePanelWidth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
@@ -9,9 +11,7 @@ import { AlertFooterActions } from '../AlertFooterActions';
 import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
-import { PanelResizeHandle } from './PanelResizeHandle';
 import { PanelTabsList } from './PanelTabsList';
-import { useResizablePanelWidth } from './useResizablePanelWidth';
 
 interface AlertDetailsPanelProps {
 	alert: Alert;
@@ -37,7 +37,7 @@ export const AlertDetailsPanel = ({
 }: AlertDetailsPanelProps) => {
 	const historyData = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
-	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth();
+	const { width, minWidth, maxWidth, panelRef, startResizing, resetWidth, setWidth } = useResizablePanelWidth();
 	const { signal, broadcast } = useSectionsExpandBroadcast();
 
 	// Selecting a different alert starts a fresh read: back to Details, not whichever tab
@@ -54,7 +54,15 @@ export const AlertDetailsPanel = ({
 			style={{ width }}
 			className="relative shrink-0 border-l bg-background flex flex-col h-full overflow-hidden"
 		>
-			<PanelResizeHandle onPointerDown={startResizing} onDoubleClick={resetWidth} />
+			<PanelResizeHandle
+				ariaLabel="Resize alert details panel"
+				onPointerDown={startResizing}
+				onDoubleClick={resetWidth}
+				value={width}
+				minValue={minWidth}
+				maxValue={maxWidth}
+				onSetValue={setWidth}
+			/>
 
 			<AlertDetailsHeader
 				onClose={onClose}

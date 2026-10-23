@@ -1,13 +1,17 @@
 import { act, renderHook } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { useResizablePanelWidth } from '@/components/Alerts/AlertDetails/AlertDetailsPanel/useResizablePanelWidth';
+import { useResizablePanelWidth } from '@/components/shared/hooks/useResizablePanelWidth';
 
 // The gesture contract: the panel opens at 340px unless a saved width inside
 // [280, 640] exists; a drag measures from the window's right edge when no panel
 // element is rendered (panelRef.current is null in a hook test); the live width
-// never touches localStorage; the chosen width persists exactly once, on
-// pointerup; double-click resets to the default.
+// never touches localStorage; the chosen width persists exactly once, when the drag
+// ends (pointerup, or a pointercancel that never fires pointerup), while a keyboard step is
+// one gesture and saves on the spot; unmounting releases a
+// drag that is still in flight; storage that throws degrades to the default; and
+// double-click resets to the default. The last block covers the second
+// consumer - the left-docked filter sidebar, which drags the other way.
 
 const STORAGE_KEY = 'opsimate-alert-details-panel-width';
 
@@ -151,5 +155,156 @@ describe('useResizablePanelWidth - reset', () => {
 		});
 		expect(result.current.width).toBe(340);
 		expect(localStorage.getItem(STORAGE_KEY)).toBe('340');
+	});
+});
+
+describe('useResizablePanelWidth - keyboard step', () => {
+	test('setWidth moves the panel without a drag', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		act(() => {
+			result.current.setWidth(400);
+		});
+		expect(result.current.width).toBe(400);
+		// One keystroke is one discrete gesture, so it persists on the spot — unlike a live
+		// drag, which writes once at the end.
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('400');
+	});
+
+	test('setWidth clamps to the bounds, so the arrow keys cannot run off either end', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		act(() => {
+			result.current.setWidth(9999);
+		});
+		expect(result.current.width).toBe(640);
+		act(() => {
+			result.current.setWidth(-9999);
+		});
+		expect(result.current.width).toBe(280);
+	});
+});
+
+// The filter sidebar is the second consumer. It docks left, so the same drag reads the
+// pointer from its left edge (x = 0 when a hook test renders no element), and it keeps its
+// own bounds and storage key - widening the filters must never resize the details panel.
+const SIDEBAR_STORAGE_KEY = 'opsimate-alerts-filter-sidebar-width';
+const SIDEBAR_OPTIONS = {
+	dock: 'left',
+	defaultWidth: 192,
+	minWidth: 192,
+	maxWidth: 480,
+	storageKey: SIDEBAR_STORAGE_KEY,
+} as const;
+
+const renderSidebar = () => renderHook(() => useResizablePanelWidth(SIDEBAR_OPTIONS));
+
+describe('useResizablePanelWidth - left-docked sidebar', () => {
+	test('opens at 192 and ignores a stored details-panel width', () => {
+		localStorage.setItem(STORAGE_KEY, '600');
+		const { result } = renderSidebar();
+		expect(result.current.width).toBe(192);
+	});
+
+	test('reads back its own stored width, and falls back outside [192, 480]', () => {
+		localStorage.setItem(SIDEBAR_STORAGE_KEY, '300');
+		expect(renderSidebar().result.current.width).toBe(300);
+		localStorage.setItem(SIDEBAR_STORAGE_KEY, '900');
+		expect(renderSidebar().result.current.width).toBe(192);
+	});
+
+	test('a pointermove sets the width to clientX', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(300);
+		expect(result.current.width).toBe(300);
+	});
+
+	test('the live width clamps to 480 on a far-right move and 192 on a far-left one', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(1200);
+		expect(result.current.width).toBe(480);
+		pointerMove(-50);
+		expect(result.current.width).toBe(192);
+	});
+
+	test('pointerup persists under the sidebar key only', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(300);
+		pointerUp();
+		expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('300');
+		expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+	});
+
+	test('resetWidth restores 192 and persists it', () => {
+		const { result } = renderSidebar();
+		startDrag(result.current);
+		pointerMove(300);
+		pointerUp();
+		act(() => {
+			result.current.resetWidth();
+		});
+		expect(result.current.width).toBe(192);
+		expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('192');
+	});
+});
+
+describe('useResizablePanelWidth - a drag that never gets released', () => {
+	test('pointercancel ends the drag, unlocks the body and keeps the width it reached', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current);
+		pointerMove(500);
+		act(() => {
+			window.dispatchEvent(new MouseEvent('pointercancel'));
+		});
+		expect(document.body.style.userSelect).toBe('');
+		expect(document.body.style.cursor).toBe('');
+		pointerMove(700);
+		expect(result.current.width).toBe(500);
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('500');
+	});
+
+	test('unmounting mid-drag unlocks the body and drops the listeners', () => {
+		const { result, unmount } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current);
+		pointerMove(500);
+		unmount();
+		expect(document.body.style.userSelect).toBe('');
+		expect(document.body.style.cursor).toBe('');
+		// The handler must be gone: a stray move after unmount would otherwise keep
+		// calling setState on a dead component.
+		pointerMove(700);
+		expect(result.current.width).toBe(500);
+	});
+});
+
+describe('useResizablePanelWidth - storage that refuses', () => {
+	// Safari in private mode and "block all cookies" throw on any storage access, which
+	// would take the whole Alerts page down with it.
+	test('a getItem that throws opens at the default width', () => {
+		const blocked = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+			throw new Error('blocked');
+		});
+		try {
+			const { result } = renderHook(() => useResizablePanelWidth());
+			expect(result.current.width).toBe(340);
+		} finally {
+			blocked.mockRestore();
+		}
+	});
+
+	test('a setItem that throws still finishes the drag', () => {
+		const blocked = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+			throw new Error('quota');
+		});
+		try {
+			const { result } = renderHook(() => useResizablePanelWidth());
+			startDrag(result.current);
+			pointerMove(500);
+			expect(() => pointerUp()).not.toThrow();
+			expect(result.current.width).toBe(500);
+		} finally {
+			blocked.mockRestore();
+		}
 	});
 });

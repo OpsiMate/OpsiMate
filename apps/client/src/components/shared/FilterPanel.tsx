@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { CircleMinus, CirclePlus, Filter, RotateCcw } from 'lucide-react';
+import { CircleMinus, CirclePlus, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActiveFiltersSection } from './FilterPanel/ActiveFiltersSection';
 import { FilterSearchInput } from './FilterPanel/FilterSearchInput';
@@ -32,8 +32,6 @@ interface FilterPanelProps {
 	facets: FilterFacets;
 	filters: ActiveFilters;
 	onFilterChange: (filters: ActiveFilters) => void;
-	collapsed?: boolean;
-	onToggle?: () => void;
 	className?: string;
 }
 
@@ -52,15 +50,7 @@ interface FieldSection {
 
 const SEARCHABLE_THRESHOLD = 8;
 
-export const FilterPanel = ({
-	config,
-	facets,
-	filters,
-	onFilterChange,
-	collapsed = false,
-	onToggle,
-	className,
-}: FilterPanelProps) => {
+export const FilterPanel = ({ config, facets, filters, onFilterChange, className }: FilterPanelProps) => {
 	const { searchTerms, getFilteredAndLimitedFacets, handleSearchChange, handleLoadMore, shouldShowSearch } =
 		useFilterPanel();
 
@@ -235,35 +225,6 @@ export const FilterPanel = ({
 			setOpenValues((prev) => [...prev, ...newFields]);
 		}
 	}, [config.fields]);
-
-	if (collapsed) {
-		return (
-			<div className={cn('flex flex-col items-center py-4 gap-4', className)}>
-				<div className="relative">
-					<Filter className="h-5 w-5 text-foreground" />
-					{activeFilterCount > 0 && (
-						<Badge
-							variant="secondary"
-							className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
-						>
-							{activeFilterCount}
-						</Badge>
-					)}
-				</div>
-				{activeFilterCount > 0 && (
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-6 w-6 text-foreground"
-						onClick={handleResetFilters}
-						title="Reset filters"
-					>
-						<RotateCcw className="h-3 w-3" />
-					</Button>
-				)}
-			</div>
-		);
-	}
 
 	return (
 		<div className={cn('h-full flex flex-col', className)}>
