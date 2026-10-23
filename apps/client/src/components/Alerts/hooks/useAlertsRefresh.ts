@@ -24,9 +24,12 @@ export const useAlertsRefresh = (
 			// Join a fetch that is still running instead of cancelling it: a cancelled manual
 			// refresh resolves with the old, successful result and hides its error. The joined
 			// fetch can still fail, so move lastRefresh only once it has succeeded.
-			void refetch({ cancelRefetch: false }).then((result) => {
-				if (!result.isError) setLastRefresh(new Date());
-			});
+			refetch({ cancelRefetch: false })
+				.then((result) => {
+					if (!result.isError) setLastRefresh(new Date());
+				})
+				// A failed poll keeps the old timestamp; the next tick tries again.
+				.catch(() => {});
 		}, ACTIVE_ALERTS_POLL_MS);
 
 		return () => clearInterval(interval);

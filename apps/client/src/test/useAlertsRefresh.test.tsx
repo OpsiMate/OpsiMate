@@ -104,14 +104,28 @@ describe('useAlertsRefresh manual refresh', () => {
 });
 
 describe('useAlertsRefresh auto-refresh', () => {
-	test('joins a running fetch instead of cancelling the manual refresh', () => {
+	test('joins a running fetch instead of cancelling the manual refresh', async () => {
 		const refetch = vi.fn().mockResolvedValue(resultOf({ status: 'success' }));
 		renderHook(() => useAlertsRefresh(refetch));
 
-		act(() => vi.advanceTimersByTime(ACTIVE_ALERTS_POLL_MS));
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(ACTIVE_ALERTS_POLL_MS);
+		});
 
 		expect(refetch).toHaveBeenCalledTimes(1);
 		expect(refetch).toHaveBeenCalledWith({ cancelRefetch: false });
+	});
+
+	test('a tick whose refetch rejects leaves lastRefresh alone', async () => {
+		const refetch = vi.fn().mockRejectedValue(new Error('Network error'));
+		const { result } = renderHook(() => useAlertsRefresh(refetch));
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(ACTIVE_ALERTS_POLL_MS);
+		});
+
+		expect(refetch).toHaveBeenCalledTimes(1);
+		expect(result.current.lastRefresh).toEqual(START);
 	});
 
 	test('a tick moves lastRefresh forward only after its fetch succeeds', async () => {
