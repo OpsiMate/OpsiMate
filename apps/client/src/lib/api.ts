@@ -1,5 +1,4 @@
 import { AUTH_TOKEN_STORAGE_KEY } from './auth';
-import { CustomAction } from '@OpsiMate/custom-actions';
 import {
 	AiConfig,
 	AiFilterResult,
@@ -39,6 +38,12 @@ import {
 	UpdateAiConfig,
 	AlertAnalytics,
 	SecretType,
+	AlertCallback,
+	AlertCallbackEvent,
+	AlertCallbackMethod,
+	AlertCallbackTestResult,
+	AlertCallbackWithSecret,
+	ViewerFormatting,
 } from '@OpsiMate/shared';
 import { isPlaygroundMode } from './playground';
 import { ROUTES } from './routes';
@@ -622,17 +627,64 @@ export type ActionPayload = {
 	labelMatcherGroups?: { key: string; value: string }[][];
 };
 
+// The viewer's zone and locale travel with an action so {{startsAt.display}} and friends
+// render the way the alerts table rendered them for this person.
+export const viewerFormatting = (): ViewerFormatting => ({
+	timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+	// The locale Intl actually resolves — what the table's own formatters use — not the UI language.
+	locale: Intl.DateTimeFormat().resolvedOptions().locale,
+});
+
 export const actionsApi = {
 	listActions: () => apiRequest<Action[]>('/actions'),
 	getAction: (id: number) => apiRequest<Action>(`/actions/${id}`),
 	createAction: (payload: ActionPayload) => apiRequest<Action>('/actions', 'POST', payload),
 	updateAction: (id: number, payload: ActionPayload) => apiRequest<Action>(`/actions/${id}`, 'PUT', payload),
 	deleteAction: (id: number) => apiRequest<void>(`/actions/${id}`, 'DELETE'),
-	testAction: (payload: ActionPayload) => apiRequest<ActionTestResult>('/actions/test', 'POST', payload),
+	testAction: (payload: ActionPayload) =>
+		apiRequest<ActionTestResult>('/actions/test', 'POST', { ...payload, viewer: viewerFormatting() }),
 	previewAction: (id: number, alert: SharedAlert) =>
-		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert }),
+		apiRequest<ActionPreview>(`/actions/${id}/preview`, 'POST', { alert, viewer: viewerFormatting() }),
 	runAction: (id: number, alert: SharedAlert, overrides?: ActionOverrides) =>
-		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides }),
+		apiRequest<ActionTestResult>(`/actions/${id}/run`, 'POST', { alert, overrides, viewer: viewerFormatting() }),
+};
+
+// Alert callbacks (admin only): outbound requests sent after a user changes an alert.
+// (Named Input, not Payload: AlertCallbackPayload in @OpsiMate/shared is what a receiver gets.)
+export interface AlertCallbackInput {
+	name: string;
+	url: string;
+	method: AlertCallbackMethod;
+	headers?: Record<string, string> | null;
+	bodyTemplate?: string | null;
+	events: AlertCallbackEvent[];
+	enabled: boolean;
+	// Omitted on create (the server generates one); sent to rotate it.
+	secret?: string;
+}
+
+// With no secret typed, callbackId has the server sign the test with that callback's
+// saved secret — the page never sees it after creation.
+export interface AlertCallbackTestInput extends Pick<
+	AlertCallbackInput,
+	'url' | 'method' | 'headers' | 'bodyTemplate' | 'secret'
+> {
+	callbackId?: number;
+}
+
+// An update carries the secret back only when this edit rotated it.
+export interface AlertCallbackUpdated extends AlertCallback {
+	secret?: string;
+}
+
+export const callbacksApi = {
+	listCallbacks: () => apiRequest<AlertCallback[]>('/callbacks'),
+	createCallback: (payload: AlertCallbackInput) => apiRequest<AlertCallbackWithSecret>('/callbacks', 'POST', payload),
+	updateCallback: (id: number, payload: Partial<AlertCallbackInput>) =>
+		apiRequest<AlertCallbackUpdated>(`/callbacks/${id}`, 'PUT', payload),
+	deleteCallback: (id: number) => apiRequest<void>(`/callbacks/${id}`, 'DELETE'),
+	testCallback: (payload: AlertCallbackTestInput) =>
+		apiRequest<AlertCallbackTestResult>('/callbacks/test', 'POST', payload),
 };
 
 export const auditApi = {
@@ -757,39 +809,6 @@ export const secretsApi = {
 				error: error instanceof Error ? error.message : 'Unknown error occurred',
 			};
 		}
-	},
-};
-
-/**
- * Custom Actions API endpoints
- */
-export const customActionsApi = {
-	getActions: () => {
-		return apiRequest<{ actions: CustomAction[] }>('/custom-actions');
-	},
-
-	getActionById: (actionId: number) => {
-		return apiRequest<CustomAction>(`/custom-actions/${actionId}`);
-	},
-
-	createAction: (action: CustomAction) => {
-		return apiRequest<{ id: number }>('/custom-actions', 'POST', action);
-	},
-
-	updateAction: (actionId: number, action: CustomAction) => {
-		return apiRequest<void>(`/custom-actions/${actionId}`, 'PUT', action);
-	},
-
-	deleteAction: (actionId: number) => {
-		return apiRequest<void>(`/custom-actions/${actionId}`, 'DELETE');
-	},
-
-	runForProvider: (providerId: number, actionId: number) => {
-		return apiRequest<void>(`/custom-actions/run/provider/${providerId}/${actionId}`, 'POST');
-	},
-
-	runForService: (serviceId: number, actionId: number) => {
-		return apiRequest<void>(`/custom-actions/run/service/${serviceId}/${actionId}`, 'POST');
 	},
 };
 

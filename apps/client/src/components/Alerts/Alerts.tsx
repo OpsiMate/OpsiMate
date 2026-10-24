@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { FilterChange, diffFilterChanges, splitOwnerPaneCounts } from './Alerts.utils';
+import { FilterChange, diffFilterChanges, splitOwnerPaneCounts, getResolvedAlertDeleteHandler } from './Alerts.utils';
 import { ViewNotice, ViewNoticeAction } from './ViewNotice';
 import {
 	useAlertFacets,
@@ -28,7 +28,7 @@ import {
 	useGetDashboards,
 	useUpdateDashboard,
 } from '@/hooks/queries/dashboards';
-import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
+import { CreateDashboardInput, Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
@@ -66,6 +66,7 @@ import { resolveTimeRange } from './AlertsTable/TimeFilter/TimeFilter.utils';
 import { TimeRange } from './AlertsTable/TimeFilter/TimeFilter.types';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
+import { SaveDashboardAsDialog, SaveDashboardAsValues } from './SaveDashboardAsDialog';
 import {
 	useAlertActions,
 	useAlertsFiltering,
@@ -75,6 +76,8 @@ import {
 	useExpandRows,
 	useFilterPanelCollapsed,
 } from './hooks';
+
+import { canDelete } from '@/lib/permissions';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
 // per-tab counts come from the filtered lists at render time.
@@ -146,7 +149,7 @@ const mergeFacetsResponses = (a?: AlertFacetsResponse, b?: AlertFacetsResponse):
 
 const Alerts = () => {
 	const { toast } = useToast();
-	const { data: dashboards = [], isPending: dashboardsPending } = useGetDashboards();
+	const { data: dashboards = [], isPending: dashboardsPending, isError: dashboardsFailed } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
 	const deleteDashboardMutation = useDeleteDashboard();
@@ -369,6 +372,7 @@ const Alerts = () => {
 	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+	const [showSaveAs, setShowSaveAs] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
 	// the user actually works with; the draft state is persisted per-browser meanwhile.
@@ -413,7 +417,7 @@ const Alerts = () => {
 		return updatedAlert || selectedAlert;
 	}, [selectedAlert, allAlerts]);
 
-	const shouldPauseRefresh = showDashboardSettings;
+	const shouldPauseRefresh = showDashboardSettings || showSaveAs;
 
 	const {
 		lastRefresh: lastRefreshActive,
@@ -473,25 +477,29 @@ const Alerts = () => {
 		updateDashboardField('columnWidths', widths);
 	};
 
+	// The view as it is on screen, in the shape the API stores — shared by Save (which
+	// writes it over the open dashboard) and Save as (which writes it to a new one).
+	const buildDashboardData = (): CreateDashboardInput => ({
+		name: dashboardState.name || 'New Dashboard',
+		type: dashboardState.type,
+		description: dashboardState.description,
+		filters: dashboardState.filters,
+		// Persist the EFFECTIVE columns/order (what's rendered), not the raw state:
+		// the raw state can be empty (render falls back to defaults) or missing the
+		// injected severity / appended tag columns — saving it means the arrangement
+		// on screen is not the arrangement that comes back on the next load.
+		visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
+		columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
+		columnWidths: dashboardState.columnWidths,
+		splitByAssignment: dashboardState.splitByAssignment,
+		severityColors: dashboardState.severityColors,
+		query: dashboardState.query,
+		groupBy: dashboardState.groupBy,
+		timeRange: serializeTimeRange(dashboardState.timeRange),
+	});
+
 	const handleSaveDashboard = async () => {
-		const dashboardData = {
-			name: dashboardState.name || 'New Dashboard',
-			type: dashboardState.type,
-			description: dashboardState.description,
-			filters: dashboardState.filters,
-			// Persist the EFFECTIVE columns/order (what's rendered), not the raw state:
-			// the raw state can be empty (render falls back to defaults) or missing the
-			// injected severity / appended tag columns — saving it means the arrangement
-			// on screen is not the arrangement that comes back on the next load.
-			visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
-			columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
-			columnWidths: dashboardState.columnWidths,
-			splitByAssignment: dashboardState.splitByAssignment,
-			severityColors: dashboardState.severityColors,
-			query: dashboardState.query,
-			groupBy: dashboardState.groupBy,
-			timeRange: serializeTimeRange(dashboardState.timeRange),
-		};
+		const dashboardData = buildDashboardData();
 
 		try {
 			if (dashboardState.id) {
@@ -514,6 +522,30 @@ const Alerts = () => {
 			toast({
 				title: 'Error saving dashboard',
 				description: 'Failed to save dashboard changes',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	// Save as: the current view (unsaved changes included) becomes a NEW dashboard and
+	// the page switches to it, clean. The dashboard it came from is not touched, so its
+	// last saved version is exactly what the user left there — the whole point of the
+	// feature. Only the id/name/description differ from the on-screen state, so the
+	// switch is a plain re-baseline rather than a reload.
+	const handleSaveDashboardAs = async ({ name, description }: SaveDashboardAsValues) => {
+		try {
+			const result = await createDashboardMutation.mutateAsync({ ...buildDashboardData(), name, description });
+			if (!result?.id) throw new Error('No dashboard id returned');
+			setInitialState({ ...dashboardState, id: result.id, name, description });
+			setShowSaveAs(false);
+			toast({
+				title: 'Dashboard created',
+				description: `Saved the current view as "${name}". "${dashboardState.name || 'New Dashboard'}" was left unchanged.`,
+			});
+		} catch (err) {
+			toast({
+				title: 'Error saving dashboard',
+				description: err instanceof Error ? err.message : 'Failed to create the new dashboard',
 				variant: 'destructive',
 			});
 		}
@@ -911,7 +943,7 @@ const Alerts = () => {
 				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer. You take ownership of every silenced alert' +
 				(allMatchingSelected ? ', and matches that are already silenced restart their timer.' : '.') +
 				bulkScopeNote,
-			confirmLabel: 'Silence all',
+			confirmLabel: 'Silence',
 			withSilenceDuration: true,
 			withComment: true,
 			commentLabel: 'Silence comment',
@@ -1135,12 +1167,17 @@ const Alerts = () => {
 								dashboardName={dashboardState.name}
 								onDashboardNameChange={(name) => updateDashboardField('name', name)}
 								onDashboardNameBlur={() => {
+									// Not while Save as is opening: the blur-save writes the WHOLE view
+									// over the source dashboard, the one write Save as promises not to
+									// make. The typed name reaches the dialog's own Name field instead.
+									if (showSaveAs) return;
 									if (dashboardState.name && dashboardState.name !== initialState.name) {
 										handleSaveDashboard();
 									}
 								}}
 								isDirty={isDirty}
 								onSave={handleSaveDashboard}
+								onSaveAs={dashboardState.id ? () => setShowSaveAs(true) : undefined}
 								onSettingsClick={() => setShowDashboardSettings(true)}
 								isRefreshing={isRefreshing}
 								lastRefresh={lastRefresh}
@@ -1401,7 +1438,9 @@ const Alerts = () => {
 										onCommentAll={confirmCommentAllSelected}
 										// Permanent delete never runs by-filter — it stays on the loaded
 										// selection, so it's hidden while "all matching" is armed.
-										onDeleteAll={allMatchingSelected ? undefined : handleDeleteAllSelected}
+										onDeleteAll={
+											canDelete() && !allMatchingSelected ? handleDeleteAllSelected : undefined
+										}
 										actionsDisabled={bulkAction.isPending}
 									/>
 								</div>
@@ -1426,7 +1465,10 @@ const Alerts = () => {
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
-									onDeleteAlert={confirmDeleteResolvedAlert}
+									onDeleteAlert={getResolvedAlertDeleteHandler(
+										canDelete(),
+										confirmDeleteResolvedAlert
+									)}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -1519,7 +1561,13 @@ const Alerts = () => {
 									onClose={() => setSelectedAlert(null)}
 									onSilence={confirmSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
-									onDelete={selectedIsResolved ? confirmDeleteResolvedAlert : confirmResolveAlert}
+									onDelete={
+										selectedIsResolved
+											? canDelete()
+												? confirmDeleteResolvedAlert
+												: undefined
+											: confirmResolveAlert
+									}
 									onUnresolve={handleUnresolveAlert}
 								/>
 							);
@@ -1538,6 +1586,16 @@ const Alerts = () => {
 				onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
 				onDelete={handleDeleteDashboard}
 				canDelete={!!dashboardState.id}
+			/>
+
+			<SaveDashboardAsDialog
+				open={showSaveAs}
+				onOpenChange={setShowSaveAs}
+				sourceName={dashboardState.name}
+				sourceDescription={dashboardState.description}
+				existingNames={dashboards.map((d) => d.name)}
+				namesStatus={dashboardsPending ? 'loading' : dashboardsFailed ? 'error' : 'ready'}
+				onSubmit={handleSaveDashboardAs}
 			/>
 		</DashboardLayout>
 	);

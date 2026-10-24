@@ -1,3 +1,4 @@
+import { TextWithFlags } from '../TextWithFlags';
 import { badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
@@ -50,7 +51,9 @@ export const ActiveFiltersSection = ({
 								{fieldLabels[field]}
 								{isExclusion ? ' ≠' : ':'}
 							</span>
-							<span className="max-w-[60px] truncate font-medium">{getDisplayValue(field, value)}</span>
+							<span className="max-w-[60px] truncate font-medium">
+								<TextWithFlags text={getDisplayValue(field, value)} />
+							</span>
 							<X className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
 						</button>
 					));

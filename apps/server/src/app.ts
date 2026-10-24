@@ -1,3 +1,5 @@
+import { getLoginDefaultEmailDomain } from './config/config';
+import { WebhookOwnerResolver } from './bl/alerts/webhookOwnerResolver';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import compression from 'compression';
@@ -62,6 +64,10 @@ import { initMetrics, metricsHandler, metricsMiddleware } from './metrics';
 import { AiBL } from './bl/ai/ai.bl';
 import { AiConfigRepository } from './dal/aiConfigRepository';
 import { AiController } from './api/v1/ai/controller';
+import { AlertCallbackRepository } from './dal/alertCallbackRepository';
+import { CallbackDispatcher } from './bl/callbacks/callbackDispatcher';
+import { CallbackBL } from './bl/callbacks/callback.bl';
+import { CallbackController } from './api/v1/callbacks/controller';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -177,6 +183,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const actionRepo = new ActionRepository(db);
 	const aiConfigRepo = new AiConfigRepository(db);
 	const ldapConfigRepo = new LdapConfigRepository(db);
+	const alertCallbackRepo = new AlertCallbackRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -196,15 +203,18 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		actionRepo.initActionsTable(),
 		aiConfigRepo.initAiConfigTable(),
 		ldapConfigRepo.initLdapConfigTable(),
+		alertCallbackRepo.initAlertCallbacksTable(),
 	]);
 
 	// Every table the metric gauges count now exists.
 	initMetrics(db);
 
 	// BL
-	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
-	// Directory login, when configured (config.yml `ldap:` or LDAP_* env). Local
-	// accounts keep signing in locally either way.
+	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL, getLoginDefaultEmailDomain());
+	// A webhook's `owner` becomes an assignment: local users, and directory users through
+	// whatever LDAP setup is active (none → local users only).
+	const webhookOwnerResolver = new WebhookOwnerResolver(userBL, getLoginDefaultEmailDomain);
+	alertBL.setWebhookOwnerResolver(webhookOwnerResolver);
 	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
 	// settings saved on the Settings page. Local accounts keep signing in locally either way.
 	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);
@@ -229,8 +239,22 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	// User renames/creates/deletes change owner names in columns, sort and facets.
-	userBL.setOnUsersChanged(() => alertBL.invalidateOwners());
-	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
+	userBL.setOnUsersChanged(() => {
+		alertBL.invalidateOwners();
+		webhookOwnerResolver.clear();
+	});
+	// Outbound callbacks for user-made alert changes. Fired by AlertBL / ActionBL after a
+	// change is committed, delivered off the request path (see CallbackDispatcher).
+	const callbackDispatcher = new CallbackDispatcher(alertCallbackRepo);
+	await callbackDispatcher.reload();
+	alertBL.setCallbackDispatcher(callbackDispatcher);
+	const callbackBL = new CallbackBL(alertCallbackRepo, auditBL, callbackDispatcher);
+	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo, {
+		dispatcher: callbackDispatcher,
+		// An action can run against an alert in either table.
+		lookupAlert: async (alertId) =>
+			(await alertRepo.getAlert(alertId)) ?? (await resolvedAlertRepo.getResolvedAlert(alertId)) ?? null,
+	});
 	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
 	// Controllers (only for SERVER)
@@ -249,6 +273,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
 	const aiController = new AiController(aiBL);
+	const callbackController = new CallbackController(callbackBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
@@ -272,7 +297,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			retentionController,
 			oncallController,
 			aiController,
-			new LdapController(ldapSettingsBL)
+			new LdapController(ldapSettingsBL),
+			callbackController
 		)
 	);
 

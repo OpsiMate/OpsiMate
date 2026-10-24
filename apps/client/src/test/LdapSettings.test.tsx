@@ -1,20 +1,23 @@
 import { LdapSettings } from '@/components/Settings/LdapSettings';
-import { LdapSettings as LdapSettingsData } from '@OpsiMate/shared';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { LdapSettings as LdapSettingsData, UpdateLdapSettings } from '@OpsiMate/shared';
+import { LdapRequestError } from '@/hooks/queries/ldap';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { AllTheProviders } from './TestProviders';
 
 // The query hooks are mocked at the module boundary: this test is about what the form
 // lets an admin do, not about fetching.
-const { mutateAsync, settingsState, pendingState } = vi.hoisted(() => ({
+const { mutateAsync, testAsync, settingsState, pendingState } = vi.hoisted(() => ({
 	mutateAsync: vi.fn(),
+	testAsync: vi.fn(),
 	settingsState: { current: null as LdapSettingsData | null },
 	pendingState: { save: false, test: false },
 }));
-vi.mock('@/hooks/queries/ldap', () => ({
+vi.mock('@/hooks/queries/ldap', async () => ({
+	...(await vi.importActual<typeof import('@/hooks/queries/ldap')>('@/hooks/queries/ldap')),
 	useLdapSettings: () => ({ data: settingsState.current, isLoading: false, error: null }),
 	useUpdateLdapSettings: () => ({ mutateAsync, mutate: vi.fn(), isPending: pendingState.save }),
-	useTestLdapConnection: () => ({ mutateAsync: vi.fn(), isPending: pendingState.test }),
+	useTestLdapConnection: () => ({ mutateAsync: testAsync, isPending: pendingState.test }),
 }));
 
 const settings = (overrides: Partial<LdapSettingsData> = {}): LdapSettingsData => ({
@@ -49,11 +52,14 @@ const renderOpen = () =>
 		</AllTheProviders>
 	);
 
-const saveButton = () => screen.getByRole('button', { name: /^save$/i });
+const saveButton = () => screen.getByRole('button', { name: /^save/i });
+const testButton = () => screen.getByRole('button', { name: /test connection/i });
 
 beforeEach(() => {
 	mutateAsync.mockReset();
 	mutateAsync.mockImplementation(async () => settingsState.current);
+	testAsync.mockReset();
+	testAsync.mockImplementation(async () => ({ ok: true, latencyMs: 12, steps: [], user: null }));
 	settingsState.current = settings();
 	pendingState.save = false;
 	pendingState.test = false;
@@ -99,7 +105,7 @@ describe('LdapSettings', () => {
 		settingsState.current = settings({ source: 'config' });
 		renderOpen();
 		expect(screen.getByLabelText('Server URL')).toBeDisabled();
-		expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /^save/i })).not.toBeInTheDocument();
 	});
 
 	test.each(['save', 'test'] as const)('the form is frozen while a %s is in flight', (which) => {
@@ -108,6 +114,112 @@ describe('LdapSettings', () => {
 		expect(screen.getByLabelText('Server URL')).toBeDisabled();
 		expect(screen.getByLabelText('Password')).toBeDisabled();
 		expect(screen.getByLabelText('Admin groups')).toBeDisabled();
-		expect(screen.getByRole('button', { name: /test connection/i })).toBeDisabled();
+		expect(screen.getByRole('button', { name: /test connection|testing/i })).toBeDisabled();
+	});
+
+	test('a refused save names the field under the input, not just "Validation error"', async () => {
+		mutateAsync.mockImplementation(async () => {
+			throw new LdapRequestError(
+				{
+					success: false,
+					error: 'Validation error',
+					details: [
+						{ path: ['url'], message: 'Expected ldap://host[:port] or ldaps://host[:port]' },
+						'search_base',
+					],
+				},
+				'Failed to update LDAP settings'
+			);
+		});
+		renderOpen();
+		fireEvent.change(screen.getByLabelText('Name attribute'), { target: { value: 'cn' } });
+		fireEvent.click(saveButton());
+		await waitFor(() => expect(screen.getByText(/The server refused these settings/)).toBeInTheDocument());
+		expect(screen.getByLabelText('Server URL')).toHaveAttribute('aria-invalid', 'true');
+		// Once in the summary, once under the field.
+		expect(screen.getAllByText(/Expected ldap:\/\/host/)).toHaveLength(2);
+		expect(screen.getByLabelText('Search base')).toHaveAttribute('aria-invalid', 'true');
+		// Screen readers read the field's error with the field.
+		expect(screen.getByLabelText('Server URL')).toHaveAccessibleDescription(/Expected ldap:\/\/host/);
+
+		// Editing the field retires its complaint.
+		fireEvent.change(screen.getByLabelText('Server URL'), { target: { value: 'ldaps://ok.example.com' } });
+		expect(screen.getByLabelText('Server URL')).not.toHaveAttribute('aria-invalid');
+		expect(screen.getByLabelText('Server URL')).not.toHaveAttribute('aria-describedby');
+	});
+
+	test('Test connection runs on unsaved edits without saving them', async () => {
+		renderOpen();
+		fireEvent.change(screen.getByLabelText('Search base'), { target: { value: 'ou=staff,dc=example,dc=com' } });
+		expect(testButton()).toBeEnabled();
+		fireEvent.click(testButton());
+		await waitFor(() => expect(testAsync).toHaveBeenCalledTimes(1));
+		expect(testAsync.mock.calls[0][0].settings).toMatchObject({ searchBase: 'ou=staff,dc=example,dc=com' });
+		expect(mutateAsync).not.toHaveBeenCalled();
+		await waitFor(() => expect(screen.getByText(/Tested with your unsaved changes/)).toBeInTheDocument());
+	});
+
+	test('a refused test draft marks the field too (zod nests it under settings.*)', async () => {
+		testAsync.mockImplementation(async () => {
+			throw new LdapRequestError(
+				{
+					success: false,
+					error: 'Validation error',
+					details: [
+						{ path: ['settings', 'url'], message: 'Expected ldap://host[:port] or ldaps://host[:port]' },
+					],
+				},
+				'Failed to run the connection test'
+			);
+		});
+		renderOpen();
+		fireEvent.change(screen.getByLabelText('Server URL'), { target: { value: 'http://x' } });
+		fireEvent.click(testButton());
+		await waitFor(() => expect(screen.getByLabelText('Server URL')).toHaveAttribute('aria-invalid', 'true'));
+		expect(screen.getAllByText(/Expected ldap:\/\/host/)).toHaveLength(2);
+	});
+
+	test('with nothing changed, Test connection tests the saved settings', async () => {
+		renderOpen();
+		fireEvent.click(testButton());
+		await waitFor(() => expect(testAsync).toHaveBeenCalledTimes(1));
+		expect(testAsync.mock.calls[0][0]).not.toHaveProperty('settings');
+	});
+
+	test('an unencrypted ldap:// URL is allowed and hides the certificate settings', () => {
+		settingsState.current = settings({ hasBindPassword: false });
+		renderOpen();
+		expect(screen.getByLabelText('CA certificate (optional)')).toBeInTheDocument();
+		fireEvent.change(screen.getByLabelText('Server URL'), { target: { value: 'ldap://localhost:10389' } });
+		expect(screen.getByText(/Passwords cross the network unencrypted/)).toBeInTheDocument();
+		expect(screen.queryByLabelText('CA certificate (optional)')).not.toBeInTheDocument();
+		expect(saveButton()).toBeEnabled();
+	});
+
+	test('Remove password switches the form off too, even with unsaved edits', async () => {
+		mutateAsync.mockImplementation(async (updates: UpdateLdapSettings) => {
+			if (updates.bindPassword === null) {
+				settingsState.current = settings({ enabled: false, hasBindPassword: false });
+			}
+			return settingsState.current;
+		});
+		renderOpen();
+		fireEvent.change(screen.getByLabelText('Name attribute'), { target: { value: 'cn' } });
+		fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+		await waitFor(() => expect(screen.getByRole('switch', { name: /LDAP login off/ })).toBeInTheDocument());
+		expect(screen.queryByText(/takes effect on Save/)).not.toBeInTheDocument();
+		// The unrelated edit survives, and saving it does not try to enable anything.
+		expect(screen.getByLabelText('Name attribute')).toHaveValue('cn');
+		expect(saveButton()).toHaveTextContent(/^Save$/);
+	});
+
+	test('the on/off switch is part of the form and saves with Save', () => {
+		settingsState.current = settings({ enabled: false });
+		renderOpen();
+		fireEvent.click(screen.getByRole('switch', { name: /LDAP login off/ }));
+		expect(screen.getByText(/takes effect on Save/)).toBeInTheDocument();
+		expect(saveButton()).toHaveTextContent('Save & enable');
+		fireEvent.click(saveButton());
+		expect(mutateAsync.mock.calls[0][0]).toMatchObject({ enabled: true });
 	});
 });

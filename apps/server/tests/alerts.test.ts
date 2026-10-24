@@ -280,7 +280,7 @@ describe('Alerts API', () => {
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should handle unsilenceing an already active alert', async () => {
+		test('should handle unsilencing an already active alert', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1' (not silenced)
 			expect(testAlerts[0].isSilenced).toBe(false);
 
@@ -564,7 +564,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
 			expect(row.severity).toBe('warning');
-			expect(JSON.parse(row.tags as string).severity).toBe('warning');
+			expect(JSON.parse(row.tags).severity).toBe('warning');
 		});
 
 		test('should default severity for prototype-key payloads instead of crashing', async () => {
@@ -631,7 +631,7 @@ describe('Alerts API', () => {
 			expect(row.severity).toBe('critical');
 			// The stored tag is rewritten to the normalized value so label matchers
 			// (mute policies/enrichments) see the same scale as the severity field.
-			expect(JSON.parse(row.tags as string).severity).toBe('critical');
+			expect(JSON.parse(row.tags).severity).toBe('critical');
 		});
 
 		test('should expose severity on the alerts list API', async () => {
@@ -1920,7 +1920,7 @@ describe('Alerts API', () => {
 				// Verify alert is in resolved alerts table with resolved status
 				const resolvedRow = db
 					.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
-					.get(newAlertPayload.id) as any;
+					.get(newAlertPayload.id) as ResolvedAlertRow;
 				expect(resolvedRow).toBeDefined();
 				expect(resolvedRow.id).toBe(newAlertPayload.id);
 				expect(resolvedRow.status).toBe('resolved');
@@ -1986,6 +1986,35 @@ describe('Alerts API', () => {
 
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);
+			});
+
+			test('should return 403 when an editor tries to delete a resolved alert', async () => {
+				const email = 'editor-alert-delete@test.com';
+				const password = 'password123';
+
+				await app.post('/api/v1/users').set('Authorization', `Bearer ${jwtToken}`).send({
+					email,
+					fullName: 'Editor User',
+					password,
+					role: 'editor',
+				});
+
+				const loginResponse = await app.post('/api/v1/users/login').send({
+					email,
+					password,
+				});
+
+				expect(loginResponse.status).toBe(200);
+
+				const response = await app
+					.delete(`/api/v1/alerts/resolved/${testResolvedAlerts[0].id}`)
+					.set('Authorization', `Bearer ${loginResponse.body.token}`);
+
+				expect(response.status).toBe(403);
+				expect(response.body).toEqual({
+					success: false,
+					error: 'Forbidden: Admins only',
+				});
 			});
 		});
 

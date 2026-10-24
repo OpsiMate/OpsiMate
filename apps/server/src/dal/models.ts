@@ -10,35 +10,6 @@ export type IntegrationRow = {
 	created_at: string; // SQLite returns DATETIME as string
 };
 
-export type ServiceRow = {
-	id: number;
-	provider_id: number;
-	service_name: string; // service_name in DB
-	service_ip: string;
-	service_status: string;
-	service_type: string;
-	created_at: string; // DATETIME
-	container_details: string; // stored as JSON string in DB
-};
-
-export type ServiceRowWithProviderRow = {
-	service_id: number;
-	service_name: string; // service_name in DB
-	service_ip: string;
-	service_status: string;
-	service_type: string;
-	service_created_at: string; // DATETIME
-	container_details: string; // stored as JSON string in DB
-	provider_id: number;
-	provider_name: string; // provider_name in DB
-	provider_ip: string;
-	username: string;
-	private_key_filename: string;
-	ssh_port: number;
-	provider_created_at: string; // DATETIME
-	provider_type: string;
-};
-
 export interface DashboardRow {
 	id: string;
 	type: DashboardType;
@@ -148,17 +119,6 @@ export type ResetPasswordRow = {
 	user_id: number;
 	token_hash: string;
 	expires_at: string;
-	created_at: string;
-};
-
-export type CustomActionRow = {
-	id: number;
-	name: string;
-	description: string;
-	type: 'bash' | 'http';
-	target: 'service' | 'provider' | null;
-	script: string | null;
-	http_config: string | null;
 	created_at: string;
 };
 

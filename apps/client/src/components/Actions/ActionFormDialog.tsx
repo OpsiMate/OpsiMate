@@ -16,6 +16,8 @@ import { useAlerts } from '@/hooks/queries/alerts';
 import { useAlertTagKeys } from '@/components/Alerts/hooks';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateAction, useTestAction, useUpdateAction } from '@/hooks/queries/actions';
@@ -25,14 +27,20 @@ import {
 	ActionType,
 	ALERT_TEMPLATE_VARIABLES,
 	alertTagTemplateVariable,
+	flagTemplateVariable,
+	looksLikeCountryCode,
 	HttpActionConfig,
 	HttpActionMethod,
 	JiraActionConfig,
 	SlackActionConfig,
 	TeamsActionConfig,
 	getNameNeedles,
+	looksLikeJson,
+	validateJsonTemplate,
+	HttpEditableField,
 } from '@OpsiMate/shared';
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
+import { EditableFieldsPicker } from '@/components/Actions/EditableFieldsPicker';
 import { Filter, Loader2, Play, Plus, Send, Trash2, Zap } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -66,7 +74,10 @@ const rowsToHeaders = (rows: HeaderRow[]): Record<string, string> | null => {
 };
 
 export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialogProps) => {
+	const typeId = useId();
 	const httpMethodId = useId();
+	const httpFireAndForgetId = useId();
+	const httpBodyProblemId = useId();
 	const isEdit = !!action;
 	const { toast } = useToast();
 	const createMutation = useCreateAction();
@@ -106,11 +117,28 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 	const [httpMethod, setHttpMethod] = useState<HttpActionMethod>('POST');
 	const [httpHeaders, setHttpHeaders] = useState<HeaderRow[]>([]);
 	const [httpBody, setHttpBody] = useState('');
+	const [httpFireAndForget, setHttpFireAndForget] = useState(false);
+	const [httpEditableFields, setHttpEditableFields] = useState<HttpEditableField[]>([]);
+	// On for a new action (the body is JSON in almost every case). An action saved before
+	// the field existed loads as text: its behaviour does not change until the user says so.
+	const [httpBodyIsJson, setHttpBodyIsJson] = useState(true);
 
 	// Template variables offered by the picker under each templated field: the fixed
 	// alert fields plus one alert.tags.<key> per tag key seen on current alerts.
 	const templateVariables = useMemo(
-		() => [...ALERT_TEMPLATE_VARIABLES, ...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key))],
+		() => [
+			...ALERT_TEMPLATE_VARIABLES,
+			...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key)),
+			// {{flag.<code>}} for every two-letter code seen in a label value (flag.il -> 🇮🇱).
+			...[
+				...new Set(
+					matcherSuggestions
+						.flatMap((tk) => tk.values)
+						.filter(looksLikeCountryCode)
+						.map((value) => flagTemplateVariable(value))
+				),
+			].sort(),
+		],
 		[matcherSuggestions]
 	);
 
@@ -142,6 +170,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		setHttpMethod('POST');
 		setHttpHeaders([]);
 		setHttpBody('');
+		setHttpFireAndForget(false);
 	};
 
 	useEffect(() => {
@@ -183,14 +212,25 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 				setHttpMethod(cfg.method ?? 'POST');
 				setHttpHeaders(headersToRows(cfg.headers));
 				setHttpBody(cfg.bodyTemplate ?? '');
+				setHttpBodyIsJson(cfg.bodyFormat === 'json');
+				setHttpFireAndForget(cfg.fireAndForget ?? false);
+				setHttpEditableFields(cfg.editableFields ?? []);
 			}
 		} else {
 			setName('');
 			setType('slack');
 			setNameContainsAny([]);
 			setMatcherGroups([]);
+			setHttpBodyIsJson(true);
+			setHttpEditableFields([]);
 		}
 	}, [open, action]);
+
+	// Why the JSON body cannot be saved, or null. Shown under the body field as it is typed.
+	const httpBodyProblem = useMemo(
+		() => (httpBodyIsJson && httpBody.trim() ? validateJsonTemplate(httpBody) : null),
+		[httpBodyIsJson, httpBody]
+	);
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
@@ -208,11 +248,12 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 					jiraIssueType.trim().length > 0
 				);
 			case 'http':
-				return httpUrl.trim().length > 0;
+				return httpUrl.trim().length > 0 && httpBodyProblem === null;
 			default:
 				return false;
 		}
 	}, [
+		httpBodyProblem,
 		name,
 		type,
 		slackWebhookUrl,
@@ -282,6 +323,10 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 						method: httpMethod,
 						headers: rowsToHeaders(httpHeaders),
 						bodyTemplate: httpBody.trim() || null,
+						bodyFormat: httpBodyIsJson ? 'json' : 'text',
+						// Only meaningful for a JSON body: the Send dialog reads them off the rendered JSON.
+						editableFields: httpBodyIsJson && httpEditableFields.length > 0 ? httpEditableFields : null,
+						fireAndForget: httpFireAndForget,
 					},
 				};
 		}
@@ -354,9 +399,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label>Type</Label>
+							<Label htmlFor={typeId}>Type</Label>
 							<Select value={type} onValueChange={(v) => setType(v as ActionType)}>
-								<SelectTrigger>
+								<SelectTrigger id={typeId}>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
@@ -634,6 +679,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 												>
 													<Input
 														placeholder="Header (e.g. Content-Type)"
+														aria-label={`Header ${idx + 1} name`}
 														value={header.key}
 														onChange={(e) =>
 															setHttpHeaders((h) =>
@@ -646,6 +692,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 													<span className="text-muted-foreground text-sm">:</span>
 													<Input
 														placeholder="Value (e.g. application/json)"
+														aria-label={`Header ${idx + 1} value`}
 														value={header.value}
 														onChange={(e) =>
 															setHttpHeaders((h) =>
@@ -663,7 +710,7 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 														onClick={() =>
 															setHttpHeaders((h) => h.filter((_, i) => i !== idx))
 														}
-														aria-label="Remove header"
+														aria-label={`Remove header ${idx + 1}`}
 													>
 														<Trash2 className="h-4 w-4" />
 													</Button>
@@ -684,16 +731,72 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 										onChange={(e) => setHttpBody(e.target.value)}
 										rows={4}
 										className="font-mono text-xs"
+										aria-invalid={httpBodyProblem !== null}
+										aria-describedby={httpBodyProblem ? httpBodyProblemId : undefined}
 									/>
+									{httpBodyProblem && (
+										<p id={httpBodyProblemId} className="text-xs text-destructive" role="alert">
+											Body is not valid JSON: {httpBodyProblem}
+										</p>
+									)}
+									<label className="flex items-start gap-2 cursor-pointer">
+										<Checkbox
+											checked={httpBodyIsJson}
+											onCheckedChange={(v) => setHttpBodyIsJson(v === true)}
+											aria-label="Body is JSON"
+											className="mt-0.5"
+										/>
+										<span className="space-y-0.5">
+											<span className="block text-xs font-medium">Body is JSON</span>
+											<span className="block text-xs text-muted-foreground">
+												{httpBodyIsJson
+													? 'Values are inserted JSON-safely — quotes and line breaks in an alert cannot break the request. Keep {{…}} inside quotes, or bare for a number.'
+													: 'Values are pasted in as plain text, exactly as written.'}
+											</span>
+										</span>
+									</label>
+									{!httpBodyIsJson && looksLikeJson(httpBody) && (
+										<p className="text-xs text-[#92400e] dark:text-[#fde68a]">
+											This looks like JSON — tick "Body is JSON" so quotes in values don't break
+											the request.
+										</p>
+									)}
 								</div>
+								{httpBodyIsJson && (
+									<div className="space-y-2 rounded-md border bg-background p-3">
+										<Label className="text-xs">Fields the sender can change</Label>
+										<EditableFieldsPicker
+											template={httpBody}
+											value={httpEditableFields}
+											onChange={setHttpEditableFields}
+										/>
+									</div>
+								)}
 								<TemplateVariablePicker
 									variables={templateVariables}
 									targets={[
 										{ ref: httpBodyRef, value: httpBody, onChange: setHttpBody },
 										{ ref: httpUrlRef, value: httpUrl, onChange: setHttpUrl },
 									]}
-									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too):"
+									caption="Available variables — click to insert into the body, or focus the URL first to build a templated endpoint (header values resolve them too). {{startsAt}} is the exact ISO instant; {{startsAt.display}} is the time as the alerts table shows it to the sender:"
 								/>
+								<div className="flex items-start justify-between gap-4 rounded-md border bg-background p-3">
+									<div className="space-y-1">
+										<Label htmlFor={httpFireAndForgetId} className="text-xs">
+											Don't wait for a response
+										</Label>
+										<p className="text-xs text-muted-foreground">
+											Report success as soon as the request is sent, without waiting for the
+											receiver's status. For endpoints that answer only once their work is done.
+											Connection errors are still reported.
+										</p>
+									</div>
+									<Switch
+										id={httpFireAndForgetId}
+										checked={httpFireAndForget}
+										onCheckedChange={setHttpFireAndForget}
+									/>
+								</div>
 							</>
 						)}
 

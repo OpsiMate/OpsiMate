@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
-import { CreateSecretsMetadataSchema, UpdateSecretsMetadataSchema, Logger, SecretType } from '@OpsiMate/shared';
+import {
+	CreateSecretsMetadataSchema,
+	UpdateSecretsMetadataSchema,
+	Logger,
+	SecretType,
+	positiveIntegerIdSchema,
+} from '@OpsiMate/shared';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { SecretsMetadataBL } from '../../../bl/secrets/secretsMetadata.bl';
 import fs from 'fs';
@@ -65,11 +71,12 @@ export class SecretsController {
 	updateSecret = async (req: AuthenticatedRequest, res: Response) => {
 		let handedToBL = false;
 		try {
-			const secretId = parseInt(routeParam(req, 'id'));
-			if (isNaN(secretId)) {
+			const parsedSecretId = positiveIntegerIdSchema.safeParse(routeParam(req, 'id'));
+			if (!parsedSecretId.success) {
 				this.removeUploadedFile(req.file);
 				return res.status(400).json({ success: false, error: 'Invalid secret ID' });
 			}
+			const secretId = parsedSecretId.data;
 
 			// Parse the request body for metadata updates
 			const { displayName, secretType } = UpdateSecretsMetadataSchema.parse(req.body);
@@ -142,10 +149,11 @@ export class SecretsController {
 
 	deleteSecret = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const secretId = parseInt(routeParam(req, 'id'));
-			if (isNaN(secretId)) {
+			const parsedSecretId = positiveIntegerIdSchema.safeParse(routeParam(req, 'id'));
+			if (!parsedSecretId.success) {
 				return res.status(400).json({ success: false, error: 'Invalid secret ID' });
 			}
+			const secretId = parsedSecretId.data;
 
 			const deleted = await this.secretsBL.deleteSecret(secretId, req.user);
 			if (deleted) {

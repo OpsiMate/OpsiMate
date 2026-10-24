@@ -12,6 +12,8 @@ export default function createDashboardRouter(controller: DashboardController) {
 
 	// Dashboard Tags API
 	router.get('/tags', controller.getAllDashboardTagsHandler);
+	// After /tags: a dashboard id is numeric, but Express would still match 'tags' here.
+	router.get('/:dashboardId', controller.getDashboardHandler);
 	router.get('/:dashboardId/tags', controller.getDashboardTagsHandler);
 	router.post('/:dashboardId/tags', controller.addTagToDashboardHandler);
 	router.delete('/:dashboardId/tags/:tagId', controller.removeTagFromDashboardHandler);

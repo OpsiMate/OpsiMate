@@ -67,3 +67,5 @@ export const diffFilterChanges = (
 	}
 	return changes;
 };
+export const getResolvedAlertDeleteHandler = <T>(canDelete: boolean, handler: T): T | undefined =>
+	canDelete ? handler : undefined;

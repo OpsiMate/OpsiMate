@@ -1,0 +1,50 @@
+# The OpsiMate MCP server: a small Node process that lets AI assistants read alerts and
+# dashboards through OpsiMate's REST API. No native modules, no database.
+FROM node:26-alpine AS mcp-builder
+
+# pnpm pinned to the repo's packageManager version (see Dockerfile.server).
+RUN npm install -g pnpm@9.12.0 && npm cache clean --force
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/mcp/package.json apps/mcp/package.json
+COPY packages/shared/package.json packages/shared/package.json
+
+RUN pnpm install --frozen-lockfile --filter @OpsiMate/mcp... && pnpm store prune
+
+COPY apps/mcp apps/mcp
+COPY packages/shared packages/shared
+
+RUN pnpm --filter @OpsiMate/shared build && pnpm --filter @OpsiMate/mcp build
+
+FROM node:26-alpine AS mcp-runtime
+ARG APP_VERSION=dev
+ARG APP_COMMIT=
+ARG APP_BUILD_DATE=
+ENV APP_VERSION=$APP_VERSION \
+    APP_COMMIT=$APP_COMMIT \
+    APP_BUILD_DATE=$APP_BUILD_DATE
+WORKDIR /app
+
+COPY --from=mcp-builder /app/apps/mcp/dist apps/mcp/dist
+COPY --from=mcp-builder /app/apps/mcp/package.json apps/mcp/package.json
+COPY --from=mcp-builder /app/package.json package.json
+COPY --from=mcp-builder /app/pnpm-lock.yaml pnpm-lock.yaml
+COPY --from=mcp-builder /app/pnpm-workspace.yaml pnpm-workspace.yaml
+COPY --from=mcp-builder /app/packages/shared/package.json packages/shared/package.json
+COPY --from=mcp-builder /app/packages/shared/dist packages/shared/dist
+
+RUN npm install -g pnpm@9.12.0 && \
+    pnpm install --prod --frozen-lockfile --filter @OpsiMate/mcp... && \
+    pnpm store prune && rm -rf /root/.npm /root/.cache /tmp/* && \
+    mkdir -p node_modules/@OpsiMate && ln -sf /app/packages/shared node_modules/@OpsiMate/shared
+
+# Where OpsiMate is; the MCP clients' own credentials are forwarded on every request.
+ENV NODE_ENV=production \
+    OPSIMATE_URL=http://backend:3001 \
+    MCP_PORT=3100
+EXPOSE 3100
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- "http://127.0.0.1:${MCP_PORT:-3100}/health" >/dev/null || exit 1
+# Nothing here needs root: an unprivileged port, no files written.
+USER node
+CMD ["node", "apps/mcp/dist/cli.js"]

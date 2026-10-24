@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { ALERT_TEMPLATE_VARIABLES } from '@OpsiMate/shared';
-import { buildAlertContext, buildSampleContext } from '../src/bl/actions/actionExecutor';
+import { buildAlertContext, buildSampleContext, resolvePlaceholders } from '../src/bl/actions/actionExecutor';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // Template-variable contract of actions AND enrichments (both resolve through
@@ -51,6 +51,14 @@ describe('alert template variables', () => {
 		expect(ctx['label.env']).toBe('prod');
 	});
 
+	test('{{flag.<code>}} is the flag for the code itself, no label needed; a non-code stays literal', () => {
+		const ctx = buildAlertContext(fullAlert);
+		expect(resolvePlaceholders('IL {{flag.il}} / {{flag.US}} / {{ flag.De }}', ctx)).toBe('IL 🇮🇱 / 🇺🇸 / 🇩🇪');
+		expect(resolvePlaceholders('{{flag.prod}} {{flag.i}}', ctx)).toBe('{{flag.prod}} {{flag.i}}');
+		// A label named like a flag variable wins, so nothing existing changes meaning.
+		expect(resolvePlaceholders('{{flag.il}}', { 'flag.il': 'custom' })).toBe('custom');
+	});
+
 	test('alert.* and tag.* aliases keep older templates resolving', () => {
 		const ctx = buildAlertContext(fullAlert);
 		expect(ctx['alert.name']).toBe('CPU high');
@@ -96,6 +104,56 @@ describe('HTTP action templating over the API', () => {
 		expect(preview.status).toBe(200);
 		expect(preview.body.data.url).toBe('https://api.example.com/alerts/abc-123/ack?sev=critical');
 		expect(preview.body.data.body).toBe('{"alert":"Disk full","tag":"prod"}');
+	});
+
+	test('a JSON body: quotes in a value are escaped in preview, and a broken template is refused at save', async () => {
+		const created = await post('/api/v1/actions', {
+			name: 'JSON body',
+			type: 'http',
+			config: {
+				url: 'https://api.example.com/x?name={{name}}',
+				method: 'POST',
+				bodyTemplate: '{"alert":"{{name}}","summary":"{{summary}}"}',
+				bodyFormat: 'json',
+			},
+		});
+		expect(created.status).toBe(201);
+		const preview = await post(`/api/v1/actions/${created.body.data.id}/preview`, {
+			alert: { id: 'q-1', alertName: 'Disk "sda" full', status: 'firing', summary: 'line one\nline "two"' },
+		});
+		expect(preview.status).toBe(200);
+		expect(JSON.parse(preview.body.data.body)).toEqual({
+			alert: 'Disk "sda" full',
+			summary: 'line one\nline "two"',
+		});
+		// Spaces and quotes in a URL value are percent-encoded; the URL's own structure is kept.
+		expect(preview.body.data.url).toBe('https://api.example.com/x?name=Disk%20%22sda%22%20full');
+
+		const broken = await post('/api/v1/actions', {
+			name: 'Broken JSON body',
+			type: 'http',
+			config: {
+				url: 'https://api.example.com/x',
+				method: 'POST',
+				bodyTemplate: '{"alert":"{{name}}" "oops":1}',
+				bodyFormat: 'json',
+			},
+		});
+		expect(broken.status).toBe(400);
+		expect(JSON.stringify(broken.body)).toContain('Body is not valid JSON');
+
+		// Text mode accepts anything and substitutes as written.
+		const text = await post('/api/v1/actions', {
+			name: 'Text body',
+			type: 'http',
+			config: {
+				url: 'https://api.example.com/x',
+				method: 'POST',
+				bodyTemplate: 'name={{name}}',
+				bodyFormat: 'text',
+			},
+		});
+		expect(text.status).toBe(201);
 	});
 
 	test('an alert with null fields previews fine — nulls must not 400 the context schema', async () => {

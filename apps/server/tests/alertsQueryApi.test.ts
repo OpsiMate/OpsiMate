@@ -212,3 +212,36 @@ describe('GET /alerts/groups', () => {
 		expect(Array.isArray(res.body.data.groups)).toBe(true);
 	});
 });
+
+describe('GET /alerts/:alertId', () => {
+	test('returns a firing alert, flagged as not resolved', async () => {
+		const res = await get('/api/v1/alerts/q-01');
+		expect(res.status).toBe(200);
+		expect(res.body.data.resolved).toBe(false);
+		expect(res.body.data.alert).toMatchObject({ id: 'q-01', alertName: 'Query Alert 1', tags: { env: 'staging' } });
+	});
+
+	test('finds an alert in resolved history, flagged as resolved', async () => {
+		insertAlert(
+			'lookup-resolved',
+			'Lookup Resolved Alert',
+			{ env: 'prod' },
+			new Date(2026, 0, 1, 12).toISOString()
+		);
+		const resolved = await app.delete('/api/v1/alerts/lookup-resolved').set('Authorization', `Bearer ${jwtToken}`);
+		expect(resolved.status).toBe(200);
+
+		const res = await get('/api/v1/alerts/lookup-resolved');
+		expect(res.status).toBe(200);
+		expect(res.body.data.resolved).toBe(true);
+		expect(res.body.data.alert).toMatchObject({ id: 'lookup-resolved', status: 'resolved' });
+
+		db.prepare('DELETE FROM alerts_resolved WHERE id = ?').run('lookup-resolved');
+	});
+
+	test('an id in neither list is a 404', async () => {
+		const res = await get('/api/v1/alerts/no-such-alert');
+		expect(res.status).toBe(404);
+		expect(res.body).toEqual({ success: false, error: 'Alert not found' });
+	});
+});

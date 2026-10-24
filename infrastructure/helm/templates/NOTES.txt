@@ -13,6 +13,11 @@ View logs
   kubectl logs -l app.kubernetes.io/component=backend -n {{ .Release.Namespace }}
   kubectl logs -l app.kubernetes.io/component=worker -n {{ .Release.Namespace }}
   kubectl logs -l app.kubernetes.io/component=frontend -n {{ .Release.Namespace }}
+{{- if .Values.mcp.enabled }}
+  kubectl logs -l app.kubernetes.io/component=mcp -n {{ .Release.Namespace }}
+
+MCP server for AI assistants: service {{ include "opsimate.mcp.serviceName" . }} on port {{ .Values.mcp.port }}, path /mcp
+{{- end }}
 
 Uninstall
   helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}

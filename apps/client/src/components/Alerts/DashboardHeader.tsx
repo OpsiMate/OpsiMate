@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { cn } from '@/lib/utils';
-import { Plus, RefreshCw, Save, Search, Settings } from 'lucide-react';
+import { CopyPlus, Plus, RefreshCw, Save, Search, Settings } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface DashboardHeaderProps {
@@ -12,6 +12,10 @@ export interface DashboardHeaderProps {
 	onDashboardNameBlur: () => void;
 	isDirty: boolean;
 	onSave: () => void;
+	// Save the current view (changes included) as a NEW dashboard, leaving this one's
+	// saved version alone. Offered only while a saved dashboard is open: on a draft,
+	// Save already creates one.
+	onSaveAs?: () => void;
 	onSettingsClick?: () => void;
 	isRefreshing: boolean;
 	lastRefresh?: Date;
@@ -28,6 +32,7 @@ export const DashboardHeader = ({
 	onDashboardNameBlur,
 	isDirty,
 	onSave,
+	onSaveAs,
 	onSettingsClick,
 	isRefreshing,
 	lastRefresh,
@@ -39,6 +44,7 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps) => {
 	const [isEditingName, setIsEditingName] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const saveAsRef = useRef<HTMLButtonElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const searchContainerRef = useRef<HTMLDivElement>(null);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -83,8 +89,13 @@ export const DashboardHeader = ({
 		setIsEditingName(true);
 	};
 
-	const handleNameBlur = () => {
+	// Leaving the name input commits the rename (the parent auto-saves it) — unless focus
+	// is moving to Save as, by Tab or by click: that save would write the renamed, edited
+	// view over the open dashboard, the one write Save as exists to avoid. The typed name
+	// stays in state and seeds the dialog instead.
+	const handleNameBlur = (e?: React.FocusEvent<HTMLInputElement>) => {
 		setIsEditingName(false);
+		if (e?.relatedTarget != null && e.relatedTarget === saveAsRef.current) return;
 		onDashboardNameBlur();
 	};
 
@@ -176,6 +187,23 @@ export const DashboardHeader = ({
 						className="rounded-full h-8 w-8 hover:bg-muted shrink-0"
 					>
 						<Save className="h-4 w-4 text-foreground" />
+					</Button>
+				)}
+
+				{onSaveAs && (
+					<Button
+						ref={saveAsRef}
+						variant="ghost"
+						size="icon"
+						onClick={onSaveAs}
+						// Keep the inline name input focused through the click: its blur
+						// auto-saves the open dashboard, which Save as must not do.
+						onMouseDown={(e) => e.preventDefault()}
+						title="Save as new dashboard"
+						aria-label="Save as new dashboard"
+						className="rounded-full h-8 w-8 hover:bg-muted shrink-0"
+					>
+						<CopyPlus className="h-4 w-4 text-foreground" />
 					</Button>
 				)}
 			</div>
