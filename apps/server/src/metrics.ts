@@ -15,11 +15,11 @@ export const metricsRegistry = new Registry();
 collectDefaultMetrics({ register: metricsRegistry });
 
 // Event-loop utilization: the fraction of time the loop was actively executing (vs
-// idle in epoll) since the previous scrape. The lag histograms above say when the
-// loop is BLOCKED; this says how BUSY it is — the single-core saturation signal for
-// a Node process. 0.7+ sustained means requests are queueing behind compute and it
-// is time to shed work or add processes. Delta-based so each scrape reads its own
-// interval, whatever the scrape cadence.
+// idle in epoll) since the previous scrape. The default event-loop-lag metrics registered
+// by collectDefaultMetrics say when the loop is BLOCKED; this says how BUSY it is,
+// the single-core saturation signal for a Node process. 0.7+ sustained means requests
+// are queueing behind compute and it is time to shed work or add processes. Delta-based
+// so each scrape reads its own interval, whatever the scrape cadence.
 let lastElu = performance.eventLoopUtilization();
 new Gauge({
 	name: 'opsimate_event_loop_utilization',
@@ -101,9 +101,6 @@ export const bulkAlertsAffectedTotal = new Counter({
 	registers: [metricsRegistry],
 });
 
-// Visibility into the snapshot cache the whole read path sits on: how often the full
-// alert list is recomputed (enrichments + mute policies + comments + firing times) and
-// how long it takes. Wraps a computation that runs anyway — zero added cost.
 // How many webhooks each ingest flush committed together. Mostly 1 when quiet; the
 // upper buckets filling up is what a burst looks like — and proof the batching works.
 export const ingestBatchSize = new Histogram({
@@ -113,6 +110,9 @@ export const ingestBatchSize = new Histogram({
 	registers: [metricsRegistry],
 });
 
+// Visibility into the snapshot cache the whole read path sits on: how often the full
+// alert list is recomputed (enrichments + mute policies + comments + firing times) and
+// how long it takes. Wraps a computation that runs anyway, with zero added cost.
 export const snapshotComputeDuration = new Histogram({
 	name: 'opsimate_snapshot_compute_duration_seconds',
 	help: 'Duration of full alert-snapshot recomputes, by list',
