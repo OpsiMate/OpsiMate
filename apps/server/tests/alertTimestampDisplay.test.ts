@@ -35,6 +35,21 @@ describe('formatAlertTimestampDisplay', () => {
 	});
 });
 
+describe('cost on the alert-list path', () => {
+	test('formatting is cheap enough to run per alert per enrichment field (formatters are cached)', () => {
+		const viewer = { timeZone: 'Asia/Jerusalem', locale: 'en-US' };
+		formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer); // warm the cache
+		const started = performance.now();
+		for (let i = 0; i < 20_000; i++) {
+			formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer);
+			formatAlertTimestampDisplay('2026-10-20T14:15:53Z');
+		}
+		// Uncached this is ~1–2 s (three Intl.DateTimeFormat constructions per call);
+		// cached it is tens of milliseconds. The bound leaves room for a slow CI runner.
+		expect(performance.now() - started).toBeLessThan(400);
+	});
+});
+
 describe('action context', () => {
 	const alert = {
 		id: 'a-1',
