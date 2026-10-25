@@ -45,7 +45,12 @@ const FORMATTER_CACHE_MAX = 500;
 const formatter = (options: Intl.DateTimeFormatOptions, viewer: ViewerFormatting | undefined): Intl.DateTimeFormat => {
 	const timeZone = viewer?.timeZone?.trim() || undefined;
 	const locale = viewer?.locale?.trim() || undefined;
-	const key = `${locale ?? ''}|${timeZone ?? ''}|${options === NUMERIC_DATE_TIME ? 'full' : options === DAY_KEY ? 'day' : 'time'}`;
+	// JSON, not joined with a separator: a client-sent zone or locale may contain anything.
+	const key = JSON.stringify([
+		locale,
+		timeZone,
+		options === NUMERIC_DATE_TIME ? 'full' : options === DAY_KEY ? 'day' : 'time',
+	]);
 	const cached = formatterCache.get(key);
 	if (cached) return cached;
 	const built = buildFormatter(options, locale, timeZone);
