@@ -33,11 +33,34 @@ const toDate = (value: string | number | Date | null | undefined): Date | null =
 	return isNaN(date.getTime()) ? null : date;
 };
 
-// A formatter for the viewer, or for the runtime's defaults when their zone or locale is
-// not one Intl knows (a typo in a header must not fail an action).
+// Constructing an Intl.DateTimeFormat is the expensive part of Intl (~40 µs), not
+// formatting with it (<1 µs). Enrichment templates resolve for EVERY alert when a list is
+// built, and each alert context formats three timestamps with three formatters — uncached,
+// a few thousand alerts cost seconds per list. Keyed by locale, zone and option set; the
+// option sets are the module constants above, so the cache stays a handful of entries per
+// distinct viewer. Bounded so a flood of garbage zones from a client cannot grow it.
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+const FORMATTER_CACHE_MAX = 500;
+
 const formatter = (options: Intl.DateTimeFormatOptions, viewer: ViewerFormatting | undefined): Intl.DateTimeFormat => {
 	const timeZone = viewer?.timeZone?.trim() || undefined;
 	const locale = viewer?.locale?.trim() || undefined;
+	const key = `${locale ?? ''}|${timeZone ?? ''}|${options === NUMERIC_DATE_TIME ? 'full' : options === DAY_KEY ? 'day' : 'time'}`;
+	const cached = formatterCache.get(key);
+	if (cached) return cached;
+	const built = buildFormatter(options, locale, timeZone);
+	if (formatterCache.size >= FORMATTER_CACHE_MAX) formatterCache.clear();
+	formatterCache.set(key, built);
+	return built;
+};
+
+// A formatter for the viewer, or for the runtime's defaults when their zone or locale is
+// not one Intl knows (a typo in a header must not fail an action).
+const buildFormatter = (
+	options: Intl.DateTimeFormatOptions,
+	locale: string | undefined,
+	timeZone: string | undefined
+): Intl.DateTimeFormat => {
 	try {
 		return new Intl.DateTimeFormat(locale, { ...options, timeZone });
 	} catch {
