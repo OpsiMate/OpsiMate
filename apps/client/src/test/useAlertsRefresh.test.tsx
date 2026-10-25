@@ -151,6 +151,9 @@ describe('useAlertsRefresh auto-refresh', () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(ACTIVE_ALERTS_POLL_MS);
 		});
+		expect(refetch).toHaveBeenCalledTimes(2);
+		expect(refetch).toHaveBeenNthCalledWith(1);
+		expect(refetch).toHaveBeenNthCalledWith(2, { cancelRefetch: false });
 		await act(async () => {
 			pending.resolve(resultOf({ status: 'error' }));
 			await refresh;
