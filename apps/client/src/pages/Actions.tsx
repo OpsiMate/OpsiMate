@@ -206,6 +206,7 @@ const Actions: React.FC = () => {
 							<div className="relative flex-1 max-w-md">
 								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
+									aria-label="Search actions"
 									className="pl-9"
 									placeholder="Search by name, type, or target"
 									value={search}
@@ -316,7 +317,7 @@ const Actions: React.FC = () => {
 														className="h-8 w-8"
 														onClick={() => handleTest(a)}
 														disabled={testingId === a.id}
-														aria-label="Test action"
+														aria-label={`Test action "${a.name}"`}
 														title="Run a test with sample alert data"
 													>
 														{testingId === a.id ? (
@@ -330,7 +331,7 @@ const Actions: React.FC = () => {
 														size="icon"
 														className="h-8 w-8"
 														onClick={() => setEditing(a)}
-														aria-label="Edit action"
+														aria-label={`Edit action "${a.name}"`}
 													>
 														<Pencil className="h-4 w-4" />
 													</Button>
@@ -339,7 +340,7 @@ const Actions: React.FC = () => {
 														size="icon"
 														className="h-8 w-8 text-destructive hover:text-destructive"
 														onClick={() => setDeleting(a)}
-														aria-label="Delete action"
+														aria-label={`Delete action "${a.name}"`}
 													>
 														<Trash2 className="h-4 w-4" />
 													</Button>
