@@ -148,7 +148,7 @@ const StatCard = ({
 };
 
 const MutePolicies: React.FC = () => {
-	const { data: mutePolicies = [], isLoading } = useMutePolicies();
+	const { data: mutePolicies = [], isLoading, isLoadingError, error } = useMutePolicies();
 	const deleteMutation = useDeleteMutePolicy();
 	const { toast } = useToast();
 
@@ -296,6 +296,12 @@ const MutePolicies: React.FC = () => {
 									<TableRow>
 										<TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
 											Loading mute policies…
+										</TableCell>
+									</TableRow>
+								) : isLoadingError ? (
+									<TableRow>
+										<TableCell colSpan={5} className="py-8 text-sm text-destructive">
+											{error instanceof Error ? error.message : 'Could not load mute policies'}
 										</TableCell>
 									</TableRow>
 								) : filtered.length === 0 ? (
