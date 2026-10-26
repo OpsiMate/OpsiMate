@@ -84,6 +84,13 @@ describe('retention HTTP contract', () => {
 		expect(after.body.data.policies).toEqual(before.body.data.policies);
 	});
 
+	test('round-trips changing the vacuum flag from its default', async () => {
+		const response = await put('config', { vacuumAfterCleanup: false });
+		expect(response.status).toBe(200);
+		expect(response.body).toMatchObject({ success: true, data: { vacuumAfterCleanup: false } });
+		expect((await getSettings()).body.data.config.vacuumAfterCleanup).toBe(false);
+	});
+
 	const invalidPolicies: InvalidPolicyCase[] = [
 		{ name: 'unknown resource', resource: 'not-a-resource', body: { enabled: true } },
 		{ name: 'empty policy update', resource: 'audit_logs', body: {} },
