@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -205,26 +205,33 @@ describe('metric regression coverage', () => {
 	});
 
 	test('daily reset counts the old silence once and preserves a silence established after the hour', async () => {
-		insertSilencedAlert('metric-reset-old', null);
-		insertSilencedAlert('metric-reset-new', null);
-		db.prepare('UPDATE alerts SET silenced_at = ? WHERE id = ?').run(
-			new Date(Date.now() - 24 * HOUR_MS).toISOString(),
-			'metric-reset-old'
-		);
-		const before = sample(await scrape(), 'opsimate_alerts_unsilenced_total');
-		const settings = await app
-			.put('/api/v1/alerts/silence-reset')
-			.set('Authorization', `Bearer ${jwtToken}`)
-			.send({ enabled: true, hour: new Date().getHours() });
-		expect(settings.status).toBe(200);
-		const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
-		expect(response.status).toBe(200);
-		expect(sample(await scrape(), 'opsimate_alerts_unsilenced_total') - before).toBe(1);
-		expect(isSilenced('metric-reset-old')).toBe(0);
-		expect(isSilenced('metric-reset-new')).toBe(1);
-		const second = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
-		expect(second.status).toBe(200);
-		expect(sample(await scrape(), 'opsimate_alerts_unsilenced_total') - before).toBe(1);
+		// Keep HTTP scheduling real while the server-local reset cutoff stays fixed.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			vi.setSystemTime(new Date(2026, 0, 15, 12, 30));
+			insertSilencedAlert('metric-reset-old', null);
+			insertSilencedAlert('metric-reset-new', null);
+			db.prepare('UPDATE alerts SET silenced_at = ? WHERE id = ?').run(
+				new Date(Date.now() - 24 * HOUR_MS).toISOString(),
+				'metric-reset-old'
+			);
+			const before = sample(await scrape(), 'opsimate_alerts_unsilenced_total');
+			const settings = await app
+				.put('/api/v1/alerts/silence-reset')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ enabled: true, hour: new Date().getHours() });
+			expect(settings.status).toBe(200);
+			const response = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			expect(response.status).toBe(200);
+			expect(sample(await scrape(), 'opsimate_alerts_unsilenced_total') - before).toBe(1);
+			expect(isSilenced('metric-reset-old')).toBe(0);
+			expect(isSilenced('metric-reset-new')).toBe(1);
+			const second = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+			expect(second.status).toBe(200);
+			expect(sample(await scrape(), 'opsimate_alerts_unsilenced_total') - before).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	test('a single custom alert increments ingest batch count and sum by one', async () => {
