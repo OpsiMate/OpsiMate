@@ -1,4 +1,5 @@
 import { EditSecretDialog } from '@/components/EditSecretDialog';
+import { BULK_ROLE_CHANGE_LABEL, USER_ROLE_LABEL_PREFIX } from './Settings.constants';
 import {
 	Dialog,
 	DialogContent,
@@ -338,7 +339,7 @@ const Settings: React.FC = () => {
 														>
 															<SelectTrigger
 																className="w-40"
-																aria-label="Change role of selected users"
+																aria-label={BULK_ROLE_CHANGE_LABEL}
 															>
 																<SelectValue placeholder="Bulk Role Change" />
 															</SelectTrigger>
@@ -499,7 +500,7 @@ const Settings: React.FC = () => {
 																		>
 																			<SelectTrigger
 																				className="w-32"
-																				aria-label={`Role for ${user.email}`}
+																				aria-label={`${USER_ROLE_LABEL_PREFIX}${user.email}`}
 																			>
 																				<SelectValue />
 																			</SelectTrigger>
