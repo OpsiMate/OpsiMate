@@ -336,7 +336,10 @@ const Settings: React.FC = () => {
 																handleBulkRoleUpdate(newRole as Role)
 															}
 														>
-															<SelectTrigger className="w-40">
+															<SelectTrigger
+																className="w-40"
+																aria-label="Change role of selected users"
+															>
 																<SelectValue placeholder="Bulk Role Change" />
 															</SelectTrigger>
 															<SelectContent>
@@ -494,7 +497,10 @@ const Settings: React.FC = () => {
 																				user.email === currentUser?.email
 																			}
 																		>
-																			<SelectTrigger className="w-32">
+																			<SelectTrigger
+																				className="w-32"
+																				aria-label={`Role for ${user.email}`}
+																			>
 																				<SelectValue />
 																			</SelectTrigger>
 																			<SelectContent>
@@ -930,6 +936,7 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 	children,
 	className,
 }) => {
+	const secretTypeId = useId();
 	const [open, setOpen] = useState(false);
 	const [uploading, setUploading] = useState(false);
 	const [fileName, setFileName] = useState<string | null>(null);
@@ -1029,9 +1036,9 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="secret-type">Type</Label>
+						<Label htmlFor={secretTypeId}>Type</Label>
 						<Select value={secretType} onValueChange={(value) => setSecretType(value as SecretType)}>
-							<SelectTrigger>
+							<SelectTrigger id={secretTypeId}>
 								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>
