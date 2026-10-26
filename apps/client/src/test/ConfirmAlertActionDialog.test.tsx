@@ -41,21 +41,24 @@ describe('ConfirmAlertActionDialog', () => {
 		expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
 	});
 
-	test('plain confirm calls run(undefined, undefined) then onClose', () => {
+	test('plain confirm calls run(undefined, undefined) then onClose once', () => {
 		const run = vi.fn();
 		const onClose = vi.fn();
 		render(<ConfirmAlertActionDialog pending={pending({ run })} onClose={onClose} />);
 		fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 		expect(run).toHaveBeenCalledTimes(1);
 		expect(run).toHaveBeenCalledWith(undefined, undefined);
-		expect(onClose).toHaveBeenCalledTimes(2);
+		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
 	test('does not call run when the confirm button is disabled', () => {
 		const run = vi.fn();
-		const p = pending({ withComment: true, requireComment: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(
+			<ConfirmAlertActionDialog
+				pending={pending({ withComment: true, requireComment: true, run })}
+				onClose={vi.fn()}
+			/>
+		);
 		const button = screen.getByRole('button', { name: 'Confirm' });
 		expect(button).toBeDisabled();
 		fireEvent.click(button);
@@ -70,31 +73,45 @@ describe('ConfirmAlertActionDialog', () => {
 	});
 
 	test('withComment uses commentLabel and commentPlaceholder when given', () => {
-		const p = pending({
-			withComment: true,
-			commentLabel: 'Reason',
-			commentPlaceholder: 'Why are you silencing this?',
-		});
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(
+			<ConfirmAlertActionDialog
+				pending={pending({
+					withComment: true,
+					commentLabel: 'Reason',
+					commentPlaceholder: 'Why are you silencing this?',
+				})}
+				onClose={vi.fn()}
+			/>
+		);
 		expect(screen.getByLabelText(/Reason/)).toBeInTheDocument();
 		expect(screen.getByPlaceholderText('Why are you silencing this?')).toBeInTheDocument();
 	});
 
 	test('trims a typed note before submission', () => {
 		const run = vi.fn();
-		const p = pending({ withComment: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withComment: true, run })} onClose={vi.fn()} />);
 		fireEvent.change(commentBox(), { target: { value: ' looks fine ' } });
 		fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 		expect(run).toHaveBeenCalledWith('looks fine', undefined);
 	});
 
-	test('whitespace-only comment is treated as empty when required', () => {
+	test('whitespace-only comment is treated as empty when comments are optional', () => {
 		const run = vi.fn();
-		const p = pending({ withComment: true, requireComment: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withComment: true, run })} onClose={vi.fn()} />);
+		fireEvent.change(commentBox(), { target: { value: '   ' } });
+		fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(run).toHaveBeenCalledWith(undefined, undefined);
+	});
+
+	test('whitespace-only comment keeps confirm disabled when required', () => {
+		const run = vi.fn();
+		render(
+			<ConfirmAlertActionDialog
+				pending={pending({ withComment: true, requireComment: true, run })}
+				onClose={vi.fn()}
+			/>
+		);
 		fireEvent.change(commentBox(), { target: { value: '   ' } });
 		const button = screen.getByRole('button', { name: 'Confirm' });
 		expect(button).toBeDisabled();
@@ -103,8 +120,12 @@ describe('ConfirmAlertActionDialog', () => {
 	});
 
 	test('requireComment disables confirm until text is typed, no (optional)', () => {
-		const p = pending({ withComment: true, requireComment: true });
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(
+			<ConfirmAlertActionDialog
+				pending={pending({ withComment: true, requireComment: true })}
+				onClose={vi.fn()}
+			/>
+		);
 		expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
 		expect(screen.queryByText('(optional)')).not.toBeInTheDocument();
 		fireEvent.change(commentBox(), { target: { value: 'note' } });
@@ -113,38 +134,50 @@ describe('ConfirmAlertActionDialog', () => {
 
 	test('Enter in the textarea confirms the action', () => {
 		const run = vi.fn();
-		const p = pending({ withComment: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withComment: true, run })} onClose={vi.fn()} />);
 		fireEvent.change(commentBox(), { target: { value: 'note' } });
 		fireEvent.keyDown(commentBox(), {
 			key: 'Enter',
 			shiftKey: false,
-			nativeEvent: { isComposing: false },
+			isComposing: false,
 		});
 		expect(run).toHaveBeenCalledTimes(1);
 		expect(run).toHaveBeenCalledWith('note', undefined);
 	});
 
+	test('requireComment blocks Enter submission when the comment is empty', () => {
+		const run = vi.fn();
+		const onClose = vi.fn();
+		render(
+			<ConfirmAlertActionDialog
+				pending={pending({ withComment: true, requireComment: true, run })}
+				onClose={onClose}
+			/>
+		);
+		fireEvent.keyDown(commentBox(), {
+			key: 'Enter',
+			shiftKey: false,
+			isComposing: false,
+		});
+		expect(run).not.toHaveBeenCalled();
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
 	test('Shift+Enter does not call run', () => {
 		const run = vi.fn();
-		const p = pending({ withComment: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withComment: true, run })} onClose={vi.fn()} />);
 		fireEvent.change(commentBox(), { target: { value: 'note' } });
 		fireEvent.keyDown(commentBox(), {
 			key: 'Enter',
 			shiftKey: true,
-			nativeEvent: { isComposing: false },
+			isComposing: false,
 		});
 		expect(run).not.toHaveBeenCalled();
 	});
 
 	test('Enter during IME composition does not call run', () => {
 		const run = vi.fn();
-		const p = pending({ withComment: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withComment: true, run })} onClose={vi.fn()} />);
 		fireEvent.change(commentBox(), { target: { value: 'note' } });
 		fireEvent.keyDown(commentBox(), {
 			key: 'Enter',
@@ -157,13 +190,11 @@ describe('ConfirmAlertActionDialog', () => {
 	test('Enter submits once and closing the dialog prevents resubmission', () => {
 		const run = vi.fn();
 		const onClose = vi.fn();
-		let current: PendingAlertAction | null = pending({ withComment: true, run });
 		const { rerender } = render(
 			<ConfirmAlertActionDialog
-				pending={current}
+				pending={pending({ withComment: true, run })}
 				onClose={() => {
 					onClose();
-					current = null;
 					rerender(<ConfirmAlertActionDialog pending={null} onClose={onClose} />);
 				}}
 			/>
@@ -181,9 +212,7 @@ describe('ConfirmAlertActionDialog', () => {
 
 	test('silence duration default passes local midnight to run', () => {
 		const run = vi.fn();
-		const p = pending({ withSilenceDuration: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withSilenceDuration: true, run })} onClose={vi.fn()} />);
 		expect(screen.getByRole('combobox', { name: /silence for/i })).toHaveTextContent('Until midnight');
 		fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 		const expectedMidnight = new Date();
@@ -193,9 +222,7 @@ describe('ConfirmAlertActionDialog', () => {
 
 	test('selecting 15 minutes passes now + 15 minutes to run', () => {
 		const run = vi.fn();
-		const p = pending({ withSilenceDuration: true });
-		p.run = run;
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ withSilenceDuration: true, run })} onClose={vi.fn()} />);
 		const trigger = screen.getByRole('combobox', { name: /silence for/i });
 		fireEvent.click(trigger);
 		fireEvent.click(screen.getByRole('option', { name: '15 minutes' }));
@@ -222,8 +249,7 @@ describe('ConfirmAlertActionDialog', () => {
 	});
 
 	test('destructive confirm button has the destructive class', () => {
-		const p = pending({ destructive: true });
-		render(<ConfirmAlertActionDialog pending={p} onClose={vi.fn()} />);
+		render(<ConfirmAlertActionDialog pending={pending({ destructive: true })} onClose={vi.fn()} />);
 		const button = screen.getByRole('button', { name: 'Confirm' });
 		expect(button.className).toContain('bg-destructive');
 	});
