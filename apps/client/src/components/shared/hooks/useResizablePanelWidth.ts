@@ -96,8 +96,15 @@ export const useResizablePanelWidth = ({
 		[applyWidth, storageKey]
 	);
 
+	// The listeners are on `window`, so every pointer talks to them: a second finger that
+	// arrives mid-drag would move the panel to its own position, and its pointerup would end
+	// the drag and save that width. A drag therefore belongs to the pointer that started it,
+	// and events from any other are ignored.
+	const activePointerId = useRef<number | null>(null);
+
 	const onPointerMove = useCallback(
 		(e: PointerEvent) => {
+			if (e.pointerId !== activePointerId.current) return;
 			// The panel's own edge is the measuring stick. Hook tests render no panel
 			// element, so the viewport stands in for whichever edge is missing there.
 			const rect = panelRef.current?.getBoundingClientRect();
@@ -111,18 +118,26 @@ export const useResizablePanelWidth = ({
 	// Letting go of the pointer is not the only way a drag ends: a cancelled touch never
 	// fires pointerup, and the panel can unmount mid-drag. Both would otherwise leave the
 	// window listeners attached and the body stuck with a col-resize cursor. Whatever width
-	// the drag reached is kept, so a cancelled drag behaves like a released one.
-	const stopResizing = useCallback(() => {
-		window.removeEventListener('pointermove', onPointerMove);
-		window.removeEventListener('pointerup', stopResizing);
-		window.removeEventListener('pointercancel', stopResizing);
-		document.body.style.userSelect = '';
-		document.body.style.cursor = '';
-		saveWidth(storageKey, widthRef.current);
-	}, [onPointerMove, storageKey]);
+	// the drag reached is kept, so a cancelled drag behaves like a released one. A release
+	// or cancellation from a pointer other than the one being tracked leaves the drag alive:
+	// ending it there would strand the real finger's moves on a panel no longer listening.
+	const stopResizing = useCallback(
+		(e: PointerEvent) => {
+			if (e.pointerId !== activePointerId.current) return;
+			activePointerId.current = null;
+			window.removeEventListener('pointermove', onPointerMove);
+			window.removeEventListener('pointerup', stopResizing);
+			window.removeEventListener('pointercancel', stopResizing);
+			document.body.style.userSelect = '';
+			document.body.style.cursor = '';
+			saveWidth(storageKey, widthRef.current);
+		},
+		[onPointerMove, storageKey]
+	);
 
 	useEffect(
 		() => () => {
+			activePointerId.current = null;
 			window.removeEventListener('pointermove', onPointerMove);
 			window.removeEventListener('pointerup', stopResizing);
 			window.removeEventListener('pointercancel', stopResizing);
@@ -135,6 +150,7 @@ export const useResizablePanelWidth = ({
 	const startResizing = useCallback(
 		(e: React.PointerEvent) => {
 			e.preventDefault();
+			activePointerId.current = e.pointerId;
 			window.addEventListener('pointermove', onPointerMove);
 			window.addEventListener('pointerup', stopResizing);
 			window.addEventListener('pointercancel', stopResizing);

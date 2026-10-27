@@ -10,10 +10,15 @@ import { useResizablePanelWidth } from '@/components/shared/hooks/useResizablePa
 // ends (pointerup, or a pointercancel that never fires pointerup), while a keyboard step is
 // one gesture and saves on the spot; unmounting releases a
 // drag that is still in flight; storage that throws degrades to the default; and
-// double-click resets to the default. The last block covers the second
-// consumer - the left-docked filter sidebar, which drags the other way.
+// double-click resets to the default. The listeners live on `window`, so a drag belongs to
+// the pointer that started it and every other pointer's events are ignored. The last block
+// covers the second consumer - the left-docked filter sidebar, which drags the other way.
 
 const STORAGE_KEY = 'opsimate-alert-details-panel-width';
+
+// The pointer a single-finger drag owns, and a second finger arriving mid-drag.
+const PRIMARY = 1;
+const INTRUDER = 2;
 
 const realInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth');
 
@@ -21,27 +26,32 @@ const setInnerWidth = (value: number) => {
 	Object.defineProperty(window, 'innerWidth', { value, writable: true, configurable: true });
 };
 
-const startDrag = (current: ReturnType<typeof useResizablePanelWidth>) => {
+const startDrag = (current: ReturnType<typeof useResizablePanelWidth>, pointerId = PRIMARY) => {
 	const preventDefault = vi.fn();
 	act(() => {
-		current.startResizing({ preventDefault } as unknown as React.PointerEvent);
+		current.startResizing({ preventDefault, pointerId } as unknown as React.PointerEvent);
 	});
 	return preventDefault;
 };
 
 // jsdom may lack PointerEvent; a MouseEvent with a pointer* type carries clientX
-// and triggers window listeners just the same.
-const pointerMove = (clientX: number) => {
+// and triggers window listeners just the same. A bare MouseEvent has no pointerId,
+// so it is set the way jsdom sets its own read-only event fields.
+const pointerEvent = (type: string, init: MouseEventInit & { pointerId?: number } = {}) => {
+	const event = new MouseEvent(type, init);
+	Object.defineProperty(event, 'pointerId', { value: init.pointerId ?? PRIMARY });
+	return event;
+};
+
+const dispatch = (type: string, init: MouseEventInit & { pointerId?: number } = {}) => {
 	act(() => {
-		window.dispatchEvent(new MouseEvent('pointermove', { clientX }));
+		window.dispatchEvent(pointerEvent(type, init));
 	});
 };
 
-const pointerUp = () => {
-	act(() => {
-		window.dispatchEvent(new MouseEvent('pointerup'));
-	});
-};
+const pointerMove = (clientX: number, pointerId = PRIMARY) => dispatch('pointermove', { clientX, pointerId });
+const pointerUp = (pointerId = PRIMARY) => dispatch('pointerup', { pointerId });
+const pointerCancel = (pointerId = PRIMARY) => dispatch('pointercancel', { pointerId });
 
 beforeEach(() => {
 	localStorage.clear();
@@ -254,9 +264,7 @@ describe('useResizablePanelWidth - a drag that never gets released', () => {
 		const { result } = renderHook(() => useResizablePanelWidth());
 		startDrag(result.current);
 		pointerMove(500);
-		act(() => {
-			window.dispatchEvent(new MouseEvent('pointercancel'));
-		});
+		pointerCancel();
 		expect(document.body.style.userSelect).toBe('');
 		expect(document.body.style.cursor).toBe('');
 		pointerMove(700);
@@ -275,6 +283,53 @@ describe('useResizablePanelWidth - a drag that never gets released', () => {
 		// calling setState on a dead component.
 		pointerMove(700);
 		expect(result.current.width).toBe(500);
+	});
+});
+
+// The listeners are on `window`, so every pointer in the document reaches them. On a
+// touchscreen a second finger can therefore move the panel it never grabbed, and its
+// pointerup can end a drag the first finger is still making - saving the width the wrong
+// finger reached.
+describe('useResizablePanelWidth - the pointer that owns the drag', () => {
+	test('a move from another pointer does not touch the width', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current);
+		pointerMove(700, INTRUDER);
+		expect(result.current.width).toBe(340);
+		pointerMove(500, PRIMARY);
+		expect(result.current.width).toBe(500);
+	});
+
+	test.each([
+		{ kind: 'release', endDrag: pointerUp },
+		{ kind: 'cancellation', endDrag: pointerCancel },
+	])('$kind from another pointer leaves the drag running', ({ endDrag }) => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current);
+		pointerMove(500);
+		endDrag(INTRUDER);
+		expect(document.body.style.cursor).toBe('col-resize');
+		expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+		// The owning pointer's listeners survive, so the drag goes on and ends on
+		// its own terms: innerWidth - clientX, measured from the right edge.
+		pointerMove(700);
+		endDrag(PRIMARY);
+		expect(result.current.width).toBe(300);
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('300');
+	});
+
+	test('the second pointer can start its own drag once the first has let go', () => {
+		const { result } = renderHook(() => useResizablePanelWidth());
+		startDrag(result.current, PRIMARY);
+		pointerMove(500, PRIMARY);
+		pointerUp(PRIMARY);
+		startDrag(result.current, INTRUDER);
+		pointerMove(400, INTRUDER);
+		// A move from the pointer that is no longer the drag's own is ignored.
+		pointerMove(650, PRIMARY);
+		pointerUp(INTRUDER);
+		expect(result.current.width).toBe(600);
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('600');
 	});
 });
 
