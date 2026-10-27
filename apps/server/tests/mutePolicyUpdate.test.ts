@@ -1,4 +1,5 @@
 import { SuperTest, Test } from 'supertest';
+import type { Response } from 'supertest';
 import Database from 'better-sqlite3';
 import { expect } from 'vitest';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -27,9 +28,18 @@ async function getPolicy(id: number) {
 	return res.body.data as Record<string, unknown>;
 }
 
-function expectValidationIssue(res: { body: { details?: Array<{ message: string }> } }, message: string): void {
-	expect(res.body.details).toBeDefined();
-	expect(res.body.details?.some((d) => d.message === message)).toBe(true);
+interface ValidationIssue {
+	message: string;
+}
+
+interface ValidationBody {
+	details?: ValidationIssue[];
+}
+
+function expectValidationIssue(res: Response, message: string): void {
+	const body = res.body as ValidationBody;
+	expect(body.details).toBeDefined();
+	expect(body.details?.some((d) => d.message === message)).toBe(true);
 }
 
 beforeAll(async () => {
