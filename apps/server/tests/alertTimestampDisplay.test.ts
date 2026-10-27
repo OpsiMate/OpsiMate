@@ -38,15 +38,30 @@ describe('formatAlertTimestampDisplay', () => {
 describe('cost on the alert-list path', () => {
 	test('formatting is cheap enough to run per alert per enrichment field (formatters are cached)', () => {
 		const viewer = { timeZone: 'Asia/Jerusalem', locale: 'en-US' };
-		formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer); // warm the cache
-		const started = performance.now();
-		for (let i = 0; i < 20_000; i++) {
-			formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer);
-			formatAlertTimestampDisplay('2026-10-20T14:15:53Z');
+		const date = new Date('2026-10-20T14:15:53Z');
+		const iterations = 2_000;
+
+		// What one call costs without the cache: the three formatters it needs, built fresh.
+		const uncachedStarted = performance.now();
+		for (let i = 0; i < iterations; i++) {
+			new Intl.DateTimeFormat(viewer.locale, { timeZone: viewer.timeZone, year: 'numeric' }).format(date);
+			new Intl.DateTimeFormat(viewer.locale, { timeZone: viewer.timeZone, hour: '2-digit' }).format(date);
+			new Intl.DateTimeFormat(viewer.locale, { timeZone: viewer.timeZone, month: '2-digit' }).format(date);
 		}
-		// Uncached this is ~1–2 s (three Intl.DateTimeFormat constructions per call);
-		// cached it is tens of milliseconds. The bound leaves room for a slow CI runner.
-		expect(performance.now() - started).toBeLessThan(400);
+		const uncached = performance.now() - uncachedStarted;
+
+		formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer); // warm the cache
+		const cachedStarted = performance.now();
+		for (let i = 0; i < iterations; i++) {
+			formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer);
+		}
+		const cached = performance.now() - cachedStarted;
+
+		// A ratio, not a wall-clock bound: CI runners vary several-fold in speed, and an
+		// absolute budget either flakes on a slow runner or stops catching a lost cache on a
+		// fast one. Without the cache the two loops cost about the same; with it the second
+		// is an order of magnitude cheaper.
+		expect(cached).toBeLessThan(uncached / 3);
 	});
 });
 
