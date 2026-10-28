@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
-import { CELL_PADDING } from './AlertRow.constants';
+import { CELL_PADDING, ROW_INTERACTIVE_CONTROL_SELECTOR } from './AlertRow.constants';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
@@ -95,12 +95,13 @@ export const AlertRow = ({
 	const handleRowMouseDown = (e: React.MouseEvent) => {
 		if (!onSelectAlerts || e.button !== 0) return;
 		// Shift+mousedown would otherwise highlight the text between the two clicked rows.
-		if (e.shiftKey) {
+		// Cmd/Ctrl wins over Shift, as in handleRowClick: Cmd+Shift+click is a toggle.
+		if (e.shiftKey && !isToggleModifier(e)) {
 			e.preventDefault();
 			return;
 		}
 		// Buttons and links inside the row keep their own Cmd/Ctrl+click behavior.
-		const onControl = (e.target as HTMLElement).closest('button, a, input, textarea, [role="menuitem"]');
+		const onControl = (e.target as HTMLElement).closest(ROW_INTERACTIVE_CONTROL_SELECTOR);
 		if (isToggleModifier(e) && onDragStart && !onControl) onDragStart(alert, e);
 	};
 

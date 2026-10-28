@@ -167,6 +167,18 @@ describe('AlertRow right-click and checkbox presses', () => {
 		expect(onDragStart).toHaveBeenCalledTimes(1);
 	});
 
+	test.each([{ metaKey: true }, { ctrlKey: true }])(
+		'%o + shift + click still toggles (Cmd/Ctrl wins)',
+		(modifier) => {
+			const { row, onAlertClick, onSelectRange, onDragStart } = renderRow();
+			fireEvent.mouseDown(row, { ...modifier, shiftKey: true });
+			fireEvent.click(row, { ...modifier, shiftKey: true });
+			expect(onDragStart).toHaveBeenCalledTimes(1);
+			expect(onSelectRange).not.toHaveBeenCalled();
+			expect(onAlertClick).not.toHaveBeenCalled();
+		}
+	);
+
 	test('shift + click selects a range only', () => {
 		const { row, onAlertClick, onSelectRange } = renderRow();
 		fireEvent.click(row, { shiftKey: true });
