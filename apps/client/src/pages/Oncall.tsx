@@ -35,7 +35,7 @@ const formatDateTime = (iso: string | null): string => formatShortDateTime(iso);
 const Oncall = () => {
 	const { toast } = useToast();
 	const admin = isAdmin();
-	const { data: teams = [], isLoading } = useOncallTeams();
+	const { data: teams = [], isLoading, isLoadingError, error } = useOncallTeams();
 	const { data: users = [] } = useUsers();
 	const { createTeam, updateTeam, deleteTeam, setTeamMembers } = useOncallTeamMutations();
 
@@ -181,6 +181,12 @@ const Oncall = () => {
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading on-call teams...
+										</TableCell>
+									</TableRow>
+								) : isLoadingError ? (
+									<TableRow>
+										<TableCell colSpan={admin ? 5 : 4} className="py-8 text-sm text-destructive">
+											{error instanceof Error ? error.message : 'Could not load on-call teams'}
 										</TableCell>
 									</TableRow>
 								) : filteredTeams.length === 0 ? (
