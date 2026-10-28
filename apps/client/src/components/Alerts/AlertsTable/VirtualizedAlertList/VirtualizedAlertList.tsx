@@ -14,6 +14,7 @@ interface VirtualizedAlertListProps {
 	contentColumnWidths?: Record<string, number>;
 	onToggleGroup: (key: string) => void;
 	onSelectAlert: (alert: Alert) => void;
+	onSelectRange?: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	activeAlertId?: string | null;
 	onSilenceAlert?: (alertId: string) => void;
@@ -43,6 +44,7 @@ export const VirtualizedAlertList = ({
 	contentColumnWidths,
 	onToggleGroup,
 	onSelectAlert,
+	onSelectRange,
 	onAlertClick,
 	activeAlertId = null,
 	onSilenceAlert,
@@ -133,6 +135,7 @@ export const VirtualizedAlertList = ({
 								orderedColumns={orderedColumns}
 								contentColumnWidths={contentColumnWidths}
 								onSelectAlert={onSelectAlert}
+								onSelectRange={onSelectRange}
 								onAlertClick={onAlertClick}
 								isActiveRow={alert.id === activeAlertId}
 								onSilenceAlert={onSilenceAlert}

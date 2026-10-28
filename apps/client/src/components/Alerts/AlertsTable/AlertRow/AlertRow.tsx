@@ -27,6 +27,8 @@ export interface AlertRowProps {
 	// Content-aware pixel widths for alertName/tag columns; must match the header's.
 	contentColumnWidths?: Record<string, number>;
 	onSelectAlert: (alert: Alert) => void;
+	// Shift+click: select every row from the last toggled one to this one.
+	onSelectRange?: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
 	isActiveRow?: boolean;
@@ -54,6 +56,7 @@ export const AlertRow = ({
 	orderedColumns,
 	contentColumnWidths = {},
 	onSelectAlert,
+	onSelectRange,
 	onAlertClick,
 	isActiveRow = false,
 	onSilenceAlert,
@@ -70,11 +73,56 @@ export const AlertRow = ({
 	onDragEnter,
 	onDragEnd,
 }: AlertRowProps) => {
-	const handleRowClick = () => {
+	// Selection from anywhere on the row: Cmd/Ctrl + press starts the same drag selection
+	// as the checkbox column — release in place toggles the row, drag selects every row
+	// passed over. Shift+click selects a range. None of these open the details panel.
+	// Cmd is the Mac convention; Ctrl works there too, see handleRowContextMenu.
+	const isToggleModifier = (e: React.MouseEvent) => e.metaKey || e.ctrlKey;
+
+	const handleRowClick = (e: React.MouseEvent) => {
+		if (onSelectAlerts && isToggleModifier(e)) {
+			// The toggle already happened on mouseup via the drag hook; without one, toggle here.
+			if (!onDragStart) onSelectAlert(alert);
+			return;
+		}
+		if (onSelectAlerts && e.shiftKey) {
+			(onSelectRange ?? onSelectAlert)(alert);
+			return;
+		}
 		onAlertClick?.(alert);
 	};
 
+	const handleRowMouseDown = (e: React.MouseEvent) => {
+		if (!onSelectAlerts || e.button !== 0) return;
+		// Shift+mousedown would otherwise highlight the text between the two clicked rows.
+		if (e.shiftKey) {
+			e.preventDefault();
+			return;
+		}
+		// Buttons and links inside the row keep their own Cmd/Ctrl+click behavior.
+		const onControl = (e.target as HTMLElement).closest('button, a, input, textarea, [role="menuitem"]');
+		if (isToggleModifier(e) && onDragStart && !onControl) onDragStart(alert, e);
+	};
+
+	// macOS turns Ctrl+click into a right-click: contextmenu fires instead of click. The
+	// mousedown/mouseup pair still fires, so the drag hook does the toggle; only the menu
+	// needs suppressing. A real right-click (button 2) keeps its menu.
+	const handleRowContextMenu = (e: React.MouseEvent) => {
+		if (onSelectAlerts && e.ctrlKey && e.button !== 2) {
+			e.preventDefault();
+			if (!onDragStart) onSelectAlert(alert);
+		}
+	};
+
 	const handleCheckboxMouseDown = (e: React.MouseEvent) => {
+		// The row's own mousedown handler must not start a second drag from this press.
+		e.stopPropagation();
+		// Shift+click on a checkbox is a range too; skip the drag so mouseup doesn't toggle it back.
+		if (e.shiftKey && onSelectRange) {
+			e.preventDefault();
+			onSelectRange(alert);
+			return;
+		}
 		if (onDragStart) {
 			onDragStart(alert, e);
 		}
@@ -91,7 +139,7 @@ export const AlertRow = ({
 		// selection handler, not just the checkbox column (#712). No isDragging guard:
 		// isDragging only turns true after the first drag-enter, so gating on it would
 		// ignore the first row the cursor reaches after leaving the checkbox column.
-		// The hook itself no-ops unless the mouse went down on a checkbox.
+		// The hook itself no-ops unless the mouse went down on a checkbox or Cmd/Ctrl+row.
 		if (onDragEnter) {
 			onDragEnter(alert);
 		}
@@ -115,6 +163,8 @@ export const AlertRow = ({
 				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary'
 			)}
 			onClick={handleRowClick}
+			onMouseDown={handleRowMouseDown}
+			onContextMenu={handleRowContextMenu}
 			onMouseEnter={handleRowMouseEnter}
 		>
 			{onSelectAlerts && (

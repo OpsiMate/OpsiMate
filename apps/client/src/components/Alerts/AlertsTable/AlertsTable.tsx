@@ -188,8 +188,13 @@ export const AlertsTable = ({
 			return summary ? { ...item, count: summary.count, groupStatus: summary.status } : item;
 		});
 	}, [groupedRows, groupSummaryByKey]);
-	const { allSelected, handleSelectAll, handleSelectAlert } = useAlertSelection({
+	const visibleAlerts = useMemo(
+		() => flatRows.flatMap((item) => (item.type === 'leaf' ? [item.alert] : [])),
+		[flatRows]
+	);
+	const { allSelected, handleSelectAll, handleSelectAlert, handleSelectRange } = useAlertSelection({
 		sortedAlerts,
+		visibleAlerts,
 		selectedAlerts,
 		onSelectAlerts,
 	});
@@ -590,6 +595,7 @@ export const AlertsTable = ({
 									expandRows={expandRows}
 									onToggleGroup={toggleGroup}
 									onSelectAlert={handleSelectAlert}
+									onSelectRange={handleSelectRange}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}
 									onSilenceAlert={onSilenceAlert}
