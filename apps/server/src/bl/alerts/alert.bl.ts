@@ -574,17 +574,6 @@ export class AlertBL {
 		}
 	}
 
-	// Public hook so other modules (e.g. running an action against an alert) can append to the
-	// alert's history timeline without depending on the history repository directly.
-	async recordActionRun(alertId: string, actionName: string, actorName?: string | null): Promise<void> {
-		await this.recordHistoryEvent(
-			alertId,
-			AlertHistoryEventType.ACTION_RUN,
-			`Ran action "${actionName}"`,
-			actorName
-		);
-	}
-
 	setMutePolicyBL(mutePolicyBL: MutePolicyBL): void {
 		this.mutePolicyBL = mutePolicyBL;
 	}
