@@ -188,10 +188,10 @@ describe('RetentionSettings number inputs', () => {
 		render(<RetentionSettings />);
 
 		for (const policy of allPolicies) {
-			const name = `Retention days for ${POLICY_TITLES[policy.resourceType]}`;
+			const name = `Delete after (days) for ${POLICY_TITLES[policy.resourceType]}`;
 			expect(screen.getByRole('spinbutton', { name })).toHaveValue(policy.retentionDays);
 		}
-		expect(screen.getByRole('spinbutton', { name: 'Cleanup interval in hours' })).toHaveValue(
+		expect(screen.getByRole('spinbutton', { name: 'Cleanup runs every (hours)' })).toHaveValue(
 			config.cleanupIntervalHours
 		);
 	});
