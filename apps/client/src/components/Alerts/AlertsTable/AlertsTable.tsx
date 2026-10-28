@@ -192,7 +192,7 @@ export const AlertsTable = ({
 		() => flatRows.flatMap((item) => (item.type === 'leaf' ? [item.alert] : [])),
 		[flatRows]
 	);
-	const { allSelected, handleSelectAll, handleSelectAlert, handleSelectRange } = useAlertSelection({
+	const { allSelected, handleSelectAll, handleSelectAlert, handleSelectRange, setAnchor } = useAlertSelection({
 		sortedAlerts,
 		visibleAlerts,
 		selectedAlerts,
@@ -201,6 +201,7 @@ export const AlertsTable = ({
 	const { isDragging, handleDragStart, handleDragEnter, handleDragEnd } = useDragSelection({
 		selectedAlerts,
 		onSelectAlerts,
+		onRowTouched: setAnchor,
 	});
 
 	// Alert lookup for the auto-scroll hook: rows revealed by scrolling under a held

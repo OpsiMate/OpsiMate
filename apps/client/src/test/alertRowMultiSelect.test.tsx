@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { AlertRow } from '@/components/Alerts/AlertsTable/AlertRow';
 import { useAlertSelection } from '@/components/Alerts/AlertsTable/hooks/useAlertSelection';
 import { useDragSelection } from '@/components/Alerts/AlertsTable/hooks/useDragSelection';
+import { isForeignTarget, isPrimaryPress } from '@/components/Alerts/AlertsTable/AlertRow/AlertRow.utils';
 
 const makeAlert = (id: string) => ({ id, alertName: `alert ${id}`, tags: {} }) as unknown as Alert;
 const alerts = ['a', 'b', 'c', 'd', 'e'].map(makeAlert);
@@ -202,5 +203,88 @@ describe('AlertRow Firefox and checkbox modifier presses', () => {
 		fireEvent.click(row, { shiftKey: true });
 		expect(onSelectRange).toHaveBeenCalledWith(alerts[0]);
 		expect(onAlertClick).not.toHaveBeenCalled();
+	});
+});
+
+describe('range anchor follows drags and the current selection', () => {
+	// Both hooks over one selection, wired as AlertsTable wires them.
+	const renderTable = () =>
+		renderHook(() => {
+			const [selected, setSelected] = useState<Alert[]>([]);
+			const selection = useAlertSelection({
+				sortedAlerts: alerts,
+				selectedAlerts: selected,
+				onSelectAlerts: setSelected,
+			});
+			const drag = useDragSelection({
+				selectedAlerts: selected,
+				onSelectAlerts: setSelected,
+				onRowTouched: selection.setAnchor,
+			});
+			return { selectedIds: selected.map((a) => a.id).sort(), setSelected, ...selection, ...drag };
+		});
+	const press = { preventDefault: () => {} } as React.MouseEvent;
+
+	test('a shift-click after a drag ranges from where the drag ended', () => {
+		const { result } = renderTable();
+		act(() => result.current.handleSelectAlert(alerts[0]));
+		act(() => result.current.handleDragStart(alerts[2], press));
+		act(() => result.current.handleDragEnter(alerts[3]));
+		act(() => result.current.handleDragEnd());
+		act(() => result.current.handleSelectRange(alerts[4]));
+		// Not b: the range starts at d, where the drag ended, not at a.
+		expect(result.current.selectedIds).toEqual(['a', 'c', 'd', 'e']);
+	});
+
+	test('after the selection is cleared, a shift-click selects just that row', () => {
+		const { result } = renderTable();
+		act(() => result.current.handleSelectAlert(alerts[0]));
+		act(() => result.current.setSelected([]));
+		act(() => result.current.handleSelectRange(alerts[4]));
+		expect(result.current.selectedIds).toEqual(['e']);
+	});
+
+	test('an anchor that was unselected again is not used', () => {
+		const { result } = renderTable();
+		act(() => result.current.handleSelectAlert(alerts[1]));
+		act(() => result.current.handleSelectAlert(alerts[1]));
+		act(() => result.current.handleSelectRange(alerts[3]));
+		expect(result.current.selectedIds).toEqual(['d']);
+	});
+});
+
+describe('row selection event filters', () => {
+	const row = document.createElement('tr');
+	const cell = row.appendChild(document.createElement('td'));
+	const button = cell.appendChild(document.createElement('button'));
+	const portaled = document.createElement('div');
+	const event = (target: Element) => ({ currentTarget: row, target });
+
+	test('presses on the row itself are handled, controls and portaled popovers are not', () => {
+		expect(isForeignTarget(event(cell))).toBe(false);
+		expect(isForeignTarget(event(button))).toBe(true);
+		// The owner picker / actions menu render in a portal outside the row but bubble through it in React.
+		expect(isForeignTarget(event(portaled))).toBe(true);
+	});
+
+	test('primary press: left button, or Ctrl with the primary button held (Firefox macOS)', () => {
+		expect(isPrimaryPress({ button: 0, buttons: 1, ctrlKey: false })).toBe(true);
+		expect(isPrimaryPress({ button: 2, buttons: 1, ctrlKey: true })).toBe(true);
+		expect(isPrimaryPress({ button: 2, buttons: 2, ctrlKey: true })).toBe(false);
+		expect(isPrimaryPress({ button: 2, buttons: 2, ctrlKey: false })).toBe(false);
+		expect(isPrimaryPress({ button: 1, buttons: 4, ctrlKey: false })).toBe(false);
+	});
+});
+
+describe('checkbox non-primary presses', () => {
+	test.each([
+		{ button: 2, buttons: 2 },
+		{ button: 1, buttons: 4 },
+	])('shift + %o on a checkbox neither ranges nor starts a drag', (buttons) => {
+		const { checkboxCell, onDragStart, onSelectRange } = renderRow();
+		fireEvent.mouseDown(checkboxCell, { shiftKey: true, ...buttons });
+		fireEvent.mouseDown(checkboxCell, buttons);
+		expect(onSelectRange).not.toHaveBeenCalled();
+		expect(onDragStart).not.toHaveBeenCalled();
 	});
 });

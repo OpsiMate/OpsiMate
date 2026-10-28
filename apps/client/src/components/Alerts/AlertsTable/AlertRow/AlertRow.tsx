@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
-import { CELL_PADDING, ROW_INTERACTIVE_CONTROL_SELECTOR } from './AlertRow.constants';
+import { CELL_PADDING } from './AlertRow.constants';
+import { isForeignTarget, isPrimaryPress, isToggleModifier } from './AlertRow.utils';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
@@ -76,39 +77,33 @@ export const AlertRow = ({
 	// Selection from anywhere on the row: Cmd/Ctrl + press starts the same drag selection
 	// as the checkbox column — release in place toggles the row, drag selects every row
 	// passed over. Shift+click selects a range. None of these open the details panel.
-	// Cmd is the Mac convention; Ctrl works there too, see handleRowContextMenu.
-	const isToggleModifier = (e: React.MouseEvent) => e.metaKey || e.ctrlKey;
-	// A left-button press. Firefox on macOS reports Ctrl+left-click as button 2, but the
-	// held-buttons mask still says primary (bit 1); a real right-click holds only bit 2.
-	const isPrimaryPress = (e: React.MouseEvent) => e.button === 0 || (e.ctrlKey && (e.buttons & 1) === 1);
-	// Set by a Ctrl+left press so its contextmenu (fired with button 0 or 2) is suppressed.
+	// Set by a Ctrl+left press on the row itself, so its contextmenu (button 0 or 2) is suppressed.
 	const ctrlPrimaryPressRef = useRef(false);
 
 	const handleRowClick = (e: React.MouseEvent) => {
 		if (onSelectAlerts && isToggleModifier(e)) {
 			// The toggle already happened on mouseup via the drag hook; without one, toggle here.
-			if (!onDragStart) onSelectAlert(alert);
+			if (!onDragStart && !isForeignTarget(e)) onSelectAlert(alert);
 			return;
 		}
 		if (onSelectAlerts && e.shiftKey) {
-			(onSelectRange ?? onSelectAlert)(alert);
+			if (!isForeignTarget(e)) (onSelectRange ?? onSelectAlert)(alert);
 			return;
 		}
 		onAlertClick?.(alert);
 	};
 
 	const handleRowMouseDown = (e: React.MouseEvent) => {
-		ctrlPrimaryPressRef.current = !!onSelectAlerts && e.ctrlKey && isPrimaryPress(e);
-		if (!onSelectAlerts || !isPrimaryPress(e)) return;
+		const isOwnPrimaryPress = !!onSelectAlerts && isPrimaryPress(e) && !isForeignTarget(e);
+		ctrlPrimaryPressRef.current = isOwnPrimaryPress && e.ctrlKey;
+		if (!isOwnPrimaryPress) return;
 		// Shift+mousedown would otherwise highlight the text between the two clicked rows.
 		// Cmd/Ctrl wins over Shift, as in handleRowClick: Cmd+Shift+click is a toggle.
 		if (e.shiftKey && !isToggleModifier(e)) {
 			e.preventDefault();
 			return;
 		}
-		// Buttons and links inside the row keep their own Cmd/Ctrl+click behavior.
-		const onControl = (e.target as HTMLElement).closest(ROW_INTERACTIVE_CONTROL_SELECTOR);
-		if (isToggleModifier(e) && onDragStart && !onControl) onDragStart(alert, e);
+		if (isToggleModifier(e) && onDragStart) onDragStart(alert, e);
 	};
 
 	// macOS turns Ctrl+click into a right-click: contextmenu fires instead of click. The
@@ -117,7 +112,8 @@ export const AlertRow = ({
 	const handleRowContextMenu = (e: React.MouseEvent) => {
 		const fromCtrlPrimaryPress = ctrlPrimaryPressRef.current;
 		ctrlPrimaryPressRef.current = false;
-		if (onSelectAlerts && e.ctrlKey && (e.button !== 2 || fromCtrlPrimaryPress)) {
+		if (!onSelectAlerts || !e.ctrlKey || isForeignTarget(e)) return;
+		if (e.button !== 2 || fromCtrlPrimaryPress) {
 			e.preventDefault();
 			if (!onDragStart) onSelectAlert(alert);
 		}
@@ -126,7 +122,10 @@ export const AlertRow = ({
 	const handleCheckboxMouseDown = (e: React.MouseEvent) => {
 		// The row's own mousedown handler must not start a second drag from this press.
 		e.stopPropagation();
-		ctrlPrimaryPressRef.current = e.ctrlKey && isPrimaryPress(e);
+		const isOwnPrimaryPress = isPrimaryPress(e);
+		ctrlPrimaryPressRef.current = isOwnPrimaryPress && e.ctrlKey;
+		// A right or middle press opens a menu or autoscrolls; it is not a selection gesture.
+		if (!isOwnPrimaryPress) return;
 		// Shift+click on a checkbox is a range too; skip the drag so mouseup doesn't toggle it back.
 		// Cmd/Ctrl wins over Shift, as on the row.
 		if (e.shiftKey && !isToggleModifier(e) && onSelectRange) {
