@@ -58,6 +58,27 @@ const auditPolicy: RetentionPolicy = {
 
 const settings: RetentionSettingsData = { config, policies: [auditPolicy] };
 
+// One policy per resource with distinct day counts, so each input can be matched to its row.
+const POLICY_TITLES: Record<RetentionResource, string> = {
+	[RetentionResource.AuditLogs]: 'Audit logs',
+	[RetentionResource.AlertHistoryEvents]: 'Alert history events',
+	[RetentionResource.AlertStatusHistory]: 'Alert status history',
+	[RetentionResource.ActiveAlerts]: 'Active alerts',
+	[RetentionResource.ResolvedAlerts]: 'Resolved alerts',
+	[RetentionResource.AlertComments]: 'Alert comments',
+	[RetentionResource.RootCauses]: 'Root cause analyses',
+	[RetentionResource.EnrichmentVersions]: 'Enrichment versions',
+};
+
+const allPolicies: RetentionPolicy[] = Object.values(RetentionResource).map((resourceType, i) => ({
+	resourceType,
+	enabled: true,
+	retentionDays: 10 + i,
+	updatedAt: '2026-10-01T00:00:00.000Z',
+}));
+
+const fullSettings: RetentionSettingsData = { config, policies: allPolicies };
+
 const policyMutate = vi.fn<(variables: PolicyMutationVariables, callbacks?: MutateCallbacks) => void>();
 const configMutate = vi.fn<(variables: Partial<RetentionConfig>, callbacks?: MutateCallbacks) => void>();
 
@@ -141,5 +162,47 @@ describe('RetentionSettings toggles', () => {
 		configMutate.mock.calls[0][1]?.onSuccess?.();
 
 		expect(destructiveToasts()).toEqual([]);
+	});
+});
+
+describe('RetentionSettings number inputs', () => {
+	beforeEach(() => {
+		vi.mocked(useRetentionSettings).mockReturnValue({
+			data: fullSettings,
+			isLoading: false,
+			error: null,
+		} as unknown as ReturnType<typeof useRetentionSettings>);
+	});
+
+	test('the audit logs input is named after its category and shows its days', () => {
+		render(<RetentionSettings />);
+		const inputs = screen.getAllByRole('spinbutton', { name: /audit logs/i });
+
+		expect(inputs).toHaveLength(1);
+		expect(inputs[0]).toHaveValue(
+			allPolicies.find((p) => p.resourceType === RetentionResource.AuditLogs)?.retentionDays
+		);
+	});
+
+	test('every policy input and the interval input can be found by name', () => {
+		render(<RetentionSettings />);
+
+		for (const policy of allPolicies) {
+			const name = `Retention days for ${POLICY_TITLES[policy.resourceType]}`;
+			expect(screen.getByRole('spinbutton', { name })).toHaveValue(policy.retentionDays);
+		}
+		expect(screen.getByRole('spinbutton', { name: 'Cleanup interval in hours' })).toHaveValue(
+			config.cleanupIntervalHours
+		);
+	});
+
+	test('all nine inputs have a non-empty accessible name', () => {
+		render(<RetentionSettings />);
+		const inputs = screen.getAllByRole('spinbutton');
+
+		expect(inputs).toHaveLength(9);
+		for (const input of inputs) {
+			expect(input).toHaveAccessibleName();
+		}
 	});
 });
