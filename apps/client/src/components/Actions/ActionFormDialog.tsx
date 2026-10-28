@@ -170,7 +170,9 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 		setHttpMethod('POST');
 		setHttpHeaders([]);
 		setHttpBody('');
+		setHttpBodyIsJson(true);
 		setHttpFireAndForget(false);
+		setHttpEditableFields([]);
 	};
 
 	useEffect(() => {
@@ -221,8 +223,6 @@ export const ActionFormDialog = ({ open, onOpenChange, action }: ActionFormDialo
 			setType('slack');
 			setNameContainsAny([]);
 			setMatcherGroups([]);
-			setHttpBodyIsJson(true);
-			setHttpEditableFields([]);
 		}
 	}, [open, action]);
 
