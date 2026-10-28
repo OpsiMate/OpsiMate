@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRelativeTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
-import { AlertComment } from '@OpsiMate/shared';
+import { ALERT_COMMENT_MAX_LENGTH, AlertComment } from '@OpsiMate/shared';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -97,6 +97,7 @@ export const CommentItem = ({
 						<Textarea
 							value={editText}
 							onChange={(e) => setEditText(e.target.value)}
+							maxLength={ALERT_COMMENT_MAX_LENGTH}
 							className="min-h-[60px] resize-none text-sm"
 							autoFocus
 						/>
