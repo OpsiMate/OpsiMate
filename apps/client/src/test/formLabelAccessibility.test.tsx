@@ -1,11 +1,15 @@
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { Role, SecretType, type SecretMetadata } from '@OpsiMate/shared';
+import { AddUserModal } from '@/components/AddUserModal';
+import { EditSecretDialog } from '@/components/EditSecretDialog';
 import { EditProfileForm } from '@/components/Profile/components/EditProfileForm/EditProfileForm';
 import { OncallTeamFormDialog } from '@/components/Oncall/OncallTeamFormDialog';
 import { ZabbixSetupModal } from '@/components/Integrations/ZabbixSetupModal/ZabbixSetupModal';
 import * as api from '@/lib/api';
-import Settings from '@/pages/Settings';
-import { render, screen, waitFor } from './test-utils';
+import Settings, { AddSecretButton } from '@/pages/Settings';
+import type { User } from '@/types';
+import { render, screen, waitFor, within } from './test-utils';
 
 const profileLabels = ['New Password', 'Confirm Password'];
 const teamLabels = ['Team name', 'Rotate every (days)'];
@@ -124,6 +128,121 @@ test('keeps the labelled inputs out of closed dialogs', () => {
 	for (const label of [...teamLabels, ...zabbixLabels]) {
 		expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
 	}
+});
+
+describe('Add User role label', () => {
+	const renderAddUser = () => <AddUserModal isOpen onClose={vi.fn()} onUserCreated={vi.fn()} />;
+
+	test('connects the Add User role dropdown to its visible label', () => {
+		render(renderAddUser());
+		const select = screen.getByRole('combobox', { name: 'Role' });
+		expect(screen.getByLabelText('Role')).toBe(select);
+		expect(select).toHaveAccessibleName('Role');
+	});
+
+	test('keeps role label associations unique across two mounted Add User dialogs', () => {
+		render(
+			<>
+				{renderAddUser()}
+				{renderAddUser()}
+			</>
+		);
+
+		const selects = screen.getAllByLabelText('Role');
+		expect(selects).toHaveLength(2);
+		for (const select of selects) {
+			expect(select.id).not.toBe('');
+			expect(select).toHaveAttribute('role', 'combobox');
+			expect(select).toHaveAccessibleName('Role');
+		}
+		expect(selects[0].id).not.toBe(selects[1].id);
+	});
+});
+
+describe('secret type labels', () => {
+	const secret: SecretMetadata = {
+		id: 1,
+		name: 'Test SSH key',
+		fileName: 'test-key.pem',
+		type: SecretType.SSH,
+	};
+
+	test('connects the Edit Secret type dropdown to its visible label', () => {
+		render(<EditSecretDialog secret={secret} open onClose={vi.fn()} onSuccess={vi.fn()} />);
+		const select = screen.getByRole('combobox', { name: 'Type' });
+		expect(screen.getByLabelText('Type')).toBe(select);
+		expect(select).toHaveAccessibleName('Type');
+	});
+
+	test('connects the Add Secret type dropdown to its visible label', async () => {
+		const user = userEvent.setup();
+		render(<AddSecretButton />);
+		await user.click(screen.getByRole('button', { name: 'Add Secret' }));
+
+		const select = screen.getByRole('combobox', { name: 'Type' });
+		expect(screen.getByLabelText('Type')).toBe(select);
+		expect(select).toHaveAccessibleName('Type');
+	});
+
+	test('keeps type label associations unique across mounted Add and Edit Secret dialogs', async () => {
+		const user = userEvent.setup();
+		const { rerender } = render(<AddSecretButton />);
+		await user.click(screen.getByRole('button', { name: 'Add Secret' }));
+		rerender(
+			<>
+				<AddSecretButton />
+				<EditSecretDialog secret={secret} open onClose={vi.fn()} onSuccess={vi.fn()} />
+			</>
+		);
+
+		const selects = screen.getAllByLabelText('Type');
+		expect(selects).toHaveLength(2);
+		for (const select of selects) {
+			expect(select.id).not.toBe('');
+			expect(select).toHaveAccessibleName('Type');
+		}
+		expect(selects[0].id).not.toBe(selects[1].id);
+	});
+});
+
+describe('Settings user role labels', () => {
+	let originalHash: string;
+
+	beforeEach(() => {
+		originalHash = window.location.hash;
+		window.location.hash = '';
+	});
+
+	afterEach(() => {
+		window.location.hash = originalHash;
+		vi.restoreAllMocks();
+	});
+
+	test('names each user role dropdown and the bulk role dropdown', async () => {
+		const users: User[] = [
+			{ id: 1, email: 'alice@example.com', fullName: 'Alice', role: Role.Viewer, createdAt: '2026-01-01' },
+			{ id: 2, email: 'bob@example.com', fullName: 'Bob', role: Role.Editor, createdAt: '2026-01-01' },
+		];
+		vi.spyOn(api, 'apiRequest').mockImplementation(async (path) => ({
+			success: true,
+			data: path === '/users' ? users : [],
+		}));
+		const user = userEvent.setup();
+		render(<Settings />);
+
+		await screen.findByRole('row', { name: /alice@example.com/ });
+		for (const account of users) {
+			const row = screen.getByRole('row', { name: new RegExp(account.email) });
+			const select = screen.getByRole('combobox', { name: `Role for ${account.email}` });
+			expect(within(row).getByRole('combobox')).toBe(select);
+		}
+
+		expect(screen.queryByRole('combobox', { name: /selected users/i })).not.toBeInTheDocument();
+		await user.click(within(screen.getByRole('row', { name: /alice@example.com/ })).getByRole('checkbox'));
+		expect(screen.getByRole('combobox', { name: /selected users/i })).toHaveAccessibleName(
+			'Change role of selected users'
+		);
+	});
 });
 
 describe('audit page-size label', () => {
