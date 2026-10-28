@@ -154,11 +154,29 @@ describe('AlertRow right-click and checkbox presses', () => {
 
 	test('a real right-click keeps its context menu and selects nothing', () => {
 		const { row, onSelectAlert, onDragStart } = renderRow();
-		fireEvent.mouseDown(row, { button: 2, ctrlKey: true });
+		fireEvent.mouseDown(row, { button: 2, buttons: 2, ctrlKey: true });
 		expect(fireEvent.contextMenu(row, { button: 2 })).toBe(true);
 		expect(fireEvent.contextMenu(row, { ctrlKey: true, button: 2 })).toBe(true);
 		expect(onSelectAlert).not.toHaveBeenCalled();
 		expect(onDragStart).not.toHaveBeenCalled();
+	});
+});
+
+describe('AlertRow Firefox and checkbox modifier presses', () => {
+	test('Firefox macOS Ctrl+left-click (button 2, primary held) selects and suppresses the menu', () => {
+		const { row, onSelectAlert, onDragStart } = renderRow();
+		fireEvent.mouseDown(row, { ctrlKey: true, button: 2, buttons: 1 });
+		expect(onDragStart).toHaveBeenCalledTimes(1);
+		expect(fireEvent.contextMenu(row, { ctrlKey: true, button: 2 })).toBe(false);
+		expect(onSelectAlert).not.toHaveBeenCalled();
+	});
+
+	test('Cmd/Ctrl+Shift on the checkbox toggles instead of selecting a range', () => {
+		const { checkboxCell, onDragStart, onSelectRange } = renderRow();
+		fireEvent.mouseDown(checkboxCell, { metaKey: true, shiftKey: true });
+		fireEvent.mouseDown(checkboxCell, { ctrlKey: true, shiftKey: true });
+		expect(onDragStart).toHaveBeenCalledTimes(2);
+		expect(onSelectRange).not.toHaveBeenCalled();
 	});
 
 	test('Cmd+press on the checkbox starts one drag, not two', () => {

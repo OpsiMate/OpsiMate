@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -78,6 +78,11 @@ export const AlertRow = ({
 	// passed over. Shift+click selects a range. None of these open the details panel.
 	// Cmd is the Mac convention; Ctrl works there too, see handleRowContextMenu.
 	const isToggleModifier = (e: React.MouseEvent) => e.metaKey || e.ctrlKey;
+	// A left-button press. Firefox on macOS reports Ctrl+left-click as button 2, but the
+	// held-buttons mask still says primary (bit 1); a real right-click holds only bit 2.
+	const isPrimaryPress = (e: React.MouseEvent) => e.button === 0 || (e.ctrlKey && (e.buttons & 1) === 1);
+	// Set by a Ctrl+left press so its contextmenu (fired with button 0 or 2) is suppressed.
+	const ctrlPrimaryPressRef = useRef(false);
 
 	const handleRowClick = (e: React.MouseEvent) => {
 		if (onSelectAlerts && isToggleModifier(e)) {
@@ -93,7 +98,8 @@ export const AlertRow = ({
 	};
 
 	const handleRowMouseDown = (e: React.MouseEvent) => {
-		if (!onSelectAlerts || e.button !== 0) return;
+		ctrlPrimaryPressRef.current = !!onSelectAlerts && e.ctrlKey && isPrimaryPress(e);
+		if (!onSelectAlerts || !isPrimaryPress(e)) return;
 		// Shift+mousedown would otherwise highlight the text between the two clicked rows.
 		// Cmd/Ctrl wins over Shift, as in handleRowClick: Cmd+Shift+click is a toggle.
 		if (e.shiftKey && !isToggleModifier(e)) {
@@ -107,9 +113,11 @@ export const AlertRow = ({
 
 	// macOS turns Ctrl+click into a right-click: contextmenu fires instead of click. The
 	// mousedown/mouseup pair still fires, so the drag hook does the toggle; only the menu
-	// needs suppressing. A real right-click (button 2) keeps its menu.
+	// needs suppressing. A real right-click (button 2, no Ctrl+left press) keeps its menu.
 	const handleRowContextMenu = (e: React.MouseEvent) => {
-		if (onSelectAlerts && e.ctrlKey && e.button !== 2) {
+		const fromCtrlPrimaryPress = ctrlPrimaryPressRef.current;
+		ctrlPrimaryPressRef.current = false;
+		if (onSelectAlerts && e.ctrlKey && (e.button !== 2 || fromCtrlPrimaryPress)) {
 			e.preventDefault();
 			if (!onDragStart) onSelectAlert(alert);
 		}
@@ -118,8 +126,10 @@ export const AlertRow = ({
 	const handleCheckboxMouseDown = (e: React.MouseEvent) => {
 		// The row's own mousedown handler must not start a second drag from this press.
 		e.stopPropagation();
+		ctrlPrimaryPressRef.current = e.ctrlKey && isPrimaryPress(e);
 		// Shift+click on a checkbox is a range too; skip the drag so mouseup doesn't toggle it back.
-		if (e.shiftKey && onSelectRange) {
+		// Cmd/Ctrl wins over Shift, as on the row.
+		if (e.shiftKey && !isToggleModifier(e) && onSelectRange) {
 			e.preventDefault();
 			onSelectRange(alert);
 			return;
