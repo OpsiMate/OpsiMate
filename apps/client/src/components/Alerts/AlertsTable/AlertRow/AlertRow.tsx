@@ -6,7 +6,7 @@ import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
-import { isForeignTarget, isPrimaryPress, isToggleModifier } from './AlertRow.utils';
+import { isForeignTarget, isPrimaryPress, isSelectCellTarget, isToggleModifier } from './AlertRow.utils';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
@@ -94,6 +94,8 @@ export const AlertRow = ({
 	};
 
 	const handleRowMouseDown = (e: React.MouseEvent) => {
+		// The checkbox cell's own handler already took this press (and set the Ctrl flag).
+		if (isSelectCellTarget(e)) return;
 		const isOwnPrimaryPress = !!onSelectAlerts && isPrimaryPress(e) && !isForeignTarget(e);
 		ctrlPrimaryPressRef.current = isOwnPrimaryPress && e.ctrlKey;
 		if (!isOwnPrimaryPress) return;
@@ -120,8 +122,8 @@ export const AlertRow = ({
 	};
 
 	const handleCheckboxMouseDown = (e: React.MouseEvent) => {
-		// The row's own mousedown handler must not start a second drag from this press.
-		e.stopPropagation();
+		// No stopPropagation: it would also stop the native event, hiding the press from
+		// document/window mousedown listeners (click-away closers). The row skips this cell.
 		const isOwnPrimaryPress = isPrimaryPress(e);
 		ctrlPrimaryPressRef.current = isOwnPrimaryPress && e.ctrlKey;
 		// A right or middle press opens a menu or autoscrolls; it is not a selection gesture.
@@ -182,6 +184,7 @@ export const AlertRow = ({
 					className={cn(CELL_PADDING, 'cursor-pointer select-none')}
 					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
 					onClick={(e) => e.stopPropagation()}
+					data-select-cell
 					onMouseDown={handleCheckboxMouseDown}
 					onMouseEnter={handleCheckboxMouseEnter}
 				>

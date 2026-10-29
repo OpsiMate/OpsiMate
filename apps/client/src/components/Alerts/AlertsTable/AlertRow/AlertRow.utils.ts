@@ -1,4 +1,4 @@
-import { ROW_INTERACTIVE_CONTROL_SELECTOR } from './AlertRow.constants';
+import { ROW_INTERACTIVE_CONTROL_SELECTOR, SELECT_CELL_SELECTOR } from './AlertRow.constants';
 
 // Selection modifiers. Cmd is the Mac convention; Ctrl works there too (see AlertRow's handleRowContextMenu).
 export const isToggleModifier = (e: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey'>) => e.metaKey || e.ctrlKey;
@@ -14,3 +14,7 @@ export const isPrimaryPress = (e: Pick<React.MouseEvent, 'button' | 'buttons' | 
 // its own modifier-click behavior.
 export const isForeignTarget = (e: Pick<React.MouseEvent, 'currentTarget' | 'target'>) =>
 	!e.currentTarget.contains(e.target as Node) || !!(e.target as Element).closest?.(ROW_INTERACTIVE_CONTROL_SELECTOR);
+
+// A press on the checkbox cell, which its own mousedown handler takes care of.
+export const isSelectCellTarget = (e: Pick<React.MouseEvent, 'target'>) =>
+	!!(e.target as Element).closest?.(SELECT_CELL_SELECTOR);

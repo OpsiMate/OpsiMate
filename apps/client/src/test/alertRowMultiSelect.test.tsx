@@ -288,3 +288,19 @@ describe('checkbox non-primary presses', () => {
 		expect(onDragStart).not.toHaveBeenCalled();
 	});
 });
+
+describe('checkbox presses stay visible to page-level listeners', () => {
+	test('a document mousedown listener (click-away closers) still sees checkbox presses', () => {
+		const onDocumentMouseDown = vi.fn();
+		document.addEventListener('mousedown', onDocumentMouseDown);
+		try {
+			const { checkboxCell, onDragStart } = renderRow();
+			fireEvent.mouseDown(checkboxCell);
+			expect(onDocumentMouseDown).toHaveBeenCalledTimes(1);
+			// ...and the row still doesn't start a second drag from the same press.
+			expect(onDragStart).toHaveBeenCalledTimes(1);
+		} finally {
+			document.removeEventListener('mousedown', onDocumentMouseDown);
+		}
+	});
+});
