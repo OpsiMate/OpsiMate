@@ -188,14 +188,20 @@ export const AlertsTable = ({
 			return summary ? { ...item, count: summary.count, groupStatus: summary.status } : item;
 		});
 	}, [groupedRows, groupSummaryByKey]);
-	const { allSelected, handleSelectAll, handleSelectAlert } = useAlertSelection({
+	const visibleAlerts = useMemo(
+		() => flatRows.flatMap((item) => (item.type === 'leaf' ? [item.alert] : [])),
+		[flatRows]
+	);
+	const { allSelected, handleSelectAll, handleSelectAlert, handleSelectRange, setAnchor } = useAlertSelection({
 		sortedAlerts,
+		visibleAlerts,
 		selectedAlerts,
 		onSelectAlerts,
 	});
 	const { isDragging, handleDragStart, handleDragEnter, handleDragEnd } = useDragSelection({
 		selectedAlerts,
 		onSelectAlerts,
+		onRowTouched: setAnchor,
 	});
 
 	// Alert lookup for the auto-scroll hook: rows revealed by scrolling under a held
@@ -590,6 +596,7 @@ export const AlertsTable = ({
 									expandRows={expandRows}
 									onToggleGroup={toggleGroup}
 									onSelectAlert={handleSelectAlert}
+									onSelectRange={handleSelectRange}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}
 									onSilenceAlert={onSilenceAlert}
