@@ -4,7 +4,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_SEPARATOR_CLASSES, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
 import { isForeignTarget, isPrimaryPress, isSelectCellTarget, isToggleModifier } from './AlertRow.utils';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
@@ -162,6 +162,7 @@ export const AlertRow = ({
 			data-alert-id={alert.id}
 			className={cn(
 				'h-8 cursor-pointer hover:bg-muted/50',
+				COLUMN_SEPARATOR_CLASSES,
 				// Severity tint sits under selection/active highlights so those still win.
 				severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
 				// Selection carries its own hover class so the severity hover tint can't

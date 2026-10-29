@@ -12,6 +12,7 @@ import {
 	ACTIONS_COLUMN_WIDTH_WITH_SETTINGS,
 	COLUMN_LABELS,
 	COLUMN_MIN_WIDTHS,
+	COLUMN_SEPARATOR_CLASSES,
 	COLUMN_WIDTHS,
 	DEFAULT_COLUMN_ORDER,
 	DEFAULT_VISIBLE_COLUMNS,
@@ -409,7 +410,7 @@ export const AlertsTable = ({
 								<div className="border-b bg-background">
 									<table className="table-fixed w-full text-sm">
 										<TableHeader>
-											<TableRow className="h-8">
+											<TableRow className={`h-8 ${COLUMN_SEPARATOR_CLASSES}`}>
 												{onSelectAlerts && (
 													<TableHead
 														className={TABLE_HEAD_CLASSES}
