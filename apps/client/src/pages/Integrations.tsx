@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { ValidationFeedback, validationRules } from '@/components/ValidationFeedback';
 import { queryKeys, useIntegrations } from '@/hooks/queries';
 import { integrationApi } from '@/lib/api';
