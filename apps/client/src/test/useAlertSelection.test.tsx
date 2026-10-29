@@ -75,6 +75,24 @@ describe('useAlertSelection handleSelectAll', () => {
 		expect(onSelectAlerts).toHaveBeenCalledWith([resolvedRows[0], ...activeRows]);
 	});
 
+	test('adds each row exactly once when the selection partially overlaps', () => {
+		const onSelectAlerts = vi.fn();
+		const { result } = renderSelection({
+			sortedAlerts: activeRows,
+			// One row of this table is already picked, plus a row from the other table.
+			selectedAlerts: [activeRows[0], resolvedRows[0]],
+			onSelectAlerts,
+		});
+
+		act(() => result.current.handleSelectAll());
+
+		expect(onSelectAlerts).toHaveBeenCalledTimes(1);
+		expect(onSelectAlerts).toHaveBeenCalledWith([activeRows[0], resolvedRows[0], activeRows[1]]);
+
+		const [nextSelection] = onSelectAlerts.mock.calls[0];
+		expect(new Set(nextSelection.map((alert) => alert.id)).size).toBe(nextSelection.length);
+	});
+
 	test('un-selects everything when this table is the whole selection', () => {
 		const onSelectAlerts = vi.fn();
 		const { result } = renderSelection({
