@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { SettingsSectionHeader } from '../SettingsSectionHeader';
 import { useToast } from '@/components/ui/use-toast';
 import { useSilenceResetSettings, useUpdateSilenceResetSettings } from '@/hooks/queries/alerts/useSilenceReset';
 import { UpdateSilenceResetSettings } from '@OpsiMate/shared';
@@ -44,13 +45,15 @@ export const SilenceResetSettings = () => {
 
 	return (
 		<div className="space-y-4">
-			<div>
-				<h2 className="text-lg font-semibold text-foreground">Daily silence reset</h2>
-				<p className="text-sm text-muted-foreground">
-					Clear every silence at a fixed hour each day so all alerts notify again — whatever duration each
-					silence was given. Useful when the whole board must be live again at the end of the day.
-				</p>
-			</div>
+			<SettingsSectionHeader
+				title="Daily silence reset"
+				description={
+					<>
+						Clear every silence at a fixed hour each day so all alerts notify again — whatever duration each
+						silence was given. Useful when the whole board must be live again at the end of the day.
+					</>
+				}
+			/>
 
 			<Card className="p-4 flex items-center justify-between gap-4">
 				<div className="min-w-0">

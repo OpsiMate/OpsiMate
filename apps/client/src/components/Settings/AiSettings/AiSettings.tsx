@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { SettingsSectionHeader } from '../SettingsSectionHeader';
 import { useToast } from '@/components/ui/use-toast';
 import { useAiConfig, useTestAiConnection, useUpdateAiConfig } from '@/hooks/queries/ai';
 import { AiTestResult } from '@OpsiMate/shared';
@@ -116,15 +117,10 @@ export const AiSettings = () => {
 
 	return (
 		<div className="space-y-4">
-			<div>
-				<h2 className="text-lg font-semibold text-foreground">AI (beta)</h2>
-				<p className="text-sm text-muted-foreground">
-					Bring your own Amazon Bedrock API key to power upcoming AI features. The key is stored encrypted on
-					your OpsiMate server, never reaches the browser, and is sent only to the endpoint configured here
-					(Amazon Bedrock unless you set a custom one). It can be removed at any time, and no alert data
-					leaves your server until an AI feature is explicitly used.
-				</p>
-			</div>
+			<SettingsSectionHeader
+				title="AI (beta)"
+				description="Bring your own Amazon Bedrock API key to power upcoming AI features. The key is stored encrypted on your OpsiMate server, never reaches the browser, and is sent only to the endpoint configured here (Amazon Bedrock unless you set a custom one). It can be removed at any time, and no alert data leaves your server until an AI feature is explicitly used."
+			/>
 
 			<Card className="p-4 space-y-4">
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
