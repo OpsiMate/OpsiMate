@@ -122,10 +122,13 @@ export class OncallBL {
 		}
 	}
 
-	async deleteTeam(teamId: number): Promise<void> {
+	async deleteTeam(teamId: number): Promise<boolean> {
 		try {
 			logger.info(`Deleting on-call team ${teamId}`);
+			const existing = await this.oncallRepo.getTeam(teamId);
+			if (!existing) return false;
 			await this.oncallRepo.deleteTeam(teamId);
+			return true;
 		} catch (error) {
 			logger.error(`Error deleting on-call team ${teamId}`, error);
 			throw error;
