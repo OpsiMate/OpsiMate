@@ -45,21 +45,16 @@ interface EnrichmentFormDialogProps {
 	duplicateFrom?: AlertEnrichment | null;
 }
 
-const KeyValueRows = ({
-	rows,
-	onChange,
-	keyPlaceholder,
-	valuePlaceholder,
-	emptyText,
-	addLabel,
-}: {
+interface KeyValueRowsProps {
 	rows: KeyValue[];
 	onChange: (rows: KeyValue[]) => void;
 	keyPlaceholder: string;
 	valuePlaceholder: string;
 	emptyText: string;
 	addLabel: string;
-}) => (
+}
+
+const KeyValueRows = ({ rows, onChange, keyPlaceholder, valuePlaceholder, emptyText, addLabel }: KeyValueRowsProps) => (
 	<div className="space-y-2">
 		<div className="flex items-center justify-between">
 			<Label className="text-xs">{addLabel}</Label>
@@ -110,8 +105,13 @@ const KeyValueRows = ({
 	</div>
 );
 
+interface LinkIconOption {
+	value: string;
+	label: string;
+}
+
 // Icon slugs offered for enrichment links — the integration icon set plus "no icon".
-const LINK_ICON_OPTIONS: { value: string; label: string }[] = [
+const LINK_ICON_OPTIONS: LinkIconOption[] = [
 	{ value: '', label: 'No icon' },
 	{ value: 'grafana', label: 'Grafana' },
 	{ value: 'uptimekuma', label: 'Uptime Kuma' },
@@ -124,7 +124,12 @@ const LINK_ICON_OPTIONS: { value: string; label: string }[] = [
 // Radix Select can't carry an empty-string item value; stand in for "no icon".
 const NO_ICON = '__none__';
 
-const LinkRows = ({ rows, onChange }: { rows: AlertLink[]; onChange: (rows: AlertLink[]) => void }) => (
+interface LinkRowsProps {
+	rows: AlertLink[];
+	onChange: (rows: AlertLink[]) => void;
+}
+
+const LinkRows = ({ rows, onChange }: LinkRowsProps) => (
 	<div className="space-y-2">
 		<div className="flex items-center justify-between">
 			<Label className="text-xs">Links to add</Label>

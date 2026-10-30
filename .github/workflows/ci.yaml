@@ -26,10 +26,14 @@ jobs:
       - name: Prepare pnpm
         run: corepack prepare pnpm@9.12.0 --activate
 
+      - name: Get pnpm store directory
+        id: pnpm-cache-dir
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
       - name: Cache pnpm store
         uses: actions/cache@v6
         with:
-          path: ~/.pnpm-store
+          path: ${{ steps.pnpm-cache-dir.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-

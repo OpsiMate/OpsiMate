@@ -14,12 +14,10 @@ import {
 	UpdateAlertCallbackInput,
 } from '../../dal/alertCallbackRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
 import { CallbackDispatcher, CallbackTarget } from './callbackDispatcher';
 
 const logger = new Logger('bl/callbacks/callback.bl');
-
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
 
 // What create takes: the secret is optional (generated when omitted).
 export interface CreateCallbackData extends Omit<CreateAlertCallbackInput, 'secret'> {
@@ -113,13 +111,13 @@ export class CallbackBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.CALLBACK,
 				resourceId: String(callback.id),
-				userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-				userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
+				userId: auditActor.userId,
+				userName: auditActor.userName,
 				resourceName: callback.name,
 				details,
 			});

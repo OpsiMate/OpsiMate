@@ -16,6 +16,7 @@ import { ActionRepository, CreateActionInput, UpdateActionInput } from '../../da
 import { actionsRunTotal } from '../../metrics';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
 import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import {
 	AlertContextInput,
@@ -28,9 +29,6 @@ import {
 } from './actionExecutor';
 
 const logger = new Logger('bl/action.bl');
-
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
 
 // How a run on an alert went: `sent` is a "don't wait" HTTP action whose request went out.
 type ActionRunOutcome = 'success' | 'sent' | 'error';
@@ -163,14 +161,6 @@ export class ActionBL {
 		}
 	}
 
-	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
-		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
-		return {
-			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
-		};
-	}
-
 	private async recordAuditAction(
 		actionType: AuditActionType,
 		action: Action,
@@ -178,7 +168,7 @@ export class ActionBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const auditActor = this.getAuditActor(actor);
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.ACTION,

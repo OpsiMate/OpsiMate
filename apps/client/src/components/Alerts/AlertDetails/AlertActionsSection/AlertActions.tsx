@@ -12,7 +12,6 @@ interface AlertActionsProps {
 	alert: Alert;
 }
 
-// An action shows on an alert when it has no filter, or when its filter matches:
 // An action is offered on an alert when the shared matcher says so (see
 // criteriaMatchesAlert in @OpsiMate/shared): name substrings OR together, label groups
 // OR together, and the two AND. Unlike mute policies and enrichments, an action with NO
@@ -59,13 +58,22 @@ export const AlertActions = ({ alert }: AlertActionsProps) => {
 
 			{expanded &&
 				(actions.length === 0 ? (
-					<p className="text-xs text-muted-foreground">
-						No actions configured.{' '}
-						<Link to={ROUTES.actions} className="underline hover:text-foreground">
-							Create one
-						</Link>{' '}
-						to notify Slack, Teams, Jira, or call a webhook.
-					</p>
+					allActions.length > 0 ? (
+						<p className="text-xs text-muted-foreground">
+							No actions apply to this alert.{' '}
+							<Link to={ROUTES.actions} className="underline hover:text-foreground">
+								Manage actions
+							</Link>
+						</p>
+					) : (
+						<p className="text-xs text-muted-foreground">
+							No actions configured.{' '}
+							<Link to={ROUTES.actions} className="underline hover:text-foreground">
+								Create one
+							</Link>{' '}
+							to notify Slack, Teams, Jira, or call a webhook.
+						</p>
+					)
 				) : (
 					<div className="flex flex-wrap gap-2">
 						{actions.map((action) => (
