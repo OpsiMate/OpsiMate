@@ -59,6 +59,18 @@ describe('playgroundDemoTemplate', () => {
 		expect(html).toContain('<strong>Contact Email:</strong> lead@example.com');
 		expect(html).toContain('<strong>Tracking ID:</strong> trk-42');
 	});
+
+	test('includes only the contact email when no tracking ID is given', () => {
+		const html = playgroundDemoTemplate('lead@example.com');
+		expect(html).toContain('<strong>Contact Email:</strong> lead@example.com');
+		expect(html).not.toContain('Tracking ID:');
+	});
+
+	test('includes only the tracking ID when no contact email is given', () => {
+		const html = playgroundDemoTemplate(undefined, 'trk-42');
+		expect(html).toContain('<strong>Tracking ID:</strong> trk-42');
+		expect(html).not.toContain('Contact Email:');
+	});
 });
 
 describe('shared skeleton', () => {
