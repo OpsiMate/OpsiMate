@@ -11,7 +11,14 @@ const TONE_CLASS: Record<PaneTone, string> = {
 
 // Compact "Title 428" caption rendered inside the table (via AlertsTable's `heading` prop)
 // so the split panes don't need a separate header row above the table.
-const PaneHeading = ({ title, count, tone }: { title: string; count: number; tone: PaneTone }) => (
+
+interface PaneHeadingProps {
+	title: string;
+	count: number;
+	tone: PaneTone;
+}
+
+const PaneHeading = ({ title, count, tone }: PaneHeadingProps) => (
 	<>
 		<span className="text-xs font-semibold uppercase tracking-wide text-foreground">{title}</span>
 		<Badge variant="outline" className={cn('h-5 px-1.5 text-[11px]', TONE_CLASS[tone])}>
@@ -28,6 +35,10 @@ interface AssignmentPaneProps {
 	emptyText?: string;
 	/** An <AlertsTable /> element; the pane injects the heading caption into it. */
 	children: ReactNode;
+}
+
+interface HeadingSlotProps {
+	heading?: ReactNode;
 }
 
 // One pane of the split-by-assignment view. When it has alerts it renders the table with the
@@ -48,7 +59,7 @@ export const AssignmentPane = ({ title, count, tone, isEmpty, emptyText, childre
 	}
 
 	const table = isValidElement(children)
-		? cloneElement(children as ReactElement<{ heading?: ReactNode }>, { heading })
+		? cloneElement(children as ReactElement<HeadingSlotProps>, { heading })
 		: children;
 
 	return <div className="h-full min-w-0 flex flex-col min-h-0">{table}</div>;
