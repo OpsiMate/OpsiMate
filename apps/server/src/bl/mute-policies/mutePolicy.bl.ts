@@ -10,12 +10,10 @@ import {
 } from '@OpsiMate/shared';
 import { MutePolicyRepository, CreateMutePolicyInput, UpdateMutePolicyInput } from '../../dal/mutePolicyRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
 import { PreparedRules } from '../alerts/preparedRules';
 
 const logger = new Logger('bl/mutePolicy.bl');
-
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
 
 export class MutePolicyBL {
 	// Mute rules change what markMuted stamps on every alert, so the alerts snapshot
@@ -70,14 +68,6 @@ export class MutePolicyBL {
 		}
 	}
 
-	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
-		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
-		return {
-			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
-		};
-	}
-
 	private hasUpdateData(data: UpdateMutePolicyInput): boolean {
 		return (
 			data.name !== undefined ||
@@ -100,7 +90,7 @@ export class MutePolicyBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const auditActor = this.getAuditActor(actor);
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.MUTE_POLICY,

@@ -28,7 +28,12 @@ import { useEffect, useMemo, useState } from 'react';
 type Matcher = { key: string; value: string };
 type MutePolicyMode = 'one-time' | 'recurring';
 
-const DAY_CHIPS: { label: string; value: number }[] = [
+interface DayChip {
+	label: string;
+	value: number;
+}
+
+const DAY_CHIPS: DayChip[] = [
 	{ label: 'Sun', value: 0 },
 	{ label: 'Mon', value: 1 },
 	{ label: 'Tue', value: 2 },
@@ -59,7 +64,12 @@ const fromLocalInputValue = (local: string): string | null => {
 	return d.toISOString();
 };
 
-const PRESETS: { label: string; minutes: number }[] = [
+interface Preset {
+	label: string;
+	minutes: number;
+}
+
+const PRESETS: Preset[] = [
 	{ label: '1h', minutes: 60 },
 	{ label: '4h', minutes: 240 },
 	{ label: '24h', minutes: 1440 },

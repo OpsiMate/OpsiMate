@@ -972,10 +972,13 @@ export class AlertController {
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteResolvedAlert(alertId, {
+			const deleted = await this.alertBL.deleteResolvedAlert(alertId, {
 				id: req.user != null ? String(req.user.id) : null,
 				name: req.user?.fullName ?? null,
 			});
+			if (!deleted) {
+				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
+			}
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);

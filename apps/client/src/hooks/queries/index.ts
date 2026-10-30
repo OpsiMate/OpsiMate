@@ -1,6 +1,5 @@
 // Export all query hooks
 export * from './alerts';
-export * from './tags';
 export * from './integrations';
 export * from './users';
 export * from './audit';

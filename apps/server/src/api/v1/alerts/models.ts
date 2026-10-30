@@ -1,3 +1,4 @@
+import { ALERT_COMMENT_MAX_LENGTH } from '@OpsiMate/shared';
 import { z } from 'zod';
 
 export const GcpIncidentSchema = z.object({
@@ -106,7 +107,7 @@ export const HttpAlertWebhookTimesSchema = z.object({
 // Optional body of the manual-resolve request (DELETE /alerts/:alertId).
 export const ResolveAlertBodySchema = z.object({
 	// Optional resolve note, stored as a regular alert comment by the acting user.
-	comment: z.string().trim().max(5000).optional(),
+	comment: z.string().trim().max(ALERT_COMMENT_MAX_LENGTH).optional(),
 });
 
 // Optional body of the silence request (PATCH /alerts/:id/silence).
@@ -115,7 +116,7 @@ export const SilenceAlertBodySchema = z.object({
 	// unsilenced. Always overwritten on re-silence, so the timer restarts each time.
 	silencedUntil: isoDateString.nullable().optional(),
 	// Optional note, stored as a regular alert comment by the acting user.
-	comment: z.string().trim().max(5000).optional(),
+	comment: z.string().trim().max(ALERT_COMMENT_MAX_LENGTH).optional(),
 });
 
 /**
@@ -378,7 +379,7 @@ export const AlertBulkActionSchema = z
 		silencedUntil: isoDateString.nullable().optional(),
 		// silence/resolve: optional note stored as a comment on every alert.
 		// comment action: the comment body itself (required there).
-		comment: z.string().trim().max(5000).optional(),
+		comment: z.string().trim().max(ALERT_COMMENT_MAX_LENGTH).optional(),
 		// assignOwner: numeric user id to assign (the DB stores owners as integers, and
 		// a non-numeric string would parseInt to NaN), null to unassign.
 		ownerId: z.string().regex(/^\d+$/, 'ownerId must be a numeric user id').nullable().optional(),

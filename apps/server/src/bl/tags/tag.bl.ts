@@ -1,4 +1,5 @@
 import { Tag } from '@OpsiMate/shared';
+import { DashboardTagsEntry } from '../../dal/models';
 import { TagRepository } from '../../dal/tagRepository';
 
 export class TagBL {
@@ -12,7 +13,7 @@ export class TagBL {
 		return await this.tagRepository.getDashboardTags(dashboardId);
 	}
 
-	async getAllDashboardTags(): Promise<{ dashboardId: number; tags: Tag[] }[]> {
+	async getAllDashboardTags(): Promise<DashboardTagsEntry[]> {
 		return await this.tagRepository.getAllDashboardTags();
 	}
 
