@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 interface UseDragSelectionProps {
 	selectedAlerts: Alert[];
 	onSelectAlerts?: (alerts: Alert[]) => void;
+	// Called for each row a drag (de)selects, so a later shift-click ranges from where it ended.
+	onRowTouched?: (alert: Alert) => void;
 }
 
 interface DragState {
@@ -15,7 +17,7 @@ interface DragState {
 	touchedAlertIds: Set<string>;
 }
 
-export const useDragSelection = ({ selectedAlerts, onSelectAlerts }: UseDragSelectionProps) => {
+export const useDragSelection = ({ selectedAlerts, onSelectAlerts, onRowTouched }: UseDragSelectionProps) => {
 	const [isDragging, setIsDragging] = useState(false);
 	const dragStateRef = useRef<DragState>({
 		isMouseDown: false,
@@ -78,6 +80,7 @@ export const useDragSelection = ({ selectedAlerts, onSelectAlerts }: UseDragSele
 							selectedAlertsRef.current = currentSelected.filter((a) => a.id !== startAlert.id);
 							onSelectAlerts(selectedAlertsRef.current);
 						}
+						onRowTouched?.(startAlert);
 					}
 				}
 
@@ -96,9 +99,10 @@ export const useDragSelection = ({ selectedAlerts, onSelectAlerts }: UseDragSele
 					selectedAlertsRef.current = latestSelected.filter((a) => a.id !== alert.id);
 					onSelectAlerts(selectedAlertsRef.current);
 				}
+				onRowTouched?.(alert);
 			}
 		},
-		[onSelectAlerts]
+		[onSelectAlerts, onRowTouched]
 	);
 
 	const handleDragEnd = useCallback((onSelectAlert?: (alert: Alert) => void) => {
