@@ -8,6 +8,12 @@ import { COLUMN_WIDTHS } from '../Dashboards.constants';
 import { DashboardsTableProps, DashboardWithFavorite } from '../Dashboards.types';
 import { DashboardRow } from '../DashboardRow';
 
+interface DashboardListItem {
+	type: 'header' | 'dashboard';
+	dashboard?: DashboardWithFavorite;
+	label?: string;
+}
+
 export const DashboardsTable = ({
 	dashboards,
 	isLoading,
@@ -36,7 +42,7 @@ export const DashboardsTable = ({
 	const hasFavorites = favorites.length > 0;
 
 	const flatItems = useMemo(() => {
-		const items: Array<{ type: 'header' | 'dashboard'; dashboard?: DashboardWithFavorite; label?: string }> = [];
+		const items: Array<DashboardListItem> = [];
 
 		if (hasFavorites) {
 			items.push({ type: 'header', label: 'Favorites' });

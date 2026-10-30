@@ -209,9 +209,13 @@ export const cleanMatcherGroups = (groups: MatcherRow[][]): MatcherRow[][] =>
 export const describeMatcher = (m: MutePolicyLabelMatcher): string =>
 	m.op === 'exists' ? `${m.key} exists` : m.op === 'contains' ? `${m.key} ~ ${m.value}` : `${m.key}=${m.value}`;
 
+interface MatcherGroupBadgesProps {
+	criteria: MatcherCriteria;
+}
+
 // List-page badges for an entity's matcher groups: k=v badges per group, an OR chip
 // between groups. Callers render their own name-contains / match-all / empty badges.
-export const MatcherGroupBadges = ({ criteria }: { criteria: MatcherCriteria }) => {
+export const MatcherGroupBadges = ({ criteria }: MatcherGroupBadgesProps) => {
 	const groups = getLabelMatcherGroups(criteria);
 	return (
 		<>

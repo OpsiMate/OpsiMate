@@ -17,20 +17,17 @@ interface SendFieldsFormProps {
 	onChange: (nextBody: unknown) => void;
 }
 
+interface FieldInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
+	value: unknown;
+	was: unknown;
+	onCommit: (text: string) => void;
+}
+
 // A one-line field for a value that is coerced back to the body's type as it is typed. The
 // text the sender typed is kept while it still means the current value, so "1." and "0."
 // survive the keystroke on the way to 1.5 or 0.05 (coercing "1." to the number 1 and
 // rendering that would eat the dot).
-const FieldInput = ({
-	value,
-	was,
-	onCommit,
-	...rest
-}: {
-	value: unknown;
-	was: unknown;
-	onCommit: (text: string) => void;
-} & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) => {
+const FieldInput = ({ value, was, onCommit, ...rest }: FieldInputProps) => {
 	const [draft, setDraft] = useState<string | null>(null);
 	const shown = draft !== null && Object.is(coerceFieldValue(was, draft), value) ? draft : fieldValueText(value);
 	return (
