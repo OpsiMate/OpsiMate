@@ -1,5 +1,12 @@
 import { SuperTest, Test } from 'supertest';
-import { Alert, AlertStatus, AlertType, DEFAULT_ALERT_SEVERITY, Logger } from '@OpsiMate/shared';
+import {
+	Alert,
+	ALERT_COMMENT_MAX_LENGTH,
+	AlertStatus,
+	AlertType,
+	DEFAULT_ALERT_SEVERITY,
+	Logger,
+} from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow, ResolvedAlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -2564,5 +2571,52 @@ describe('Comment timestamps are ISO UTC', () => {
 		const comment = (list.body.data.comments as CommentResponse[]).find((c) => c.comment === 'after edit');
 		expect(comment!.updatedAt).toMatch(/Z$/);
 		expect(Math.abs(new Date(comment!.updatedAt).getTime() - Date.now())).toBeLessThan(5_000);
+	});
+});
+
+describe('Alert comment length limit', () => {
+	const alertId = 'comment-limit-alert';
+	const atLimit = 'a'.repeat(ALERT_COMMENT_MAX_LENGTH);
+	const overLimit = 'a'.repeat(ALERT_COMMENT_MAX_LENGTH + 1);
+
+	const createAlert = () =>
+		app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: alertId, tags: {}, alertName: 'Comment Limit Test' });
+
+	test('POST accepts a comment of exactly the maximum length', async () => {
+		await createAlert();
+		const response = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: atLimit });
+		expect(response.status).toBe(201);
+	});
+
+	test('POST rejects a comment one character over the maximum', async () => {
+		await createAlert();
+		const response = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: overLimit });
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBe('Validation error');
+	});
+
+	test('PATCH accepts a comment of exactly the maximum length and rejects one more', async () => {
+		await createAlert();
+		const created = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'short' });
+		const url = `/api/v1/alerts/comments/${created.body.data.comment.id}`;
+
+		const ok = await app.patch(url).set('Authorization', `Bearer ${jwtToken}`).send({ comment: atLimit });
+		expect(ok.status).toBe(200);
+
+		const tooLong = await app.patch(url).set('Authorization', `Bearer ${jwtToken}`).send({ comment: overLimit });
+		expect(tooLong.status).toBe(400);
+		expect(tooLong.body.error).toBe('Validation error');
 	});
 });
