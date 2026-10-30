@@ -23,6 +23,12 @@ const alert = (id: string, status: AlertStatus = AlertStatus.FIRING): Alert => (
 const activeRows = [alert('active-1'), alert('active-2')];
 const resolvedRows = [alert('resolved-1', AlertStatus.RESOLVED), alert('resolved-2', AlertStatus.RESOLVED)];
 
+// Query responses hand back copies, not the same objects the table renders, so the
+// selection must match by id. `copyOf` builds the `selectedAlerts` side as fresh
+// objects with the same ids — a regression that compared rows by reference would
+// then fail instead of passing on shared object identity.
+const copyOf = (rows: Alert[]): Alert[] => rows.map((row) => ({ ...row }));
+
 type Props = Parameters<typeof useAlertSelection>[0];
 
 const renderSelection = (props: Props) =>
@@ -36,13 +42,13 @@ describe('useAlertSelection allSelected', () => {
 	});
 
 	test('is all-selected only when every row of THIS table is selected', () => {
-		const partial = renderSelection({ sortedAlerts: activeRows, selectedAlerts: [activeRows[0]] });
+		const partial = renderSelection({ sortedAlerts: activeRows, selectedAlerts: copyOf([activeRows[0]]) });
 		expect(partial.result.current.allSelected).toBe(false);
 
 		const none = renderSelection({ sortedAlerts: activeRows, selectedAlerts: [] });
 		expect(none.result.current.allSelected).toBe(false);
 
-		const complete = renderSelection({ sortedAlerts: activeRows, selectedAlerts: activeRows });
+		const complete = renderSelection({ sortedAlerts: activeRows, selectedAlerts: copyOf(activeRows) });
 		expect(complete.result.current.allSelected).toBe(true);
 	});
 
@@ -51,10 +57,10 @@ describe('useAlertSelection allSelected', () => {
 		expect(otherPaneOnly.result.current.allSelected).toBe(false);
 
 		// Same count as the other pane's two picks, which is exactly the case count
-		// comparisons used to get wrong.
+		// comparisons used to get wrong. Copies prove the match is by id, not identity.
 		const everyRowPlusOtherPane = renderSelection({
 			sortedAlerts: activeRows,
-			selectedAlerts: [...activeRows, ...resolvedRows],
+			selectedAlerts: [...copyOf(activeRows), ...copyOf(resolvedRows)],
 		});
 		expect(everyRowPlusOtherPane.result.current.allSelected).toBe(true);
 	});
@@ -79,8 +85,9 @@ describe('useAlertSelection handleSelectAll', () => {
 		const onSelectAlerts = vi.fn();
 		const { result } = renderSelection({
 			sortedAlerts: activeRows,
-			// One row of this table is already picked, plus a row from the other table.
-			selectedAlerts: [activeRows[0], resolvedRows[0]],
+			// One row of this table is already picked, plus a row from the other table —
+			// as copies, like a fresh query response, so the union must match by id.
+			selectedAlerts: [...copyOf([activeRows[0]]), ...copyOf([resolvedRows[0]])],
 			onSelectAlerts,
 		});
 
@@ -97,7 +104,7 @@ describe('useAlertSelection handleSelectAll', () => {
 		const onSelectAlerts = vi.fn();
 		const { result } = renderSelection({
 			sortedAlerts: activeRows,
-			selectedAlerts: activeRows,
+			selectedAlerts: copyOf(activeRows),
 			onSelectAlerts,
 		});
 
@@ -111,7 +118,7 @@ describe('useAlertSelection handleSelectAll', () => {
 		const onSelectAlerts = vi.fn();
 		const { result } = renderSelection({
 			sortedAlerts: activeRows,
-			selectedAlerts: [...activeRows, ...resolvedRows],
+			selectedAlerts: [...copyOf(activeRows), ...copyOf(resolvedRows)],
 			onSelectAlerts,
 		});
 
@@ -132,7 +139,7 @@ describe('useAlertSelection handleSelectAlert', () => {
 
 		const removing = renderSelection({
 			sortedAlerts: activeRows,
-			selectedAlerts: [activeRows[0], resolvedRows[0]],
+			selectedAlerts: [...copyOf([activeRows[0]]), ...copyOf([resolvedRows[0]])],
 			onSelectAlerts,
 		});
 
