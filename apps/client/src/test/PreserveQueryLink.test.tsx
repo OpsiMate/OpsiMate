@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
@@ -5,7 +6,7 @@ import { PreserveQueryLink } from '@/components/PreserveQueryLink/PreserveQueryL
 
 // The sidebar links use this wrapper so query flags like ?playground survive navigation.
 // Rendered with a bare MemoryRouter (not test-utils) so the starting URL can carry a search.
-const renderAt = (url: string, ui: JSX.Element) => render(<MemoryRouter initialEntries={[url]}>{ui}</MemoryRouter>);
+const renderAt = (url: string, ui: ReactElement) => render(<MemoryRouter initialEntries={[url]}>{ui}</MemoryRouter>);
 
 describe('PreserveQueryLink', () => {
 	test('appends the current search to a string `to`', () => {
