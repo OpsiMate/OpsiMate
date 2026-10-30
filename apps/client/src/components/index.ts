@@ -8,16 +8,13 @@ export { default as ScrollToTopButton } from './ScrollToTopButton';
 export { ThemeProvider } from './ThemeProvider';
 
 export { AddUserModal } from './AddUserModal';
-export { CreateTagDialog } from './CreateTagDialog';
 export { CustomFieldModal } from './CustomFieldModal';
 export { CustomFieldsTable } from './CustomFieldsTable';
-export { DeleteTagDialog } from './DeleteTagDialog';
 export { EditSecretDialog } from './EditSecretDialog';
 export { EditUserModal } from './EditUserModal';
 export { ErrorAlert } from './ErrorAlert';
 export { default as ForgotPasswordForm } from './ForgotPasswordForm';
 export { default as ForgotPasswordSuccess } from './ForgotPasswordSuccess';
-export { IntegrationDashboardDropdown } from './IntegrationDashboardDropdown';
 export { LeftSidebar } from './LeftSidebar';
 export { MobileWebOverlay } from './MobileWebOverlay';
 export { ProfileButton } from './ProfileButton';
@@ -25,8 +22,6 @@ export { default as ResetPasswordByEmailForm } from './ResetPasswordByEmailForm'
 export { default as ResetPasswordByEmailInvalid } from './ResetPasswordByEmailInvalid';
 export { default as ResetPasswordByEmailSuccess } from './ResetPasswordByEmailSuccess';
 export { ResetPasswordModal } from './ResetPasswordModal';
-export { TableSettingsModal } from './TableSettingsModal';
-export { TagSelector } from './TagSelector';
 export { ValidationFeedback, validationRules } from './ValidationFeedback';
 
 export * from './Profile';
