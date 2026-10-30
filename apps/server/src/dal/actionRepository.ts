@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { Action, ActionConfig, ActionType } from '@OpsiMate/shared';
 import { runAsync } from './db';
+import { InsertResult } from './models';
 import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 
 interface ActionRow {
@@ -74,7 +75,7 @@ export class ActionRepository {
 		});
 	}
 
-	async createAction(data: CreateActionInput): Promise<{ lastID: number }> {
+	async createAction(data: CreateActionInput): Promise<InsertResult> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
 				`INSERT INTO actions (name, type, config, name_contains, label_matchers) VALUES (?, ?, ?, ?, ?)`

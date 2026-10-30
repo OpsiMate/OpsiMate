@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -17,6 +17,7 @@ interface AddUserModalProps {
 }
 
 export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalProps) => {
+	const roleId = useId();
 	const [formData, setFormData] = useState({
 		email: '',
 		fullName: '',
@@ -130,13 +131,13 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="role">Role</Label>
+							<Label htmlFor={roleId}>Role</Label>
 							<Select
 								value={formData.role}
 								onValueChange={(value) => setFormData((prev) => ({ ...prev, role: value as Role }))}
 								disabled={creatingUser}
 							>
-								<SelectTrigger>
+								<SelectTrigger id={roleId}>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>

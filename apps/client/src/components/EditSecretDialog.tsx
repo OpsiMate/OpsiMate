@@ -1,5 +1,5 @@
 import { Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { updateSecretOnServer } from '../lib/sslKeys';
 import { Button } from './ui/button';
@@ -19,6 +19,7 @@ interface EditSecretDialogProps {
 }
 
 export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecretDialogProps) => {
+	const secretTypeId = useId();
 	const [displayName, setDisplayName] = useState(secret.name);
 	const [secretType, setSecretType] = useState<SecretType>(secret.type);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -112,9 +113,9 @@ export const EditSecretDialog = ({ secret, open, onClose, onSuccess }: EditSecre
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="secret-type">Type</Label>
+						<Label htmlFor={secretTypeId}>Type</Label>
 						<Select value={secretType} onValueChange={(value) => setSecretType(value as SecretType)}>
-							<SelectTrigger>
+							<SelectTrigger id={secretTypeId}>
 								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>

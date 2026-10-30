@@ -1,5 +1,9 @@
-import { AlertType, DashboardType, IntegrationType, Role } from '@OpsiMate/shared';
+import { AlertType, DashboardType, IntegrationType, Role, Tag } from '@OpsiMate/shared';
 import { AuditActionType, AuditResourceType } from '@OpsiMate/shared';
+
+export interface InsertResult {
+	lastID: number;
+}
 
 export type IntegrationRow = {
 	id: number;
@@ -27,6 +31,19 @@ export interface DashboardRow {
 	query: string;
 	group_by: string; // string[]
 	time_range?: string | null; // DashboardTimeRange
+}
+
+export interface DashboardTagsEntry {
+	dashboardId: number;
+	tags: Tag[];
+}
+
+export interface DashboardTagRow {
+	dashboard_id: number;
+	id: number;
+	name: string;
+	color: string;
+	createdAt: string;
 }
 
 export type AlertRow = {

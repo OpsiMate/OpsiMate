@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { SecretMetadata } from '@OpsiMate/shared';
 import { runAsync } from './db';
+import { InsertResult } from './models';
 
 export class SecretsMetadataRepository {
 	private db: Database.Database;
@@ -9,8 +10,8 @@ export class SecretsMetadataRepository {
 		this.db = db;
 	}
 
-	async createSecret(data: Omit<SecretMetadata, 'id'>): Promise<{ lastID: number }> {
-		return await runAsync<{ lastID: number }>(() => {
+	async createSecret(data: Omit<SecretMetadata, 'id'>): Promise<InsertResult> {
+		return await runAsync<InsertResult>(() => {
 			const stmt = this.db.prepare(
 				'INSERT INTO secrets (secret_name, secret_filename, secret_type) VALUES (?, ?, ?)'
 			);
