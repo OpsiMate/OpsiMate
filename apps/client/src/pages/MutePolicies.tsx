@@ -242,6 +242,7 @@ const MutePolicies: React.FC = () => {
 							<div className="relative flex-1 max-w-md">
 								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
+									aria-label="Search mute policies"
 									className="pl-9"
 									placeholder="Search by name, label, or reason"
 									value={search}
@@ -433,7 +434,7 @@ const MutePolicies: React.FC = () => {
 															size="icon"
 															className="h-8 w-8"
 															onClick={() => setEditing(s)}
-															aria-label="Edit mute policy"
+															aria-label={`Edit mute policy "${s.name}"`}
 														>
 															<Pencil className="h-4 w-4" />
 														</Button>
@@ -442,7 +443,7 @@ const MutePolicies: React.FC = () => {
 															size="icon"
 															className="h-8 w-8 text-destructive hover:text-destructive"
 															onClick={() => setDeleting(s)}
-															aria-label="Delete mute policy"
+															aria-label={`Delete mute policy "${s.name}"`}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
