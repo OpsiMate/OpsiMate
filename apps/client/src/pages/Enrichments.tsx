@@ -96,7 +96,7 @@ const EffectBadges = ({ enrichment }: { enrichment: AlertEnrichment }) => (
 );
 
 const Enrichments: React.FC = () => {
-	const { data: enrichments = [], isLoading } = useEnrichments();
+	const { data: enrichments = [], isLoading, isLoadingError, error } = useEnrichments();
 	const deleteMutation = useDeleteEnrichment();
 	const { toast } = useToast();
 
@@ -238,6 +238,12 @@ const Enrichments: React.FC = () => {
 									<TableRow>
 										<TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
 											Loading enrichments…
+										</TableCell>
+									</TableRow>
+								) : isLoadingError ? (
+									<TableRow>
+										<TableCell colSpan={5} className="py-8 text-sm text-destructive">
+											{error instanceof Error ? error.message : 'Could not load enrichments'}
 										</TableCell>
 									</TableRow>
 								) : filtered.length === 0 ? (

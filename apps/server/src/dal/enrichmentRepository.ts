@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { AlertEnrichment, AlertEnrichmentField, AlertEnrichmentVersion, AlertLink } from '@OpsiMate/shared';
 import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 import { runAsync } from './db';
+import { InsertResult } from './models';
 import { toIsoUtc } from '../utils/time';
 
 interface EnrichmentRow {
@@ -176,7 +177,7 @@ export class EnrichmentRepository {
 		});
 	}
 
-	async createEnrichment(data: CreateEnrichmentInput, actor?: string | null): Promise<{ lastID: number }> {
+	async createEnrichment(data: CreateEnrichmentInput, actor?: string | null): Promise<InsertResult> {
 		return runAsync(() => {
 			return this.db.transaction(() => {
 				const stmt = this.db.prepare(

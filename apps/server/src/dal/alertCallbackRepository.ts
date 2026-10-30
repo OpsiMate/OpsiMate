@@ -7,6 +7,7 @@ import {
 	AlertCallbackEvent,
 } from '@OpsiMate/shared';
 import { runAsync } from './db';
+import { InsertResult } from './models';
 
 interface AlertCallbackRow {
 	id: number;
@@ -30,10 +31,6 @@ export type CreateAlertCallbackInput = Omit<
 	'id' | 'createdAt' | 'updatedAt' | 'lastStatus' | 'lastError' | 'lastSentAt'
 >;
 export type UpdateAlertCallbackInput = Partial<CreateAlertCallbackInput>;
-
-export interface CreateAlertCallbackResult {
-	lastID: number;
-}
 
 const KNOWN_EVENTS = new Set<string>(ALERT_CALLBACK_EVENTS);
 
@@ -117,7 +114,7 @@ export class AlertCallbackRepository {
 		});
 	}
 
-	async createAlertCallback(data: CreateAlertCallbackInput): Promise<CreateAlertCallbackResult> {
+	async createAlertCallback(data: CreateAlertCallbackInput): Promise<InsertResult> {
 		return runAsync(() => {
 			const result = this.db
 				.prepare(

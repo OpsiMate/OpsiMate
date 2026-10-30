@@ -32,6 +32,22 @@ const logger = new Logger('bl/action.bl');
 const API_TOKEN_ACTOR_ID = 0;
 const API_TOKEN_ACTOR_NAME = 'API Token';
 
+// How a run on an alert went: `sent` is a "don't wait" HTTP action whose request went out.
+type ActionRunOutcome = 'success' | 'sent' | 'error';
+
+// The alert timeline's text for a run. The run's result message is left out on purpose:
+// it can carry the receiver's response body, and anyone who can see the alert reads this.
+const describeActionRun = (actionName: string, outcome: ActionRunOutcome): string => {
+	switch (outcome) {
+		case 'error':
+			return `Action "${actionName}" failed`;
+		case 'sent':
+			return `Sent action "${actionName}" (not waiting for a response)`;
+		default:
+			return `Ran action "${actionName}"`;
+	}
+};
+
 // Lets a run fire the `action_run` callback with the alert as stored (the run request
 // only carries the fields the templates need).
 export interface ActionCallbackHooks {
@@ -73,7 +89,7 @@ export class ActionBL {
 		);
 		// A "don't wait" HTTP action only knows its request went out, so it counts as
 		// `sent` rather than claiming a `success` it never saw.
-		const outcome = !result.ok ? 'error' : sendsWithoutWaiting(action) ? 'sent' : 'success';
+		const outcome: ActionRunOutcome = !result.ok ? 'error' : sendsWithoutWaiting(action) ? 'sent' : 'success';
 		actionsRunTotal.inc({ type: action.type, outcome });
 
 		// Record the run on the alert's history timeline (best-effort; never block the action).
@@ -83,7 +99,7 @@ export class ActionBL {
 					alertId: alert.id,
 					eventType: AlertHistoryEventType.ACTION_RUN,
 					actorName,
-					description: `Ran action "${action.name}"`,
+					description: describeActionRun(action.name, outcome),
 				});
 			} catch {
 				// Swallow: history logging must not affect the action result.

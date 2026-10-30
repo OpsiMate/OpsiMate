@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import userEvent from '@testing-library/user-event';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import type { Action, HttpActionConfig } from '@OpsiMate/shared';
 import { ActionFormDialog } from '@/components/Actions/ActionFormDialog';
 import type { ActionPayload } from '@/lib/api';
@@ -32,7 +32,24 @@ const httpAction = (config: Partial<HttpActionConfig>): Action => ({
 	updatedAt: new Date(0).toISOString(),
 });
 
+const slackAction: Action = {
+	id: 8,
+	name: 'Page the on-call',
+	type: 'slack',
+	config: { webhookUrl: 'https://hooks.slack.com/x' },
+	labelMatchers: [],
+	createdAt: new Date(0).toISOString(),
+	updatedAt: new Date(0).toISOString(),
+};
+
 const jsonCheckbox = () => screen.getByRole('checkbox', { name: 'Body is JSON' });
+
+const switchTypeToHttp = async (user: UserEvent) => {
+	const typeTrigger = screen.getByText('Slack message').closest('[role="combobox"]');
+	if (!typeTrigger) throw new Error('type select not found');
+	await user.click(typeTrigger);
+	await user.click(await screen.findByRole('option', { name: /HTTP request/ }));
+};
 
 beforeEach(() => {
 	createMutateAsync.mockReset();
@@ -95,5 +112,29 @@ describe('ActionFormDialog: body is JSON', () => {
 		await user.paste('{"t":"{{name}}"}');
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+	});
+
+	test("editing a Slack action after an HTTP one does not keep that action's JSON setting or sender fields", async () => {
+		const user = userEvent.setup();
+		updateMutateAsync.mockResolvedValue(slackAction);
+		const textAction = httpAction({ bodyFormat: 'text' });
+		const { rerender } = render(<ActionFormDialog open onOpenChange={vi.fn()} action={textAction} />);
+		rerender(<ActionFormDialog open={false} onOpenChange={vi.fn()} action={textAction} />);
+		rerender(<ActionFormDialog open onOpenChange={vi.fn()} action={slackAction} />);
+		await switchTypeToHttp(user);
+		expect(jsonCheckbox()).toHaveAttribute('aria-checked', 'true');
+
+		const senderFieldsAction = httpAction({ bodyFormat: 'json', editableFields: [{ path: '/comment' }] });
+		rerender(<ActionFormDialog open={false} onOpenChange={vi.fn()} action={slackAction} />);
+		rerender(<ActionFormDialog open onOpenChange={vi.fn()} action={senderFieldsAction} />);
+		rerender(<ActionFormDialog open={false} onOpenChange={vi.fn()} action={senderFieldsAction} />);
+		rerender(<ActionFormDialog open onOpenChange={vi.fn()} action={slackAction} />);
+		await switchTypeToHttp(user);
+		await user.type(screen.getByLabelText(/^URL/), 'https://example.com/hook');
+		await user.click(screen.getByLabelText(/Request body template/));
+		await user.paste('{"comment":""}');
+		await user.click(screen.getByRole('button', { name: 'Save changes' }));
+		await waitFor(() => expect(updateMutateAsync).toHaveBeenCalledTimes(1));
+		expect((updateMutateAsync.mock.calls[0][0].payload.config as HttpActionConfig).editableFields).toBeNull();
 	});
 });

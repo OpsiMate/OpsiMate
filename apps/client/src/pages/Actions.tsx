@@ -111,7 +111,7 @@ const summarize = (action: Action): string => {
 };
 
 const Actions: React.FC = () => {
-	const { data: actions = [], isLoading } = useActions();
+	const { data: actions = [], isLoading, isLoadingError, error } = useActions();
 	const deleteMutation = useDeleteAction();
 	const testMutation = useTestAction();
 	const { toast } = useToast();
@@ -260,6 +260,12 @@ const Actions: React.FC = () => {
 									<TableRow>
 										<TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
 											Loading actions…
+										</TableCell>
+									</TableRow>
+								) : isLoadingError ? (
+									<TableRow>
+										<TableCell colSpan={5} className="py-8 text-sm text-destructive">
+											{error instanceof Error ? error.message : 'Could not load actions'}
 										</TableCell>
 									</TableRow>
 								) : filtered.length === 0 ? (
