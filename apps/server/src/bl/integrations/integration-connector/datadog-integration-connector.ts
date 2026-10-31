@@ -4,7 +4,7 @@ import { DatadogClient, DatadogDashboardSummary } from '../../../dal/external-cl
 import { AlertBL } from '../../alerts/alert.bl';
 
 export class DatadogIntegrationConnector implements IntegrationConnector {
-	private logger = new Logger('bl/integrations/datadog-integration-connector');
+	private logger = new Logger('bl/integrations/integration-connector/datadog-integration-connector');
 
 	async getUrls(integration: Integration, tags: string[]): Promise<IntegrationUrls[]> {
 		try {

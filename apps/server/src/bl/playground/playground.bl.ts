@@ -2,7 +2,7 @@ import { Logger } from '@OpsiMate/shared';
 import { PlaygroundRepository } from '../../dal/playgroundRepository.ts';
 import { MailClient, MailType } from '../../dal/external-client/mail-client.ts';
 
-const logger = new Logger('bl/playground.bl');
+const logger = new Logger('bl/playground/playground.bl');
 
 export class PlaygroundBL {
 	constructor(
