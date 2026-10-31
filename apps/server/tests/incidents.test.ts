@@ -163,8 +163,7 @@ describe('incidents', () => {
 		insertAlert('tr-a', 'Transit A', 'warning', '2026-08-11T10:00:00.000Z');
 		insertAlert('tr-b', 'Transit B', 'warning', '2026-08-11T10:00:00.000Z');
 		insertAlert('tr-c', 'Transit C', 'warning', '2026-08-11T10:00:00.000Z');
-		const first = await post('/api/v1/incidents', { name: 'First home', alertIds: ['tr-a', 'tr-b'] });
-		const firstId = first.body.data.id as number;
+		await post('/api/v1/incidents', { name: 'First home', alertIds: ['tr-a', 'tr-b'] });
 
 		const historyOf = async (alertId: string) => {
 			const res = await get(`/api/v1/alerts/${alertId}/history`);
