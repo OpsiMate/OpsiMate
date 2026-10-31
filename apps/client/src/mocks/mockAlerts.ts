@@ -1,48 +1,22 @@
 import { formatDateTime } from '@/lib/datetime';
-import { Alert, AlertStatus, AlertType } from '@OpsiMate/shared';
+import { Alert, AlertStatus, AlertType, DEFAULT_ALERT_SEVERITY } from '@OpsiMate/shared';
+
+export interface MockAlertDistribution {
+	alertTypes?: Partial<Record<AlertType, number>>;
+	statuses?: Record<string, number>;
+	tags?: Record<string, number>;
+	alertNames?: Record<string, number>;
+}
 
 export interface MockAlertsConfig {
 	count?: number;
 	seed?: number;
-	distribution?: {
-		alertTypes?: Record<AlertType, number>;
-		statuses?: Record<string, number>;
-		tags?: Record<string, number>;
-		alertNames?: Record<string, number>;
-	};
+	distribution?: MockAlertDistribution;
 }
 
 const ALERT_TYPES: AlertType[] = ['Grafana', 'GCP', 'Custom', 'UptimeKuma'];
 
 const STATUSES: AlertStatus[] = [AlertStatus.FIRING, AlertStatus.RESOLVED];
-
-const TAGS = [
-	'production',
-	'staging',
-	'development',
-	'critical',
-	'warning',
-	'info',
-	'backend',
-	'frontend',
-	'database',
-	'api',
-	'microservice',
-	'infrastructure',
-	'security',
-	'performance',
-	'monitoring',
-	'kubernetes',
-	'docker',
-	'aws',
-	'gcp',
-	'azure',
-	'cdn',
-	'cache',
-	'queue',
-	'worker',
-	'scheduler',
-];
 
 const ALERT_NAMES = [
 	'High CPU Usage',
@@ -217,7 +191,7 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 
 	const type = selectWeighted(rng, ALERT_TYPES, distribution.alertTypes ?? DEFAULT_DISTRIBUTION.alertTypes);
 	const status = selectWeighted(rng, STATUSES, distribution.statuses ?? DEFAULT_DISTRIBUTION.statuses);
-	const tag = selectWeighted(rng, TAGS, distribution.tags ?? DEFAULT_DISTRIBUTION.tags, 0);
+	rng.next(); // keep the RNG sequence stable for the values generated below
 	const alertName = generateAlertName(rng, index);
 
 	const now = new Date();
@@ -292,7 +266,8 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		id: alertId,
 		type,
 		status,
-		tag,
+		severity: DEFAULT_ALERT_SEVERITY,
+		tags: {},
 		startsAt: startsAt.toISOString(),
 		updatedAt: updatedAt.toISOString(),
 		alertUrl: `${baseUrl}/alert/${index}`,
@@ -329,57 +304,4 @@ export const generateMockAlerts = (config: MockAlertsConfig | number = {}): Aler
 	cachedConfig = finalConfig;
 
 	return cachedMockAlerts;
-};
-
-export const clearMockAlertsCache = (): void => {
-	cachedMockAlerts = null;
-	cachedConfig = null;
-};
-
-export const generateGCPMockAlerts = (count: number = 10): Alert[] => {
-	return generateMockAlerts({
-		count,
-		distribution: {
-			alertTypes: {
-				GCP: 1,
-				Grafana: 0,
-				Custom: 0,
-				UptimeKuma: 0,
-			},
-			statuses: {
-				firing: 0.7,
-				resolved: 0.3,
-			},
-			tags: {
-				gcp: 0.4,
-				production: 0.3,
-				cloud: 0.2,
-				monitoring: 0.1,
-			},
-		},
-	});
-};
-
-export const generateUptimeKumaMockAlerts = (count: number = 10): Alert[] => {
-	return generateMockAlerts({
-		count,
-		distribution: {
-			alertTypes: {
-				UptimeKuma: 1,
-				Grafana: 0,
-				GCP: 0,
-				Custom: 0,
-			},
-			statuses: {
-				firing: 0.7,
-				resolved: 0.3,
-			},
-			tags: {
-				uptimekuma: 0.4,
-				monitoring: 0.3,
-				production: 0.2,
-				infrastructure: 0.1,
-			},
-		},
-	});
 };

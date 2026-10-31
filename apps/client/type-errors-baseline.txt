@@ -6,11 +6,6 @@ src/lib/errorMapper.ts: error TS2339: Property 'error' does not exist on type 'u
 src/lib/errorMapper.ts: error TS2339: Property 'success' does not exist on type 'unknown'.
 src/lib/sslKeys.ts: error TS2322: Type '{ id: string; name: string; value: string; }[]' is not assignable to type 'SecretMetadata[]'.
 src/mocks/handlers.ts: error TS2352: Conversion of type 'ActionConfig' to type 'Record<string, string>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
-src/mocks/mockAlerts.ts: error TS2322: Type '{ alertTypes: { Grafana: number; GCP: number; UptimeKuma: number; Custom: number; }; statuses: { firing: number; resolved: number; pending: number; suppressed: number; inhibited: number; }; tags: { production: number; ... 8 more ...; warning: number; }; alertNames: {}; }' is not assignable to type '{ alertTypes?: Record<AlertType, number>; statuses?: Record<string, number>; tags?: Record<string, number>; alertNames?: Record<string, number>; }'.
-src/mocks/mockAlerts.ts: error TS2561: Object literal may only specify known properties, but 'tag' does not exist in type 'Alert'. Did you mean to write 'tags'?
-src/mocks/mockAlerts.ts: error TS2739: Type '{ GCP: number; Grafana: number; Custom: number; UptimeKuma: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
-src/mocks/mockAlerts.ts: error TS2739: Type '{ UptimeKuma: number; Grafana: number; GCP: number; Custom: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
-src/mocks/mockAlerts.utils.ts: error TS2739: Type '{ Grafana: number; GCP: number; UptimeKuma: number; Custom: number; }' is missing the following properties from type 'Record<AlertType, number>': Datadog, Zabbix
 src/pages/Login.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
 src/pages/Register.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
 src/test/severity.utils.test.ts: error TS2550: Property 'hasOwn' does not exist on type 'ObjectConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2022' or later.

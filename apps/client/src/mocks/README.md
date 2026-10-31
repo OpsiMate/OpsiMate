@@ -34,12 +34,6 @@ const alerts = generateMockAlerts({
 			suppressed: 0.04,
 			inhibited: 0.01,
 		},
-		tags: {
-			production: 0.35,
-			backend: 0.15,
-			critical: 0.12,
-			// ... more tags
-		},
 	},
 });
 ```
@@ -47,20 +41,10 @@ const alerts = generateMockAlerts({
 ## Pre-configured Presets
 
 ```typescript
-import {
-	generateDiverseMockAlerts,
-	generateProductionHeavyMockAlerts,
-	generateBalancedMockAlerts,
-} from '@/mocks/mockAlerts.utils';
+import { generateDiverseMockAlerts } from '@/mocks/mockAlerts.utils';
 
 // Diverse distribution (default)
 const diverseAlerts = generateDiverseMockAlerts(5000);
-
-// Production-heavy distribution (more production, critical alerts)
-const productionAlerts = generateProductionHeavyMockAlerts(5000);
-
-// Balanced distribution (even spread across all categories)
-const balancedAlerts = generateBalancedMockAlerts(5000);
 ```
 
 ## Available Alert Types
@@ -68,6 +52,7 @@ const balancedAlerts = generateBalancedMockAlerts(5000);
 - `Grafana`
 - `GCP`
 - `Custom`
+- `UptimeKuma`
 
 ## Available Statuses
 
@@ -76,16 +61,6 @@ const balancedAlerts = generateBalancedMockAlerts(5000);
 - `pending`
 - `suppressed`
 - `inhibited`
-
-## Available Tags
-
-- `production`, `staging`, `development`
-- `critical`, `warning`, `info`
-- `backend`, `frontend`, `database`, `api`
-- `microservice`, `infrastructure`, `security`, `performance`
-- `monitoring`, `kubernetes`, `docker`
-- `aws`, `gcp`, `azure`
-- `cdn`, `cache`, `queue`, `worker`, `scheduler`
 
 ## Available Alert Names
 
@@ -116,24 +91,16 @@ const customAlerts = generateMockAlerts({
 			resolved: 0.15,
 			pending: 0.05,
 		},
-		tags: {
-			production: 0.6,
-			critical: 0.3,
-			backend: 0.1,
-		},
 	},
 });
 ```
 
 ## Caching
 
-The generator caches results based on configuration. To clear the cache:
-
-```typescript
-import { clearMockAlertsCache } from '@/mocks/mockAlerts';
-
-clearMockAlertsCache();
-```
+The generator caches results based on configuration: calling it again with
+the same configuration object shape returns the cached alerts instead of
+regenerating them. The cache lives for the session; there is no manual
+clearing API.
 
 ## Integration Example
 
