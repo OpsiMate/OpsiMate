@@ -1,4 +1,3 @@
-export { ColumnSettingsModal } from './ColumnSettingsModal';
 export { FilterPanel } from './FilterPanel';
 export { FormattedText, stripHtml, containsHtml } from './FormattedText';
 export { TextWithFlags, containsFlag, splitFlags } from './TextWithFlags';

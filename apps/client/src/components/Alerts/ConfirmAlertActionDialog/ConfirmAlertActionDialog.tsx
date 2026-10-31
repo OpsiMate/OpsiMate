@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { ALERT_COMMENT_MAX_LENGTH } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
 
 // How long a silence lasts. The expiry timestamp is computed at confirm time, so
@@ -152,7 +153,7 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 							}}
 							placeholder={pending.commentPlaceholder ?? 'Add a note for your team'}
 							rows={3}
-							maxLength={5000}
+							maxLength={ALERT_COMMENT_MAX_LENGTH}
 						/>
 						<p className="text-xs text-muted-foreground">
 							<kbd className="rounded border bg-muted px-1 py-0.5 font-sans text-[10px]">Enter</kbd> to{' '}

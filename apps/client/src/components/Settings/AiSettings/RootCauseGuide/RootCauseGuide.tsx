@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { CollapsibleGuide } from '../CollapsibleGuide';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { Check, Copy, MessageSquareQuote, SearchCheck, ThumbsDown, ThumbsUp } from 'lucide-react';
@@ -102,65 +102,50 @@ const SectionPreview = () => (
 	</div>
 );
 
-// "Bring your own" root cause, explained where people go looking for AI features:
-// what to send, what operators see, how they rate, and what your system gets back.
+// "Bring your own" root cause: what to send, what operators see, what you get back.
+// Folded by default — most visitors to this tab come for the API key above.
 export const RootCauseGuide = () => (
-	<div className="space-y-4 min-w-0 max-w-4xl">
-		<div>
-			<h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-				<SearchCheck className="h-5 w-5 text-violet-500" />
-				Root cause analysis — bring your own
-			</h2>
-			<p className="text-sm text-muted-foreground">
-				Already have an analyzer (an AI agent, a runbook engine, a script)? Push its conclusion onto any alert.
-				Operators see it in the alert drawer, rate it with 👍/👎, and their verdict is sent straight back to
-				you.
+	<CollapsibleGuide
+		icon={SearchCheck}
+		iconClassName="text-violet-500"
+		title="Root cause analysis — bring your own"
+		tagline="Push your analyzer's conclusion onto an alert; operators rate it 👍/👎 and you get the verdict back."
+	>
+		<Step number={1} title="Send the analysis">
+			<p className="text-xs text-muted-foreground">
+				One <span className="font-mono">PUT</span> per alert with your API token. Only{' '}
+				<span className="font-mono">content</span> is required (up to 65,536 characters); the feedback URLs are
+				optional and never shown in the UI. Sending again replaces the analysis and clears its rating.
 			</p>
-		</div>
+			<CodeBlock code={SEND_EXAMPLE} copyLabel="Copy the send example" />
+		</Step>
 
-		<Card className="p-4 space-y-5">
-			<Step number={1} title="Send the analysis">
-				<p className="text-xs text-muted-foreground">
-					One <span className="font-mono">PUT</span> per alert, authenticated with your API token. Only{' '}
-					<span className="font-mono">content</span> is required (up to 65,536 characters). The two feedback
-					URLs are optional; they may embed a secret — they are stored server-side and never shown in the UI.
-					Pushing again replaces the analysis and clears its rating.
-				</p>
-				<CodeBlock code={SEND_EXAMPLE} copyLabel="Copy the send example" />
-			</Step>
+		<Step number={2} title="What operators see">
+			<p className="text-xs text-muted-foreground">
+				A <span className="font-semibold text-violet-600 dark:text-violet-400">Root cause</span> section in the
+				alert drawer — here already rated 👎 with a note:
+			</p>
+			<SectionPreview />
+		</Step>
 
-			<Step number={2} title="What operators see">
-				<p className="text-xs text-muted-foreground">
-					A <span className="font-semibold text-violet-600 dark:text-violet-400">Root cause</span> section
-					appears in that alert's drawer, loaded on open. This one has already been rated 👎 with a note:
-				</p>
-				<SectionPreview />
-			</Step>
-
-			<Step number={3} title="How they rate, and what you get back">
-				<ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1">
-					<li>
-						<ThumbsUp className="inline h-3 w-3 mr-1 align-[-1px]" aria-hidden="true" />
-						<strong>Helpful</strong> is one click. We <span className="font-mono">POST</span> to your{' '}
-						<span className="font-mono">feedbackUpUrl</span>.
-					</li>
-					<li>
-						<ThumbsDown className="inline h-3 w-3 mr-1 align-[-1px]" aria-hidden="true" />
-						<strong>Unhelpful</strong> first asks <em>"What went wrong?"</em> — an optional note the
-						operator can skip. We <span className="font-mono">POST</span> to your{' '}
-						<span className="font-mono">feedbackDownUrl</span> with the note as{' '}
-						<span className="font-mono">comment</span> (<span className="font-mono">null</span> when skipped
-						or on 👍).
-					</li>
-					<li>
-						The verdict is stored first; delivery is best-effort with a 3-second timeout, no redirects, and
-						no authentication headers from us (the only header is{' '}
-						<span className="font-mono">content-type: application/json</span>) — put any token you need in
-						the URL.
-					</li>
-				</ul>
-				<CodeBlock code={CALLBACK_EXAMPLE} copyLabel="Copy the callback example" />
-			</Step>
-		</Card>
-	</div>
+		<Step number={3} title="What you get back">
+			<ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1">
+				<li>
+					<ThumbsUp className="inline h-3 w-3 mr-1 align-[-1px]" aria-hidden="true" />
+					<strong>Helpful</strong>: one click → <span className="font-mono">POST</span> to{' '}
+					<span className="font-mono">feedbackUpUrl</span>.
+				</li>
+				<li>
+					<ThumbsDown className="inline h-3 w-3 mr-1 align-[-1px]" aria-hidden="true" />
+					<strong>Unhelpful</strong>: asks <em>"What went wrong?"</em> (optional) →{' '}
+					<span className="font-mono">POST</span> to <span className="font-mono">feedbackDownUrl</span> with
+					the note as <span className="font-mono">comment</span>.
+				</li>
+				<li>
+					Best-effort delivery: 3-second timeout, no redirects, no auth headers — put any token in the URL.
+				</li>
+			</ul>
+			<CodeBlock code={CALLBACK_EXAMPLE} copyLabel="Copy the callback example" />
+		</Step>
+	</CollapsibleGuide>
 );

@@ -183,6 +183,7 @@ const Enrichments: React.FC = () => {
 							<div className="relative flex-1 max-w-md">
 								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
+									aria-label="Search enrichments"
 									className="pl-9"
 									placeholder="Search by name, match, or field"
 									value={search}
@@ -306,7 +307,7 @@ const Enrichments: React.FC = () => {
 														size="icon"
 														className="h-8 w-8"
 														onClick={() => setDuplicating(e)}
-														aria-label="Duplicate enrichment"
+														aria-label={`Duplicate enrichment "${e.name}"`}
 														title="Copy to a new rule"
 													>
 														<Copy className="h-4 w-4" />
@@ -316,7 +317,7 @@ const Enrichments: React.FC = () => {
 														size="icon"
 														className="h-8 w-8"
 														onClick={() => setViewingHistory(e)}
-														aria-label="View enrichment history"
+														aria-label={`View history of enrichment "${e.name}"`}
 													>
 														<History className="h-4 w-4" />
 													</Button>
@@ -325,7 +326,7 @@ const Enrichments: React.FC = () => {
 														size="icon"
 														className="h-8 w-8"
 														onClick={() => setEditing(e)}
-														aria-label="Edit enrichment"
+														aria-label={`Edit enrichment "${e.name}"`}
 													>
 														<Pencil className="h-4 w-4" />
 													</Button>
@@ -334,7 +335,7 @@ const Enrichments: React.FC = () => {
 														size="icon"
 														className="h-8 w-8 text-destructive hover:text-destructive"
 														onClick={() => setDeleting(e)}
-														aria-label="Delete enrichment"
+														aria-label={`Delete enrichment "${e.name}"`}
 													>
 														<Trash2 className="h-4 w-4" />
 													</Button>

@@ -184,12 +184,15 @@ export const DashboardTagSchema = z.object({
 	tagId: z.number(),
 });
 
+// Longest alert comment (and resolve/silence note, which is stored as a comment) in characters.
+export const ALERT_COMMENT_MAX_LENGTH = 5000;
+
 export const CreateCommentSchema = z.object({
-	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
+	comment: z.string().min(1, 'Comment cannot be empty').max(ALERT_COMMENT_MAX_LENGTH, 'Comment is too long'),
 });
 
 export const UpdateCommentSchema = z.object({
-	comment: z.string().min(1, 'Comment cannot be empty').max(5000, 'Comment is too long'),
+	comment: z.string().min(1, 'Comment cannot be empty').max(ALERT_COMMENT_MAX_LENGTH, 'Comment is too long'),
 });
 
 // "exists" needs no value (the tag just has to be present); the other operators do.

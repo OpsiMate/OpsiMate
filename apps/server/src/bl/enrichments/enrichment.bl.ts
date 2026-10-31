@@ -14,12 +14,10 @@ import {
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
 import { buildAlertContext, resolveTemplateVariable } from '../actions/actionExecutor';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
 import { PreparedRules } from '../alerts/preparedRules';
 
 const logger = new Logger('bl/enrichment.bl');
-
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
 
 export class EnrichmentBL {
 	// Enrichment rules rewrite tags/severity/summary on every alert the snapshot cache
@@ -78,14 +76,6 @@ export class EnrichmentBL {
 		}
 	}
 
-	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
-		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
-		return {
-			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
-		};
-	}
-
 	private hasUpdateData(data: UpdateEnrichmentInput): boolean {
 		return (
 			data.name !== undefined ||
@@ -107,7 +97,7 @@ export class EnrichmentBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const auditActor = this.getAuditActor(actor);
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.ENRICHMENT,

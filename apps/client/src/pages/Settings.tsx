@@ -652,10 +652,12 @@ const Settings: React.FC = () => {
 										<SilenceResetSettings />
 									</TabsContent>
 
-									<TabsContent value="ai" className="space-y-6">
+									<TabsContent value="ai" className="space-y-4">
 										<AiSettings />
-										<RootCauseGuide />
-										<McpGuide />
+										<div className="space-y-2 pt-2 border-t">
+											<RootCauseGuide />
+											<McpGuide />
+										</div>
 									</TabsContent>
 
 									<CallbacksTabContent isAdmin={isAdmin} />

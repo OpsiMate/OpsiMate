@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ALERT_COMMENT_MAX_LENGTH } from '@OpsiMate/shared';
 import { Send } from 'lucide-react';
 import { KeyboardEvent, useEffect, useRef } from 'react';
 import { SUBMIT_BUTTON_TEXT, WRITE_COMMENT_PLACEHOLDER } from '../CommentsWall.constants';
@@ -71,6 +72,7 @@ export const CommentInput = ({
 				onChange={(e) => onChange(e.target.value)}
 				onKeyDown={handleKeyDown}
 				placeholder={placeholder}
+				maxLength={ALERT_COMMENT_MAX_LENGTH}
 				className="min-h-[40px] max-h-[120px] resize-none text-sm"
 				rows={1}
 			/>

@@ -96,3 +96,10 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 	[ACTIONS_COLUMN]: 44,
 	default: 110,
 };
+
+// Vertical separators between columns, applied to the header row and every alert row so
+// the lines line up. An inset shadow on each cell's right edge rather than a border: it
+// takes no width, so the header's and rows' column widths stay identical. Skips the last
+// cell (actions) and the aria-hidden filler cell that absorbs leftover width.
+export const COLUMN_SEPARATOR_CLASSES =
+	'[&>*:not(:last-child,[aria-hidden])]:shadow-[inset_-1px_0_0_0] [&>*:not(:last-child,[aria-hidden])]:shadow-border';
