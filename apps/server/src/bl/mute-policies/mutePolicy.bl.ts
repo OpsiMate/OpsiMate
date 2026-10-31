@@ -13,7 +13,7 @@ import { AuditBL } from '../audit/audit.bl';
 import { toAuditActor } from '../audit/auditActor';
 import { PreparedRules } from '../alerts/preparedRules';
 
-const logger = new Logger('bl/mutePolicy.bl');
+const logger = new Logger('bl/mute-policies/mutePolicy.bl');
 
 export class MutePolicyBL {
 	// Mute rules change what markMuted stamps on every alert, so the alerts snapshot

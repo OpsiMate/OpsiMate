@@ -3,7 +3,7 @@ import { OncallRepository, OncallTeamUpdate } from '../../dal/oncallRepository';
 import { OncallTeamMemberRow, OncallTeamRow } from './../../dal/models';
 import { MS_PER_DAY } from '../../utils/time';
 
-const logger = new Logger('bl/oncall.bl');
+const logger = new Logger('bl/oncall/oncall.bl');
 
 // Thrown when a create/rename would collide with an existing team's name (the API
 // maps it to 409). Names identify teams — alerts reference them by name.

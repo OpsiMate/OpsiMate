@@ -4,7 +4,7 @@ import { Logger } from '@OpsiMate/shared';
 // runtime, which would take the server down at boot rather than in a test.
 import * as yaml from 'js-yaml';
 import { parseKey, Key } from 'sshpk';
-const logger: Logger = new Logger('utils/validators');
+const logger: Logger = new Logger('utils/validators/validators');
 
 export const MIN_SSH_KEY_LENGTH = 100;
 export const MAX_SSH_KEY_LENGTH = 100000;

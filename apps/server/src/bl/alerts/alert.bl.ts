@@ -56,7 +56,7 @@ import {
 	searchAlerts,
 } from '@OpsiMate/shared';
 
-const logger = new Logger('bl/alert.bl');
+const logger = new Logger('bl/alerts/alert.bl');
 
 // Also the staleness bound for writes made by the worker process, which this cache
 // never hears about. Kept well under the client's 5s poll. Tests set 0 to disable —
