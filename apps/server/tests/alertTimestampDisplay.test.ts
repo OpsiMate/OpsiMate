@@ -36,17 +36,39 @@ describe('formatAlertTimestampDisplay', () => {
 });
 
 describe('cost on the alert-list path', () => {
-	test('formatting is cheap enough to run per alert per enrichment field (formatters are cached)', () => {
+	// Constructing an Intl.DateTimeFormat is the expensive part, and the alert-list path
+	// formats per alert per enrichment field, so formatters must be built once and reused.
+	// Counted rather than timed: a wall-clock bound flaked on shared CI runners (~150 ms
+	// locally, 400–500 ms on a busy runner), while uncached is ~120,000 constructions here.
+	test('formats per alert per enrichment field without building new formatters (they are cached)', () => {
 		const viewer = { timeZone: 'Asia/Jerusalem', locale: 'en-US' };
-		formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer); // warm the cache
-		const started = performance.now();
-		for (let i = 0; i < 20_000; i++) {
-			formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer);
-			formatAlertTimestampDisplay('2026-10-20T14:15:53Z');
+		// Warm the cache for both viewers the loop uses (one today, one another day).
+		const today = new Date('2026-10-20T15:00:00Z');
+		const nextWeek = new Date('2026-10-27T15:00:00Z');
+		for (const now of [today, nextWeek]) {
+			formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer, now);
+			formatAlertTimestampDisplay('2026-10-20T14:15:53Z', undefined, now);
 		}
-		// Uncached this is ~1–2 s (three Intl.DateTimeFormat constructions per call);
-		// cached it is tens of milliseconds. The bound leaves room for a slow CI runner.
-		expect(performance.now() - started).toBeLessThan(400);
+
+		const OriginalDateTimeFormat = Intl.DateTimeFormat;
+		let constructed = 0;
+		Intl.DateTimeFormat = new Proxy(OriginalDateTimeFormat, {
+			construct(target, args) {
+				constructed++;
+				return Reflect.construct(target, args) as Intl.DateTimeFormat;
+			},
+		});
+		try {
+			for (let i = 0; i < 20_000; i++) {
+				const now = i % 2 === 0 ? today : nextWeek;
+				formatAlertTimestampDisplay('2026-10-20T14:15:53Z', viewer, now);
+				formatAlertTimestampDisplay('2026-10-20T14:15:53Z', undefined, now);
+			}
+		} finally {
+			Intl.DateTimeFormat = OriginalDateTimeFormat;
+		}
+
+		expect(constructed).toBe(0);
 	});
 });
 

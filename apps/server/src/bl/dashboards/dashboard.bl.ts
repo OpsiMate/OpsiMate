@@ -1,5 +1,6 @@
 import { AuditActionType, AuditResourceType, Dashboard, Tag, User } from '@OpsiMate/shared';
 import { DashboardRepository } from '../../dal/dashboardRepository.ts';
+import { DashboardTagsEntry } from '../../dal/models';
 import { AuditBL } from '../audit/audit.bl';
 import { TagBL } from '../tags/tag.bl';
 
@@ -67,7 +68,7 @@ export class DashboardBL {
 		return await this.tagBL.getDashboardTags(dashboardId);
 	}
 
-	async getAllDashboardTags(): Promise<{ dashboardId: number; tags: Tag[] }[]> {
+	async getAllDashboardTags(): Promise<DashboardTagsEntry[]> {
 		return await this.tagBL.getAllDashboardTags();
 	}
 

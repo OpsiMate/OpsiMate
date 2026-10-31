@@ -35,7 +35,7 @@ const formatDateTime = (iso: string | null): string => formatShortDateTime(iso);
 const Oncall = () => {
 	const { toast } = useToast();
 	const admin = isAdmin();
-	const { data: teams = [], isLoading } = useOncallTeams();
+	const { data: teams = [], isLoading, isLoadingError, error } = useOncallTeams();
 	const { data: users = [] } = useUsers();
 	const { createTeam, updateTeam, deleteTeam, setTeamMembers } = useOncallTeamMutations();
 
@@ -154,6 +154,7 @@ const Oncall = () => {
 				<div className="relative max-w-sm">
 					<Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
+						aria-label="Search on-call teams"
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
 						placeholder="Search teams or members..."
@@ -181,6 +182,12 @@ const Oncall = () => {
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading on-call teams...
+										</TableCell>
+									</TableRow>
+								) : isLoadingError ? (
+									<TableRow>
+										<TableCell colSpan={admin ? 5 : 4} className="py-8 text-sm text-destructive">
+											{error instanceof Error ? error.message : 'Could not load on-call teams'}
 										</TableCell>
 									</TableRow>
 								) : filteredTeams.length === 0 ? (
@@ -271,6 +278,7 @@ const Oncall = () => {
 															className="h-7 w-7"
 															onClick={() => openEdit(team)}
 															title="Edit team"
+															aria-label={`Edit team "${team.name}"`}
 														>
 															<Pencil className="h-3.5 w-3.5" />
 														</Button>
@@ -280,6 +288,7 @@ const Oncall = () => {
 															className="h-7 w-7 text-destructive hover:text-destructive"
 															onClick={() => setTeamToDelete(team)}
 															title="Delete team"
+															aria-label={`Delete team "${team.name}"`}
 														>
 															<Trash2 className="h-3.5 w-3.5" />
 														</Button>

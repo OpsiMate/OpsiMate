@@ -1,5 +1,12 @@
 import { SuperTest, Test } from 'supertest';
-import { Alert, AlertStatus, AlertType, DEFAULT_ALERT_SEVERITY, Logger } from '@OpsiMate/shared';
+import {
+	Alert,
+	ALERT_COMMENT_MAX_LENGTH,
+	AlertStatus,
+	AlertType,
+	DEFAULT_ALERT_SEVERITY,
+	Logger,
+} from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { AlertRow, ResolvedAlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -2016,6 +2023,75 @@ describe('Alerts API', () => {
 					error: 'Forbidden: Admins only',
 				});
 			});
+
+			test('should return 404 when the resolved alert does not exist', async () => {
+				const response = await app
+					.delete('/api/v1/alerts/resolved/never-seen')
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Resolved alert not found');
+			});
+
+			test('should return 404 when deleting the same resolved alert twice', async () => {
+				const id = 'resolved-delete-twice';
+				db.prepare(
+					`
+			INSERT INTO alerts_resolved
+			(id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at,
+			is_dismissed)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`
+				).run(
+					id,
+					'resolved',
+					'{}',
+					new Date().toISOString(),
+					new Date().toISOString(),
+					'https://example.com/delete-twice',
+					'Delete Twice Test',
+					'First 200, second 404',
+					'https://runbook.com/delete-twice',
+					new Date().toISOString(),
+					0
+				);
+
+				const first = await app
+					.delete(`/api/v1/alerts/resolved/${id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(first.status).toBe(200);
+				expect(first.body.success).toBe(true);
+
+				const second = await app
+					.delete(`/api/v1/alerts/resolved/${id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(second.status).toBe(404);
+				expect(second.body.success).toBe(false);
+				expect(second.body.error).toBe('Resolved alert not found');
+			});
+
+			test('should return 404 for a firing alert id and leave the alert in place', async () => {
+				const response = await app
+					.delete(`/api/v1/alerts/resolved/${testAlerts[0].id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.success).toBe(false);
+
+				const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(testAlerts[0].id);
+				expect(row).toBeDefined();
+			});
+
+			test('should keep answering 200 for a webhook resolve of an unknown id', async () => {
+				const response = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ id: 'never-seen-resolve', status: 'resolved' });
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+			});
 		});
 
 		describe('POST /api/v1/alerts/:alertId/comments', () => {
@@ -2495,5 +2571,52 @@ describe('Comment timestamps are ISO UTC', () => {
 		const comment = (list.body.data.comments as CommentResponse[]).find((c) => c.comment === 'after edit');
 		expect(comment!.updatedAt).toMatch(/Z$/);
 		expect(Math.abs(new Date(comment!.updatedAt).getTime() - Date.now())).toBeLessThan(5_000);
+	});
+});
+
+describe('Alert comment length limit', () => {
+	const alertId = 'comment-limit-alert';
+	const atLimit = 'a'.repeat(ALERT_COMMENT_MAX_LENGTH);
+	const overLimit = 'a'.repeat(ALERT_COMMENT_MAX_LENGTH + 1);
+
+	const createAlert = () =>
+		app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: alertId, tags: {}, alertName: 'Comment Limit Test' });
+
+	test('POST accepts a comment of exactly the maximum length', async () => {
+		await createAlert();
+		const response = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: atLimit });
+		expect(response.status).toBe(201);
+	});
+
+	test('POST rejects a comment one character over the maximum', async () => {
+		await createAlert();
+		const response = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: overLimit });
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBe('Validation error');
+	});
+
+	test('PATCH accepts a comment of exactly the maximum length and rejects one more', async () => {
+		await createAlert();
+		const created = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'short' });
+		const url = `/api/v1/alerts/comments/${created.body.data.comment.id}`;
+
+		const ok = await app.patch(url).set('Authorization', `Bearer ${jwtToken}`).send({ comment: atLimit });
+		expect(ok.status).toBe(200);
+
+		const tooLong = await app.patch(url).set('Authorization', `Bearer ${jwtToken}`).send({ comment: overLimit });
+		expect(tooLong.status).toBe(400);
+		expect(tooLong.body.error).toBe('Validation error');
 	});
 });

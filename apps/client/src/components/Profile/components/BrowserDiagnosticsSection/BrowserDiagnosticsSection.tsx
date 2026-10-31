@@ -14,7 +14,14 @@ import { AlertTriangle, CheckCircle2, ChevronRight, Info, Stethoscope, XCircle }
 // Status colors are literal sRGB hex, not the Tailwind palette: the palette is oklch(),
 // which is exactly what the browsers these findings are about cannot render — a red ✗
 // drawn in oklch would be invisible on the machines that need it.
-const STATUS_ICON: Record<ChecklistStatus, { Icon: typeof CheckCircle2; className: string; label: string }> = {
+
+interface StatusIconStyle {
+	Icon: typeof CheckCircle2;
+	className: string;
+	label: string;
+}
+
+const STATUS_ICON: Record<ChecklistStatus, StatusIconStyle> = {
 	ok: { Icon: CheckCircle2, className: 'text-[#047857] dark:text-[#6ee7b7]', label: 'OK' },
 	problem: { Icon: XCircle, className: 'text-[#b91c1c] dark:text-[#fca5a5]', label: 'Problem' },
 	info: { Icon: Info, className: 'text-[#6b7280] dark:text-[#9ca3af]', label: 'Info' },

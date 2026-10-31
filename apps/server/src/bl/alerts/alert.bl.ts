@@ -574,17 +574,6 @@ export class AlertBL {
 		}
 	}
 
-	// Public hook so other modules (e.g. running an action against an alert) can append to the
-	// alert's history timeline without depending on the history repository directly.
-	async recordActionRun(alertId: string, actionName: string, actorName?: string | null): Promise<void> {
-		await this.recordHistoryEvent(
-			alertId,
-			AlertHistoryEventType.ACTION_RUN,
-			`Ran action "${actionName}"`,
-			actorName
-		);
-	}
-
 	setMutePolicyBL(mutePolicyBL: MutePolicyBL): void {
 		this.mutePolicyBL = mutePolicyBL;
 	}
@@ -1172,7 +1161,12 @@ export class AlertBL {
 		}
 	}
 
-	async deleteResolvedAlert(alertId: string, actor?: AlertCallbackActor): Promise<void> {
+	/**
+	 * Permanently deletes a resolved alert. Returns whether a row actually left
+	 * the resolved table — an id naming an unknown or still-active alert deletes
+	 * nothing, so callers can answer 404 instead of a 200 that changed nothing.
+	 */
+	async deleteResolvedAlert(alertId: string, actor?: AlertCallbackActor): Promise<boolean> {
 		await this.drainIngest();
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
@@ -1197,6 +1191,7 @@ export class AlertBL {
 				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
 			this.invalidateSnapshots();
+			return deleted > 0;
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
 			throw error;

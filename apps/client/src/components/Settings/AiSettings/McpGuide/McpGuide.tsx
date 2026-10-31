@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { CollapsibleGuide } from '../CollapsibleGuide';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { API_HOST } from '@/lib/api';
 import { MCP_DEFAULT_PORT, MCP_PATH, MCP_TOOLS } from '@OpsiMate/shared';
@@ -136,128 +136,111 @@ const ClientSnippet = ({ heading, note, code, copyLabel }: ClientSnippetProps) =
 	</div>
 );
 
-// Connecting an AI assistant to the OpsiMate MCP server, explained next to the other AI
-// features: where it runs, how it authenticates, what it can answer, what it never does.
+// Connecting an AI assistant to the OpsiMate MCP server. Folded by default; /settings#mcp
+// lands here.
 export const McpGuide = () => (
-	<div className="space-y-4 min-w-0 max-w-4xl">
-		<div>
-			<h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-				<Bot className="h-5 w-5 text-sky-500" />
-				AI assistants (MCP)
-			</h2>
-			<p className="text-sm text-muted-foreground">
-				Claude Code, Claude Desktop, Cursor and any other MCP client can read your alerts and dashboards through
-				the OpsiMate MCP server — a separate container (<span className="font-mono">opsimate/mcp</span>, the{' '}
-				<span className="font-mono">mcp</span> service in docker-compose) that reads from this server's API with
-				each caller's own token. Everything it offers is read-only: an assistant can answer questions, never
-				silence, resolve or change anything.
+	<CollapsibleGuide
+		id="mcp"
+		// A /settings#mcp link lands on this guide opened.
+		defaultOpen={typeof window !== 'undefined' && window.location.hash === '#mcp'}
+		icon={Bot}
+		iconClassName="text-sky-500"
+		title="AI assistants (MCP)"
+		tagline="Let Claude Code, Claude Desktop, Cursor or VS Code read your alerts and dashboards — read-only, with each user's own token."
+	>
+		<Step number={1} title="Connect a client">
+			<p className="text-xs text-muted-foreground flex items-start gap-1.5">
+				<Container className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+				<span>
+					The MCP server is its own container (<span className="font-mono">opsimate/mcp</span>), here assumed
+					at <span className="font-mono">{DEFAULT_MCP_URL}</span>. Behind an Ingress or on another host,
+					replace the URL.
+				</span>
 			</p>
-		</div>
+			<p className="text-xs text-muted-foreground flex items-start gap-1.5">
+				<KeyRound className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+				<span>
+					Authenticate with the API token (<span className="font-mono">x-api-token</span>) or a user's login
+					token (<span className="font-mono">Authorization: Bearer …</span>). It is forwarded as is — a Viewer
+					stays a Viewer.
+				</span>
+			</p>
+			<div className="space-y-4">
+				<ClientSnippet
+					heading="Claude Code"
+					note="Set OPSIMATE_API_TOKEN in your shell first, so the token is never typed into the command."
+					code={CLAUDE_CODE_EXAMPLE}
+					copyLabel="Copy the Claude Code command"
+				/>
+				<ClientSnippet
+					heading="Cursor, Windsurf, or a project's .mcp.json"
+					note="Claude Code fills ${OPSIMATE_API_TOKEN} from your environment; Cursor and Windsurf need the token itself — keep it in the user-level file (~/.cursor/mcp.json), not in a repository."
+					code={MCP_JSON_EXAMPLE}
+					copyLabel="Copy the mcp.json entry"
+				/>
+				<ClientSnippet
+					heading="VS Code"
+					note=".vscode/mcp.json; ${env:OPSIMATE_API_TOKEN} is read from your environment."
+					code={VSCODE_EXAMPLE}
+					copyLabel="Copy the VS Code entry"
+				/>
+				<ClientSnippet
+					heading="Claude Desktop (local process over stdio)"
+					note={
+						'The same image, started by the client with Docker; the token comes from env.' +
+						(isLocalHost
+							? ' Inside the container "localhost" is the container itself, hence host.docker.internal.'
+							: '')
+					}
+					code={STDIO_EXAMPLE}
+					copyLabel="Copy the Claude Desktop entry"
+				/>
+			</div>
+		</Step>
 
-		<Card className="p-4 space-y-5">
-			<Step number={1} title="Connect a client">
-				<p className="text-xs text-muted-foreground flex items-start gap-1.5">
+		<Step number={2} title="What the assistant can do">
+			<p className="text-xs text-muted-foreground flex items-start gap-1.5">
+				<Wrench className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+				<span>
+					Seven read-only tools over the same API this UI uses, answering with the values you see here.
+				</span>
+			</p>
+			<ul className="space-y-1.5" aria-label="MCP tools">
+				{MCP_TOOLS.map((tool) => (
+					<li key={tool.name} className="text-xs flex flex-wrap items-baseline gap-x-2">
+						<span className="font-mono text-foreground">{tool.name}</span>
+						<span className="text-muted-foreground">{tool.summary}</span>
+					</li>
+				))}
+			</ul>
+			<p className="text-xs text-muted-foreground pt-1">Things people ask:</p>
+			<ul className="space-y-1" aria-label="Example prompts">
+				{EXAMPLE_PROMPTS.map((prompt) => (
+					<li key={prompt} className="text-xs text-foreground italic">
+						“{prompt}”
+					</li>
+				))}
+			</ul>
+		</Step>
+
+		<Step number={3} title="Good to know">
+			<ul className="space-y-1.5 text-xs text-muted-foreground">
+				<li className="flex items-start gap-1.5">
+					<Eye className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+					<span>
+						Read-only by construction: no tool writes, the server holds no credentials of its own, and
+						OpsiMate's permissions and logs apply. Dashboard time presets resolve at call time.
+					</span>
+				</li>
+				<li className="flex items-start gap-1.5">
 					<Container className="h-3.5 w-3.5 mt-0.5 shrink-0" />
 					<span>
-						The snippets assume the compose default: the MCP container on port{' '}
-						<span className="font-mono">{MCP_DEFAULT_PORT}</span> of this host, at{' '}
-						<span className="font-mono">{DEFAULT_MCP_URL}</span>. Behind an Ingress or on another host,
-						replace the URL.
+						240 requests a minute per caller, then 429 (
+						<span className="font-mono">MCP_RATE_LIMIT_PER_MINUTE</span>; 0 = no limit). Not running the
+						container turns the feature off.
 					</span>
-				</p>
-				<p className="text-xs text-muted-foreground flex items-start gap-1.5">
-					<KeyRound className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-					<span>
-						Authenticate with the API token (<span className="font-mono">x-api-token</span>, the
-						<span className="font-mono"> security.api_token</span> of the server configuration) or with a
-						user's login token (<span className="font-mono">Authorization: Bearer …</span>). The MCP server
-						forwards it to OpsiMate as is: any role works, Viewers included, and a Viewer stays a Viewer.
-					</span>
-				</p>
-				<div className="space-y-4">
-					<ClientSnippet
-						heading="Claude Code"
-						note="One command. Set OPSIMATE_API_TOKEN in your shell first (your secrets manager, or ~/.zshrc) so the token is not typed into the command or saved in shell history; Claude Code then keeps it in its own settings."
-						code={CLAUDE_CODE_EXAMPLE}
-						copyLabel="Copy the Claude Code command"
-					/>
-					<ClientSnippet
-						heading="Cursor, Windsurf, and a project's .mcp.json (Claude Code)"
-						note="The mcpServers shape: .cursor/mcp.json for Cursor, Windsurf's mcp_config.json, or a .mcp.json at a repository root that Claude Code picks up. Claude Code fills ${OPSIMATE_API_TOKEN} from your environment, so the file can be committed; Cursor and Windsurf need the token itself there — use the user-level file (~/.cursor/mcp.json), not one inside a repository."
-						code={MCP_JSON_EXAMPLE}
-						copyLabel="Copy the mcp.json entry"
-					/>
-					<ClientSnippet
-						heading="VS Code"
-						note="VS Code uses a top-level servers object: put this in .vscode/mcp.json (or the user profile's mcp.json). ${env:OPSIMATE_API_TOKEN} is read from your environment, so no token lands in the file."
-						code={VSCODE_EXAMPLE}
-						copyLabel="Copy the VS Code entry"
-					/>
-					<ClientSnippet
-						heading="Claude Desktop and other clients that only start a local process"
-						note={
-							'The same image over stdio, started by the client with Docker. The token is read from the environment (env), never put on the command line.' +
-							(isLocalHost
-								? ' From inside the container, "localhost" is the container itself, so the OpsiMate URL uses host.docker.internal.'
-								: '')
-						}
-						code={STDIO_EXAMPLE}
-						copyLabel="Copy the Claude Desktop entry"
-					/>
-				</div>
-			</Step>
-
-			<Step number={2} title="What the assistant can do">
-				<p className="text-xs text-muted-foreground flex items-start gap-1.5">
-					<Wrench className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-					<span>
-						Seven tools, each a read of the same API this UI uses. Results use the display values you see
-						here (<span className="font-mono">Firing</span>, <span className="font-mono">Critical</span>,
-						owner names), so what the assistant quotes pastes straight back into a filter.
-					</span>
-				</p>
-				<ul className="space-y-1.5" aria-label="MCP tools">
-					{MCP_TOOLS.map((tool) => (
-						<li key={tool.name} className="text-xs flex flex-wrap items-baseline gap-x-2">
-							<span className="font-mono text-foreground">{tool.name}</span>
-							<span className="text-muted-foreground">{tool.summary}</span>
-						</li>
-					))}
-				</ul>
-				<p className="text-xs text-muted-foreground pt-1">Things people ask:</p>
-				<ul className="space-y-1" aria-label="Example prompts">
-					{EXAMPLE_PROMPTS.map((prompt) => (
-						<li key={prompt} className="text-xs text-foreground italic">
-							“{prompt}”
-						</li>
-					))}
-				</ul>
-			</Step>
-
-			<Step number={3} title="Good to know">
-				<ul className="space-y-1.5 text-xs text-muted-foreground">
-					<li className="flex items-start gap-1.5">
-						<Eye className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-						<span>
-							Read-only by construction: the server registers no tool that writes, holds no credentials of
-							its own, and forwards each caller's token, so OpsiMate's permissions and logs apply. A
-							dashboard's time preset (<span className="font-mono">last24h</span>,{' '}
-							<span className="font-mono">today</span>) is resolved at call time, so an assistant sees the
-							same alerts the dashboard shows.
-						</span>
-					</li>
-					<li className="flex items-start gap-1.5">
-						<Container className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-						<span>
-							Stateless Streamable HTTP, scaled and deployed on its own (compose service{' '}
-							<span className="font-mono">mcp</span>, Helm <span className="font-mono">mcp.enabled</span>
-							). Each caller gets 240 requests a minute, then 429 until the minute is over —{' '}
-							<span className="font-mono">MCP_RATE_LIMIT_PER_MINUTE</span> on the container changes it (0
-							= no limit). Not running the container is how you turn the feature off.
-						</span>
-					</li>
-				</ul>
-			</Step>
-		</Card>
-	</div>
+				</li>
+			</ul>
+		</Step>
+	</CollapsibleGuide>
 );

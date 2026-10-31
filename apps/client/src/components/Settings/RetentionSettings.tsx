@@ -123,6 +123,7 @@ const PolicyRow = ({ policy }: { policy: RetentionPolicy }) => {
 						disabled={!policy.enabled || isPending}
 						onChange={(e) => setDays(e.target.value)}
 						onBlur={commitDays}
+						aria-label={`Delete after (days) for ${meta.title}`}
 						onKeyDown={(e) => {
 							if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
 						}}
@@ -242,6 +243,7 @@ export const RetentionSettings = () => {
 						disabled={savingConfig}
 						onChange={(e) => setIntervalHours(e.target.value)}
 						onBlur={commitInterval}
+						aria-label="Cleanup runs every (hours)"
 						onKeyDown={(e) => {
 							if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
 						}}

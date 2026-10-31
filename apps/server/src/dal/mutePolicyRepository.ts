@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { MutePolicy, MutePolicySchedule } from '@OpsiMate/shared';
 import { parseMatcherColumn, parseNameColumn, serializeMatcherColumn, serializeNameColumn } from './matcherColumn';
 import { runAsync } from './db';
+import { InsertResult } from './models';
 
 interface MutePolicyRow {
 	id: number;
@@ -99,7 +100,7 @@ export class MutePolicyRepository {
 		});
 	}
 
-	async createMutePolicy(data: CreateMutePolicyInput): Promise<{ lastID: number }> {
+	async createMutePolicy(data: CreateMutePolicyInput): Promise<InsertResult> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(
 				`INSERT INTO alert_mute_policies (name, name_contains, label_matchers, match_all, starts_at, ends_at, schedule, reason)
