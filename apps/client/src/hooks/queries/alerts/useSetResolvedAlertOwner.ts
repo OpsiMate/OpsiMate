@@ -35,6 +35,8 @@ export const useSetResolvedAlertOwner = () => {
 			// Always refetch after error or success to ensure server state
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
 			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
+			// Removing an owner takes the alert out of its incident (server rule).
+			queryClient.invalidateQueries({ queryKey: queryKeys.incidents });
 		},
 	});
 };

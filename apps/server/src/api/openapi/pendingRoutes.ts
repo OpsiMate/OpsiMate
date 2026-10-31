@@ -11,6 +11,13 @@ export interface PendingRoute {
 }
 
 export const PENDING_API_ROUTES: PendingRoute[] = [
+	// incidents
+	{ method: 'get', path: '/api/v1/incidents' },
+	{ method: 'post', path: '/api/v1/incidents' },
+	{ method: 'get', path: '/api/v1/incidents/:incidentId' },
+	{ method: 'patch', path: '/api/v1/incidents/:incidentId' },
+	{ method: 'post', path: '/api/v1/incidents/:incidentId/alerts/remove' },
+	{ method: 'delete', path: '/api/v1/incidents/:incidentId' },
 	// users
 	{ method: 'post', path: '/api/v1/users/forgot-password' },
 	{ method: 'post', path: '/api/v1/users/validate-reset-password-token' },

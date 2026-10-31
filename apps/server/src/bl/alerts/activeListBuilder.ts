@@ -14,6 +14,7 @@ interface AssembledAlert {
 	rulesKey: string;
 	firingTimes: string[] | undefined;
 	lastComment: string | null;
+	incidentId: number | undefined;
 	alert: Alert;
 }
 
@@ -31,6 +32,11 @@ export type RulesProvider = () => Promise<PreparedRules>;
 const NO_RULES: PreparedRules = { key: 'none', apply: (alert) => alert };
 export const noRules: RulesProvider = () => Promise.resolve(NO_RULES);
 
+// alertId -> incidentId for every grouped alert (see IncidentRepository.getMembershipMap).
+export type MembershipProvider = () => Promise<Map<string, number>>;
+const NO_MEMBERSHIP = new Map<string, number>();
+export const noMembership: MembershipProvider = () => Promise.resolve(NO_MEMBERSHIP);
+
 // Builds the active alerts list. It is rebuilt whenever anything changed — once a
 // second under a webhook storm — but almost every alert in it is exactly as it was.
 // So the work is keyed per alert on its inputs, and an alert whose inputs are
@@ -38,8 +44,8 @@ export const noRules: RulesProvider = () => Promise.resolve(NO_RULES);
 // object for an unchanged row, FiringTimesIndex the same array for unchanged history,
 // and the rule sets a key that only moves when a rule (or a mute schedule window)
 // does. Enrich before mute so mute policy rules can match enrichment-added tags; then
-// firing times and the newest comment, both best-effort — a failed lookup never
-// breaks the listing.
+// firing times, the newest comment and the incident the alert is grouped under, all
+// best-effort — a failed lookup never breaks the listing.
 //
 // Runs on the main thread, or inside a worker thread over its own DB connection (see
 // snapshotWorker.ts) — the state it keeps between builds lives wherever it runs.
@@ -59,7 +65,8 @@ export class ActiveListBuilder {
 		private readonly alertCommentsRepo: AlertCommentsRepository,
 		alertHistoryRepo: AlertHistoryRepository,
 		private readonly enricher: RulesProvider = noRules,
-		private readonly muter: RulesProvider = noRules
+		private readonly muter: RulesProvider = noRules,
+		private readonly membership: MembershipProvider = noMembership
 	) {
 		this.firingTimes = new FiringTimesIndex(alertRepo, alertHistoryRepo);
 	}
@@ -73,7 +80,7 @@ export class ActiveListBuilder {
 	private async buildNow(): Promise<ActiveListBuild> {
 		const sources = await this.alertRepo.getAllAlerts();
 		const ids = sources.map((alert) => alert.id);
-		const [enricher, muter, firing, comments] = await Promise.all([
+		const [enricher, muter, firing, comments, incidents] = await Promise.all([
 			this.enricher(),
 			this.muter(),
 			this.firingTimes.refresh(ids).catch((error: unknown) => {
@@ -85,6 +92,10 @@ export class ActiveListBuilder {
 				const none: Record<string, string> = {};
 				return none;
 			}),
+			this.membership().catch((error: unknown) => {
+				logger.error('Failed to attach incident memberships to alerts', error);
+				return NO_MEMBERSHIP;
+			}),
 		]);
 		const rulesKey = `${enricher.key}\n${muter.key}`;
 		const next = new Map<string, AssembledAlert>();
@@ -92,20 +103,24 @@ export class ActiveListBuilder {
 		const alerts = sources.map((source) => {
 			const firingTimes = firing.get(source.id);
 			const lastComment = comments[source.id] ?? null;
+			const incidentId = incidents.get(source.id);
 			const previous = this.assembled.get(source.id);
 			if (
 				previous &&
 				previous.source === source &&
 				previous.rulesKey === rulesKey &&
 				previous.firingTimes === firingTimes &&
-				previous.lastComment === lastComment
+				previous.lastComment === lastComment &&
+				previous.incidentId === incidentId
 			) {
 				next.set(source.id, previous);
 				return previous.alert;
 			}
 			const ruled = muter.apply(enricher.apply(source));
-			const alert: Alert = firingTimes ? { ...ruled, firingTimes, lastComment } : { ...ruled, lastComment };
-			next.set(source.id, { source, rulesKey, firingTimes, lastComment, alert });
+			const alert: Alert = { ...ruled, lastComment };
+			if (firingTimes) alert.firingTimes = firingTimes;
+			if (incidentId !== undefined) alert.incidentId = incidentId;
+			next.set(source.id, { source, rulesKey, firingTimes, lastComment, incidentId, alert });
 			changed.push(alert);
 			return alert;
 		});

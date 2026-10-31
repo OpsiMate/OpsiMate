@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AlertRow } from '../AlertRow';
 import { FlatGroupItem } from '../AlertsTable.types';
 import { GroupHeader } from '../GroupHeader';
+import { IncidentRow } from '../IncidentRow';
 
 interface VirtualizedAlertListProps {
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -13,6 +14,13 @@ interface VirtualizedAlertListProps {
 	// Content-aware pixel widths for alertName/tag columns (see useContentColumnWidths).
 	contentColumnWidths?: Record<string, number>;
 	onToggleGroup: (key: string) => void;
+	onToggleIncident?: (incidentId: number) => void;
+	onOpenIncident?: (incidentId: number) => void;
+	activeIncidentId?: number | null;
+	onEditIncident?: (incidentId: number) => void;
+	onUngroupIncident?: (incidentId: number) => void;
+	// Offered on member rows (rendered under a folder) only.
+	onRemoveFromIncident?: (alertId: string) => void;
 	onSelectAlert: (alert: Alert) => void;
 	onSelectRange?: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
@@ -43,6 +51,12 @@ export const VirtualizedAlertList = ({
 	orderedColumns,
 	contentColumnWidths,
 	onToggleGroup,
+	onToggleIncident,
+	onOpenIncident,
+	activeIncidentId = null,
+	onEditIncident,
+	onUngroupIncident,
+	onRemoveFromIncident,
 	onSelectAlert,
 	onSelectRange,
 	onAlertClick,
@@ -112,6 +126,34 @@ export const VirtualizedAlertList = ({
 					);
 				}
 
+				if (item.type === 'incident') {
+					return (
+						<div
+							key={virtualRow.key}
+							data-index={virtualRow.index}
+							ref={virtualizer.measureElement}
+							style={{
+								position: 'absolute',
+								top: 0,
+								left: 0,
+								width: '100%',
+								transform: `translateY(${virtualRow.start}px)`,
+							}}
+						>
+							<IncidentRow
+								incident={item.incident}
+								shownCount={item.shownCount}
+								isExpanded={item.isExpanded}
+								onToggle={onToggleIncident ?? (() => undefined)}
+								onOpen={onOpenIncident}
+								onEdit={onEditIncident}
+								onUngroup={onUngroupIncident}
+								isActive={item.incident.id === activeIncidentId}
+							/>
+						</div>
+					);
+				}
+
 				const alert = item.alert;
 				const isSelected = selectedAlerts.some((a) => a.id === alert.id);
 				return (
@@ -119,7 +161,16 @@ export const VirtualizedAlertList = ({
 						key={virtualRow.key}
 						data-index={virtualRow.index}
 						ref={virtualizer.measureElement}
-						className="w-full table-fixed"
+						// Members render nested under their incident's folder: a colored rail
+						// (inset shadow, NOT border/padding — those would shift the row's
+						// columns out of alignment with the sticky header) plus a faint tint.
+						// Same visual language as the history graph's side branch, so
+						// "grouped things" read consistently app-wide.
+						className={
+							item.incidentMember
+								? 'w-full table-fixed shadow-[inset_3px_0_0_0] shadow-sky-400/70 dark:shadow-sky-500/60 bg-sky-500/[0.04]'
+								: 'w-full table-fixed'
+						}
 						style={{
 							position: 'absolute',
 							top: 0,
@@ -142,6 +193,7 @@ export const VirtualizedAlertList = ({
 								onUnsilenceAlert={onUnsilenceAlert}
 								onDeleteAlert={onDeleteAlert}
 								onUnresolveAlert={onUnresolveAlert}
+								onRemoveFromIncident={item.incidentMember ? onRemoveFromIncident : undefined}
 								onSelectAlerts={onSelectAlerts}
 								isResolved={isResolved}
 								severityColors={severityColors}

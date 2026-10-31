@@ -1,6 +1,7 @@
 // Query keys for consistent caching across the application
 export const queryKeys = {
 	alerts: ['alerts'] as const,
+	incidents: ['incidents'] as const,
 	resolvedAlerts: ['resolvedAlerts'] as const,
 	alertComments: ['alertComments'] as const,
 	// Mutation key: list polling pauses while one is pending (see useAlerts).

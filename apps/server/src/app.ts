@@ -17,6 +17,7 @@ import { IntegrationController } from './api/v1/integrations/controller';
 import { PlaygroundController } from './api/v1/playground/controller';
 import { SecretsController } from './api/v1/secrets/controller';
 import { EnrichmentController } from './api/v1/enrichments/controller';
+import { IncidentController } from './api/v1/incidents/controller';
 import { MutePolicyController } from './api/v1/mute-policies/controller';
 import { OncallController } from './api/v1/oncall/controller';
 import { TagController } from './api/v1/tags/controller';
@@ -30,6 +31,7 @@ import { DashboardBL } from './bl/dashboards/dashboard.bl.ts';
 import { IntegrationBL } from './bl/integrations/integration.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
+import { IncidentBL } from './bl/incidents/incident.bl';
 import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
@@ -52,6 +54,7 @@ import { PasswordResetsRepository } from './dal/passwordResetsRepository';
 import { SecretsMetadataRepository } from './dal/secretsMetadataRepository';
 import { ServiceCustomFieldRepository } from './dal/serviceCustomFieldRepository';
 import { EnrichmentRepository } from './dal/enrichmentRepository';
+import { IncidentRepository } from './dal/incidentRepository';
 import { MutePolicyRepository } from './dal/mutePolicyRepository';
 import { OncallRepository } from './dal/oncallRepository';
 import { TagRepository } from './dal/tagRepository';
@@ -117,7 +120,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	);
 	// Resolve (and unresolve) keeps the root cause; a re-fire hides it until a new one is
 	// pushed; permanent deletion drops it.
-	alertBL.setOnAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
+	alertBL.onAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
 	alertBL.setOnAlertsRefired((alertIds) => rootCauseBL.hideForRefiredAlerts(alertIds));
 	const retentionBL = new RetentionBL(retentionRepo);
 
@@ -178,6 +181,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const passwordResetsRepo = new PasswordResetsRepository(db);
 	const playgroundRepo = new PlaygroundRepository(db);
 	const mutePolicyRepo = new MutePolicyRepository(db);
+	const incidentRepo = new IncidentRepository(db);
 	const oncallRepo = new OncallRepository(db);
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
@@ -198,6 +202,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		passwordResetsRepo.initPasswordResetsTable(),
 		playgroundRepo.initPlaygroundTable(),
 		mutePolicyRepo.initMutePoliciesTable(),
+		incidentRepo.initIncidentsTables(),
 		oncallRepo.initOncallTables(),
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
@@ -255,6 +260,20 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		lookupAlert: async (alertId) =>
 			(await alertRepo.getAlert(alertId)) ?? (await resolvedAlertRepo.getResolvedAlert(alertId)) ?? null,
 	});
+	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, {
+		invalidateSnapshots: () => alertBL.invalidateSnapshots(),
+		claimUnowned: (alertIds, actor) => alertBL.claimUnownedAlerts(alertIds, actor),
+	});
+	alertBL.setIncidentRepo(incidentRepo);
+	// Permanent deletion (delete-forever) must not leave dangling incident memberships.
+	alertBL.onAlertPermanentlyDeleted((alertId) => incidentBL.handleAlertsDeleted([alertId]));
+	// Removing an alert's owner takes it out of its incident (see IncidentBL).
+	alertBL.onAlertUnassigned((alertId, actor) =>
+		incidentBL.handleAlertUnassigned(alertId, {
+			id: actor.id != null && Number.isInteger(Number(actor.id)) ? Number(actor.id) : null,
+			name: actor.name,
+		})
+	);
 	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
 	// Controllers (only for SERVER)
@@ -272,6 +291,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentController = new EnrichmentController(enrichmentBL);
 	const actionController = new ActionController(actionBL);
 	const retentionController = new RetentionController(retentionBL);
+	const incidentController = new IncidentController(incidentBL);
 	const aiController = new AiController(aiBL);
 	const callbackController = new CallbackController(callbackBL);
 
@@ -296,6 +316,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			actionController,
 			retentionController,
 			oncallController,
+			incidentController,
 			aiController,
 			new LdapController(ldapSettingsBL),
 			callbackController

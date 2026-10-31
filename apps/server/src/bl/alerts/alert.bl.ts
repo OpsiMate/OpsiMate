@@ -1,5 +1,6 @@
 import { WebhookOwnerResolver } from './webhookOwnerResolver';
 import { AlertRepository, IngestAlert, IngestRowResult } from '../../dal/alertRepository';
+import { IncidentRepository } from '../../dal/incidentRepository';
 import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
@@ -38,7 +39,7 @@ import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
-import { ActiveListBuild, ActiveListBuilder, alertListFingerprint, noRules } from './activeListBuilder';
+import { ActiveListBuild, ActiveListBuilder, alertListFingerprint, noMembership, noRules } from './activeListBuilder';
 import { resolveWorkerScript, SnapshotWorkerClient } from './snapshotWorkerClient';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
@@ -188,12 +189,22 @@ export interface AlertLookup {
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
+	private incidentRepo: IncidentRepository | null = null;
 	// Notified when an alert is deleted for good (resolve is NOT deletion — an alert's
-	// root cause must survive it). Wired in app.ts to drop per-alert satellite rows.
-	private onAlertPermanentlyDeleted: ((alertId: string) => Promise<void>) | null = null;
+	// root cause and incident membership must survive it). Wired in app.ts by every
+	// subsystem that keeps per-alert satellite rows; each listener is best-effort.
+	private permanentDeletionListeners: Array<(alertId: string) => Promise<void>> = [];
 
-	setOnAlertPermanentlyDeleted(callback: (alertId: string) => Promise<void>): void {
-		this.onAlertPermanentlyDeleted = callback;
+	onAlertPermanentlyDeleted(listener: (alertId: string) => Promise<void>): void {
+		this.permanentDeletionListeners.push(listener);
+	}
+
+	// Notified after an alert's owner is removed (single or bulk path, either table).
+	// Incidents drop the alert from its group on this — see IncidentBL.handleAlertUnassigned.
+	private unassignListeners: Array<(alertId: string, actor: AlertCallbackActor) => Promise<void>> = [];
+
+	onAlertUnassigned(listener: (alertId: string, actor: AlertCallbackActor) => Promise<void>): void {
+		this.unassignListeners.push(listener);
 	}
 
 	// Called with the ids of resolved alerts an ingest batch made fire again (new episodes).
@@ -296,7 +307,8 @@ export class AlertBL {
 			alertCommentsRepo,
 			alertHistoryRepo,
 			() => (this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : noRules()),
-			() => (this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : noRules())
+			() => (this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : noRules()),
+			() => (this.incidentRepo ? this.incidentRepo.getMembershipMap() : noMembership())
 		);
 	}
 
@@ -580,6 +592,24 @@ export class AlertBL {
 
 	setEnrichmentBL(enrichmentBL: EnrichmentBL): void {
 		this.enrichmentBL = enrichmentBL;
+	}
+
+	setIncidentRepo(incidentRepo: IncidentRepository): void {
+		this.incidentRepo = incidentRepo;
+	}
+
+	// Stamps each resolved alert with the incident it belongs to, in one pass over the
+	// membership table: membership follows the alert id, so a resolved member still folds
+	// under its incident in the Resolved/All views. (The active list gets the same stamp
+	// inside ActiveListBuilder, where it is part of the per-alert change detection.)
+	private async attachIncidentIds(alerts: Alert[]): Promise<Alert[]> {
+		if (!this.incidentRepo) return alerts;
+		const membership = await this.incidentRepo.getMembershipMap();
+		if (membership.size === 0) return alerts;
+		return alerts.map((alert) => {
+			const incidentId = membership.get(alert.id);
+			return incidentId !== undefined ? { ...alert, incidentId } : alert;
+		});
 	}
 
 	// region active
@@ -918,7 +948,7 @@ export class AlertBL {
 			if (this.enrichmentBL) {
 				alerts = await this.enrichmentBL.applyEnrichments(alerts);
 			}
-			return await this.attachLastComments(await this.attachFiringTimes(alerts));
+			return await this.attachIncidentIds(await this.attachLastComments(await this.attachFiringTimes(alerts)));
 		} catch (error) {
 			logger.error('Error fetching resolved alerts', error);
 			throw error;
@@ -1181,12 +1211,15 @@ export class AlertBL {
 			// Satellite cleanup is BEST-EFFORT: the alert row is already gone, so a
 			// cleanup failure must not fail the request or — worse — skip the snapshot
 			// invalidation below and keep serving the deleted alert from cache. A row
-			// orphaned by a failed cleanup is bounded by the retention policy.
+			// orphaned by a failed cleanup is bounded by the retention policy. One
+			// listener failing must not starve the others.
 			if (deleted > 0) {
-				try {
-					await this.onAlertPermanentlyDeleted?.(alertId);
-				} catch (cleanupError) {
-					logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
+				for (const listener of this.permanentDeletionListeners) {
+					try {
+						await listener(alertId);
+					} catch (cleanupError) {
+						logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
+					}
 				}
 				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
@@ -1369,6 +1402,21 @@ export class AlertBL {
 	// endregion
 
 	// region owner
+	// Assign `actor` to each listed alert that has no owner yet, in whichever table it
+	// lives; owned alerts are left alone. Grouping into an incident uses this to make
+	// the creator responsible for the members nobody had picked up. A tokenless actor
+	// (API token) has no user to assign, so nothing happens.
+	async claimUnownedAlerts(alertIds: string[], actor: { id: number | null; name: string | null }): Promise<void> {
+		if (actor.id === null) return;
+		const ownerId = String(actor.id);
+		for (const alertId of alertIds) {
+			const active = await this.alertRepo.getAlert(alertId);
+			const alert = active ?? (await this.resolvedAlertRepo.getResolvedAlert(alertId));
+			if (!alert || alert.ownerId) continue;
+			await this.setAlertOwner(alertId, ownerId, active === null, actor.name, ownerId);
+		}
+	}
+
 	async setAlertOwner(
 		alertId: string,
 		ownerId: string | null,
@@ -1417,6 +1465,13 @@ export class AlertBL {
 							ownerName: null,
 						}
 					);
+					for (const listener of this.unassignListeners) {
+						try {
+							await listener(alertId, { id: actorId ?? null, name: actorName ?? null });
+						} catch (listenerError) {
+							logger.error(`Unassign listener failed for alert ${alertId}`, listenerError);
+						}
+					}
 				}
 			}
 			return updated;
