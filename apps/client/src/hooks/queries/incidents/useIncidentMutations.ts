@@ -13,7 +13,7 @@ const useInvalidateIncidentData = () => {
 		void queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
 		// Membership changes write per-alert history events; an OPEN alert panel (or
 		// incident panel) must show them without being reopened.
-		void queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+		void queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
 	};
 };
 

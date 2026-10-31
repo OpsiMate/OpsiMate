@@ -117,30 +117,35 @@ export class IncidentBL {
 
 	async create(request: CreateIncidentRequest, actor: IncidentActor): Promise<IncidentSummary> {
 		await this.assertAlertsExist(request.alertIds);
-		// The default name needs the id, so create first and rename when unnamed.
-		const { lastID } = await this.incidentRepo.createIncident({
-			name: request.name?.trim() || 'pending',
-			description: request.description?.trim() || null,
-			createdBy: actor.id,
-		});
-		if (!request.name?.trim()) {
-			await this.incidentRepo.updateIncident(lastID, { name: `Incident #${lastID}` });
-		}
-		const { transitions } = await this.incidentRepo.addAlerts(lastID, request.alertIds);
-
+		const { lastID, transitions } = await this.incidentRepo.createIncidentWithAlerts(
+			{
+				name: request.name?.trim() || null,
+				description: request.description?.trim() || null,
+				createdBy: actor.id,
+			},
+			request.alertIds
+		);
 		const summary = await this.incidentRepo.getIncidentSummaryById(lastID);
 		if (!summary) throw new Error(`Incident ${lastID} vanished right after creation`);
-		// Removal events for re-homed alerts must be written BEFORE the emptied source
-		// incidents dissolve, while their names are still readable.
-		await this.recordAddTransitions(transitions, lastID, summary.name, actor);
-		await this.dissolveIfEmpty(
-			transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null)
-		);
-		// Grouping is taking charge: the creator owns the incident (createdBy) and every
-		// member nobody owned yet. Members that already have an owner keep them. This is
-		// what keeps an incident whole in the split-by-owner view — see handleAlertUnassigned
-		// for the other half of the rule.
-		await this.alerts.claimUnowned(request.alertIds, actor);
+
+		// The incident is durable from here on. What follows is bookkeeping around it and
+		// is best-effort: a failure is logged, not surfaced, because a 500 after the commit
+		// would invite a retry that creates a SECOND incident and moves the alerts into it.
+		try {
+			// Removal events for re-homed alerts must be written BEFORE the emptied source
+			// incidents dissolve, while their names are still readable.
+			await this.recordAddTransitions(transitions, lastID, summary.name, actor);
+			await this.dissolveIfEmpty(
+				transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null)
+			);
+			// Grouping is taking charge: the creator owns the incident (createdBy) and every
+			// member nobody owned yet. Members that already have an owner keep them. This is
+			// what keeps an incident whole in the split-by-owner view — see
+			// handleAlertUnassigned for the other half of the rule.
+			await this.alerts.claimUnowned(request.alertIds, actor);
+		} catch (error) {
+			logger.error(`Incident ${lastID} was created, but its history/ownership follow-up failed`, error);
+		}
 		this.alerts.invalidateSnapshots();
 		return summary;
 	}

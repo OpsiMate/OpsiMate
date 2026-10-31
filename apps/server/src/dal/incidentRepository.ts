@@ -1,6 +1,7 @@
 import { AlertSeverity, Incident, IncidentSummary } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
+import { toIsoUtc } from '../utils/time';
 
 interface IncidentRow {
 	id: number;
@@ -22,12 +23,13 @@ interface IncidentSummaryRow extends IncidentRow {
 	latest_updated_at: string | null;
 	// GROUP_CONCAT of distinct member severities, e.g. "critical,warning".
 	severities: string | null;
-	// GROUP_CONCAT of member alert ids.
-	alert_ids: string | null;
+	// json_group_array of member alert ids ("[null]" for an incident with no members).
+	alert_ids: string;
 }
 
 export interface CreateIncidentInput {
-	name: string;
+	// null: named "Incident #<id>" once the id is known.
+	name: string | null;
 	description: string | null;
 	createdBy: number | null;
 }
@@ -86,8 +88,9 @@ export class IncidentRepository {
 		name: row.name,
 		description: row.description,
 		createdBy: row.created_by,
-		createdAt: row.created_at,
-		updatedAt: row.updated_at,
+		// SQLite's CURRENT_TIMESTAMP carries no zone marker; the client would read it as local time.
+		createdAt: toIsoUtc(row.created_at),
+		updatedAt: toIsoUtc(row.updated_at),
 	});
 
 	private toSummary = (row: IncidentSummaryRow): IncidentSummary => ({
@@ -97,9 +100,10 @@ export class IncidentRepository {
 		firingCount: row.firing_count,
 		resolvedCount: row.resolved_count,
 		worstSeverity: worstSeverity(row.severities),
-		earliestStartsAt: row.earliest_starts_at,
-		latestUpdatedAt: row.latest_updated_at,
-		alertIds: row.alert_ids ? row.alert_ids.split(',') : [],
+		earliestStartsAt: row.earliest_starts_at ? toIsoUtc(row.earliest_starts_at) : null,
+		latestUpdatedAt: row.latest_updated_at ? toIsoUtc(row.latest_updated_at) : null,
+		// JSON, not GROUP_CONCAT: an alert id may itself contain a comma.
+		alertIds: (JSON.parse(row.alert_ids) as (string | null)[]).filter((id): id is string => id !== null),
 	});
 
 	async initIncidentsTables(): Promise<void> {
@@ -128,13 +132,42 @@ export class IncidentRepository {
 		});
 	}
 
-	async createIncident(data: CreateIncidentInput): Promise<{ lastID: number }> {
-		return runAsync(() => {
-			const result = this.db
-				.prepare(`INSERT INTO incidents (name, description, created_by) VALUES (?, ?, ?)`)
-				.run(data.name, data.description, data.createdBy);
-			return { lastID: result.lastInsertRowid as number };
-		});
+	// The incident row, its default name (which needs the id) and its memberships commit
+	// in ONE transaction: never an incident without members, nor members pointing at an
+	// incident that does not exist. Returns what happened to each alert, so history
+	// reflects TRANSITIONS rather than requests: a re-homed alert owes a "removed" event
+	// to the incident it left.
+	async createIncidentWithAlerts(
+		data: CreateIncidentInput,
+		alertIds: string[]
+	): Promise<{ lastID: number; transitions: MembershipTransition[] }> {
+		return runAsync(() =>
+			this.db.transaction(() => {
+				const result = this.db
+					.prepare(`INSERT INTO incidents (name, description, created_by) VALUES (?, ?, ?)`)
+					.run(data.name ?? 'pending', data.description, data.createdBy);
+				const lastID = result.lastInsertRowid as number;
+				if (data.name === null) {
+					this.db.prepare(`UPDATE incidents SET name = ? WHERE id = ?`).run(`Incident #${lastID}`, lastID);
+				}
+				const placeholders = alertIds.map(() => '?').join(', ');
+				const previousRows = this.db
+					.prepare(`SELECT alert_id, incident_id FROM incident_alerts WHERE alert_id IN (${placeholders})`)
+					.all(...alertIds) as { alert_id: string; incident_id: number }[];
+				const previousByAlert = new Map(previousRows.map((r) => [r.alert_id, r.incident_id]));
+				const insert = this.db.prepare(
+					`INSERT OR REPLACE INTO incident_alerts (incident_id, alert_id) VALUES (?, ?)`
+				);
+				for (const alertId of alertIds) insert.run(lastID, alertId);
+				return {
+					lastID,
+					transitions: alertIds.map((alertId) => ({
+						alertId,
+						previousIncidentId: previousByAlert.get(alertId) ?? null,
+					})),
+				};
+			})()
+		);
 	}
 
 	async updateIncident(id: number, data: UpdateIncidentInput): Promise<void> {
@@ -176,7 +209,7 @@ export class IncidentRepository {
 					       MIN(ms.starts_at)                                    AS earliest_starts_at,
 					       MAX(ms.updated_at)                                   AS latest_updated_at,
 					       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
-					       GROUP_CONCAT(ms.alert_id)                            AS alert_ids
+					       json_group_array(ms.alert_id)                        AS alert_ids
 					FROM incidents i
 					LEFT JOIN users u         ON u.id = i.created_by
 					LEFT JOIN member_state ms ON ms.incident_id = i.id
@@ -201,7 +234,7 @@ export class IncidentRepository {
 					       MIN(ms.starts_at)                                    AS earliest_starts_at,
 					       MAX(ms.updated_at)                                   AS latest_updated_at,
 					       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
-					       GROUP_CONCAT(ms.alert_id)                            AS alert_ids
+					       json_group_array(ms.alert_id)                        AS alert_ids
 					FROM incidents i
 					LEFT JOIN users u         ON u.id = i.created_by
 					LEFT JOIN member_state ms ON ms.incident_id = i.id
@@ -210,33 +243,6 @@ export class IncidentRepository {
 				)
 				.get(id) as IncidentSummaryRow | undefined;
 			return row ? this.toSummary(row) : undefined;
-		});
-	}
-
-	// What actually happened to each requested alert, so history reflects TRANSITIONS
-	// rather than requests: re-adding an existing member is not an "added" event, and
-	// a re-homed alert owes a "removed" event to the incident it left.
-	async addAlerts(incidentId: number, alertIds: string[]): Promise<{ transitions: MembershipTransition[] }> {
-		return runAsync(() => {
-			const placeholders = alertIds.map(() => '?').join(', ');
-			const previousRows = this.db
-				.prepare(`SELECT alert_id, incident_id FROM incident_alerts WHERE alert_id IN (${placeholders})`)
-				.all(...alertIds) as { alert_id: string; incident_id: number }[];
-			const previousByAlert = new Map(previousRows.map((r) => [r.alert_id, r.incident_id]));
-			const insert = this.db.prepare(
-				`INSERT OR REPLACE INTO incident_alerts (incident_id, alert_id) VALUES (?, ?)`
-			);
-			const touch = this.db.prepare(`UPDATE incidents SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
-			this.db.transaction(() => {
-				for (const alertId of alertIds) insert.run(incidentId, alertId);
-				touch.run(incidentId);
-			})();
-			return {
-				transitions: alertIds.map((alertId) => ({
-					alertId,
-					previousIncidentId: previousByAlert.get(alertId) ?? null,
-				})),
-			};
 		});
 	}
 
