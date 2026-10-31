@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { Integration, IntegrationType } from '@OpsiMate/shared';
-import { IntegrationRow } from './models';
+import { InsertResult, IntegrationRow } from './models';
 import { decryptPassword, encryptPassword } from '../utils/encryption';
 
 const mapRowToIntegration = (row: IntegrationRow): Integration => ({
@@ -20,7 +20,7 @@ export class IntegrationRepository {
 		this.db = db;
 	}
 
-	async createIntegration(data: Omit<Integration, 'id' | 'createdAt'>): Promise<{ lastID: number }> {
+	async createIntegration(data: Omit<Integration, 'id' | 'createdAt'>): Promise<InsertResult> {
 		return await runAsync(() => {
 			const stmt = this.db.prepare(`
                 INSERT INTO integrations (name, type, external_url, credentials)
@@ -36,15 +36,15 @@ export class IntegrationRepository {
 		});
 	}
 
-	async getIntegrationById(id: number): Promise<Integration> {
+	async getIntegrationById(id: number): Promise<Integration | undefined> {
 		return runAsync(() => {
 			const stmt = this.db.prepare(`
                 SELECT id, name, type, external_url, credentials, created_at
                 FROM integrations
                 WHERE id = ?
             `);
-			const row = stmt.get(id) as IntegrationRow;
-			return mapRowToIntegration(row);
+			const row = stmt.get(id) as IntegrationRow | undefined;
+			return row ? mapRowToIntegration(row) : undefined;
 		});
 	}
 

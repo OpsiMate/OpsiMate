@@ -9,6 +9,16 @@ export interface IncidentActor {
 	name: string | null;
 }
 
+// What the incident BL needs from the alerts BL. A port rather than the BL itself:
+// alert.bl already reads the incident repo to stamp memberships, so a direct reference
+// would be a dependency cycle.
+export interface IncidentAlertsPort {
+	// Membership changes alter the incidentId stamped on alert snapshots.
+	invalidateSnapshots(): void;
+	// Assign the actor to every listed alert that has no owner yet (either table).
+	claimUnowned(alertIds: string[], actor: IncidentActor): Promise<void>;
+}
+
 export interface CreateIncidentRequest {
 	name?: string;
 	description?: string;
@@ -28,11 +38,7 @@ export class IncidentBL {
 	constructor(
 		private incidentRepo: IncidentRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
-		// Membership changes alter the incidentId attached to alert snapshots; the alert
-		// BL owns those caches, so it hands us its invalidator instead of itself (a
-		// direct reference would be a dependency cycle: alert.bl already reads the
-		// incident repo to attach memberships).
-		private invalidateAlertSnapshots: () => void
+		private alerts: IncidentAlertsPort
 	) {}
 
 	private async recordMembershipEvents(
@@ -130,7 +136,12 @@ export class IncidentBL {
 		await this.dissolveIfEmpty(
 			transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null)
 		);
-		this.invalidateAlertSnapshots();
+		// Grouping is taking charge: the creator owns the incident (createdBy) and every
+		// member nobody owned yet. Members that already have an owner keep them. This is
+		// what keeps an incident whole in the split-by-owner view — see handleAlertUnassigned
+		// for the other half of the rule.
+		await this.alerts.claimUnowned(request.alertIds, actor);
+		this.alerts.invalidateSnapshots();
 		return summary;
 	}
 
@@ -148,19 +159,6 @@ export class IncidentBL {
 	async update(id: number, data: UpdateIncidentInput): Promise<Incident | undefined> {
 		await this.incidentRepo.updateIncident(id, data);
 		return this.incidentRepo.getIncidentById(id);
-	}
-
-	async addAlerts(id: number, alertIds: string[], actor: IncidentActor): Promise<IncidentSummary | undefined> {
-		const incident = await this.incidentRepo.getIncidentById(id);
-		if (!incident) return undefined;
-		await this.assertAlertsExist(alertIds);
-		const { transitions } = await this.incidentRepo.addAlerts(id, alertIds);
-		await this.recordAddTransitions(transitions, id, incident.name, actor);
-		await this.dissolveIfEmpty(
-			transitions.map((t) => t.previousIncidentId).filter((prev): prev is number => prev !== null)
-		);
-		this.invalidateAlertSnapshots();
-		return this.incidentRepo.getIncidentSummaryById(id);
 	}
 
 	// Removing the last member dissolves the incident: an empty folder can't be seen or
@@ -183,7 +181,7 @@ export class IncidentBL {
 		if (remaining === 0) {
 			await this.incidentRepo.deleteIncident(id);
 		}
-		this.invalidateAlertSnapshots();
+		this.alerts.invalidateSnapshots();
 		return { dissolved: remaining === 0 };
 	}
 
@@ -193,8 +191,18 @@ export class IncidentBL {
 		if (!incident) return false;
 		const { memberAlertIds } = await this.incidentRepo.deleteIncident(id);
 		await this.recordMembershipEvents(memberAlertIds, AlertHistoryEventType.INCIDENT_REMOVED, incident.name, actor);
-		this.invalidateAlertSnapshots();
+		this.alerts.invalidateSnapshots();
 		return true;
+	}
+
+	// Hook for the alert owner path: an alert whose owner is removed leaves its incident.
+	// Membership means "someone is handling this as part of the incident"; unassigning
+	// says the opposite, and keeping the alert would split the folder between the
+	// Unassigned and Assigned panes.
+	async handleAlertUnassigned(alertId: string, actor: IncidentActor): Promise<void> {
+		const incidentId = await this.incidentRepo.getIncidentIdForAlert(alertId);
+		if (incidentId === null) return;
+		await this.removeAlerts(incidentId, [alertId], actor);
 	}
 
 	// Hook for the alerts delete-forever paths: memberships must not dangle after their
@@ -203,7 +211,7 @@ export class IncidentBL {
 		const { affectedIncidentIds } = await this.incidentRepo.removeMembershipForAlerts(alertIds);
 		if (affectedIncidentIds.length > 0) {
 			await this.dissolveIfEmpty(affectedIncidentIds);
-			this.invalidateAlertSnapshots();
+			this.alerts.invalidateSnapshots();
 		}
 	}
 }

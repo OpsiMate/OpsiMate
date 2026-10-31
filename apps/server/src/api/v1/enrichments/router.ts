@@ -6,6 +6,7 @@ export default function createEnrichmentRouter(enrichmentController: EnrichmentC
 
 	router.get('/', enrichmentController.listHandler);
 	router.post('/', enrichmentController.createHandler);
+	router.get('/:enrichmentId/history', enrichmentController.historyHandler);
 	router.get('/:enrichmentId', enrichmentController.getHandler);
 	router.put('/:enrichmentId', enrichmentController.updateHandler);
 	router.delete('/:enrichmentId', enrichmentController.deleteHandler);

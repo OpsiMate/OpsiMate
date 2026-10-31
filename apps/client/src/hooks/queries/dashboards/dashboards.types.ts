@@ -1,9 +1,9 @@
-import { DashboardTimeRange, Tag } from '@OpsiMate/shared';
+import { DashboardTimeRange, Tag, DashboardType } from '@OpsiMate/shared';
 
 export interface Dashboard {
 	id: string;
 	name: string;
-	type: 'services' | 'alerts';
+	type: DashboardType;
 	description?: string;
 	filters: Record<string, string[]>;
 	visibleColumns: string[];
@@ -23,7 +23,7 @@ export interface Dashboard {
 
 export interface CreateDashboardInput {
 	name: string;
-	type: 'services' | 'alerts';
+	type: DashboardType;
 	description?: string;
 	filters: Record<string, string[]>;
 	visibleColumns: string[];

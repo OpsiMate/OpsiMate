@@ -5,8 +5,9 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // HTTP + persistence contract of the incidents feature: grouping, exclusivity
 // (one incident per alert, re-homing moves), roll-ups over both alert tables,
-// dissolution when emptied, incidentId attached to alert list responses, and
-// membership survival across resolve but not delete-forever.
+// dissolution when emptied, incidentId attached to alert list responses,
+// membership survival across resolve but not delete-forever, and ownership: the
+// creator owns the incident and its unowned members, and unassigning leaves it.
 
 let app: SuperTest<Test>;
 let db: Database.Database;
@@ -54,16 +55,19 @@ describe('incidents', () => {
 	let incidentId: number;
 
 	test('creating from a selection groups the alerts and defaults the name', async () => {
-		const res = await post('/api/v1/incidents', { alertIds: ['inc-a', 'inc-b'] });
+		// A resolved alert can be a member too; the roll-up spans both tables.
+		const res = await post('/api/v1/incidents', { alertIds: ['inc-a', 'inc-b', 'inc-r'] });
 		expect(res.status).toBe(201);
 		incidentId = res.body.data.id;
 		expect(res.body.data.name).toBe(`Incident #${incidentId}`);
-		expect(res.body.data.alertCount).toBe(2);
+		expect(res.body.data.alertCount).toBe(3);
 		expect(res.body.data.firingCount).toBe(2);
+		expect(res.body.data.resolvedCount).toBe(1);
 		expect(res.body.data.worstSeverity).toBe('critical');
 		// Earliest member start, not creation time.
-		expect(res.body.data.earliestStartsAt).toBe('2026-08-10T09:00:00.000Z');
-		expect(res.body.data.alertIds.sort()).toEqual(['inc-a', 'inc-b']);
+		expect(res.body.data.earliestStartsAt).toBe('2026-08-01T00:00:00.000Z');
+		expect(res.body.data.alertIds.sort()).toEqual(['inc-a', 'inc-b', 'inc-r']);
+		expect(res.body.data.ownerName).toBe('Provider User');
 	});
 
 	test('a member alert carries incidentId on the list response', async () => {
@@ -95,14 +99,6 @@ describe('incidents', () => {
 		expect(res.body.data.name).toBe('Database meltdown');
 		const listed = await get('/api/v1/incidents');
 		expect(listed.body.data[0].description).toBe('Everything DB is on fire');
-	});
-
-	test('a resolved alert can join and the roll-up spans both tables', async () => {
-		const res = await post(`/api/v1/incidents/${incidentId}/alerts`, { alertIds: ['inc-r'] });
-		expect(res.status).toBe(200);
-		expect(res.body.data.alertCount).toBe(3);
-		expect(res.body.data.firingCount).toBe(2);
-		expect(res.body.data.resolvedCount).toBe(1);
 	});
 
 	test('creating a second incident with an already-grouped alert re-homes it', async () => {
@@ -177,10 +173,6 @@ describe('incidents', () => {
 			);
 		};
 
-		// Re-adding an existing member is a no-op, not another "added" event.
-		await post(`/api/v1/incidents/${firstId}/alerts`, { alertIds: ['tr-a'] });
-		expect(await historyOf('tr-a')).toHaveLength(1);
-
 		// Re-homing writes a "removed from First home" AND an "added to Second".
 		const second = await post('/api/v1/incidents', { name: 'Second home', alertIds: ['tr-a', 'tr-c'] });
 		expect(second.status).toBe(201);
@@ -208,7 +200,94 @@ describe('incidents', () => {
 
 		await del('/api/v1/alerts/resolved/inc-r3').expect(200);
 		listed = await get('/api/v1/incidents');
-		summary = (listed.body.data as { id: number }[]).find((i) => i.id === id);
+		summary = (listed.body.data as { id: number; alertCount: number }[]).find((i) => i.id === id);
 		expect(summary).toBeUndefined();
+	});
+});
+
+describe('incident ownership', () => {
+	let creatorId: number;
+	let otherUserId: number;
+	let incidentId: number;
+
+	const alertsById = async () => {
+		const res = await get('/api/v1/alerts');
+		return new Map(
+			(res.body.data.alerts as { id: string; ownerId?: string | null; incidentId?: number | null }[]).map((a) => [
+				a.id,
+				a,
+			])
+		);
+	};
+
+	beforeAll(() => {
+		creatorId = (
+			db.prepare(`SELECT id FROM users WHERE email = 'provideruser@example.com'`).get() as { id: number }
+		).id;
+		otherUserId = Number(
+			db
+				.prepare(
+					`INSERT INTO users (email, password_hash, full_name, role) VALUES (?, 'x', 'Other User', 'viewer')`
+				)
+				.run('other@example.com').lastInsertRowid
+		);
+		insertAlert('own-a', 'Unowned A', 'warning', '2026-08-12T10:00:00.000Z');
+		insertAlert('own-b', 'Owned B', 'warning', '2026-08-12T10:00:00.000Z');
+		insertAlert('own-c', 'Unowned C', 'warning', '2026-08-12T10:00:00.000Z');
+		db.prepare(`UPDATE alerts SET owner_id = ? WHERE id = 'own-b'`).run(otherUserId);
+	});
+
+	test('grouping makes the creator the owner of the incident and of its unowned members', async () => {
+		const res = await post('/api/v1/incidents', { alertIds: ['own-a', 'own-b', 'own-c'] });
+		expect(res.status).toBe(201);
+		incidentId = res.body.data.id;
+		expect(res.body.data.createdBy).toBe(creatorId);
+		expect(res.body.data.ownerName).toBe('Provider User');
+
+		const alerts = await alertsById();
+		expect(alerts.get('own-a')?.ownerId).toBe(String(creatorId));
+		expect(alerts.get('own-c')?.ownerId).toBe(String(creatorId));
+		// An alert someone already owns keeps its owner.
+		expect(alerts.get('own-b')?.ownerId).toBe(String(otherUserId));
+
+		const history = await get('/api/v1/alerts/own-a/history');
+		const types = (history.body.data.data as { eventType?: string }[]).map((e) => e.eventType);
+		expect(types).toContain('owner_assigned');
+	});
+
+	test('removing an alert owner takes the alert out of its incident', async () => {
+		const res = await patch('/api/v1/alerts/own-a/owner', { ownerId: null });
+		expect(res.status).toBe(200);
+
+		const alerts = await alertsById();
+		expect(alerts.get('own-a')?.incidentId ?? null).toBeNull();
+		expect(alerts.get('own-b')?.incidentId).toBe(incidentId);
+
+		const incident = await get(`/api/v1/incidents/${incidentId}`);
+		expect((incident.body.data.alertIds as string[]).sort()).toEqual(['own-b', 'own-c']);
+
+		const history = await get('/api/v1/alerts/own-a/history');
+		const types = (history.body.data.data as { eventType?: string }[]).map((e) => e.eventType);
+		expect(types).toContain('incident_removed');
+	});
+
+	test('the bulk unassign path does the same, and the last member leaving dissolves the incident', async () => {
+		const res = await post('/api/v1/alerts/bulk', {
+			action: 'assignOwner',
+			ownerId: null,
+			ids: ['own-b', 'own-c'],
+		});
+		expect(res.status).toBe(200);
+		const gone = await get(`/api/v1/incidents/${incidentId}`);
+		expect(gone.status).toBe(404);
+		expect((await alertsById()).get('own-b')?.incidentId ?? null).toBeNull();
+	});
+
+	test('re-assigning to another owner keeps the alert in its incident', async () => {
+		const res = await post('/api/v1/incidents', { alertIds: ['own-a', 'own-b'] });
+		const id = res.body.data.id as number;
+		await patch('/api/v1/alerts/own-a/owner', { ownerId: String(otherUserId) }).expect(200);
+		const incident = await get(`/api/v1/incidents/${id}`);
+		expect((incident.body.data.alertIds as string[]).sort()).toEqual(['own-a', 'own-b']);
 	});
 });

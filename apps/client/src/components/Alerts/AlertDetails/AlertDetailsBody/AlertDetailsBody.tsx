@@ -1,7 +1,6 @@
 import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
 import { FileText, Link2, PhoneCall, Tag } from 'lucide-react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
-import { hasAlertTags } from '../../utils/alertTags.utils';
 import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertHistorySection } from '../AlertHistorySection';
 import { AlertInfoSection } from '../AlertInfoSection';
@@ -21,16 +20,24 @@ interface AlertDetailsBodyProps {
 	timeRange?: TimeRange | null;
 	// Switches to the Comments tab (containers with tabs only).
 	onViewAllComments?: () => void;
+	// The alert is in the resolved list (see AlertInfoSection).
+	isResolved?: boolean;
 }
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
 // top; everything else lives in collapsible sections (summary, latest comment, history,
 // labels, links) followed by the custom-actions section. The silence/resolve buttons are
 // NOT part of the body — containers pin them at the bottom via AlertFooterActions.
-export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComments }: AlertDetailsBodyProps) => {
+export const AlertDetailsBody = ({
+	alert,
+	historyData,
+	timeRange,
+	onViewAllComments,
+	isResolved,
+}: AlertDetailsBodyProps) => {
 	return (
 		<div className="p-4 space-y-2">
-			<AlertInfoSection alert={alert} />
+			<AlertInfoSection alert={alert} isResolved={isResolved} />
 
 			{alert.summary && (
 				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
@@ -52,11 +59,10 @@ export const AlertDetailsBody = ({ alert, historyData, timeRange, onViewAllComme
 				<AlertHistorySection historyData={historyData} timeRange={timeRange} />
 			)}
 
-			{hasAlertTags(alert) && (
-				<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertTagsSection alert={alert} />
-				</CollapsibleSection>
-			)}
+			{/* Always present: the alert id is listed here even when the alert has no tags. */}
+			<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
+				<AlertTagsSection alert={alert} />
+			</CollapsibleSection>
 
 			{getAlertLinks(alert).length > 0 && (
 				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>

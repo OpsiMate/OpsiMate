@@ -1,7 +1,14 @@
 import { SuperTest, Test } from 'supertest';
-import { Alert, AlertStatus, Logger } from '@OpsiMate/shared';
+import {
+	Alert,
+	ALERT_COMMENT_MAX_LENGTH,
+	AlertStatus,
+	AlertType,
+	DEFAULT_ALERT_SEVERITY,
+	Logger,
+} from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { AlertRow } from '../src/dal/models';
+import { AlertRow, ResolvedAlertRow } from '../src/dal/models';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 const logger = new Logger('test-alerts');
@@ -89,7 +96,7 @@ const seedAlerts = () => {
 	const sampleResolvedAlerts = [
 		{
 			id: 'resolved-1',
-			type: 'Grafana',
+			type: 'Grafana' as AlertType,
 			status: 'resolved',
 			tags: { tag: 'system' },
 			starts_at: new Date(Date.now() - 5 * 3600000).toISOString(), // 5 hours ago
@@ -131,7 +138,10 @@ const seedAlerts = () => {
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
-		tags: row.tags,
+		// The seed writes no severity column, and the repository reads a missing one
+		// back as the default, so the fixture mirrors that.
+		severity: DEFAULT_ALERT_SEVERITY,
+		tags: JSON.parse(row.tags),
 		startsAt: row.starts_at,
 		updatedAt: row.updated_at,
 		alertUrl: row.alert_url,
@@ -145,12 +155,14 @@ const seedAlerts = () => {
 		id: row.id,
 		status: row.status == 'firing' ? AlertStatus.FIRING : AlertStatus.RESOLVED,
 		type: row.type,
+		severity: DEFAULT_ALERT_SEVERITY,
 		tags: row.tags,
 		startsAt: row.starts_at,
 		updatedAt: row.updated_at,
 		alertUrl: row.alert_url,
 		alertName: row.alert_name,
 		archivedAt: row.archived_at,
+		createdAt: Date.now().toString(),
 		isSilenced: row.is_dismissed,
 	}));
 
@@ -275,7 +287,7 @@ describe('Alerts API', () => {
 			expect(response.body.data?.alert.id).toBe(alertId);
 		});
 
-		test('should handle unsilenceing an already active alert', async () => {
+		test('should handle unsilencing an already active alert', async () => {
 			const alertId = testAlerts[0].id; // 'alert-1' (not silenced)
 			expect(testAlerts[0].isSilenced).toBe(false);
 
@@ -452,7 +464,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe(payload.id);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.alertName);
 		});
@@ -559,7 +571,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.id) as AlertRow;
 			expect(row.severity).toBe('warning');
-			expect(JSON.parse(row.tags as string).severity).toBe('warning');
+			expect(JSON.parse(row.tags).severity).toBe('warning');
 		});
 
 		test('should default severity for prototype-key payloads instead of crashing', async () => {
@@ -626,7 +638,7 @@ describe('Alerts API', () => {
 			expect(row.severity).toBe('critical');
 			// The stored tag is rewritten to the normalized value so label matchers
 			// (mute policies/enrichments) see the same scale as the severity field.
-			expect(JSON.parse(row.tags as string).severity).toBe('critical');
+			expect(JSON.parse(row.tags).severity).toBe('critical');
 		});
 
 		test('should expose severity on the alerts list API', async () => {
@@ -1247,7 +1259,9 @@ describe('Alerts API', () => {
 			const rowAfter = db.prepare('SELECT * FROM alerts WHERE id = ?').get(alertInstanceId);
 			expect(rowAfter).toBeUndefined();
 
-			const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(alertInstanceId);
+			const resolvedRow = db
+				.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
+				.get(alertInstanceId) as ResolvedAlertRow;
 			expect(resolvedRow).toBeDefined();
 			expect(resolvedRow.id).toBe(alertInstanceId);
 		});
@@ -1389,7 +1403,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe('UPTIMEKUMA_4');
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4');
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('UPTIMEKUMA_4') as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(baseMonitor.pathName);
 			expect(row.status).toBe('firing');
@@ -1573,7 +1587,7 @@ describe('Alerts API', () => {
 			expect(response.body.success).toBe(true);
 			expect(response.body.data.alertId).toBe(payload.incident.incident_id);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.incident.incident_id);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(payload.incident.incident_id) as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
 			expect(row.status).toBe('firing');
@@ -1603,7 +1617,7 @@ describe('Alerts API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
 
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId) as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe(payload.incident.policy_name);
 			expect(row.status).toBe('firing');
@@ -1635,7 +1649,9 @@ describe('Alerts API', () => {
 			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(existingId);
 			expect(row).toBeUndefined();
 
-			const resolvedRow = db.prepare('SELECT * FROM alerts_resolved WHERE id = ?').get(existingId);
+			const resolvedRow = db
+				.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
+				.get(existingId) as ResolvedAlertRow;
 
 			expect(resolvedRow).toBeDefined();
 			expect(resolvedRow.id).toBe(existingId);
@@ -1738,7 +1754,7 @@ describe('Alerts API', () => {
 			expect(response.body.data.alertId).toBe('0.nzm8u2jxkaq5');
 
 			// Validate DB
-			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('0.nzm8u2jxkaq5');
+			const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get('0.nzm8u2jxkaq5') as AlertRow;
 			expect(row).toBeDefined();
 			expect(row.alert_name).toBe('mytestforgcp');
 			expect(row.summary).toContain('CPU usage for opsimate');
@@ -1911,7 +1927,7 @@ describe('Alerts API', () => {
 				// Verify alert is in resolved alerts table with resolved status
 				const resolvedRow = db
 					.prepare('SELECT * FROM alerts_resolved WHERE id = ?')
-					.get(newAlertPayload.id) as any;
+					.get(newAlertPayload.id) as ResolvedAlertRow;
 				expect(resolvedRow).toBeDefined();
 				expect(resolvedRow.id).toBe(newAlertPayload.id);
 				expect(resolvedRow.status).toBe('resolved');
@@ -1977,6 +1993,104 @@ describe('Alerts API', () => {
 
 				expect(response.status).toBe(401);
 				expect(response.body.success).toBe(false);
+			});
+
+			test('should return 403 when an editor tries to delete a resolved alert', async () => {
+				const email = 'editor-alert-delete@test.com';
+				const password = 'password123';
+
+				await app.post('/api/v1/users').set('Authorization', `Bearer ${jwtToken}`).send({
+					email,
+					fullName: 'Editor User',
+					password,
+					role: 'editor',
+				});
+
+				const loginResponse = await app.post('/api/v1/users/login').send({
+					email,
+					password,
+				});
+
+				expect(loginResponse.status).toBe(200);
+
+				const response = await app
+					.delete(`/api/v1/alerts/resolved/${testResolvedAlerts[0].id}`)
+					.set('Authorization', `Bearer ${loginResponse.body.token}`);
+
+				expect(response.status).toBe(403);
+				expect(response.body).toEqual({
+					success: false,
+					error: 'Forbidden: Admins only',
+				});
+			});
+
+			test('should return 404 when the resolved alert does not exist', async () => {
+				const response = await app
+					.delete('/api/v1/alerts/resolved/never-seen')
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.success).toBe(false);
+				expect(response.body.error).toBe('Resolved alert not found');
+			});
+
+			test('should return 404 when deleting the same resolved alert twice', async () => {
+				const id = 'resolved-delete-twice';
+				db.prepare(
+					`
+			INSERT INTO alerts_resolved
+			(id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, runbook_url, archived_at,
+			is_dismissed)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`
+				).run(
+					id,
+					'resolved',
+					'{}',
+					new Date().toISOString(),
+					new Date().toISOString(),
+					'https://example.com/delete-twice',
+					'Delete Twice Test',
+					'First 200, second 404',
+					'https://runbook.com/delete-twice',
+					new Date().toISOString(),
+					0
+				);
+
+				const first = await app
+					.delete(`/api/v1/alerts/resolved/${id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(first.status).toBe(200);
+				expect(first.body.success).toBe(true);
+
+				const second = await app
+					.delete(`/api/v1/alerts/resolved/${id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+				expect(second.status).toBe(404);
+				expect(second.body.success).toBe(false);
+				expect(second.body.error).toBe('Resolved alert not found');
+			});
+
+			test('should return 404 for a firing alert id and leave the alert in place', async () => {
+				const response = await app
+					.delete(`/api/v1/alerts/resolved/${testAlerts[0].id}`)
+					.set('Authorization', `Bearer ${jwtToken}`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.success).toBe(false);
+
+				const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(testAlerts[0].id);
+				expect(row).toBeDefined();
+			});
+
+			test('should keep answering 200 for a webhook resolve of an unknown id', async () => {
+				const response = await app
+					.post('/api/v1/alerts/custom')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({ id: 'never-seen-resolve', status: 'resolved' });
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
 			});
 		});
 
@@ -2457,5 +2571,52 @@ describe('Comment timestamps are ISO UTC', () => {
 		const comment = (list.body.data.comments as CommentResponse[]).find((c) => c.comment === 'after edit');
 		expect(comment!.updatedAt).toMatch(/Z$/);
 		expect(Math.abs(new Date(comment!.updatedAt).getTime() - Date.now())).toBeLessThan(5_000);
+	});
+});
+
+describe('Alert comment length limit', () => {
+	const alertId = 'comment-limit-alert';
+	const atLimit = 'a'.repeat(ALERT_COMMENT_MAX_LENGTH);
+	const overLimit = 'a'.repeat(ALERT_COMMENT_MAX_LENGTH + 1);
+
+	const createAlert = () =>
+		app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: alertId, tags: {}, alertName: 'Comment Limit Test' });
+
+	test('POST accepts a comment of exactly the maximum length', async () => {
+		await createAlert();
+		const response = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: atLimit });
+		expect(response.status).toBe(201);
+	});
+
+	test('POST rejects a comment one character over the maximum', async () => {
+		await createAlert();
+		const response = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: overLimit });
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBe('Validation error');
+	});
+
+	test('PATCH accepts a comment of exactly the maximum length and rejects one more', async () => {
+		await createAlert();
+		const created = await app
+			.post(`/api/v1/alerts/${alertId}/comments`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ comment: 'short' });
+		const url = `/api/v1/alerts/comments/${created.body.data.comment.id}`;
+
+		const ok = await app.patch(url).set('Authorization', `Bearer ${jwtToken}`).send({ comment: atLimit });
+		expect(ok.status).toBe(200);
+
+		const tooLong = await app.patch(url).set('Authorization', `Bearer ${jwtToken}`).send({ comment: overLimit });
+		expect(tooLong.status).toBe(400);
+		expect(tooLong.body.error).toBe('Validation error');
 	});
 });

@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - infrastructure/terraform/**
+      - .github/workflows/terraform.yaml
 
 jobs:
   terraform:

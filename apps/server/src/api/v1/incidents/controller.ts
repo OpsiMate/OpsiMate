@@ -12,10 +12,12 @@ import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/incidents/controller');
 
-const actorFrom = (req: AuthenticatedRequest): IncidentActor => ({
-	id: req.user != null ? req.user.id : null,
-	name: req.user?.fullName ?? null,
-});
+// User ids travel as strings on the request; incidents store the creator as the users
+// table's integer id, so only a numeric id is kept (an API-token caller has none).
+const actorFrom = (req: AuthenticatedRequest): IncidentActor => {
+	const id = req.user != null ? Number(req.user.id) : NaN;
+	return { id: Number.isInteger(id) ? id : null, name: req.user?.fullName ?? null };
+};
 
 export class IncidentController {
 	constructor(private incidentBL: IncidentBL) {}
@@ -78,27 +80,6 @@ export class IncidentController {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
 			logger.error('Error updating incident', error);
-			return res.status(500).json({ success: false, error: 'Internal server error' });
-		}
-	};
-
-	addAlertsHandler = async (req: AuthenticatedRequest, res: Response) => {
-		try {
-			const { incidentId } = IncidentIdSchema.parse({ incidentId: req.params.incidentId });
-			const { alertIds } = IncidentAlertIdsSchema.parse(req.body);
-			const summary = await this.incidentBL.addAlerts(incidentId, alertIds, actorFrom(req));
-			if (!summary) {
-				return res.status(404).json({ success: false, error: 'Incident not found' });
-			}
-			return res.json({ success: true, data: summary, message: 'Alerts added to incident' });
-		} catch (error) {
-			if (error instanceof UnknownAlertIdsError) {
-				return res.status(400).json({ success: false, error: error.message });
-			}
-			if (isZodError(error)) {
-				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			}
-			logger.error('Error adding alerts to incident', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};

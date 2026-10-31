@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CreateDashboardSchema, DashboardIdSchema, DashboardTagSchema, Logger } from '@OpsiMate/shared';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { routeParam } from '../../../utils/routeParams.ts';
 import { DashboardBL } from '../../../bl/dashboards/dashboard.bl.ts';
 
 const logger = new Logger('api/v1/dashboards/controller');
@@ -16,6 +17,25 @@ export class DashboardController {
 		} catch (error) {
 			logger.error('Error getting dashboards:', error);
 			return res.status(500).json({ success: false, error: 'Failed to get dashboards' });
+		}
+	};
+
+	getDashboardHandler = async (req: Request, res: Response) => {
+		try {
+			const { dashboardId } = DashboardIdSchema.parse({ dashboardId: req.params.dashboardId });
+
+			const dashboard = await this.dashboardBL.getDashboardById(String(dashboardId));
+			if (!dashboard) {
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
+			}
+
+			return res.json({ success: true, data: dashboard });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			logger.error('Error getting dashboard:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	};
 
@@ -52,7 +72,7 @@ export class DashboardController {
 				return res.status(401).json({ success: false, error: 'Unauthorized: user not found' });
 			}
 
-			const dashboardId = req.params.dashboardId;
+			const dashboardId = routeParam(req, 'dashboardId');
 			const updateDashboardRequest = CreateDashboardSchema.parse(req.body);
 			await this.dashboardBL.updateDashboard(dashboardId, updateDashboardRequest, user);
 
@@ -72,16 +92,16 @@ export class DashboardController {
 
 	deleteDashboardHandler = async (req: Request, res: Response) => {
 		try {
-			const dashboardId = req.params.dashboardId;
+			const dashboardId = routeParam(req, 'dashboardId');
 			const success = await this.dashboardBL.deleteDashboard(dashboardId);
 
 			if (!success) {
-				return res.status(404).json({ success: false, error: 'dashboard not found or could not be deleted' });
+				return res.status(404).json({ success: false, error: 'Dashboard not found' });
 			}
 
-			return res.json({ success: true, message: 'dashboards deleted successfully' });
+			return res.json({ success: true, message: 'Dashboard deleted successfully' });
 		} catch (error) {
-			logger.error('Error deleting dashboards:', error);
+			logger.error('Error deleting dashboard:', error);
 			const message = error instanceof Error ? error.message : 'Internal server error';
 			if (message.includes('not found')) {
 				return res.status(404).json({ success: false, error: 'Dashboard not found' });

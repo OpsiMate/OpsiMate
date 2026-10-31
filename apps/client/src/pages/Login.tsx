@@ -8,6 +8,7 @@ import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest, EMAIL_STATUS_URL } from '../lib/api';
 import { isPlaygroundMode } from '../lib/playground';
+import { ROUTES } from '@/lib/routes';
 
 const logger = new Logger('Login');
 
@@ -16,13 +17,15 @@ const Login: React.FC = () => {
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [emailEnabled, setEmailEnabled] = useState(false);
+	// Set when the server completes a bare name with a domain: the field then takes a name too.
+	const [defaultEmailDomain, setDefaultEmailDomain] = useState<string | null>(null);
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors({
 		showFieldErrors: false,
 	});
 
 	useEffect(() => {
-		if (localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) && window.location.pathname === '/login') {
-			window.location.href = '/';
+		if (localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) && window.location.pathname === ROUTES.login) {
+			window.location.href = ROUTES.home;
 		}
 
 		if (isPlaygroundMode()) {
@@ -36,6 +39,7 @@ const Login: React.FC = () => {
 
 				if (data.success) {
 					setEmailEnabled(data.data.isEmailEnabled);
+					setDefaultEmailDomain(data.data.loginDefaultEmailDomain ?? null);
 				} else {
 					logger.error('Failed to fetch email status', data);
 					setEmailEnabled(false);
@@ -65,7 +69,7 @@ const Login: React.FC = () => {
 				const token = (res.data && res.data.token) || res.token;
 				if (token) {
 					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-					window.location.href = '/';
+					window.location.href = ROUTES.home;
 				} else {
 					logger.error('Login successful but no token received');
 					handleApiResponse({
@@ -76,7 +80,7 @@ const Login: React.FC = () => {
 			} else {
 				handleApiResponse(res);
 			}
-		} catch (err) {
+		} catch {
 			handleApiResponse({
 				success: false,
 				error: 'Network error. Please check your connection and try again.',
@@ -95,12 +99,19 @@ const Login: React.FC = () => {
 				<h2 className="text-2xl font-bold mb-6 text-center text-foreground">Login</h2>
 				<div className="mb-4">
 					<Input
-						type="email"
-						placeholder="Email"
+						type={defaultEmailDomain ? 'text' : 'email'}
+						placeholder={defaultEmailDomain ? 'Email or username' : 'Email'}
+						aria-label={defaultEmailDomain ? 'Email or username' : 'Email'}
+						autoComplete="username"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						required
 					/>
+					{defaultEmailDomain && email.trim() !== '' && !email.includes('@') && (
+						<p className="mt-1 text-xs text-muted-foreground">
+							Signs in as {email.trim()}@{defaultEmailDomain}
+						</p>
+					)}
 				</div>
 				<div className="mb-4">
 					<Input
@@ -117,7 +128,7 @@ const Login: React.FC = () => {
 				</Button>
 				<div className="mt-4 text-center">
 					{emailEnabled && (
-						<Link to="/forgot-password" className="text-primary hover:underline text-sm">
+						<Link to={ROUTES.forgotPassword} className="text-primary hover:underline text-sm">
 							Forgot password?
 						</Link>
 					)}

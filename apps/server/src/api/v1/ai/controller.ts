@@ -1,16 +1,17 @@
 import { Response } from 'express';
-import { AiFilterQuerySchema, Logger, Role, UpdateAiConfigSchema } from '@OpsiMate/shared';
+import { AiFilterQuerySchema, Logger, UpdateAiConfigSchema } from '@OpsiMate/shared';
 import { AiBL, AiDisabledError, AiValidationError, BedrockCallError } from '../../../bl/ai/ai.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { MS_PER_MINUTE } from '../../../utils/time';
 
-const logger = new Logger('ai.controller');
+const logger = new Logger('api/v1/ai/controller');
 
 // Every /ai/filter call is a real, billed Bedrock request available to ANY
 // authenticated user — a fixed per-user window keeps a loop (or a stuck client)
 // from draining the org's Bedrock spend.
 const FILTER_RATE_LIMIT = 15;
-const FILTER_RATE_WINDOW_MS = 60_000;
+const FILTER_RATE_WINDOW_MS = MS_PER_MINUTE;
 
 interface FilterRateWindow {
 	windowStart: number;
@@ -34,18 +35,7 @@ export class AiController {
 		return true;
 	}
 
-	// Org-wide configuration holding a credential — admin-only, same gate the
-	// retention and silence-reset settings use.
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
-
-	getConfigHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
+	getConfigHandler = async (_req: AuthenticatedRequest, res: Response) => {
 		try {
 			const config = await this.aiBL.getConfig();
 			return res.json({ success: true, data: config });
@@ -56,7 +46,6 @@ export class AiController {
 	};
 
 	updateConfigHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const updates = UpdateAiConfigSchema.parse(req.body ?? {});
 			const config = await this.aiBL.updateConfig(updates, req.user);
@@ -111,8 +100,7 @@ export class AiController {
 		}
 	};
 
-	testConnectionHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
+	testConnectionHandler = async (_req: AuthenticatedRequest, res: Response) => {
 		try {
 			const result = await this.aiBL.testConnection();
 			// Always 200: a failed Bedrock call is a RESULT the user asked for, not a

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { ALERT_COMMENT_MAX_LENGTH } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
 
 // How long a silence lasts. The expiry timestamp is computed at confirm time, so
@@ -92,10 +93,13 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 	const note = comment.trim() || undefined;
 	const confirmDisabled = !!pending?.requireComment && !note;
 
-	const confirm = () => {
-		if (!pending || confirmDisabled) return;
+	// Runs the pending action and reports whether it ran. Closing is delegated to
+	// Radix (`onOpenChange`) for the confirm button so `onClose` fires exactly once;
+	// the Enter-key path closes explicitly below to prevent a repeat submission.
+	const runPending = (): boolean => {
+		if (!pending || confirmDisabled) return false;
 		pending.run(note, pending.withSilenceDuration ? silencedUntilFor(duration) : undefined);
-		onClose();
+		return true;
 	};
 
 	return (
@@ -144,12 +148,12 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 								// composition, where Enter merely commits the composed text.
 								if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
 									e.preventDefault();
-									confirm();
+									if (runPending()) onClose();
 								}
 							}}
 							placeholder={pending.commentPlaceholder ?? 'Add a note for your team'}
 							rows={3}
-							maxLength={5000}
+							maxLength={ALERT_COMMENT_MAX_LENGTH}
 						/>
 						<p className="text-xs text-muted-foreground">
 							<kbd className="rounded border bg-muted px-1 py-0.5 font-sans text-[10px]">Enter</kbd> to{' '}
@@ -164,7 +168,7 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
 					<AlertDialogAction
 						disabled={confirmDisabled}
-						onClick={confirm}
+						onClick={runPending}
 						className={
 							pending?.destructive
 								? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'

@@ -1,6 +1,5 @@
 export { useIncidents } from './useIncidents';
 export {
-	useAddIncidentAlerts,
 	useCreateIncident,
 	useDeleteIncident,
 	useRemoveIncidentAlerts,

@@ -23,6 +23,37 @@ import { describe, expect, test } from 'vitest';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 
+interface WelcomeTemplate {
+	subject?: string;
+}
+
+interface MailerTemplates {
+	welcomeTemplate?: WelcomeTemplate;
+}
+
+interface MailerConfig {
+	templates?: MailerTemplates;
+}
+
+interface ServerConfig {
+	port?: unknown;
+}
+
+interface DatabaseConfig {
+	path?: unknown;
+}
+
+interface SecurityConfig {
+	private_keys_path?: unknown;
+}
+
+interface LegacyConfig {
+	mailer?: MailerConfig;
+	server?: ServerConfig;
+	database?: DatabaseConfig;
+	security?: SecurityConfig;
+}
+
 interface ShippedConfig {
 	// Repo-relative path, so a failure names the file directly.
 	file: string;
@@ -103,7 +134,7 @@ describe('shipped YAML configs', () => {
 			'fixture no longer contains a multi-line flow mapping — it must, or it tests nothing'
 		).toBe(true);
 
-		const parsed = yaml.load(raw) as Record<string, any>;
+		const parsed = yaml.load(raw) as LegacyConfig;
 		expect(parsed, 'legacy config parsed to nothing').toBeTruthy();
 		expect(parsed.mailer?.templates?.welcomeTemplate?.subject).toBe('Welcome to OpsiMate!');
 		// The fields loadConfig() needs, same as the shipped configs.

@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordByEmail from './pages/ResetPasswordByEmail';
+import { ROUTES } from '@/lib/routes';
 
 const UnsavedChangesDialogWrapper = () => {
 	const { showUnsavedChangesDialog, confirmNavigation, cancelNavigation } = useDashboard();
@@ -64,28 +65,28 @@ const App: React.FC = () => {
 								<ErrorBoundary>
 									<AuthGuard>
 										<Routes>
-											<Route path="/" element={<Alerts />} />
-											<Route path="/dashboards" element={<Dashboards />} />
+											<Route path={ROUTES.home} element={<Alerts />} />
+											<Route path={ROUTES.dashboards} element={<Dashboards />} />
 											<Route
-												path="/insights"
+												path={ROUTES.insights}
 												element={
 													<Suspense fallback={null}>
 														<AlertInsights />
 													</Suspense>
 												}
 											/>
-											<Route path="/integrations" element={<Integrations />} />
-											<Route path="/settings" element={<Settings />} />
-											<Route path="/profile" element={<Profile />} />
-											<Route path="/login" element={<Login />} />
-											<Route path="/register" element={<Register />} />
-											<Route path="/alerts" element={<Alerts />} />
-											<Route path="/mute-policies" element={<MutePolicies />} />
-											<Route path="/oncall" element={<Oncall />} />
-											<Route path="/actions" element={<Actions />} />
-											<Route path="/enrichments" element={<Enrichments />} />
-											<Route path="/forgot-password" element={<ForgotPassword />} />
-											<Route path="/reset-password" element={<ResetPasswordByEmail />} />
+											<Route path={ROUTES.integrations} element={<Integrations />} />
+											<Route path={ROUTES.settings} element={<Settings />} />
+											<Route path={ROUTES.profile} element={<Profile />} />
+											<Route path={ROUTES.login} element={<Login />} />
+											<Route path={ROUTES.register} element={<Register />} />
+											<Route path={ROUTES.alerts} element={<Alerts />} />
+											<Route path={ROUTES.mutePolicies} element={<MutePolicies />} />
+											<Route path={ROUTES.oncall} element={<Oncall />} />
+											<Route path={ROUTES.actions} element={<Actions />} />
+											<Route path={ROUTES.enrichments} element={<Enrichments />} />
+											<Route path={ROUTES.forgotPassword} element={<ForgotPassword />} />
+											<Route path={ROUTES.resetPassword} element={<ResetPasswordByEmail />} />
 											<Route path="*" element={<NotFound />} />
 										</Routes>
 									</AuthGuard>

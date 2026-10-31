@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
+import { ROUTES } from '@/lib/routes';
 
 const logger = new Logger('Register');
 
@@ -41,7 +42,7 @@ const Register: React.FC = () => {
 				const token = (res.data && res.data.token) || res.token;
 				if (token) {
 					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-					window.location.href = '/';
+					window.location.href = ROUTES.home;
 				} else {
 					// This shouldn't happen in normal flow, but handle it gracefully
 					logger.error('Registration successful but no token received');
@@ -49,7 +50,7 @@ const Register: React.FC = () => {
 			} else {
 				handleApiResponse(res);
 			}
-		} catch (err) {
+		} catch {
 			handleApiResponse({
 				success: false,
 				error: 'Network error. Please check your connection and try again.',

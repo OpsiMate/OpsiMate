@@ -1,8 +1,13 @@
-import { AlertRepository } from '../../dal/alertRepository';
+import { WebhookOwnerResolver } from './webhookOwnerResolver';
+import { AlertRepository, IngestAlert, IngestRowResult } from '../../dal/alertRepository';
 import { IncidentRepository } from '../../dal/incidentRepository';
+import { IngestQueue } from './ingestQueue';
 import { HistoryStatusRow, ResolvedAlertRepository } from '../../dal/resolvedAlertRepository';
 import {
 	Alert,
+	AlertCallbackActor,
+	AlertCallbackDetails,
+	AlertCallbackEvent,
 	AlertComment,
 	AlertHistory,
 	AlertHistoryData,
@@ -25,13 +30,17 @@ import {
 	bulkActionsTotal,
 	bulkAlertsAffectedTotal,
 	snapshotComputeDuration,
+	ingestBatchSize,
 } from '../../metrics';
 import { UserRepository } from '../../dal/userRepository';
+import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import { toIsoUtc } from '../../utils/time';
 import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { Snapshot, SnapshotCache } from './snapshotCache';
+import { ActiveListBuild, ActiveListBuilder, alertListFingerprint, noMembership, noRules } from './activeListBuilder';
+import { resolveWorkerScript, SnapshotWorkerClient } from './snapshotWorkerClient';
 import { QueryResultCache, stableQueryKey } from './queryResultCache';
 import {
 	AlertBulkActionRequest,
@@ -55,6 +64,28 @@ const logger = new Logger('bl/alert.bl');
 // which is why this is read per instance rather than at module level: the test setup
 // assigns the env var after imports are evaluated but before the app is constructed.
 const snapshotTtlMs = () => Number(process.env.ALERTS_SNAPSHOT_TTL_MS ?? 2500);
+
+// Ingest batching (see IngestQueue). Next-tick flushing (0) batches everything the
+// event loop parsed while busy — ~10 rows per transaction at 4.7k webhooks/s in the
+// load test — without adding latency for a sender that posts one at a time.
+// Both env knobs fall back to their defaults on anything that isn't a sane number —
+// an empty or misspelled value must never turn into a 0/NaN that hangs the queue.
+const positiveIntFromEnv = (raw: string | undefined, fallback: number): number => {
+	const parsed = Number(raw);
+	return raw !== undefined && Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
+};
+const nonNegativeFromEnv = (raw: string | undefined, fallback: number): number => {
+	const parsed = Number(raw);
+	return raw !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+const ingestFlushMs = () => nonNegativeFromEnv(process.env.ALERTS_INGEST_FLUSH_MS, 0);
+const ingestMaxBatch = () => positiveIntFromEnv(process.env.ALERTS_INGEST_MAX_BATCH, 500);
+
+// How long a snapshot keeps being served after webhooks have changed the data under
+// it, before a poll triggers a background rebuild (SnapshotCache.markStale). Bounds
+// the rebuild rate under an ingest storm to one per second no matter how many tabs
+// poll; a webhook is visible within this plus one rebuild. User actions bypass it.
+const snapshotRefreshMs = () => nonNegativeFromEnv(process.env.ALERTS_SNAPSHOT_REFRESH_MS, 1000);
 
 // The resolved list (and the analytics input scans behind it) changes only through
 // writes that call invalidateSnapshots() in this process — resolution, unresolve,
@@ -94,6 +125,67 @@ export interface AlertAnalyticsQuery {
 	tagKey?: string;
 }
 
+// The list fingerprint a build reported, keyed by the array it belongs to, so the
+// SnapshotCache's fingerprint hook finds it without recomputing (or, for a list from
+// the worker thread, without owning the per-alert digests at all).
+const listFingerprints = new WeakMap<Alert[], string>();
+const activeListFingerprint = (alerts: Alert[]): string => listFingerprints.get(alerts) ?? alertListFingerprint(alerts);
+
+// An alert as a webhook hands it in: severity still free-form (see normalizeIncoming).
+export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & {
+	severity?: string;
+	// Who the source says owns this alert: an email, or a bare name the default login
+	// domain completes. The generic webhook's top-level `owner`; every source also reads
+	// an `owner` tag. Applied only when the alert has no owner yet — never unassigns.
+	owner?: string | null;
+};
+
+// What became of a webhook's `owner`, reported back to the sender.
+export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found';
+
+// What a webhook knows about an alert it reports as resolved (see resolveFromSource).
+export interface SourceResolvedEpisode {
+	alert: IncomingAlert;
+	// When the source says the alert ended; now when absent.
+	endsAt?: string;
+}
+
+// How an active alert is being resolved (see AlertBL.resolveActive).
+interface ResolveActiveOptions {
+	// A user's manual resolve: recorded in the history, and the user takes ownership.
+	manualActor?: ManualResolveActor;
+	comment?: string;
+	// The alert as the source described it in its resolve (see applySourceMetadata).
+	sourceAlert?: IncomingAlert;
+	// False keeps a manual resolve from firing the `resolved` callback (see ManualResolveOptions).
+	fireCallback?: boolean;
+}
+
+export interface ManualResolveOptions {
+	// False for a resolve that is really a source reporting recovery through the manual
+	// route (a webhook sender calling DELETE /alerts/:id with the API token): it is
+	// recorded as before, but fires no callback, like any source-reported recovery.
+	fireCallback?: boolean;
+}
+
+interface ManualResolveActor {
+	id: string | null;
+	name: string | null;
+}
+
+export interface SourceResolveResult {
+	// An alert that was firing here is now resolved.
+	resolved: boolean;
+	// No alert was firing: the episode the source described was recorded as resolved.
+	created: boolean;
+}
+
+export interface AlertLookup {
+	alert: Alert;
+	// Which list it came from: false for a firing alert, true for one in resolved history.
+	resolved: boolean;
+}
+
 export class AlertBL {
 	private mutePolicyBL: MutePolicyBL | null = null;
 	private enrichmentBL: EnrichmentBL | null = null;
@@ -107,13 +199,61 @@ export class AlertBL {
 		this.permanentDeletionListeners.push(listener);
 	}
 
+	// Notified after an alert's owner is removed (single or bulk path, either table).
+	// Incidents drop the alert from its group on this — see IncidentBL.handleAlertUnassigned.
+	private unassignListeners: Array<(alertId: string, actor: AlertCallbackActor) => Promise<void>> = [];
+
+	onAlertUnassigned(listener: (alertId: string, actor: AlertCallbackActor) => Promise<void>): void {
+		this.unassignListeners.push(listener);
+	}
+
+	// Called with the ids of resolved alerts an ingest batch made fire again (new episodes).
+	private onAlertsRefired: ((alertIds: string[]) => Promise<void>) | null = null;
+
+	setOnAlertsRefired(callback: (alertIds: string[]) => Promise<void>): void {
+		this.onAlertsRefired = callback;
+	}
+
+	// Outbound callbacks for user-made changes (see CallbackDispatcher). Every emit below
+	// sits AFTER the change and its history entry are committed, and emit itself only
+	// queues: the request that made the change never waits for a receiver.
+	private callbackDispatcher: CallbackDispatcher | null = null;
+
+	setCallbackDispatcher(dispatcher: CallbackDispatcher): void {
+		this.callbackDispatcher = dispatcher;
+	}
+
+	// `alert` may be a loader, for the paths that don't already hold the alert (a comment
+	// only knows its id): it is called only when some enabled callback wants the event.
+	private async emitCallback(
+		event: AlertCallbackEvent,
+		alert: Alert | null | (() => Promise<Alert | null>),
+		actor: AlertCallbackActor,
+		details?: AlertCallbackDetails
+	): Promise<void> {
+		const dispatcher = this.callbackDispatcher;
+		if (!dispatcher?.wants(event)) return;
+		try {
+			const resolved = typeof alert === 'function' ? await alert() : alert;
+			if (resolved) dispatcher.emit({ event, alert: resolved, actor, details });
+		} catch (error) {
+			logger.error(`Failed to emit ${event} callback`, error);
+		}
+	}
+
 	// One compute per TTL window serves every poller in it; every write path below calls
 	// invalidateSnapshots() so a mutation is visible to the immediate refetch that
 	// follows it. See SnapshotCache for the generation/race handling.
-	private readonly activeSnapshot = new SnapshotCache<Alert[]>(() => this.computeAllAlerts(), snapshotTtlMs());
+	private readonly activeSnapshot = new SnapshotCache<Alert[]>(
+		() => this.computeAllAlerts(),
+		snapshotTtlMs(),
+		snapshotRefreshMs(),
+		{ fingerprint: activeListFingerprint }
+	);
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
 		() => this.computeAllResolvedAlerts(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	// Analytics inputs: two full-table scans (history rows, event times) that must not
 	// run per request. Same invalidation as the alert snapshots — every write path that
@@ -121,11 +261,13 @@ export class AlertBL {
 	// for the same reason (see resolvedSnapshotTtlMs).
 	private readonly historyRowsSnapshot = new SnapshotCache<HistoryStatusRow[]>(
 		() => this.resolvedAlertRepo.getAllHistoryRows(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	private readonly eventTimesSnapshot = new SnapshotCache<EventTimeRow[]>(
 		() => this.alertHistoryRepo.getAllEventTimes(),
-		resolvedSnapshotTtlMs()
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
 	);
 	// Owners feed sort keys, filter matching and facet labels on every list read; the
 	// users table changes rarely. Cached with the base TTL, and every name-affecting
@@ -133,6 +275,11 @@ export class AlertBL {
 	// rename is visible on the immediate next refetch, and the TTL only bounds writes
 	// from OTHER processes, exactly like the alert snapshots.
 	private readonly ownersSnapshot = new SnapshotCache<AlertOwnerInfo[]>(() => this.getOwnerInfos(), snapshotTtlMs());
+
+	private readonly ingestQueue = new IngestQueue<IngestAlert, { changes: number }>(
+		(batch) => this.flushIngestBatch(batch),
+		{ flushMs: ingestFlushMs(), maxBatch: ingestMaxBatch() }
+	);
 	// Per-query results (pages / facets / group summaries) computed over a snapshot.
 	// Content-addressed on the source snapshots' etags — see QueryResultCache. Pages
 	// hold references into snapshot arrays, so capacity is pointer-cheap.
@@ -141,13 +288,47 @@ export class AlertBL {
 	private readonly groupsCache = new QueryResultCache<AlertGroupSummaryNode[]>(64);
 	private readonly analyticsCache = new QueryResultCache<AnalyticsCacheEntry>(32);
 
+	// Builds the active list (see ActiveListBuilder). Inline on this thread by default;
+	// useSnapshotWorker moves it to a worker thread and this one only patches deltas.
+	private readonly inlineBuilder: ActiveListBuilder;
+	private snapshotWorker: SnapshotWorkerClient | null = null;
+
+	private webhookOwnerResolver: WebhookOwnerResolver | null = null;
+
 	constructor(
 		private alertRepo: AlertRepository,
 		private resolvedAlertRepo: ResolvedAlertRepository,
 		private alertCommentsRepo: AlertCommentsRepository,
 		private alertHistoryRepo: AlertHistoryRepository,
 		private userRepo: UserRepository
-	) {}
+	) {
+		this.inlineBuilder = new ActiveListBuilder(
+			alertRepo,
+			alertCommentsRepo,
+			alertHistoryRepo,
+			() => (this.enrichmentBL ? this.enrichmentBL.prepareEnricher() : noRules()),
+			() => (this.mutePolicyBL ? this.mutePolicyBL.prepareMuter() : noRules()),
+			() => (this.incidentRepo ? this.incidentRepo.getMembershipMap() : noMembership())
+		);
+	}
+
+	// Build the active list on a worker thread over its own connection to dbPath. Only
+	// for a database file (a worker cannot see an in-memory database); the inline
+	// builder stays as the fallback for a worker that fails. Returns whether it is on.
+	useSnapshotWorker(dbPath: string): boolean {
+		const script = resolveWorkerScript();
+		if (!script) {
+			logger.warn('snapshot worker script not found next to the entry point; building the alerts list inline');
+			return false;
+		}
+		this.snapshotWorker = new SnapshotWorkerClient(dbPath, script);
+		return true;
+	}
+
+	async closeSnapshotWorker(): Promise<void> {
+		await this.snapshotWorker?.close();
+		this.snapshotWorker = null;
+	}
 
 	// Resolving moves an alert between the two lists, and enrichment/mute-rule changes
 	// affect both, so both drop together — a second compute per edit is far cheaper than
@@ -160,10 +341,29 @@ export class AlertBL {
 	}
 
 	invalidateSnapshots(): void {
+		this.ingestedSinceInvalidate = false;
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
 		this.historyRowsSnapshot.invalidate();
 		this.eventTimesSnapshot.invalidate();
+	}
+
+	// True while webhook writes have only marked the snapshots stale (see below) and no
+	// hard invalidate has happened since. A user action that selects its targets from
+	// the snapshot (bulk-by-query) must not act on that stale view — see drainIngest.
+	private ingestedSinceInvalidate = false;
+
+	// The webhook path. Ingest touches every list (an upsert can pull a resolved copy
+	// back, and the insert trigger writes history), but nobody refetches on a webhook —
+	// the UI polls — so these are marked stale and rebuilt at most once per refresh
+	// window instead of on every batch. Everything a user does goes through
+	// invalidateSnapshots() and is visible on the immediate refetch.
+	markSnapshotsStale(): void {
+		this.ingestedSinceInvalidate = true;
+		this.activeSnapshot.markStale();
+		this.resolvedSnapshot.markStale();
+		this.historyRowsSnapshot.markStale();
+		this.eventTimesSnapshot.markStale();
 	}
 
 	async getAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
@@ -174,11 +374,27 @@ export class AlertBL {
 		return this.resolvedSnapshot.get();
 	}
 
+	// One alert by id, read off the same cached lists the list endpoints serve — so it
+	// carries the fetch-time fields (isMuted, lastComment, appliedEnrichments) the row
+	// repositories know nothing about. The active list is checked first: an id present
+	// in both is an alert that fired again, and the live copy is the one that matters.
+	async findAlertById(alertId: string): Promise<AlertLookup | null> {
+		const active = (await this.activeSnapshot.get()).value.find((alert) => alert.id === alertId);
+		if (active) return { alert: active, resolved: false };
+		const resolved = (await this.resolvedSnapshot.get()).value.find((alert) => alert.id === alertId);
+		return resolved ? { alert: resolved, resolved: true } : null;
+	}
+
 	// Owner ids are numeric in the DB but string-typed on alerts; the engine compares
 	// strings, so the mapping happens once here.
 	private async getOwnerInfos(): Promise<AlertOwnerInfo[]> {
 		const users = await this.userRepo.getAllUsers();
 		return users.map((u) => ({ id: String(u.id), fullName: u.fullName }));
+	}
+
+	// The cached owner list the query engine resolves owner ids against.
+	async getOwners(): Promise<AlertOwnerInfo[]> {
+		return (await this.ownersSnapshot.get()).value;
 	}
 
 	// Server-side execution of the client's own query engine over the cached snapshot:
@@ -279,6 +495,7 @@ export class AlertBL {
 		input: AlertBulkActionRequest,
 		actor: { id: string | null; name: string | null }
 	): Promise<AlertBulkActionResult> {
+		await this.drainIngest();
 		let targetIds: string[];
 		if (input.ids) {
 			targetIds = [...new Set(input.ids)];
@@ -294,47 +511,56 @@ export class AlertBL {
 
 		let succeeded = 0;
 		let failed = 0;
-		for (const id of targetIds) {
-			try {
-				// The single-alert methods signal "no such alert" by returning null/false
-				// rather than throwing — count that as failed too: succeeded must mean the
-				// action actually took effect.
-				let applied = true;
-				switch (input.action) {
-					case 'silence':
-						applied =
-							(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) != null;
-						break;
-					case 'unsilence':
-						applied = (await this.unsilenceAlert(id, actor.name)) != null;
-						break;
-					case 'resolve':
-						applied = await this.resolveAlert(id, actor, input.comment);
-						break;
-					case 'assignOwner':
-						applied = (await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name)) != null;
-						break;
-					case 'comment':
-						// Schema and controller guarantee a body and an acting user here. The
-						// comments table deliberately has no FK on alert_id (comments outlive
-						// resolve), so existence is checked explicitly — an unknown id must
-						// count as failed, not insert an orphan row.
-						applied = (await this.alertRepo.getAlert(id)) != null;
-						if (applied) {
-							await this.createComment(
-								{ alertId: id, userId: actor.id as string, comment: input.comment as string },
-								actor.name
-							);
-						}
-						break;
+		// Inside `batched`, the per-alert callbacks the loop emits are collapsed into one
+		// request per event (300 silences = one "silenced" callback, not 300).
+		const applyAll = async (): Promise<void> => {
+			for (const id of targetIds) {
+				try {
+					// The single-alert methods signal "no such alert" by returning null/false
+					// rather than throwing — count that as failed too: succeeded must mean the
+					// action actually took effect.
+					let applied = true;
+					switch (input.action) {
+						case 'silence':
+							applied =
+								(await this.silenceAlert(id, actor, input.silencedUntil ?? null, input.comment)) !=
+								null;
+							break;
+						case 'unsilence':
+							applied = (await this.unsilenceAlert(id, actor.name, actor.id)) != null;
+							break;
+						case 'resolve':
+							applied = await this.resolveAlert(id, actor, input.comment);
+							break;
+						case 'assignOwner':
+							applied =
+								(await this.setAlertOwner(id, input.ownerId ?? null, false, actor.name, actor.id)) !=
+								null;
+							break;
+						case 'comment':
+							// Schema and controller guarantee a body and an acting user here. The
+							// comments table deliberately has no FK on alert_id (comments outlive
+							// resolve), so existence is checked explicitly — an unknown id must
+							// count as failed, not insert an orphan row.
+							applied = (await this.alertRepo.getAlert(id)) != null;
+							if (applied) {
+								await this.createComment(
+									{ alertId: id, userId: actor.id as string, comment: input.comment as string },
+									actor.name
+								);
+							}
+							break;
+					}
+					if (applied) succeeded++;
+					else failed++;
+				} catch (error) {
+					logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
+					failed++;
 				}
-				if (applied) succeeded++;
-				else failed++;
-			} catch (error) {
-				logger.error(`Bulk ${input.action} failed for alert ${id}`, error);
-				failed++;
 			}
-		}
+		};
+		if (this.callbackDispatcher) await this.callbackDispatcher.batched(applyAll);
+		else await applyAll();
 		logger.info(`Bulk ${input.action}: ${succeeded}/${targetIds.length} succeeded`);
 		bulkActionsTotal.inc({ action: input.action });
 		if (succeeded > 0) bulkAlertsAffectedTotal.inc({ action: input.action }, succeeded);
@@ -360,17 +586,6 @@ export class AlertBL {
 		}
 	}
 
-	// Public hook so other modules (e.g. running an action against an alert) can append to the
-	// alert's history timeline without depending on the history repository directly.
-	async recordActionRun(alertId: string, actionName: string, actorName?: string | null): Promise<void> {
-		await this.recordHistoryEvent(
-			alertId,
-			AlertHistoryEventType.ACTION_RUN,
-			`Ran action "${actionName}"`,
-			actorName
-		);
-	}
-
 	setMutePolicyBL(mutePolicyBL: MutePolicyBL): void {
 		this.mutePolicyBL = mutePolicyBL;
 	}
@@ -383,9 +598,10 @@ export class AlertBL {
 		this.incidentRepo = incidentRepo;
 	}
 
-	// Stamps each alert with the incident it belongs to (or null), in one pass over the
-	// membership table. Applied to BOTH snapshots: membership follows the alert id, so a
-	// resolved member still folds under its incident in the Resolved/All views.
+	// Stamps each resolved alert with the incident it belongs to, in one pass over the
+	// membership table: membership follows the alert id, so a resolved member still folds
+	// under its incident in the Resolved/All views. (The active list gets the same stamp
+	// inside ActiveListBuilder, where it is part of the per-alert change detection.)
 	private async attachIncidentIds(alerts: Alert[]): Promise<Alert[]> {
 		if (!this.incidentRepo) return alerts;
 		const membership = await this.incidentRepo.getMembershipMap();
@@ -403,29 +619,110 @@ export class AlertBL {
 	// and the severity tag is rewritten to the normalized value so label matchers (mute policies,
 	// enrichments) always see the same three values the severity field uses. The tag is
 	// hidden from the UI — users only interact with the first-class severity.
-	async insertOrUpdateAlert(
-		alert: Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'> & { severity?: string }
-	): Promise<{ changes: number }> {
+	// The one funnel for what a source sends: severity normalized onto the fixed scale,
+	// team resolved, the severity tag mirroring the first-class field.
+	private normalizeIncoming(alert: IncomingAlert): IngestAlert {
+		// || (not ??) so a blank explicit severity falls through to the tag.
+		const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
+		// Same funnel for the owning team: explicit field wins, then a `team` tag,
+		// otherwise none. Unlike severity there is no fixed scale — any name is kept.
+		const team = alert.team?.trim() || alert.tags?.['team'] || null;
+		const tags = { ...(alert.tags ?? {}), severity };
+		// `owner` is a request handled after the row is committed, not a column.
+		const { owner: _owner, ...row } = alert;
+		return { ...row, tags, severity, team };
+	}
+
+	async insertOrUpdateAlert(alert: IncomingAlert): Promise<{ changes: number; owner?: WebhookOwnerOutcome }> {
 		try {
-			logger.info(`Inserting alert: ${alert.id}`);
-			// || (not ??) so a blank explicit severity falls through to the tag.
-			const severity = normalizeAlertSeverity(alert.severity?.trim() || alert.tags?.['severity']);
-			// Same funnel for the owning team: explicit field wins, then a `team` tag,
-			// otherwise none. Unlike severity there is no fixed scale — any name is kept.
-			const team = alert.team?.trim() || alert.tags?.['team'] || null;
-			const tags = { ...(alert.tags ?? {}), severity };
-			// The repository atomically drops any resolved copy of this id — a re-firing
-			// alert must never show as both firing and resolved.
-			const result = await this.alertRepo.insertOrUpdateAlert({ ...alert, tags, severity, team });
-			this.invalidateSnapshots();
-			// In-memory increment; this is the single funnel every webhook source flows
-			// through, so one counter covers all of them.
-			alertsIngestedTotal.inc({ type: alert.type ?? 'unknown', severity });
-			return result;
+			// debug, not info: at thousands of webhooks a second a per-alert info line is
+			// itself a measurable cost (synchronous console writes) and floods the log; the
+			// ingested counter and batch-size histogram carry the operational signal.
+			logger.debug(`Inserting alert: ${alert.id}`);
+			// Queued, not written here: the queue commits it with whatever else arrives in
+			// the same flush window, and this resolves once that commit is in (so a GET
+			// right after the POST still sees the alert). The repository atomically drops
+			// any resolved copy of this id — a re-firing alert must never show as both
+			// firing and resolved.
+			const result = await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
+			const requested = (alert.owner ?? alert.tags?.['owner'])?.trim();
+			if (!requested) return result;
+			return { ...result, owner: await this.applyWebhookOwner(alert, requested) };
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
+	}
+
+	// The owner a webhook named, applied once the row is committed. A default, not an
+	// authority: it fills an empty owner and never replaces one — a person's manual
+	// assignment survives every re-fire, and a missing or changed value unassigns nobody.
+	// Writes the history line the UI shows; fires no owner_assigned callback (that is for
+	// a person's decision — and the receiver is often the monitor that sent this).
+	private async applyWebhookOwner(alert: IncomingAlert, requested: string): Promise<WebhookOwnerOutcome> {
+		if (!this.webhookOwnerResolver) return 'not_found';
+		try {
+			const current = await this.alertRepo.getAlert(alert.id);
+			if (current?.ownerId) return 'kept';
+			const user = await this.webhookOwnerResolver.resolve(requested);
+			if (!user) {
+				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook matches no user`);
+				return 'not_found';
+			}
+			await this.alertRepo.updateAlertOwner(alert.id, Number(user.id));
+			this.markSnapshotsStale();
+			await this.recordHistoryEvent(
+				alert.id,
+				AlertHistoryEventType.OWNER_ASSIGNED,
+				`Assigned to ${user.fullName} from the ${alert.type} webhook`,
+				`${alert.type} webhook`
+			);
+			return 'assigned';
+		} catch (error) {
+			logger.error(`Alert ${alert.id}: applying the webhook owner failed`, error);
+			return 'not_found';
+		}
+	}
+
+	setWebhookOwnerResolver(resolver: WebhookOwnerResolver): void {
+		this.webhookOwnerResolver = resolver;
+	}
+
+	// One transaction and ONE snapshot invalidation per batch — the two per-webhook
+	// costs that pinned the single core under a burst.
+	private async flushIngestBatch(batch: IngestAlert[]): Promise<IngestRowResult[]> {
+		const results = await this.alertRepo.insertOrUpdateAlerts(batch);
+		this.markSnapshotsStale();
+		const refiredIds = batch.filter((_, i) => results[i]?.refired).map((alert) => alert.id);
+		// Best-effort, like the deletion cleanup: the alerts are committed either way.
+		if (refiredIds.length > 0) {
+			try {
+				await this.onAlertsRefired?.(refiredIds);
+			} catch (refireError) {
+				logger.error(`Satellite update failed for ${refiredIds.length} re-fired alert(s)`, refireError);
+			}
+		}
+		ingestBatchSize.observe(batch.length);
+		// In-memory increment; this is the single funnel every webhook source flows
+		// through, so one counter covers all of them.
+		for (const alert of batch) {
+			alertsIngestedTotal.inc({ type: alert.type ?? 'unknown', severity: alert.severity });
+		}
+		return results;
+	}
+
+	// Write paths that must see every ingest that arrived before them wait for the
+	// queue first; otherwise an alert POSTed a millisecond before its resolve would be
+	// committed after it and reappear as firing.
+	// Draining commits the queue but only marks the snapshots stale; a caller that then
+	// resolves a query against the snapshot (bulk-by-query) would act on a view up to
+	// one refresh window behind the database — resolving an alert a webhook just
+	// downgraded, skipping one it just raised. User actions read fresh, so any pending
+	// webhook staleness is turned into a hard invalidate here, at the cost of the one
+	// rebuild per user action that every write path already pays.
+	private async drainIngest(): Promise<void> {
+		await this.ingestQueue.drain();
+		if (this.ingestedSinceInvalidate) this.invalidateSnapshots();
 	}
 
 	// Timed silences expire lazily: every listing first sweeps alerts whose silence window
@@ -532,25 +829,33 @@ export class AlertBL {
 		return (await this.activeSnapshot.get()).value;
 	}
 
+	// Silences expire first (a write, on this thread), then the list is built — by the
+	// worker thread when one is on, else inline. See ActiveListBuilder for what a build
+	// does and why it is cheap when little changed.
 	private async computeAllAlerts(): Promise<Alert[]> {
 		const endTimer = snapshotComputeDuration.startTimer({ list: 'active' });
 		try {
 			logger.info('Fetching all alerts');
 			await this.expireSilences();
-			let alerts = await this.alertRepo.getAllAlerts();
-			// Enrich before muting so mute policy rules can match enrichment-added tags.
-			if (this.enrichmentBL) {
-				alerts = await this.enrichmentBL.applyEnrichments(alerts);
-			}
-			if (this.mutePolicyBL) {
-				alerts = await this.mutePolicyBL.markMuted(alerts);
-			}
-			return await this.attachIncidentIds(await this.attachLastComments(await this.attachFiringTimes(alerts)));
+			const { alerts, fingerprint } = await this.buildActiveList();
+			listFingerprints.set(alerts, fingerprint);
+			return alerts;
 		} catch (error) {
 			logger.error('Error fetching alerts', error);
 			throw error;
 		} finally {
 			endTimer();
+		}
+	}
+
+	private async buildActiveList(): Promise<ActiveListBuild> {
+		if (!this.snapshotWorker) return this.inlineBuilder.build();
+		try {
+			return await this.snapshotWorker.build();
+		} catch (error) {
+			// The worker is replaced on the next build; this one must still answer.
+			logger.warn('snapshot worker build failed, building the alerts list inline', { extraArgs: { err: error } });
+			return this.inlineBuilder.build();
 		}
 	}
 
@@ -576,9 +881,10 @@ export class AlertBL {
 					? `Alert silenced until ${normalizedSilencedUntil}`
 					: 'Alert silenced';
 				await this.recordHistoryEvent(id, AlertHistoryEventType.SILENCED, description, actor.name);
+				await this.emitCallback('silenced', alert, actor, { silencedUntil: normalizedSilencedUntil, comment });
 				if (actor.id != null && Number.isFinite(Number(actor.id))) {
 					// setAlertOwner also records the "Assigned to …" history event.
-					alert = (await this.setAlertOwner(id, actor.id, false, actor.name)) ?? alert;
+					alert = (await this.setAlertOwner(id, actor.id, false, actor.name, actor.id)) ?? alert;
 				}
 				if (comment && actor.id != null) {
 					await this.createComment({ alertId: id, userId: actor.id, comment }, actor.name);
@@ -603,18 +909,19 @@ export class AlertBL {
 		}
 	}
 
-	async unsilenceAlert(id: string, actorName?: string | null): Promise<Alert | null> {
+	async unsilenceAlert(id: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
 		try {
-			logger.info(`Unsilenceing alert with id: ${id}`);
+			logger.info(`Unsilencing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
 			this.invalidateSnapshots();
 			if (alert) {
 				alertsUnsilencedTotal.inc();
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
+				await this.emitCallback('unsilenced', alert, { id: actorId ?? null, name: actorName ?? null });
 			}
 			return alert;
 		} catch (error) {
-			logger.error('Error unsilenceing alert', error);
+			logger.error('Error unsilencing alert', error);
 			throw error;
 		}
 	}
@@ -655,11 +962,93 @@ export class AlertBL {
 	// name, they become the alert's owner, and an optional resolve note is stored as a
 	// regular comment. Leave it undefined for API-driven resolution (a source reporting the
 	// alert as recovered), which only gets the automatic status-transition entry.
+	// A source reported that an alert is resolved (custom or Grafana webhook). If it is
+	// firing here, resolve it as usual. If it is not, and the source sent the whole alert
+	// (name, tags, ...), record the episode it describes — fired at its startsAt (or at
+	// the resolve moment when it sent none), resolved at its endsAt (or now) — so the
+	// incident is not silently lost. An id-only resolve, or one for an alert already
+	// resolved, changes nothing: retries must stay harmless.
+	// A firing alert resolved by a full payload takes that payload's metadata with it
+	// (see applySourceMetadata), so the resolved record shows what the source last said.
+	async resolveFromSource(alertId: string, episode?: SourceResolvedEpisode): Promise<SourceResolveResult> {
+		await this.drainIngest();
+		if (await this.alertRepo.getAlert(alertId)) {
+			return { resolved: await this.resolveActive(alertId, { sourceAlert: episode?.alert }), created: false };
+		}
+		if (!episode || (await this.resolvedAlertRepo.getResolvedAlert(alertId))) {
+			logger.warn(`Resolve for ${alertId} with no firing alert; nothing recorded`);
+			return { resolved: false, created: false };
+		}
+		const nowMs = Date.now();
+		const endMs = episode.endsAt ? new Date(episode.endsAt).getTime() : NaN;
+		// A missing, unparseable or future end is "now": the source says it is over.
+		const resolvedMs = !isNaN(endMs) && endMs <= nowMs ? endMs : nowMs;
+		const startMs = episode.alert.startsAt ? new Date(episode.alert.startsAt).getTime() : NaN;
+		// No start (or one after the end) collapses the episode onto the resolve moment;
+		// the history then ends on 'resolved' — see insertResolvedOnlyEpisode.
+		const resolvedAt = new Date(resolvedMs).toISOString();
+		const startsAt = !isNaN(startMs) && startMs <= resolvedMs ? new Date(startMs).toISOString() : resolvedAt;
+		const outcome = this.resolvedAlertRepo.insertResolvedOnlyEpisode(
+			{
+				...this.normalizeIncoming(episode.alert),
+				startsAt,
+				updatedAt: resolvedAt,
+				createdAt: resolvedAt,
+				isSilenced: false,
+			},
+			startsAt,
+			resolvedAt
+		);
+		// A firing committed between the check above and the insert: resolve it normally.
+		if (outcome === 'active') {
+			return { resolved: await this.resolveActive(alertId, { sourceAlert: episode.alert }), created: false };
+		}
+		if (outcome === 'exists') return { resolved: false, created: false };
+		this.invalidateSnapshots();
+		alertsResolvedTotal.inc({ mode: 'resolve_only' });
+		logger.info(`Recorded resolve-only episode for ${alertId} (${startsAt} → ${resolvedAt})`);
+		return { resolved: false, created: true };
+	}
+
 	async resolveAlert(
 		activeAlertId: string,
-		manualActor?: { id: string | null; name: string | null },
-		comment?: string
+		manualActor?: ManualResolveActor,
+		comment?: string,
+		options: ManualResolveOptions = {}
 	): Promise<boolean> {
+		return this.resolveActive(activeAlertId, { manualActor, comment, fireCallback: options.fireCallback });
+	}
+
+	// What a source sent along with its resolve, applied over the firing alert: the same
+	// fields a firing update rewrites (never startsAt, owner or the silence/dismiss
+	// state). Fields the payload left out keep their stored value, so a lean resolve
+	// can't blank a summary or reset severity to the default. Tags are replaced, as on
+	// a firing update; a full payload always carries them. The tags that carry a field
+	// (fix, team) follow the field: kept unless the resolve sent one.
+	private applySourceMetadata(stored: Alert, incoming: IncomingAlert): Alert {
+		const sent = this.normalizeIncoming(incoming);
+		const severitySent = Boolean(incoming.severity?.trim() || incoming.tags?.['severity']);
+		const teamSent = Boolean(incoming.team?.trim() || incoming.tags?.['team']);
+		const severity = severitySent ? sent.severity : stored.severity;
+		const tags: Record<string, string> = { ...sent.tags, severity };
+		if (!('fix' in tags) && stored.tags.fix !== undefined) tags.fix = stored.tags.fix;
+		if (!teamSent && stored.tags.team !== undefined) tags.team = stored.tags.team;
+		return {
+			...stored,
+			severity,
+			team: teamSent ? sent.team : stored.team,
+			tags,
+			alertName: sent.alertName || stored.alertName,
+			alertUrl: sent.alertUrl || stored.alertUrl,
+			summary: sent.summary || stored.summary,
+			runbookUrl: sent.runbookUrl || stored.runbookUrl,
+			links: sent.links?.length ? sent.links : stored.links,
+		};
+	}
+
+	private async resolveActive(activeAlertId: string, options: ResolveActiveOptions): Promise<boolean> {
+		const { manualActor, comment, sourceAlert, fireCallback = true } = options;
+		await this.drainIngest();
 		try {
 			logger.info(`Resolving alert with id: ${activeAlertId}`);
 
@@ -671,7 +1060,9 @@ export class AlertBL {
 			}
 
 			// Insert into resolved table
-			await this.resolvedAlertRepo.insertResolvedAlert(alert);
+			await this.resolvedAlertRepo.insertResolvedAlert(
+				sourceAlert ? this.applySourceMetadata(alert, sourceAlert) : alert
+			);
 
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
@@ -687,9 +1078,26 @@ export class AlertBL {
 				);
 
 				// Whoever resolved the alert takes ownership of it.
-				if (manualActor.id != null && Number.isFinite(Number(manualActor.id))) {
+				const takesOwnership = manualActor.id != null && Number.isFinite(Number(manualActor.id));
+				if (takesOwnership) {
 					await this.resolvedAlertRepo.updateResolvedAlertOwner(activeAlertId, Number(manualActor.id));
 					this.invalidateSnapshots();
+				}
+
+				// The alert as it now sits in the resolved table.
+				if (fireCallback) {
+					await this.emitCallback(
+						'resolved',
+						{
+							...alert,
+							status: AlertStatus.RESOLVED,
+							isSilenced: false,
+							isResolved: true,
+							ownerId: takesOwnership ? manualActor.id : alert.ownerId,
+						},
+						manualActor,
+						{ comment: comment ?? null }
+					);
 				}
 
 				if (comment && manualActor.id != null) {
@@ -709,6 +1117,9 @@ export class AlertBL {
 	}
 
 	async resolveNonActiveAlerts(activeAlertIds: Set<string>, alertType: AlertType) {
+		// The selection below must see every webhook that arrived before this call —
+		// a queued-but-uncommitted alert would be skipped here and then land as firing.
+		await this.drainIngest();
 		try {
 			logger.info(`Resolving alerts not in ids for type: ${alertType}`);
 			// Get alerts that need to be resolved
@@ -732,7 +1143,8 @@ export class AlertBL {
 	}
 
 	// Moves a resolved alert back to the active table as firing — the reverse of resolveAlert.
-	async unresolveAlert(alertId: string, actorName?: string | null): Promise<Alert | null> {
+	async unresolveAlert(alertId: string, actorName?: string | null, actorId?: string | null): Promise<Alert | null> {
+		await this.drainIngest();
 		try {
 			logger.info(`Unresolving alert with id: ${alertId}`);
 
@@ -769,6 +1181,7 @@ export class AlertBL {
 				'Alert moved back to firing',
 				actorName
 			);
+			await this.emitCallback('unresolved', alert, { id: actorId ?? null, name: actorName ?? null });
 
 			logger.info(`Unresolved alert ${alertId}`);
 			return alert;
@@ -778,9 +1191,20 @@ export class AlertBL {
 		}
 	}
 
-	async deleteResolvedAlert(alertId: string): Promise<void> {
+	/**
+	 * Permanently deletes a resolved alert. Returns whether a row actually left
+	 * the resolved table — an id naming an unknown or still-active alert deletes
+	 * nothing, so callers can answer 404 instead of a 200 that changed nothing.
+	 */
+	async deleteResolvedAlert(alertId: string, actor?: AlertCallbackActor): Promise<boolean> {
+		await this.drainIngest();
 		try {
 			logger.info(`Permanently deleting resolved alert with id: ${alertId}`);
+			// The row is gone after the delete, so the callback's snapshot is read first —
+			// only when a callback actually listens.
+			const snapshot = this.callbackDispatcher?.wants('deleted')
+				? await this.resolvedAlertRepo.getResolvedAlert(alertId)
+				: null;
 			const deleted = await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
 			// Only a row that actually left the resolved table counts as permanent
 			// deletion — an id naming a still-active alert must not shed its satellites.
@@ -797,8 +1221,10 @@ export class AlertBL {
 						logger.error(`Satellite cleanup failed for deleted alert ${alertId}`, cleanupError);
 					}
 				}
+				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
 			this.invalidateSnapshots();
+			return deleted > 0;
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
 			throw error;
@@ -964,6 +1390,11 @@ export class AlertBL {
 			}
 		}
 
+		// Newest first. Exact ties keep the order the entries arrive in: status rows come
+		// from the repository newest-written first (history_id DESC), so two transitions in
+		// the same millisecond stay in the order they happened, whichever way round — and a
+		// resolve-only episode without a start time ends on 'resolved' (written second).
+		// Array.prototype.sort is stable.
 		data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 		return { alertId, data };
@@ -971,11 +1402,27 @@ export class AlertBL {
 	// endregion
 
 	// region owner
+	// Assign `actor` to each listed alert that has no owner yet, in whichever table it
+	// lives; owned alerts are left alone. Grouping into an incident uses this to make
+	// the creator responsible for the members nobody had picked up. A tokenless actor
+	// (API token) has no user to assign, so nothing happens.
+	async claimUnownedAlerts(alertIds: string[], actor: { id: number | null; name: string | null }): Promise<void> {
+		if (actor.id === null) return;
+		const ownerId = String(actor.id);
+		for (const alertId of alertIds) {
+			const active = await this.alertRepo.getAlert(alertId);
+			const alert = active ?? (await this.resolvedAlertRepo.getResolvedAlert(alertId));
+			if (!alert || alert.ownerId) continue;
+			await this.setAlertOwner(alertId, ownerId, active === null, actor.name, ownerId);
+		}
+	}
+
 	async setAlertOwner(
 		alertId: string,
 		ownerId: string | null,
 		isResolved: boolean,
-		actorName?: string | null
+		actorName?: string | null,
+		actorId?: string | null
 	): Promise<Alert | null> {
 		try {
 			logger.info(`Setting owner ${ownerId} for alert: ${alertId} is Resolved ${isResolved}`);
@@ -996,6 +1443,12 @@ export class AlertBL {
 						`Assigned to ${ownerName}`,
 						actorName
 					);
+					await this.emitCallback(
+						'owner_assigned',
+						updated,
+						{ id: actorId ?? null, name: actorName ?? null },
+						{ ownerId: String(numericOwnerId), ownerName }
+					);
 				} else {
 					await this.recordHistoryEvent(
 						alertId,
@@ -1003,6 +1456,22 @@ export class AlertBL {
 						'Owner removed',
 						actorName
 					);
+					await this.emitCallback(
+						'owner_unassigned',
+						updated,
+						{ id: actorId ?? null, name: actorName ?? null },
+						{
+							ownerId: null,
+							ownerName: null,
+						}
+					);
+					for (const listener of this.unassignListeners) {
+						try {
+							await listener(alertId, { id: actorId ?? null, name: actorName ?? null });
+						} catch (listenerError) {
+							logger.error(`Unassign listener failed for alert ${alertId}`, listenerError);
+						}
+					}
 				}
 			}
 			return updated;
@@ -1028,6 +1497,14 @@ export class AlertBL {
 			AlertHistoryEventType.COMMENT_ADDED,
 			'Comment added',
 			actorName ?? null
+		);
+		await this.emitCallback(
+			'comment_added',
+			async () =>
+				(await this.alertRepo.getAlert(comment.alertId)) ??
+				(await this.resolvedAlertRepo.getResolvedAlert(comment.alertId)),
+			{ id: comment.userId, name: actorName ?? null },
+			{ comment: comment.comment }
 		);
 		return created;
 	}

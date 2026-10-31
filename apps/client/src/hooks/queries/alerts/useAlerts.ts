@@ -1,6 +1,7 @@
 import { alertsApi, AlertListResponse, AlertQueryParams } from '@/lib/api';
 import { isPlaygroundMode } from '@/lib/playground';
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { ACTIVE_ALERTS_POLL_MS } from '@/lib/pollIntervals';
+import { keepPreviousData, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '../queryKeys';
 
@@ -10,6 +11,8 @@ import { queryKeys } from '../queryKeys';
 // no separate code path to drift.
 export const useAlerts = (query?: AlertQueryParams, options?: { refetchIntervalMs?: number }) => {
 	const playgroundMode = isPlaygroundMode();
+	const queryClient = useQueryClient();
+	const pollMs = options?.refetchIntervalMs ?? ACTIVE_ALERTS_POLL_MS;
 
 	const result = useInfiniteQuery({
 		queryKey: [...queryKeys.alerts, playgroundMode ? 'playground' : 'api', query ?? null],
@@ -25,7 +28,12 @@ export const useAlerts = (query?: AlertQueryParams, options?: { refetchIntervalM
 		initialPageParam: '',
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
 		staleTime: 5 * 1000,
-		refetchInterval: playgroundMode ? false : (options?.refetchIntervalMs ?? 5 * 1000),
+		// Paused while a bulk action is pending: the server applies it one alert at a time,
+		// so a poll mid-way would bring back rows the optimistic update already changed
+		// (resolved rows reappearing) until the action's own refetch. That refetch updates
+		// the query, which re-evaluates this and resumes polling.
+		refetchInterval: () =>
+			playgroundMode || queryClient.isMutating({ mutationKey: queryKeys.bulkAlertAction }) > 0 ? false : pollMs,
 		// A changed query (typing, a filter click, a sort) mints a new key; without this
 		// the table drops to empty and repaints from scratch when the response lands —
 		// reads as "everything got deleted and re-rendered". Keeping the previous rows on

@@ -119,10 +119,9 @@ export const AiSettings = () => {
 			<div>
 				<h2 className="text-lg font-semibold text-foreground">AI (beta)</h2>
 				<p className="text-sm text-muted-foreground">
-					Bring your own Amazon Bedrock API key to power upcoming AI features. The key is stored encrypted on
-					your OpsiMate server, never reaches the browser, and is sent only to the endpoint configured here
-					(Amazon Bedrock unless you set a custom one). It can be removed at any time, and no alert data
-					leaves your server until an AI feature is explicitly used.
+					Your Amazon Bedrock API key for AI features. Stored encrypted on the server, never sent to the
+					browser, used only against the endpoint below; no alert data leaves your server until an AI feature
+					is used. Remove it any time.
 				</p>
 			</div>
 
@@ -256,8 +255,13 @@ export const AiSettings = () => {
 							)}
 							Test connection
 						</Button>
-						<Button onClick={() => void save()} disabled={updateMutation.isPending || !dirty}>
-							{updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+						<Button
+							onClick={() => void save()}
+							disabled={updateMutation.isPending || !dirty}
+							className="gap-1.5"
+						>
+							{updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+							{updateMutation.isPending ? 'Saving…' : 'Save'}
 						</Button>
 					</div>
 				</div>

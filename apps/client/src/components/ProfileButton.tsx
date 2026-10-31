@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 import { PreserveQueryLink } from './PreserveQueryLink';
+import { ROUTES } from '@/lib/routes';
 
 interface ProfileButtonProps {
 	collapsed: boolean;
@@ -19,7 +20,7 @@ const getInitials = (name: string) => {
 
 export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 	const location = useLocation();
-	const isActive = location.pathname === '/profile';
+	const isActive = location.pathname === ROUTES.profile;
 	const currentUser = getCurrentUser();
 	const userInitials = currentUser ? getInitials(currentUser.email.split('@')[0]) : 'U';
 
@@ -33,7 +34,7 @@ export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 			)}
 			asChild
 		>
-			<PreserveQueryLink to="/profile">
+			<PreserveQueryLink to={ROUTES.profile}>
 				<div
 					className={cn(
 						'flex items-center justify-center rounded-full border transition-colors duration-200',

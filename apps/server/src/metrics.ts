@@ -15,11 +15,11 @@ export const metricsRegistry = new Registry();
 collectDefaultMetrics({ register: metricsRegistry });
 
 // Event-loop utilization: the fraction of time the loop was actively executing (vs
-// idle in epoll) since the previous scrape. The lag histograms above say when the
-// loop is BLOCKED; this says how BUSY it is — the single-core saturation signal for
-// a Node process. 0.7+ sustained means requests are queueing behind compute and it
-// is time to shed work or add processes. Delta-based so each scrape reads its own
-// interval, whatever the scrape cadence.
+// idle in epoll) since the previous scrape. The default event-loop-lag metrics registered
+// by collectDefaultMetrics say when the loop is BLOCKED; this says how BUSY it is,
+// the single-core saturation signal for a Node process. 0.7+ sustained means requests
+// are queueing behind compute and it is time to shed work or add processes. Delta-based
+// so each scrape reads its own interval, whatever the scrape cadence.
 let lastElu = performance.eventLoopUtilization();
 new Gauge({
 	name: 'opsimate_event_loop_utilization',
@@ -72,8 +72,18 @@ export const alertsUnsilencedTotal = new Counter({
 
 export const actionsRunTotal = new Counter({
 	name: 'opsimate_actions_run_total',
-	help: 'Actions executed against alerts, by action type and outcome',
+	help: 'Actions executed against alerts, by action type and outcome (success, error, or sent for HTTP actions that do not wait for a response)',
 	labelNames: ['type', 'outcome'] as const,
+	registers: [metricsRegistry],
+});
+
+// One increment per delivery (after retries), so `error` counts receivers that stayed
+// down, not individual attempts; `dropped` counts payloads shed when a callback's
+// backlog was full.
+export const callbacksSentTotal = new Counter({
+	name: 'opsimate_callbacks_sent_total',
+	help: 'Alert callback deliveries by event and final outcome (success, error after retries, or dropped)',
+	labelNames: ['event', 'outcome'] as const,
 	registers: [metricsRegistry],
 });
 
@@ -91,9 +101,18 @@ export const bulkAlertsAffectedTotal = new Counter({
 	registers: [metricsRegistry],
 });
 
+// How many webhooks each ingest flush committed together. Mostly 1 when quiet; the
+// upper buckets filling up is what a burst looks like — and proof the batching works.
+export const ingestBatchSize = new Histogram({
+	name: 'opsimate_ingest_batch_size',
+	help: 'Alerts committed per ingest batch (one transaction each)',
+	buckets: [1, 2, 5, 10, 25, 50, 100, 250, 500],
+	registers: [metricsRegistry],
+});
+
 // Visibility into the snapshot cache the whole read path sits on: how often the full
 // alert list is recomputed (enrichments + mute policies + comments + firing times) and
-// how long it takes. Wraps a computation that runs anyway — zero added cost.
+// how long it takes. Wraps a computation that runs anyway, with zero added cost.
 export const snapshotComputeDuration = new Histogram({
 	name: 'opsimate_snapshot_compute_duration_seconds',
 	help: 'Duration of full alert-snapshot recomputes, by list',

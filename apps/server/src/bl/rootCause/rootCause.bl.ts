@@ -49,6 +49,7 @@ const toPublic = (record: RootCauseRecord): AlertRootCause => ({
 	rating: record.rating,
 	ratedBy: record.ratedBy,
 	ratedAt: record.ratedAt,
+	ratingComment: record.ratingComment,
 	createdAt: record.createdAt,
 	updatedAt: record.updatedAt,
 });
@@ -62,6 +63,7 @@ export class RootCauseBL {
 		private alertExists: (alertId: string) => Promise<boolean>
 	) {}
 
+	// Replaces the alert's analysis, including one hidden after a re-fire.
 	async upsert(input: UpsertRootCauseInput): Promise<AlertRootCause> {
 		if (!(await this.alertExists(input.alertId))) {
 			throw new RootCauseNotFoundError(`Alert ${input.alertId} not found`);
@@ -70,16 +72,33 @@ export class RootCauseBL {
 		return toPublic(record);
 	}
 
+	// An analysis is about one firing episode. Once the alert resolves and fires again
+	// under the same id, the old one must not show (or be rated) as if it explained the
+	// new incident: it stays hidden until a new analysis is pushed, which replaces it.
 	async get(alertId: string): Promise<AlertRootCause | null> {
 		const record = await this.rootCauseRepo.getByAlertId(alertId);
-		return record ? toPublic(record) : null;
+		return record && record.supersededAt === null ? toPublic(record) : null;
+	}
+
+	async hideForRefiredAlerts(alertIds: string[]): Promise<void> {
+		await this.rootCauseRepo.supersede(alertIds);
 	}
 
 	// Stores the verdict FIRST, then fires the sender's callback for it. The stored
 	// rating is the source of truth (and phase 2's eval signal); callback delivery is
 	// best-effort and reported, never load-bearing.
-	async rate(alertId: string, rating: RootCauseRating, user: User): Promise<RateRootCauseResult> {
-		const updated = await this.rootCauseRepo.setRating(alertId, rating, user.fullName);
+	async rate(
+		alertId: string,
+		rating: RootCauseRating,
+		user: User,
+		comment: string | undefined
+	): Promise<RateRootCauseResult> {
+		// The comment is the "what went wrong?" answer — it only makes sense on a
+		// thumbs-down, so a comment sent with 'up' is dropped rather than stored.
+		const storedComment = rating === 'down' && comment ? comment : null;
+		// A hidden analysis (from an earlier episode) is not rated either: its sender would
+		// take the verdict as one on the incident the operator is looking at.
+		const updated = await this.rootCauseRepo.setRating(alertId, rating, user.fullName, storedComment);
 		if (!updated) {
 			throw new RootCauseNotFoundError(`No root cause for alert ${alertId}`);
 		}
@@ -94,7 +113,7 @@ export class RootCauseBL {
 				resourceId: alertId,
 				userId: Number(user.id),
 				userName: user.fullName,
-				resourceName: `root cause rated ${rating}`,
+				resourceName: storedComment ? `root cause rated ${rating} with comment` : `root cause rated ${rating}`,
 			});
 		} catch (error) {
 			logger.error('Failed to audit-log a root-cause rating (rating stored)', error);
@@ -108,6 +127,8 @@ export class RootCauseBL {
 				rating,
 				ratedBy: updated.ratedBy,
 				ratedAt: updated.ratedAt,
+				// Always present so receivers can rely on the key; null on thumbs-up.
+				comment: updated.ratingComment,
 			});
 		}
 		return { rootCause: toPublic(updated), callbackDelivered };

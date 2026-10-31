@@ -1,4 +1,4 @@
-import { DashboardTimeRange, Logger } from '@OpsiMate/shared';
+import { DashboardTimeRange, isQuickTimePreset, Logger } from '@OpsiMate/shared';
 import { DashboardState, TimeRange } from './DashboardContext';
 
 const logger = new Logger('DashboardContext.utils');
@@ -14,7 +14,7 @@ export const readLegacySeverityColors = (): boolean => {
 	try {
 		return localStorage.getItem(LEGACY_SEVERITY_COLORS_KEY) === 'true';
 	} catch (e) {
-		logger.warn('Failed to read the legacy severity-colors preference:', e);
+		logger.warn('Failed to read the legacy severity-colors preference:', { extraArgs: { err: e } });
 		return false;
 	}
 };
@@ -40,17 +40,17 @@ export const deserializeTimeRange = (stored: DashboardTimeRange | undefined): Ti
 	if (!stored) {
 		return { from: null, to: null, preset: null };
 	}
-	const preset = stored.preset as TimeRange['preset'];
 	// Quick presets are rolling windows resolved at filter time; drop any absolute dates
 	// that older versions froze in at click time (a saved "Today" from last week would
-	// otherwise keep filtering last week forever). Only 'custom' keeps its dates.
-	if (preset && preset !== 'custom') {
-		return { from: null, to: null, preset };
+	// otherwise keep filtering last week forever). Only 'custom' keeps its dates. A preset
+	// name this build doesn't know can't be resolved, so it reads back as no preset.
+	if (isQuickTimePreset(stored.preset)) {
+		return { from: null, to: null, preset: stored.preset };
 	}
 	return {
 		from: stored.from ? new Date(stored.from) : null,
 		to: stored.to ? new Date(stored.to) : null,
-		preset,
+		preset: stored.preset === 'custom' ? 'custom' : null,
 	};
 };
 
@@ -71,7 +71,7 @@ export const loadFromStorage = (defaultState: DashboardState): DashboardState =>
 			};
 		}
 	} catch (e) {
-		logger.warn('Failed to load dashboard from localStorage:', e);
+		logger.warn('Failed to load dashboard from localStorage:', { extraArgs: { err: e } });
 	}
 	// No stored draft (or an unreadable one). Both dashboardState and initialState load
 	// through here, so they agree and the dashboard doesn't start out looking dirty.
@@ -86,7 +86,7 @@ export const saveToStorage = (state: DashboardState): void => {
 		};
 		localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(toStore));
 	} catch (e) {
-		logger.warn('Failed to save dashboard to localStorage:', e);
+		logger.warn('Failed to save dashboard to localStorage:', { extraArgs: { err: e } });
 	}
 };
 

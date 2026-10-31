@@ -1,7 +1,7 @@
 import { alertsApi } from '@/lib/api';
-import { Alert } from '@OpsiMate/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
+import { applyToAlertCaches, removeAlertFromCache, restoreAlertCaches } from './alertListCache';
 
 // Moves a resolved alert back to the active (firing) list — the reverse of resolving.
 export const useUnresolveAlert = () => {
@@ -16,26 +16,16 @@ export const useUnresolveAlert = () => {
 			return response.data;
 		},
 		onMutate: async (alertId: string) => {
-			// Cancel any outgoing refetches to avoid overwriting our optimistic update
-			await queryClient.cancelQueries({ queryKey: queryKeys.resolvedAlerts });
-
-			// Snapshot the previous value
-			const previousAlerts = queryClient.getQueryData<Alert[]>(queryKeys.resolvedAlerts);
-
-			// Optimistically remove the alert from the resolved list
-			queryClient.setQueryData<Alert[]>(queryKeys.resolvedAlerts, (old) => {
-				if (!old) return [];
-				return old.filter((alert) => alert.id !== alertId);
-			});
-
-			// Return a context object with the snapshotted value
-			return { previousAlerts };
+			// The row leaves the resolved list on click; it joins the active one on the refetch.
+			const previous = await applyToAlertCaches(
+				queryClient,
+				queryKeys.resolvedAlerts,
+				removeAlertFromCache(alertId)
+			);
+			return { previous };
 		},
-		onError: (err, alertId, context) => {
-			// If the mutation fails, use the context returned from onMutate to roll back
-			if (context?.previousAlerts) {
-				queryClient.setQueryData(queryKeys.resolvedAlerts, context.previousAlerts);
-			}
+		onError: (_err, _alertId, context) => {
+			restoreAlertCaches(queryClient, context?.previous);
 		},
 		onSettled: (_data, _error, alertId) => {
 			// Always refetch after error or success: the alert left one list and joined the other

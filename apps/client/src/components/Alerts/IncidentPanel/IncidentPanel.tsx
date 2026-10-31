@@ -87,6 +87,7 @@ export const IncidentPanel = ({
 				</div>
 
 				<div className="text-xs text-muted-foreground space-y-0.5">
+					{incident.ownerName && <div>Owner: {incident.ownerName}</div>}
 					{incident.earliestStartsAt && <div>Started: {formatLongDateTime(incident.earliestStartsAt)}</div>}
 					{incident.latestUpdatedAt && <div>Last update: {formatLongDateTime(incident.latestUpdatedAt)}</div>}
 				</div>

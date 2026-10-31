@@ -10,6 +10,8 @@ export default defineConfig({
 			input: {
 				index: resolve(__dirname, 'src/index.ts'),
 				worker: resolve(__dirname, 'src/worker.ts'),
+				// The alerts-list worker thread (see SnapshotWorkerClient.resolveWorkerScript).
+				snapshotWorker: resolve(__dirname, 'src/bl/alerts/snapshotWorker.ts'),
 			},
 			output: {
 				format: 'es',
@@ -44,6 +46,8 @@ export default defineConfig({
 				'zod',
 				'sshpk',
 				'@OpsiMate/shared',
+				// Read from disk at runtime (its static files are served as-is), so never bundled.
+				'swagger-ui-dist',
 			],
 		},
 		minify: false,

@@ -7,7 +7,7 @@ import {
 	serializeTimeRange,
 } from './DashboardContext.utils';
 
-export type DashboardType = 'services' | 'alerts';
+import type { DashboardType } from '@OpsiMate/shared';
 
 // Re-exported from the time filter's own types rather than redeclared: the two copies
 // had already drifted (the context's was missing 'last2m'), which made the dashboard's

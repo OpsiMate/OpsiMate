@@ -1,13 +1,27 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { BarChart3, Bell, BellOff, LayoutDashboard, PhoneCall, Puzzle, Settings, Sparkles, Zap } from 'lucide-react';
+import {
+	BarChart3,
+	Bell,
+	BellOff,
+	BookOpen,
+	LayoutDashboard,
+	PhoneCall,
+	Puzzle,
+	Settings,
+	Sparkles,
+	Zap,
+} from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { API_HOST } from '../lib/api';
 import { isAdmin, isEditor } from '../lib/auth';
+import { isPlaygroundMode } from '../lib/playground';
 import { AppIcon } from './icons/AppIcon';
 import { ALERTS_PATHS } from './LeftSidebar.constants';
 import { PreserveQueryLink } from './PreserveQueryLink';
 import { ProfileButton } from './ProfileButton';
 import { VersionBadge } from './VersionBadge';
+import { ROUTES } from '@/lib/routes';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -20,10 +34,33 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 	const isAlertsActive = ALERTS_PATHS.includes(location.pathname as (typeof ALERTS_PATHS)[number]);
 	const showIntegrations = isEditor();
 	const showSettings = isAdmin();
+	// The playground has no server behind it, so there's no API to document.
+	const apiDocsLink = isPlaygroundMode() ? null : (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<a
+					href={`${API_HOST}/api/docs/`}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label="Open the API documentation"
+					className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md text-foreground"
+				>
+					<BookOpen className="h-5 w-5" />
+				</a>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				align="center"
+				className="rounded-md bg-popover text-popover-foreground px-2 py-1 text-sm border"
+			>
+				API documentation
+			</TooltipContent>
+		</Tooltip>
+	);
 	return (
 		<div className={cn('w-full bg-background flex flex-col h-full overflow-hidden', collapsed && 'items-center')}>
 			<PreserveQueryLink
-				to="/"
+				to={ROUTES.home}
 				className={cn(
 					'flex items-center h-20 px-5 border-b cursor-pointer transition-all duration-200',
 					collapsed && 'justify-center px-2'
@@ -51,62 +88,62 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/">
+					<PreserveQueryLink to={ROUTES.home}>
 						<Bell className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Alerts</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/dashboards' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.dashboards ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/dashboards">
+					<PreserveQueryLink to={ROUTES.dashboards}>
 						<LayoutDashboard className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Dashboards</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/insights' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.insights ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/insights">
+					<PreserveQueryLink to={ROUTES.insights}>
 						<BarChart3 className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Insights</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/mute-policies' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.mutePolicies ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/mute-policies">
+					<PreserveQueryLink to={ROUTES.mutePolicies}>
 						<BellOff className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Mute Policies</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/actions' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.actions ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/actions">
+					<PreserveQueryLink to={ROUTES.actions}>
 						<Zap className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Actions</span>
 					</PreserveQueryLink>
 				</Button>
 
 				<Button
-					variant={location.pathname === '/enrichments' ? 'default' : 'ghost'}
+					variant={location.pathname === ROUTES.enrichments ? 'default' : 'ghost'}
 					className={cn('gap-3 h-10', collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3')}
 					asChild
 				>
-					<PreserveQueryLink to="/enrichments">
+					<PreserveQueryLink to={ROUTES.enrichments}>
 						<Sparkles className="h-5 w-5 shrink-0" />
 						<span className={cn('font-medium', collapsed && 'sr-only')}>Enrichment</span>
 					</PreserveQueryLink>
@@ -117,14 +154,14 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 				<div className={cn('flex flex-col gap-2 items-center')}>
 					{showIntegrations && (
 						<Button
-							variant={location.pathname === '/integrations' ? 'default' : 'ghost'}
+							variant={location.pathname === ROUTES.integrations ? 'default' : 'ghost'}
 							className={cn(
 								'gap-3 h-10 items-center',
 								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
-							<PreserveQueryLink to="/integrations">
+							<PreserveQueryLink to={ROUTES.integrations}>
 								<Puzzle className="h-5 w-5 shrink-0" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Integrations</span>
 							</PreserveQueryLink>
@@ -132,28 +169,28 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 					)}
 					{showSettings && (
 						<Button
-							variant={location.pathname === '/settings' ? 'default' : 'ghost'}
+							variant={location.pathname === ROUTES.settings ? 'default' : 'ghost'}
 							className={cn(
 								'gap-3 h-10 items-center',
 								collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 							)}
 							asChild
 						>
-							<PreserveQueryLink to="/settings">
+							<PreserveQueryLink to={ROUTES.settings}>
 								<Settings className="h-5 w-5 shrink-0 items-center" />
 								<span className={cn('font-medium', collapsed && 'sr-only')}>Settings</span>
 							</PreserveQueryLink>
 						</Button>
 					)}
 					<Button
-						variant={location.pathname === '/oncall' ? 'default' : 'ghost'}
+						variant={location.pathname === ROUTES.oncall ? 'default' : 'ghost'}
 						className={cn(
 							'gap-3 h-10 items-center',
 							collapsed ? 'w-10 justify-center p-0' : 'w-full justify-start px-3'
 						)}
 						asChild
 					>
-						<PreserveQueryLink to="/oncall">
+						<PreserveQueryLink to={ROUTES.oncall}>
 							<PhoneCall className="h-5 w-5 shrink-0" />
 							<span className={cn('font-medium', collapsed && 'sr-only')}>On-Call</span>
 						</PreserveQueryLink>
@@ -165,22 +202,19 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 							<div className={cn('flex gap-2', collapsed && 'gap-0.5')}>
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div
+										<a
+											href="https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA"
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label="Join our Slack community"
 											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
-											onClick={() =>
-												window.open(
-													'https://join.slack.com/t/opsimate/shared_invite/zt-39bq3x6et-NrVCZzH7xuBGIXmOjJM7gA',
-													'_blank',
-													'noopener,noreferrer'
-												)
-											}
 										>
 											<img
 												src="/images/slack.png"
 												alt="Slack"
 												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
-										</div>
+										</a>
 									</TooltipTrigger>
 									<TooltipContent
 										side="top"
@@ -193,22 +227,19 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div
+										<a
+											href="https://github.com/opsimate/opsimate"
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label="Star OpsiMate on GitHub"
 											className="h-8 w-8 p-1 flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-muted rounded-md"
-											onClick={() =>
-												window.open(
-													'https://github.com/opsimate/opsimate',
-													'_blank',
-													'noopener,noreferrer'
-												)
-											}
 										>
 											<img
 												src="/images/git.png"
 												alt="GitHub"
 												className="h-5 w-5 object-contain invert dark:invert-0"
 											/>
-										</div>
+										</a>
 									</TooltipTrigger>
 									<TooltipContent
 										side="top"
@@ -218,7 +249,10 @@ export const LeftSidebar = ({ collapsed }: LeftSidebarProps) => {
 										Star us on GitHub ⭐
 									</TooltipContent>
 								</Tooltip>
+								{!collapsed && apiDocsLink}
 							</div>
+							{/* Collapsed, the row has room for two icons only. */}
+							{collapsed && apiDocsLink}
 
 							<VersionBadge collapsed={collapsed} />
 						</div>

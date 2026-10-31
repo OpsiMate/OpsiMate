@@ -31,7 +31,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Phone, Plus, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 export interface OncallTeamDraft {
 	name: string;
@@ -113,6 +113,7 @@ const SortableMemberRow = ({ userId, index, user, disabled, onRemove }: Sortable
 // Create/edit an on-call team: name, rotation cadence, and the ordered member list
 // (the order is the call order — first member is on call first; drag rows to reorder).
 export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSave }: OncallTeamFormDialogProps) => {
+	const id = useId();
 	const [name, setName] = useState('');
 	const [rotationDays, setRotationDays] = useState('');
 	const [userIds, setUserIds] = useState<string[]>([]);
@@ -155,8 +156,11 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 
 				<div className="space-y-4">
 					<div>
-						<label className="text-sm font-semibold text-muted-foreground">Team name</label>
+						<label htmlFor={`${id}-team-name`} className="text-sm font-semibold text-muted-foreground">
+							Team name
+						</label>
 						<Input
+							id={`${id}-team-name`}
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="backend"
@@ -166,8 +170,11 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 					</div>
 
 					<div>
-						<label className="text-sm font-semibold text-muted-foreground">Rotate every (days)</label>
+						<label htmlFor={`${id}-rotation-days`} className="text-sm font-semibold text-muted-foreground">
+							Rotate every (days)
+						</label>
 						<Input
+							id={`${id}-rotation-days`}
 							type="number"
 							min={0}
 							max={365}
@@ -183,12 +190,17 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 					</div>
 
 					<div>
-						<label className="text-sm font-semibold text-muted-foreground">Members (call order)</label>
+						<p id={`${id}-members`} className="text-sm font-semibold text-muted-foreground">
+							Members (call order)
+						</p>
 						<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
 							<SortableContext items={userIds} strategy={verticalListSortingStrategy}>
 								{/* Capped height: big teams scroll here instead of growing the dialog
 								    past the viewport (which pushed the Save button off-screen). */}
-								<ul className="mt-2 max-h-60 space-y-1.5 overflow-y-auto pr-1">
+								<ul
+									aria-labelledby={`${id}-members`}
+									className="mt-2 max-h-60 space-y-1.5 overflow-y-auto pr-1"
+								>
 									{userIds.map((userId, index) => (
 										<SortableMemberRow
 											key={userId}

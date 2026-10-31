@@ -145,6 +145,7 @@ export const GroupByControls = ({
 									'h-7 w-7 rounded-md shrink-0 border hover:bg-muted hover:text-foreground',
 									groupByColumns.length > 0 && 'text-primary border-primary'
 								)}
+								aria-label="Configure alert grouping"
 							>
 								<div className="relative">
 									<Layers className="h-4 w-4" />

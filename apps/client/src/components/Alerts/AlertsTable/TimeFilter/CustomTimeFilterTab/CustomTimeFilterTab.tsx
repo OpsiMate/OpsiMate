@@ -1,9 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
-import { useState } from 'react';
+import { formatDate } from '@/lib/datetime';
+import { useId, useState } from 'react';
 import {
 	APPLY_BUTTON_LABEL,
 	CLEAR_BUTTON_LABEL,
@@ -23,6 +25,7 @@ interface CustomTimeFilterTabProps {
 }
 
 export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilterTabProps) => {
+	const id = useId();
 	// Prefill from the resolved window so switching from a quick preset (stored without
 	// dates) starts the pickers at the preset's current from/to instead of empty — the
 	// time inputs included, or applying "Custom" right after "Last 1 hour" would silently
@@ -64,17 +67,20 @@ export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilte
 		<div className="space-y-6">
 			<div className="space-y-3">
 				<div className="space-y-1.5">
-					<label className="text-xs font-medium text-muted-foreground">{FROM_LABEL}</label>
+					<Label htmlFor={`${id}-from-date`} className="text-xs font-medium text-muted-foreground">
+						{FROM_LABEL}
+					</Label>
 					<div className="flex gap-1.5">
 						<Popover open={fromCalendarOpen} onOpenChange={setFromCalendarOpen}>
 							<PopoverTrigger asChild>
 								<Button
+									id={`${id}-from-date`}
 									variant="outline"
 									size="sm"
 									className="h-7 flex-1 justify-start text-xs font-normal"
 								>
 									<CalendarIcon className="h-3 w-3 mr-1.5" />
-									{customFrom?.toLocaleDateString() || PICK_DATE_PLACEHOLDER}
+									{formatDate(customFrom, PICK_DATE_PLACEHOLDER)}
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className="w-auto p-0" align="start">
@@ -89,7 +95,11 @@ export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilte
 								/>
 							</PopoverContent>
 						</Popover>
+						<Label htmlFor={`${id}-from-time`} className="sr-only">
+							{FROM_LABEL} time
+						</Label>
 						<Input
+							id={`${id}-from-time`}
 							type="time"
 							value={fromTime}
 							onChange={(e) => setFromTime(e.target.value)}
@@ -98,17 +108,20 @@ export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilte
 					</div>
 				</div>
 				<div className="space-y-1.5">
-					<label className="text-xs font-medium text-muted-foreground">{TO_LABEL}</label>
+					<Label htmlFor={`${id}-to-date`} className="text-xs font-medium text-muted-foreground">
+						{TO_LABEL}
+					</Label>
 					<div className="flex gap-1.5">
 						<Popover open={toCalendarOpen} onOpenChange={setToCalendarOpen}>
 							<PopoverTrigger asChild>
 								<Button
+									id={`${id}-to-date`}
 									variant="outline"
 									size="sm"
 									className="h-7 flex-1 justify-start text-xs font-normal"
 								>
 									<CalendarIcon className="h-3 w-3 mr-1.5" />
-									{customTo?.toLocaleDateString() || PICK_DATE_PLACEHOLDER}
+									{formatDate(customTo, PICK_DATE_PLACEHOLDER)}
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className="w-auto p-0" align="start">
@@ -123,7 +136,11 @@ export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilte
 								/>
 							</PopoverContent>
 						</Popover>
+						<Label htmlFor={`${id}-to-time`} className="sr-only">
+							{TO_LABEL} time
+						</Label>
 						<Input
+							id={`${id}-to-time`}
 							type="time"
 							value={toTime}
 							onChange={(e) => setToTime(e.target.value)}

@@ -6,13 +6,14 @@ import { rootCauseApi } from './rootCause.api';
 interface RateRootCauseInput {
 	alertId: string;
 	rating: RootCauseRating;
+	comment?: string;
 }
 
 export const useRateRootCause = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async ({ alertId, rating }: RateRootCauseInput) => {
-			const response = await rootCauseApi.rate(alertId, rating);
+		mutationFn: async ({ alertId, rating, comment }: RateRootCauseInput) => {
+			const response = await rootCauseApi.rate(alertId, rating, comment);
 			if (!response.success) {
 				throw new Error(response.error || 'Failed to rate root cause');
 			}

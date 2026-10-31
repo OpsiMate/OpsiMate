@@ -73,6 +73,7 @@ export const AlertDetailsPanel = ({
 								historyData={historyData}
 								timeRange={timeRange}
 								onViewAllComments={() => setTab('comments')}
+								isResolved={!isActive}
 							/>
 						</SectionsExpandContext.Provider>
 					</ScrollArea>

@@ -2,6 +2,7 @@ import {
 	criteriaMatchesAlert,
 	Alert,
 	AlertEnrichment,
+	AlertEnrichmentVersion,
 	AlertLink,
 	AppliedEnrichment,
 	AuditActionType,
@@ -11,13 +12,12 @@ import {
 	User,
 } from '@OpsiMate/shared';
 import { CreateEnrichmentInput, EnrichmentRepository, UpdateEnrichmentInput } from '../../dal/enrichmentRepository';
-import { buildAlertContext } from '../actions/actionExecutor';
+import { buildAlertContext, resolveTemplateVariable } from '../actions/actionExecutor';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
+import { PreparedRules } from '../alerts/preparedRules';
 
 const logger = new Logger('bl/enrichment.bl');
-
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
 
 export class EnrichmentBL {
 	// Enrichment rules rewrite tags/severity/summary on every alert the snapshot cache
@@ -52,6 +52,10 @@ export class EnrichmentBL {
 		return this.enrichmentRepo.getEnrichmentById(id);
 	}
 
+	async history(id: number): Promise<AlertEnrichmentVersion[]> {
+		return this.enrichmentRepo.getEnrichmentVersions(id);
+	}
+
 	async update(id: number, data: UpdateEnrichmentInput, actor?: User | null): Promise<AlertEnrichment | undefined> {
 		const shouldAudit = this.hasUpdateData(data);
 		await this.enrichmentRepo.updateEnrichment(id, data, actor?.fullName);
@@ -70,14 +74,6 @@ export class EnrichmentBL {
 		if (existing) {
 			await this.recordAuditAction(AuditActionType.DELETE, existing, actor);
 		}
-	}
-
-	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
-		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
-		return {
-			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
-		};
 	}
 
 	private hasUpdateData(data: UpdateEnrichmentInput): boolean {
@@ -101,7 +97,7 @@ export class EnrichmentBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const auditActor = this.getAuditActor(actor);
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.ENRICHMENT,
@@ -128,12 +124,15 @@ export class EnrichmentBL {
 	// Templates may reference the alert's current values; enrichments chain in order, so a
 	// later rule's {{summary}} sees the previous rule's output. The vocabulary is the
 	// same one action templates use — {{summary}}, {{name}}, {{status}}, {{severity}},
-	// {{label.<key>}}, ... — via buildAlertContext, reused verbatim so the two systems
-	// cannot drift (it also accepts the alert.*/tag.* aliases). Unknown placeholders are
-	// left as-is.
+	// {{label.<key>}}, {{flag.<code>}}, ... — via buildAlertContext and
+	// resolveTemplateVariable, reused verbatim so the two systems cannot drift (it also
+	// accepts the alert.*/tag.* aliases). Unknown placeholders are left as-is.
 	private static resolveTemplate(template: string, alert: Alert): string {
 		const ctx = buildAlertContext(alert);
-		return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) => (key in ctx ? ctx[key] : match));
+		return template.replace(
+			/\{\{\s*([\w.]+)\s*\}\}/g,
+			(match, key: string) => resolveTemplateVariable(key, ctx) ?? match
+		);
 	}
 
 	// claimedKeys tracks fields already set by a higher-priority rule in this pass, so the
@@ -195,27 +194,55 @@ export class EnrichmentBL {
 	// key the higher-priority rule wins. A rule can also match on tags added by an
 	// earlier (higher-priority) rule in the same pass.
 	async applyEnrichments(alerts: Alert[]): Promise<Alert[]> {
+		const { apply } = await this.prepareEnricher();
+		return alerts.map(apply);
+	}
+
+	// The rule set loaded once, as a per-alert function plus a key that changes
+	// whenever the rules do. The alerts snapshot keeps per-alert results between
+	// rebuilds and uses the key to know they are still valid. A rule that matches
+	// nothing leaves the alert object itself untouched (same reference).
+	async prepareEnricher(): Promise<PreparedRules> {
+		let enrichments: AlertEnrichment[];
 		try {
-			const enrichments = (await this.enrichmentRepo.getAllEnrichments()).sort(
+			enrichments = (await this.enrichmentRepo.getAllEnrichments()).sort(
 				(a, b) => b.priority - a.priority || a.id - b.id
 			);
-			if (enrichments.length === 0) return alerts;
-			return alerts.map((alert) => {
-				let enriched = alert;
-				const claimedKeys = new Set<string>();
-				const applied: AppliedEnrichment[] = [];
-				for (const enrichment of enrichments) {
-					if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
-						enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
-						applied.push({ id: enrichment.id, name: enrichment.name });
-					}
-				}
-				// Expose which rules decorated this alert so the UI can show it was enriched.
-				return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
-			});
 		} catch (err) {
-			logger.error('Failed to apply alert enrichments, returning alerts unchanged', err);
-			return alerts;
+			logger.error('Failed to load alert enrichments, leaving alerts unchanged', err);
+			return { key: 'enrichments:unavailable', apply: (alert) => alert };
 		}
+		if (enrichments.length === 0) return { key: 'enrichments:none', apply: (alert) => alert };
+		// Fail open per alert: a rule that throws (a bad template, say) leaves THAT alert
+		// undecorated and the list still served, as applyEnrichments always did. Logged
+		// once per rule set rather than once per alert, since a storm would repeat it.
+		let reported = false;
+		return {
+			key: `enrichments:${JSON.stringify(enrichments)}`,
+			apply: (alert) => {
+				try {
+					let enriched = alert;
+					const claimedKeys = new Set<string>();
+					const applied: AppliedEnrichment[] = [];
+					for (const enrichment of enrichments) {
+						if (EnrichmentBL.enrichmentMatchesAlert(enrichment, enriched)) {
+							enriched = EnrichmentBL.applyToAlert(enrichment, enriched, claimedKeys);
+							applied.push({ id: enrichment.id, name: enrichment.name });
+						}
+					}
+					// Expose which rules decorated this alert so the UI can show it was enriched.
+					return applied.length > 0 ? { ...enriched, appliedEnrichments: applied } : enriched;
+				} catch (err) {
+					if (!reported) {
+						reported = true;
+						logger.error(
+							`Failed to apply alert enrichments (first failure: alert ${alert.id}), leaving such alerts unchanged`,
+							err
+						);
+					}
+					return alert;
+				}
+			},
+		};
 	}
 }

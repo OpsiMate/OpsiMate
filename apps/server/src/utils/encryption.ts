@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import { Logger } from '@OpsiMate/shared';
+import { MS_PER_MINUTE } from './time';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // For GCM, this is always 16
@@ -7,7 +8,7 @@ const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 
-const logger = new Logger('encryption-');
+const logger = new Logger('utils/encryption');
 
 // The built-in key is a PUBLIC constant (it ships in this repo). It exists so local dev
 // and the test suite work with zero config — it must never protect real data.
@@ -129,12 +130,14 @@ export function hashString(token: string): string {
 }
 
 /**
- * Generate a secure random token and its hash for password reset
- * Returns the token, its hash, expiration time, and reset URL
- * The token is valid for 15 minutes
- * The reset URL is constructed using the APP_BASE_URL environment variable
- * The token hash is generated using SHA-512
- * The reset URL is in the format: `${APP_BASE_URL}/reset-password?token=${token}`
+ * How long a password-reset link stays valid, in minutes
+ */
+export const PASSWORD_RESET_TTL_MINUTES = 15;
+
+/**
+ * Generate a secure random token for password reset
+ * Returns the encrypted token, the SHA-512 hash of the token, and the time the
+ * token expires (PASSWORD_RESET_TTL_MINUTES from now)
  */
 export function generatePasswordResetInfo(): {
 	encryptedToken: string;
@@ -144,6 +147,6 @@ export function generatePasswordResetInfo(): {
 	const token = crypto.randomBytes(32).toString('hex');
 	const encryptedToken = encryptPassword(token)!;
 	const tokenHash = hashString(token);
-	const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
+	const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * MS_PER_MINUTE);
 	return { encryptedToken, tokenHash, expiresAt };
 }

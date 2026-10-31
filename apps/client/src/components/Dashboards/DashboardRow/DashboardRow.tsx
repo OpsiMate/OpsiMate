@@ -22,10 +22,10 @@ import { cn } from '@/lib/utils';
 import { Tag } from '@OpsiMate/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Plus, Star, Trash2 } from 'lucide-react';
+import { formatDate } from '@/lib/datetime';
 import { useState } from 'react';
 import { COLUMN_WIDTHS } from '../Dashboards.constants';
 import { DashboardRowProps } from '../Dashboards.types';
-import { formatDate } from '../Dashboards.utils';
 
 const PREDEFINED_COLORS = [
 	'#3B82F6',
@@ -86,7 +86,7 @@ export const DashboardRow = ({
 					variant: 'destructive',
 				});
 			}
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error',
 				description: 'Failed to create tag',
@@ -279,7 +279,7 @@ export const DashboardRow = ({
 			<TableCell
 				className={cn('py-2 px-3 text-muted-foreground text-sm overflow-hidden', COLUMN_WIDTHS.createdAt)}
 			>
-				<span className="truncate block">{formatDate(dashboard.createdAt)}</span>
+				<span className="truncate block">{formatDate(dashboard.createdAt, '-')}</span>
 			</TableCell>
 			<TableCell className={cn('py-2 px-3 text-center', COLUMN_WIDTHS.actions)}>
 				<AlertDialog>

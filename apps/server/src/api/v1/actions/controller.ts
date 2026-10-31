@@ -6,6 +6,7 @@ import {
 	PreviewActionSchema,
 	RunActionSchema,
 	UpdateActionSchema,
+	ActionViewerSchema,
 } from '@OpsiMate/shared';
 import { ActionBL } from '../../../bl/actions/action.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
@@ -71,7 +72,8 @@ export class ActionController {
 	testHandler = async (req: Request, res: Response) => {
 		try {
 			const data = CreateActionSchema.parse(req.body);
-			const result = await this.actionBL.test({ name: data.name, type: data.type, config: data.config });
+			const viewer = ActionViewerSchema.parse((req.body as { viewer?: unknown }).viewer);
+			const result = await this.actionBL.test({ name: data.name, type: data.type, config: data.config }, viewer);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -85,12 +87,12 @@ export class ActionController {
 	previewHandler = async (req: Request, res: Response) => {
 		try {
 			const { actionId } = ActionIdSchema.parse({ actionId: req.params.actionId });
-			const { alert } = PreviewActionSchema.parse(req.body);
+			const { alert, viewer } = PreviewActionSchema.parse(req.body);
 			const action = await this.actionBL.get(actionId);
 			if (!action) {
 				return res.status(404).json({ success: false, error: 'Action not found' });
 			}
-			const preview = this.actionBL.previewForAlert(action, alert);
+			const preview = this.actionBL.previewForAlert(action, alert, viewer);
 			return res.json({ success: true, data: preview });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -104,12 +106,19 @@ export class ActionController {
 	runHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { actionId } = ActionIdSchema.parse({ actionId: req.params.actionId });
-			const { alert, overrides } = RunActionSchema.parse(req.body);
+			const { alert, overrides, viewer } = RunActionSchema.parse(req.body);
 			const action = await this.actionBL.get(actionId);
 			if (!action) {
 				return res.status(404).json({ success: false, error: 'Action not found' });
 			}
-			const result = await this.actionBL.runOnAlert(action, alert, overrides, req.user?.fullName);
+			const result = await this.actionBL.runOnAlert(
+				action,
+				alert,
+				overrides,
+				req.user?.fullName,
+				req.user != null ? String(req.user.id) : null,
+				viewer
+			);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {

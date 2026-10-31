@@ -8,7 +8,6 @@ export default function createIncidentRouter(incidentController: IncidentControl
 	router.post('/', incidentController.createHandler);
 	router.get('/:incidentId', incidentController.getHandler);
 	router.patch('/:incidentId', incidentController.updateHandler);
-	router.post('/:incidentId/alerts', incidentController.addAlertsHandler);
 	// DELETE with a body is unreliable across proxies; removal ships alert ids in the
 	// body, so it rides POST on a /remove sub-path instead.
 	router.post('/:incidentId/alerts/remove', incidentController.removeAlertsHandler);

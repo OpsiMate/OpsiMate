@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AlertController } from './controller';
+import { requireAdmin } from '../../../middleware/auth';
 
 export default function createAlertRouter(controller: AlertController) {
 	const router = Router();
@@ -7,6 +8,8 @@ export default function createAlertRouter(controller: AlertController) {
 	// CRUD
 	router.get('/', controller.getAlerts.bind(controller));
 	router.get('/facets', controller.getAlertFacets.bind(controller));
+	// Owner names for the owner ids alerts carry (what the facets already show as names)
+	router.get('/owners', controller.getAlertOwners.bind(controller));
 	router.get('/analytics', controller.getAlertAnalytics.bind(controller));
 	router.get('/groups', controller.getAlertGroupSummaries.bind(controller));
 
@@ -15,16 +18,19 @@ export default function createAlertRouter(controller: AlertController) {
 	router.post('/bulk', controller.bulkAlertAction.bind(controller));
 
 	// Daily silence reset settings (admin; must be before /:alertId to avoid route conflicts)
-	router.get('/silence-reset', controller.getSilenceResetSettings.bind(controller));
-	router.put('/silence-reset', controller.updateSilenceResetSettings.bind(controller));
+	router.get('/silence-reset', requireAdmin, controller.getSilenceResetSettings.bind(controller));
+	router.put('/silence-reset', requireAdmin, controller.updateSilenceResetSettings.bind(controller));
 
 	// Resolved alerts (must be before /:alertId to avoid route conflicts)
 	router.get('/resolved', controller.getResolvedAlerts.bind(controller));
 	router.get('/resolved/facets', controller.getResolvedAlertFacets.bind(controller));
 	router.get('/resolved/groups', controller.getResolvedAlertGroupSummaries.bind(controller));
-	router.delete('/resolved/:alertId', controller.deleteResolvedAlert.bind(controller));
+	router.delete('/resolved/:alertId', requireAdmin, controller.deleteResolvedAlert.bind(controller));
 	router.patch('/resolved/:id/owner', controller.setResolvedAlertOwner.bind(controller));
 	router.patch('/resolved/:id/unresolve', controller.unresolveAlert.bind(controller));
+
+	// One alert, firing or resolved (parameterized route must come after specific routes)
+	router.get('/:alertId', controller.getAlert.bind(controller));
 
 	// Delete alert (parameterized route must come after specific routes)
 	router.delete('/:alertId', controller.deleteAlert.bind(controller));

@@ -98,6 +98,22 @@ app.kubernetes.io/component: frontend
 {{- end }}
 
 {{/*
+MCP labels
+*/}}
+{{- define "opsimate.mcp.labels" -}}
+{{ include "opsimate.labels" . }}
+app.kubernetes.io/component: mcp
+{{- end }}
+
+{{/*
+MCP selector labels
+*/}}
+{{- define "opsimate.mcp.selectorLabels" -}}
+{{ include "opsimate.selectorLabels" . }}
+app.kubernetes.io/component: mcp
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "opsimate.serviceAccountName" -}}
@@ -138,6 +154,24 @@ Frontend service name
 */}}
 {{- define "opsimate.frontend.serviceName" -}}
 {{- include "opsimate.fullname" . }}-frontend
+{{- end }}
+
+{{/*
+MCP service name
+*/}}
+{{- define "opsimate.mcp.serviceName" -}}
+{{- include "opsimate.fullname" . }}-mcp
+{{- end }}
+
+{{/*
+OpsiMate URL the MCP server talks to: the value set, else this chart's backend service
+*/}}
+{{- define "opsimate.mcp.opsimateUrl" -}}
+{{- if .Values.mcp.env.OPSIMATE_URL }}
+{{- .Values.mcp.env.OPSIMATE_URL }}
+{{- else }}
+{{- printf "http://%s:%v" (include "opsimate.backend.serviceName" .) .Values.backend.port }}
+{{- end }}
 {{- end }}
 
 {{/*

@@ -21,7 +21,7 @@ interface SendMailOptions {
 	demo_user_tracking_id?: string;
 }
 
-const logger = new Logger('service/mail.service');
+const logger = new Logger('dal/external-client/mail-client');
 
 /**
  * MailClient handles sending emails using SMTP configuration.
@@ -62,6 +62,9 @@ export class MailClient {
 				user: this.mailerConfig?.auth?.user ?? '',
 				pass: this.mailerConfig?.auth?.pass ?? '',
 			},
+			// Left out when unset so nodemailer's own defaults apply: a mailer with no
+			// tls section still rejects certificates that cannot be verified.
+			...(this.mailerConfig?.tls ? { tls: this.mailerConfig.tls } : {}),
 		});
 
 		try {
@@ -186,6 +189,7 @@ export class MailClient {
 
 			await this.transporter.sendMail({
 				from: this.mailerConfig?.from || '"OpsiMate" <no-reply@opsimate.dev>',
+				...(this.mailerConfig?.replyTo ? { replyTo: this.mailerConfig.replyTo } : {}),
 				to: options.to,
 				subject: this.getMailSubject(options),
 				html,
@@ -193,6 +197,7 @@ export class MailClient {
 			});
 		} catch (error) {
 			logger.error('Failed to send email', error);
+			throw error;
 		}
 	}
 }

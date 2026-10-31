@@ -6,6 +6,7 @@ import {
 	useUnsilenceAlert,
 } from '@/hooks/queries/alerts';
 import { useToast } from '@/hooks/use-toast';
+import { pluralize } from '@/lib/text';
 import { Alert } from '@OpsiMate/shared';
 
 // Single-alert actions plus the one bulk action that stays client-fanned (permanent
@@ -22,7 +23,7 @@ export const useAlertActions = () => {
 	const handleSilenceAlert = async (alertId: string, silencedUntil?: string | null, comment?: string) => {
 		try {
 			await silenceAlertMutation.mutateAsync({ alertId, silencedUntil, comment });
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error silencing alert',
 				description: 'Failed to silence alert',
@@ -34,9 +35,9 @@ export const useAlertActions = () => {
 	const handleUnsilenceAlert = async (alertId: string) => {
 		try {
 			await unsilenceAlertMutation.mutateAsync(alertId);
-		} catch (error) {
+		} catch {
 			toast({
-				title: 'Error unsilenceing alert',
+				title: 'Error unsilencing alert',
 				description: 'Failed to unsilence alert',
 				variant: 'destructive',
 			});
@@ -78,7 +79,7 @@ export const useAlertActions = () => {
 	};
 
 	// Permanently delete the selected active alerts: resolve each one, then remove it from
-	// the resolve (permanent delete only exists for resolved alerts).
+	// the resolved list (permanent delete only exists for resolved alerts).
 	const handleDeleteForeverAll = async (selectedAlerts: Alert[], onComplete: () => void) => {
 		const results = await Promise.allSettled(
 			selectedAlerts.map(async (alert) => {
@@ -92,12 +93,12 @@ export const useAlertActions = () => {
 			failCount > 0
 				? {
 						title: 'Partial delete',
-						description: `Deleted ${successCount} alerts, ${failCount} failed`,
+						description: `Deleted ${successCount} ${pluralize(successCount, 'alert')}, ${failCount} failed`,
 						variant: 'destructive',
 					}
 				: {
 						title: 'Alerts deleted',
-						description: `Permanently deleted ${successCount} alert${successCount !== 1 ? 's' : ''}`,
+						description: `Permanently deleted ${successCount} ${pluralize(successCount, 'alert')}`,
 					}
 		);
 		onComplete();

@@ -1,31 +1,22 @@
-import { Logger, OncallTeamMembersSchema, OncallTeamSchema, Role } from '@OpsiMate/shared';
+import { Logger, OncallTeamMembersSchema, OncallTeamSchema, positiveIntegerIdSchema } from '@OpsiMate/shared';
 import { Response } from 'express';
-import { DuplicateTeamNameError, OncallBL } from '../../../bl/oncall/oncall.bl';
+import { DuplicateTeamNameError, OncallBL, UnknownUserIdsError } from '../../../bl/oncall/oncall.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
+import { routeParam } from '../../../utils/routeParams';
 
 const logger = new Logger('api/v1/oncall/controller');
 
 export class OncallController {
 	constructor(private oncallBL: OncallBL) {}
 
-	// Reading the schedule is open to any authenticated user (the NOC needs it);
-	// changing it is admins only.
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
-
 	private parseTeamId(req: AuthenticatedRequest, res: Response): number | null {
-		const teamId = parseInt(req.params.teamId, 10);
-		if (isNaN(teamId) || teamId <= 0) {
+		const parsedTeamId = positiveIntegerIdSchema.safeParse(routeParam(req, 'teamId'));
+		if (!parsedTeamId.success) {
 			res.status(400).json({ success: false, error: 'Invalid team id' });
 			return null;
 		}
-		return teamId;
+		return parsedTeamId.data;
 	}
 
 	listTeamsHandler = async (_req: AuthenticatedRequest, res: Response) => {
@@ -39,7 +30,6 @@ export class OncallController {
 	};
 
 	createTeamHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const { name, rotationIntervalDays } = OncallTeamSchema.parse(req.body);
 			const team = await this.oncallBL.createTeam(name, rotationIntervalDays ?? null);
@@ -57,7 +47,6 @@ export class OncallController {
 	};
 
 	updateTeamHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
@@ -80,7 +69,6 @@ export class OncallController {
 	};
 
 	deleteTeamHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
@@ -93,7 +81,6 @@ export class OncallController {
 	};
 
 	setTeamMembersHandler = async (req: AuthenticatedRequest, res: Response) => {
-		if (!this.requireAdmin(req, res)) return;
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
@@ -107,6 +94,9 @@ export class OncallController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof UnknownUserIdsError) {
+				return res.status(400).json({ success: false, error: error.message });
 			}
 			logger.error('Error setting on-call team members', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });

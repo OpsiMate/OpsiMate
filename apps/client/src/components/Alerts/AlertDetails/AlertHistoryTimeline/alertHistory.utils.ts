@@ -2,19 +2,29 @@ import { AlertHistoryData, AlertHistoryEventType } from '@OpsiMate/shared';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { resolveTimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.utils';
 
+const resolveWindow = (timeRange?: TimeRange | null): { fromMs: number | null; toMs: number | null } | null => {
+	if (!timeRange) {
+		return null;
+	}
+	const resolved = resolveTimeRange(timeRange);
+	if (!resolved.from && !resolved.to) {
+		return null;
+	}
+	return {
+		fromMs: resolved.from ? resolved.from.getTime() : null,
+		toMs: resolved.to ? resolved.to.getTime() : null,
+	};
+};
+
 // Filters history entries to the active time range. An empty range ("All time") returns
 // everything. Mirrors how the alerts list itself is filtered by the time button —
 // including quick presets, which resolve to a fresh window at call time.
 export const filterHistoryByRange = (data: AlertHistoryData[], timeRange?: TimeRange | null): AlertHistoryData[] => {
-	if (!timeRange) {
+	const window = resolveWindow(timeRange);
+	if (!window) {
 		return data;
 	}
-	const resolved = resolveTimeRange(timeRange);
-	if (!resolved.from && !resolved.to) {
-		return data;
-	}
-	const fromMs = resolved.from ? resolved.from.getTime() : null;
-	const toMs = resolved.to ? resolved.to.getTime() : null;
+	const { fromMs, toMs } = window;
 	return data.filter((item) => {
 		const t = new Date(item.date).getTime();
 		if (fromMs !== null && t < fromMs) return false;
@@ -25,9 +35,10 @@ export const filterHistoryByRange = (data: AlertHistoryData[], timeRange?: TimeR
 
 // Entries the timeline should show for the active window. Real events (transitions,
 // silences, comments…) always win; the synthesized last-update entry is a FALLBACK: it
-// steps in only when the window hides every real event — the case where the alert is
-// listed because of a recent update but all its history predates the window. On "All
-// time" (or any window containing real events) it stays out of the log entirely.
+// steps in whenever the current window shows no real event AND a synthesized entry
+// exists — including "All time". That covers both the alert listed because of a recent
+// update whose history predates the window, and the long-lived alert whose status-history
+// rows were pruned by Data Retention, leaving the last-update entry as its only history.
 export const selectHistoryEntries = (data: AlertHistoryData[], timeRange?: TimeRange | null): AlertHistoryData[] => {
 	const realEntries = data.filter((entry) => entry.eventType !== AlertHistoryEventType.UPDATED);
 	const filteredReal = filterHistoryByRange(realEntries, timeRange);

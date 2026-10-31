@@ -25,6 +25,8 @@ import {
 	AlertLink,
 	ALERT_TEMPLATE_VARIABLES,
 	alertTagTemplateVariable,
+	flagTemplateVariable,
+	looksLikeCountryCode,
 	getNameNeedles,
 } from '@OpsiMate/shared';
 import { Plus, Sparkles, Tag, Trash2, Wand2 } from 'lucide-react';
@@ -43,21 +45,16 @@ interface EnrichmentFormDialogProps {
 	duplicateFrom?: AlertEnrichment | null;
 }
 
-const KeyValueRows = ({
-	rows,
-	onChange,
-	keyPlaceholder,
-	valuePlaceholder,
-	emptyText,
-	addLabel,
-}: {
+interface KeyValueRowsProps {
 	rows: KeyValue[];
 	onChange: (rows: KeyValue[]) => void;
 	keyPlaceholder: string;
 	valuePlaceholder: string;
 	emptyText: string;
 	addLabel: string;
-}) => (
+}
+
+const KeyValueRows = ({ rows, onChange, keyPlaceholder, valuePlaceholder, emptyText, addLabel }: KeyValueRowsProps) => (
 	<div className="space-y-2">
 		<div className="flex items-center justify-between">
 			<Label className="text-xs">{addLabel}</Label>
@@ -108,8 +105,13 @@ const KeyValueRows = ({
 	</div>
 );
 
+interface LinkIconOption {
+	value: string;
+	label: string;
+}
+
 // Icon slugs offered for enrichment links — the integration icon set plus "no icon".
-const LINK_ICON_OPTIONS: { value: string; label: string }[] = [
+const LINK_ICON_OPTIONS: LinkIconOption[] = [
 	{ value: '', label: 'No icon' },
 	{ value: 'grafana', label: 'Grafana' },
 	{ value: 'uptimekuma', label: 'Uptime Kuma' },
@@ -122,7 +124,12 @@ const LINK_ICON_OPTIONS: { value: string; label: string }[] = [
 // Radix Select can't carry an empty-string item value; stand in for "no icon".
 const NO_ICON = '__none__';
 
-const LinkRows = ({ rows, onChange }: { rows: AlertLink[]; onChange: (rows: AlertLink[]) => void }) => (
+interface LinkRowsProps {
+	rows: AlertLink[];
+	onChange: (rows: AlertLink[]) => void;
+}
+
+const LinkRows = ({ rows, onChange }: LinkRowsProps) => (
 	<div className="space-y-2">
 		<div className="flex items-center justify-between">
 			<Label className="text-xs">Links to add</Label>
@@ -217,7 +224,19 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const { data: alerts = [] } = useAlerts();
 	const matcherSuggestions = useAlertTagKeys(alerts);
 	const templateVariables = useMemo(
-		() => [...ALERT_TEMPLATE_VARIABLES, ...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key))],
+		() => [
+			...ALERT_TEMPLATE_VARIABLES,
+			...matcherSuggestions.map((tk) => alertTagTemplateVariable(tk.key)),
+			// {{flag.<code>}} for every two-letter code seen in a label value (flag.il -> 🇮🇱).
+			...[
+				...new Set(
+					matcherSuggestions
+						.flatMap((tk) => tk.values)
+						.filter(looksLikeCountryCode)
+						.map((value) => flagTemplateVariable(value))
+				),
+			].sort(),
+		],
 		[matcherSuggestions]
 	);
 
@@ -258,7 +277,8 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
 		const hasNameMatcher = nameContainsAny.some((n) => n.trim().length > 0);
-		const hasLabelMatchers = matcherGroups.some((g) => g.some((m) => m.key.trim() && m.value.trim()));
+		// Same rule as the save path, so an "exists" row (no value) counts as a matcher.
+		const hasLabelMatchers = cleanMatcherGroups(matcherGroups).length > 0;
 		if (!matchAll && !hasNameMatcher && !hasLabelMatchers) return false;
 		const hasFields = addFields.some((f) => f.key.trim() && f.value.trim());
 		const hasLinks = addLinks.some((l) => l.label.trim() && l.url.trim());
@@ -427,9 +447,10 @@ export const EnrichmentFormDialog = ({ open, onOpenChange, enrichment, duplicate
 							/>
 							<p className="text-xs text-muted-foreground">
 								Replaces the alert summary. Use {'{{summary}}'} for the current summary, plus alert
-								fields like {'{{name}}'} and {'{{severity}}'} and any label as {'{{label.<key>}}'} — the
-								same variables action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists)
-								are rendered in the alert details.
+								fields like {'{{name}}'} and {'{{severity}}'}, any label as {'{{label.<key>}}'}, and{' '}
+								{'{{flag.<code>}}'} for a country flag ({'{{flag.il}}'} → 🇮🇱) — the same variables
+								action templates use. New lines and basic HTML ({'<b>'}, {'<a>'}, lists) are rendered in
+								the alert details.
 							</p>
 						</div>
 

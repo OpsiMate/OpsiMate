@@ -1,12 +1,48 @@
 import { SuperTest, Test } from 'supertest';
 import { Integration, IntegrationType } from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
-import { expect } from 'vitest';
+import { afterEach, expect, vi } from 'vitest';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { GrafanaClient } from '../src/dal/external-client/grafana-client';
+import { GrafanaIntegrationConnector } from '../src/bl/integrations/integration-connector/grafana-integration-connector';
 
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
+
+interface TestConnectionCredentials {
+	apiKey?: string;
+	appKey?: string;
+}
+
+interface TestConnectionBody {
+	name?: string;
+	type?: string;
+	externalUrl?: string;
+	credentials?: TestConnectionCredentials;
+}
+
+interface InvalidBodyCase {
+	label: string;
+	body: TestConnectionBody;
+}
+
+interface GrafanaHealth {
+	commit: string;
+	database: string;
+	version: string;
+}
+
+const TEST_CONNECTION_URL = '/api/v1/integrations/test-connection';
+
+const validGrafanaBody: TestConnectionBody = {
+	name: 'Grafana under test',
+	type: IntegrationType.Grafana,
+	externalUrl: 'https://grafana.example.com',
+	credentials: { apiKey: 'test-api-key' },
+};
+
+const healthyGrafana: GrafanaHealth = { commit: 'x', database: 'ok', version: '11.0.0' };
 
 const seedIntegrations = () => {
 	db.exec('DELETE FROM integrations');
@@ -119,7 +155,7 @@ describe('Integrations API', () => {
 
 		expect(deleteRes.status).toBe(200);
 		expect(deleteRes.body.success).toBe(true);
-		expect(deleteRes.body.message).toBe('Integration and associated services deleted successfully');
+		expect(deleteRes.body.message).toBe('Integration deleted successfully');
 
 		// Verify the integration was deleted
 		const getRes = await app.get('/api/v1/integrations').set('Authorization', `Bearer ${jwtToken}`);
@@ -129,6 +165,55 @@ describe('Integrations API', () => {
 			(i: Integration) => i.name === 'Test Integration'
 		);
 		expect(deletedIntegration).toBeUndefined();
+	});
+
+	test('should return 404 when updating a non-existent integration', async () => {
+		const updateRes = await app
+			.put('/api/v1/integrations/9999')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				name: 'Updated Integration',
+				type: IntegrationType.Datadog,
+				externalUrl: 'https://datadog.example.com',
+				credentials: { apiKey: 'updated-api-key' },
+			});
+
+		expect(updateRes.status).toBe(404);
+		expect(updateRes.body.success).toBe(false);
+	});
+
+	test('should return 404 when deleting a non-existent integration', async () => {
+		const deleteRes = await app.delete('/api/v1/integrations/9999').set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(deleteRes.status).toBe(404);
+		expect(deleteRes.body.success).toBe(false);
+	});
+
+	test('should return 404 for integration URLs of a non-existent integration', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/9999/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(404);
+		expect(urlsRes.body.success).toBe(false);
+	});
+
+	test('should return 400 for integration URLs with a non-numeric integration ID', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/abc/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(400);
+		expect(urlsRes.body.success).toBe(false);
+	});
+
+	test('should return 400 for integration URLs with a trailing non-numeric suffix on the ID', async () => {
+		const urlsRes = await app
+			.get('/api/v1/integrations/1abc/urls?tags=x')
+			.set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(urlsRes.status).toBe(400);
+		expect(urlsRes.body.success).toBe(false);
 	});
 
 	test('should require authentication', async () => {
@@ -192,5 +277,95 @@ describe('Integrations API', () => {
 		expect(createRes.status).toBe(400);
 		expect(createRes.body.success).toBe(false);
 		expect(createRes.body.error).toBe('Validation error');
+	});
+});
+
+describe('POST /api/v1/integrations/test-connection', () => {
+	const postTestConnection = (body: TestConnectionBody) =>
+		app.post(TEST_CONNECTION_URL).set('Authorization', `Bearer ${jwtToken}`).send(body);
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	test('should require authentication', async () => {
+		const res = await app.post(TEST_CONNECTION_URL).send(validGrafanaBody);
+		expect(res.status).toBe(401);
+	});
+
+	const invalidBodies: InvalidBodyCase[] = [
+		{ label: 'an empty body', body: {} },
+		{ label: 'a type that is not an IntegrationType', body: { ...validGrafanaBody, type: 'Prometheus' } },
+		{ label: 'a non-URL externalUrl', body: { ...validGrafanaBody, externalUrl: 'not-a-url' } },
+		{ label: 'an apiKey with a space', body: { ...validGrafanaBody, credentials: { apiKey: 'has a space' } } },
+	];
+
+	test.each(invalidBodies)('should return 400 for $label', async ({ body }) => {
+		const getHealth = vi.spyOn(GrafanaClient.prototype, 'getHealth').mockResolvedValue(healthyGrafana);
+
+		const res = await postTestConnection(body);
+
+		expect(res.status).toBe(400);
+		expect(res.body.success).toBe(false);
+		expect(res.body.error).toBe('Validation error');
+		expect(Array.isArray(res.body.details)).toBe(true);
+		expect(getHealth).not.toHaveBeenCalled();
+	});
+
+	test('should report a valid connection when Grafana is healthy', async () => {
+		const getHealth = vi.spyOn(GrafanaClient.prototype, 'getHealth').mockResolvedValue(healthyGrafana);
+
+		const res = await postTestConnection(validGrafanaBody);
+
+		expect(res.status).toBe(200);
+		expect(res.body).toEqual({ success: true, data: { isValidConnection: true } });
+		expect(getHealth).toHaveBeenCalledTimes(1);
+	});
+
+	test("should return 200 with the connector's error when the Grafana health check fails", async () => {
+		vi.spyOn(GrafanaClient.prototype, 'getHealth').mockRejectedValue(new Error('Grafana health check failed: 401'));
+
+		const res = await postTestConnection(validGrafanaBody);
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(false);
+		expect(res.body.error).toBe('Grafana health check failed: 401');
+		expect(res.body.data.isValidConnection).toBe(false);
+	});
+
+	test.each([IntegrationType.Kibana, IntegrationType.Datadog])(
+		'should return 200 with "not yet implemented" for %s',
+		async (type) => {
+			const res = await postTestConnection({ ...validGrafanaBody, type });
+
+			expect(res.status).toBe(200);
+			expect(res.body.success).toBe(false);
+			expect(res.body.error).toBe(`${type} integration connector not yet implemented.`);
+			expect(res.body.data.isValidConnection).toBe(false);
+		}
+	);
+
+	test('should return 500 when the connector throws', async () => {
+		vi.spyOn(GrafanaIntegrationConnector.prototype, 'testConnection').mockRejectedValue(new Error('boom'));
+
+		const res = await postTestConnection(validGrafanaBody);
+
+		expect(res.status).toBe(500);
+		expect(res.body.success).toBe(false);
+		expect(res.body.error).toBe('Internal server error');
+	});
+
+	test('should not persist the tested integration', async () => {
+		vi.spyOn(GrafanaClient.prototype, 'getHealth').mockResolvedValue(healthyGrafana);
+
+		const testRes = await postTestConnection(validGrafanaBody);
+		expect(testRes.status).toBe(200);
+		expect(testRes.body.success).toBe(true);
+
+		const getRes = await app.get('/api/v1/integrations').set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
+		const integrations = getRes.body.data.integrations as Integration[];
+		expect(integrations).toHaveLength(1);
+		expect(integrations[0].name).toBe('Test Integration');
 	});
 });

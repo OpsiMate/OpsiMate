@@ -1,4 +1,5 @@
 import { EditSecretDialog } from '@/components/EditSecretDialog';
+import { BULK_ROLE_CHANGE_LABEL, USER_ROLE_LABEL_PREFIX } from './Settings.constants';
 import {
 	Dialog,
 	DialogContent,
@@ -14,7 +15,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, formatLongDateTime, formatRelativeTime, parseUTCDate } from '@/lib/datetime';
 import { createSecretOnServer, deleteSecretOnServer, getSecretsFromServer } from '@/lib/sslKeys';
-import { AuditLog, Logger, SecretMetadata } from '@OpsiMate/shared';
+import { pluralize } from '@/lib/text';
+import { Logger, SecretMetadata, SecretType } from '@OpsiMate/shared';
 import {
 	BellOff,
 	Check,
@@ -26,12 +28,17 @@ import {
 	Sparkle,
 	Trash2,
 	Users,
+	Webhook,
 	X,
 } from 'lucide-react';
 import { RetentionSettings } from '../components/Settings/RetentionSettings';
 import { SilenceResetSettings } from '../components/Settings/SilenceResetSettings';
 import { AiSettings } from '../components/Settings/AiSettings';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CallbackSettings } from '../components/Settings/CallbackSettings';
+import { LdapSettings } from '../components/Settings/LdapSettings';
+import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
+import { McpGuide } from '../components/Settings/AiSettings/McpGuide';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -49,16 +56,62 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from '../components/ui/alert-dialog';
-import { Badge } from '../components/ui/badge';
+import { Badge, type BadgeProps } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useFormErrors } from '../hooks/useFormErrors';
-import { apiRequest, auditApi } from '../lib/api';
+import { useAuditLogs } from '@/hooks/queries/audit/useAuditLogs';
+import { apiRequest } from '../lib/api';
 import { getCurrentUser } from '../lib/auth';
 import { Role, User } from '../types';
+
+// URL hash → tab, so a link like /settings#callbacks opens that tab (#ldap lives in Users,
+// #mcp in AI).
+const SETTINGS_TAB_BY_HASH: Record<string, string> = {
+	Users: 'users',
+	Audit_Log: 'audit',
+	retention: 'retention',
+	silences: 'silences',
+	ai: 'ai',
+	mcp: 'ai',
+	callbacks: 'callbacks',
+	ldap: 'users',
+	secrets: 'secrets',
+	'custom-fields': 'custom-fields',
+};
+
+// Tabs only an admin gets; for anyone else their hash falls back to Users.
+const ADMIN_ONLY_TABS = new Set(['callbacks']);
+
+// Own keys only: a hash like #constructor must not pick up an Object.prototype member.
+const tabForHash = (hash: string, isAdmin: boolean): string => {
+	const tab = Object.prototype.hasOwnProperty.call(SETTINGS_TAB_BY_HASH, hash) ? SETTINGS_TAB_BY_HASH[hash] : 'users';
+	return !isAdmin && ADMIN_ONLY_TABS.has(tab) ? 'users' : tab;
+};
+
+interface AdminOnlyTabProps {
+	isAdmin: boolean;
+}
+
+// The Callbacks tab exists only for admins (the API is admin-only); the gating lives
+// here so the page component does not grow another branch per admin-only tab.
+const CallbacksTabTrigger = ({ isAdmin }: AdminOnlyTabProps) =>
+	isAdmin ? (
+		<TabsTrigger value="callbacks" className="justify-start gap-2">
+			<Webhook className="h-4 w-4" />
+			Callbacks
+		</TabsTrigger>
+	) : null;
+
+const CallbacksTabContent = ({ isAdmin }: AdminOnlyTabProps) =>
+	isAdmin ? (
+		<TabsContent value="callbacks" className="space-y-6">
+			<CallbackSettings />
+		</TabsContent>
+	) : null;
 
 const logger = new Logger('Settings');
 const PAGE_SIZE = 20;
@@ -221,17 +274,7 @@ const Settings: React.FC = () => {
 						{generalError && <ErrorAlert message={generalError} className="mb-6" />}
 
 						<Tabs
-							defaultValue={(function () {
-								const h = (location.hash || '').replace('#', '');
-								if (h === 'Users') return 'users';
-								if (h === 'Audit_Log') return 'audit';
-								if (h === 'retention') return 'retention';
-								if (h === 'silences') return 'silences';
-								if (h === 'ai') return 'ai';
-								if (h === 'secrets') return 'secrets';
-								if (h === 'custom-fields') return 'custom-fields';
-								return 'users';
-							})()}
+							defaultValue={tabForHash((location.hash || '').replace('#', ''), isAdmin)}
 							onValueChange={(v) => {
 								const map: Record<string, string> = {
 									users: 'Users',
@@ -239,6 +282,7 @@ const Settings: React.FC = () => {
 									retention: 'retention',
 									silences: 'silences',
 									ai: 'ai',
+									callbacks: 'callbacks',
 									secrets: 'secrets',
 									'custom-fields': 'custom-fields',
 								};
@@ -270,6 +314,7 @@ const Settings: React.FC = () => {
 											<Sparkle className="h-4 w-4" />
 											AI (Beta)
 										</TabsTrigger>
+										<CallbacksTabTrigger isAdmin={isAdmin} />
 									</TabsList>
 								</div>
 								<div className="flex-1">
@@ -292,7 +337,10 @@ const Settings: React.FC = () => {
 																handleBulkRoleUpdate(newRole as Role)
 															}
 														>
-															<SelectTrigger className="w-40">
+															<SelectTrigger
+																className="w-40"
+																aria-label={BULK_ROLE_CHANGE_LABEL}
+															>
 																<SelectValue placeholder="Bulk Role Change" />
 															</SelectTrigger>
 															<SelectContent>
@@ -370,6 +418,7 @@ const Settings: React.FC = () => {
 															<TableHead>User</TableHead>
 															<TableHead>Email</TableHead>
 															<TableHead>Role</TableHead>
+															<TableHead>Source</TableHead>
 															<TableHead>Created</TableHead>
 															<TableHead>Actions</TableHead>
 														</TableRow>
@@ -414,6 +463,25 @@ const Settings: React.FC = () => {
 																		{user.role}
 																	</Badge>
 																</TableCell>
+																<TableCell>
+																	{user.authSource === 'ldap' ? (
+																		<Badge
+																			variant="outline"
+																			className="text-xs border-sky-500/50 text-sky-700 dark:text-sky-300"
+																			title="Signs in with the company directory. Created at their first login; the role follows their directory groups."
+																		>
+																			LDAP
+																		</Badge>
+																	) : (
+																		<Badge
+																			variant="outline"
+																			className="text-xs text-muted-foreground"
+																			title="An OpsiMate account with its own password, created by an admin (or the first sign-up)."
+																		>
+																			Local
+																		</Badge>
+																	)}
+																</TableCell>
 																<TableCell>{formatDate(user.createdAt)}</TableCell>
 																<TableCell>
 																	<div className="flex items-center gap-2">
@@ -430,7 +498,10 @@ const Settings: React.FC = () => {
 																				user.email === currentUser?.email
 																			}
 																		>
-																			<SelectTrigger className="w-32">
+																			<SelectTrigger
+																				className="w-32"
+																				aria-label={`${USER_ROLE_LABEL_PREFIX}${user.email}`}
+																			>
 																				<SelectValue />
 																			</SelectTrigger>
 																			<SelectContent>
@@ -463,22 +534,24 @@ const Settings: React.FC = () => {
 																					>
 																						<Edit className="h-4 w-4" />
 																					</Button>
-																					<Button
-																						variant="ghost"
-																						size="icon"
-																						onClick={() => {
-																							setUserToResetPassword(
-																								user
-																							);
-																							setShowResetPasswordModal(
-																								true
-																							);
-																						}}
-																						title="Reset password"
-																						className="hover:bg-muted hover:text-foreground"
-																					>
-																						<KeyRound className="h-4 w-4" />
-																					</Button>
+																					{user.authSource !== 'ldap' && (
+																						<Button
+																							variant="ghost"
+																							size="icon"
+																							onClick={() => {
+																								setUserToResetPassword(
+																									user
+																								);
+																								setShowResetPasswordModal(
+																									true
+																								);
+																							}}
+																							title="Reset password"
+																							className="hover:bg-muted hover:text-foreground"
+																						>
+																							<KeyRound className="h-4 w-4" />
+																						</Button>
+																					)}
 																					<AlertDialog>
 																						<AlertDialogTrigger asChild>
 																							<Button
@@ -550,6 +623,8 @@ const Settings: React.FC = () => {
 												</Table>
 											</CardContent>
 										</Card>
+										{/* Directory login decides who can become a user, so it lives with them. */}
+										{isAdmin && <LdapSettings defaultOpen={location.hash === '#ldap'} />}
 									</TabsContent>
 
 									<TabsContent value="audit" className="space-y-6">
@@ -577,9 +652,15 @@ const Settings: React.FC = () => {
 										<SilenceResetSettings />
 									</TabsContent>
 
-									<TabsContent value="ai" className="space-y-6">
+									<TabsContent value="ai" className="space-y-4">
 										<AiSettings />
+										<div className="space-y-2 pt-2 border-t">
+											<RootCauseGuide />
+											<McpGuide />
+										</div>
 									</TabsContent>
+
+									<CallbacksTabContent isAdmin={isAdmin} />
 
 									<TabsContent value="secrets" className="space-y-6">
 										<div className="flex justify-between items-center">
@@ -661,14 +742,14 @@ const Settings: React.FC = () => {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Multiple Users</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete {selectedUsers.length} user
-							{selectedUsers.length !== 1 ? 's' : ''}? This action cannot be undone.
+							Are you sure you want to delete {selectedUsers.length}{' '}
+							{pluralize(selectedUsers.length, 'user')}? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete}>
-							Delete {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''}
+							Delete {selectedUsers.length} {pluralize(selectedUsers.length, 'user')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -679,39 +760,22 @@ const Settings: React.FC = () => {
 
 export default Settings;
 
-const AuditLogTable: React.FC = () => {
-	const [logs, setLogs] = useState<AuditLog[]>([]);
-	const [total, setTotal] = useState(0);
+interface ActionBadgeProps {
+	variant: BadgeProps['variant'];
+	className: string;
+}
+
+export const AuditLogTable: React.FC = () => {
+	const pageSizeId = useId();
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(10);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		let mounted = true;
-		setLoading(true);
-
-		auditApi.getAuditLogs(page, pageSize).then((res) => {
-			if (mounted) {
-				if (res?.success && res.data && Array.isArray(res.data.logs)) {
-					setLogs(res.data.logs);
-					setTotal(res.data.total || 0);
-					setError(null);
-				} else {
-					setError(res?.error || 'Failed to fetch audit logs');
-				}
-				setLoading(false);
-			}
-		});
-
-		return () => {
-			mounted = false;
-		};
-	}, [page, pageSize]);
+	const { data, isLoading, error } = useAuditLogs(page, pageSize);
+	const logs = data?.logs ?? [];
+	const total = data?.total ?? 0;
 
 	const totalPages = Math.ceil(total / pageSize);
 
-	const getActionBadgeProps = (action: string) => {
+	const getActionBadgeProps = (action: string): ActionBadgeProps => {
 		switch (action) {
 			case 'CREATE':
 				return { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' };
@@ -767,8 +831,11 @@ const AuditLogTable: React.FC = () => {
 		<div>
 			<div className="flex justify-end items-center mb-4">
 				<div className="flex items-center gap-2">
-					<label className="text-sm text-muted-foreground">Items per page:</label>
+					<label htmlFor={pageSizeId} className="text-sm text-muted-foreground">
+						Items per page:
+					</label>
 					<select
+						id={pageSizeId}
 						value={pageSize}
 						onChange={(e) => handlePageSizeChange(Number(e.target.value))}
 						className="border rounded px-3 py-1 text-sm"
@@ -782,10 +849,10 @@ const AuditLogTable: React.FC = () => {
 				</div>
 			</div>
 
-			{loading ? (
+			{isLoading ? (
 				<div className="py-8 text-center">Loading audit logs...</div>
 			) : error ? (
-				<ErrorAlert message={error} className="mb-4" />
+				<ErrorAlert message={error.message} className="mb-4" />
 			) : (
 				<>
 					{logs.length === 0 ? (
@@ -812,13 +879,7 @@ const AuditLogTable: React.FC = () => {
 												</span>
 											</TableCell>
 											<TableCell>
-												<Badge
-													variant={
-														actionProps.variant as
-															'default' | 'destructive' | 'outline' | 'secondary'
-													}
-													className={actionProps.className}
-												>
+												<Badge variant={actionProps.variant} className={actionProps.className}>
 													{log.actionType}
 												</Badge>
 											</TableCell>
@@ -865,7 +926,7 @@ const AuditLogTable: React.FC = () => {
 
 interface AddSecretButtonProps {
 	triggerText?: string;
-	secretType?: 'ssh' | 'kubeconfig';
+	secretType?: SecretType;
 	onSecretCreated?: (secretId?: number) => void;
 	children?: React.ReactNode;
 	className?: string;
@@ -873,16 +934,17 @@ interface AddSecretButtonProps {
 
 export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 	triggerText = 'Add Secret',
-	secretType: defaultSecretType = 'ssh',
+	secretType: defaultSecretType = SecretType.SSH,
 	onSecretCreated,
 	children,
 	className,
 }) => {
+	const secretTypeId = useId();
 	const [open, setOpen] = useState(false);
 	const [uploading, setUploading] = useState(false);
 	const [fileName, setFileName] = useState<string | null>(null);
 	const [displayName, setDisplayName] = useState<string>('');
-	const [secretType, setSecretType] = useState<'ssh' | 'kubeconfig'>(defaultSecretType);
+	const [secretType, setSecretType] = useState<SecretType>(defaultSecretType);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [isFileValid, setIsFileValid] = useState<boolean | null>(null);
 	const { toast } = useToast();
@@ -977,17 +1039,14 @@ export const AddSecretButton: React.FC<AddSecretButtonProps> = ({
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="secret-type">Type</Label>
-						<Select
-							value={secretType}
-							onValueChange={(value: 'ssh' | 'kubeconfig') => setSecretType(value)}
-						>
-							<SelectTrigger>
+						<Label htmlFor={secretTypeId}>Type</Label>
+						<Select value={secretType} onValueChange={(value) => setSecretType(value as SecretType)}>
+							<SelectTrigger id={secretTypeId}>
 								<SelectValue placeholder="Select type" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="ssh">SSH Key</SelectItem>
-								<SelectItem value="kubeconfig">Kubeconfig</SelectItem>
+								<SelectItem value={SecretType.SSH}>SSH Key</SelectItem>
+								<SelectItem value={SecretType.KUBECONFIG}>Kubeconfig</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>

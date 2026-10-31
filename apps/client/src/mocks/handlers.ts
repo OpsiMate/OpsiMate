@@ -1,7 +1,15 @@
 import {
 	Alert,
 	AlertBulkActionRequest,
+	AlertCallback,
+	AlertCallbackWithSecret,
+	AlertEnrichment,
+	AlertEnrichmentVersion,
+	ROOT_CAUSE_RATING_COMMENT_MAX,
 	UpdateAiConfig,
+	LdapSettings,
+	LdapTestRequestSchema,
+	UpdateLdapSettingsSchema,
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
@@ -25,6 +33,15 @@ const SECONDARY_ACTOR = 'Dana Cohen';
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+
+const createEnrichmentVersion = (enrichment: AlertEnrichment, version: number): AlertEnrichmentVersion => ({
+	id: randomId(),
+	enrichmentId: enrichment.id,
+	version,
+	content: structuredClone(enrichment),
+	author: enrichment.lastModifiedBy ?? enrichment.createdBy ?? PLAYGROUND_ACTOR,
+	createdAt: enrichment.updatedAt,
+});
 
 const hashAlertId = (id: string): number => {
 	let h = 0;
@@ -394,6 +411,30 @@ const mockAlertsList = (request: Request, alerts: Alert[]) => {
 	}
 };
 
+const ldapSettingsState: LdapSettings = {
+	source: 'database',
+	enabled: false,
+	problems: [],
+	url: '',
+	startTls: false,
+	bindDn: '',
+	hasBindPassword: false,
+	searchBase: '',
+	searchFilter: '(mail={{email}})',
+	emailAttribute: 'mail',
+	nameAttribute: 'displayName',
+	groupsAttribute: 'memberOf',
+	groupSearchBase: '',
+	groupSearchFilter: '(member={{dn}})',
+	roleMapping: { admin: [], editor: [], operation: [], viewer: [] },
+	defaultRole: null,
+	timeoutMs: 5000,
+	loginMaxFailures: 5,
+	tlsRejectUnauthorized: true,
+	tlsCaCert: '',
+	updatedAt: null,
+};
+
 // In-memory AI (BYOK) config for the playground: same masking contract as the server —
 // the key is write-only, GET only reports that one exists.
 const aiConfigState = {
@@ -406,6 +447,11 @@ const aiConfigState = {
 
 interface AiFilterRequestBody {
 	query?: string;
+}
+
+interface RateRootCauseBody {
+	rating?: unknown;
+	comment?: unknown;
 }
 
 export const handlers = [
@@ -470,6 +516,45 @@ export const handlers = [
 				message: ok ? 'ok (playground stub)' : 'No API key is configured yet.',
 			},
 		});
+	}),
+
+	// ==================== LDAP ====================
+	// The playground has no directory: settings persist in memory and the test explains that.
+	http.get(`${API_BASE}/ldap/settings`, () => {
+		return HttpResponse.json({ success: true, data: ldapSettingsState });
+	}),
+
+	// Validated like the server does, so the page's field-level errors can be seen here.
+	http.put(`${API_BASE}/ldap/settings`, async ({ request }) => {
+		const parsed = UpdateLdapSettingsSchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return HttpResponse.json(
+				{ success: false, error: 'Validation error', details: parsed.error.issues },
+				{ status: 400 }
+			);
+		}
+		const { bindPassword, ...rest } = parsed.data;
+		Object.assign(ldapSettingsState, rest);
+		if (bindPassword !== undefined) ldapSettingsState.hasBindPassword = bindPassword !== null;
+		ldapSettingsState.updatedAt = nowIso();
+		return HttpResponse.json({ success: true, data: ldapSettingsState });
+	}),
+
+	http.post(`${API_BASE}/ldap/test`, async ({ request }) => {
+		const parsed = LdapTestRequestSchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return HttpResponse.json(
+				{ success: false, error: 'Validation error', details: parsed.error.issues },
+				{ status: 400 }
+			);
+		}
+		// Unsaved edits are tested as the server would: laid over what is stored.
+		const tested = { ...ldapSettingsState, ...parsed.data.settings };
+		const step =
+			!tested.url || !tested.searchBase
+				? { step: 'connect', ok: false, message: 'Enter a server URL and a search base first.' }
+				: { step: 'connect', ok: false, message: 'The playground has no directory server to connect to.' };
+		return HttpResponse.json({ success: true, data: { ok: false, latencyMs: 0, steps: [step], user: null } });
 	}),
 
 	// ==================== ALERTS ====================
@@ -647,7 +732,7 @@ export const handlers = [
 		if (!resolvePlaygroundAlert(params.alertId as string, body?.comment)) {
 			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
-		return HttpResponse.json({ success: true, message: 'Alert deleted successfully' });
+		return HttpResponse.json({ success: true, message: 'Alert resolved successfully' });
 	}),
 
 	// One request over many alerts — by explicit ids or by a query resolved against the
@@ -753,9 +838,17 @@ export const handlers = [
 
 	http.post(`${API_BASE}/alerts/:alertId/root-cause/rating`, async ({ params, request }) => {
 		// Mirror the server's zod validation: only 'up'/'down' mutate state.
-		const body = (await request.json().catch(() => null)) as { rating?: unknown } | null;
+		const body = (await request.json().catch(() => null)) as RateRootCauseBody | null;
 		const rating = body?.rating;
 		if (rating !== 'up' && rating !== 'down') {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		// Present-but-not-a-string is a 400 on the server (zod), so it is here too.
+		if (body?.comment !== undefined && typeof body.comment !== 'string') {
+			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
+		}
+		const comment = typeof body?.comment === 'string' ? body.comment.trim() : '';
+		if (comment.length > ROOT_CAUSE_RATING_COMMENT_MAX) {
 			return HttpResponse.json({ success: false, error: 'Validation error' }, { status: 400 });
 		}
 		const rootCause = playgroundState.rootCauses.find((rc) => rc.alertId === params.alertId);
@@ -765,6 +858,8 @@ export const handlers = [
 		rootCause.rating = rating;
 		rootCause.ratedBy = getPlaygroundUser().fullName;
 		rootCause.ratedAt = new Date().toISOString();
+		// Mirrors the server: the comment only ever accompanies a thumbs-down.
+		rootCause.ratingComment = rating === 'down' && comment ? comment : null;
 		return HttpResponse.json({ success: true, data: { rootCause, callbackDelivered: null } });
 	}),
 
@@ -811,64 +906,6 @@ export const handlers = [
 		const commentId = params.commentId as string;
 		playgroundState.alertComments = playgroundState.alertComments.filter((c) => c.id !== commentId);
 		return HttpResponse.json({ success: true, message: 'Comment deleted successfully' });
-	}),
-
-	// ==================== PROVIDERS ====================
-	http.get(`${API_BASE}/providers`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: { providers: playgroundState.providers },
-		});
-	}),
-
-	http.post(`${API_BASE}/providers`, async ({ request }) => {
-		const body = (await request.json()) as Partial<(typeof playgroundState.providers)[0]>;
-		const newProvider = {
-			...body,
-			id: randomId(),
-			createdAt: nowIso(),
-		} as (typeof playgroundState.providers)[0];
-
-		playgroundState.providers.push(newProvider);
-		return HttpResponse.json({ success: true, data: { provider: newProvider } });
-	}),
-
-	http.put(`${API_BASE}/providers/:id`, async ({ params, request }) => {
-		const id = Number(params.id);
-		const body = (await request.json()) as Partial<(typeof playgroundState.providers)[0]>;
-		const provider = playgroundState.providers.find((p) => p.id === id);
-
-		if (!provider) {
-			return HttpResponse.json({ success: false, error: 'Provider not found' }, { status: 404 });
-		}
-
-		Object.assign(provider, body);
-		return HttpResponse.json({ success: true, data: { provider } });
-	}),
-
-	http.delete(`${API_BASE}/providers/:id`, ({ params }) => {
-		const id = Number(params.id);
-		playgroundState.providers = playgroundState.providers.filter((p) => p.id !== id);
-		return HttpResponse.json({ success: true });
-	}),
-
-	// ==================== SERVICES ====================
-	http.get(`${API_BASE}/services`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: playgroundState.services,
-		});
-	}),
-
-	http.get(`${API_BASE}/services/:id`, ({ params }) => {
-		const id = Number(params.id);
-		const service = playgroundState.services.find((s) => s.id === id);
-
-		if (!service) {
-			return HttpResponse.json({ success: false, error: 'Service not found' }, { status: 404 });
-		}
-
-		return HttpResponse.json({ success: true, data: { service } });
 	}),
 
 	// ==================== TAGS ====================
@@ -944,14 +981,11 @@ export const handlers = [
 		const dashboardIndex = playgroundState.dashboards.findIndex((d) => d.id === id);
 
 		if (dashboardIndex === -1) {
-			return HttpResponse.json(
-				{ success: false, error: 'dashboard not found or could not be deleted' },
-				{ status: 404 }
-			);
+			return HttpResponse.json({ success: false, error: 'Dashboard not found' }, { status: 404 });
 		}
 
 		playgroundState.dashboards.splice(dashboardIndex, 1);
-		return HttpResponse.json({ success: true, message: 'dashboards deleted successfully' });
+		return HttpResponse.json({ success: true, message: 'Dashboard deleted successfully' });
 	}),
 
 	// Dashboard Tags
@@ -1173,52 +1207,19 @@ export const handlers = [
 	}),
 
 	// ==================== AUDIT ====================
-	http.get(`${API_BASE}/audit`, () => {
+	http.get(`${API_BASE}/audit`, ({ request }) => {
+		const url = new URL(request.url);
+		const page = Number(url.searchParams.get('page') || 1);
+		const pageSize = Number(url.searchParams.get('pageSize') || 10);
+		const start = (page - 1) * pageSize;
+		const sliced = playgroundState.auditLogs.slice(start, start + pageSize);
 		return HttpResponse.json({
 			success: true,
 			data: {
-				logs: playgroundState.auditLogs,
+				logs: sliced,
 				total: playgroundState.auditLogs.length,
 			},
 		});
-	}),
-
-	// ==================== CUSTOM ACTIONS ====================
-	http.get(`${API_BASE}/custom-actions`, () => {
-		return HttpResponse.json({
-			success: true,
-			data: { actions: playgroundState.customActions },
-		});
-	}),
-
-	http.post(`${API_BASE}/custom-actions`, async ({ request }) => {
-		const body = (await request.json()) as (typeof playgroundState.customActions)[0];
-		const newAction = { ...body, id: randomId() };
-		playgroundState.customActions.push(newAction);
-		return HttpResponse.json({ success: true, data: { id: newAction.id } });
-	}),
-
-	http.put(`${API_BASE}/custom-actions/:id`, async ({ params, request }) => {
-		const id = Number(params.id);
-		const body = (await request.json()) as Partial<(typeof playgroundState.customActions)[0]>;
-		const action = playgroundState.customActions.find((a) => a.id === id);
-
-		if (!action) {
-			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
-		}
-
-		Object.assign(action, body);
-		return HttpResponse.json({ success: true });
-	}),
-
-	http.delete(`${API_BASE}/custom-actions/:id`, ({ params }) => {
-		const id = Number(params.id);
-		playgroundState.customActions = playgroundState.customActions.filter((a) => a.id !== id);
-		return HttpResponse.json({ success: true });
-	}),
-
-	http.post(`${API_BASE}/custom-actions/run`, () => {
-		return HttpResponse.json({ success: true });
 	}),
 
 	// ==================== SECRETS (stub) ====================
@@ -1363,9 +1364,81 @@ export const handlers = [
 		return HttpResponse.json({ success: true, message: 'Action deleted' });
 	}),
 
+	// ==================== CALLBACKS ====================
+	// Configuration only: the sandbox has no server to send from, so nothing is delivered.
+	http.get(`${API_BASE}/callbacks`, () => {
+		return HttpResponse.json({ success: true, data: playgroundState.callbacks });
+	}),
+
+	// Like the server, the secret is returned on create and on a rotation only.
+	http.post(`${API_BASE}/callbacks`, async ({ request }) => {
+		const body = (await request.json()) as Partial<AlertCallbackWithSecret>;
+		const callback: AlertCallback = {
+			id: randomId(),
+			name: body.name ?? 'Callback',
+			url: body.url ?? '',
+			method: body.method ?? 'POST',
+			headers: body.headers ?? null,
+			bodyTemplate: body.bodyTemplate ?? null,
+			events: body.events ?? [],
+			enabled: body.enabled ?? false,
+			lastStatus: null,
+			lastError: null,
+			lastSentAt: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+		playgroundState.callbacks = [callback, ...playgroundState.callbacks];
+		const created: AlertCallbackWithSecret = {
+			...callback,
+			secret: body.secret ?? `playground-secret-${randomId()}`,
+		};
+		return HttpResponse.json({ success: true, data: created, message: 'Callback created' }, { status: 201 });
+	}),
+
+	http.post(`${API_BASE}/callbacks/test`, () => {
+		return HttpResponse.json({
+			success: true,
+			data: { ok: true, statusCode: 200, message: 'Test sent (playground — no real request made).' },
+		});
+	}),
+
+	http.put(`${API_BASE}/callbacks/:id`, async ({ params, request }) => {
+		const id = Number(params.id);
+		const existing = playgroundState.callbacks.find((c) => c.id === id);
+		if (!existing) {
+			return HttpResponse.json({ success: false, error: 'Callback not found' }, { status: 404 });
+		}
+		const { secret, ...body } = (await request.json()) as Partial<AlertCallbackWithSecret>;
+		const updated: AlertCallback = { ...existing, ...body, updatedAt: new Date().toISOString() };
+		playgroundState.callbacks = playgroundState.callbacks.map((c) => (c.id === id ? updated : c));
+		return HttpResponse.json({
+			success: true,
+			data: secret !== undefined ? { ...updated, secret } : updated,
+			message: 'Callback updated',
+		});
+	}),
+
+	http.delete(`${API_BASE}/callbacks/:id`, ({ params }) => {
+		const id = Number(params.id);
+		playgroundState.callbacks = playgroundState.callbacks.filter((c) => c.id !== id);
+		return HttpResponse.json({ success: true, message: 'Callback deleted' });
+	}),
+
 	// ==================== ENRICHMENTS ====================
 	http.get(`${API_BASE}/enrichments`, () => {
 		return HttpResponse.json({ success: true, data: playgroundState.enrichments });
+	}),
+
+	http.get(`${API_BASE}/enrichments/:id/history`, ({ params }) => {
+		const enrichment = playgroundState.enrichments.find((item) => item.id === Number(params.id));
+		if (!enrichment) {
+			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
+		}
+		return HttpResponse.json({
+			success: true,
+			data: playgroundState.enrichmentVersions[enrichment.id] ?? [],
+		});
 	}),
 
 	http.post(`${API_BASE}/enrichments`, async ({ request }) => {
@@ -1380,6 +1453,7 @@ export const handlers = [
 			updatedAt: nowIso(),
 		} as (typeof playgroundState.enrichments)[0];
 		playgroundState.enrichments.unshift(newEnrichment);
+		playgroundState.enrichmentVersions[newEnrichment.id] = [createEnrichmentVersion(newEnrichment, 1)];
 		return HttpResponse.json({ success: true, data: newEnrichment });
 	}),
 
@@ -1391,12 +1465,16 @@ export const handlers = [
 			return HttpResponse.json({ success: false, error: 'Enrichment not found' }, { status: 404 });
 		}
 		Object.assign(enrichment, body, { updatedAt: nowIso() });
+		const versions = playgroundState.enrichmentVersions[id] ?? [];
+		const nextVersion = (versions[0]?.version ?? 0) + 1;
+		playgroundState.enrichmentVersions[id] = [createEnrichmentVersion(enrichment, nextVersion), ...versions];
 		return HttpResponse.json({ success: true, data: enrichment });
 	}),
 
 	http.delete(`${API_BASE}/enrichments/:id`, ({ params }) => {
 		const id = Number(params.id);
 		playgroundState.enrichments = playgroundState.enrichments.filter((e) => e.id !== id);
+		delete playgroundState.enrichmentVersions[id];
 		return HttpResponse.json({ success: true, message: 'Enrichment deleted' });
 	}),
 ];

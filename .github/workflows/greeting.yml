@@ -26,4 +26,5 @@ jobs:
             Please make sure to include an image with your PR — it really helps us review and understand the changes better.
             Only in rare cases will we accept a PR without one.
             Also, take a moment to review your code to ensure it’s clear, readable, and easy to follow.
+            Working on a good first issue? Please keep one open PR at a time, run the tests before opening it, and read "Working on a Good First Issue" in CONTRIBUTING.md.
             PRs from contributors who haven’t joined our Slack community or starred the repository won’t be reviewed — we’d love to see you join and be part of the project!

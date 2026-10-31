@@ -3,17 +3,17 @@ import {
 	AuditActionType,
 	AuditResourceType,
 	criteriaMatchesAlert,
+	isScheduleActiveNow,
 	Logger,
 	MutePolicy,
 	User,
 } from '@OpsiMate/shared';
 import { MutePolicyRepository, CreateMutePolicyInput, UpdateMutePolicyInput } from '../../dal/mutePolicyRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
+import { PreparedRules } from '../alerts/preparedRules';
 
 const logger = new Logger('bl/mutePolicy.bl');
-
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
 
 export class MutePolicyBL {
 	// Mute rules change what markMuted stamps on every alert, so the alerts snapshot
@@ -68,14 +68,6 @@ export class MutePolicyBL {
 		}
 	}
 
-	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
-		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
-		return {
-			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
-		};
-	}
-
 	private hasUpdateData(data: UpdateMutePolicyInput): boolean {
 		return (
 			data.name !== undefined ||
@@ -98,7 +90,7 @@ export class MutePolicyBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const auditActor = this.getAuditActor(actor);
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.MUTE_POLICY,
@@ -117,9 +109,7 @@ export class MutePolicyBL {
 		if (mutePolicy.schedule) {
 			const { daysOfWeek, startTime, endTime } = mutePolicy.schedule;
 			if (!daysOfWeek?.length || !startTime || !endTime) return false;
-			if (!daysOfWeek.includes(now.getDay())) return false;
-			const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-			return current >= startTime && current < endTime;
+			return isScheduleActiveNow(mutePolicy.schedule, now);
 		}
 		const ts = now.getTime();
 		if (mutePolicy.startsAt) {
@@ -142,16 +132,43 @@ export class MutePolicyBL {
 	}
 
 	async markMuted(alerts: Alert[]): Promise<Alert[]> {
+		const { apply } = await this.prepareMuter();
+		return alerts.map(apply);
+	}
+
+	// The policies active RIGHT NOW as a per-alert function plus a key that changes
+	// when that set changes — including when a schedule window opens or closes, since
+	// the key is built from the active subset. See EnrichmentBL.prepareEnricher.
+	async prepareMuter(): Promise<PreparedRules> {
+		let active: MutePolicy[];
 		try {
 			const mutePolicies = await this.mutePolicyRepo.getAllMutePolicies();
-			const active = mutePolicies.filter((s) => MutePolicyBL.isMutePolicyActive(s));
-			if (active.length === 0) return alerts;
-			return alerts.map((alert) =>
-				active.some((s) => MutePolicyBL.mutePolicyMatchesAlert(s, alert)) ? { ...alert, isMuted: true } : alert
-			);
+			active = mutePolicies.filter((s) => MutePolicyBL.isMutePolicyActive(s));
 		} catch (err) {
-			logger.error('Failed to apply mute policy tagging, returning alerts unchanged', err);
-			return alerts;
+			logger.error('Failed to load mute policies, leaving alerts unchanged', err);
+			return { key: 'mute:unavailable', apply: (alert) => alert };
 		}
+		if (active.length === 0) return { key: 'mute:none', apply: (alert) => alert };
+		// Fail open per alert, logged once per rule set — see EnrichmentBL.prepareEnricher.
+		let reported = false;
+		return {
+			key: `mute:${JSON.stringify(active)}`,
+			apply: (alert) => {
+				try {
+					return active.some((s) => MutePolicyBL.mutePolicyMatchesAlert(s, alert))
+						? { ...alert, isMuted: true }
+						: alert;
+				} catch (err) {
+					if (!reported) {
+						reported = true;
+						logger.error(
+							`Failed to apply mute policies (first failure: alert ${alert.id}), leaving such alerts unchanged`,
+							err
+						);
+					}
+					return alert;
+				}
+			},
+		};
 	}
 }

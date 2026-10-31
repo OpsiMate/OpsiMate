@@ -10,7 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IncidentSummary } from '@OpsiMate/shared';
-import { ChevronDown, ChevronRight, FolderOpen, Folder, MoreVertical, Pencil, Ungroup } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderOpen, Folder, MoreVertical, Pencil, Ungroup, User } from 'lucide-react';
 
 interface IncidentRowProps {
 	incident: IncidentSummary;
@@ -86,6 +86,12 @@ export const IncidentRow = ({
 				{incident.alertCount === 1 ? 'alert' : 'alerts'}
 			</Badge>
 			{incident.worstSeverity && <SeverityBadge severity={incident.worstSeverity} />}
+			{incident.ownerName && (
+				<span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0" title="Incident owner">
+					<User className="h-3 w-3" />
+					{incident.ownerName}
+				</span>
+			)}
 			{incident.firingCount > 0 ? (
 				<Badge variant="destructive" className="h-5 px-1.5 text-xs shrink-0">
 					{incident.firingCount} firing

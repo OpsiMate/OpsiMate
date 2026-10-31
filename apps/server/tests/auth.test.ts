@@ -1,6 +1,13 @@
-import { SuperTest, Test } from 'supertest';
+import request, { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
+import express from 'express';
+import { getSecurityConfig } from '../src/config/config.ts';
+import { authenticateJWT, authenticateReadOnly } from '../src/middleware/auth.ts';
 import { setupDB, setupExpressApp } from './setup.ts';
+
+interface UserIdRow {
+	id: number;
+}
 
 describe('Authentication API', () => {
 	let app: SuperTest<Test>;
@@ -168,7 +175,8 @@ describe('Authentication API', () => {
 		expect(delRes.body.success).toBe(true);
 		// User should not be in list
 		const usersRes = await app.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
-		expect(usersRes.body.data.find((u: any) => u.id === userId)).toBeUndefined();
+		const users = usersRes.body.data as UserIdRow[];
+		expect(users.find((user) => user.id === userId)).toBeUndefined();
 	});
 
 	test('non-admin cannot delete a user', async () => {
@@ -399,6 +407,56 @@ describe('Authentication API', () => {
 
 			// Should not be blocked by role restriction (may get other status codes like 200, 404, etc.)
 			expect(readResponse.status).not.toBe(403);
+		});
+	});
+
+	describe('authenticateReadOnly', () => {
+		// Nothing in the app is guarded by it yet, so both middlewares are mounted on a
+		// bare app. The tokens come from the real sign-in flow, so they are signed with
+		// the secret the middleware verifies against.
+		const guarded = express();
+		guarded.post('/jwt', authenticateJWT, (_req, res) => res.json({ success: true }));
+		guarded.post('/read-only', authenticateReadOnly, (_req, res) => res.json({ success: true }));
+
+		test('lets a Viewer POST where authenticateJWT answers 403', async () => {
+			const adminRes = await app.post('/api/v1/users/register').send({
+				email: 'readonly-admin@test.com',
+				fullName: 'Read-only Admin',
+				password: 'password123',
+			});
+			await app.post('/api/v1/users').set('Authorization', `Bearer ${adminRes.body.token}`).send({
+				email: 'readonly-viewer@test.com',
+				fullName: 'Read-only Viewer',
+				password: 'password123',
+				role: 'viewer',
+			});
+			const viewerLoginRes = await app.post('/api/v1/users/login').send({
+				email: 'readonly-viewer@test.com',
+				password: 'password123',
+			});
+			const viewerToken = viewerLoginRes.body.token;
+
+			const blocked = await request(guarded).post('/jwt').set('Authorization', `Bearer ${viewerToken}`);
+			expect(blocked.status).toBe(403);
+
+			const allowed = await request(guarded).post('/read-only').set('Authorization', `Bearer ${viewerToken}`);
+			expect(allowed.status).toBe(200);
+			expect(allowed.body).toEqual({ success: true });
+		});
+
+		test('keeps the credential rules: nothing is 401, the API token is accepted, a bad one is not', async () => {
+			expect((await request(guarded).post('/read-only')).status).toBe(401);
+
+			const withToken = await request(guarded)
+				.post('/read-only')
+				.set('x-api-token', getSecurityConfig().api_token);
+			expect(withToken.status).toBe(200);
+
+			const badToken = await request(guarded).post('/read-only').set('x-api-token', 'not-the-token');
+			expect(badToken.status).toBe(401);
+
+			const badJwt = await request(guarded).post('/read-only').set('Authorization', 'Bearer not-a-jwt');
+			expect(badJwt.status).toBe(401);
 		});
 	});
 });

@@ -1,5 +1,7 @@
 import {
 	Action,
+	Alert,
+	AlertCallbackActor,
 	AlertHistoryEventType,
 	ActionOverrides,
 	ActionPreview,
@@ -8,11 +10,14 @@ import {
 	AuditResourceType,
 	Logger,
 	User,
+	ViewerFormatting,
 } from '@OpsiMate/shared';
 import { ActionRepository, CreateActionInput, UpdateActionInput } from '../../dal/actionRepository';
 import { actionsRunTotal } from '../../metrics';
 import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { AuditBL } from '../audit/audit.bl';
+import { toAuditActor } from '../audit/auditActor';
+import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import {
 	AlertContextInput,
 	buildAlertContext,
@@ -20,40 +25,70 @@ import {
 	executeAction,
 	ExecutableAction,
 	previewAction,
+	sendsWithoutWaiting,
 } from './actionExecutor';
 
 const logger = new Logger('bl/action.bl');
 
-const API_TOKEN_ACTOR_ID = 0;
-const API_TOKEN_ACTOR_NAME = 'API Token';
+// How a run on an alert went: `sent` is a "don't wait" HTTP action whose request went out.
+type ActionRunOutcome = 'success' | 'sent' | 'error';
+
+// The alert timeline's text for a run. The run's result message is left out on purpose:
+// it can carry the receiver's response body, and anyone who can see the alert reads this.
+const describeActionRun = (actionName: string, outcome: ActionRunOutcome): string => {
+	switch (outcome) {
+		case 'error':
+			return `Action "${actionName}" failed`;
+		case 'sent':
+			return `Sent action "${actionName}" (not waiting for a response)`;
+		default:
+			return `Ran action "${actionName}"`;
+	}
+};
+
+// Lets a run fire the `action_run` callback with the alert as stored (the run request
+// only carries the fields the templates need).
+export interface ActionCallbackHooks {
+	dispatcher: CallbackDispatcher;
+	lookupAlert: (alertId: string) => Promise<Alert | null>;
+}
 
 export class ActionBL {
 	constructor(
 		private actionRepo: ActionRepository,
 		private auditBL: AuditBL,
-		private alertHistoryRepo?: AlertHistoryRepository
+		private alertHistoryRepo?: AlertHistoryRepository,
+		private callbacks?: ActionCallbackHooks
 	) {}
 
-	async test(data: ExecutableAction): Promise<ActionTestResult> {
-		return executeAction(data, buildSampleContext());
+	async test(data: ExecutableAction, viewer?: ViewerFormatting | null): Promise<ActionTestResult> {
+		return executeAction(data, buildSampleContext(viewer));
 	}
 
-	previewForAlert(action: Action, alert: AlertContextInput): ActionPreview {
-		return previewAction({ name: action.name, type: action.type, config: action.config }, buildAlertContext(alert));
+	previewForAlert(action: Action, alert: AlertContextInput, viewer?: ViewerFormatting | null): ActionPreview {
+		return previewAction(
+			{ name: action.name, type: action.type, config: action.config },
+			buildAlertContext(alert, viewer)
+		);
 	}
 
 	async runOnAlert(
 		action: Action,
 		alert: AlertContextInput,
 		overrides?: ActionOverrides,
-		actorName?: string | null
+		actorName?: string | null,
+		actorId?: string | null,
+		viewer?: ViewerFormatting | null
 	): Promise<ActionTestResult> {
 		const result = await executeAction(
 			{ name: action.name, type: action.type, config: action.config },
-			buildAlertContext(alert),
+			buildAlertContext(alert, viewer),
 			overrides
 		);
-		actionsRunTotal.inc({ type: action.type, outcome: result.success ? 'success' : 'error' });
+		// A "don't wait" HTTP action only knows its request went out, so it counts as
+		// `sent` rather than claiming a `success` it never saw.
+		const outcome: ActionRunOutcome = !result.ok ? 'error' : sendsWithoutWaiting(action) ? 'sent' : 'success';
+		actionsRunTotal.inc({ type: action.type, outcome });
 
 		// Record the run on the alert's history timeline (best-effort; never block the action).
 		if (alert.id && this.alertHistoryRepo) {
@@ -62,10 +97,29 @@ export class ActionBL {
 					alertId: alert.id,
 					eventType: AlertHistoryEventType.ACTION_RUN,
 					actorName,
-					description: `Ran action "${action.name}"`,
+					description: describeActionRun(action.name, outcome),
 				});
 			} catch {
 				// Swallow: history logging must not affect the action result.
+			}
+		}
+
+		// Callbacks hear about the run once it is on the timeline. Best-effort too, and
+		// only the lookup is awaited: delivery itself never waits on anything.
+		if (alert.id && this.callbacks?.dispatcher.wants('action_run')) {
+			try {
+				const stored = await this.callbacks.lookupAlert(alert.id);
+				if (stored) {
+					const actor: AlertCallbackActor = { id: actorId ?? null, name: actorName ?? null };
+					this.callbacks.dispatcher.emit({
+						event: 'action_run',
+						alert: stored,
+						actor,
+						details: { actionName: action.name, ok: result.ok },
+					});
+				}
+			} catch (error) {
+				logger.error(`Failed to emit action_run callback for alert ${alert.id}`, error);
 			}
 		}
 
@@ -107,14 +161,6 @@ export class ActionBL {
 		}
 	}
 
-	private getAuditActor(actor?: User | null): { userId: number; userName: string } {
-		const parsedUserId = actor?.id !== undefined ? Number(actor.id) : NaN;
-		return {
-			userId: Number.isFinite(parsedUserId) ? parsedUserId : API_TOKEN_ACTOR_ID,
-			userName: actor?.fullName ?? API_TOKEN_ACTOR_NAME,
-		};
-	}
-
 	private async recordAuditAction(
 		actionType: AuditActionType,
 		action: Action,
@@ -122,7 +168,7 @@ export class ActionBL {
 		details?: string
 	): Promise<void> {
 		try {
-			const auditActor = this.getAuditActor(actor);
+			const auditActor = toAuditActor(actor);
 			await this.auditBL.logAction({
 				actionType,
 				resourceType: AuditResourceType.ACTION,

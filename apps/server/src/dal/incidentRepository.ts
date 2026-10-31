@@ -14,6 +14,7 @@ interface IncidentRow {
 // One roll-up row per incident, aggregated in SQL over BOTH alert tables (an incident
 // whose members all resolved must still report its true state, not vanish).
 interface IncidentSummaryRow extends IncidentRow {
+	owner_name: string | null;
 	alert_count: number;
 	firing_count: number;
 	resolved_count: number;
@@ -91,6 +92,7 @@ export class IncidentRepository {
 
 	private toSummary = (row: IncidentSummaryRow): IncidentSummary => ({
 		...this.toIncident(row),
+		ownerName: row.owner_name,
 		alertCount: row.alert_count,
 		firingCount: row.firing_count,
 		resolvedCount: row.resolved_count,
@@ -167,6 +169,7 @@ export class IncidentRepository {
 				.prepare(
 					`${MEMBER_STATE_CTE}
 					SELECT i.*,
+					       u.full_name                                          AS owner_name,
 					       COUNT(ms.alert_id)                                   AS alert_count,
 					       COALESCE(SUM(ms.is_active), 0)                       AS firing_count,
 					       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
@@ -175,8 +178,9 @@ export class IncidentRepository {
 					       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
 					       GROUP_CONCAT(ms.alert_id)                            AS alert_ids
 					FROM incidents i
+					LEFT JOIN users u         ON u.id = i.created_by
 					LEFT JOIN member_state ms ON ms.incident_id = i.id
-					GROUP BY i.id
+					GROUP BY i.id, u.full_name
 					ORDER BY i.created_at DESC`
 				)
 				.all() as IncidentSummaryRow[];
@@ -190,6 +194,7 @@ export class IncidentRepository {
 				.prepare(
 					`${MEMBER_STATE_CTE}
 					SELECT i.*,
+					       u.full_name                                          AS owner_name,
 					       COUNT(ms.alert_id)                                   AS alert_count,
 					       COALESCE(SUM(ms.is_active), 0)                       AS firing_count,
 					       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
@@ -198,9 +203,10 @@ export class IncidentRepository {
 					       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
 					       GROUP_CONCAT(ms.alert_id)                            AS alert_ids
 					FROM incidents i
+					LEFT JOIN users u         ON u.id = i.created_by
 					LEFT JOIN member_state ms ON ms.incident_id = i.id
 					WHERE i.id = ?
-					GROUP BY i.id`
+					GROUP BY i.id, u.full_name`
 				)
 				.get(id) as IncidentSummaryRow | undefined;
 			return row ? this.toSummary(row) : undefined;
@@ -290,6 +296,14 @@ export class IncidentRepository {
 				this.db.prepare(`DELETE FROM incidents WHERE id = ?`).run(id);
 			})();
 			return { memberAlertIds: members.map((m) => m.alert_id) };
+		});
+	}
+
+	async getIncidentIdForAlert(alertId: string): Promise<number | null> {
+		return runAsync(() => {
+			const row = this.db.prepare(`SELECT incident_id FROM incident_alerts WHERE alert_id = ?`).get(alertId) as
+				{ incident_id: number } | undefined;
+			return row?.incident_id ?? null;
 		});
 	}
 

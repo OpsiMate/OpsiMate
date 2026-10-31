@@ -9,7 +9,7 @@ const deferred = <T>() => {
 
 describe('SnapshotCache', () => {
 	test('serves the cached snapshot within the TTL — one compute for many gets', async () => {
-		const compute = vi.fn(async () => [1, 2, 3]);
+		const compute = vi.fn(() => Promise.resolve([1, 2, 3]));
 		const cache = new SnapshotCache(compute, 60_000);
 
 		const first = await cache.get();
@@ -24,7 +24,7 @@ describe('SnapshotCache', () => {
 	test('recomputes after the TTL expires', async () => {
 		vi.useFakeTimers();
 		try {
-			const compute = vi.fn(async () => Date.now());
+			const compute = vi.fn(() => Promise.resolve(Date.now()));
 			const cache = new SnapshotCache(compute, 1000);
 
 			await cache.get();
@@ -38,7 +38,7 @@ describe('SnapshotCache', () => {
 	});
 
 	test('ttl <= 0 disables caching entirely', async () => {
-		const compute = vi.fn(async () => 'x');
+		const compute = vi.fn(() => Promise.resolve('x'));
 		const cache = new SnapshotCache(compute, 0);
 
 		await cache.get();
@@ -63,7 +63,7 @@ describe('SnapshotCache', () => {
 
 	test('invalidate forces the next get to recompute', async () => {
 		let n = 0;
-		const compute = vi.fn(async () => ++n);
+		const compute = vi.fn(() => Promise.resolve(++n));
 		const cache = new SnapshotCache(compute, 60_000);
 
 		expect((await cache.get()).value).toBe(1);
@@ -110,7 +110,7 @@ describe('SnapshotCache', () => {
 
 	test('etag derives from content: unchanged data keeps it, changed data rotates it', async () => {
 		let value = ['a'];
-		const cache = new SnapshotCache(async () => value, 0);
+		const cache = new SnapshotCache(() => Promise.resolve(value), 0);
 
 		const first = await cache.get();
 		const same = await cache.get();
@@ -122,22 +122,195 @@ describe('SnapshotCache', () => {
 	});
 
 	test('json is the serialized value, computed once per snapshot', async () => {
-		const cache = new SnapshotCache(async () => ({ list: [1, 2] }), 60_000);
+		const cache = new SnapshotCache(() => Promise.resolve({ list: [1, 2] }), 60_000);
 		const snapshot = await cache.get();
 		expect(JSON.parse(snapshot.json)).toEqual({ list: [1, 2] });
 	});
 
 	test('a failed compute is not cached and the next get retries', async () => {
 		let fail = true;
-		const compute = vi.fn(async () => {
-			if (fail) throw new Error('db down');
-			return 'recovered';
-		});
+		const compute = vi.fn(() => (fail ? Promise.reject(new Error('db down')) : Promise.resolve('recovered')));
 		const cache = new SnapshotCache(compute, 60_000);
 
 		await expect(cache.get()).rejects.toThrow('db down');
 		fail = false;
 		expect((await cache.get()).value).toBe('recovered');
+	});
+});
+
+// markStale(): the webhook path. See the SnapshotCache class comment.
+describe('SnapshotCache.markStale (stale-while-revalidate)', () => {
+	const nextMacrotask = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+	test('inside the refresh window a stale-marked snapshot is served with no rebuild', async () => {
+		let n = 0;
+		const compute = vi.fn(() => Promise.resolve(++n));
+		const cache = new SnapshotCache(compute, 60_000, 1000);
+
+		expect((await cache.get()).value).toBe(1);
+		cache.markStale();
+		cache.markStale();
+		expect((await cache.get()).value).toBe(1);
+		expect(compute).toHaveBeenCalledTimes(1);
+	});
+
+	test('past the window a get serves the stale copy once more and rebuilds in the background', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			let n = 0;
+			const compute = vi.fn(() => Promise.resolve(++n));
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+
+			expect((await cache.get()).value).toBe(1);
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+
+			expect((await cache.get()).value).toBe(1); // stale, returned immediately
+			await nextMacrotask();
+			expect(compute).toHaveBeenCalledTimes(2);
+			expect((await cache.get()).value).toBe(2);
+
+			// The rebuilt copy is clean: another window passing without a mark rebuilds nothing.
+			vi.advanceTimersByTime(1500);
+			expect((await cache.get()).value).toBe(2);
+			await nextMacrotask();
+			expect(compute).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('a storm of polls past the window schedules exactly one rebuild', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			let n = 0;
+			const compute = vi.fn(() => Promise.resolve(++n));
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+			await cache.get();
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+
+			const polls = await Promise.all([cache.get(), cache.get(), cache.get(), cache.get(), cache.get()]);
+			await nextMacrotask();
+
+			expect(polls.map((p) => p.value)).toEqual([1, 1, 1, 1, 1]);
+			expect(compute).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('a mark landing during the rebuild keeps the new copy stale, so the next window rebuilds again', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const gates = [deferred<string>(), deferred<string>(), deferred<string>()];
+			let call = 0;
+			const compute = vi.fn(() => gates[call++].promise);
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+
+			const first = cache.get();
+			gates[0].resolve('v1');
+			await first;
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+			await cache.get(); // schedules the background rebuild
+			await nextMacrotask(); // rebuild started (gate 1 pending)
+			cache.markStale(); // a webhook lands while the rebuild reads the DB
+			gates[1].resolve('v2');
+			await nextMacrotask();
+
+			expect((await cache.get()).value).toBe('v2'); // newer than v1, so it is served
+			vi.advanceTimersByTime(1500);
+			await cache.get(); // ...but still marked stale: another rebuild is due
+			await nextMacrotask();
+			gates[2].resolve('v3');
+			await nextMacrotask();
+			expect((await cache.get()).value).toBe('v3');
+			expect(compute).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('a hard invalidate during a background rebuild discards it; the next get rebuilds inline', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const gates = [deferred<string>(), deferred<string>(), deferred<string>()];
+			let call = 0;
+			const compute = vi.fn(() => gates[call++].promise);
+			const cache = new SnapshotCache(compute, 60_000, 1000);
+
+			const first = cache.get();
+			gates[0].resolve('v1');
+			await first;
+			cache.markStale();
+			vi.advanceTimersByTime(1500);
+			await cache.get();
+			await nextMacrotask(); // background rebuild in flight (gate 1)
+			cache.invalidate(); // a user action
+			gates[1].resolve('pre-write');
+			await nextMacrotask();
+
+			const fresh = cache.get(); // nothing cached: computes inline, does not join the stale one
+			gates[2].resolve('post-write');
+			expect((await fresh).value).toBe('post-write');
+			expect(compute).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('refreshMs defaults to the TTL, so a mark alone never shortens the cache window', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			let n = 0;
+			const compute = vi.fn(() => Promise.resolve(++n));
+			const cache = new SnapshotCache(compute, 1000);
+			await cache.get();
+			cache.markStale();
+			vi.advanceTimersByTime(900);
+			expect((await cache.get()).value).toBe(1);
+			await nextMacrotask();
+			expect(compute).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
+describe('SnapshotCache with a fingerprint', () => {
+	interface Item {
+		id: string;
+		v: number;
+	}
+	const fingerprint = (items: Item[]) => items.map((i) => `${i.id}:${i.v}`).join('|');
+
+	test('the etag derives from the fingerprint, and json is built lazily once', async () => {
+		const items: Item[] = [
+			{ id: 'a', v: 1 },
+			{ id: 'b', v: 2 },
+		];
+		const stringify = vi.spyOn(JSON, 'stringify');
+		try {
+			const cache = new SnapshotCache(() => Promise.resolve(items), 60_000, 60_000, { fingerprint });
+			const snapshot = await cache.get();
+			expect(stringify).not.toHaveBeenCalled();
+			expect(snapshot.json).toBe('[{"id":"a","v":1},{"id":"b","v":2}]');
+			expect(snapshot.json).toBe(snapshot.json);
+			expect(stringify).toHaveBeenCalledTimes(1);
+		} finally {
+			stringify.mockRestore();
+		}
+	});
+
+	test('same fingerprint, same etag across recomputes; a changed value rotates it', async () => {
+		let items: Item[] = [{ id: 'a', v: 1 }];
+		const cache = new SnapshotCache(() => Promise.resolve(items), 0, 0, { fingerprint });
+		const first = await cache.get();
+		items = [{ id: 'a', v: 1 }]; // different objects, same content
+		expect((await cache.get()).etag).toBe(first.etag);
+		items = [{ id: 'a', v: 2 }];
+		expect((await cache.get()).etag).not.toBe(first.etag);
 	});
 });
 

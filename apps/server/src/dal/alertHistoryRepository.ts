@@ -11,6 +11,17 @@ export interface AlertHistoryEventRow {
 	created_at: string;
 }
 
+// An event as the incremental feed returns it (see getEventsOfTypeAfter).
+export interface EventAfterRow {
+	id: number;
+	alert_id: string;
+	created_at: string;
+}
+
+interface MaxIdRow {
+	max: number | null;
+}
+
 // The compact projection getAllEventTimes returns for the analytics aggregates.
 export interface EventTimeRow {
 	alert_id: string;
@@ -80,16 +91,37 @@ export class AlertHistoryRepository {
 	// created_at per alert for one event type (e.g. UNRESOLVED = the actual moment an
 	// alert went back to firing; the status-history trigger records the original
 	// starts_at instead on unresolve re-inserts).
+	// The incremental feed behind FiringTimesIndex: events of one type appended after a
+	// high-water mark, in insertion order. id is AUTOINCREMENT: monotonic, never reused.
+	async getEventsOfTypeAfter(eventType: string, id: number): Promise<EventAfterRow[]> {
+		return runAsync(
+			() =>
+				this.db
+					.prepare(
+						`SELECT id, alert_id, created_at FROM alert_history_events
+						 WHERE event_type = ? AND id > ? ORDER BY id`
+					)
+					.all(eventType, id) as EventAfterRow[]
+		);
+	}
+
+	async getMaxEventId(): Promise<number> {
+		return runAsync(() => {
+			const row = this.db.prepare(`SELECT MAX(id) AS max FROM alert_history_events`).get() as MaxIdRow;
+			return row.max ?? 0;
+		});
+	}
+
 	async getEventTimesByType(eventType: string, alertIds: string[]): Promise<Record<string, string[]>> {
 		if (alertIds.length === 0) return {};
 		return runAsync(() => {
-			const placeholders = alertIds.map(() => '?').join(', ');
+			// One json parameter instead of a `?` per id — see alertRepository's idsParam.
 			const rows = this.db
 				.prepare(
 					`SELECT alert_id, created_at FROM alert_history_events
-					 WHERE event_type = ? AND alert_id IN (${placeholders})`
+					 WHERE event_type = ? AND alert_id IN (SELECT value FROM json_each(?))`
 				)
-				.all(eventType, ...alertIds) as { alert_id: string; created_at: string }[];
+				.all(eventType, JSON.stringify(alertIds)) as { alert_id: string; created_at: string }[];
 			const result: Record<string, string[]> = {};
 			for (const row of rows) {
 				(result[row.alert_id] ??= []).push(row.created_at);

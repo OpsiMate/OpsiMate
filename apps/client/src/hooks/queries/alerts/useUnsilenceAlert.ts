@@ -16,7 +16,7 @@ export const useUnsilenceAlert = () => {
 		onSuccess: () => {
 			// Invalidate and refetch alerts
 			queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
-			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
 		},
 	});
 };

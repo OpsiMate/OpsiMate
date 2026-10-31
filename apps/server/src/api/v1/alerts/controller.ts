@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Request, Response } from 'express';
 import {
 	AlertHistory,
@@ -6,19 +6,27 @@ import {
 	AlertStatus,
 	CreateCommentSchema,
 	Logger,
-	Role,
 	UpdateCommentSchema,
 	UpdateSilenceResetSettingsSchema,
 	UpsertRootCauseSchema,
 	RateRootCauseSchema,
 } from '@OpsiMate/shared';
-import { AlertBL } from '../../../bl/alerts/alert.bl';
+import { AlertBL, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
 import {
+	ALERT_QUERY_PARAM_KEYS,
 	AlertAnalyticsParamsSchema,
+	AlertBulkActionSchema,
+	AlertFacetsParamsSchema,
+	AlertGroupsParamsSchema,
+	AlertListQueryParamsSchema,
 	DatadogAlertWebhookSchema,
 	GcpAlertWebhookSchema,
 	GrafanaWebhookSchema,
+	HttpAlertWebhookFields,
+	HttpAlertWebhookHeadSchema,
+	HttpAlertWebhookTimesSchema,
 	HttpAlertWebhookSchema,
+	isResolvedWebhookStatus,
 	SetAlertOwnerSchema,
 	ResolveAlertBodySchema,
 	SilenceAlertBodySchema,
@@ -26,20 +34,15 @@ import {
 	ZabbixWebhookPayloadSchema,
 } from './models';
 import { isZodError } from '../../../utils/isZodError.ts';
+import { routeParam } from '../../../utils/routeParams.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
-import crypto from 'crypto';
-import {
-	ALERT_QUERY_PARAM_KEYS,
-	AlertBulkActionSchema,
-	AlertFacetsParamsSchema,
-	AlertGroupsParamsSchema,
-	AlertListQueryParamsSchema,
-} from './models';
-import { createHash } from 'crypto';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 
-const logger: Logger = new Logger('alerts.controller');
+const logger: Logger = new Logger('api/v1/alerts/controller');
+
+// String() — the JWT carries the id as a number; comments and callbacks carry it as text.
+const actorIdOf = (req: AuthenticatedRequest): string | null => (req.user != null ? String(req.user.id) : null);
 
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
@@ -162,7 +165,7 @@ export class AlertController {
 			success: true,
 			data: { alerts: page.items, total: page.total, nextCursor: page.nextCursor },
 		});
-		const etag = `"${crypto.createHash('sha1').update(body).digest('hex')}"`;
+		const etag = `"${createHash('sha1').update(body).digest('hex')}"`;
 		res.set('ETag', etag);
 		res.set('Cache-Control', 'no-cache');
 		if (ifNoneMatchSatisfied(req.headers['if-none-match'], etag)) {
@@ -185,18 +188,7 @@ export class AlertController {
 		return res.type('application/json').send(`{"success":true,"data":{"alerts":${snapshot.json}}}`);
 	}
 
-	// Both silence-reset endpoints are admin-only: this is org-wide configuration, same
-	// gate the retention settings use.
-	private requireAdmin(req: AuthenticatedRequest, res: Response): boolean {
-		if (!req.user || req.user.role !== Role.Admin) {
-			res.status(403).json({ success: false, error: 'Forbidden: Admins only' });
-			return false;
-		}
-		return true;
-	}
-
-	async getSilenceResetSettings(req: AuthenticatedRequest, res: Response) {
-		if (!this.requireAdmin(req, res)) return;
+	async getSilenceResetSettings(_req: AuthenticatedRequest, res: Response) {
 		try {
 			const settings = await this.alertBL.getSilenceResetSettings();
 			return res.json({ success: true, data: settings });
@@ -207,7 +199,6 @@ export class AlertController {
 	}
 
 	async updateSilenceResetSettings(req: AuthenticatedRequest, res: Response) {
-		if (!this.requireAdmin(req, res)) return;
 		try {
 			const updates = UpdateSilenceResetSettingsSchema.parse(req.body ?? {});
 			const settings = await this.alertBL.updateSilenceResetSettings(updates);
@@ -223,7 +214,7 @@ export class AlertController {
 
 	async silenceAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { id } = req.params;
+			const id = routeParam(req, 'id');
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -250,17 +241,17 @@ export class AlertController {
 
 	async unsilenceAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { id } = req.params;
+			const id = routeParam(req, 'id');
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName);
+			const alert = await this.alertBL.unsilenceAlert(id, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
 			return res.json({ success: true, data: { alert } });
 		} catch (error) {
-			logger.error('Error unsilenceing alert:', error);
+			logger.error('Error unsilencing alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -323,7 +314,7 @@ export class AlertController {
 				tags[tag.name] = tag.value || 'unknown';
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: monitorId,
 				type: 'UptimeKuma',
 				status: AlertStatus.FIRING,
@@ -338,7 +329,7 @@ export class AlertController {
 
 			return res.status(200).json({
 				success: true,
-				data: { alertId: monitorId, updated: true },
+				data: { alertId: monitorId, updated: true, ...(owner ? { owner } : {}) },
 			});
 		} catch (error) {
 			if (isZodError(error)) {
@@ -451,7 +442,7 @@ export class AlertController {
 				alertUrl = `${baseUrl}/tr_events.php?triggerid=${payload.trigger_id}&eventid=${payload.event_id}`;
 			}
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Zabbix',
 				status: AlertStatus.FIRING,
@@ -466,7 +457,7 @@ export class AlertController {
 
 			return res.status(200).json({
 				success: true,
-				data: { alertId, updated: true },
+				data: { alertId, updated: true, ...(owner ? { owner } : {}) },
 			});
 		} catch (error) {
 			if (isZodError(error)) {
@@ -492,10 +483,11 @@ export class AlertController {
 
 			logger.info(`got gcp alert: ${JSON.stringify(payload)}`);
 
+			let owner: WebhookOwnerOutcome | undefined;
 			if (incident.state.toLowerCase() === 'closed') {
 				await this.alertBL.resolveAlert(incident.incident_id);
 			} else {
-				await this.alertBL.insertOrUpdateAlert({
+				({ owner } = await this.alertBL.insertOrUpdateAlert({
 					id: incident.incident_id,
 					type: 'GCP',
 					status: AlertStatus.FIRING,
@@ -512,9 +504,11 @@ export class AlertController {
 						// ever produced a working runbook button.
 						{ label: 'Documentation', icon: '', url: incident.documentation?.content },
 					]),
-				});
+				}));
 			}
-			return res.status(200).json({ success: true, data: { alertId: incident.incident_id } });
+			return res
+				.status(200)
+				.json({ success: true, data: { alertId: incident.incident_id, ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -553,7 +547,7 @@ export class AlertController {
 					.filter((pair): pair is [string, string] => pair.length === 2) ?? []
 			);
 
-			await this.alertBL.insertOrUpdateAlert({
+			const { owner } = await this.alertBL.insertOrUpdateAlert({
 				id: alertId,
 				type: 'Datadog',
 				status: AlertStatus.FIRING,
@@ -570,7 +564,7 @@ export class AlertController {
 				links: AlertController.buildLinks([{ label: 'View in Datadog', icon: 'datadog', url: payload.link }]),
 			});
 
-			return res.status(200).json({ success: true, data: { alertId } });
+			return res.status(200).json({ success: true, data: { alertId, ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -622,6 +616,30 @@ export class AlertController {
 
 	// Parses a timestamp to ISO, falling back to "now" when it is missing or unparseable, so a
 	// malformed startsAt from Grafana can't throw and drop the whole batch.
+	// A custom-webhook payload as the alert it describes. startsAt is the caller's: the
+	// firing path defaults it to now, the resolve-only path keeps it absent ('') so the
+	// episode collapses onto the resolve moment.
+	private static customToIncoming(alert: HttpAlertWebhookFields, startsAt: string): IncomingAlert {
+		return {
+			id: alert.id,
+			type: 'Custom',
+			status: AlertStatus.FIRING,
+			severity: alert.severity,
+			team: alert.team,
+			// The fix field rides on the fix tag (the client's first-class Fix column
+			// reads it from there); an explicit tag wins over the convenience field.
+			tags: alert.fix && !('fix' in alert.tags) ? { ...alert.tags, fix: alert.fix } : alert.tags,
+			startsAt,
+			updatedAt: alert.updatedAt || new Date().toISOString(),
+			alertUrl: alert.alertUrl || '',
+			alertName: alert.alertName,
+			summary: alert.summary,
+			runbookUrl: alert.runbookUrl,
+			links: alert.links,
+			owner: alert.owner,
+		};
+	}
+
 	private static toIsoOrNow(value?: string): string {
 		if (!value) return new Date().toISOString();
 		const parsed = new Date(value);
@@ -652,6 +670,8 @@ export class AlertController {
 			logger.info(`Got grafana webhook with ${alerts.length} alert(s)`);
 
 			const processedIds: string[] = [];
+			// Per alert, what became of an `owner` label, when one was sent.
+			const owners: Record<string, string> = {};
 
 			for (const alert of alerts) {
 				const labels = alert.labels || {};
@@ -662,12 +682,6 @@ export class AlertController {
 					alert.fingerprint || (Object.keys(labels).length > 0 ? AlertController.idFromLabels(labels) : '');
 				if (!alertId) {
 					logger.warn('Skipping grafana alert without fingerprint or labels');
-					continue;
-				}
-
-				if (alert.status?.toLowerCase() === 'resolved') {
-					await this.alertBL.resolveAlert(alertId);
-					processedIds.push(alertId);
 					continue;
 				}
 
@@ -685,7 +699,7 @@ export class AlertController {
 					{ label: 'Runbook', icon: '', url: alert.annotations?.runbook_url },
 				]);
 
-				await this.alertBL.insertOrUpdateAlert({
+				const incoming: IncomingAlert = {
 					id: alertId,
 					type: 'Grafana',
 					status: AlertStatus.FIRING,
@@ -697,11 +711,29 @@ export class AlertController {
 					summary: alert.annotations?.summary || alert.annotations?.description || '',
 					runbookUrl: alert.annotations?.runbook_url || '',
 					links,
-				});
+				};
+
+				// Grafana always sends the full alert, so a resolve with nothing firing here
+				// is recorded as the episode it describes (see AlertBL.resolveFromSource).
+				if (alert.status?.toLowerCase() === 'resolved') {
+					const startsAt = alert.startsAt ? AlertController.toIsoOrNow(alert.startsAt) : '';
+					await this.alertBL.resolveFromSource(alertId, {
+						alert: { ...incoming, startsAt },
+						endsAt: alert.endsAt,
+					});
+					processedIds.push(alertId);
+					continue;
+				}
+
+				const { owner } = await this.alertBL.insertOrUpdateAlert(incoming);
+				if (owner) owners[alertId] = owner;
 				processedIds.push(alertId);
 			}
 
-			return res.status(200).json({ success: true, data: { processed: processedIds } });
+			return res.status(200).json({
+				success: true,
+				data: { processed: processedIds, ...(Object.keys(owners).length > 0 ? { owners } : {}) },
+			});
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
@@ -713,31 +745,46 @@ export class AlertController {
 
 	async createCustomAlert(req: Request, res: Response) {
 		try {
-			const alert = HttpAlertWebhookSchema.parse(req.body);
+			// A resolved status resolves the alert instead of firing it — the same
+			// source-driven resolve (no acting user) the Grafana webhook performs. Only the
+			// id is needed for that, so the full firing schema is not applied. Nothing to
+			// resolve (unknown id, already resolved) is not an error for a webhook: the
+			// sender's retry must be idempotent.
+			const head = HttpAlertWebhookHeadSchema.parse(req.body);
+			if (isResolvedWebhookStatus(head.status)) {
+				// A full payload lets us record the episode even when the firing never
+				// arrived (see AlertBL.resolveFromSource); an id-only resolve cannot.
+				// The times are read raw: an unparseable startsAt/endsAt must not throw away
+				// the episode — resolveFromSource treats it as absent (start = end, end = now).
+				const full = HttpAlertWebhookSchema.omit({ startsAt: true, endsAt: true }).safeParse(req.body);
+				const times = HttpAlertWebhookTimesSchema.parse(req.body);
+				const { resolved, created } = await this.alertBL.resolveFromSource(
+					head.id,
+					full.success
+						? {
+								alert: AlertController.customToIncoming(full.data, times.startsAt ?? ''),
+								endsAt: times.endsAt,
+							}
+						: undefined
+				);
+				return res
+					.status(200)
+					.json({ success: true, data: { alertId: head.id, status: 'resolved', resolved, created } });
+			}
 
-			await this.alertBL.insertOrUpdateAlert({
-				id: alert.id,
-				type: 'Custom',
-				status: AlertStatus.FIRING,
-				severity: alert.severity,
-				team: alert.team,
-				// The fix field rides on the fix tag (the client's first-class Fix column
-				// reads it from there); an explicit tag wins over the convenience field.
-				tags: alert.fix && !('fix' in alert.tags) ? { ...alert.tags, fix: alert.fix } : alert.tags,
-				startsAt: alert.startsAt || new Date().toISOString(),
-				updatedAt: alert.updatedAt || new Date().toISOString(),
-				alertUrl: alert.alertUrl || '',
-				alertName: alert.alertName,
-				summary: alert.summary,
-				runbookUrl: alert.runbookUrl,
-				links: alert.links,
-			});
-			return res.status(200).json({ success: true, data: { alertId: alert.id } });
+			const alert = HttpAlertWebhookSchema.parse(req.body);
+			const { owner } = await this.alertBL.insertOrUpdateAlert(
+				AlertController.customToIncoming(alert, alert.startsAt || new Date().toISOString())
+			);
+			// `owner` says what became of the one sent: assigned, kept (already owned), not_found.
+			return res
+				.status(200)
+				.json({ success: true, data: { alertId: alert.id, status: 'firing', ...(owner ? { owner } : {}) } });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else {
-				logger.error('Error creating integration:', error);
+				logger.error('Error creating custom alert:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
 			}
 		}
@@ -745,7 +792,7 @@ export class AlertController {
 
 	async markAlertRead(req: Request, res: Response) {
 		try {
-			const alertId = req.params.id;
+			const alertId = routeParam(req, 'id');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -767,7 +814,7 @@ export class AlertController {
 	// re-push replaces the content and clears any previous rating.
 	async upsertRootCause(req: Request, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			const body = UpsertRootCauseSchema.parse(req.body);
 			const rootCause = await this.rootCauseBL.upsert({
 				alertId,
@@ -793,7 +840,7 @@ export class AlertController {
 	// the UI always asks, so absence is a normal answer, not an error.
 	async getRootCause(req: Request, res: Response) {
 		try {
-			const rootCause = await this.rootCauseBL.get(req.params.alertId);
+			const rootCause = await this.rootCauseBL.get(routeParam(req, 'alertId'));
 			return res.json({ success: true, data: { rootCause } });
 		} catch (error) {
 			logger.error('Error getting root cause:', error);
@@ -808,8 +855,8 @@ export class AlertController {
 			if (!req.user) {
 				return res.status(401).json({ success: false, error: 'Rating requires a user session' });
 			}
-			const { rating } = RateRootCauseSchema.parse(req.body);
-			const result = await this.rootCauseBL.rate(req.params.alertId, rating, req.user);
+			const { rating, comment } = RateRootCauseSchema.parse(req.body);
+			const result = await this.rootCauseBL.rate(routeParam(req, 'alertId'), rating, req.user, comment);
 			return res.json({ success: true, data: result });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -824,9 +871,39 @@ export class AlertController {
 	}
 	// endregion
 
+	// Firing alerts first, then resolved history; `resolved` tells the caller which.
+	// The users alerts can be assigned to, as id + display name: lets a client outside the
+	// UI (the MCP server) show owner names without the admin-only users list. The owner
+	// facet already exposes these names, so nothing new is disclosed.
+	async getAlertOwners(_req: Request, res: Response) {
+		try {
+			return res.json({ success: true, data: await this.alertBL.getOwners() });
+		} catch (error) {
+			logger.error('Error getting alert owners:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
+	async getAlert(req: Request, res: Response) {
+		try {
+			const alertId = routeParam(req, 'alertId');
+			if (alertId.length < 1) {
+				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
+			}
+			const lookup = await this.alertBL.findAlertById(alertId);
+			if (!lookup) {
+				return res.status(404).json({ success: false, error: 'Alert not found' });
+			}
+			return res.json({ success: true, data: lookup });
+		} catch (error) {
+			logger.error('Error getting alert:', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	}
+
 	async deleteAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -834,19 +911,22 @@ export class AlertController {
 			// This endpoint is the UI's "Resolve" action — a manual resolve, recorded with
 			// the acting user (unlike the integration webhooks, which resolve without one).
 			// The resolver becomes the alert's owner, and an optional resolve note is stored
-			// as a regular comment.
+			// as a regular comment. Webhook senders still call this route with the API token
+			// (no user) to report recovery: that is a source-reported recovery, so it fires
+			// no callback.
 			await this.alertBL.resolveAlert(
 				alertId,
 				// String() — the JWT carries the id as a number; comments store it as TEXT.
 				{ id: req.user != null ? String(req.user.id) : null, name: req.user?.fullName ?? null },
-				comment
+				comment,
+				{ fireCallback: req.user != null }
 			);
-			return res.json({ success: true, message: 'Alert deleted successfully' });
+			return res.json({ success: true, message: 'Alert resolved successfully' });
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
-			logger.error('Error deleting alert:', error);
+			logger.error('Error resolving alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
 	}
@@ -871,11 +951,11 @@ export class AlertController {
 
 	async unresolveAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const alertId = req.params.id;
+			const alertId = routeParam(req, 'id');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
-			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName);
+			const alert = await this.alertBL.unresolveAlert(alertId, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
 			}
@@ -886,13 +966,19 @@ export class AlertController {
 		}
 	}
 
-	async deleteResolvedAlert(req: Request, res: Response) {
+	async deleteResolvedAlert(req: AuthenticatedRequest, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
-			await this.alertBL.deleteResolvedAlert(alertId);
+			const deleted = await this.alertBL.deleteResolvedAlert(alertId, {
+				id: req.user != null ? String(req.user.id) : null,
+				name: req.user?.fullName ?? null,
+			});
+			if (!deleted) {
+				return res.status(404).json({ success: false, error: 'Resolved alert not found' });
+			}
 			return res.json({ success: true, message: 'Resolved alert deleted permanently' });
 		} catch (error) {
 			logger.error('Error deleting resolved alert:', error);
@@ -929,7 +1015,7 @@ export class AlertController {
 
 	async getAlertHistory(req: Request, res: Response) {
 		try {
-			const alertId = req.params.alertId;
+			const alertId = routeParam(req, 'alertId');
 			if (alertId.length < 1) {
 				return res.status(400).json({ success: false, error: 'Invalid alert ID' });
 			}
@@ -951,12 +1037,12 @@ export class AlertController {
 
 	async setAlertOwnerWrapper(req: AuthenticatedRequest, res: Response, isResolved: boolean) {
 		try {
-			const { id } = req.params;
+			const id = routeParam(req, 'id');
 			if (!id) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
 			const { ownerId } = SetAlertOwnerSchema.parse(req.body);
-			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName);
+			const alert = await this.alertBL.setAlertOwner(id, ownerId, isResolved, req.user?.fullName, actorIdOf(req));
 			if (!alert) {
 				return res.status(404).json({ success: false, error: 'Alert not found' });
 			}
@@ -997,7 +1083,7 @@ export class AlertController {
 	// region Alert Comments
 	async getCommentsByAlertId(req: Request, res: Response) {
 		try {
-			const { alertId } = req.params;
+			const alertId = routeParam(req, 'alertId');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -1011,7 +1097,7 @@ export class AlertController {
 
 	async createComment(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { alertId } = req.params;
+			const alertId = routeParam(req, 'alertId');
 			if (!alertId) {
 				return res.status(400).json({ success: false, error: 'Alert id is required' });
 			}
@@ -1042,7 +1128,7 @@ export class AlertController {
 
 	async updateComment(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { commentId } = req.params;
+			const commentId = routeParam(req, 'commentId');
 			if (!commentId) {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}
@@ -1069,7 +1155,7 @@ export class AlertController {
 
 	async deleteComment(req: AuthenticatedRequest, res: Response) {
 		try {
-			const { commentId } = req.params;
+			const commentId = routeParam(req, 'commentId');
 			if (!commentId) {
 				return res.status(400).json({ success: false, error: 'Comment id is required' });
 			}

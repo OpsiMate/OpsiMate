@@ -16,11 +16,13 @@
 		},
 		"lint": {
 			"dependsOn": [
+				"^build",
 				"^lint"
 			]
 		},
 		"lint-fix": {
 			"dependsOn": [
+				"^build",
 				"^lint-fix"
 			]
 		},
@@ -36,11 +38,13 @@
 		},
 		"check": {
 			"dependsOn": [
+				"^build",
 				"^check"
 			]
 		},
 		"fix": {
 			"dependsOn": [
+				"^build",
 				"^fix"
 			]
 		},

@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { ServiceCustomField } from '@OpsiMate/shared';
 import { runAsync } from './db';
+import { InsertResult } from './models';
 
 export class ServiceCustomFieldRepository {
 	private db: Database.Database;
@@ -9,8 +10,8 @@ export class ServiceCustomFieldRepository {
 		this.db = db;
 	}
 
-	async createCustomField(data: Omit<ServiceCustomField, 'id' | 'createdAt'>): Promise<{ lastID: number }> {
-		return await runAsync<{ lastID: number }>(() => {
+	async createCustomField(data: Omit<ServiceCustomField, 'id' | 'createdAt'>): Promise<InsertResult> {
+		return await runAsync<InsertResult>(() => {
 			const stmt = this.db.prepare(
 				"INSERT INTO service_custom_field (name, created_at) VALUES (?, datetime('now'))"
 			);

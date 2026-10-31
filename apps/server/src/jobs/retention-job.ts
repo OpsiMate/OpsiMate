@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import { Logger } from '@OpsiMate/shared';
 import { RetentionBL } from '../bl/retention/retention.bl';
+import { MS_PER_MINUTE } from '../utils/time';
 
 const logger = new Logger('retention-job');
 
 // How often the job wakes to check whether a cleanup is due. The actual cadence between runs is
 // the admin-configured cleanupIntervalHours; this short tick just lets config changes take effect
 // without a restart (the worker re-reads the interval from the DB each tick).
-const TICK_MS = 10 * 60 * 1000; // 10 minutes
+const TICK_MS = 10 * MS_PER_MINUTE; // 10 minutes
 
 export class RetentionJob {
 	constructor(private retentionBL: RetentionBL) {}

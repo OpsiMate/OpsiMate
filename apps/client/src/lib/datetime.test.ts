@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
+	formatDate,
 	formatDateTime,
 	formatLongDateTime,
 	formatRelativeTime,
@@ -69,6 +70,26 @@ describe('formatLongDateTime', () => {
 		expect(formatted).toContain('2026');
 		expect(formatted).toContain('22:53');
 		expect(formatted).not.toMatch(MERIDIEM);
+	});
+});
+
+describe('formatDate', () => {
+	test('renders year, month and day without a clock', () => {
+		const formatted = formatDate(afternoon);
+		expect(formatted).toContain('2026');
+		expect(formatted).toContain('11');
+		expect(formatted).not.toContain('22:53');
+	});
+
+	test('empty or invalid input returns the default fallback', () => {
+		for (const value of [null, undefined, '', 'garbage']) {
+			expect(formatDate(value)).toBe('—');
+		}
+	});
+
+	test('uses a custom fallback when given', () => {
+		expect(formatDate('garbage', '-')).toBe('-');
+		expect(formatDate(null, 'Pick date')).toBe('Pick date');
 	});
 });
 

@@ -55,15 +55,6 @@ export const useUpdateIncident = () => {
 	});
 };
 
-export const useAddIncidentAlerts = () => {
-	const invalidate = useInvalidateIncidentData();
-	return useMutation({
-		mutationFn: async ({ id, alertIds }: IncidentAlertsVariables) =>
-			unwrap(await incidentsApi.addIncidentAlerts(id, alertIds), 'Failed to add alerts to incident'),
-		onSuccess: invalidate,
-	});
-};
-
 export const useRemoveIncidentAlerts = () => {
 	const invalidate = useInvalidateIncidentData();
 	return useMutation({

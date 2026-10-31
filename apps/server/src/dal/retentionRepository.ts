@@ -13,6 +13,7 @@ const RESOURCE_TABLE: Record<RetentionResource, { table: string; column: string 
 	[RetentionResource.ResolvedAlerts]: { table: 'alerts_resolved', column: 'archived_at' },
 	[RetentionResource.AlertComments]: { table: 'alert_comments', column: 'created_at' },
 	[RetentionResource.RootCauses]: { table: 'alert_root_causes', column: 'updated_at' },
+	[RetentionResource.EnrichmentVersions]: { table: 'alert_enrichment_versions', column: 'created_at' },
 };
 
 // Sensible, conservative defaults. Everything starts DISABLED so upgrading never deletes data
@@ -25,9 +26,14 @@ const DEFAULT_POLICIES: { resource: RetentionResource; days: number }[] = [
 	{ resource: RetentionResource.ResolvedAlerts, days: 180 },
 	{ resource: RetentionResource.AlertComments, days: 365 },
 	{ resource: RetentionResource.RootCauses, days: 365 },
+	{ resource: RetentionResource.EnrichmentVersions, days: 365 },
 ];
 
 const DEFAULT_CLEANUP_INTERVAL_HOURS = 24;
+
+interface TableCountRow {
+	n: number;
+}
 
 interface PolicyRow {
 	resource_type: string;
@@ -192,7 +198,32 @@ export class RetentionRepository {
 			const result = this.db
 				.prepare(`DELETE FROM ${mapping.table} WHERE datetime(${mapping.column}) < datetime(?)`)
 				.run(beforeIso);
+			if (
+				result.changes > 0 &&
+				(resourceType === RetentionResource.ActiveAlerts || resourceType === RetentionResource.ResolvedAlerts)
+			) {
+				this.deleteOrphanedRootCauses();
+			}
 			return result.changes;
 		});
+	}
+
+	// A purged alert's root cause goes with it, as on a permanent delete. Left behind, it
+	// would come back on the next firing of that id: with the resolved copy gone, that
+	// firing looks like the alert's first, so nothing marks the old analysis superseded.
+	private deleteOrphanedRootCauses(): void {
+		const tables = this.db
+			.prepare(
+				`SELECT COUNT(*) AS n FROM sqlite_master
+				 WHERE type = 'table' AND name IN ('alerts', 'alerts_resolved', 'alert_root_causes')`
+			)
+			.get() as TableCountRow;
+		if (tables.n < 3) return;
+		this.db
+			.prepare(
+				`DELETE FROM alert_root_causes
+				 WHERE alert_id NOT IN (SELECT id FROM alerts) AND alert_id NOT IN (SELECT id FROM alerts_resolved)`
+			)
+			.run();
 	}
 }

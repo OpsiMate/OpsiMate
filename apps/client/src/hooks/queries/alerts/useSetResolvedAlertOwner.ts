@@ -1,7 +1,7 @@
 import { alertsApi } from '@/lib/api';
-import { Alert } from '@OpsiMate/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
+import { applyToAlertCaches, restoreAlertCaches, updateAlertInCache } from './alertListCache';
 
 interface SetResolvedAlertOwnerParams {
 	alertId: string;
@@ -20,31 +20,23 @@ export const useSetResolvedAlertOwner = () => {
 			return response.data?.alert;
 		},
 		onMutate: async ({ alertId, ownerId }: SetResolvedAlertOwnerParams) => {
-			// Cancel any outgoing refetches to avoid overwriting our optimistic update
-			await queryClient.cancelQueries({ queryKey: queryKeys.resolvedAlerts });
-
-			// Snapshot the previous value
-			const previousAlerts = queryClient.getQueryData<Alert[]>(queryKeys.resolvedAlerts);
-
-			// Optimistically update the alert owner
-			queryClient.setQueryData<Alert[]>(queryKeys.resolvedAlerts, (old) => {
-				if (!old) return [];
-				return old.map((alert) => (alert.id === alertId ? { ...alert, ownerId } : alert));
-			});
-
-			// Return a context object with the snapshotted value
-			return { previousAlerts };
+			// Every cached list (one per filter/sort), so the owner shows on click.
+			const previous = await applyToAlertCaches(
+				queryClient,
+				queryKeys.resolvedAlerts,
+				updateAlertInCache(alertId, (alert) => ({ ...alert, ownerId }))
+			);
+			return { previous };
 		},
 		onError: (_err, _variables, context) => {
-			// If the mutation fails, use the context returned from onMutate to roll back
-			if (context?.previousAlerts) {
-				queryClient.setQueryData(queryKeys.resolvedAlerts, context.previousAlerts);
-			}
+			restoreAlertCaches(queryClient, context?.previous);
 		},
 		onSettled: () => {
 			// Always refetch after error or success to ensure server state
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
-			queryClient.invalidateQueries({ queryKey: ['alertHistory'] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
+			// Removing an owner takes the alert out of its incident (server rule).
+			queryClient.invalidateQueries({ queryKey: queryKeys.incidents });
 		},
 	});
 };

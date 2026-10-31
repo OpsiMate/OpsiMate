@@ -1,11 +1,12 @@
-import { Fragment } from 'react';
+import { Fragment, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
-import { ACTIONS_COLUMN, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
+import { ACTIONS_COLUMN, COLUMN_SEPARATOR_CLASSES, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
+import { isForeignTarget, isPrimaryPress, isSelectCellTarget, isToggleModifier } from './AlertRow.utils';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
@@ -27,6 +28,8 @@ export interface AlertRowProps {
 	// Content-aware pixel widths for alertName/tag columns; must match the header's.
 	contentColumnWidths?: Record<string, number>;
 	onSelectAlert: (alert: Alert) => void;
+	// Shift+click: select every row from the last toggled one to this one.
+	onSelectRange?: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
 	isActiveRow?: boolean;
@@ -56,6 +59,7 @@ export const AlertRow = ({
 	orderedColumns,
 	contentColumnWidths = {},
 	onSelectAlert,
+	onSelectRange,
 	onAlertClick,
 	isActiveRow = false,
 	onSilenceAlert,
@@ -73,11 +77,67 @@ export const AlertRow = ({
 	onDragEnter,
 	onDragEnd,
 }: AlertRowProps) => {
-	const handleRowClick = () => {
+	// Selection from anywhere on the row: Cmd/Ctrl + press starts the same drag selection
+	// as the checkbox column — release in place toggles the row, drag selects every row
+	// passed over. Shift+click selects a range. None of these open the details panel.
+	// Set by a Ctrl+left press on the row itself, so its contextmenu (button 0 or 2) is suppressed.
+	const ctrlPrimaryPressRef = useRef(false);
+
+	const handleRowClick = (e: React.MouseEvent) => {
+		if (onSelectAlerts && isToggleModifier(e)) {
+			// The toggle already happened on mouseup via the drag hook; without one, toggle here.
+			if (!onDragStart && !isForeignTarget(e)) onSelectAlert(alert);
+			return;
+		}
+		if (onSelectAlerts && e.shiftKey) {
+			if (!isForeignTarget(e)) (onSelectRange ?? onSelectAlert)(alert);
+			return;
+		}
 		onAlertClick?.(alert);
 	};
 
+	const handleRowMouseDown = (e: React.MouseEvent) => {
+		// The checkbox cell's own handler already took this press (and set the Ctrl flag).
+		if (isSelectCellTarget(e)) return;
+		const isOwnPrimaryPress = !!onSelectAlerts && isPrimaryPress(e) && !isForeignTarget(e);
+		ctrlPrimaryPressRef.current = isOwnPrimaryPress && e.ctrlKey;
+		if (!isOwnPrimaryPress) return;
+		// Shift+mousedown would otherwise highlight the text between the two clicked rows.
+		// Cmd/Ctrl wins over Shift, as in handleRowClick: Cmd+Shift+click is a toggle.
+		if (e.shiftKey && !isToggleModifier(e)) {
+			e.preventDefault();
+			return;
+		}
+		if (isToggleModifier(e) && onDragStart) onDragStart(alert, e);
+	};
+
+	// macOS turns Ctrl+click into a right-click: contextmenu fires instead of click. The
+	// mousedown/mouseup pair still fires, so the drag hook does the toggle; only the menu
+	// needs suppressing. A real right-click (button 2, no Ctrl+left press) keeps its menu.
+	const handleRowContextMenu = (e: React.MouseEvent) => {
+		const fromCtrlPrimaryPress = ctrlPrimaryPressRef.current;
+		ctrlPrimaryPressRef.current = false;
+		if (!onSelectAlerts || !e.ctrlKey || isForeignTarget(e)) return;
+		if (e.button !== 2 || fromCtrlPrimaryPress) {
+			e.preventDefault();
+			if (!onDragStart) onSelectAlert(alert);
+		}
+	};
+
 	const handleCheckboxMouseDown = (e: React.MouseEvent) => {
+		// No stopPropagation: it would also stop the native event, hiding the press from
+		// document/window mousedown listeners (click-away closers). The row skips this cell.
+		const isOwnPrimaryPress = isPrimaryPress(e);
+		ctrlPrimaryPressRef.current = isOwnPrimaryPress && e.ctrlKey;
+		// A right or middle press opens a menu or autoscrolls; it is not a selection gesture.
+		if (!isOwnPrimaryPress) return;
+		// Shift+click on a checkbox is a range too; skip the drag so mouseup doesn't toggle it back.
+		// Cmd/Ctrl wins over Shift, as on the row.
+		if (e.shiftKey && !isToggleModifier(e) && onSelectRange) {
+			e.preventDefault();
+			onSelectRange(alert);
+			return;
+		}
 		if (onDragStart) {
 			onDragStart(alert, e);
 		}
@@ -94,7 +154,7 @@ export const AlertRow = ({
 		// selection handler, not just the checkbox column (#712). No isDragging guard:
 		// isDragging only turns true after the first drag-enter, so gating on it would
 		// ignore the first row the cursor reaches after leaving the checkbox column.
-		// The hook itself no-ops unless the mouse went down on a checkbox.
+		// The hook itself no-ops unless the mouse went down on a checkbox or Cmd/Ctrl+row.
 		if (onDragEnter) {
 			onDragEnter(alert);
 		}
@@ -105,6 +165,7 @@ export const AlertRow = ({
 			data-alert-id={alert.id}
 			className={cn(
 				'h-8 cursor-pointer hover:bg-muted/50',
+				COLUMN_SEPARATOR_CLASSES,
 				// Severity tint sits under selection/active highlights so those still win.
 				severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
 				// Selection carries its own hover class so the severity hover tint can't
@@ -118,6 +179,8 @@ export const AlertRow = ({
 				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary'
 			)}
 			onClick={handleRowClick}
+			onMouseDown={handleRowMouseDown}
+			onContextMenu={handleRowContextMenu}
 			onMouseEnter={handleRowMouseEnter}
 		>
 			{onSelectAlerts && (
@@ -125,6 +188,7 @@ export const AlertRow = ({
 					className={cn(CELL_PADDING, 'cursor-pointer select-none')}
 					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
 					onClick={(e) => e.stopPropagation()}
+					data-select-cell
 					onMouseDown={handleCheckboxMouseDown}
 					onMouseEnter={handleCheckboxMouseEnter}
 				>

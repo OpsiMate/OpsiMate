@@ -61,23 +61,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 		onClose();
 	}, [clearErrors, onClose]);
 
-	React.useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				handleClose();
-			} else if (e.key === 'Enter' && !saving && fullName.trim() && email.trim()) {
-				e.preventDefault();
-				handleSave();
-			}
-		};
-
-		if (isOpen) {
-			window.addEventListener('keydown', handleKeyDown);
-			return () => {
-				window.removeEventListener('keydown', handleKeyDown);
-			};
-		}
-	}, [isOpen, saving, fullName, email, handleClose, handleSave]);
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (saving || !fullName.trim() || !email.trim()) return;
+		handleSave();
+	};
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleClose}>
@@ -91,7 +79,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 
 				{generalError && <ErrorAlert message={generalError} />}
 
-				<div className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">
 						<Label htmlFor="edit-fullName">Full Name</Label>
 						<Input
@@ -110,18 +98,24 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							placeholder="john@example.com"
+							disabled={user?.authSource === 'ldap'}
 						/>
+						{user?.authSource === 'ldap' && (
+							<p className="text-xs text-muted-foreground">
+								Signs in through LDAP: the email comes from the directory.
+							</p>
+						)}
 					</div>
-				</div>
 
-				<DialogFooter>
-					<Button variant="ghost" onClick={handleClose} disabled={saving}>
-						Cancel
-					</Button>
-					<Button onClick={handleSave} disabled={saving || !fullName.trim() || !email.trim()}>
-						{saving ? 'Saving...' : 'Save Changes'}
-					</Button>
-				</DialogFooter>
+					<DialogFooter>
+						<Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
+							Cancel
+						</Button>
+						<Button type="submit" disabled={saving || !fullName.trim() || !email.trim()}>
+							{saving ? 'Saving...' : 'Save Changes'}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

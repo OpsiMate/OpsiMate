@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { ArrowUp } from 'lucide-react';
 
@@ -63,7 +63,12 @@ function scrollAllToTop() {
 	}
 }
 
-const ScrollToTopButton: React.FC<{ right?: string; bottom?: string }> = ({ right = '22px', bottom = '22px' }) => {
+interface ScrollToTopButtonProps {
+	right?: string;
+	bottom?: string;
+}
+
+const ScrollToTopButton = ({ right = '22px', bottom = '22px' }: ScrollToTopButtonProps) => {
 	const [isVisible, setIsVisible] = useState(false);
 	// Use a ref to keep track of the main scroll container
 	const scrollContainerRef = useRef<HTMLElement | Window | null>(null);

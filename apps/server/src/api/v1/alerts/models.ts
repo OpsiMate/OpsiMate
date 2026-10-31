@@ -1,20 +1,5 @@
+import { ALERT_COMMENT_MAX_LENGTH } from '@OpsiMate/shared';
 import { z } from 'zod';
-
-export interface GcpIncident {
-	policy_user_labels?: Record<string, string>;
-	incident_id: string;
-	resource_id?: string;
-	resource_name?: string;
-	policy_name?: string;
-	condition_name?: string;
-	state: 'open' | 'acknowledged' | 'closed';
-	started_at: string | number;
-	url: string;
-	summary?: string;
-	documentation?: {
-		content?: string;
-	};
-}
 
 export const GcpIncidentSchema = z.object({
 	policy_user_labels: z.record(z.string(), z.string()).optional(),
@@ -35,11 +20,6 @@ export const GcpIncidentSchema = z.object({
 		})
 		.optional(),
 });
-
-export interface GcpAlertWebhook {
-	version?: string | number;
-	incident: GcpIncident;
-}
 
 export const GcpAlertWebhookSchema = z.object({
 	version: z.union([z.string(), z.number()]).optional(),
@@ -63,16 +43,40 @@ export const AlertLinkSchema = z.object({
 	url: z.string().url(),
 });
 
+// A custom-webhook status is lenient on purpose: senders have always been free to put
+// whatever they like here (it used to be ignored entirely — numbers, long strings), so
+// only a string that normalizes to "resolved" means anything; everything else —
+// "firing", "active", 42, absent — is a firing alert.
+export const isResolvedWebhookStatus = (status: unknown): boolean =>
+	typeof status === 'string' && status.trim().toLowerCase() === 'resolved';
+
+// The part of a webhook body that decides what it is. A resolve needs only the id:
+// the alert already exists, and nothing else in the body is looked at.
+export const HttpAlertWebhookHeadSchema = z.object({
+	id: z.string(),
+	status: z.unknown().optional(),
+});
+
 export const HttpAlertWebhookSchema = z.object({
 	id: z.string(),
+	// "resolved" resolves the alert with this id (the POST equivalent of the manual
+	// DELETE /alerts/:id); anything else, or absent, fires it. See isResolvedWebhookStatus.
+	status: z.unknown().optional(),
 	tags: z.record(z.string(), z.string()),
 	startsAt: isoDateString.optional(),
 	updatedAt: isoDateString.optional(),
+	// When the source says the alert ended — read only with status "resolved", as the
+	// resolve moment of an episode OpsiMate never saw firing. Defaults to now.
+	endsAt: isoDateString.optional(),
 	// Deprecated in favor of `links` — still accepted; folds into the links UI as the
 	// "Source" entry when `links` is absent.
 	alertUrl: z.string().url().optional(),
 	alertName: z.string(),
 	summary: z.string().optional(),
+	// Who owns the alert: an email, or a bare name completed with login.default_email_domain.
+	// Optional; applied only when the alert has no owner yet, never unassigns. An `owner` tag
+	// does the same for sources whose payload has no field for it.
+	owner: z.string().trim().max(320).optional(),
 	// Deprecated in favor of `links` — still accepted; folds in as the "Runbook" entry.
 	runbookUrl: z.string().url().optional(),
 	links: z.array(AlertLinkSchema).max(20).optional(),
@@ -88,10 +92,22 @@ export const HttpAlertWebhookSchema = z.object({
 	team: z.string().optional(),
 });
 
+export type HttpAlertWebhook = z.infer<typeof HttpAlertWebhookSchema>;
+// A custom-webhook alert without its times — what both the firing and the resolve paths
+// map from; the times are handled per path.
+export type HttpAlertWebhookFields = Omit<HttpAlertWebhook, 'startsAt' | 'endsAt'>;
+
+// The start and end of a resolve as sent, unvalidated: on the resolve path a bad time is
+// treated as absent rather than rejecting the whole episode.
+export const HttpAlertWebhookTimesSchema = z.object({
+	startsAt: z.string().optional().catch(undefined),
+	endsAt: z.string().optional().catch(undefined),
+});
+
 // Optional body of the manual-resolve request (DELETE /alerts/:alertId).
 export const ResolveAlertBodySchema = z.object({
 	// Optional resolve note, stored as a regular alert comment by the acting user.
-	comment: z.string().trim().max(5000).optional(),
+	comment: z.string().trim().max(ALERT_COMMENT_MAX_LENGTH).optional(),
 });
 
 // Optional body of the silence request (PATCH /alerts/:id/silence).
@@ -100,7 +116,7 @@ export const SilenceAlertBodySchema = z.object({
 	// unsilenced. Always overwritten on re-silence, so the timer restarts each time.
 	silencedUntil: isoDateString.nullable().optional(),
 	// Optional note, stored as a regular alert comment by the acting user.
-	comment: z.string().trim().max(5000).optional(),
+	comment: z.string().trim().max(ALERT_COMMENT_MAX_LENGTH).optional(),
 });
 
 /**
@@ -148,8 +164,6 @@ export const DatadogAlertWebhookSchema = z
 	})
 	.passthrough();
 
-export type DatadogAlertWebhook = z.infer<typeof DatadogAlertWebhookSchema>;
-
 // Payload sent by a Grafana "Webhook" contact point (unified alerting). It carries a batch of
 // alerts, each with its own firing/resolved status. This matches both real notifications and
 // the "Test" button payload from Grafana.
@@ -181,26 +195,11 @@ export const GrafanaWebhookSchema = z
 	})
 	.passthrough();
 
-export type GrafanaWebhook = z.infer<typeof GrafanaWebhookSchema>;
-export type GrafanaWebhookAlert = z.infer<typeof GrafanaWebhookAlertSchema>;
-
 export const SetAlertOwnerSchema = z.object({
 	ownerId: z.string().nullable(),
 });
 
 const dateString = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date');
-
-export interface UptimeKumaHeartbeat {
-	monitorID: number;
-	status: 0 | 1 | 2; // 0 = down, 1 = up, 2 = pending
-	time: string; // "2025-11-29 15:20:31.368"
-	msg: string;
-	important: boolean;
-	retries: number;
-	timezone: string;
-	timezoneOffset: string;
-	localDateTime: string;
-}
 
 export const UptimeKumaHeartbeatSchema = z.object({
 	monitorID: z.number(),
@@ -216,91 +215,11 @@ export const UptimeKumaHeartbeatSchema = z.object({
 	localDateTime: dateString,
 });
 
-export interface UptimeKumaTag {
-	id: number;
-	name: string;
-	value?: string;
-}
-
 export const UptimeKumaTagSchema = z.object({
 	id: z.number(),
 	name: z.string(),
 	value: z.string().optional(),
 });
-
-export interface UptimeKumaMonitor {
-	tags: UptimeKumaTag[];
-	id: number;
-	name: string;
-	description: string | null;
-	path: string[];
-	pathName: string;
-	parent: number | null;
-	childrenIDs: number[];
-	url: string | null;
-	method: string | null;
-	hostname: string | null;
-	port: number | null;
-	maxretries: number;
-	weight: number;
-	active: boolean;
-	forceInactive: boolean;
-	type: string;
-	timeout: number;
-	interval: number;
-	retryInterval: number;
-	resendInterval: number;
-	keyword: string | null;
-	invertKeyword: boolean;
-	expiryNotification: boolean;
-	ignoreTls: boolean;
-	upsideDown: boolean;
-	packetSize: number;
-	maxredirects: number;
-	accepted_statuscodes: string[];
-	dns_resolve_type: string;
-	dns_resolve_server: string;
-	dns_last_result: string | null;
-	docker_container: string;
-	docker_host: string | null;
-	proxyId: number | null;
-	notificationIDList: Record<string, boolean>;
-	maintenance: boolean;
-	mqttTopic: string;
-	mqttSuccessMessage: string;
-	mqttCheckType: string;
-	databaseQuery: string | null;
-	authMethod: string | null;
-	grpcUrl: string | null;
-	grpcProtobuf: string | null;
-	grpcMethod: string | null;
-	grpcServiceName: string | null;
-	grpcEnableTls: boolean;
-	radiusCalledStationId: string | null;
-	radiusCallingStationId: string | null;
-	game: string | null;
-	gamedigGivenPortOnly: boolean;
-	httpBodyEncoding: string | null;
-	jsonPath: string | null;
-	expectedValue: string | null;
-	kafkaProducerTopic: string | null;
-	kafkaProducerBrokers: string[];
-	kafkaProducerSsl: boolean;
-	kafkaProducerAllowAutoTopicCreation: boolean;
-	kafkaProducerMessage: string | null;
-	screenshot: string | null;
-	cacheBust: boolean;
-	remote_browser: string | null;
-	snmpOid: string | null;
-	jsonPathOperator: string | null;
-	snmpVersion: string;
-	smtpSecurity: string | null;
-	ipFamily: number | null;
-	ping_numeric: boolean;
-	ping_count: number;
-	ping_per_request_timeout: number;
-	includeSensitiveData: boolean;
-}
 
 // Only the fields the handler reads are required. Uptime Kuma's monitor object
 // carries 40+ type-specific fields (mqttTopic, databaseQuery, dns_resolve_server, ...)
@@ -313,19 +232,11 @@ export const UptimeKumaMonitorSchema = z.object({
 	tags: z.array(UptimeKumaTagSchema).optional().default([]),
 });
 
-export interface UptimeKumaWebhookPayload {
-	heartbeat: UptimeKumaHeartbeat;
-	monitor: UptimeKumaMonitor;
-	msg: string;
-}
-
 export const UptimeKumaWebhookPayloadSchema = z.object({
 	heartbeat: UptimeKumaHeartbeatSchema,
 	monitor: UptimeKumaMonitorSchema,
 	msg: z.string(),
 });
-
-export type UptimeKumaWebhookTestPayload = Partial<z.infer<typeof UptimeKumaWebhookPayloadSchema>>;
 
 /**
  * Zabbix webhook payload
@@ -356,30 +267,6 @@ export type UptimeKumaWebhookTestPayload = Partial<z.infer<typeof UptimeKumaWebh
  *   "trigger_url": "{TRIGGER.URL}"
  * }
  */
-export interface ZabbixWebhookPayload {
-	event_id?: string;
-	event_name?: string;
-	host_name?: string;
-	host_ip?: string;
-	trigger_id?: string;
-	trigger_name?: string;
-	trigger_severity?: string;
-	trigger_status?: string; // "PROBLEM" or "OK"
-	event_date?: string;
-	event_time?: string;
-	event_value?: string; // "1" for problem, "0" for resolved
-	event_tags?: string;
-	item_name?: string;
-	item_value?: string;
-	alert_message?: string;
-	event_recovery_date?: string;
-	event_recovery_time?: string;
-	zabbix_url?: string; // Base URL of the Zabbix server
-	trigger_url?: string; // Direct URL to the trigger (from {TRIGGER.URL} macro)
-	// Allow additional fields
-	[key: string]: string | undefined;
-}
-
 export const ZabbixWebhookPayloadSchema = z
 	.object({
 		event_id: z.string().optional(),
@@ -492,7 +379,7 @@ export const AlertBulkActionSchema = z
 		silencedUntil: isoDateString.nullable().optional(),
 		// silence/resolve: optional note stored as a comment on every alert.
 		// comment action: the comment body itself (required there).
-		comment: z.string().trim().max(5000).optional(),
+		comment: z.string().trim().max(ALERT_COMMENT_MAX_LENGTH).optional(),
 		// assignOwner: numeric user id to assign (the DB stores owners as integers, and
 		// a non-numeric string would parseInt to NaN), null to unassign.
 		ownerId: z.string().regex(/^\d+$/, 'ownerId must be a numeric user id').nullable().optional(),
@@ -506,5 +393,3 @@ export const AlertBulkActionSchema = z
 	.refine((v) => v.action !== 'assignOwner' || v.ownerId !== undefined, {
 		message: 'The assignOwner action requires ownerId (null to unassign)',
 	});
-
-export type AlertBulkAction = z.infer<typeof AlertBulkActionSchema>;

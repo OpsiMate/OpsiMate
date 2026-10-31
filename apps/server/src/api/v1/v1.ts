@@ -32,6 +32,10 @@ import { RetentionController } from './retention/controller';
 import createRetentionRouter from './retention/router';
 import { AiController } from './ai/controller';
 import createAiRouter from './ai/router';
+import { LdapController } from './ldap/controller';
+import createLdapRouter from './ldap/router';
+import { CallbackController } from './callbacks/controller';
+import createCallbackRouter from './callbacks/router';
 
 export default function createV1Router(
 	dashboardController: DashboardController,
@@ -49,7 +53,9 @@ export default function createV1Router(
 	retentionController: RetentionController,
 	oncallController: OncallController,
 	incidentController: IncidentController,
-	aiController: AiController
+	aiController: AiController,
+	ldapController: LdapController,
+	callbackController: CallbackController
 ) {
 	const router = Router();
 
@@ -82,6 +88,8 @@ export default function createV1Router(
 	router.use('/audit', createAuditRouter(auditController));
 	router.use('/retention', createRetentionRouter(retentionController));
 	router.use('/ai', createAiRouter(aiController));
+	router.use('/ldap', createLdapRouter(ldapController));
+	router.use('/callbacks', createCallbackRouter(callbackController));
 
 	return router;
 }

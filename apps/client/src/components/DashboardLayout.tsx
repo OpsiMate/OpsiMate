@@ -6,20 +6,21 @@ import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sidebarCollapsed';
+
 interface DashboardLayoutProps {
 	children: React.ReactNode;
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-	const [isSidebarCollapsed, setSidebarCollapsed] = useState(() => {
-		const savedState = localStorage.getItem('sidebarCollapsed');
-		return savedState ? JSON.parse(savedState) : false;
-	});
+	const [isSidebarCollapsed, setSidebarCollapsed] = useState(
+		() => localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
+	);
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const showPlaygroundBanner = isPlaygroundMode();
 
 	useEffect(() => {
-		localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+		localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
 	}, [isSidebarCollapsed]);
 
 	useEffect(() => {
@@ -90,6 +91,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 						onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
 						variant="ghost"
 						size="icon"
+						aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 						className="z-10 absolute top-1/2 -left-4 -translate-y-1/2 border bg-background hover:bg-muted rounded-full h-8 w-8 hidden md:flex items-center justify-center p-0! text-foreground"
 					>
 						{isSidebarCollapsed ? (

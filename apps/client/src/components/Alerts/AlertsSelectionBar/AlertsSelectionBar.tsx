@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
+import { pluralize } from '@/lib/text';
 import { Alert } from '@OpsiMate/shared';
 import { BellRing, CheckCircle2, FolderPlus, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -19,7 +20,7 @@ export interface AlertsSelectionBarProps {
 	selectedAlerts: Alert[];
 	onClearSelection: () => void;
 	onSilenceAll: () => void;
-	// Shown instead of "Silence all" when EVERY selected alert is already silenced.
+	// Shown instead of "Silence" when EVERY selected alert is already silenced.
 	onUnsilenceAll?: () => void;
 	onAssignOwnerAll?: (ownerId: string | null) => void;
 	onResolveAll?: () => void;
@@ -28,7 +29,7 @@ export interface AlertsSelectionBarProps {
 	onDeleteAll?: () => void;
 	// True when the current view has matching alerts that are NOT loaded (the "N of M"
 	// banner is showing). Bulk actions apply only to the loaded selection, so the scope
-	// must be explicit — otherwise "Silence all" on a select-all reads as "silence every
+	// must be explicit — otherwise "Silence" on a select-all reads as "silence every
 	// matching alert" when it silences only the loaded page.
 	hasUnloadedMatches?: boolean;
 	// Total alerts matching the view's full query (server-counted), when known.
@@ -40,6 +41,9 @@ export interface AlertsSelectionBarProps {
 	onSelectAllMatching?: () => void;
 	// Groups the selection into a new incident (needs at least two alerts).
 	onGroupIntoIncident?: () => void;
+	// A bulk action is still running: its rows already show the result, but a second
+	// action before it settles could be undone by the first one's rollback or refetch.
+	actionsDisabled?: boolean;
 }
 
 export const AlertsSelectionBar = ({
@@ -56,6 +60,7 @@ export const AlertsSelectionBar = ({
 	allMatchingSelected,
 	onSelectAllMatching,
 	onGroupIntoIncident,
+	actionsDisabled = false,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -65,8 +70,10 @@ export const AlertsSelectionBar = ({
 	}
 
 	// Silence/unsilence are offered only on uniform selections: all-active gets
-	// "Silence all", all-silenced gets "Unsilence all", a mixed selection gets
-	// neither — the outcome of a bulk action on a mix is too easy to misread.
+	// "Silence", all-silenced gets "Unsilence", a mixed selection gets neither — the
+	// outcome of a bulk action on a mix is too easy to misread. Named for the action
+	// alone, like Resolve and Delete: the count beside them says what it applies to, and
+	// "all" belongs to the "Select all N matching" link.
 	const allNotSilenced = selectedAlerts.every((alert) => !alert.isSilenced);
 	const allSilenced = selectedAlerts.every((alert) => alert.isSilenced);
 
@@ -87,29 +94,48 @@ export const AlertsSelectionBar = ({
 						selectedUserId={null}
 						users={users}
 						onSelect={handleAssignOwner}
+						disabled={actionsDisabled}
 						placeholder="Assign Owner"
 						className="h-8 px-3 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
 					/>
 				)}
 				{allNotSilenced && (
-					<Button variant="outline" size="sm" onClick={onSilenceAll}>
-						Silence all
+					<Button variant="outline" size="sm" onClick={onSilenceAll} disabled={actionsDisabled}>
+						Silence
 					</Button>
 				)}
 				{onUnsilenceAll && allSilenced && (
-					<Button variant="outline" size="sm" onClick={onUnsilenceAll} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onUnsilenceAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<BellRing className="h-3.5 w-3.5" />
-						Unsilence all
+						Unsilence
 					</Button>
 				)}
 				{onResolveAll && (
-					<Button variant="outline" size="sm" onClick={onResolveAll} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onResolveAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<CheckCircle2 className="h-3.5 w-3.5" />
 						Resolve
 					</Button>
 				)}
 				{onCommentAll && (
-					<Button variant="outline" size="sm" onClick={onCommentAll} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onCommentAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<MessageSquarePlus className="h-3.5 w-3.5" />
 						Comment
 					</Button>
@@ -125,6 +151,7 @@ export const AlertsSelectionBar = ({
 						variant="outline"
 						size="sm"
 						onClick={() => setConfirmDelete(true)}
+						disabled={actionsDisabled}
 						className="gap-1.5 text-destructive hover:text-destructive"
 					>
 						<Trash2 className="h-3.5 w-3.5" />
@@ -134,20 +161,23 @@ export const AlertsSelectionBar = ({
 				<Button variant="outline" size="sm" onClick={onClearSelection}>
 					Clear selection
 				</Button>
+				{actionsDisabled && (
+					<span className="text-xs text-muted-foreground">Finishing the previous action…</span>
+				)}
 			</div>
 
 			<span className="min-w-0 text-sm font-medium">
 				{allMatchingSelected ? (
 					<span className="whitespace-nowrap">
-						All {(matchingTotal ?? selectedAlerts.length).toLocaleString()} matching alert
-						{(matchingTotal ?? selectedAlerts.length) !== 1 ? 's' : ''} selected
+						All {(matchingTotal ?? selectedAlerts.length).toLocaleString()} matching{' '}
+						{pluralize(matchingTotal ?? selectedAlerts.length, 'alert')} selected
 						<span className="ml-2 text-xs text-muted-foreground">
 							— actions apply to every match, loaded or not
 						</span>
 					</span>
 				) : (
 					<span className="whitespace-nowrap">
-						{selectedAlerts.length} Alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+						{selectedAlerts.length} {pluralize(selectedAlerts.length, 'alert')} selected
 						{onSelectAllMatching && matchingTotal !== undefined ? (
 							<Button
 								variant="link"
@@ -172,10 +202,10 @@ export const AlertsSelectionBar = ({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							Delete {selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''}?
+							Delete {selectedAlerts.length} {pluralize(selectedAlerts.length, 'alert')}?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This permanently deletes the selected alert{selectedAlerts.length !== 1 ? 's' : ''} — they
+							This permanently deletes the selected {pluralize(selectedAlerts.length, 'alert')} — they
 							will not appear in the resolved list. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>

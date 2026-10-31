@@ -1,3 +1,5 @@
+import { getLoginDefaultEmailDomain } from './config/config';
+import { WebhookOwnerResolver } from './bl/alerts/webhookOwnerResolver';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import compression from 'compression';
@@ -34,6 +36,10 @@ import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
 import { UserBL } from './bl/users/user.bl';
+import { LdapSettingsBL } from './bl/ldap/ldapSettings.bl';
+import { LdapConfigRepository } from './dal/ldapConfigRepository';
+import { LdapController } from './api/v1/ldap/controller';
+import { apiDocsEnabled, createApiDocsRouter } from './api/openapi/serve';
 import { ActionRepository } from './dal/actionRepository';
 import { AlertCommentsRepository } from './dal/alertCommentsRepository.ts';
 import { AlertHistoryRepository } from './dal/alertHistoryRepository';
@@ -61,6 +67,10 @@ import { initMetrics, metricsHandler, metricsMiddleware } from './metrics';
 import { AiBL } from './bl/ai/ai.bl';
 import { AiConfigRepository } from './dal/aiConfigRepository';
 import { AiController } from './api/v1/ai/controller';
+import { AlertCallbackRepository } from './dal/alertCallbackRepository';
+import { CallbackDispatcher } from './bl/callbacks/callbackDispatcher';
+import { CallbackBL } from './bl/callbacks/callback.bl';
+import { CallbackController } from './api/v1/callbacks/controller';
 
 export enum AppMode {
 	SERVER = 'SERVER',
@@ -108,8 +118,10 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		async (alertId) =>
 			!!(await alertRepo.getAlert(alertId)) || !!(await resolvedAlertRepo.getResolvedAlert(alertId))
 	);
-	// Resolve keeps the root cause; only permanent deletion drops it.
+	// Resolve (and unresolve) keeps the root cause; a re-fire hides it until a new one is
+	// pushed; permanent deletion drops it.
 	alertBL.onAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
+	alertBL.setOnAlertsRefired((alertIds) => rootCauseBL.hideForRefiredAlerts(alertIds));
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
@@ -174,6 +186,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const enrichmentRepo = new EnrichmentRepository(db);
 	const actionRepo = new ActionRepository(db);
 	const aiConfigRepo = new AiConfigRepository(db);
+	const ldapConfigRepo = new LdapConfigRepository(db);
+	const alertCallbackRepo = new AlertCallbackRepository(db);
 
 	// Initialize Mail Service
 	const mailClient = new MailClient();
@@ -193,13 +207,23 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		enrichmentRepo.initEnrichmentsTable(),
 		actionRepo.initActionsTable(),
 		aiConfigRepo.initAiConfigTable(),
+		ldapConfigRepo.initLdapConfigTable(),
+		alertCallbackRepo.initAlertCallbacksTable(),
 	]);
 
 	// Every table the metric gauges count now exists.
 	initMetrics(db);
 
 	// BL
-	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
+	const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL, getLoginDefaultEmailDomain());
+	// A webhook's `owner` becomes an assignment: local users, and directory users through
+	// whatever LDAP setup is active (none → local users only).
+	const webhookOwnerResolver = new WebhookOwnerResolver(userBL, getLoginDefaultEmailDomain);
+	alertBL.setWebhookOwnerResolver(webhookOwnerResolver);
+	// Directory login: config.yml `ldap:` / LDAP_* env when present, otherwise the
+	// settings saved on the Settings page. Local accounts keep signing in locally either way.
+	const ldapSettingsBL = new LdapSettingsBL(ldapConfigRepo, userBL, auditBL);
+	await ldapSettingsBL.init();
 	const secretMetadataBL = new SecretsMetadataBL(secretsMetadataRepo, auditBL);
 	const serviceCustomFieldBL = new ServiceCustomFieldBL(serviceCustomFieldRepo);
 	const tagBL = new TagBL(tagRepo);
@@ -210,16 +234,46 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setMutePolicyBL(mutePolicyBL);
 	const enrichmentBL = new EnrichmentBL(enrichmentRepo, auditBL);
 	alertBL.setEnrichmentBL(enrichmentBL);
+	// The active list is built on a worker thread so a rebuild never blocks requests.
+	// Needs a database file (the worker opens its own connection); ALERTS_SNAPSHOT_WORKER=0
+	// keeps it on this thread.
+	if (!db.memory && process.env.ALERTS_SNAPSHOT_WORKER !== '0') {
+		alertBL.useSnapshotWorker(db.name);
+	}
 	// Rule edits change what the cached alerts snapshot would serve.
 	mutePolicyBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	enrichmentBL.setOnRulesChanged(() => alertBL.invalidateSnapshots());
 	// User renames/creates/deletes change owner names in columns, sort and facets.
-	userBL.setOnUsersChanged(() => alertBL.invalidateOwners());
-	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo);
-	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, () => alertBL.invalidateSnapshots());
+	userBL.setOnUsersChanged(() => {
+		alertBL.invalidateOwners();
+		webhookOwnerResolver.clear();
+	});
+	// Outbound callbacks for user-made alert changes. Fired by AlertBL / ActionBL after a
+	// change is committed, delivered off the request path (see CallbackDispatcher).
+	const callbackDispatcher = new CallbackDispatcher(alertCallbackRepo);
+	await callbackDispatcher.reload();
+	alertBL.setCallbackDispatcher(callbackDispatcher);
+	const callbackBL = new CallbackBL(alertCallbackRepo, auditBL, callbackDispatcher);
+	const actionBL = new ActionBL(actionRepo, auditBL, alertHistoryRepo, {
+		dispatcher: callbackDispatcher,
+		// An action can run against an alert in either table.
+		lookupAlert: async (alertId) =>
+			(await alertRepo.getAlert(alertId)) ?? (await resolvedAlertRepo.getResolvedAlert(alertId)) ?? null,
+	});
+	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, {
+		invalidateSnapshots: () => alertBL.invalidateSnapshots(),
+		claimUnowned: (alertIds, actor) => alertBL.claimUnownedAlerts(alertIds, actor),
+	});
 	alertBL.setIncidentRepo(incidentRepo);
 	// Permanent deletion (delete-forever) must not leave dangling incident memberships.
 	alertBL.onAlertPermanentlyDeleted((alertId) => incidentBL.handleAlertsDeleted([alertId]));
+	// Removing an alert's owner takes it out of its incident (see IncidentBL).
+	alertBL.onAlertUnassigned((alertId, actor) =>
+		incidentBL.handleAlertUnassigned(alertId, {
+			id: actor.id != null && Number.isInteger(Number(actor.id)) ? Number(actor.id) : null,
+			name: actor.name,
+		})
+	);
 	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 
 	// Controllers (only for SERVER)
@@ -239,9 +293,12 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const retentionController = new RetentionController(retentionBL);
 	const incidentController = new IncidentController(incidentBL);
 	const aiController = new AiController(aiBL);
+	const callbackController = new CallbackController(callbackBL);
 
 	// Routes (only for SERVER)
 	app.use('/', healthRouter);
+	// API reference: /api/docs (Swagger UI) and /api/openapi.json.
+	if (apiDocsEnabled()) app.use(createApiDocsRouter(process.env.APP_VERSION?.trim() || 'dev'));
 	app.use(
 		'/api/v1',
 		createV1Router(
@@ -260,7 +317,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			retentionController,
 			oncallController,
 			incidentController,
-			aiController
+			aiController,
+			new LdapController(ldapSettingsBL),
+			callbackController
 		)
 	);
 

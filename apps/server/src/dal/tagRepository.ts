@@ -1,15 +1,36 @@
 import Database, { Statement } from 'better-sqlite3';
 import { Tag } from '@OpsiMate/shared';
 import { runAsync } from './db';
+import { DashboardTagRow, DashboardTagsEntry, InsertResult } from './models';
+
+interface SqliteConstraintError extends Error {
+	code: string;
+}
+
+const isSqliteUniqueConstraintError = (error: unknown): error is SqliteConstraintError =>
+	error instanceof Error && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE';
+
+export class DuplicateTagNameError extends Error {
+	constructor(name: string) {
+		super(`A tag named "${name}" already exists`);
+	}
+}
 
 export class TagRepository {
 	constructor(private db: Database.Database) {}
 
-	async createTag(data: Omit<Tag, 'id' | 'createdAt'>): Promise<{ lastID: number }> {
+	async createTag(data: Omit<Tag, 'id' | 'createdAt'>): Promise<InsertResult> {
 		return runAsync(() => {
-			const stmt = this.db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)');
-			const result = stmt.run(data.name, data.color);
-			return { lastID: result.lastInsertRowid as number };
+			try {
+				const stmt = this.db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)');
+				const result = stmt.run(data.name, data.color);
+				return { lastID: result.lastInsertRowid as number };
+			} catch (error) {
+				if (isSqliteUniqueConstraintError(error)) {
+					throw new DuplicateTagNameError(data.name);
+				}
+				throw error;
+			}
 		});
 	}
 
@@ -49,7 +70,14 @@ export class TagRepository {
 			const query = `UPDATE tags
                            SET ${updates.join(', ')}
                            WHERE id = ?`;
-			this.db.prepare(query).run(...values);
+			try {
+				this.db.prepare(query).run(...values);
+			} catch (error) {
+				if (data.name !== undefined && isSqliteUniqueConstraintError(error)) {
+					throw new DuplicateTagNameError(data.name);
+				}
+				throw error;
+			}
 		});
 	}
 
@@ -120,7 +148,7 @@ export class TagRepository {
 		});
 	}
 
-	async getAllDashboardTags(): Promise<{ dashboardId: number; tags: Tag[] }[]> {
+	async getAllDashboardTags(): Promise<DashboardTagsEntry[]> {
 		return runAsync(() => {
 			const query = `
                 SELECT dt.dashboard_id, t.id, t.name, t.color, t.created_at as createdAt
@@ -128,13 +156,7 @@ export class TagRepository {
                 JOIN tags t ON t.id = dt.tag_id
                 ORDER BY dt.dashboard_id, t.name
             `;
-			const rows = this.db.prepare(query).all() as {
-				dashboard_id: number;
-				id: number;
-				name: string;
-				color: string;
-				createdAt: string;
-			}[];
+			const rows = this.db.prepare(query).all() as DashboardTagRow[];
 
 			const dashboardTagsMap = new Map<number, Tag[]>();
 			for (const row of rows) {

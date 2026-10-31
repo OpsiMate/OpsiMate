@@ -3,12 +3,13 @@ import { isPlaygroundMode } from '@/lib/playground';
 import { CLIENT_VERSION, compareVersions, isReleaseVersion } from '@/lib/version';
 import { AppVersionInfo } from '@OpsiMate/shared';
 import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '../queryKeys';
 
 // The running SERVER's build (GET /version, unauthenticated). Cached for the session:
 // it cannot change without a restart, and the sidebar mounts on every page.
 export const useServerVersion = () =>
 	useQuery({
-		queryKey: ['appVersion', 'server'],
+		queryKey: queryKeys.serverVersion,
 		queryFn: async (): Promise<AppVersionInfo> => {
 			const res = await fetch(`${API_HOST}/version`);
 			if (!res.ok) throw new Error(`version: HTTP ${res.status}`);
@@ -31,7 +32,7 @@ interface LatestRelease {
 // simply doesn't show the dot.
 export const useLatestRelease = (currentVersion: string) =>
 	useQuery({
-		queryKey: ['appVersion', 'latestRelease'],
+		queryKey: queryKeys.latestRelease,
 		queryFn: async (): Promise<LatestRelease | null> => {
 			const res = await fetch('https://api.github.com/repos/OpsiMate/OpsiMate/releases/latest', {
 				headers: { Accept: 'application/vnd.github+json' },
@@ -56,6 +57,9 @@ export const useAppVersion = () => {
 	const cmp = latest.data ? compareVersions(version, latest.data.version) : null;
 	return {
 		version,
+		// False until the server has answered: `version` is then the CLIENT's build, standing
+		// in — callers that report "the server version" must say so instead of printing it.
+		serverKnown: server.data !== undefined,
 		commit: server.data?.commit ?? null,
 		buildDate: server.data?.buildDate ?? null,
 		clientVersion: CLIENT_VERSION,

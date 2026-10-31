@@ -8,9 +8,9 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TimeRange as DashboardTimeRange, useDashboard } from '@/context/DashboardContext';
+import { useDashboard } from '@/context/DashboardContext';
 import { deserializeTimeRange, readLegacySeverityColors, serializeTimeRange } from '@/context/DashboardContext.utils';
-import { FilterChange, diffFilterChanges, splitOwnerPaneCounts } from './Alerts.utils';
+import { FilterChange, diffFilterChanges, splitOwnerPaneCounts, getResolvedAlertDeleteHandler } from './Alerts.utils';
 import { ViewNotice, ViewNoticeAction } from './ViewNotice';
 import {
 	useAlertFacets,
@@ -29,8 +29,7 @@ import {
 	useRemoveIncidentAlerts,
 	useUpdateIncident,
 } from '@/hooks/queries/incidents';
-import { CreateIncidentDialog } from './CreateIncidentDialog';
-import { EditIncidentDialog } from './EditIncidentDialog';
+import { IncidentDialog, IncidentDialogTarget } from './IncidentDialog';
 import { IncidentPanel } from './IncidentPanel';
 import {
 	useCreateDashboard,
@@ -38,9 +37,11 @@ import {
 	useGetDashboards,
 	useUpdateDashboard,
 } from '@/hooks/queries/dashboards';
-import { Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
+import { CreateDashboardInput, Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
+import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
+import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import { AiFilterResult, Alert } from '@OpsiMate/shared';
 import {
@@ -65,14 +66,16 @@ import { AlertsTable } from './AlertsTable';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
+import { aiFilterTimeRange } from './utils/aiFilter.utils';
 import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
 import { AlertTab, GroupStatus } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
 import { resolveTimeRange } from './AlertsTable/TimeFilter/TimeFilter.utils';
-import { QuickPreset, TimeRange } from './AlertsTable/TimeFilter/TimeFilter.types';
+import { TimeRange } from './AlertsTable/TimeFilter/TimeFilter.types';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
+import { SaveDashboardAsDialog, SaveDashboardAsValues } from './SaveDashboardAsDialog';
 import {
 	useAlertActions,
 	useAlertsFiltering,
@@ -82,6 +85,8 @@ import {
 	useExpandRows,
 	useFilterPanelCollapsed,
 } from './hooks';
+
+import { canDelete } from '@/lib/permissions';
 
 // Options for the alert-list picker (one dropdown instead of three toggle buttons);
 // per-tab counts come from the filtered lists at render time.
@@ -98,10 +103,6 @@ const ALERT_TAB_OPTIONS = [
 // (~33KB gzipped, ~50ms measured at 10k alerts); bigger pages also mean FEWER poll
 // requests for deep scrollers, since every loaded page refetches on each poll.
 const SERVER_PAGE_SIZE = 1000;
-
-// Grouping loads the whole matching set, so a 5s poll would re-download all of it every
-// tick. A grouped overview doesn't need second-by-second freshness — poll it slower.
-const GROUPED_POLL_MS = 20 * 1000;
 
 // How many added filters the notice spells out before collapsing the rest into
 // "+N more". Keeps the strip to one line on a narrow pane without hiding that more
@@ -126,31 +127,6 @@ const toCoarseWindow = (timeRange: TimeRange | undefined) => {
 		from: resolved.from ? floorMinute(resolved.from).toISOString() : null,
 		to: resolved.to ? ceilMinute(resolved.to).toISOString() : null,
 	};
-};
-
-// Maps the AI filter's rolling window (minutes) onto the nearest existing preset —
-// rounding UP so the requested range is always fully covered.
-const PRESET_MINUTES: Array<[number, QuickPreset]> = [
-	[1, 'last1m'],
-	[2, 'last2m'],
-	[5, 'last5m'],
-	[15, 'last15m'],
-	[30, 'last30m'],
-	[60, 'last1h'],
-	[120, 'last2h'],
-	[360, 'last6h'],
-	[720, 'last12h'],
-	[1440, 'last24h'],
-	[2880, 'last2d'],
-	[4320, 'last3d'],
-	[7200, 'last5d'],
-	[10080, 'last7d'],
-];
-// Returns the DASHBOARD state's TimeRange (structurally identical to the table's, but
-// a distinct declaration) — this feeds updateDashboardField('timeRange', ...).
-const minutesToTimeRange = (minutes: number): DashboardTimeRange => {
-	const preset = (PRESET_MINUTES.find(([m]) => minutes <= m) ?? PRESET_MINUTES[PRESET_MINUTES.length - 1])[1];
-	return { from: null, to: null, preset };
 };
 
 // The All view describes active + resolved together: counts add, tag keys union.
@@ -182,7 +158,7 @@ const mergeFacetsResponses = (a?: AlertFacetsResponse, b?: AlertFacetsResponse):
 
 const Alerts = () => {
 	const { toast } = useToast();
-	const { data: dashboards = [], isPending: dashboardsPending } = useGetDashboards();
+	const { data: dashboards = [], isPending: dashboardsPending, isError: dashboardsFailed } = useGetDashboards();
 	const createDashboardMutation = useCreateDashboard();
 	const updateDashboardMutation = useUpdateDashboard();
 	const deleteDashboardMutation = useDeleteDashboard();
@@ -302,9 +278,9 @@ const Alerts = () => {
 
 	// The active list's ACTUAL poll cadence, shared with every count that must stay in
 	// step with it (split panes, status-aware tab count). Grouping slows the list to
-	// GROUPED_POLL_MS; counts polling faster than the list would race ahead of the rows
+	// GROUPED_ALERTS_POLL_MS; counts polling faster than the list would race ahead of the rows
 	// they describe — the exact desync this file just removed.
-	const activeListPollMs = isGrouping && activeViewed ? GROUPED_POLL_MS : 5 * 1000;
+	const activeListPollMs = isGrouping && activeViewed ? GROUPED_ALERTS_POLL_MS : ACTIVE_ALERTS_POLL_MS;
 
 	const {
 		data: alerts = [],
@@ -322,7 +298,7 @@ const Alerts = () => {
 		fetchNextPage: fetchMoreResolved,
 		hasNextPage: hasMoreResolved,
 	} = useResolvedAlerts(resolvedQuery, {
-		refetchIntervalMs: isGrouping && resolvedViewed ? GROUPED_POLL_MS : undefined,
+		refetchIntervalMs: isGrouping && resolvedViewed ? GROUPED_ALERTS_POLL_MS : undefined,
 	});
 	lastActiveTotal.current = activeTotal;
 	lastResolvedTotal.current = resolvedTotal;
@@ -407,6 +383,7 @@ const Alerts = () => {
 	// Incident whose details panel is open; null = alert details (or nothing) shown.
 	const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+	const [showSaveAs, setShowSaveAs] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
 	// Both toolbar toggles live in the dashboard, so a saved dashboard reproduces the view
 	// the user actually works with; the draft state is persisted per-browser meanwhile.
@@ -454,7 +431,7 @@ const Alerts = () => {
 		return updatedAlert || selectedAlert;
 	}, [selectedAlert, allAlerts]);
 
-	const shouldPauseRefresh = showDashboardSettings;
+	const shouldPauseRefresh = showDashboardSettings || showSaveAs;
 
 	const {
 		lastRefresh: lastRefreshActive,
@@ -514,25 +491,29 @@ const Alerts = () => {
 		updateDashboardField('columnWidths', widths);
 	};
 
+	// The view as it is on screen, in the shape the API stores — shared by Save (which
+	// writes it over the open dashboard) and Save as (which writes it to a new one).
+	const buildDashboardData = (): CreateDashboardInput => ({
+		name: dashboardState.name || 'New Dashboard',
+		type: dashboardState.type,
+		description: dashboardState.description,
+		filters: dashboardState.filters,
+		// Persist the EFFECTIVE columns/order (what's rendered), not the raw state:
+		// the raw state can be empty (render falls back to defaults) or missing the
+		// injected severity / appended tag columns — saving it means the arrangement
+		// on screen is not the arrangement that comes back on the next load.
+		visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
+		columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
+		columnWidths: dashboardState.columnWidths,
+		splitByAssignment: dashboardState.splitByAssignment,
+		severityColors: dashboardState.severityColors,
+		query: dashboardState.query,
+		groupBy: dashboardState.groupBy,
+		timeRange: serializeTimeRange(dashboardState.timeRange),
+	});
+
 	const handleSaveDashboard = async () => {
-		const dashboardData = {
-			name: dashboardState.name || 'New Dashboard',
-			type: dashboardState.type,
-			description: dashboardState.description,
-			filters: dashboardState.filters,
-			// Persist the EFFECTIVE columns/order (what's rendered), not the raw state:
-			// the raw state can be empty (render falls back to defaults) or missing the
-			// injected severity / appended tag columns — saving it means the arrangement
-			// on screen is not the arrangement that comes back on the next load.
-			visibleColumns: visibleColumns.filter((col) => col !== ACTIONS_COLUMN),
-			columnOrder: columnOrder.filter((col) => col !== ACTIONS_COLUMN),
-			columnWidths: dashboardState.columnWidths,
-			splitByAssignment: dashboardState.splitByAssignment,
-			severityColors: dashboardState.severityColors,
-			query: dashboardState.query,
-			groupBy: dashboardState.groupBy,
-			timeRange: serializeTimeRange(dashboardState.timeRange),
-		};
+		const dashboardData = buildDashboardData();
 
 		try {
 			if (dashboardState.id) {
@@ -551,10 +532,34 @@ const Alerts = () => {
 				title: 'Dashboard saved',
 				description: 'Your changes have been saved successfully.',
 			});
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error saving dashboard',
 				description: 'Failed to save dashboard changes',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	// Save as: the current view (unsaved changes included) becomes a NEW dashboard and
+	// the page switches to it, clean. The dashboard it came from is not touched, so its
+	// last saved version is exactly what the user left there — the whole point of the
+	// feature. Only the id/name/description differ from the on-screen state, so the
+	// switch is a plain re-baseline rather than a reload.
+	const handleSaveDashboardAs = async ({ name, description }: SaveDashboardAsValues) => {
+		try {
+			const result = await createDashboardMutation.mutateAsync({ ...buildDashboardData(), name, description });
+			if (!result?.id) throw new Error('No dashboard id returned');
+			setInitialState({ ...dashboardState, id: result.id, name, description });
+			setShowSaveAs(false);
+			toast({
+				title: 'Dashboard created',
+				description: `Saved the current view as "${name}". "${dashboardState.name || 'New Dashboard'}" was left unchanged.`,
+			});
+		} catch (err) {
+			toast({
+				title: 'Error saving dashboard',
+				description: err instanceof Error ? err.message : 'Failed to create the new dashboard',
 				variant: 'destructive',
 			});
 		}
@@ -573,9 +578,7 @@ const Alerts = () => {
 		handleSelectAlerts([]);
 		updateDashboardField('filters', result.filters);
 		updateDashboardField('query', result.search ?? '');
-		if (result.lastMinutes !== undefined) {
-			updateDashboardField('timeRange', minutesToTimeRange(result.lastMinutes));
-		}
+		updateDashboardField('timeRange', aiFilterTimeRange(result));
 	};
 
 	// Scope of "apply to all N matching": the Active view's FULL query — the complete
@@ -791,8 +794,8 @@ const Alerts = () => {
 	const updateIncidentMutation = useUpdateIncident();
 	const deleteIncidentMutation = useDeleteIncident();
 	const removeIncidentAlertsMutation = useRemoveIncidentAlerts();
-	const [showCreateIncident, setShowCreateIncident] = useState(false);
-	const [editingIncidentId, setEditingIncidentId] = useState<number | null>(null);
+	// The incident dialog: 'create' groups the current selection, a number edits that incident.
+	const [incidentDialog, setIncidentDialog] = useState<'create' | number | null>(null);
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -810,7 +813,22 @@ const Alerts = () => {
 	) => {
 		// The query is built HERE, not from a memo — the rolling window must be the one
 		// the user is looking at when they confirm, not the one from when they selected.
+		// One bulk action at a time: a second one started before the first settles could be
+		// undone by the first one's rollback (on failure) or refetch (on success). The bar
+		// disables its actions meanwhile; this also covers a confirm dialog left open.
+		if (bulkAction.isPending) {
+			toast({
+				title: 'Previous action still running',
+				description: 'Try again once it finishes.',
+				variant: 'destructive',
+			});
+			return;
+		}
 		const scope = allMatchingSelected ? { query: buildBulkScopeQuery() } : { ids: selectedAlerts.map((a) => a.id) };
+		// Cleared up front: the rows already show the change (optimistic), so a selection
+		// bar still offering actions on them would invite a second request for the same ids.
+		setSelectedAlerts([]);
+		setAllMatchingSelected(false);
 		try {
 			const result = await bulkAction.mutateAsync({ ...vars, ...scope });
 			toast(
@@ -822,7 +840,7 @@ const Alerts = () => {
 						}
 					: {
 							title: labels.title,
-							description: `${labels.verb} ${result.succeeded} alert${result.succeeded !== 1 ? 's' : ''}`,
+							description: `${labels.verb} ${result.succeeded} ${pluralize(result.succeeded, 'alert')}`,
 						}
 			);
 		} catch (err) {
@@ -832,8 +850,6 @@ const Alerts = () => {
 				variant: 'destructive',
 			});
 		}
-		setSelectedAlerts([]);
-		setAllMatchingSelected(false);
 	};
 
 	const handleSilenceAllSelected = (silencedUntil?: string | null, comment?: string) =>
@@ -943,12 +959,12 @@ const Alerts = () => {
 
 	const confirmSilenceAllSelected = () =>
 		setPendingAction({
-			title: `Silence ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			title: `Silence ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
 				'The selected alerts stay in the list but stop notifying for the chosen duration. You can unsilence them at any time, and silencing again restarts the timer. You take ownership of every silenced alert' +
 				(allMatchingSelected ? ', and matches that are already silenced restart their timer.' : '.') +
 				bulkScopeNote,
-			confirmLabel: 'Silence all',
+			confirmLabel: 'Silence',
 			withSilenceDuration: true,
 			withComment: true,
 			commentLabel: 'Silence comment',
@@ -961,7 +977,7 @@ const Alerts = () => {
 
 	const confirmCommentAllSelected = () =>
 		setPendingAction({
-			title: `Comment on ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			title: `Comment on ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
 				'The same comment is added to every selected alert, visible in its comments and history.' +
 				bulkScopeNote,
@@ -977,7 +993,7 @@ const Alerts = () => {
 
 	const confirmResolveAllSelected = () =>
 		setPendingAction({
-			title: `Resolve ${bulkCount} alert${bulkCount !== 1 ? 's' : ''}?`,
+			title: `Resolve ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
 				'The selected alerts move to the Resolved list. You can unresolve them later if needed. An optional comment will be added to every resolved alert.' +
 				bulkScopeNote,
@@ -1041,7 +1057,7 @@ const Alerts = () => {
 			incidentsById={incidentsById}
 			onOpenIncident={handleOpenIncident}
 			activeIncidentId={selectedIncidentId}
-			onEditIncident={setEditingIncidentId}
+			onEditIncident={setIncidentDialog}
 			onUngroupIncident={handleUngroupIncident}
 			onRemoveFromIncident={handleRemoveFromIncident}
 			tagKeyColumnLabels={allColumnLabels}
@@ -1106,7 +1122,7 @@ const Alerts = () => {
 			await deleteDashboardMutation.mutateAsync(dashboardState.id);
 			resetDashboard();
 			setShowDashboardSettings(false);
-		} catch (error) {
+		} catch {
 			toast({
 				title: 'Error deleting dashboard',
 				description: 'Failed to delete dashboard',
@@ -1122,6 +1138,13 @@ const Alerts = () => {
 		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
 	};
 
+	const incidentDialogTarget: IncidentDialogTarget | null =
+		incidentDialog === 'create'
+			? { alerts: selectedAlerts }
+			: incidentDialog != null && incidentsById.has(incidentDialog)
+				? { incident: incidentsById.get(incidentDialog)! }
+				: null;
+
 	const handleCreateIncident = async (name: string, description: string) => {
 		try {
 			const incident = await createIncidentMutation.mutateAsync({
@@ -1130,7 +1153,7 @@ const Alerts = () => {
 				alertIds: selectedAlerts.map((a) => a.id),
 			});
 			toast({ title: 'Incident created', description: incident.name });
-			setShowCreateIncident(false);
+			setIncidentDialog(null);
 			handleSelectAlerts([]);
 		} catch (err) {
 			toast({
@@ -1145,7 +1168,7 @@ const Alerts = () => {
 		try {
 			await updateIncidentMutation.mutateAsync({ id, name, description: description || null });
 			toast({ title: 'Incident updated', description: name });
-			setEditingIncidentId(null);
+			setIncidentDialog(null);
 		} catch (err) {
 			toast({
 				title: 'Failed to update incident',
@@ -1253,12 +1276,17 @@ const Alerts = () => {
 								dashboardName={dashboardState.name}
 								onDashboardNameChange={(name) => updateDashboardField('name', name)}
 								onDashboardNameBlur={() => {
+									// Not while Save as is opening: the blur-save writes the WHOLE view
+									// over the source dashboard, the one write Save as promises not to
+									// make. The typed name reaches the dialog's own Name field instead.
+									if (showSaveAs) return;
 									if (dashboardState.name && dashboardState.name !== initialState.name) {
 										handleSaveDashboard();
 									}
 								}}
 								isDirty={isDirty}
 								onSave={handleSaveDashboard}
+								onSaveAs={dashboardState.id ? () => setShowSaveAs(true) : undefined}
 								onSettingsClick={() => setShowDashboardSettings(true)}
 								isRefreshing={isRefreshing}
 								lastRefresh={lastRefresh}
@@ -1432,8 +1460,8 @@ const Alerts = () => {
 										<span className="font-semibold">“{dashboardState.query}”</span>
 										<span className="text-muted-foreground">
 											{' '}
-											— {matchTotal.toLocaleString()} match{matchTotal !== 1 ? 'es' : ''} in this
-											view
+											— {matchTotal.toLocaleString()} {pluralize(matchTotal, 'match', 'matches')}{' '}
+											in this view
 										</span>
 									</>
 								)}
@@ -1518,7 +1546,7 @@ const Alerts = () => {
 										onGroupIntoIncident={
 											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
 												? undefined
-												: () => setShowCreateIncident(true)
+												: () => setIncidentDialog('create')
 										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
@@ -1527,7 +1555,10 @@ const Alerts = () => {
 										onCommentAll={confirmCommentAllSelected}
 										// Permanent delete never runs by-filter — it stays on the loaded
 										// selection, so it's hidden while "all matching" is armed.
-										onDeleteAll={allMatchingSelected ? undefined : handleDeleteAllSelected}
+										onDeleteAll={
+											canDelete() && !allMatchingSelected ? handleDeleteAllSelected : undefined
+										}
+										actionsDisabled={bulkAction.isPending}
 									/>
 								</div>
 							</>
@@ -1551,7 +1582,10 @@ const Alerts = () => {
 									onSortChange={(field, dir) => setAlertSort({ field, dir })}
 									onSilenceAlert={undefined}
 									onUnsilenceAlert={undefined}
-									onDeleteAlert={confirmDeleteResolvedAlert}
+									onDeleteAlert={getResolvedAlertDeleteHandler(
+										canDelete(),
+										confirmDeleteResolvedAlert
+									)}
 									onUnresolveAlert={handleUnresolveAlert}
 									onSelectAlerts={undefined}
 									selectedAlerts={[]}
@@ -1566,7 +1600,7 @@ const Alerts = () => {
 									incidentsById={incidentsById}
 									onOpenIncident={handleOpenIncident}
 									activeIncidentId={selectedIncidentId}
-									onEditIncident={setEditingIncidentId}
+									onEditIncident={setIncidentDialog}
 									onUngroupIncident={handleUngroupIncident}
 									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
@@ -1617,7 +1651,7 @@ const Alerts = () => {
 									incidentsById={incidentsById}
 									onOpenIncident={handleOpenIncident}
 									activeIncidentId={selectedIncidentId}
-									onEditIncident={setEditingIncidentId}
+									onEditIncident={setIncidentDialog}
 									onUngroupIncident={handleUngroupIncident}
 									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
@@ -1644,7 +1678,7 @@ const Alerts = () => {
 							alertsById={loadedAlertsById}
 							onClose={() => setSelectedIncidentId(null)}
 							onOpenAlert={handleAlertClick}
-							onEdit={setEditingIncidentId}
+							onEdit={setIncidentDialog}
 							onUngroup={handleUngroupIncident}
 						/>
 					)}
@@ -1653,7 +1687,11 @@ const Alerts = () => {
 							// Data-driven (not tab-driven): resolving an alert while its panel is
 							// open flips the panel to resolved mode in place, and unresolving
 							// flips it back.
-							const selectedIsResolved = resolvedIds.has(syncedSelectedAlert.id);
+							// The active list wins: right after a re-fire the resolved list (slower
+							// poll) can still hold the id for a while.
+							const selectedIsResolved =
+								resolvedIds.has(syncedSelectedAlert.id) &&
+								!alerts.some((alert) => alert.id === syncedSelectedAlert.id);
 							return (
 								<AlertDetailsPanel
 									alert={syncedSelectedAlert}
@@ -1662,7 +1700,13 @@ const Alerts = () => {
 									onClose={() => setSelectedAlert(null)}
 									onSilence={confirmSilenceAlert}
 									onUnsilence={handleUnsilenceAlert}
-									onDelete={selectedIsResolved ? confirmDeleteResolvedAlert : confirmResolveAlert}
+									onDelete={
+										selectedIsResolved
+											? canDelete()
+												? confirmDeleteResolvedAlert
+												: undefined
+											: confirmResolveAlert
+									}
 									onUnresolve={handleUnresolveAlert}
 								/>
 							);
@@ -1671,20 +1715,17 @@ const Alerts = () => {
 			</div>
 
 			<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
-			<CreateIncidentDialog
-				open={showCreateIncident}
-				onOpenChange={setShowCreateIncident}
-				alerts={selectedAlerts}
-				onCreate={handleCreateIncident}
-				isCreating={createIncidentMutation.isPending}
-			/>
-			<EditIncidentDialog
-				incident={editingIncidentId != null ? (incidentsById.get(editingIncidentId) ?? null) : null}
+			<IncidentDialog
+				target={incidentDialogTarget}
 				onOpenChange={(open) => {
-					if (!open) setEditingIncidentId(null);
+					if (!open) setIncidentDialog(null);
 				}}
-				onSave={handleSaveIncident}
-				isSaving={updateIncidentMutation.isPending}
+				onSubmit={(name, description) =>
+					incidentDialog === 'create'
+						? handleCreateIncident(name, description)
+						: incidentDialog != null && handleSaveIncident(incidentDialog, name, description)
+				}
+				isSubmitting={createIncidentMutation.isPending || updateIncidentMutation.isPending}
 			/>
 
 			<DashboardSettingsDrawer
@@ -1696,6 +1737,16 @@ const Alerts = () => {
 				onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
 				onDelete={handleDeleteDashboard}
 				canDelete={!!dashboardState.id}
+			/>
+
+			<SaveDashboardAsDialog
+				open={showSaveAs}
+				onOpenChange={setShowSaveAs}
+				sourceName={dashboardState.name}
+				sourceDescription={dashboardState.description}
+				existingNames={dashboards.map((d) => d.name)}
+				namesStatus={dashboardsPending ? 'loading' : dashboardsFailed ? 'error' : 'ready'}
+				onSubmit={handleSaveDashboardAs}
 			/>
 		</DashboardLayout>
 	);

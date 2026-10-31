@@ -5,7 +5,6 @@
 		"target": "ES2022",
 		"lib": ["ES2022"],
 		"outDir": "./dist",
-		"rootDir": "./src",
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
@@ -14,13 +13,14 @@
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
 		"resolveJsonModule": true,
-		"declaration": true,
-		"declarationMap": true,
 		"sourceMap": true,
 		"allowImportingTsExtensions": true,
 		"noEmit": true,
 		"isolatedModules": true,
-		"types": ["vitest/globals"]
+		"types": ["vitest/globals"],
+		"paths": {
+			"@OpsiMate/mcp": ["../mcp/src/index.ts"]
+		}
 	},
 	"include": ["src/**/*", "tests/**/*"],
 	"exclude": ["node_modules", "dist"]
