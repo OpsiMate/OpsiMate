@@ -2,9 +2,19 @@
 export const queryKeys = {
 	alerts: ['alerts'] as const,
 	resolvedAlerts: ['resolvedAlerts'] as const,
+	// Shared prefix for every alert's comments; useBulkAlertAction invalidates all of them with it.
 	alertComments: ['alertComments'] as const,
+	alertCommentsFor: (alertId: string | null | undefined) => [...queryKeys.alertComments, alertId] as const,
 	// Mutation key: list polling pauses while one is pending (see useAlerts).
 	bulkAlertAction: ['bulkAlertAction'] as const,
+	// Starts with `alerts`, so invalidating queryKeys.alerts refreshes the Insights page too.
+	alertAnalytics: (
+		from: string | null,
+		timeZone: string,
+		filters: Record<string, string[]> | null,
+		search: string | null,
+		tagKey: string | null
+	) => [...queryKeys.alerts, 'analytics', from, timeZone, filters, search, tagKey] as const,
 	// Shared prefix for every alert-history query; invalidations target this so a
 	// mutation can drop all per-alert histories (see useRunAction, useBulkAlertAction, ...).
 	alertHistoryAll: ['alertHistory'] as const,
