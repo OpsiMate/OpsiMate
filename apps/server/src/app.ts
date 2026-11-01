@@ -121,7 +121,14 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// Resolve (and unresolve) keeps the root cause; a re-fire hides it until a new one is
 	// pushed; permanent deletion drops it.
 	alertBL.onAlertPermanentlyDeleted((alertId) => rootCauseBL.deleteForAlert(alertId));
-	alertBL.setOnAlertsRefired((alertIds) => rootCauseBL.hideForRefiredAlerts(alertIds));
+	// Re-fired alerts: the root cause hides until a new one is pushed, and incident
+	// members get their incident owner back (the webhook row carries none). Wired as one
+	// callback; incidentBL is constructed below, so the second half binds lazily.
+	let onIncidentMembersRefired: (alertIds: string[]) => Promise<void> = () => Promise.resolve();
+	alertBL.setOnAlertsRefired(async (alertIds) => {
+		await rootCauseBL.hideForRefiredAlerts(alertIds);
+		await onIncidentMembersRefired(alertIds);
+	});
 	const retentionBL = new RetentionBL(retentionRepo);
 
 	if (mode === AppMode.WORKER) {
@@ -267,6 +274,9 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	alertBL.setIncidentRepo(incidentRepo);
 	// Permanent deletion (delete-forever) must not leave dangling incident memberships.
 	alertBL.onAlertPermanentlyDeleted((alertId) => incidentBL.handleAlertsDeleted([alertId]));
+	onIncidentMembersRefired = async (alertIds) => {
+		await incidentBL.handleAlertsRefired(alertIds);
+	};
 	// Removing an alert's owner takes it out of its incident (see IncidentBL).
 	alertBL.onAlertUnassigned((alertId, actor) =>
 		incidentBL.handleAlertUnassigned(alertId, {

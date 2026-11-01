@@ -340,3 +340,90 @@ describe('incident ownership', () => {
 		expect((incident.body.data.alertIds as string[]).sort()).toEqual(['own-a', 'own-b']);
 	});
 });
+
+describe('incident lifecycle scenarios', () => {
+	let creatorId: number;
+	let incidentId: number;
+	const alertsById = async () => {
+		const res = await get('/api/v1/alerts');
+		return new Map(
+			(res.body.data.alerts as { id: string; ownerId?: string | null; incidentId?: number | null }[]).map((a) => [
+				a.id,
+				a,
+			])
+		);
+	};
+	interface Summary {
+		alertCount: number;
+		firingCount: number;
+		silencedCount: number;
+		resolvedCount: number;
+		alertIds: string[];
+	}
+	const summary = async (): Promise<Summary> => (await get(`/api/v1/incidents/${incidentId}`)).body.data as Summary;
+
+	beforeAll(async () => {
+		creatorId = (
+			db.prepare(`SELECT id FROM users WHERE email = 'provideruser@example.com'`).get() as { id: number }
+		).id;
+		insertAlert('life-a', 'Life A', 'warning', '2026-08-15T10:00:00.000Z');
+		insertAlert('life-b', 'Life B', 'critical', '2026-08-15T10:00:00.000Z');
+		const created = await post('/api/v1/incidents', { name: 'Lifecycle', alertIds: ['life-a', 'life-b'] });
+		incidentId = created.body.data.id as number;
+	});
+
+	test('a member that resolves stays in the incident and counts as resolved', async () => {
+		const res = await post('/api/v1/alerts/bulk', { action: 'resolve', ids: ['life-a'] });
+		expect(res.status).toBe(200);
+		const s = await summary();
+		expect(s.alertCount).toBe(2);
+		expect(s.firingCount).toBe(1);
+		expect(s.resolvedCount).toBe(1);
+		const resolved = await get('/api/v1/alerts/resolved');
+		const r = (
+			resolved.body.data.alerts as { id: string; incidentId?: number | null; ownerId?: string | null }[]
+		).find((a) => a.id === 'life-a');
+		expect(r?.incidentId).toBe(incidentId);
+		expect(r?.ownerId).toBe(String(creatorId));
+	});
+
+	test('a resolved member that fires again is back in the incident, firing, with its owner', async () => {
+		const res = await post('/api/v1/alerts/custom?api_token=opsimate', {
+			id: 'life-a',
+			alertName: 'Life A',
+			severity: 'warning',
+			summary: 'again',
+			tags: {},
+		});
+		expect(res.status).toBe(200);
+		const alerts = await alertsById();
+		expect(alerts.get('life-a')?.incidentId).toBe(incidentId);
+		expect(alerts.get('life-a')?.ownerId).toBe(String(creatorId));
+		const s = await summary();
+		expect(s.firingCount).toBe(2);
+		expect(s.resolvedCount).toBe(0);
+	});
+
+	test('an incident whose members all resolved stays, reporting resolved', async () => {
+		await post('/api/v1/alerts/bulk', { action: 'resolve', ids: ['life-a', 'life-b'] }).expect(200);
+		const s = await summary();
+		expect(s.alertCount).toBe(2);
+		expect(s.firingCount).toBe(0);
+		expect(s.silencedCount).toBe(0);
+		expect(s.resolvedCount).toBe(2);
+	});
+
+	test('unresolving a member brings it back under the incident', async () => {
+		await patch('/api/v1/alerts/resolved/life-b/unresolve', {}).expect(200);
+		const alerts = await alertsById();
+		expect(alerts.get('life-b')?.incidentId).toBe(incidentId);
+		expect((await summary()).firingCount).toBe(1);
+	});
+
+	test('a retention-style raw purge of a member is cleaned up on the next read', async () => {
+		db.prepare(`DELETE FROM alerts_resolved WHERE id = 'life-a'`).run();
+		const s = await summary();
+		expect(s.alertCount).toBe(1);
+		expect(s.alertIds.sort()).toEqual(['life-b']);
+	});
+});

@@ -257,6 +257,28 @@ export class IncidentBL {
 		await this.removeAlerts(incidentId, [alertId], actor);
 	}
 
+	// Hook for the ingest path: a resolved alert that fires again comes back as a new row
+	// built from the webhook, which carries no owner. Membership survives (it follows the
+	// id), so the member would sit ownerless in the Unassigned pane and split its
+	// incident. Re-claim such members for the incident's owner.
+	async handleAlertsRefired(alertIds: string[]): Promise<void> {
+		const membership = await this.incidentRepo.getMembershipMap();
+		const byIncident = new Map<number, string[]>();
+		for (const alertId of alertIds) {
+			const incidentId = membership.get(alertId);
+			if (incidentId === undefined) continue;
+			const list = byIncident.get(incidentId);
+			if (list) list.push(alertId);
+			else byIncident.set(incidentId, [alertId]);
+		}
+		for (const [incidentId, members] of byIncident) {
+			const incident = await this.incidentRepo.getIncidentSummaryById(incidentId);
+			if (!incident || incident.createdBy === null) continue;
+			await this.alerts.claimUnowned(members, { id: incident.createdBy, name: incident.ownerName });
+		}
+		if (byIncident.size > 0) this.alerts.invalidateSnapshots();
+	}
+
 	// Hook for the alerts delete-forever paths: memberships must not dangle after their
 	// alert is permanently gone, and incidents this empties dissolve.
 	async handleAlertsDeleted(alertIds: string[]): Promise<void> {

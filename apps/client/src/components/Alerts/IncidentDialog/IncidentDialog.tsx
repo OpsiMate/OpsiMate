@@ -1,18 +1,17 @@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { IncidentDialogTarget } from './IncidentDialog.types';
+import { IncidentDialogTarget, IncidentFormResult } from './IncidentDialog.types';
 import { IncidentForm } from './IncidentForm';
 
 interface IncidentDialogProps {
 	// null = closed.
 	target: IncidentDialogTarget | null;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (name: string, description: string) => void;
+	onSubmit: (result: IncidentFormResult) => void;
 	isSubmitting?: boolean;
 }
 
-// Name + details form shared by "Group into incident" and "Edit incident". Creating
-// needs no wording — both fields are optional and the server names an unnamed incident
-// "Incident #<id>" — so grouping is never blocked on typing.
+// One dialog for everything incident: group the selection into a NEW incident or add it
+// to an EXISTING one (the form asks which), and edit an incident's name and details.
 export const IncidentDialog = ({ target, onOpenChange, onSubmit, isSubmitting }: IncidentDialogProps) => (
 	<Dialog open={target !== null} onOpenChange={onOpenChange}>
 		<DialogContent className="sm:max-w-md">

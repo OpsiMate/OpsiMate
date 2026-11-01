@@ -30,7 +30,7 @@ import {
 	useRemoveIncidentAlerts,
 	useUpdateIncident,
 } from '@/hooks/queries/incidents';
-import { IncidentDialog, IncidentDialogTarget } from './IncidentDialog';
+import { IncidentDialog, IncidentDialogTarget, IncidentFormResult } from './IncidentDialog';
 import { IncidentPanel } from './IncidentPanel';
 import {
 	useCreateDashboard,
@@ -1140,9 +1140,36 @@ const Alerts = () => {
 		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
 	};
 
+	// Two alerts can form a new incident; a single one can still join an existing incident
+	// it is not already in. Hidden when "all N matching" is armed but only a page is
+	// loaded: grouping would silently take the loaded subset while the bar claims the
+	// whole match set is selected.
+	const canOpenIncidentDialog =
+		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length) &&
+		(selectedAlerts.length >= 2 ||
+			incidents.some((incident) => selectedAlerts.some((alert) => alert.incidentId !== incident.id)));
+
+	// Synchronous in-flight guard: a double submit before the mutation's isPending reaches
+	// the dialog would send two requests, and the server re-homes exclusive memberships,
+	// so the second could undo the first.
+	const incidentSubmitInFlight = useRef(false);
+	const handleIncidentFormSubmit = async (result: IncidentFormResult) => {
+		if (incidentSubmitInFlight.current) return;
+		incidentSubmitInFlight.current = true;
+		try {
+			if (result.kind === 'create') await handleCreateIncident(result.name, result.description);
+			else if (result.kind === 'add') await handleAddToIncident(result.incidentId);
+			else if (incidentDialog !== 'create' && incidentDialog != null) {
+				await handleSaveIncident(incidentDialog, result.name, result.description);
+			}
+		} finally {
+			incidentSubmitInFlight.current = false;
+		}
+	};
+
 	const incidentDialogTarget: IncidentDialogTarget | null =
 		incidentDialog === 'create'
-			? { alerts: selectedAlerts }
+			? { alerts: selectedAlerts, incidents }
 			: incidentDialog != null && incidentsById.has(incidentDialog)
 				? { incident: incidentsById.get(incidentDialog)! }
 				: null;
@@ -1561,15 +1588,7 @@ const Alerts = () => {
 										// loaded: grouping would silently take the loaded subset
 										// while the bar claims the whole match set is selected.
 										onGroupIntoIncident={
-											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
-												? undefined
-												: () => setIncidentDialog('create')
-										}
-										incidents={incidents}
-										onAddToIncident={
-											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
-												? undefined
-												: handleAddToIncident
+											canOpenIncidentDialog ? () => setIncidentDialog('create') : undefined
 										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
@@ -1743,12 +1762,12 @@ const Alerts = () => {
 				onOpenChange={(open) => {
 					if (!open) setIncidentDialog(null);
 				}}
-				onSubmit={(name, description) =>
-					incidentDialog === 'create'
-						? handleCreateIncident(name, description)
-						: incidentDialog != null && handleSaveIncident(incidentDialog, name, description)
+				onSubmit={handleIncidentFormSubmit}
+				isSubmitting={
+					createIncidentMutation.isPending ||
+					addIncidentAlertsMutation.isPending ||
+					updateIncidentMutation.isPending
 				}
-				isSubmitting={createIncidentMutation.isPending || updateIncidentMutation.isPending}
 			/>
 
 			<DashboardSettingsDrawer
