@@ -23,6 +23,7 @@ import {
 	useMarkAlertRead,
 } from '@/hooks/queries/alerts';
 import {
+	useAddIncidentAlerts,
 	useCreateIncident,
 	useDeleteIncident,
 	useIncidents,
@@ -789,8 +790,9 @@ const Alerts = () => {
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
-	const { incidentsById } = useIncidents();
+	const { incidents, incidentsById } = useIncidents();
 	const createIncidentMutation = useCreateIncident();
+	const addIncidentAlertsMutation = useAddIncidentAlerts();
 	const updateIncidentMutation = useUpdateIncident();
 	const deleteIncidentMutation = useDeleteIncident();
 	const removeIncidentAlertsMutation = useRemoveIncidentAlerts();
@@ -1158,6 +1160,21 @@ const Alerts = () => {
 		} catch (err) {
 			toast({
 				title: 'Failed to create incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleAddToIncident = async (incidentId: number) => {
+		const incident = incidentsById.get(incidentId);
+		try {
+			await addIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: selectedAlerts.map((a) => a.id) });
+			toast({ title: 'Added to incident', description: incident?.name ?? `#${incidentId}` });
+			handleSelectAlerts([]);
+		} catch (err) {
+			toast({
+				title: 'Failed to add to incident',
 				description: err instanceof Error ? err.message : 'Unknown error',
 				variant: 'destructive',
 			});
@@ -1547,6 +1564,12 @@ const Alerts = () => {
 											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
 												? undefined
 												: () => setIncidentDialog('create')
+										}
+										incidents={incidents}
+										onAddToIncident={
+											allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
+												? undefined
+												: handleAddToIncident
 										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}

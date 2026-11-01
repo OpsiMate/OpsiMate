@@ -84,6 +84,27 @@ export class IncidentController {
 		}
 	};
 
+	addAlertsHandler = async (req: AuthenticatedRequest, res: Response) => {
+		try {
+			const { incidentId } = IncidentIdSchema.parse({ incidentId: req.params.incidentId });
+			const { alertIds } = IncidentAlertIdsSchema.parse(req.body);
+			const summary = await this.incidentBL.addAlerts(incidentId, alertIds, actorFrom(req));
+			if (!summary) {
+				return res.status(404).json({ success: false, error: 'Incident not found' });
+			}
+			return res.json({ success: true, data: summary, message: 'Alerts added to incident' });
+		} catch (error) {
+			if (isZodError(error)) {
+				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			}
+			if (error instanceof UnknownAlertIdsError) {
+				return res.status(400).json({ success: false, error: error.message });
+			}
+			logger.error('Error adding alerts to incident', error);
+			return res.status(500).json({ success: false, error: 'Internal server error' });
+		}
+	};
+
 	removeAlertsHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
 			const { incidentId } = IncidentIdSchema.parse({ incidentId: req.params.incidentId });

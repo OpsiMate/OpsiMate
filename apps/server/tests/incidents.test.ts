@@ -282,6 +282,56 @@ describe('incident ownership', () => {
 		expect((await alertsById()).get('own-b')?.incidentId ?? null).toBeNull();
 	});
 
+	test('adding alerts to an existing incident gives unowned ones the incident owner', async () => {
+		insertAlert('add-a', 'Add A', 'warning', '2026-08-13T10:00:00.000Z');
+		insertAlert('add-b', 'Add B', 'warning', '2026-08-13T10:00:00.000Z');
+		insertAlert('add-c', 'Add C', 'warning', '2026-08-13T10:00:00.000Z');
+		db.prepare(`UPDATE alerts SET owner_id = ? WHERE id = 'add-c'`).run(otherUserId);
+		const created = await post('/api/v1/incidents', { name: 'Growing', alertIds: ['add-a', 'add-b'] });
+		const id = created.body.data.id as number;
+
+		// A resolved alert can join too; the roll-up spans both tables.
+		const res = await post(`/api/v1/incidents/${id}/alerts`, { alertIds: ['add-c', 'inc-r'] });
+		expect(res.status).toBe(200);
+		expect(res.body.data.alertCount).toBe(4);
+		expect(res.body.data.resolvedCount).toBe(1);
+		const alerts = await alertsById();
+		expect(alerts.get('add-c')?.incidentId).toBe(id);
+		// Already owned: kept. inc-r was unowned (and resolved): it gets the incident owner.
+		expect(alerts.get('add-c')?.ownerId).toBe(String(otherUserId));
+		const resolved = await get('/api/v1/alerts/resolved');
+		const r = (resolved.body.data.alerts as { id: string; ownerId?: string | null }[]).find(
+			(a) => a.id === 'inc-r'
+		);
+		expect(r?.ownerId).toBe(String(creatorId));
+
+		// Re-adding a member records no second "added" event.
+		await post(`/api/v1/incidents/${id}/alerts`, { alertIds: ['add-a'] });
+		const history = await get('/api/v1/alerts/add-a/history');
+		const added = (history.body.data.data as { eventType?: string }[]).filter(
+			(e) => e.eventType === 'incident_added'
+		);
+		expect(added).toHaveLength(1);
+
+		const missing = await post(`/api/v1/incidents/${id}/alerts`, { alertIds: ['no-such'] });
+		expect(missing.status).toBe(400);
+		const gone = await post(`/api/v1/incidents/999999/alerts`, { alertIds: ['add-a'] });
+		expect(gone.status).toBe(404);
+	});
+
+	test('a silenced member counts as silenced, not firing', async () => {
+		insertAlert('sil-a', 'Sil A', 'warning', '2026-08-14T10:00:00.000Z');
+		insertAlert('sil-b', 'Sil B', 'warning', '2026-08-14T10:00:00.000Z');
+		const created = await post('/api/v1/incidents', { alertIds: ['sil-a', 'sil-b'] });
+		const id = created.body.data.id as number;
+		await patch('/api/v1/alerts/sil-a/silence', {}).expect(200);
+		const res = await get(`/api/v1/incidents/${id}`);
+		expect(res.body.data.alertCount).toBe(2);
+		expect(res.body.data.firingCount).toBe(1);
+		expect(res.body.data.silencedCount).toBe(1);
+		expect(res.body.data.resolvedCount).toBe(0);
+	});
+
 	test('re-assigning to another owner keeps the alert in its incident', async () => {
 		const res = await post('/api/v1/incidents', { alertIds: ['own-a', 'own-b'] });
 		const id = res.body.data.id as number;

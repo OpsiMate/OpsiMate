@@ -92,16 +92,22 @@ export const IncidentRow = ({
 					{incident.ownerName}
 				</span>
 			)}
-			{incident.firingCount > 0 ? (
+			{incident.firingCount > 0 && (
 				<Badge variant="destructive" className="h-5 px-1.5 text-xs shrink-0">
 					{incident.firingCount} firing
 				</Badge>
-			) : (
+			)}
+			{incident.silencedCount > 0 && (
+				<Badge variant="secondary" className="h-5 px-1.5 text-xs shrink-0">
+					{incident.silencedCount} silenced
+				</Badge>
+			)}
+			{incident.firingCount === 0 && incident.silencedCount === 0 && (
 				<Badge variant="success" className="h-5 px-1.5 text-xs shrink-0">
 					resolved
 				</Badge>
 			)}
-			{incident.resolvedCount > 0 && incident.firingCount > 0 && (
+			{incident.resolvedCount > 0 && (incident.firingCount > 0 || incident.silencedCount > 0) && (
 				<span className="text-xs text-muted-foreground shrink-0">{incident.resolvedCount} resolved</span>
 			)}
 			<span className="ml-auto text-xs text-muted-foreground shrink-0">

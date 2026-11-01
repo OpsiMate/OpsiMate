@@ -183,6 +183,36 @@ export class IncidentBL {
 		return this.incidentRepo.getIncidentById(id);
 	}
 
+	// Add alerts to an existing incident. Same ownership rule as create, anchored on the
+	// incident's owner rather than whoever adds: unowned newcomers go to the incident's
+	// owner (the actor when the incident has none), so the folder stays whole in the
+	// split-by-owner view. Alerts already in another incident move over.
+	async addAlerts(id: number, alertIds: string[], actor: IncidentActor): Promise<IncidentSummary | undefined> {
+		const incident = await this.incidentRepo.getIncidentSummaryById(id);
+		if (!incident) return undefined;
+		await this.assertAlertsExist(alertIds);
+		const { transitions } = await this.incidentRepo.addAlerts(id, alertIds);
+		const bestEffort = async (what: string, step: () => Promise<void>) => {
+			try {
+				await step();
+			} catch (error) {
+				logger.error(`Alerts were added to incident ${id}, but ${what} failed`, error);
+			}
+		};
+		const previousIds = transitions
+			.map((t) => t.previousIncidentId)
+			.filter((prev): prev is number => prev !== null && prev !== id);
+		await bestEffort('recording membership history', () =>
+			this.recordAddTransitions(transitions, id, incident.name, actor)
+		);
+		await bestEffort('dissolving emptied incidents', () => this.dissolveIfEmpty(previousIds));
+		const owner: IncidentActor =
+			incident.createdBy !== null ? { id: incident.createdBy, name: incident.ownerName } : actor;
+		await bestEffort('claiming unowned members', () => this.alerts.claimUnowned(alertIds, owner));
+		this.alerts.invalidateSnapshots();
+		return this.incidentRepo.getIncidentSummaryById(id);
+	}
+
 	// Removing the last member dissolves the incident: an empty folder can't be seen or
 	// managed from the table, so it must not linger. Returns whether it survived.
 	async removeAlerts(

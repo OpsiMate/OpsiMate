@@ -248,7 +248,10 @@ export interface IncidentSummary extends Incident {
 	// Display name of createdBy, resolved server-side; null for a tokenless creator.
 	ownerName: string | null;
 	alertCount: number;
+	// Active members that are not silenced.
 	firingCount: number;
+	// Active members that are silenced (a silenced alert is still firing at its source).
+	silencedCount: number;
 	resolvedCount: number;
 	// Worst severity across members (critical > warning > info); null for an incident
 	// whose members all vanished (shouldn't persist — empty incidents dissolve).

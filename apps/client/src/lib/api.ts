@@ -571,6 +571,8 @@ export const incidentsApi = {
 	createIncident: (payload: CreateIncidentPayload) => apiRequest<IncidentSummary>('/incidents', 'POST', payload),
 	updateIncident: (id: number, payload: UpdateIncidentPayload) =>
 		apiRequest<Incident>(`/incidents/${id}`, 'PATCH', payload),
+	addIncidentAlerts: (id: number, alertIds: string[]) =>
+		apiRequest<IncidentSummary>(`/incidents/${id}/alerts`, 'POST', { alertIds }),
 	removeIncidentAlerts: (id: number, alertIds: string[]) =>
 		apiRequest<RemoveIncidentAlertsResult>(`/incidents/${id}/alerts/remove`, 'POST', { alertIds }),
 	deleteIncident: (id: number) => apiRequest<void>(`/incidents/${id}`, 'DELETE'),

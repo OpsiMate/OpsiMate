@@ -18,6 +18,7 @@ interface IncidentSummaryRow extends IncidentRow {
 	owner_name: string | null;
 	alert_count: number;
 	firing_count: number;
+	silenced_count: number;
 	resolved_count: number;
 	earliest_starts_at: string | null;
 	latest_updated_at: string | null;
@@ -73,7 +74,8 @@ const MEMBER_STATE_CTE = `
 		       COALESCE(a.severity, r.severity)                        AS severity,
 		       COALESCE(a.starts_at, r.starts_at)                      AS starts_at,
 		       COALESCE(a.updated_at, r.updated_at)                    AS updated_at,
-		       CASE WHEN a.id IS NOT NULL THEN 1 ELSE 0 END            AS is_active
+		       CASE WHEN a.id IS NOT NULL THEN 1 ELSE 0 END            AS is_active,
+		       COALESCE(a.is_dismissed, 0)                             AS is_silenced
 		FROM incident_alerts ia
 		LEFT JOIN alerts a          ON a.id = ia.alert_id
 		LEFT JOIN alerts_resolved r ON r.id = ia.alert_id
@@ -98,6 +100,7 @@ export class IncidentRepository {
 		ownerName: row.owner_name,
 		alertCount: row.alert_count,
 		firingCount: row.firing_count,
+		silencedCount: row.silenced_count,
 		resolvedCount: row.resolved_count,
 		worstSeverity: worstSeverity(row.severities),
 		earliestStartsAt: row.earliest_starts_at ? toIsoUtc(row.earliest_starts_at) : null,
@@ -137,6 +140,30 @@ export class IncidentRepository {
 	// incident that does not exist. Returns what happened to each alert, so history
 	// reflects TRANSITIONS rather than requests: a re-homed alert owes a "removed" event
 	// to the incident it left.
+	// Inside a transaction: insert (or move) each alert's membership and report where it
+	// was before — null for ungrouped, the target incident itself for a no-op re-add.
+	private insertMemberships(incidentId: number, alertIds: string[]): MembershipTransition[] {
+		const placeholders = alertIds.map(() => '?').join(', ');
+		const previousRows = this.db
+			.prepare(`SELECT alert_id, incident_id FROM incident_alerts WHERE alert_id IN (${placeholders})`)
+			.all(...alertIds) as { alert_id: string; incident_id: number }[];
+		const previousByAlert = new Map(previousRows.map((r) => [r.alert_id, r.incident_id]));
+		const insert = this.db.prepare(`INSERT OR REPLACE INTO incident_alerts (incident_id, alert_id) VALUES (?, ?)`);
+		for (const alertId of alertIds) insert.run(incidentId, alertId);
+		return alertIds.map((alertId) => ({ alertId, previousIncidentId: previousByAlert.get(alertId) ?? null }));
+	}
+
+	// Add alerts to an existing incident (re-homing any that belong to another one).
+	async addAlerts(incidentId: number, alertIds: string[]): Promise<{ transitions: MembershipTransition[] }> {
+		return runAsync(() =>
+			this.db.transaction(() => {
+				const transitions = this.insertMemberships(incidentId, alertIds);
+				this.db.prepare(`UPDATE incidents SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(incidentId);
+				return { transitions };
+			})()
+		);
+	}
+
 	async createIncidentWithAlerts(
 		data: CreateIncidentInput,
 		alertIds: string[]
@@ -150,22 +177,7 @@ export class IncidentRepository {
 				if (data.name === null) {
 					this.db.prepare(`UPDATE incidents SET name = ? WHERE id = ?`).run(`Incident #${lastID}`, lastID);
 				}
-				const placeholders = alertIds.map(() => '?').join(', ');
-				const previousRows = this.db
-					.prepare(`SELECT alert_id, incident_id FROM incident_alerts WHERE alert_id IN (${placeholders})`)
-					.all(...alertIds) as { alert_id: string; incident_id: number }[];
-				const previousByAlert = new Map(previousRows.map((r) => [r.alert_id, r.incident_id]));
-				const insert = this.db.prepare(
-					`INSERT OR REPLACE INTO incident_alerts (incident_id, alert_id) VALUES (?, ?)`
-				);
-				for (const alertId of alertIds) insert.run(lastID, alertId);
-				return {
-					lastID,
-					transitions: alertIds.map((alertId) => ({
-						alertId,
-						previousIncidentId: previousByAlert.get(alertId) ?? null,
-					})),
-				};
+				return { lastID, transitions: this.insertMemberships(lastID, alertIds) };
 			})()
 		);
 	}
@@ -204,7 +216,8 @@ export class IncidentRepository {
 					SELECT i.*,
 					       u.full_name                                          AS owner_name,
 					       COUNT(ms.alert_id)                                   AS alert_count,
-					       COALESCE(SUM(ms.is_active), 0)                       AS firing_count,
+					       COALESCE(SUM(ms.is_active AND NOT ms.is_silenced), 0) AS firing_count,
+					       COALESCE(SUM(ms.is_active AND ms.is_silenced), 0)    AS silenced_count,
 					       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
 					       MIN(ms.starts_at)                                    AS earliest_starts_at,
 					       MAX(ms.updated_at)                                   AS latest_updated_at,
@@ -229,7 +242,8 @@ export class IncidentRepository {
 					SELECT i.*,
 					       u.full_name                                          AS owner_name,
 					       COUNT(ms.alert_id)                                   AS alert_count,
-					       COALESCE(SUM(ms.is_active), 0)                       AS firing_count,
+					       COALESCE(SUM(ms.is_active AND NOT ms.is_silenced), 0) AS firing_count,
+					       COALESCE(SUM(ms.is_active AND ms.is_silenced), 0)    AS silenced_count,
 					       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
 					       MIN(ms.starts_at)                                    AS earliest_starts_at,
 					       MAX(ms.updated_at)                                   AS latest_updated_at,

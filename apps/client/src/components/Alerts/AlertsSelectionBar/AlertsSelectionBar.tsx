@@ -10,10 +10,16 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useUsers } from '@/hooks/queries/users';
 import { pluralize } from '@/lib/text';
-import { Alert } from '@OpsiMate/shared';
-import { BellRing, CheckCircle2, FolderPlus, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { Alert, IncidentSummary } from '@OpsiMate/shared';
+import { BellRing, CheckCircle2, FolderInput, FolderPlus, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
@@ -41,6 +47,9 @@ export interface AlertsSelectionBarProps {
 	onSelectAllMatching?: () => void;
 	// Groups the selection into a new incident (needs at least two alerts).
 	onGroupIntoIncident?: () => void;
+	// Adds the selection to one of these existing incidents.
+	incidents?: IncidentSummary[];
+	onAddToIncident?: (incidentId: number) => void;
 	// A bulk action is still running: its rows already show the result, but a second
 	// action before it settles could be undone by the first one's rollback or refetch.
 	actionsDisabled?: boolean;
@@ -60,6 +69,8 @@ export const AlertsSelectionBar = ({
 	allMatchingSelected,
 	onSelectAllMatching,
 	onGroupIntoIncident,
+	incidents = [],
+	onAddToIncident,
 	actionsDisabled = false,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
@@ -76,6 +87,10 @@ export const AlertsSelectionBar = ({
 	// "all" belongs to the "Select all N matching" link.
 	const allNotSilenced = selectedAlerts.every((alert) => !alert.isSilenced);
 	const allSilenced = selectedAlerts.every((alert) => alert.isSilenced);
+	// An incident every selected alert already belongs to has nothing to receive.
+	const addableIncidents = incidents.filter((incident) =>
+		selectedAlerts.some((alert) => alert.incidentId !== incident.id)
+	);
 
 	const handleAssignOwner = (ownerId: string | null) => {
 		if (onAssignOwnerAll) {
@@ -145,6 +160,26 @@ export const AlertsSelectionBar = ({
 						<FolderPlus className="h-3.5 w-3.5" />
 						Group into incident
 					</Button>
+				)}
+				{onAddToIncident && addableIncidents.length > 0 && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="gap-1.5" disabled={actionsDisabled}>
+								<FolderInput className="h-3.5 w-3.5" />
+								Add to incident
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start">
+							{addableIncidents.map((incident) => (
+								<DropdownMenuItem key={incident.id} onClick={() => onAddToIncident(incident.id)}>
+									<span className="truncate max-w-64">{incident.name}</span>
+									<span className="ml-auto pl-3 text-xs text-muted-foreground">
+										{incident.alertCount} {pluralize(incident.alertCount, 'alert')}
+									</span>
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
 				{onDeleteAll && (
 					<Button

@@ -79,6 +79,11 @@ export const IncidentPanel = ({
 							{incident.firingCount} firing
 						</Badge>
 					)}
+					{incident.silencedCount > 0 && (
+						<Badge variant="secondary" className="h-5 px-1.5 text-xs">
+							{incident.silencedCount} silenced
+						</Badge>
+					)}
 					{incident.resolvedCount > 0 && (
 						<Badge variant="success" className="h-5 px-1.5 text-xs">
 							{incident.resolvedCount} resolved
