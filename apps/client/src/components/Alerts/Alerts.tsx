@@ -1194,6 +1194,39 @@ const Alerts = () => {
 		}
 	};
 
+	// Bulk "Remove from incident": the selection may span several incidents, and the
+	// endpoint is per incident, so group the members by theirs. Alerts in no incident are
+	// left alone.
+	const handleRemoveSelectedFromIncidents = async () => {
+		const byIncident = new Map<number, string[]>();
+		for (const alert of selectedAlerts) {
+			if (alert.incidentId == null) continue;
+			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert.id]);
+		}
+		if (byIncident.size === 0) return;
+		const removed = [...byIncident.values()].reduce((n, ids) => n + ids.length, 0);
+		try {
+			const results = await Promise.all(
+				[...byIncident].map(([id, alertIds]) => removeIncidentAlertsMutation.mutateAsync({ id, alertIds }))
+			);
+			const dissolved = results.filter((r) => r.dissolved).length;
+			toast({
+				title: 'Removed from incident',
+				description:
+					`${removed} ${pluralize(removed, 'alert')} removed from ${byIncident.size} ${pluralize(byIncident.size, 'incident')}` +
+					(dissolved > 0 ? `; ${dissolved} ${pluralize(dissolved, 'incident')} dissolved` : ''),
+			});
+			if (selectedIncidentId != null && !incidentsById.has(selectedIncidentId)) setSelectedIncidentId(null);
+			handleSelectAlerts([]);
+		} catch (err) {
+			toast({
+				title: 'Failed to remove from incident',
+				description: err instanceof Error ? err.message : 'Unknown error',
+				variant: 'destructive',
+			});
+		}
+	};
+
 	const handleAddToIncident = async (incidentId: number) => {
 		const incident = incidentsById.get(incidentId);
 		try {
@@ -1591,6 +1624,11 @@ const Alerts = () => {
 										// while the bar claims the whole match set is selected.
 										onGroupIntoIncident={
 											canOpenIncidentDialog ? () => setIncidentDialog('create') : undefined
+										}
+										onRemoveFromIncident={
+											canOpenIncidentDialog && selectedAlerts.some((a) => a.incidentId != null)
+												? handleRemoveSelectedFromIncidents
+												: undefined
 										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}

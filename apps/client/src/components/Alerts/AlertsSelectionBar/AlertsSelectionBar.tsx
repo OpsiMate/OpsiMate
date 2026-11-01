@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useUsers } from '@/hooks/queries/users';
 import { pluralize } from '@/lib/text';
 import { Alert } from '@OpsiMate/shared';
-import { BellRing, CheckCircle2, FolderPlus, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { BellRing, CheckCircle2, FolderMinus, FolderPlus, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
@@ -42,6 +42,9 @@ export interface AlertsSelectionBarProps {
 	// Opens the incident dialog for the selection (new incident, or add to an existing
 	// one). The parent decides when the selection qualifies and passes undefined otherwise.
 	onGroupIntoIncident?: () => void;
+	// Takes every selected alert that is in an incident out of it. The parent passes it
+	// only when the selection has incident members.
+	onRemoveFromIncident?: () => void;
 	// A bulk action is still running: its rows already show the result, but a second
 	// action before it settles could be undone by the first one's rollback or refetch.
 	actionsDisabled?: boolean;
@@ -61,6 +64,7 @@ export const AlertsSelectionBar = ({
 	allMatchingSelected,
 	onSelectAllMatching,
 	onGroupIntoIncident,
+	onRemoveFromIncident,
 	actionsDisabled = false,
 }: AlertsSelectionBarProps) => {
 	const { data: users = [] } = useUsers();
@@ -151,6 +155,18 @@ export const AlertsSelectionBar = ({
 					>
 						<FolderPlus className="h-3.5 w-3.5" />
 						Add to incident
+					</Button>
+				)}
+				{onRemoveFromIncident && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onRemoveFromIncident}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
+						<FolderMinus className="h-3.5 w-3.5" />
+						Remove from incident
 					</Button>
 				)}
 				{onDeleteAll && (
