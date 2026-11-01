@@ -33,6 +33,16 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 	const canCreate = alerts.length >= 1;
 	const [destination, setDestination] = useState<Destination>('new');
 	const [incidentId, setIncidentId] = useState<string>(candidates[0] ? String(candidates[0].id) : '');
+	// Membership is exclusive, so moving alerts out of an incident that has no other
+	// members dissolves it, name and details included. Say so before it happens.
+	const selectedIds = new Set(alerts.map((alert) => alert.id));
+	const chosenId = destination === 'existing' ? Number(incidentId) : null;
+	const dissolving = ('alerts' in target ? target.incidents : []).filter(
+		(incident) =>
+			incident.id !== chosenId &&
+			incident.alertIds.length > 0 &&
+			incident.alertIds.every((id) => selectedIds.has(id))
+	);
 	const [name, setName] = useState(editing?.name ?? '');
 	const [description, setDescription] = useState(editing?.description ?? '');
 
@@ -140,6 +150,14 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							/>
 						</div>
 					</>
+				)}
+				{dissolving.length > 0 && (
+					<p className="text-xs text-amber-600 dark:text-amber-400" role="alert">
+						{dissolving.length === 1 ? 'This dissolves incident ' : 'This dissolves incidents '}
+						{dissolving.map((incident) => `"${incident.name}"`).join(', ')}
+						{' — every alert '}
+						{dissolving.length === 1 ? 'it has' : 'they have'} is selected and moves out.
+					</p>
 				)}
 				{!editing && (
 					<div className="max-h-32 overflow-y-auto rounded-md border border-border p-2 space-y-1">

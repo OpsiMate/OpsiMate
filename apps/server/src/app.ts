@@ -1,4 +1,5 @@
 import { getLoginDefaultEmailDomain } from './config/config';
+import { Logger } from '@OpsiMate/shared';
 import { WebhookOwnerResolver } from './bl/alerts/webhookOwnerResolver';
 import Database from 'better-sqlite3';
 import cors from 'cors';
@@ -72,6 +73,8 @@ import { CallbackDispatcher } from './bl/callbacks/callbackDispatcher';
 import { CallbackBL } from './bl/callbacks/callback.bl';
 import { CallbackController } from './api/v1/callbacks/controller';
 
+const logger = new Logger('app');
+
 export enum AppMode {
 	SERVER = 'SERVER',
 	WORKER = 'WORKER',
@@ -126,8 +129,14 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// callback; incidentBL is constructed below, so the second half binds lazily.
 	let onIncidentMembersRefired: (alertIds: string[]) => Promise<void> = () => Promise.resolve();
 	alertBL.setOnAlertsRefired(async (alertIds) => {
-		await rootCauseBL.hideForRefiredAlerts(alertIds);
-		await onIncidentMembersRefired(alertIds);
+		// Independent: a root-cause write failure must not skip the ownership claim.
+		const outcomes = await Promise.allSettled([
+			rootCauseBL.hideForRefiredAlerts(alertIds),
+			onIncidentMembersRefired(alertIds),
+		]);
+		for (const outcome of outcomes) {
+			if (outcome.status === 'rejected') logger.error('Re-fire follow-up failed', outcome.reason);
+		}
 	});
 	const retentionBL = new RetentionBL(retentionRepo);
 

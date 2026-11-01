@@ -1195,6 +1195,7 @@ const Alerts = () => {
 		try {
 			await addIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: selectedAlerts.map((a) => a.id) });
 			toast({ title: 'Added to incident', description: incident?.name ?? `#${incidentId}` });
+			setIncidentDialog(null);
 			handleSelectAlerts([]);
 		} catch (err) {
 			toast({

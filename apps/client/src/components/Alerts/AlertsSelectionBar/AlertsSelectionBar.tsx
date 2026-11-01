@@ -142,7 +142,13 @@ export const AlertsSelectionBar = ({
 					</Button>
 				)}
 				{onGroupIntoIncident && (
-					<Button variant="outline" size="sm" onClick={onGroupIntoIncident} className="gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onGroupIntoIncident}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
 						<FolderPlus className="h-3.5 w-3.5" />
 						Add to incident
 					</Button>
