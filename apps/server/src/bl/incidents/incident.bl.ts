@@ -48,15 +48,24 @@ export class IncidentBL {
 		actor: IncidentActor
 	): Promise<void> {
 		const verb = eventType === AlertHistoryEventType.INCIDENT_ADDED ? 'Grouped into' : 'Removed from';
+		// Best-effort, per alert: history is written after the membership change committed,
+		// so one failed insert must neither fail the request nor skip the other alerts.
 		await Promise.all(
-			alertIds.map((alertId) =>
-				this.alertHistoryRepo.recordEvent({
-					alertId,
-					eventType,
-					actorName: actor.name,
-					description: `${verb} incident "${incidentName}"`,
-				})
-			)
+			alertIds.map(async (alertId) => {
+				try {
+					await this.alertHistoryRepo.recordEvent({
+						alertId,
+						eventType,
+						actorName: actor.name,
+						description: `${verb} incident "${incidentName}"`,
+					});
+				} catch (error) {
+					logger.error(
+						`Failed to record ${eventType} history for alert ${alertId} (incident "${incidentName}")`,
+						error
+					);
+				}
+			})
 		);
 	}
 
