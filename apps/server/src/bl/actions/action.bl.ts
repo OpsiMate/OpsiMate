@@ -28,7 +28,7 @@ import {
 	sendsWithoutWaiting,
 } from './actionExecutor';
 
-const logger = new Logger('bl/action.bl');
+const logger = new Logger('bl/actions/action.bl');
 
 // How a run on an alert went: `sent` is a "don't wait" HTTP action whose request went out.
 type ActionRunOutcome = 'success' | 'sent' | 'error';

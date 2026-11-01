@@ -6,7 +6,7 @@ import { AlertRepository } from '../../dal/alertRepository';
 import { FiringTimesIndex } from './firingTimesIndex';
 import { PreparedRules } from './preparedRules';
 
-const logger = new Logger('bl/activeListBuilder');
+const logger = new Logger('bl/alerts/activeListBuilder');
 
 // What a listed alert was assembled from, so the next build can tell it is unchanged.
 interface AssembledAlert {

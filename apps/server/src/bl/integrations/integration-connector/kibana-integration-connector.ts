@@ -4,7 +4,7 @@ import { DashboardResult, KibanaClient } from '../../../dal/external-client/kiba
 import { AlertBL } from '../../alerts/alert.bl';
 
 export class KibanaIntegrationConnector implements IntegrationConnector {
-	private logger = new Logger('bl/integrations/kibana-integration-connector');
+	private logger = new Logger('bl/integrations/integration-connector/kibana-integration-connector');
 
 	async getUrls(integration: Integration, tags: string[]): Promise<IntegrationUrls[]> {
 		try {

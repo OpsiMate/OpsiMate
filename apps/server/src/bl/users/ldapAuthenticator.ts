@@ -5,7 +5,7 @@ import { Client, ClientOptions, Entry, InvalidCredentialsError, ResultCodeError 
 import { LdapTestResult, LdapTestStep, LdapTestUser, Logger, Role } from '@OpsiMate/shared';
 import { LdapConfig, LdapRoleMapping } from '../../config/config';
 
-const logger = new Logger('bl/users/ldap');
+const logger = new Logger('bl/users/ldapAuthenticator');
 
 // Who the directory says the person is, after their password checked out.
 export interface LdapIdentity {

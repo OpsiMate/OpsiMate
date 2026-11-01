@@ -17,7 +17,7 @@ import { AuditBL } from '../audit/audit.bl';
 import { LdapAuthenticator } from '../users/ldapAuthenticator';
 import { DEFAULT_LDAP_MAX_FAILURES, UserBL } from '../users/user.bl';
 
-const logger = new Logger('bl/ldap/ldapSettings');
+const logger = new Logger('bl/ldap/ldapSettings.bl');
 
 const DEFAULT_SEARCH_FILTER = '(mail={{email}})';
 const DEFAULT_GROUP_SEARCH_FILTER = '(member={{dn}})';

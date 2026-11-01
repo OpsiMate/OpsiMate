@@ -17,7 +17,7 @@ import { AuditBL } from '../audit/audit.bl';
 import { toAuditActor } from '../audit/auditActor';
 import { PreparedRules } from '../alerts/preparedRules';
 
-const logger = new Logger('bl/enrichment.bl');
+const logger = new Logger('bl/enrichments/enrichment.bl');
 
 export class EnrichmentBL {
 	// Enrichment rules rewrite tags/severity/summary on every alert the snapshot cache

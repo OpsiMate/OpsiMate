@@ -17,7 +17,7 @@ import { BuildRequest, SnapshotWorkerData, WorkerMessage } from './snapshotWorke
 // the database file and answers each build request with the delta since the last
 // one. See SnapshotWorkerClient for the protocol and why this exists.
 
-const logger = new Logger('bl/snapshotWorker');
+const logger = new Logger('bl/alerts/snapshotWorker');
 const port = parentPort;
 if (!port) throw new Error('snapshotWorker must run as a worker thread');
 
