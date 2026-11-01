@@ -13,7 +13,6 @@ interface AlertsFilterPanelProps {
 	serverFacets?: AlertFacetsResponse | null;
 	filters: ActiveFilters;
 	onFilterChange: (filters: ActiveFilters) => void;
-	collapsed?: boolean;
 	className?: string;
 	tagKeys?: TagKeyInfo[];
 	// Hide the status field: the Resolved and All views run with the status filter
@@ -36,7 +35,6 @@ export const AlertsFilterPanel = ({
 	serverFacets,
 	filters,
 	onFilterChange,
-	collapsed = false,
 	className,
 	tagKeys = [],
 	hideStatusFilter = false,
@@ -130,7 +128,6 @@ export const AlertsFilterPanel = ({
 			facets={facets}
 			filters={filters}
 			onFilterChange={onFilterChange}
-			collapsed={collapsed}
 			className={className}
 		/>
 	);

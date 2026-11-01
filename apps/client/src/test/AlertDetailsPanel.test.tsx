@@ -93,3 +93,23 @@ describe('AlertDetailsPanel resolved state', () => {
 		expect(screen.getByText('details-body')).toBeInTheDocument();
 	});
 });
+
+// The handle moved into the shared components, so the details panel gets the keyboard resize
+// the filter sidebar was built for — including its own storage key and its own bounds.
+describe('AlertDetailsPanel resize handle', () => {
+	test('arrow keys widen the panel and remember it under the details-panel key', () => {
+		localStorage.clear();
+		render(<AlertDetailsPanel alert={mkAlert('a')} isActive onClose={noop} />);
+
+		const handle = screen.getByRole('separator', { name: 'Resize alert details panel' });
+		expect(handle).toHaveAttribute('tabindex', '0');
+		expect(handle).toHaveAttribute('aria-valuenow', '340');
+
+		fireEvent.keyDown(handle, { key: 'ArrowRight', shiftKey: true });
+		expect(handle).toHaveAttribute('aria-valuenow', '404');
+		expect(localStorage.getItem('opsimate-alert-details-panel-width')).toBe('404');
+
+		fireEvent.keyDown(handle, { key: 'End' });
+		expect(handle).toHaveAttribute('aria-valuenow', '640');
+	});
+});

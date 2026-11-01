@@ -54,8 +54,6 @@ const [filters, setFilters] = useState<ActiveFilters>({});
   facets={facets}
   filters={filters}
   onFilterChange={setFilters}
-  collapsed={false}
-  onToggle={() => setCollapsed(!collapsed)}
   variant="compact"
 />
 ```
@@ -66,8 +64,6 @@ const [filters, setFilters] = useState<ActiveFilters>({});
 - **facets**: `FilterFacets` - Computed facet data with counts
 - **filters**: `ActiveFilters` - Currently active filters
 - **onFilterChange**: `(filters: ActiveFilters) => void` - Callback when filters change
-- **collapsed**: `boolean` - Whether the panel is collapsed (optional)
-- **onToggle**: `() => void` - Callback to toggle collapse state (optional)
 - **className**: `string` - Additional CSS classes (optional)
 - **variant**: `'default' | 'compact'` - Size variant (optional, default: 'default')
 
