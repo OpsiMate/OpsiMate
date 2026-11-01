@@ -34,6 +34,9 @@ export class UnknownAlertIdsError extends Error {
 	}
 }
 
+// Actor for changes the system makes on its own (no user behind the request).
+const SYSTEM_ACTOR: IncidentActor = { id: null, name: 'System' };
+
 export class IncidentBL {
 	constructor(
 		private incidentRepo: IncidentRepository,
@@ -45,9 +48,11 @@ export class IncidentBL {
 		alertIds: string[],
 		eventType: AlertHistoryEventType,
 		incidentName: string,
-		actor: IncidentActor
+		actor: IncidentActor,
+		reason?: string
 	): Promise<void> {
 		const verb = eventType === AlertHistoryEventType.INCIDENT_ADDED ? 'Grouped into' : 'Removed from';
+		const description = `${verb} incident "${incidentName}"` + (reason ? ` — ${reason}` : '');
 		// Best-effort, per alert: history is written after the membership change committed,
 		// so one failed insert must neither fail the request nor skip the other alerts.
 		await Promise.all(
@@ -57,7 +62,7 @@ export class IncidentBL {
 						alertId,
 						eventType,
 						actorName: actor.name,
-						description: `${verb} incident "${incidentName}"`,
+						description,
 					});
 				} catch (error) {
 					logger.error(
@@ -218,7 +223,8 @@ export class IncidentBL {
 	async removeAlerts(
 		id: number,
 		alertIds: string[],
-		actor: IncidentActor
+		actor: IncidentActor,
+		reason?: string
 	): Promise<{ dissolved: boolean } | undefined> {
 		const incident = await this.incidentRepo.getIncidentById(id);
 		if (!incident) return undefined;
@@ -227,7 +233,8 @@ export class IncidentBL {
 			removedAlertIds,
 			AlertHistoryEventType.INCIDENT_REMOVED,
 			incident.name,
-			actor
+			actor,
+			reason
 		);
 		const remaining = await this.incidentRepo.getMemberCount(id);
 		if (remaining === 0) {
@@ -257,10 +264,10 @@ export class IncidentBL {
 		await this.removeAlerts(incidentId, [alertId], actor);
 	}
 
-	// Hook for the ingest path: a resolved alert that fires again comes back as a new row
-	// built from the webhook, which carries no owner. Membership survives (it follows the
-	// id), so the member would sit ownerless in the Unassigned pane and split its
-	// incident. Re-claim such members for the incident's owner.
+	// Hook for the ingest path: a resolved alert that fires again is a NEW episode. It
+	// leaves the incident it was grouped under (membership follows the id, so it would
+	// otherwise snap back in, ownerless) and starts over as a plain alert; the incident
+	// keeps its remaining members, and dissolves if that was the last one.
 	async handleAlertsRefired(alertIds: string[]): Promise<void> {
 		const membership = await this.incidentRepo.getMembershipMap();
 		const byIncident = new Map<number, string[]>();
@@ -272,11 +279,8 @@ export class IncidentBL {
 			else byIncident.set(incidentId, [alertId]);
 		}
 		for (const [incidentId, members] of byIncident) {
-			const incident = await this.incidentRepo.getIncidentSummaryById(incidentId);
-			if (!incident || incident.createdBy === null) continue;
-			await this.alerts.claimUnowned(members, { id: incident.createdBy, name: incident.ownerName });
+			await this.removeAlerts(incidentId, members, SYSTEM_ACTOR, 'fired again after resolving');
 		}
-		if (byIncident.size > 0) this.alerts.invalidateSnapshots();
 	}
 
 	// Hook for the alerts delete-forever paths: memberships must not dangle after their

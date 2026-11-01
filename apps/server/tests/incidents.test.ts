@@ -391,7 +391,7 @@ describe('incident lifecycle scenarios', () => {
 		expect(r?.ownerId).toBe(String(creatorId));
 	});
 
-	test('a resolved member that fires again is back in the incident, firing, with its owner', async () => {
+	test('a resolved member that fires again is a new episode: it leaves the incident', async () => {
 		const res = await post('/api/v1/alerts/custom?api_token=opsimate', {
 			id: 'life-a',
 			alertName: 'Life A',
@@ -401,23 +401,45 @@ describe('incident lifecycle scenarios', () => {
 		});
 		expect(res.status).toBe(200);
 		const alerts = await alertsById();
-		expect(alerts.get('life-a')?.incidentId).toBe(incidentId);
-		expect(alerts.get('life-a')?.ownerId).toBe(String(creatorId));
+		expect(alerts.get('life-a')?.incidentId ?? null).toBeNull();
+		// Back as a plain alert: firing, and ownerless like any re-fired alert.
+		expect(alerts.get('life-a')?.ownerId ?? null).toBeNull();
 		const s = await summary();
-		expect(s.firingCount).toBe(2);
+		expect(s.alertIds).toEqual(['life-b']);
+		expect(s.firingCount).toBe(1);
 		expect(s.resolvedCount).toBe(0);
+		const history = await get('/api/v1/alerts/life-a/history');
+		const removed = (history.body.data.data as { eventType?: string; description?: string }[]).find(
+			(e) => e.eventType === 'incident_removed'
+		);
+		expect(removed?.description).toContain('fired again');
+	});
+
+	test('a re-fire of the last member dissolves the incident', async () => {
+		insertAlert('solo-a', 'Solo A', 'warning', '2026-08-16T10:00:00.000Z');
+		const created = await post('/api/v1/incidents', { name: 'Solo episode', alertIds: ['solo-a'] });
+		const id = created.body.data.id as number;
+		await post('/api/v1/alerts/bulk', { action: 'resolve', ids: ['solo-a'] }).expect(200);
+		await post('/api/v1/alerts/custom?api_token=opsimate', {
+			id: 'solo-a',
+			alertName: 'Solo A',
+			severity: 'warning',
+			summary: 'again',
+			tags: {},
+		}).expect(200);
+		expect((await get(`/api/v1/incidents/${id}`)).status).toBe(404);
 	});
 
 	test('an incident whose members all resolved stays, reporting resolved', async () => {
-		await post('/api/v1/alerts/bulk', { action: 'resolve', ids: ['life-a', 'life-b'] }).expect(200);
+		await post('/api/v1/alerts/bulk', { action: 'resolve', ids: ['life-b'] }).expect(200);
 		const s = await summary();
-		expect(s.alertCount).toBe(2);
+		expect(s.alertCount).toBe(1);
 		expect(s.firingCount).toBe(0);
 		expect(s.silencedCount).toBe(0);
-		expect(s.resolvedCount).toBe(2);
+		expect(s.resolvedCount).toBe(1);
 	});
 
-	test('unresolving a member brings it back under the incident', async () => {
+	test('unresolving a member (a human act, not a re-fire) keeps it under the incident', async () => {
 		await patch('/api/v1/alerts/resolved/life-b/unresolve', {}).expect(200);
 		const alerts = await alertsById();
 		expect(alerts.get('life-b')?.incidentId).toBe(incidentId);
@@ -425,9 +447,11 @@ describe('incident lifecycle scenarios', () => {
 	});
 
 	test('a retention-style raw purge of a member is cleaned up on the next read', async () => {
-		db.prepare(`DELETE FROM alerts_resolved WHERE id = 'life-a'`).run();
+		insertAlert('life-c', 'Life C', 'warning', '2026-08-15T10:00:00.000Z');
+		await post(`/api/v1/incidents/${incidentId}/alerts`, { alertIds: ['life-c'] }).expect(200);
+		expect((await summary()).alertIds.sort()).toEqual(['life-b', 'life-c']);
+		db.prepare(`DELETE FROM alerts WHERE id = 'life-c'`).run();
 		const s = await summary();
-		expect(s.alertCount).toBe(1);
-		expect(s.alertIds.sort()).toEqual(['life-b']);
+		expect(s.alertIds).toEqual(['life-b']);
 	});
 });
