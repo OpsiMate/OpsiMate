@@ -164,14 +164,17 @@ export class IncidentBL {
 		return summary;
 	}
 
+	// Both reads sweep first: retention (and any other hard-delete path) purges alerts
+	// with raw SQL, and reading is the cheap place to keep membership honest afterwards.
+	// `get` sweeps too, so an incident opened right after a purge never reports members
+	// that no longer exist.
 	async list(): Promise<IncidentSummary[]> {
-		// Sweep on read: retention (and any other hard-delete path) purges alerts with
-		// raw SQL, and this is the cheap place to keep membership honest afterwards.
 		await this.incidentRepo.pruneDanglingMemberships();
 		return this.incidentRepo.getIncidentSummaries();
 	}
 
 	async get(id: number): Promise<IncidentSummary | undefined> {
+		await this.incidentRepo.pruneDanglingMemberships();
 		return this.incidentRepo.getIncidentSummaryById(id);
 	}
 
