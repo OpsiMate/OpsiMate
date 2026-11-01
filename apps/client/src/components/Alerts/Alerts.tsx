@@ -1140,14 +1140,11 @@ const Alerts = () => {
 		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
 	};
 
-	// Two alerts can form a new incident; a single one can still join an existing incident
-	// it is not already in. Hidden when "all N matching" is armed but only a page is
+	// Any selection can start a new incident (or join an existing one). Hidden when "all N matching" is armed but only a page is
 	// loaded: grouping would silently take the loaded subset while the bar claims the
 	// whole match set is selected.
 	const canOpenIncidentDialog =
-		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length) &&
-		(selectedAlerts.length >= 2 ||
-			incidents.some((incident) => selectedAlerts.some((alert) => alert.incidentId !== incident.id)));
+		selectedAlerts.length > 0 && !(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
 
 	// Synchronous in-flight guard: a double submit before the mutation's isPending reaches
 	// the dialog would send two requests, and the server re-homes exclusive memberships,

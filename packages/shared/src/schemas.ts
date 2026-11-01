@@ -307,8 +307,7 @@ export const MutePolicyIdSchema = z.object({
 // Incidents
 // ---------------------------------------------------------------------------
 
-// Duplicate ids would let [a, a] satisfy the two-alert minimum while grouping a single
-// alert — distinctness is part of "two alerts make a group".
+// Distinct ids: duplicates would inflate counts and write duplicate history events.
 const distinctAlertIds = (alertIds: string[]): boolean => new Set(alertIds).size === alertIds.length;
 
 export const CreateIncidentSchema = z.object({
@@ -316,10 +315,10 @@ export const CreateIncidentSchema = z.object({
 	// dialog can be skipped through without typing.
 	name: z.string().trim().max(200).optional(),
 	description: z.string().trim().max(2000).optional(),
-	// Two alerts make a group; one alert is just an alert.
+	// One alert is enough: an incident can start from a single alert and grow later.
 	alertIds: z
 		.array(z.string().min(1))
-		.min(2, 'An incident needs at least two alerts')
+		.min(1, 'An incident needs at least one alert')
 		.refine(distinctAlertIds, 'Duplicate alert ids'),
 });
 

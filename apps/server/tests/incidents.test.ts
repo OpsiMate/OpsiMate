@@ -117,9 +117,13 @@ describe('incidents', () => {
 		expect(byId.get(incidentId)).toEqual(['inc-b', 'inc-r']);
 	});
 
-	test('an incident needs at least two alerts', async () => {
-		const res = await post('/api/v1/incidents', { alertIds: ['inc-d'] });
-		expect(res.status).toBe(400);
+	test('an incident can start from a single alert, but not from none', async () => {
+		const one = await post('/api/v1/incidents', { name: 'Solo', alertIds: ['inc-d'] });
+		expect(one.status).toBe(201);
+		expect(one.body.data.alertCount).toBe(1);
+		await del(`/api/v1/incidents/${one.body.data.id}`).expect(200);
+		const none = await post('/api/v1/incidents', { alertIds: [] });
+		expect(none.status).toBe(400);
 	});
 
 	test('removing the last members dissolves the incident', async () => {
@@ -150,7 +154,7 @@ describe('incidents', () => {
 		expect(unknown.status).toBe(400);
 		expect(unknown.body.error).toContain('no-such-alert');
 
-		// [a, a] must not satisfy the two-alert minimum — that groups a single alert.
+		// Duplicate ids are rejected rather than silently collapsed.
 		const dupes = await post('/api/v1/incidents', { alertIds: ['inc-a', 'inc-a'] });
 		expect(dupes.status).toBe(400);
 

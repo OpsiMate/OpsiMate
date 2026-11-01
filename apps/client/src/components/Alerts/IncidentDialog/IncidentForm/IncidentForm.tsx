@@ -29,11 +29,9 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 		'alerts' in target
 			? target.incidents.filter((incident) => alerts.some((alert) => alert.incidentId !== incident.id))
 			: [];
-	// Two alerts make a group; a single alert can only join an existing incident.
-	const canCreate = alerts.length >= 2;
-	const [destination, setDestination] = useState<Destination>(
-		canCreate || candidates.length === 0 ? 'new' : 'existing'
-	);
+	// Even a single alert can start an incident; it just grows from there.
+	const canCreate = alerts.length >= 1;
+	const [destination, setDestination] = useState<Destination>('new');
 	const [incidentId, setIncidentId] = useState<string>(candidates[0] ? String(candidates[0].id) : '');
 	const [name, setName] = useState(editing?.name ?? '');
 	const [description, setDescription] = useState(editing?.description ?? '');
@@ -83,7 +81,6 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 						<DestinationOption
 							selected={destination === 'new'}
 							disabled={!canCreate}
-							title={canCreate ? undefined : 'Select at least two alerts to create an incident'}
 							icon={<FolderPlus className="h-3.5 w-3.5" />}
 							label="New incident"
 							onSelect={() => setDestination('new')}
