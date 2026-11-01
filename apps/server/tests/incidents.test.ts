@@ -401,8 +401,9 @@ describe('incident lifecycle scenarios', () => {
 		});
 		expect(res.status).toBe(200);
 		const alerts = await alertsById();
+		// Back in the active list as a plain alert: firing, and ownerless like any re-fired alert.
+		expect(alerts.has('life-a')).toBe(true);
 		expect(alerts.get('life-a')?.incidentId ?? null).toBeNull();
-		// Back as a plain alert: firing, and ownerless like any re-fired alert.
 		expect(alerts.get('life-a')?.ownerId ?? null).toBeNull();
 		const s = await summary();
 		expect(s.alertIds).toEqual(['life-b']);
