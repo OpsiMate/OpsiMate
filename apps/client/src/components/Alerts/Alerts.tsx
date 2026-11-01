@@ -43,6 +43,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { pluralize } from '@/lib/text';
+import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
 import { AiFilterResult, Alert } from '@OpsiMate/shared';
 import {
@@ -1143,13 +1144,20 @@ const Alerts = () => {
 	// Any selection can start a new incident (or join an existing one). Hidden when "all N matching" is armed but only a page is
 	// loaded: grouping would silently take the loaded subset while the bar claims the
 	// whole match set is selected.
+	// Playground mode has no incidents endpoint (useIncidents is disabled there), so the
+	// dialog could neither list incidents nor warn about dissolving one.
 	const canOpenIncidentDialog =
-		selectedAlerts.length > 0 && !(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
+		!isPlaygroundMode() &&
+		selectedAlerts.length > 0 &&
+		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
 
 	// Synchronous in-flight guard: a double submit before the mutation's isPending reaches
 	// the dialog would send two requests, and the server re-homes exclusive memberships,
 	// so the second could undo the first.
 	const incidentSubmitInFlight = useRef(false);
+	// Bulk removal fans out to one request per incident, so the mutation's own isPending
+	// cannot stand for the whole operation; this flag does.
+	const [incidentRemovalPending, setIncidentRemovalPending] = useState(false);
 	const handleIncidentFormSubmit = async (result: IncidentFormResult) => {
 		if (incidentSubmitInFlight.current) return;
 		incidentSubmitInFlight.current = true;
@@ -1205,27 +1213,51 @@ const Alerts = () => {
 			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert.id]);
 		}
 		if (byIncident.size === 0) return;
-		const removed = [...byIncident.values()].reduce((n, ids) => n + ids.length, 0);
+		setIncidentRemovalPending(true);
 		try {
-			const results = await Promise.all(
-				[...byIncident].map(([id, alertIds]) => removeIncidentAlertsMutation.mutateAsync({ id, alertIds }))
+			// Settled, not all-or-nothing: each incident's removal stands on its own. Alerts
+			// whose removal went through leave the selection; the failed groups stay selected
+			// so a retry targets exactly them.
+			const groups = [...byIncident];
+			const outcomes = await Promise.allSettled(
+				groups.map(([id, alertIds]) => removeIncidentAlertsMutation.mutateAsync({ id, alertIds }))
 			);
-			const dissolved = results.filter((r) => r.dissolved).length;
-			toast({
-				title: 'Removed from incident',
-				description:
-					`${removed} ${pluralize(removed, 'alert')} removed from ${byIncident.size} ${pluralize(byIncident.size, 'incident')}` +
-					(dissolved > 0 ? `; ${dissolved} ${pluralize(dissolved, 'incident')} dissolved` : ''),
+			const removedIds = new Set<string>();
+			let dissolved = 0;
+			const failures: string[] = [];
+			outcomes.forEach((outcome, i) => {
+				const [id, alertIds] = groups[i];
+				if (outcome.status === 'fulfilled') {
+					alertIds.forEach((alertId) => removedIds.add(alertId));
+					if (outcome.value.dissolved) dissolved += 1;
+				} else {
+					failures.push(incidentsById.get(id)?.name ?? `#${id}`);
+				}
 			});
+			if (removedIds.size > 0) {
+				toast({
+					title: 'Removed from incident',
+					description:
+						`${removedIds.size} ${pluralize(removedIds.size, 'alert')} removed` +
+						(dissolved > 0 ? `; ${dissolved} ${pluralize(dissolved, 'incident')} dissolved` : ''),
+				});
+			}
+			if (failures.length > 0) {
+				toast({
+					title: 'Failed to remove from incident',
+					description: `Could not remove from ${failures.join(', ')}; those alerts stay selected.`,
+					variant: 'destructive',
+				});
+			}
 			if (selectedIncidentId != null && !incidentsById.has(selectedIncidentId)) setSelectedIncidentId(null);
-			setIncidentDialog((current) => (current === 'create' ? null : current));
-			handleSelectAlerts([]);
-		} catch (err) {
-			toast({
-				title: 'Failed to remove from incident',
-				description: err instanceof Error ? err.message : 'Unknown error',
-				variant: 'destructive',
-			});
+			if (failures.length === 0) {
+				setIncidentDialog((current) => (current === 'create' ? null : current));
+				handleSelectAlerts([]);
+			} else {
+				handleSelectAlerts(selectedAlerts.filter((alert) => !removedIds.has(alert.id)));
+			}
+		} finally {
+			setIncidentRemovalPending(false);
 		}
 	};
 
@@ -1803,7 +1835,8 @@ const Alerts = () => {
 				isSubmitting={
 					createIncidentMutation.isPending ||
 					addIncidentAlertsMutation.isPending ||
-					updateIncidentMutation.isPending
+					updateIncidentMutation.isPending ||
+					incidentRemovalPending
 				}
 			/>
 
