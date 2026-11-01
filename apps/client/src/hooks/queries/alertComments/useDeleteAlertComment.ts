@@ -19,7 +19,7 @@ export const useDeleteAlertComment = () => {
 			return response.data;
 		},
 		onSuccess: (_data, variables) => {
-			queryClient.invalidateQueries({ queryKey: [...queryKeys.alertComments, variables.alertId] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertCommentsFor(variables.alertId) });
 		},
 	});
 };

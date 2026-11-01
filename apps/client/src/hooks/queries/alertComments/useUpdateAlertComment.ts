@@ -20,7 +20,7 @@ export const useUpdateAlertComment = () => {
 			return response.data?.comment;
 		},
 		onSuccess: (_data, variables) => {
-			queryClient.invalidateQueries({ queryKey: [...queryKeys.alertComments, variables.alertId] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertCommentsFor(variables.alertId) });
 		},
 	});
 };
