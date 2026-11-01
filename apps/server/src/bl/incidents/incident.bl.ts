@@ -131,21 +131,26 @@ export class IncidentBL {
 		// The incident is durable from here on. What follows is bookkeeping around it and
 		// is best-effort: a failure is logged, not surfaced, because a 500 after the commit
 		// would invite a retry that creates a SECOND incident and moves the alerts into it.
-		try {
-			// Removal events for re-homed alerts must be written BEFORE the emptied source
-			// incidents dissolve, while their names are still readable.
-			await this.recordAddTransitions(transitions, lastID, summary.name, actor);
-			await this.dissolveIfEmpty(
-				transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null)
-			);
-			// Grouping is taking charge: the creator owns the incident (createdBy) and every
-			// member nobody owned yet. Members that already have an owner keep them. This is
-			// what keeps an incident whole in the split-by-owner view — see
-			// handleAlertUnassigned for the other half of the rule.
-			await this.alerts.claimUnowned(request.alertIds, actor);
-		} catch (error) {
-			logger.error(`Incident ${lastID} was created, but its history/ownership follow-up failed`, error);
-		}
+		// Each step fails on its own, so a history hiccup never skips the ownership claim.
+		const bestEffort = async (what: string, step: () => Promise<void>) => {
+			try {
+				await step();
+			} catch (error) {
+				logger.error(`Incident ${lastID} was created, but ${what} failed`, error);
+			}
+		};
+		const previousIds = transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null);
+		// Removal events for re-homed alerts must be written BEFORE the emptied source
+		// incidents dissolve, while their names are still readable.
+		await bestEffort('recording membership history', () =>
+			this.recordAddTransitions(transitions, lastID, summary.name, actor)
+		);
+		await bestEffort('dissolving emptied incidents', () => this.dissolveIfEmpty(previousIds));
+		// Grouping is taking charge: the creator owns the incident (createdBy) and every
+		// member nobody owned yet. Members that already have an owner keep them. This is
+		// what keeps an incident whole in the split-by-owner view — see
+		// handleAlertUnassigned for the other half of the rule.
+		await bestEffort('claiming unowned members', () => this.alerts.claimUnowned(request.alertIds, actor));
 		this.alerts.invalidateSnapshots();
 		return summary;
 	}
