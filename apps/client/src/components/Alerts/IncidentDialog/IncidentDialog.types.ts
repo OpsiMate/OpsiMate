@@ -4,6 +4,9 @@ import { Alert, IncidentSummary } from '@OpsiMate/shared';
 export interface IncidentCreateTarget {
 	alerts: Alert[];
 	incidents: IncidentSummary[];
+	// Until the incidents list has loaded, the form cannot offer existing incidents nor
+	// warn which ones a move would dissolve, so it holds off on submitting.
+	incidentsState: 'loading' | 'error' | 'ready';
 }
 
 // Editing an existing incident's name and details.

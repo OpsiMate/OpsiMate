@@ -47,8 +47,12 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 	const [description, setDescription] = useState(editing?.description ?? '');
 
 	const adding = editing === null && destination === 'existing';
+	const incidentsState = 'alerts' in target ? target.incidentsState : 'ready';
 	const canSubmit =
-		!isSubmitting && (editing !== null ? name.trim().length > 0 : adding ? incidentId !== '' : canCreate);
+		!isSubmitting &&
+		(editing !== null
+			? name.trim().length > 0
+			: incidentsState === 'ready' && (adding ? incidentId !== '' : canCreate));
 
 	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
@@ -150,6 +154,13 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							/>
 						</div>
 					</>
+				)}
+				{incidentsState !== 'ready' && (
+					<p className="text-xs text-muted-foreground" role="status">
+						{incidentsState === 'loading'
+							? 'Loading incidents…'
+							: 'Could not load the incidents list; grouping is paused until it does.'}
+					</p>
 				)}
 				{dissolving.length > 0 && (
 					<p className="text-xs text-amber-600 dark:text-amber-400" role="alert">

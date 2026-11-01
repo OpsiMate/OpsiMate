@@ -790,7 +790,7 @@ const Alerts = () => {
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
-	const { incidents, incidentsById } = useIncidents();
+	const { incidents, incidentsById, isLoading: incidentsLoading, isError: incidentsError } = useIncidents();
 	const createIncidentMutation = useCreateIncident();
 	const addIncidentAlertsMutation = useAddIncidentAlerts();
 	const updateIncidentMutation = useUpdateIncident();
@@ -1166,7 +1166,11 @@ const Alerts = () => {
 
 	const incidentDialogTarget: IncidentDialogTarget | null =
 		incidentDialog === 'create'
-			? { alerts: selectedAlerts, incidents }
+			? {
+					alerts: selectedAlerts,
+					incidents,
+					incidentsState: incidentsError ? 'error' : incidentsLoading ? 'loading' : 'ready',
+				}
 			: incidentDialog != null && incidentsById.has(incidentDialog)
 				? { incident: incidentsById.get(incidentDialog)! }
 				: null;
@@ -1179,7 +1183,7 @@ const Alerts = () => {
 				alertIds: selectedAlerts.map((a) => a.id),
 			});
 			toast({ title: 'Incident created', description: incident.name });
-			setIncidentDialog(null);
+			setIncidentDialog((current) => (current === 'create' ? null : current));
 			handleSelectAlerts([]);
 		} catch (err) {
 			toast({
@@ -1195,7 +1199,7 @@ const Alerts = () => {
 		try {
 			await addIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: selectedAlerts.map((a) => a.id) });
 			toast({ title: 'Added to incident', description: incident?.name ?? `#${incidentId}` });
-			setIncidentDialog(null);
+			setIncidentDialog((current) => (current === 'create' ? null : current));
 			handleSelectAlerts([]);
 		} catch (err) {
 			toast({
@@ -1210,7 +1214,7 @@ const Alerts = () => {
 		try {
 			await updateIncidentMutation.mutateAsync({ id, name, description: description || null });
 			toast({ title: 'Incident updated', description: name });
-			setIncidentDialog(null);
+			setIncidentDialog((current) => (current === id ? null : current));
 		} catch (err) {
 			toast({
 				title: 'Failed to update incident',

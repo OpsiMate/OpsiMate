@@ -27,5 +27,5 @@ export const useIncidents = () => {
 	const incidents = useMemo(() => result.data ?? [], [result.data]);
 	const incidentsById = useMemo(() => new Map(incidents.map((i) => [i.id, i])), [incidents]);
 
-	return { incidents, incidentsById, isLoading: result.isLoading };
+	return { incidents, incidentsById, isLoading: result.isLoading, isError: result.isError };
 };
