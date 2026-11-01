@@ -129,11 +129,19 @@ describe('useAlertsRefresh auto-refresh', () => {
 	});
 
 	test('a tick moves lastRefresh forward only after its fetch succeeds', async () => {
-		const refetch = vi.fn().mockResolvedValue(resultOf({ status: 'success' }));
+		const pending = deferred();
+		const refetch = vi.fn().mockReturnValue(pending.promise);
 		const { result } = renderHook(() => useAlertsRefresh(refetch));
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(ACTIVE_ALERTS_POLL_MS);
+		});
+
+		expect(result.current.lastRefresh).toEqual(START);
+
+		await act(async () => {
+			pending.resolve(resultOf({ status: 'success' }));
+			await pending.promise;
 		});
 
 		expect(result.current.lastRefresh).toEqual(new Date(START.getTime() + ACTIVE_ALERTS_POLL_MS));
