@@ -96,26 +96,22 @@ describe('AlertsSelectionBar while a bulk action runs', () => {
 	});
 });
 
-describe('AlertsSelectionBar incident actions', () => {
-	test('shows the incident actions only when the parent offers them', () => {
+describe('AlertsSelectionBar incident action', () => {
+	test('shows the incident button only when the parent offers it, following the in-flight restriction', () => {
 		(getUserRole as ReturnType<typeof vi.fn>).mockReturnValue(Role.Editor);
 		const { rerender } = render(
 			<AlertsSelectionBar selectedAlerts={[alert('a1')]} onClearSelection={noop} onSilenceAll={noop} />
 		);
-		expect(screen.queryByRole('button', { name: /Add to incident/ })).toBeNull();
-		expect(screen.queryByRole('button', { name: /Remove from incident/ })).toBeNull();
+		expect(screen.queryByRole('button', { name: /^Incident$/ })).toBeNull();
 		rerender(
 			<AlertsSelectionBar
 				selectedAlerts={[alert('a1')]}
 				onClearSelection={noop}
 				onSilenceAll={noop}
 				onGroupIntoIncident={noop}
-				onRemoveFromIncident={noop}
 				actionsDisabled
 			/>
 		);
-		// Both follow the bulk in-flight restriction.
-		expect(screen.getByRole('button', { name: /Add to incident/ })).toBeDisabled();
-		expect(screen.getByRole('button', { name: /Remove from incident/ })).toBeDisabled();
+		expect(screen.getByRole('button', { name: /^Incident$/ })).toBeDisabled();
 	});
 });

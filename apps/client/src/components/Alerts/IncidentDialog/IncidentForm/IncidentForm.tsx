@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { pluralize } from '@/lib/text';
-import { FolderInput, FolderPlus, Pencil } from 'lucide-react';
+import { Folder, FolderInput, FolderMinus, FolderPlus, Pencil } from 'lucide-react';
 import { FormEvent, useId, useState } from 'react';
 import { IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog.types';
 
@@ -17,48 +17,53 @@ interface IncidentFormProps {
 	isSubmitting?: boolean;
 }
 
-// Where the selection goes: a new incident, or one that already exists.
-type Destination = 'new' | 'existing';
+// What happens to the selection: a new incident, an existing one, or out of its incidents.
+type Destination = 'new' | 'existing' | 'remove';
 
 export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: IncidentFormProps) => {
 	const idPrefix = useId();
 	const editing = 'incident' in target ? target.incident : null;
 	const alerts = 'alerts' in target ? target.alerts : [];
+	const incidents = 'alerts' in target ? target.incidents : [];
+	const incidentsState = 'alerts' in target ? target.incidentsState : 'ready';
 	// An incident every selected alert already belongs to has nothing to receive.
-	const candidates =
-		'alerts' in target
-			? target.incidents.filter((incident) => alerts.some((alert) => alert.incidentId !== incident.id))
-			: [];
+	const candidates = incidents.filter((incident) => alerts.some((alert) => alert.incidentId !== incident.id));
+	// Members among the selection, for the remove option.
+	const members = alerts.filter((alert) => alert.incidentId != null);
 	// Even a single alert can start an incident; it just grows from there.
 	const canCreate = alerts.length >= 1;
 	const [destination, setDestination] = useState<Destination>('new');
 	const [incidentId, setIncidentId] = useState<string>(candidates[0] ? String(candidates[0].id) : '');
+	const [name, setName] = useState(editing?.name ?? '');
+	const [description, setDescription] = useState(editing?.description ?? '');
+
+	const adding = editing === null && destination === 'existing';
+	const removing = editing === null && destination === 'remove';
 	// Membership is exclusive, so moving alerts out of an incident that has no other
 	// members dissolves it, name and details included. Say so before it happens.
 	const selectedIds = new Set(alerts.map((alert) => alert.id));
-	const chosenId = destination === 'existing' ? Number(incidentId) : null;
-	const dissolving = ('alerts' in target ? target.incidents : []).filter(
+	const chosenId = adding ? Number(incidentId) : null;
+	const dissolving = incidents.filter(
 		(incident) =>
 			incident.id !== chosenId &&
 			incident.alertIds.length > 0 &&
 			incident.alertIds.every((id) => selectedIds.has(id))
 	);
-	const [name, setName] = useState(editing?.name ?? '');
-	const [description, setDescription] = useState(editing?.description ?? '');
+	const incidentName = (id: number | null | undefined) =>
+		incidents.find((incident) => incident.id === id)?.name ?? 'an incident';
 
-	const adding = editing === null && destination === 'existing';
-	const incidentsState = 'alerts' in target ? target.incidentsState : 'ready';
 	const canSubmit =
 		!isSubmitting &&
 		(editing !== null
 			? name.trim().length > 0
-			: incidentsState === 'ready' && (adding ? incidentId !== '' : canCreate));
+			: incidentsState === 'ready' && (removing ? members.length > 0 : adding ? incidentId !== '' : canCreate));
 
 	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
 		if (!canSubmit) return;
 		if (editing) onSubmit({ kind: 'edit', name: name.trim(), description: description.trim() });
 		else if (adding) onSubmit({ kind: 'add', incidentId: Number(incidentId) });
+		else if (removing) onSubmit({ kind: 'remove' });
 		else onSubmit({ kind: 'create', name: name.trim(), description: description.trim() });
 	};
 
@@ -66,32 +71,37 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 		? isSubmitting
 			? 'Saving…'
 			: 'Save'
-		: adding
+		: removing
 			? isSubmitting
-				? 'Adding…'
-				: 'Add to incident'
-			: isSubmitting
-				? 'Creating…'
-				: 'Create incident';
+				? 'Removing…'
+				: 'Remove from incident'
+			: adding
+				? isSubmitting
+					? 'Adding…'
+					: 'Add to incident'
+				: isSubmitting
+					? 'Creating…'
+					: 'Create incident';
 
 	return (
 		<>
 			<DialogHeader>
 				<DialogTitle className="flex items-center gap-2">
-					{editing ? <Pencil className="h-4 w-4" /> : <FolderPlus className="h-4 w-4" />}
-					{editing ? 'Edit incident' : 'Add to incident'}
+					{editing ? <Pencil className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+					{editing ? 'Edit incident' : 'Incident'}
 				</DialogTitle>
 				{!editing && (
 					<DialogDescription>
-						{alerts.length} {pluralize(alerts.length, 'alert')} selected. Alerts without an owner are
-						assigned to the incident's owner — you, for a new incident. Removing an alert's owner later
-						takes it out of the incident.
+						{alerts.length} {pluralize(alerts.length, 'alert')} selected
+						{members.length > 0 ? `, ${members.length} already in an incident` : ''}. Alerts without an
+						owner are assigned to the incident's owner — you, for a new incident. Removing an alert's owner
+						later takes it out of the incident.
 					</DialogDescription>
 				)}
 			</DialogHeader>
 			<form onSubmit={handleSubmit} className="space-y-4">
 				{!editing && (
-					<div className="grid grid-cols-2 gap-1 rounded-md border border-border p-1" role="radiogroup">
+					<div className="grid grid-cols-3 gap-1 rounded-md border border-border p-1" role="radiogroup">
 						<DestinationOption
 							selected={destination === 'new'}
 							disabled={!canCreate}
@@ -107,9 +117,23 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							label="Existing incident"
 							onSelect={() => setDestination('existing')}
 						/>
+						<DestinationOption
+							selected={destination === 'remove'}
+							disabled={members.length === 0}
+							title={members.length === 0 ? 'None of the selected alerts is in an incident' : undefined}
+							icon={<FolderMinus className="h-3.5 w-3.5" />}
+							label="Remove"
+							onSelect={() => setDestination('remove')}
+						/>
 					</div>
 				)}
-				{adding ? (
+				{removing ? (
+					<p className="text-sm text-muted-foreground">
+						{members.length} of {alerts.length} selected {pluralize(alerts.length, 'alert')}{' '}
+						{members.length === 1 ? 'is' : 'are'} in an incident and will be taken out of it; the rest are
+						left alone.
+					</p>
+				) : adding ? (
 					<div className="space-y-2">
 						<Label htmlFor={`${idPrefix}-incident`}>Incident</Label>
 						<Select value={incidentId} onValueChange={setIncidentId}>
@@ -175,6 +199,9 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 						{alerts.map((alert) => (
 							<div key={alert.id} className="text-xs text-muted-foreground truncate">
 								{alert.alertName}
+								{alert.incidentId != null && (
+									<span className="ml-1 opacity-70">· in {incidentName(alert.incidentId)}</span>
+								)}
 							</div>
 						))}
 					</div>

@@ -1156,6 +1156,7 @@ const Alerts = () => {
 		try {
 			if (result.kind === 'create') await handleCreateIncident(result.name, result.description);
 			else if (result.kind === 'add') await handleAddToIncident(result.incidentId);
+			else if (result.kind === 'remove') await handleRemoveSelectedFromIncidents();
 			else if (incidentDialog !== 'create' && incidentDialog != null) {
 				await handleSaveIncident(incidentDialog, result.name, result.description);
 			}
@@ -1217,6 +1218,7 @@ const Alerts = () => {
 					(dissolved > 0 ? `; ${dissolved} ${pluralize(dissolved, 'incident')} dissolved` : ''),
 			});
 			if (selectedIncidentId != null && !incidentsById.has(selectedIncidentId)) setSelectedIncidentId(null);
+			setIncidentDialog((current) => (current === 'create' ? null : current));
 			handleSelectAlerts([]);
 		} catch (err) {
 			toast({
@@ -1624,11 +1626,6 @@ const Alerts = () => {
 										// while the bar claims the whole match set is selected.
 										onGroupIntoIncident={
 											canOpenIncidentDialog ? () => setIncidentDialog('create') : undefined
-										}
-										onRemoveFromIncident={
-											canOpenIncidentDialog && selectedAlerts.some((a) => a.incidentId != null)
-												? handleRemoveSelectedFromIncidents
-												: undefined
 										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}

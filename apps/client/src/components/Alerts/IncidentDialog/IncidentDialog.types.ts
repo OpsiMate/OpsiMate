@@ -28,6 +28,11 @@ export interface IncidentAddResult {
 	incidentId: number;
 }
 
+// Take every selected alert that is in an incident out of it.
+export interface IncidentRemoveResult {
+	kind: 'remove';
+}
+
 export interface IncidentEditResult {
 	kind: 'edit';
 	name: string;
@@ -35,4 +40,4 @@ export interface IncidentEditResult {
 }
 
 // What the user asked for when submitting the form.
-export type IncidentFormResult = IncidentCreateResult | IncidentAddResult | IncidentEditResult;
+export type IncidentFormResult = IncidentCreateResult | IncidentAddResult | IncidentRemoveResult | IncidentEditResult;
