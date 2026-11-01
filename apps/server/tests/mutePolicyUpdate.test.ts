@@ -156,4 +156,23 @@ describe('PUT /api/v1/mute-policies/:id validates the policy after the update', 
 		expect(stored.labelMatchers).toEqual([{ key: 'env', value: 'prod' }]);
 		expect(stored.matchAll).toBe(false);
 	});
+
+	test('stored label matcher + sending only labelMatcherGroups: [] -> 400, both stored label fields unchanged', async () => {
+		// The stored labelMatchers is the only criteria. Touching the label pair
+		// with just labelMatcherGroups: [] replaces BOTH stored label members with
+		// what the body has (a missing member counts as empty), so the merged
+		// policy has no criteria and the create refinement must refuse it. The
+		// 400 happens before the write, so both stored label fields stay as-is.
+		const { id } = await createPolicy({
+			name: 'Label only',
+			labelMatchers: [{ key: 'env', value: 'prod' }],
+		});
+		const before = await getPolicy(id);
+		const res = await putPolicy(id, { labelMatcherGroups: [] });
+		expect(res.status).toBe(400);
+		expectValidationIssue(res, 'Provide at least a name match, one label matcher, or enable match-all');
+		const stored = await getPolicy(id);
+		expect(stored.labelMatchers).toEqual(before.labelMatchers);
+		expect(stored.labelMatcherGroups).toEqual(before.labelMatcherGroups);
+	});
 });
