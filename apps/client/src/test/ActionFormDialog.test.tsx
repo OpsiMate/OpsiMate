@@ -14,8 +14,8 @@ import { render, screen, waitFor, within } from './test-utils';
 
 const { createMutateAsync, updateMutateAsync, testMutateAsync, toastMock } = vi.hoisted(() => ({
 	createMutateAsync: vi.fn<(payload: ActionPayload) => Promise<Action>>(),
-	updateMutateAsync: vi.fn<(input: { id: number; payload: ActionPayload }) => Promise<Action>>(),
-	testMutateAsync: vi.fn<(payload: ActionPayload) => Promise<{ ok: boolean; message: string }>>(),
+	updateMutateAsync: vi.fn<(input: UpdateActionInput) => Promise<Action>>(),
+	testMutateAsync: vi.fn<(payload: ActionPayload) => Promise<TestActionResult>>(),
 	toastMock: vi.fn(),
 }));
 
@@ -29,6 +29,16 @@ vi.mock('@/hooks/use-toast', () => ({
 	useToast: () => ({ toast: toastMock }),
 	toast: toastMock,
 }));
+
+interface UpdateActionInput {
+	id: number;
+	payload: ActionPayload;
+}
+
+interface TestActionResult {
+	ok: boolean;
+	message: string;
+}
 
 interface FieldValue {
 	label: string | RegExp;
