@@ -17,7 +17,7 @@ import { AiConfigRepository } from '../../dal/aiConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
 
-const logger = new Logger('bl/ai.bl');
+const logger = new Logger('bl/ai/ai.bl');
 
 // Bedrock API keys authenticate with a plain bearer token against the Converse REST
 // API, so no AWS SDK or SigV4 signing is needed. A custom base URL (e.g. a LiteLLM

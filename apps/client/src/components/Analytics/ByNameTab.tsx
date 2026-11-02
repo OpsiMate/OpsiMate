@@ -48,6 +48,7 @@ export const ByNameTab = ({ rows }: ByNameTabProps) => {
 						<Input
 							className="h-8 pl-9"
 							placeholder="Filter by alert name"
+							aria-label="Filter by alert name"
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 						/>
@@ -161,7 +162,11 @@ export const ByNameTab = ({ rows }: ByNameTabProps) => {
 							{sorted.length === 0 && (
 								<TableRow>
 									<TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-										No alerts in this window
+										{/* With rows, an empty list means the filter matched nothing,
+											not that the window had no alerts. */}
+										{rows.length === 0
+											? 'No alerts in this window'
+											: `No alerts match "${search.trim()}"`}
 									</TableCell>
 								</TableRow>
 							)}

@@ -2,7 +2,7 @@ import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import { Logger } from '@OpsiMate/shared';
 
-const logger = new Logger('config');
+const logger = new Logger('config/config');
 
 // Which directory groups grant which OpsiMate role. Entries are full group DNs
 // (cn=ops,ou=groups,dc=example,dc=com) or bare group names (ops); matching is

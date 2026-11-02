@@ -3,7 +3,7 @@ import { Logger } from '@OpsiMate/shared';
 import { RetentionBL } from '../bl/retention/retention.bl';
 import { MS_PER_MINUTE } from '../utils/time';
 
-const logger = new Logger('retention-job');
+const logger = new Logger('jobs/retention-job');
 
 // How often the job wakes to check whether a cleanup is due. The actual cadence between runs is
 // the admin-configured cleanupIntervalHours; this short tick just lets config changes take effect

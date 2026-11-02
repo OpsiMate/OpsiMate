@@ -9,7 +9,7 @@ import {
 import { RetentionRepository } from '../../dal/retentionRepository';
 import { MS_PER_DAY, MS_PER_HOUR } from '../../utils/time';
 
-const logger = new Logger('bl/retention.bl');
+const logger = new Logger('bl/retention/retention.bl');
 
 export class RetentionBL {
 	constructor(private retentionRepo: RetentionRepository) {}
