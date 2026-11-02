@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import { pluralize } from '@/lib/text';
 import { Folder, FolderInput, FolderMinus, FolderPlus, Pencil } from 'lucide-react';
 import { FormEvent, useId, useState } from 'react';
 import { IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog.types';
+import { DestinationOption } from './DestinationOption';
+import { DESTINATION_MODE, Destination, Mode, SUBMIT_LABELS } from './IncidentForm.constants';
 
 interface IncidentFormProps {
 	target: IncidentDialogTarget;
@@ -16,19 +17,6 @@ interface IncidentFormProps {
 	onSubmit: (result: IncidentFormResult) => void;
 	isSubmitting?: boolean;
 }
-
-// What happens to the selection: a new incident, an existing one, or out of its incidents.
-type Destination = 'new' | 'existing' | 'remove';
-
-// What submitting does. Editing is decided by the target; the rest by the destination.
-type Mode = 'edit' | 'create' | 'add' | 'remove';
-const DESTINATION_MODE: Record<Destination, Mode> = { new: 'create', existing: 'add', remove: 'remove' };
-const SUBMIT_LABELS: Record<Mode, { idle: string; busy: string }> = {
-	edit: { idle: 'Save', busy: 'Saving…' },
-	create: { idle: 'Create incident', busy: 'Creating…' },
-	add: { idle: 'Add to incident', busy: 'Adding…' },
-	remove: { idle: 'Remove from incident', busy: 'Removing…' },
-};
 
 export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: IncidentFormProps) => {
 	const idPrefix = useId();
@@ -222,31 +210,3 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 		</>
 	);
 };
-
-interface DestinationOptionProps {
-	selected: boolean;
-	disabled?: boolean;
-	title?: string;
-	icon: React.ReactNode;
-	label: string;
-	onSelect: () => void;
-}
-
-const DestinationOption = ({ selected, disabled = false, title, icon, label, onSelect }: DestinationOptionProps) => (
-	<button
-		type="button"
-		role="radio"
-		aria-checked={selected}
-		disabled={disabled}
-		title={title}
-		onClick={onSelect}
-		className={cn(
-			'flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm transition-colors',
-			selected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
-			disabled && 'opacity-50 cursor-not-allowed hover:bg-transparent'
-		)}
-	>
-		{icon}
-		{label}
-	</button>
-);
