@@ -199,5 +199,11 @@ jobs:
         uses: release-drafter/release-drafter@v7
         with:
           config-name: release-drafter.yml
+          # The drafter's templates always say "next patch", but the version job
+          # may have been dispatched with minor/major. Pin the draft's tag and name
+          # to the version the images were actually built with, so publishing the
+          # draft tags the commit the way the registry already does.
+          tag: ${{ needs.version.outputs.tag }}
+          name: "${{ needs.version.outputs.tag }} 🚀"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
