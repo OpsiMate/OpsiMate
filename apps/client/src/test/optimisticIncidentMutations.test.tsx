@@ -11,6 +11,7 @@ import {
 	useUpdateIncident,
 } from '@/hooks/queries/incidents/useIncidentMutations';
 import { summarizeMembers } from '@/hooks/queries/incidents/incidentCache';
+import { updateAlertInCache } from '@/hooks/queries/alerts/alertListCache';
 
 const createIncident = vi.fn();
 const addIncidentAlerts = vi.fn();
@@ -254,6 +255,19 @@ describe('useCreateIncident', () => {
 });
 
 describe('useAddIncidentAlerts', () => {
+	test('adding an alert to the incident it is already in leaves that incident intact', async () => {
+		const queryClient = seed();
+		hold(addIncidentAlerts);
+		const { result } = renderHook(() => useAddIncidentAlerts(), { wrapper: wrapperFor(queryClient) });
+
+		// a3 is the sole member of incident 1; a1 is free.
+		act(() => result.current.mutate({ id: 1, alerts: [alert('a3', { incidentId: 1 }), alert('a1')] }));
+
+		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a1')).toBe(1));
+		expect(incidentIn(queryClient, 1)).toMatchObject({ alertCount: 2, alertIds: ['a3', 'a1'] });
+		queryClient.clear();
+	});
+
 	test('the target grows and the source shrinks before the server answers', async () => {
 		const queryClient = seed();
 		hold(addIncidentAlerts);
@@ -301,6 +315,28 @@ describe('useRemoveIncidentAlerts', () => {
 		queryClient.clear();
 	});
 
+	test('a failed removal puts back only its own incident, not the other groups of a bulk removal', async () => {
+		const queryClient = seed();
+		const failing = hold(removeIncidentAlerts);
+		const { result } = renderHook(() => useRemoveIncidentAlerts(), { wrapper: wrapperFor(queryClient) });
+
+		// Group 1 (incident 1, a3) will be refused; group 2 (incident 2, a4) is accepted.
+		act(() => result.current.mutate({ id: 1, alerts: [alert('a3', { incidentId: 1 })] }));
+		await waitFor(() => expect(incidentIn(queryClient, 1)).toBeUndefined());
+		const accepting = hold(removeIncidentAlerts);
+		act(() => result.current.mutate({ id: 2, alerts: [alert('a4', { incidentId: 2 })] }));
+		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a4')).toBeUndefined());
+		act(() => accepting.release({ success: true, data: { dissolved: false } }));
+
+		act(() => failing.fail(new Error('nope')));
+		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a3')).toBe(1));
+		expect(incidentIn(queryClient, 1)).toMatchObject({ alertIds: ['a3'] });
+		// Group 2's removal stands.
+		expect(stampOf(queryClient, activeListKey, 'a4')).toBeUndefined();
+		expect(incidentIn(queryClient, 2)).toMatchObject({ alertCount: 1, alertIds: ['r1'] });
+		queryClient.clear();
+	});
+
 	test('removing the last member dissolves the incident', async () => {
 		const queryClient = seed();
 		hold(removeIncidentAlerts);
@@ -330,7 +366,41 @@ describe('useDeleteIncident', () => {
 	});
 });
 
+describe('an incidents list that has not loaded', () => {
+	test('is not written, while the alert rows are still stamped', async () => {
+		const queryClient = seed();
+		queryClient.removeQueries({ queryKey: incidentsKey });
+		hold(createIncident);
+		const { result } = renderHook(() => useCreateIncident(), { wrapper: wrapperFor(queryClient) });
+
+		act(() => result.current.mutate({ alerts: [alert('a1'), alert('a2')] }));
+
+		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a1')).toBeLessThan(0));
+		expect(queryClient.getQueryData(incidentsKey)).toBeUndefined();
+		queryClient.clear();
+	});
+});
+
 describe('useUpdateIncident', () => {
+	test('a rename takes no alert-list snapshot, so its rollback cannot undo an alert change made meanwhile', async () => {
+		const queryClient = seed();
+		const pending = hold(updateIncident);
+		const { result } = renderHook(() => useUpdateIncident(), { wrapper: wrapperFor(queryClient) });
+
+		act(() => result.current.mutate({ id: 1, name: 'Renamed' }));
+		await waitFor(() => expect(incidentIn(queryClient, 1)?.name).toBe('Renamed'));
+		// An owner assign lands while the rename is in flight.
+		queryClient.setQueryData(
+			activeListKey,
+			updateAlertInCache('a1', (a) => ({ ...a, ownerId: '7' }))
+		);
+
+		act(() => pending.fail(new Error('nope')));
+		await waitFor(() => expect(incidentIn(queryClient, 1)?.name).toBe('Incident #1'));
+		expect(alertsIn(queryClient, activeListKey).find((a) => a.id === 'a1')?.ownerId).toBe('7');
+		queryClient.clear();
+	});
+
 	test('a rename shows on the folder before the server answers and rolls back if refused', async () => {
 		const queryClient = seed();
 		const pending = hold(updateIncident);

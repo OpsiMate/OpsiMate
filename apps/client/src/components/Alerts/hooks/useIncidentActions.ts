@@ -72,7 +72,9 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 
 	// The mutations paint the folder on the table before the server answers, so the dialog
 	// closes and the selection clears on submit, like any other alert action. A refusal
-	// rolls the table back, says so, and hands the selection back for a retry.
+	// rolls the table back, says so, and hands the selection back for a retry. (Edit is
+	// the exception: its dialog holds typed text, so it stays open until the server
+	// accepts — the folder itself is already renamed optimistically.)
 	const createIncident = async (name: string, description: string) => {
 		const alerts = selectedAlerts;
 		closeDialogIf('create');
@@ -162,10 +164,10 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 	};
 
 	const saveIncident = async (id: number, name: string, description: string) => {
-		closeDialogIf(id);
 		try {
 			await updateIncidentMutation.mutateAsync({ id, name, description: description || null });
 			toast({ title: 'Incident updated', description: name });
+			closeDialogIf(id);
 		} catch (err) {
 			toast({ title: 'Failed to update incident', description: errorMessage(err), variant: 'destructive' });
 		}

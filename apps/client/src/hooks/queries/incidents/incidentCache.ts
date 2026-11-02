@@ -153,6 +153,13 @@ export const withMembers = (incidents: IncidentSummary[], incidentId: number, al
 // the incidentId stamp on the alerts in every active and resolved list — cancelling
 // in-flight polls first so none lands on top of the optimistic state. Returns what was
 // there for restoreIncidentCaches.
+//
+// An incidents list that has not loaded (or failed) is left alone: writing a partial
+// one would make the query look ready; the settle refetch supplies the real list, and
+// a stamped alert without a summary simply renders as a plain row meanwhile. Likewise
+// a change that touches no alert (a rename) leaves the alert lists untouched — a
+// snapshot of them would be restored wholesale on failure, over whatever an alert
+// action changed in between.
 export const applyIncidentChange = async (
 	queryClient: QueryClient,
 	alertIds: ReadonlySet<string>,
@@ -161,7 +168,8 @@ export const applyIncidentChange = async (
 ): Promise<IncidentCacheSnapshot> => {
 	await queryClient.cancelQueries({ queryKey: queryKeys.incidents });
 	const before = queryClient.getQueryData<IncidentSummary[]>(queryKeys.incidents);
-	queryClient.setQueryData<IncidentSummary[]>(queryKeys.incidents, (old) => incidents(old ?? []));
+	queryClient.setQueryData<IncidentSummary[]>(queryKeys.incidents, (old) => (old ? incidents(old) : old));
+	if (alertIds.size === 0) return { incidents: before, alerts: [], resolvedAlerts: [] };
 	const restamp = updateAlertsInCache(alertIds, (alert) => ({ ...alert, incidentId: stamp }));
 	return {
 		incidents: before,
@@ -171,15 +179,17 @@ export const applyIncidentChange = async (
 };
 
 // The same rewrite, synchronous and WITHOUT cancelling anything: for the moment the
-// server has answered. The settle step invalidates (and so refetches) right after, and
-// a cancel here would kill that refetch and leave the caches to the next poll.
+// server has answered (or refused). The settle step invalidates (and so refetches)
+// right after, and a cancel here would kill that refetch and leave the caches to the
+// next poll.
 export const rewriteIncidentCaches = (
 	queryClient: QueryClient,
 	alertIds: ReadonlySet<string>,
 	stamp: number | undefined,
 	incidents: (list: IncidentSummary[]) => IncidentSummary[]
 ): void => {
-	queryClient.setQueryData<IncidentSummary[]>(queryKeys.incidents, (old) => incidents(old ?? []));
+	queryClient.setQueryData<IncidentSummary[]>(queryKeys.incidents, (old) => (old ? incidents(old) : old));
+	if (alertIds.size === 0) return;
 	const restamp = updateAlertsInCache(alertIds, (alert) => ({ ...alert, incidentId: stamp }));
 	queryClient.setQueriesData({ queryKey: queryKeys.alerts }, restamp);
 	queryClient.setQueriesData({ queryKey: queryKeys.resolvedAlerts }, restamp);

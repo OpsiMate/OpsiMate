@@ -60,6 +60,13 @@ interface CreateIncidentContext extends IncidentMutationContext {
 	provisionalId: number;
 }
 
+// Bulk removal fans out to one mutation per incident, in parallel, so a failed one
+// must not restore a whole-cache snapshot — that would undo the other incidents'
+// removals, confirmed or not. It puts back only its own incident's summary.
+interface RemoveIncidentContext {
+	previous: IncidentSummary | undefined;
+}
+
 const unwrap = <T>(response: ApiEnvelope<T>, fallback: string): T => {
 	if (!response.success) throw new Error(response.error || fallback);
 	return response.data as T;
@@ -139,11 +146,16 @@ export const useAddIncidentAlerts = () => {
 				),
 				'Failed to add alerts to incident'
 			),
-		onMutate: async ({ id, alerts }): Promise<IncidentMutationContext> => ({
-			snapshot: await applyIncidentChange(queryClient, idsOf(alerts), id, (list) =>
-				withMembers(withoutMembers(list, alerts), id, alerts)
-			),
-		}),
+		onMutate: async ({ id, alerts }): Promise<IncidentMutationContext> => {
+			// An alert already in the target stays put: taking it out first would
+			// dissolve a sole-member incident the moment it is "added" to itself.
+			const joining = alerts.filter((alert) => alert.incidentId !== id);
+			return {
+				snapshot: await applyIncidentChange(queryClient, idsOf(joining), id, (list) =>
+					withMembers(withoutMembers(list, joining), id, joining)
+				),
+			};
+		},
 		onError: (_err, _variables, context) => restoreIncidentCaches(queryClient, context?.snapshot),
 		onSettled: settle,
 	});
@@ -161,16 +173,24 @@ export const useRemoveIncidentAlerts = () => {
 				),
 				'Failed to remove alerts from incident'
 			),
-		onMutate: async ({ id, alerts }): Promise<IncidentMutationContext> => {
+		onMutate: async ({ id, alerts }): Promise<RemoveIncidentContext> => {
 			// Removal is by the incident the caller names, whatever the rows say.
 			const members = alerts.map((alert) => ({ ...alert, incidentId: id }));
-			return {
-				snapshot: await applyIncidentChange(queryClient, idsOf(alerts), undefined, (list) =>
-					withoutMembers(list, members)
-				),
-			};
+			const previous = queryClient
+				.getQueryData<IncidentSummary[]>(queryKeys.incidents)
+				?.find((incident) => incident.id === id);
+			await applyIncidentChange(queryClient, idsOf(alerts), undefined, (list) => withoutMembers(list, members));
+			return { previous };
 		},
-		onError: (_err, _variables, context) => restoreIncidentCaches(queryClient, context?.snapshot),
+		onError: (_err, { id, alerts }, context) => {
+			const previous = context?.previous;
+			if (!previous) return;
+			rewriteIncidentCaches(queryClient, idsOf(alerts), id, (list) =>
+				list.some((incident) => incident.id === id)
+					? list.map((incident) => (incident.id === id ? previous : incident))
+					: [...list, previous]
+			);
+		},
 		onSettled: settle,
 	});
 };
