@@ -267,16 +267,19 @@ describe('useCreateIncident', () => {
 });
 
 describe('useAddIncidentAlerts', () => {
-	test('adding an alert to the incident it is already in leaves that incident intact', async () => {
+	test('adding an alert to the incident it is already in leaves it intact, and claims it too', async () => {
 		const queryClient = seed();
 		hold(addIncidentAlerts);
 		const { result } = renderHook(() => useAddIncidentAlerts(), { wrapper: wrapperFor(queryClient) });
 
-		// a3 is the sole member of incident 1; a1 is free.
+		// a3 is the sole (unowned) member of incident 1; a1 is free.
 		act(() => result.current.mutate({ id: 1, alerts: [alert('a3', { incidentId: 1 }), alert('a1')] }));
 
 		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a1')).toBe(1));
 		expect(incidentIn(queryClient, 1)).toMatchObject({ alertCount: 2, alertIds: ['a3', 'a1'] });
+		// The server claims every alert in the request, the existing member included.
+		expect(ownerOf(queryClient, activeListKey, 'a3')).toBe('1');
+		expect(ownerOf(queryClient, activeListKey, 'a1')).toBe('1');
 		queryClient.clear();
 	});
 

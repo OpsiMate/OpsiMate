@@ -160,8 +160,10 @@ export const useAddIncidentAlerts = () => {
 				.getQueryData<IncidentSummary[]>(queryKeys.incidents)
 				?.find((incident) => incident.id === id)?.createdBy;
 			const owner = createdBy != null ? String(createdBy) : currentUserOwnerId();
+			// The claim covers every alert in the request, existing members included (an
+			// API-token incident can hold unowned ones); only the newcomers change the counts.
 			return {
-				snapshot: await applyIncidentChange(queryClient, idsOf(joining), stampMembership(id, owner), (list) =>
+				snapshot: await applyIncidentChange(queryClient, idsOf(alerts), stampMembership(id, owner), (list) =>
 					withMembers(withoutMembers(list, joining), id, joining)
 				),
 			};
