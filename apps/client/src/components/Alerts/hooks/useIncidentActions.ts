@@ -70,30 +70,39 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 				? { incident: incidentsById.get(dialog)! }
 				: null;
 
+	// The mutations paint the folder on the table before the server answers, so the dialog
+	// closes and the selection clears on submit, like any other alert action. A refusal
+	// rolls the table back, says so, and hands the selection back for a retry. (Edit is
+	// the exception: its dialog holds typed text, so it stays open until the server
+	// accepts — the folder itself is already renamed optimistically.)
 	const createIncident = async (name: string, description: string) => {
+		const alerts = selectedAlerts;
+		closeDialogIf('create');
+		onSelectAlerts([]);
 		try {
 			const incident = await createIncidentMutation.mutateAsync({
 				name: name || undefined,
 				description: description || undefined,
-				alertIds: selectedAlerts.map((a) => a.id),
+				alerts,
 			});
 			toast({ title: 'Incident created', description: incident.name });
-			closeDialogIf('create');
-			onSelectAlerts([]);
 		} catch (err) {
 			toast({ title: 'Failed to create incident', description: errorMessage(err), variant: 'destructive' });
+			onSelectAlerts(alerts);
 		}
 	};
 
 	const addSelectionToIncident = async (incidentId: number) => {
 		const incident = incidentsById.get(incidentId);
+		const alerts = selectedAlerts;
+		closeDialogIf('create');
+		onSelectAlerts([]);
 		try {
-			await addIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: selectedAlerts.map((a) => a.id) });
+			await addIncidentAlertsMutation.mutateAsync({ id: incidentId, alerts });
 			toast({ title: 'Added to incident', description: incident?.name ?? `#${incidentId}` });
-			closeDialogIf('create');
-			onSelectAlerts([]);
 		} catch (err) {
 			toast({ title: 'Failed to add to incident', description: errorMessage(err), variant: 'destructive' });
+			onSelectAlerts(alerts);
 		}
 	};
 
@@ -101,28 +110,31 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 	// endpoint is per incident, so group the members by theirs. Alerts in no incident are
 	// left alone.
 	const removeSelectionFromIncidents = async () => {
-		const byIncident = new Map<number, string[]>();
+		const byIncident = new Map<number, Alert[]>();
 		for (const alert of selectedAlerts) {
 			if (alert.incidentId == null) continue;
-			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert.id]);
+			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert]);
 		}
 		if (byIncident.size === 0) return;
+		const selection = selectedAlerts;
+		closeDialogIf('create');
+		onSelectAlerts([]);
 		setRemovalPending(true);
 		try {
 			// Settled, not all-or-nothing: each incident's removal stands on its own. Alerts
-			// whose removal went through leave the selection; the failed groups stay selected
-			// so a retry targets exactly them.
+			// whose removal went through leave the selection; the failed groups come back
+			// selected so a retry targets exactly them.
 			const groups = [...byIncident];
 			const outcomes = await Promise.allSettled(
-				groups.map(([id, alertIds]) => removeIncidentAlertsMutation.mutateAsync({ id, alertIds }))
+				groups.map(([id, alerts]) => removeIncidentAlertsMutation.mutateAsync({ id, alerts }))
 			);
 			const removedIds = new Set<string>();
 			let dissolved = 0;
 			const failures: string[] = [];
 			outcomes.forEach((outcome, i) => {
-				const [id, alertIds] = groups[i];
+				const [id, alerts] = groups[i];
 				if (outcome.status === 'fulfilled') {
-					alertIds.forEach((alertId) => removedIds.add(alertId));
+					alerts.forEach((alert) => removedIds.add(alert.id));
 					if (outcome.value.dissolved) dissolved += 1;
 				} else {
 					failures.push(incidentsById.get(id)?.name ?? `#${id}`);
@@ -143,11 +155,8 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 					variant: 'destructive',
 				});
 			}
-			if (failures.length === 0) {
-				closeDialogIf('create');
-				onSelectAlerts([]);
-			} else {
-				onSelectAlerts(selectedAlerts.filter((alert) => !removedIds.has(alert.id)));
+			if (failures.length > 0) {
+				onSelectAlerts(selection.filter((alert) => !removedIds.has(alert.id)));
 			}
 		} finally {
 			setRemovalPending(false);
@@ -190,10 +199,11 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 
 	// One member row's "Remove from incident".
 	const removeAlertFromIncident = async (alertId: string) => {
-		const incidentId = alertsById.get(alertId)?.incidentId;
-		if (incidentId == null) return;
+		const alert = alertsById.get(alertId);
+		const incidentId = alert?.incidentId;
+		if (!alert || incidentId == null) return;
 		try {
-			const result = await removeIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: [alertId] });
+			const result = await removeIncidentAlertsMutation.mutateAsync({ id: incidentId, alerts: [alert] });
 			toast({
 				title: result.dissolved ? 'Incident dissolved' : 'Removed from incident',
 				description: result.dissolved ? 'Its last member was removed' : undefined,
