@@ -57,6 +57,7 @@ interface Pending {
 
 interface AlertOverrides {
 	incidentId?: number;
+	ownerId?: string | null;
 	status?: AlertStatus;
 	severity?: AlertSeverity;
 	isSilenced?: boolean;
@@ -107,7 +108,10 @@ const seed = (): QueryClient => {
 	});
 	const list = (): InfiniteAlerts => ({
 		pages: [
-			{ alerts: [alert('a1'), alert('a2', { severity: AlertSeverity.CRITICAL })], total: 4 },
+			{
+				alerts: [alert('a1'), alert('a2', { severity: AlertSeverity.CRITICAL, ownerId: 'someone-else' })],
+				total: 4,
+			},
 			{ alerts: [alert('a3', { incidentId: 1 }), alert('a4', { incidentId: 2 })], total: 4 },
 		],
 		pageParams: ['', 'cursor-1'],
@@ -145,6 +149,8 @@ const alertsIn = (queryClient: QueryClient, key: readonly unknown[]): Alert[] =>
 	queryClient.getQueryData<InfiniteAlerts>(key)?.pages.flatMap((page) => page.alerts) ?? [];
 const stampOf = (queryClient: QueryClient, key: readonly unknown[], id: string): number | undefined =>
 	alertsIn(queryClient, key).find((a) => a.id === id)?.incidentId;
+const ownerOf = (queryClient: QueryClient, key: readonly unknown[], id: string): string | null | undefined =>
+	alertsIn(queryClient, key).find((a) => a.id === id)?.ownerId;
 const incidentsIn = (queryClient: QueryClient): IncidentSummary[] =>
 	queryClient.getQueryData<IncidentSummary[]>(incidentsKey) ?? [];
 const incidentIn = (queryClient: QueryClient, id: number): IncidentSummary | undefined =>
@@ -181,7 +187,7 @@ describe('useCreateIncident', () => {
 		const queryClient = seed();
 		const pending = hold(createIncident);
 		const { result } = renderHook(() => useCreateIncident(), { wrapper: wrapperFor(queryClient) });
-		const members = [alert('a1'), alert('a2', { severity: AlertSeverity.CRITICAL })];
+		const members = [alert('a1'), alert('a2', { severity: AlertSeverity.CRITICAL, ownerId: 'someone-else' })];
 
 		act(() => result.current.mutate({ name: 'DB meltdown', alerts: members }));
 
@@ -191,6 +197,11 @@ describe('useCreateIncident', () => {
 		expect(stampOf(queryClient, activeListKey, 'a2')).toBe(provisionalId);
 		expect(stampOf(queryClient, otherActiveListKey, 'a2')).toBe(provisionalId);
 		expect(stampOf(queryClient, activeListKey, 'a3')).toBe(1);
+		// The creator claims the unowned members, so in split-by-owner the folder sits in
+		// the Assigned pane from the first paint; a2's existing owner is kept.
+		expect(ownerOf(queryClient, activeListKey, 'a1')).toBe('7');
+		expect(ownerOf(queryClient, otherActiveListKey, 'a1')).toBe('7');
+		expect(ownerOf(queryClient, activeListKey, 'a2')).toBe('someone-else');
 
 		const provisional = incidentIn(queryClient, provisionalId);
 		expect(provisional).toMatchObject({
@@ -212,6 +223,7 @@ describe('useCreateIncident', () => {
 		act(() => pending.release({ success: true, data: created }));
 		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a1')).toBe(42));
 		expect(stampOf(queryClient, otherActiveListKey, 'a2')).toBe(42);
+		expect(ownerOf(queryClient, activeListKey, 'a1')).toBe('7');
 		expect(incidentIn(queryClient, provisionalId)).toBeUndefined();
 		expect(incidentIn(queryClient, 42)).toEqual(created);
 		queryClient.clear();
@@ -282,6 +294,9 @@ describe('useAddIncidentAlerts', () => {
 
 		await waitFor(() => expect(stampOf(queryClient, activeListKey, 'a2')).toBe(2));
 		expect(stampOf(queryClient, activeListKey, 'a3')).toBe(2);
+		// Unowned newcomers go to the incident's owner (createdBy 1), owned ones keep theirs.
+		expect(ownerOf(queryClient, activeListKey, 'a3')).toBe('1');
+		expect(ownerOf(queryClient, activeListKey, 'a2')).toBe('someone-else');
 		expect(incidentIn(queryClient, 1)).toBeUndefined();
 		expect(incidentIn(queryClient, 2)).toMatchObject({
 			alertCount: 4,
