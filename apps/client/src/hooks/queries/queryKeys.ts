@@ -8,6 +8,7 @@ export interface AlertAnalyticsKeyScope {
 // Query keys for consistent caching across the application
 export const queryKeys = {
 	alerts: ['alerts'] as const,
+	incidents: ['incidents'] as const,
 	resolvedAlerts: ['resolvedAlerts'] as const,
 	// Shared prefix for every alert's comments; useBulkAlertAction invalidates all of them with it.
 	alertComments: ['alertComments'] as const,

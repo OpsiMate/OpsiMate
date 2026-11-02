@@ -6,6 +6,7 @@ import { AlertHistoryRepository } from '../../dal/alertHistoryRepository';
 import { AlertRepository } from '../../dal/alertRepository';
 import { AuditLogRepository } from '../../dal/auditLogRepository';
 import { EnrichmentRepository } from '../../dal/enrichmentRepository';
+import { IncidentRepository } from '../../dal/incidentRepository';
 import { MutePolicyRepository } from '../../dal/mutePolicyRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
@@ -29,12 +30,14 @@ db.pragma('busy_timeout = 5000');
 const auditBL = new AuditBL(new AuditLogRepository(db));
 const enrichmentBL = new EnrichmentBL(new EnrichmentRepository(db), auditBL);
 const mutePolicyBL = new MutePolicyBL(new MutePolicyRepository(db), auditBL);
+const incidentRepo = new IncidentRepository(db);
 const builder = new ActiveListBuilder(
 	new AlertRepository(db),
 	new AlertCommentsRepository(db),
 	new AlertHistoryRepository(db),
 	() => enrichmentBL.prepareEnricher(),
-	() => mutePolicyBL.prepareMuter()
+	() => mutePolicyBL.prepareMuter(),
+	() => incidentRepo.getMembershipMap()
 );
 
 // The order the last reply carried; an unchanged order is sent as null.
