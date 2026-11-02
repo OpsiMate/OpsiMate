@@ -336,11 +336,11 @@ export const IncidentAlertIdsSchema = z.object({
 });
 
 export const IncidentIdSchema = z.object({
-	// Strict digits, not parseInt: parseInt('12abc') is 12, silently targeting an
-	// incident the caller never named.
+	// Strict positive digits, not parseInt: parseInt('12abc') is 12, silently targeting
+	// an incident the caller never named, and ids start at 1 so '0' names nothing.
 	incidentId: z
 		.string()
-		.regex(/^\d+$/, 'Invalid incident ID')
+		.regex(/^[1-9]\d*$/, 'Invalid incident ID')
 		.transform((val) => parseInt(val, 10)),
 });
 

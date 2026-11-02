@@ -32,7 +32,7 @@ import { DashboardBL } from './bl/dashboards/dashboard.bl.ts';
 import { IntegrationBL } from './bl/integrations/integration.bl';
 import { SecretsMetadataBL } from './bl/secrets/secretsMetadata.bl';
 import { EnrichmentBL } from './bl/enrichments/enrichment.bl';
-import { IncidentBL } from './bl/incidents/incident.bl';
+import { IncidentBL, toIncidentActor } from './bl/incidents/incident.bl';
 import { MutePolicyBL } from './bl/mute-policies/mutePolicy.bl';
 import { OncallBL } from './bl/oncall/oncall.bl';
 import { TagBL } from './bl/tags/tag.bl';
@@ -129,7 +129,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// constructed below, so the second half binds lazily.
 	let onIncidentMembersRefired: (alertIds: string[]) => Promise<void> = () => Promise.resolve();
 	alertBL.setOnAlertsRefired(async (alertIds) => {
-		// Independent: a root-cause write failure must not skip the ownership claim.
+		// Independent: a root-cause write failure must not keep the members in their incident.
 		const outcomes = await Promise.allSettled([
 			rootCauseBL.hideForRefiredAlerts(alertIds),
 			onIncidentMembersRefired(alertIds),
@@ -288,10 +288,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	};
 	// Removing an alert's owner takes it out of its incident (see IncidentBL).
 	alertBL.onAlertUnassigned((alertId, actor) =>
-		incidentBL.handleAlertUnassigned(alertId, {
-			id: actor.id != null && Number.isInteger(Number(actor.id)) ? Number(actor.id) : null,
-			name: actor.name,
-		})
+		incidentBL.handleAlertUnassigned(alertId, toIncidentActor(actor.id, actor.name))
 	);
 	const aiBL = new AiBL(aiConfigRepo, auditBL, () => alertBL.getAlertFacets({}));
 

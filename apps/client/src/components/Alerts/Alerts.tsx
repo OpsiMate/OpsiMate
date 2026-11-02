@@ -22,15 +22,7 @@ import {
 	useDeleteResolvedAlert,
 	useMarkAlertRead,
 } from '@/hooks/queries/alerts';
-import {
-	useAddIncidentAlerts,
-	useCreateIncident,
-	useDeleteIncident,
-	useIncidents,
-	useRemoveIncidentAlerts,
-	useUpdateIncident,
-} from '@/hooks/queries/incidents';
-import { IncidentDialog, IncidentDialogTarget, IncidentFormResult } from './IncidentDialog';
+import { IncidentDialog } from './IncidentDialog';
 import { IncidentPanel } from './IncidentPanel';
 import {
 	useCreateDashboard,
@@ -86,6 +78,7 @@ import {
 	useColumnManagement,
 	useExpandRows,
 	useFilterPanelCollapsed,
+	useIncidentActions,
 } from './hooks';
 
 import { canDelete } from '@/lib/permissions';
@@ -382,8 +375,6 @@ const Alerts = () => {
 		setAllMatchingSelected(false);
 	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-	// Incident whose details panel is open; null = alert details (or nothing) shown.
-	const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [showSaveAs, setShowSaveAs] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
@@ -791,14 +782,20 @@ const Alerts = () => {
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
-	const { incidents, incidentsById, isLoading: incidentsLoading, isError: incidentsError } = useIncidents();
-	const createIncidentMutation = useCreateIncident();
-	const addIncidentAlertsMutation = useAddIncidentAlerts();
-	const updateIncidentMutation = useUpdateIncident();
-	const deleteIncidentMutation = useDeleteIncident();
-	const removeIncidentAlertsMutation = useRemoveIncidentAlerts();
-	// The incident dialog: 'create' groups the current selection, a number edits that incident.
-	const [incidentDialog, setIncidentDialog] = useState<'create' | number | null>(null);
+	const {
+		incidentsById,
+		selectedIncident,
+		selectedIncidentId,
+		openIncidentPanel,
+		closeIncidentPanel,
+		openDialog: openIncidentDialog,
+		closeDialog: closeIncidentDialog,
+		dialogTarget: incidentDialogTarget,
+		handleDialogSubmit: handleIncidentDialogSubmit,
+		isSubmitting: incidentSubmitting,
+		ungroupIncident: handleUngroupIncident,
+		removeAlertFromIncident: handleRemoveFromIncident,
+	} = useIncidentActions({ selectedAlerts, onSelectAlerts: handleSelectAlerts, alertsById: loadedAlertsById });
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -1060,7 +1057,7 @@ const Alerts = () => {
 			incidentsById={incidentsById}
 			onOpenIncident={handleOpenIncident}
 			activeIncidentId={selectedIncidentId}
-			onEditIncident={setIncidentDialog}
+			onEditIncident={openIncidentDialog}
 			onUngroupIncident={handleUngroupIncident}
 			onRemoveFromIncident={handleRemoveFromIncident}
 			tagKeyColumnLabels={allColumnLabels}
@@ -1138,12 +1135,12 @@ const Alerts = () => {
 		// The two right-side panels are exclusive: opening an incident closes the alert
 		// details and vice versa (see handleAlertClick).
 		setSelectedAlert(null);
-		setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
+		openIncidentPanel(incidentId);
 	};
 
-	// Any selection can start a new incident (or join an existing one). Hidden when "all N matching" is armed but only a page is
-	// loaded: grouping would silently take the loaded subset while the bar claims the
-	// whole match set is selected.
+	// Any selection can open the incident dialog (new incident, existing one, or remove),
+	// except when "all N matching" is armed with only a page loaded: grouping would
+	// silently take the loaded subset while the bar claims the whole match set is selected.
 	// Playground mode has no incidents endpoint (useIncidents is disabled there), so the
 	// dialog could neither list incidents nor warn about dissolving one.
 	const canOpenIncidentDialog =
@@ -1151,182 +1148,8 @@ const Alerts = () => {
 		selectedAlerts.length > 0 &&
 		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
 
-	// Synchronous in-flight guard: a double submit before the mutation's isPending reaches
-	// the dialog would send two requests, and the server re-homes exclusive memberships,
-	// so the second could undo the first.
-	const incidentSubmitInFlight = useRef(false);
-	// Bulk removal fans out to one request per incident, so the mutation's own isPending
-	// cannot stand for the whole operation; this flag does.
-	const [incidentRemovalPending, setIncidentRemovalPending] = useState(false);
-	const handleIncidentFormSubmit = async (result: IncidentFormResult) => {
-		if (incidentSubmitInFlight.current) return;
-		incidentSubmitInFlight.current = true;
-		try {
-			if (result.kind === 'create') await handleCreateIncident(result.name, result.description);
-			else if (result.kind === 'add') await handleAddToIncident(result.incidentId);
-			else if (result.kind === 'remove') await handleRemoveSelectedFromIncidents();
-			else if (incidentDialog !== 'create' && incidentDialog != null) {
-				await handleSaveIncident(incidentDialog, result.name, result.description);
-			}
-		} finally {
-			incidentSubmitInFlight.current = false;
-		}
-	};
-
-	const incidentDialogTarget: IncidentDialogTarget | null =
-		incidentDialog === 'create'
-			? {
-					alerts: selectedAlerts,
-					incidents,
-					incidentsState: incidentsError ? 'error' : incidentsLoading ? 'loading' : 'ready',
-				}
-			: incidentDialog != null && incidentsById.has(incidentDialog)
-				? { incident: incidentsById.get(incidentDialog)! }
-				: null;
-
-	const handleCreateIncident = async (name: string, description: string) => {
-		try {
-			const incident = await createIncidentMutation.mutateAsync({
-				name: name || undefined,
-				description: description || undefined,
-				alertIds: selectedAlerts.map((a) => a.id),
-			});
-			toast({ title: 'Incident created', description: incident.name });
-			setIncidentDialog((current) => (current === 'create' ? null : current));
-			handleSelectAlerts([]);
-		} catch (err) {
-			toast({
-				title: 'Failed to create incident',
-				description: err instanceof Error ? err.message : 'Unknown error',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	// Bulk "Remove from incident": the selection may span several incidents, and the
-	// endpoint is per incident, so group the members by theirs. Alerts in no incident are
-	// left alone.
-	const handleRemoveSelectedFromIncidents = async () => {
-		const byIncident = new Map<number, string[]>();
-		for (const alert of selectedAlerts) {
-			if (alert.incidentId == null) continue;
-			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert.id]);
-		}
-		if (byIncident.size === 0) return;
-		setIncidentRemovalPending(true);
-		try {
-			// Settled, not all-or-nothing: each incident's removal stands on its own. Alerts
-			// whose removal went through leave the selection; the failed groups stay selected
-			// so a retry targets exactly them.
-			const groups = [...byIncident];
-			const outcomes = await Promise.allSettled(
-				groups.map(([id, alertIds]) => removeIncidentAlertsMutation.mutateAsync({ id, alertIds }))
-			);
-			const removedIds = new Set<string>();
-			let dissolved = 0;
-			const failures: string[] = [];
-			outcomes.forEach((outcome, i) => {
-				const [id, alertIds] = groups[i];
-				if (outcome.status === 'fulfilled') {
-					alertIds.forEach((alertId) => removedIds.add(alertId));
-					if (outcome.value.dissolved) dissolved += 1;
-				} else {
-					failures.push(incidentsById.get(id)?.name ?? `#${id}`);
-				}
-			});
-			if (removedIds.size > 0) {
-				toast({
-					title: 'Removed from incident',
-					description:
-						`${removedIds.size} ${pluralize(removedIds.size, 'alert')} removed` +
-						(dissolved > 0 ? `; ${dissolved} ${pluralize(dissolved, 'incident')} dissolved` : ''),
-				});
-			}
-			if (failures.length > 0) {
-				toast({
-					title: 'Failed to remove from incident',
-					description: `Could not remove from ${failures.join(', ')}; those alerts stay selected.`,
-					variant: 'destructive',
-				});
-			}
-			if (selectedIncidentId != null && !incidentsById.has(selectedIncidentId)) setSelectedIncidentId(null);
-			if (failures.length === 0) {
-				setIncidentDialog((current) => (current === 'create' ? null : current));
-				handleSelectAlerts([]);
-			} else {
-				handleSelectAlerts(selectedAlerts.filter((alert) => !removedIds.has(alert.id)));
-			}
-		} finally {
-			setIncidentRemovalPending(false);
-		}
-	};
-
-	const handleAddToIncident = async (incidentId: number) => {
-		const incident = incidentsById.get(incidentId);
-		try {
-			await addIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: selectedAlerts.map((a) => a.id) });
-			toast({ title: 'Added to incident', description: incident?.name ?? `#${incidentId}` });
-			setIncidentDialog((current) => (current === 'create' ? null : current));
-			handleSelectAlerts([]);
-		} catch (err) {
-			toast({
-				title: 'Failed to add to incident',
-				description: err instanceof Error ? err.message : 'Unknown error',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const handleSaveIncident = async (id: number, name: string, description: string) => {
-		try {
-			await updateIncidentMutation.mutateAsync({ id, name, description: description || null });
-			toast({ title: 'Incident updated', description: name });
-			setIncidentDialog((current) => (current === id ? null : current));
-		} catch (err) {
-			toast({
-				title: 'Failed to update incident',
-				description: err instanceof Error ? err.message : 'Unknown error',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const handleUngroupIncident = async (incidentId: number) => {
-		const incident = incidentsById.get(incidentId);
-		try {
-			await deleteIncidentMutation.mutateAsync(incidentId);
-			toast({ title: 'Incident ungrouped', description: incident?.name ?? `#${incidentId}` });
-			if (selectedIncidentId === incidentId) setSelectedIncidentId(null);
-		} catch (err) {
-			toast({
-				title: 'Failed to ungroup incident',
-				description: err instanceof Error ? err.message : 'Unknown error',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const handleRemoveFromIncident = async (alertId: string) => {
-		const incidentId = allAlerts.find((a) => a.id === alertId)?.incidentId;
-		if (incidentId == null) return;
-		try {
-			const result = await removeIncidentAlertsMutation.mutateAsync({ id: incidentId, alertIds: [alertId] });
-			toast({
-				title: result.dissolved ? 'Incident dissolved' : 'Removed from incident',
-				description: result.dissolved ? 'Its last member was removed' : undefined,
-			});
-			if (result.dissolved && selectedIncidentId === incidentId) setSelectedIncidentId(null);
-		} catch (err) {
-			toast({
-				title: 'Failed to remove from incident',
-				description: err instanceof Error ? err.message : 'Unknown error',
-				variant: 'destructive',
-			});
-		}
-	};
-
 	const handleAlertClick = (alert: Alert) => {
-		setSelectedIncidentId(null);
+		closeIncidentPanel();
 		// Opening an unread (active) alert marks it as read, un-bolding its row. The transient
 		// isResolved flag (set on resolved rows in the All view) is the guard here — an id-based
 		// check would wrongly skip active alerts that were resolved once and re-fired.
@@ -1657,7 +1480,7 @@ const Alerts = () => {
 										// loaded: grouping would silently take the loaded subset
 										// while the bar claims the whole match set is selected.
 										onGroupIntoIncident={
-											canOpenIncidentDialog ? () => setIncidentDialog('create') : undefined
+											canOpenIncidentDialog ? () => openIncidentDialog('create') : undefined
 										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
@@ -1711,7 +1534,7 @@ const Alerts = () => {
 									incidentsById={incidentsById}
 									onOpenIncident={handleOpenIncident}
 									activeIncidentId={selectedIncidentId}
-									onEditIncident={setIncidentDialog}
+									onEditIncident={openIncidentDialog}
 									onUngroupIncident={handleUngroupIncident}
 									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
@@ -1762,7 +1585,7 @@ const Alerts = () => {
 									incidentsById={incidentsById}
 									onOpenIncident={handleOpenIncident}
 									activeIncidentId={selectedIncidentId}
-									onEditIncident={setIncidentDialog}
+									onEditIncident={openIncidentDialog}
 									onUngroupIncident={handleUngroupIncident}
 									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
@@ -1783,13 +1606,13 @@ const Alerts = () => {
 						)}
 					</div>
 
-					{selectedIncidentId != null && incidentsById.has(selectedIncidentId) && (
+					{selectedIncident && (
 						<IncidentPanel
-							incident={incidentsById.get(selectedIncidentId)!}
+							incident={selectedIncident}
 							alertsById={loadedAlertsById}
-							onClose={() => setSelectedIncidentId(null)}
+							onClose={closeIncidentPanel}
 							onOpenAlert={handleAlertClick}
-							onEdit={setIncidentDialog}
+							onEdit={openIncidentDialog}
 							onUngroup={handleUngroupIncident}
 						/>
 					)}
@@ -1829,15 +1652,10 @@ const Alerts = () => {
 			<IncidentDialog
 				target={incidentDialogTarget}
 				onOpenChange={(open) => {
-					if (!open) setIncidentDialog(null);
+					if (!open) closeIncidentDialog();
 				}}
-				onSubmit={handleIncidentFormSubmit}
-				isSubmitting={
-					createIncidentMutation.isPending ||
-					addIncidentAlertsMutation.isPending ||
-					updateIncidentMutation.isPending ||
-					incidentRemovalPending
-				}
+				onSubmit={handleIncidentDialogSubmit}
+				isSubmitting={incidentSubmitting}
 			/>
 
 			<DashboardSettingsDrawer

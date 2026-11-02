@@ -161,6 +161,9 @@ describe('incidents', () => {
 		// parseInt('12abc') is 12; the id param must be strictly digits.
 		const sloppy = await get('/api/v1/incidents/12abc');
 		expect(sloppy.status).toBe(400);
+		// Ids start at 1: '0' is malformed, not merely missing.
+		const zero = await get('/api/v1/incidents/0');
+		expect(zero.status).toBe(400);
 	});
 
 	test('history records transitions, not requests', async () => {

@@ -9,6 +9,30 @@ export interface IncidentActor {
 	name: string | null;
 }
 
+// User ids travel as strings on requests and alert callbacks; incidents store the
+// creator as the users table's integer id, so only a numeric id is kept (an API-token
+// caller has none). The one place both the controller and the alert hooks convert.
+export const toIncidentActor = (
+	id: string | number | null | undefined,
+	name: string | null | undefined
+): IncidentActor => {
+	const numeric = id != null ? Number(id) : NaN;
+	return { id: Number.isInteger(numeric) ? numeric : null, name: name ?? null };
+};
+
+// alertIds bucketed by the incident each one maps to; alerts with no incident are skipped.
+const groupByIncident = (alertIds: string[], incidentOf: (alertId: string) => number | null | undefined) => {
+	const byIncident = new Map<number, string[]>();
+	for (const alertId of alertIds) {
+		const incidentId = incidentOf(alertId);
+		if (incidentId == null) continue;
+		const list = byIncident.get(incidentId);
+		if (list) list.push(alertId);
+		else byIncident.set(incidentId, [alertId]);
+	}
+	return byIncident;
+};
+
 // What the incident BL needs from the alerts BL. A port rather than the BL itself:
 // alert.bl already reads the incident repo to stamp memberships, so a direct reference
 // would be a dependency cycle.
@@ -84,13 +108,11 @@ export class IncidentBL {
 		actor: IncidentActor
 	): Promise<void> {
 		const genuinelyAdded = transitions.filter((t) => t.previousIncidentId !== targetIncidentId);
-		const rehomedByPrevious = new Map<number, string[]>();
-		for (const t of genuinelyAdded) {
-			if (t.previousIncidentId === null) continue;
-			const list = rehomedByPrevious.get(t.previousIncidentId);
-			if (list) list.push(t.alertId);
-			else rehomedByPrevious.set(t.previousIncidentId, [t.alertId]);
-		}
+		const previousOf = new Map(genuinelyAdded.map((t) => [t.alertId, t.previousIncidentId]));
+		const rehomedByPrevious = groupByIncident(
+			genuinelyAdded.map((t) => t.alertId),
+			(alertId) => previousOf.get(alertId)
+		);
 		for (const [previousId, alertIds] of rehomedByPrevious) {
 			// The previous incident may already be dissolved by the time we look; its id
 			// is still an honest name for the history line.
@@ -129,6 +151,43 @@ export class IncidentBL {
 		}
 	}
 
+	// The bookkeeping that follows a committed membership change (create or add). All of
+	// it is best-effort: the memberships are durable by now, and a 500 after the commit
+	// would invite a retry that creates a SECOND incident or moves the alerts again. Each
+	// step is isolated, so a history hiccup never skips the ownership claim.
+	//
+	// Order matters: removal events for re-homed alerts are written BEFORE the emptied
+	// source incidents dissolve, while their names are still readable. Then the ownership
+	// rule — grouping is taking charge: `owner` gets every member nobody owned yet, and
+	// members that already have an owner keep them. This is what keeps an incident whole
+	// in the split-by-owner view; see handleAlertUnassigned for the other half.
+	private async afterMembersAdded(
+		incident: { id: number; name: string },
+		transitions: MembershipTransition[],
+		actor: IncidentActor,
+		owner: IncidentActor,
+		context: string
+	): Promise<void> {
+		const bestEffort = async (what: string, step: () => Promise<void>) => {
+			try {
+				await step();
+			} catch (error) {
+				logger.error(`${context}, but ${what} failed`, error);
+			}
+		};
+		const previousIds = transitions
+			.map((t) => t.previousIncidentId)
+			.filter((prev): prev is number => prev !== null && prev !== incident.id);
+		await bestEffort('recording membership history', () =>
+			this.recordAddTransitions(transitions, incident.id, incident.name, actor)
+		);
+		await bestEffort('dissolving emptied incidents', () => this.dissolveIfEmpty(previousIds));
+		const alertIds = transitions.map((t) => t.alertId);
+		await bestEffort('claiming unowned members', () => this.alerts.claimUnowned(alertIds, owner));
+		this.alerts.invalidateSnapshots();
+	}
+
+	// The creator owns the incident (createdBy) and its unowned members.
 	async create(request: CreateIncidentRequest, actor: IncidentActor): Promise<IncidentSummary> {
 		await this.assertAlertsExist(request.alertIds);
 		const { lastID, transitions } = await this.incidentRepo.createIncidentWithAlerts(
@@ -141,31 +200,7 @@ export class IncidentBL {
 		);
 		const summary = await this.incidentRepo.getIncidentSummaryById(lastID);
 		if (!summary) throw new Error(`Incident ${lastID} vanished right after creation`);
-
-		// The incident is durable from here on. What follows is bookkeeping around it and
-		// is best-effort: a failure is logged, not surfaced, because a 500 after the commit
-		// would invite a retry that creates a SECOND incident and moves the alerts into it.
-		// Each step fails on its own, so a history hiccup never skips the ownership claim.
-		const bestEffort = async (what: string, step: () => Promise<void>) => {
-			try {
-				await step();
-			} catch (error) {
-				logger.error(`Incident ${lastID} was created, but ${what} failed`, error);
-			}
-		};
-		const previousIds = transitions.map((t) => t.previousIncidentId).filter((id): id is number => id !== null);
-		// Removal events for re-homed alerts must be written BEFORE the emptied source
-		// incidents dissolve, while their names are still readable.
-		await bestEffort('recording membership history', () =>
-			this.recordAddTransitions(transitions, lastID, summary.name, actor)
-		);
-		await bestEffort('dissolving emptied incidents', () => this.dissolveIfEmpty(previousIds));
-		// Grouping is taking charge: the creator owns the incident (createdBy) and every
-		// member nobody owned yet. Members that already have an owner keep them. This is
-		// what keeps an incident whole in the split-by-owner view — see
-		// handleAlertUnassigned for the other half of the rule.
-		await bestEffort('claiming unowned members', () => this.alerts.claimUnowned(request.alertIds, actor));
-		this.alerts.invalidateSnapshots();
+		await this.afterMembersAdded(summary, transitions, actor, actor, `Incident ${lastID} was created`);
 		return summary;
 	}
 
@@ -197,24 +232,9 @@ export class IncidentBL {
 		if (!incident) return undefined;
 		await this.assertAlertsExist(alertIds);
 		const { transitions } = await this.incidentRepo.addAlerts(id, alertIds);
-		const bestEffort = async (what: string, step: () => Promise<void>) => {
-			try {
-				await step();
-			} catch (error) {
-				logger.error(`Alerts were added to incident ${id}, but ${what} failed`, error);
-			}
-		};
-		const previousIds = transitions
-			.map((t) => t.previousIncidentId)
-			.filter((prev): prev is number => prev !== null && prev !== id);
-		await bestEffort('recording membership history', () =>
-			this.recordAddTransitions(transitions, id, incident.name, actor)
-		);
-		await bestEffort('dissolving emptied incidents', () => this.dissolveIfEmpty(previousIds));
 		const owner: IncidentActor =
 			incident.createdBy !== null ? { id: incident.createdBy, name: incident.ownerName } : actor;
-		await bestEffort('claiming unowned members', () => this.alerts.claimUnowned(alertIds, owner));
-		this.alerts.invalidateSnapshots();
+		await this.afterMembersAdded(incident, transitions, actor, owner, `Alerts were added to incident ${id}`);
 		return this.incidentRepo.getIncidentSummaryById(id);
 	}
 
@@ -270,14 +290,7 @@ export class IncidentBL {
 	// keeps its remaining members, and dissolves if that was the last one.
 	async handleAlertsRefired(alertIds: string[]): Promise<void> {
 		const membership = await this.incidentRepo.getMembershipMap();
-		const byIncident = new Map<number, string[]>();
-		for (const alertId of alertIds) {
-			const incidentId = membership.get(alertId);
-			if (incidentId === undefined) continue;
-			const list = byIncident.get(incidentId);
-			if (list) list.push(alertId);
-			else byIncident.set(incidentId, [alertId]);
-		}
+		const byIncident = groupByIncident(alertIds, (alertId) => membership.get(alertId));
 		for (const [incidentId, members] of byIncident) {
 			await this.removeAlerts(incidentId, members, SYSTEM_ACTOR, 'fired again after resolving');
 		}

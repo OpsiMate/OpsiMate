@@ -82,6 +82,37 @@ const MEMBER_STATE_CTE = `
 	)
 `;
 
+// One summary row per incident: the incident columns plus the roll-ups over member_state.
+// Callers append their WHERE / GROUP BY / ORDER BY (the GROUP BY is mandatory).
+const SUMMARY_SELECT = `
+	${MEMBER_STATE_CTE}
+	SELECT i.*,
+	       u.full_name                                          AS owner_name,
+	       COUNT(ms.alert_id)                                   AS alert_count,
+	       COALESCE(SUM(ms.is_active AND NOT ms.is_silenced), 0) AS firing_count,
+	       COALESCE(SUM(ms.is_active AND ms.is_silenced), 0)    AS silenced_count,
+	       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
+	       MIN(ms.starts_at)                                    AS earliest_starts_at,
+	       MAX(ms.updated_at)                                   AS latest_updated_at,
+	       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
+	       json_group_array(ms.alert_id)                        AS alert_ids
+	FROM incidents i
+	LEFT JOIN users u         ON u.id = i.created_by
+	LEFT JOIN member_state ms ON ms.incident_id = i.id
+`;
+
+// What pruneDanglingMemberships removes: memberships whose alert exists in neither
+// table, and incidents with no members that are past the create-grace window. Shared by
+// the read-only check and the sweep so the two can never disagree.
+const DANGLING_MEMBERSHIP_WHERE = `
+	alert_id NOT IN (SELECT id FROM alerts)
+	AND alert_id NOT IN (SELECT id FROM alerts_resolved)
+`;
+const EMPTY_INCIDENT_WHERE = `
+	id NOT IN (SELECT DISTINCT incident_id FROM incident_alerts)
+	AND datetime(created_at) < datetime('now', '-1 minute')
+`;
+
 export class IncidentRepository {
 	constructor(private db: Database.Database) {}
 
@@ -135,11 +166,6 @@ export class IncidentRepository {
 		});
 	}
 
-	// The incident row, its default name (which needs the id) and its memberships commit
-	// in ONE transaction: never an incident without members, nor members pointing at an
-	// incident that does not exist. Returns what happened to each alert, so history
-	// reflects TRANSITIONS rather than requests: a re-homed alert owes a "removed" event
-	// to the incident it left.
 	// Inside a transaction: insert (or move) each alert's membership and report where it
 	// was before — null for ungrouped, the target incident itself for a no-op re-add.
 	private insertMemberships(incidentId: number, alertIds: string[]): MembershipTransition[] {
@@ -164,6 +190,11 @@ export class IncidentRepository {
 		);
 	}
 
+	// The incident row, its default name (which needs the id) and its memberships commit
+	// in ONE transaction: never an incident without members, nor members pointing at an
+	// incident that does not exist. Returns what happened to each alert, so history
+	// reflects TRANSITIONS rather than requests: a re-homed alert owes a "removed" event
+	// to the incident it left.
 	async createIncidentWithAlerts(
 		data: CreateIncidentInput,
 		alertIds: string[]
@@ -211,24 +242,7 @@ export class IncidentRepository {
 	async getIncidentSummaries(): Promise<IncidentSummary[]> {
 		return runAsync(() => {
 			const rows = this.db
-				.prepare(
-					`${MEMBER_STATE_CTE}
-					SELECT i.*,
-					       u.full_name                                          AS owner_name,
-					       COUNT(ms.alert_id)                                   AS alert_count,
-					       COALESCE(SUM(ms.is_active AND NOT ms.is_silenced), 0) AS firing_count,
-					       COALESCE(SUM(ms.is_active AND ms.is_silenced), 0)    AS silenced_count,
-					       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
-					       MIN(ms.starts_at)                                    AS earliest_starts_at,
-					       MAX(ms.updated_at)                                   AS latest_updated_at,
-					       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
-					       json_group_array(ms.alert_id)                        AS alert_ids
-					FROM incidents i
-					LEFT JOIN users u         ON u.id = i.created_by
-					LEFT JOIN member_state ms ON ms.incident_id = i.id
-					GROUP BY i.id, u.full_name
-					ORDER BY i.created_at DESC`
-				)
+				.prepare(`${SUMMARY_SELECT} GROUP BY i.id, u.full_name ORDER BY i.created_at DESC`)
 				.all() as IncidentSummaryRow[];
 			return rows.map(this.toSummary);
 		});
@@ -236,26 +250,8 @@ export class IncidentRepository {
 
 	async getIncidentSummaryById(id: number): Promise<IncidentSummary | undefined> {
 		return runAsync(() => {
-			const row = this.db
-				.prepare(
-					`${MEMBER_STATE_CTE}
-					SELECT i.*,
-					       u.full_name                                          AS owner_name,
-					       COUNT(ms.alert_id)                                   AS alert_count,
-					       COALESCE(SUM(ms.is_active AND NOT ms.is_silenced), 0) AS firing_count,
-					       COALESCE(SUM(ms.is_active AND ms.is_silenced), 0)    AS silenced_count,
-					       COUNT(ms.alert_id) - COALESCE(SUM(ms.is_active), 0)  AS resolved_count,
-					       MIN(ms.starts_at)                                    AS earliest_starts_at,
-					       MAX(ms.updated_at)                                   AS latest_updated_at,
-					       GROUP_CONCAT(DISTINCT ms.severity)                   AS severities,
-					       json_group_array(ms.alert_id)                        AS alert_ids
-					FROM incidents i
-					LEFT JOIN users u         ON u.id = i.created_by
-					LEFT JOIN member_state ms ON ms.incident_id = i.id
-					WHERE i.id = ?
-					GROUP BY i.id, u.full_name`
-				)
-				.get(id) as IncidentSummaryRow | undefined;
+			const row = this.db.prepare(`${SUMMARY_SELECT} WHERE i.id = ? GROUP BY i.id, u.full_name`).get(id) as
+				IncidentSummaryRow | undefined;
 			return row ? this.toSummary(row) : undefined;
 		});
 	}
@@ -345,23 +341,24 @@ export class IncidentRepository {
 	// incidents left empty dissolve — but only after a minute's grace: create() inserts
 	// the incident before its first members, and a concurrent sweep in that gap would
 	// eat the newborn.
+	//
+	// Runs on every list/get, and every open client polls the list every few seconds, so
+	// the common case (nothing dangling) must stay a READ: a write transaction per poll
+	// per viewer would contend with ingest for the write lock for nothing. The sweep only
+	// opens one when the check found something to remove.
 	async pruneDanglingMemberships(): Promise<void> {
 		return runAsync(() => {
+			const dirty = this.db
+				.prepare(
+					`SELECT EXISTS (SELECT 1 FROM incident_alerts WHERE ${DANGLING_MEMBERSHIP_WHERE})
+					     OR EXISTS (SELECT 1 FROM incidents WHERE ${EMPTY_INCIDENT_WHERE})`
+				)
+				.pluck()
+				.get() as number;
+			if (!dirty) return;
 			this.db.transaction(() => {
-				this.db
-					.prepare(
-						`DELETE FROM incident_alerts
-						 WHERE alert_id NOT IN (SELECT id FROM alerts)
-						   AND alert_id NOT IN (SELECT id FROM alerts_resolved)`
-					)
-					.run();
-				this.db
-					.prepare(
-						`DELETE FROM incidents
-						 WHERE id NOT IN (SELECT DISTINCT incident_id FROM incident_alerts)
-						   AND datetime(created_at) < datetime('now', '-1 minute')`
-					)
-					.run();
+				this.db.prepare(`DELETE FROM incident_alerts WHERE ${DANGLING_MEMBERSHIP_WHERE}`).run();
+				this.db.prepare(`DELETE FROM incidents WHERE ${EMPTY_INCIDENT_WHERE}`).run();
 			})();
 		});
 	}

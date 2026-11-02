@@ -20,6 +20,16 @@ interface IncidentFormProps {
 // What happens to the selection: a new incident, an existing one, or out of its incidents.
 type Destination = 'new' | 'existing' | 'remove';
 
+// What submitting does. Editing is decided by the target; the rest by the destination.
+type Mode = 'edit' | 'create' | 'add' | 'remove';
+const DESTINATION_MODE: Record<Destination, Mode> = { new: 'create', existing: 'add', remove: 'remove' };
+const SUBMIT_LABELS: Record<Mode, { idle: string; busy: string }> = {
+	edit: { idle: 'Save', busy: 'Saving…' },
+	create: { idle: 'Create incident', busy: 'Creating…' },
+	add: { idle: 'Add to incident', busy: 'Adding…' },
+	remove: { idle: 'Remove from incident', busy: 'Removing…' },
+};
+
 export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: IncidentFormProps) => {
 	const idPrefix = useId();
 	const editing = 'incident' in target ? target.incident : null;
@@ -30,15 +40,14 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 	const candidates = incidents.filter((incident) => alerts.some((alert) => alert.incidentId !== incident.id));
 	// Members among the selection, for the remove option.
 	const members = alerts.filter((alert) => alert.incidentId != null);
-	// Even a single alert can start an incident; it just grows from there.
-	const canCreate = alerts.length >= 1;
 	const [destination, setDestination] = useState<Destination>('new');
 	const [incidentId, setIncidentId] = useState<string>(candidates[0] ? String(candidates[0].id) : '');
 	const [name, setName] = useState(editing?.name ?? '');
 	const [description, setDescription] = useState(editing?.description ?? '');
 
-	const adding = editing === null && destination === 'existing';
-	const removing = editing === null && destination === 'remove';
+	const mode: Mode = editing ? 'edit' : DESTINATION_MODE[destination];
+	const adding = mode === 'add';
+	const removing = mode === 'remove';
 	// Membership is exclusive, so moving alerts out of an incident that has no other
 	// members dissolves it, name and details included. Say so before it happens.
 	const selectedIds = new Set(alerts.map((alert) => alert.id));
@@ -52,36 +61,32 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 	const incidentName = (id: number | null | undefined) =>
 		incidents.find((incident) => incident.id === id)?.name ?? 'an incident';
 
-	const canSubmit =
-		!isSubmitting &&
-		(editing !== null
-			? name.trim().length > 0
-			: incidentsState === 'ready' && (removing ? members.length > 0 : adding ? incidentId !== '' : canCreate));
+	// Even a single alert can start an incident, so 'create' needs nothing beyond the
+	// loaded incidents list (for the dissolve warning).
+	const modeReady: Record<Mode, boolean> = {
+		edit: name.trim().length > 0,
+		create: incidentsState === 'ready',
+		add: incidentsState === 'ready' && incidentId !== '',
+		remove: incidentsState === 'ready' && members.length > 0,
+	};
+	const canSubmit = !isSubmitting && modeReady[mode];
 
 	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
 		if (!canSubmit) return;
-		if (editing) onSubmit({ kind: 'edit', name: name.trim(), description: description.trim() });
-		else if (adding) onSubmit({ kind: 'add', incidentId: Number(incidentId) });
-		else if (removing) onSubmit({ kind: 'remove' });
-		else onSubmit({ kind: 'create', name: name.trim(), description: description.trim() });
+		switch (mode) {
+			case 'edit':
+				return onSubmit({ kind: 'edit', name: name.trim(), description: description.trim() });
+			case 'add':
+				return onSubmit({ kind: 'add', incidentId: Number(incidentId) });
+			case 'remove':
+				return onSubmit({ kind: 'remove' });
+			case 'create':
+				return onSubmit({ kind: 'create', name: name.trim(), description: description.trim() });
+		}
 	};
 
-	const submitLabel = editing
-		? isSubmitting
-			? 'Saving…'
-			: 'Save'
-		: removing
-			? isSubmitting
-				? 'Removing…'
-				: 'Remove from incident'
-			: adding
-				? isSubmitting
-					? 'Adding…'
-					: 'Add to incident'
-				: isSubmitting
-					? 'Creating…'
-					: 'Create incident';
+	const submitLabel = SUBMIT_LABELS[mode][isSubmitting ? 'busy' : 'idle'];
 
 	return (
 		<>
@@ -104,7 +109,6 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 					<div className="grid grid-cols-3 gap-1 rounded-md border border-border p-1" role="radiogroup">
 						<DestinationOption
 							selected={destination === 'new'}
-							disabled={!canCreate}
 							icon={<FolderPlus className="h-3.5 w-3.5" />}
 							label="New incident"
 							onSelect={() => setDestination('new')}
@@ -221,14 +225,14 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 
 interface DestinationOptionProps {
 	selected: boolean;
-	disabled: boolean;
+	disabled?: boolean;
 	title?: string;
 	icon: React.ReactNode;
 	label: string;
 	onSelect: () => void;
 }
 
-const DestinationOption = ({ selected, disabled, title, icon, label, onSelect }: DestinationOptionProps) => (
+const DestinationOption = ({ selected, disabled = false, title, icon, label, onSelect }: DestinationOptionProps) => (
 	<button
 		type="button"
 		role="radio"

@@ -1,5 +1,6 @@
 import { incidentsApi } from '@/lib/api';
 import { isPlaygroundMode } from '@/lib/playground';
+import { ACTIVE_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { IncidentSummary } from '@OpsiMate/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -20,8 +21,8 @@ export const useIncidents = () => {
 			return response.data ?? [];
 		},
 		enabled: !playgroundMode,
-		staleTime: 5 * 1000,
-		refetchInterval: 5 * 1000,
+		staleTime: ACTIVE_ALERTS_POLL_MS,
+		refetchInterval: ACTIVE_ALERTS_POLL_MS,
 	});
 
 	const incidents = useMemo(() => result.data ?? [], [result.data]);

@@ -1,6 +1,7 @@
-import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
+import { IncidentRollups } from '@/components/Alerts/IncidentRollups';
 import { Badge } from '@/components/ui/badge';
 import { formatShortDateTime } from '@/lib/datetime';
+import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import {
 	DropdownMenu,
@@ -83,33 +84,15 @@ export const IncidentRow = ({
 			</button>
 			<Badge variant="outline" className="h-5 px-1.5 text-xs shrink-0">
 				{partial ? `${shownCount} of ${incident.alertCount}` : incident.alertCount}{' '}
-				{incident.alertCount === 1 ? 'alert' : 'alerts'}
+				{pluralize(incident.alertCount, 'alert')}
 			</Badge>
-			{incident.worstSeverity && <SeverityBadge severity={incident.worstSeverity} />}
 			{incident.ownerName && (
 				<span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0" title="Incident owner">
 					<User className="h-3 w-3" />
 					{incident.ownerName}
 				</span>
 			)}
-			{incident.firingCount > 0 && (
-				<Badge variant="destructive" className="h-5 px-1.5 text-xs shrink-0">
-					{incident.firingCount} firing
-				</Badge>
-			)}
-			{incident.silencedCount > 0 && (
-				<Badge variant="secondary" className="h-5 px-1.5 text-xs shrink-0">
-					{incident.silencedCount} silenced
-				</Badge>
-			)}
-			{incident.firingCount === 0 && incident.silencedCount === 0 && (
-				<Badge variant="success" className="h-5 px-1.5 text-xs shrink-0">
-					resolved
-				</Badge>
-			)}
-			{incident.resolvedCount > 0 && (incident.firingCount > 0 || incident.silencedCount > 0) && (
-				<span className="text-xs text-muted-foreground shrink-0">{incident.resolvedCount} resolved</span>
-			)}
+			<IncidentRollups incident={incident} />
 			<span className="ml-auto text-xs text-muted-foreground shrink-0">
 				{incident.latestUpdatedAt ? formatShortDateTime(incident.latestUpdatedAt, '') : ''}
 			</span>

@@ -1,8 +1,9 @@
+import { IncidentRollups } from '@/components/Alerts/IncidentRollups';
 import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
 import { StatusBadge } from '@/components/Alerts/StatusBadge';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatLongDateTime } from '@/lib/datetime';
+import { pluralize } from '@/lib/text';
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
 import { Folder, History, Pencil, Ungroup, X } from 'lucide-react';
 import { CollapsibleSection } from '../AlertDetails/CollapsibleSection';
@@ -73,22 +74,7 @@ export const IncidentPanel = ({
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">
-					{incident.worstSeverity && <SeverityBadge severity={incident.worstSeverity} />}
-					{incident.firingCount > 0 && (
-						<Badge variant="destructive" className="h-5 px-1.5 text-xs">
-							{incident.firingCount} firing
-						</Badge>
-					)}
-					{incident.silencedCount > 0 && (
-						<Badge variant="secondary" className="h-5 px-1.5 text-xs">
-							{incident.silencedCount} silenced
-						</Badge>
-					)}
-					{incident.resolvedCount > 0 && (
-						<Badge variant="success" className="h-5 px-1.5 text-xs">
-							{incident.resolvedCount} resolved
-						</Badge>
-					)}
+					<IncidentRollups incident={incident} />
 				</div>
 
 				<div className="text-xs text-muted-foreground space-y-0.5">
@@ -113,8 +99,8 @@ export const IncidentPanel = ({
 						))}
 						{unloadedCount > 0 && (
 							<div className="text-xs text-muted-foreground px-1 py-1">
-								{unloadedCount} more member{unloadedCount === 1 ? '' : 's'} not loaded in this view
-								(check the All tab)
+								{unloadedCount} more {pluralize(unloadedCount, 'member')} not loaded in this view (check
+								the All tab)
 							</div>
 						)}
 					</div>

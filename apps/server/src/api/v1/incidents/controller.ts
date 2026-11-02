@@ -6,18 +6,13 @@ import {
 	UpdateIncidentSchema,
 } from '@OpsiMate/shared';
 import { Response } from 'express';
-import { IncidentActor, IncidentBL, UnknownAlertIdsError } from '../../../bl/incidents/incident.bl';
+import { IncidentActor, IncidentBL, toIncidentActor, UnknownAlertIdsError } from '../../../bl/incidents/incident.bl';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
 import { isZodError } from '../../../utils/isZodError';
 
 const logger = new Logger('api/v1/incidents/controller');
 
-// User ids travel as strings on the request; incidents store the creator as the users
-// table's integer id, so only a numeric id is kept (an API-token caller has none).
-const actorFrom = (req: AuthenticatedRequest): IncidentActor => {
-	const id = req.user != null ? Number(req.user.id) : NaN;
-	return { id: Number.isInteger(id) ? id : null, name: req.user?.fullName ?? null };
-};
+const actorFrom = (req: AuthenticatedRequest): IncidentActor => toIncidentActor(req.user?.id, req.user?.fullName);
 
 export class IncidentController {
 	constructor(private incidentBL: IncidentBL) {}
