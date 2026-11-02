@@ -4,11 +4,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
 import {
 	applyIncidentChange,
+	currentUserOwnerId,
 	IncidentCacheSnapshot,
 	nextProvisionalIncidentId,
 	provisionalIncident,
 	restoreIncidentCaches,
 	rewriteIncidentCaches,
+	stampMembership,
 	withMembers,
 	withoutMembers,
 } from './incidentCache';
@@ -90,18 +92,21 @@ export const useCreateIncident = () => {
 				description: description || null,
 				alerts,
 			});
-			// Members leave whatever incident they were in (the server re-homes them).
-			const snapshot = await applyIncidentChange(queryClient, idsOf(alerts), provisionalId, (list) => [
-				...withoutMembers(list, alerts),
-				incident,
-			]);
+			// Members leave whatever incident they were in (the server re-homes them), and
+			// the creator claims the unowned ones.
+			const snapshot = await applyIncidentChange(
+				queryClient,
+				idsOf(alerts),
+				stampMembership(provisionalId, currentUserOwnerId()),
+				(list) => [...withoutMembers(list, alerts), incident]
+			);
 			return { snapshot, provisionalId };
 		},
 		onSuccess: (created: IncidentSummary, { alerts }, { provisionalId }) => {
 			// Swap the provisional id for the real one before the refetches land, so the
 			// folder never unfolds while the alerts list and the incidents list arrive in
 			// either order.
-			rewriteIncidentCaches(queryClient, idsOf(alerts), created.id, (list) =>
+			rewriteIncidentCaches(queryClient, idsOf(alerts), stampMembership(created.id), (list) =>
 				list.map((incident) => (incident.id === provisionalId ? created : incident))
 			);
 		},
@@ -117,7 +122,7 @@ export const useUpdateIncident = () => {
 		mutationFn: async ({ id, ...payload }: UpdateIncidentVariables) =>
 			unwrap(await incidentsApi.updateIncident(id, payload), 'Failed to update incident'),
 		onMutate: async ({ id, name, description }): Promise<IncidentMutationContext> => ({
-			snapshot: await applyIncidentChange(queryClient, new Set(), undefined, (list) =>
+			snapshot: await applyIncidentChange(queryClient, new Set(), stampMembership(undefined), (list) =>
 				list.map((incident) =>
 					incident.id === id
 						? {
@@ -150,8 +155,15 @@ export const useAddIncidentAlerts = () => {
 			// An alert already in the target stays put: taking it out first would
 			// dissolve a sole-member incident the moment it is "added" to itself.
 			const joining = alerts.filter((alert) => alert.incidentId !== id);
+			// Unowned newcomers go to the incident's owner (the adder when it has none).
+			const createdBy = queryClient
+				.getQueryData<IncidentSummary[]>(queryKeys.incidents)
+				?.find((incident) => incident.id === id)?.createdBy;
+			const owner = createdBy != null ? String(createdBy) : currentUserOwnerId();
+			// The claim covers every alert in the request, existing members included (an
+			// API-token incident can hold unowned ones); only the newcomers change the counts.
 			return {
-				snapshot: await applyIncidentChange(queryClient, idsOf(joining), id, (list) =>
+				snapshot: await applyIncidentChange(queryClient, idsOf(alerts), stampMembership(id, owner), (list) =>
 					withMembers(withoutMembers(list, joining), id, joining)
 				),
 			};
@@ -179,13 +191,15 @@ export const useRemoveIncidentAlerts = () => {
 			const previous = queryClient
 				.getQueryData<IncidentSummary[]>(queryKeys.incidents)
 				?.find((incident) => incident.id === id);
-			await applyIncidentChange(queryClient, idsOf(alerts), undefined, (list) => withoutMembers(list, members));
+			await applyIncidentChange(queryClient, idsOf(alerts), stampMembership(undefined), (list) =>
+				withoutMembers(list, members)
+			);
 			return { previous };
 		},
 		onError: (_err, { id, alerts }, context) => {
 			const previous = context?.previous;
 			if (!previous) return;
-			rewriteIncidentCaches(queryClient, idsOf(alerts), id, (list) =>
+			rewriteIncidentCaches(queryClient, idsOf(alerts), stampMembership(id), (list) =>
 				list.some((incident) => incident.id === id)
 					? list.map((incident) => (incident.id === id ? previous : incident))
 					: [...list, previous]
@@ -208,8 +222,11 @@ export const useDeleteIncident = () => {
 				.getQueryData<IncidentSummary[]>(queryKeys.incidents)
 				?.find((incident) => incident.id === id)?.alertIds;
 			return {
-				snapshot: await applyIncidentChange(queryClient, new Set(members ?? []), undefined, (list) =>
-					list.filter((incident) => incident.id !== id)
+				snapshot: await applyIncidentChange(
+					queryClient,
+					new Set(members ?? []),
+					stampMembership(undefined),
+					(list) => list.filter((incident) => incident.id !== id)
 				),
 			};
 		},

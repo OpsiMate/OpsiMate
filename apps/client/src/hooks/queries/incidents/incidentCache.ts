@@ -76,6 +76,22 @@ export const summarizeMembers = (alerts: Alert[]): MemberRollups => {
 let provisionalSeq = 0;
 export const nextProvisionalIncidentId = (): number => -++provisionalSeq;
 
+// The current user's id as alerts carry it (ownerId is a string; the JWT id a number).
+export const currentUserOwnerId = (): string | null => {
+	const id = getCurrentUser()?.id;
+	return id == null ? null : String(id);
+};
+
+// How a membership change rewrites an alert row. Grouping takes charge: the server hands
+// every member nobody owned yet to the incident's owner (the creator on create, the
+// incident's createdBy on add), which is what keeps a folder whole in the split-by-owner
+// view — so the optimistic row claims it too, or the folder would sit in the Unassigned
+// pane until the refetch moved it. Members that already have an owner keep them.
+export const stampMembership =
+	(incidentId: number | undefined, ownerId: string | null = null) =>
+	(alert: Alert): Alert =>
+		alert.ownerId || !ownerId ? { ...alert, incidentId } : { ...alert, incidentId, ownerId };
+
 // The summary the server will answer with, as far as the client can predict it: the
 // creator owns it (ownerName from the users cache when loaded, else blank until the
 // refetch), and the roll-ups come from the member rows.
@@ -163,14 +179,14 @@ export const withMembers = (incidents: IncidentSummary[], incidentId: number, al
 export const applyIncidentChange = async (
 	queryClient: QueryClient,
 	alertIds: ReadonlySet<string>,
-	stamp: number | undefined,
+	stamp: (alert: Alert) => Alert,
 	incidents: (list: IncidentSummary[]) => IncidentSummary[]
 ): Promise<IncidentCacheSnapshot> => {
 	await queryClient.cancelQueries({ queryKey: queryKeys.incidents });
 	const before = queryClient.getQueryData<IncidentSummary[]>(queryKeys.incidents);
 	queryClient.setQueryData<IncidentSummary[]>(queryKeys.incidents, (old) => (old ? incidents(old) : old));
 	if (alertIds.size === 0) return { incidents: before, alerts: [], resolvedAlerts: [] };
-	const restamp = updateAlertsInCache(alertIds, (alert) => ({ ...alert, incidentId: stamp }));
+	const restamp = updateAlertsInCache(alertIds, stamp);
 	return {
 		incidents: before,
 		alerts: await applyToAlertCaches(queryClient, queryKeys.alerts, restamp),
@@ -185,12 +201,12 @@ export const applyIncidentChange = async (
 export const rewriteIncidentCaches = (
 	queryClient: QueryClient,
 	alertIds: ReadonlySet<string>,
-	stamp: number | undefined,
+	stamp: (alert: Alert) => Alert,
 	incidents: (list: IncidentSummary[]) => IncidentSummary[]
 ): void => {
 	queryClient.setQueryData<IncidentSummary[]>(queryKeys.incidents, (old) => (old ? incidents(old) : old));
 	if (alertIds.size === 0) return;
-	const restamp = updateAlertsInCache(alertIds, (alert) => ({ ...alert, incidentId: stamp }));
+	const restamp = updateAlertsInCache(alertIds, stamp);
 	queryClient.setQueriesData({ queryKey: queryKeys.alerts }, restamp);
 	queryClient.setQueriesData({ queryKey: queryKeys.resolvedAlerts }, restamp);
 };
