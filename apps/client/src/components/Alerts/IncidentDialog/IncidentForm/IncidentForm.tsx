@@ -78,7 +78,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 
 	return (
 		<>
-			<DialogHeader>
+			<DialogHeader className="min-w-0">
 				<DialogTitle className="flex items-center gap-2">
 					{editing ? <Pencil className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
 					{editing ? 'Edit incident' : 'Incident'}
@@ -92,7 +92,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 					</DialogDescription>
 				)}
 			</DialogHeader>
-			<form onSubmit={handleSubmit} className="space-y-4">
+			<form onSubmit={handleSubmit} className="min-w-0 space-y-4">
 				{!editing && (
 					<div className="grid grid-cols-3 gap-1 rounded-md border border-border p-1" role="radiogroup">
 						<DestinationOption
@@ -135,7 +135,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							<SelectContent>
 								{candidates.map((incident) => (
 									<SelectItem key={incident.id} value={String(incident.id)}>
-										{incident.name}
+										<span className="truncate">{incident.name}</span>
 										<span className="ml-2 text-xs text-muted-foreground">
 											{incident.alertCount} {pluralize(incident.alertCount, 'alert')}
 											{incident.ownerName ? ` · ${incident.ownerName}` : ''}
@@ -179,7 +179,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 					</p>
 				)}
 				{dissolving.length > 0 && (
-					<p className="text-xs text-amber-600 dark:text-amber-400" role="alert">
+					<p className="break-words text-xs text-amber-600 dark:text-amber-400" role="alert">
 						{dissolving.length === 1 ? 'This dissolves incident ' : 'This dissolves incidents '}
 						{dissolving.map((incident) => `"${incident.name}"`).join(', ')}
 						{' — every alert '}
@@ -189,7 +189,11 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 				{!editing && (
 					<div className="max-h-32 overflow-y-auto rounded-md border border-border p-2 space-y-1">
 						{alerts.map((alert) => (
-							<div key={alert.id} className="text-xs text-muted-foreground truncate">
+							<div
+								key={alert.id}
+								className="min-w-0 truncate text-xs text-muted-foreground"
+								title={alert.alertName}
+							>
 								{alert.alertName}
 								{alert.incidentId != null && (
 									<span className="ml-1 opacity-70">· in {incidentName(alert.incidentId)}</span>
