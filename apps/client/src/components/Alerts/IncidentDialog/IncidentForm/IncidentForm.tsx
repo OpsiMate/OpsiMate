@@ -132,11 +132,20 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							<SelectTrigger id={`${idPrefix}-incident`}>
 								<SelectValue placeholder="Choose an incident" />
 							</SelectTrigger>
-							<SelectContent>
+							{/* The popper sizes itself to its items, so a long incident name would widen
+							    the list past the dialog: cap it at the trigger's width and let the item
+							    text (a flex child of the item) shrink so the name truncates. */}
+							<SelectContent className="max-w-(--radix-select-trigger-width)">
 								{candidates.map((incident) => (
-									<SelectItem key={incident.id} value={String(incident.id)}>
-										<span className="truncate">{incident.name}</span>
-										<span className="ml-2 text-xs text-muted-foreground">
+									<SelectItem
+										key={incident.id}
+										value={String(incident.id)}
+										className="[&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-baseline"
+									>
+										<span className="truncate" title={incident.name}>
+											{incident.name}
+										</span>
+										<span className="ml-2 shrink-0 text-xs text-muted-foreground">
 											{incident.alertCount} {pluralize(incident.alertCount, 'alert')}
 											{incident.ownerName ? ` · ${incident.ownerName}` : ''}
 										</span>
