@@ -1,5 +1,7 @@
 import { IncidentRollups } from '@/components/Alerts/IncidentRollups';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { formatShortDateTime } from '@/lib/datetime';
 import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
@@ -26,6 +28,10 @@ interface IncidentRowProps {
 	// Deletes the incident, leaving its alerts untouched.
 	onUngroup?: (incidentId: number) => void;
 	isActive?: boolean;
+	// How many of the folded members are selected; undefined hides the checkbox (no selection on this table).
+	selectionState?: 'none' | 'some' | 'all';
+	// The folder checkbox: select every member, or unselect them all.
+	onToggleSelection?: () => void;
 }
 
 // The folder row an incident renders as in the alerts table. The row body toggles
@@ -41,17 +47,37 @@ export const IncidentRow = ({
 	onEdit,
 	onUngroup,
 	isActive,
+	selectionState,
+	onToggleSelection,
 }: IncidentRowProps) => {
 	const partial = shownCount < incident.alertCount;
 	return (
 		<div
 			className={cn(
-				'flex items-center gap-2 h-9 border-b border-border bg-primary/[0.04] hover:bg-primary/[0.08] px-2 cursor-pointer select-none',
+				'flex items-center gap-2 h-9 border-b border-border bg-primary/[0.04] hover:bg-primary/[0.08] pr-2 cursor-pointer select-none',
+				// Without a checkbox cell the chevron takes the select column's padding.
+				selectionState === undefined && 'pl-2',
 				isActive && 'bg-primary/10 shadow-[inset_3px_0_0_0] shadow-primary'
 			)}
 			onClick={() => onToggle(incident.id)}
 			role="row"
 		>
+			{selectionState !== undefined && (
+				// Sits under the table's select column so the folder checkbox lines up with the
+				// rows' checkboxes. Mixed state when only some members are selected.
+				<div
+					className="flex shrink-0 items-center justify-center"
+					style={{ width: SELECT_COLUMN_WIDTH }}
+					onClick={(e) => e.stopPropagation()}
+				>
+					<Checkbox
+						checked={selectionState === 'all' ? true : selectionState === 'some' ? 'indeterminate' : false}
+						onCheckedChange={() => onToggleSelection?.()}
+						aria-label={selectionState === 'all' ? 'Unselect incident alerts' : 'Select incident alerts'}
+						className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary"
+					/>
+				</div>
+			)}
 			{/* A real button, not just the clickable row: keyboard users need a focusable
 			    toggle, and aria-expanded belongs on the control that toggles. */}
 			<button

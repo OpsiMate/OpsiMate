@@ -94,6 +94,7 @@ const renderRow = ({ withDrag = true } = {}) => {
 	const props = {
 		onSelectAlert: vi.fn(),
 		onSelectRange: vi.fn(),
+		onSelectOnly: vi.fn(),
 		onAlertClick: vi.fn(),
 		onSelectAlerts: vi.fn(),
 		onDragStart: withDrag ? vi.fn() : undefined,
@@ -113,11 +114,13 @@ const renderRow = ({ withDrag = true } = {}) => {
 };
 
 describe('AlertRow modifier clicks', () => {
-	test('a plain click opens the details panel', () => {
-		const { row, onAlertClick, onSelectAlert, onDragStart } = renderRow();
+	test('a plain click opens the details panel and makes the row the only selection', () => {
+		const { row, onAlertClick, onSelectAlert, onSelectOnly, onDragStart } = renderRow();
 		fireEvent.mouseDown(row);
 		fireEvent.click(row);
 		expect(onAlertClick).toHaveBeenCalledWith(alerts[0]);
+		expect(onSelectOnly).toHaveBeenCalledWith(alerts[0]);
+		// Not a toggle: the selection is replaced, not extended.
 		expect(onSelectAlert).not.toHaveBeenCalled();
 		expect(onDragStart).not.toHaveBeenCalled();
 	});

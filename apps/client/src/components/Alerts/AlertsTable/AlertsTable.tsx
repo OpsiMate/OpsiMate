@@ -201,9 +201,9 @@ export const AlertsTable = ({
 			return summary ? { ...item, count: summary.count, groupStatus: summary.status } : item;
 		});
 	}, [groupedRows, groupSummaryByKey]);
-	// Incident folding runs LAST, over the filtered/sorted/grouped rows: the folder sits
-	// where its best member would have, and folds only members visible under the current
-	// filters (see useIncidentFolding).
+	// Incident folding runs LAST, over the filtered/sorted/grouped rows: folders sit at the
+	// bottom of their segment and fold only members visible under the current filters
+	// (see useIncidentFolding).
 	const { foldedRows: flatRows, toggleIncident } = useIncidentFolding(
 		summarizedRows,
 		incidentsById ?? EMPTY_INCIDENTS
@@ -212,7 +212,15 @@ export const AlertsTable = ({
 		() => flatRows.flatMap((item) => (item.type === 'leaf' ? [item.alert] : [])),
 		[flatRows]
 	);
-	const { allSelected, handleSelectAll, handleSelectAlert, handleSelectRange, setAnchor } = useAlertSelection({
+	const {
+		allSelected,
+		handleSelectAll,
+		handleSelectAlert,
+		handleSelectRange,
+		handleSelectOnly,
+		handleToggleMembers,
+		setAnchor,
+	} = useAlertSelection({
 		sortedAlerts,
 		visibleAlerts,
 		selectedAlerts,
@@ -623,6 +631,8 @@ export const AlertsTable = ({
 									onRemoveFromIncident={onRemoveFromIncident}
 									onSelectAlert={handleSelectAlert}
 									onSelectRange={handleSelectRange}
+									onSelectOnly={handleSelectOnly}
+									onToggleMembersSelection={handleToggleMembers}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}
 									onSilenceAlert={onSilenceAlert}

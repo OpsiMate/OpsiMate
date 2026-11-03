@@ -23,6 +23,9 @@ interface VirtualizedAlertListProps {
 	onRemoveFromIncident?: (alertId: string) => void;
 	onSelectAlert: (alert: Alert) => void;
 	onSelectRange?: (alert: Alert) => void;
+	onSelectOnly?: (alert: Alert) => void;
+	// The folder checkbox: select (or unselect) every member folded under it.
+	onToggleMembersSelection?: (members: Alert[]) => void;
 	onAlertClick?: (alert: Alert) => void;
 	activeAlertId?: string | null;
 	onSilenceAlert?: (alertId: string) => void;
@@ -59,6 +62,8 @@ export const VirtualizedAlertList = ({
 	onRemoveFromIncident,
 	onSelectAlert,
 	onSelectRange,
+	onSelectOnly,
+	onToggleMembersSelection,
 	onAlertClick,
 	activeAlertId = null,
 	onSilenceAlert,
@@ -127,6 +132,15 @@ export const VirtualizedAlertList = ({
 				}
 
 				if (item.type === 'incident') {
+					const selectedMembers = item.members.filter((member) =>
+						selectedAlerts.some((a) => a.id === member.id)
+					);
+					const selectionState =
+						selectedMembers.length === 0
+							? 'none'
+							: selectedMembers.length === item.members.length
+								? 'all'
+								: 'some';
 					return (
 						<div
 							key={virtualRow.key}
@@ -149,6 +163,12 @@ export const VirtualizedAlertList = ({
 								onEdit={onEditIncident}
 								onUngroup={onUngroupIncident}
 								isActive={item.incident.id === activeIncidentId}
+								selectionState={onSelectAlerts ? selectionState : undefined}
+								onToggleSelection={
+									onSelectAlerts && onToggleMembersSelection
+										? () => onToggleMembersSelection(item.members)
+										: undefined
+								}
 							/>
 						</div>
 					);
@@ -187,6 +207,7 @@ export const VirtualizedAlertList = ({
 								contentColumnWidths={contentColumnWidths}
 								onSelectAlert={onSelectAlert}
 								onSelectRange={onSelectRange}
+								onSelectOnly={onSelectOnly}
 								onAlertClick={onAlertClick}
 								isActiveRow={alert.id === activeAlertId}
 								onSilenceAlert={onSilenceAlert}
