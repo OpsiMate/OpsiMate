@@ -16,12 +16,11 @@ const Checkbox = React.forwardRef<
 		)}
 		{...props}
 	>
-		<CheckboxPrimitive.Indicator className="flex items-center justify-center text-current w-full h-full">
-			{props.checked === 'indeterminate' ? (
-				<Minus className="h-3 w-3" strokeWidth={3} />
-			) : (
-				<Check className="h-3 w-3" strokeWidth={3} />
-			)}
+		{/* The icon follows the indicator's own data-state, so controlled and uncontrolled
+		    (defaultChecked="indeterminate") checkboxes show the same thing. */}
+		<CheckboxPrimitive.Indicator className="group/indicator flex items-center justify-center text-current w-full h-full">
+			<Minus className="hidden h-3 w-3 group-data-[state=indeterminate]/indicator:block" strokeWidth={3} />
+			<Check className="h-3 w-3 group-data-[state=indeterminate]/indicator:hidden" strokeWidth={3} />
 		</CheckboxPrimitive.Indicator>
 	</CheckboxPrimitive.Root>
 ));

@@ -5,6 +5,7 @@ import { AlertRow } from '../AlertRow';
 import { FlatGroupItem } from '../AlertsTable.types';
 import { GroupHeader } from '../GroupHeader';
 import { IncidentRow } from '../IncidentRow';
+import { INCIDENT_SELECTION_STATE, IncidentSelectionState } from '../IncidentRow/IncidentRow.constants';
 
 interface VirtualizedAlertListProps {
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -135,12 +136,12 @@ export const VirtualizedAlertList = ({
 					const selectedMembers = item.members.filter((member) =>
 						selectedAlerts.some((a) => a.id === member.id)
 					);
-					const selectionState =
+					const selectionState: IncidentSelectionState =
 						selectedMembers.length === 0
-							? 'none'
+							? INCIDENT_SELECTION_STATE.NONE
 							: selectedMembers.length === item.members.length
-								? 'all'
-								: 'some';
+								? INCIDENT_SELECTION_STATE.ALL
+								: INCIDENT_SELECTION_STATE.SOME;
 					return (
 						<div
 							key={virtualRow.key}

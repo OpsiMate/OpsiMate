@@ -2,6 +2,7 @@ import { IncidentRollups } from '@/components/Alerts/IncidentRollups';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
+import { INCIDENT_SELECTION_LABELS, INCIDENT_SELECTION_STATE, IncidentSelectionState } from './IncidentRow.constants';
 import { formatShortDateTime } from '@/lib/datetime';
 import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
@@ -29,7 +30,7 @@ interface IncidentRowProps {
 	onUngroup?: (incidentId: number) => void;
 	isActive?: boolean;
 	// How many of the folded members are selected; undefined hides the checkbox (no selection on this table).
-	selectionState?: 'none' | 'some' | 'all';
+	selectionState?: IncidentSelectionState;
 	// The folder checkbox: select every member, or unselect them all.
 	onToggleSelection?: () => void;
 }
@@ -71,9 +72,19 @@ export const IncidentRow = ({
 					onClick={(e) => e.stopPropagation()}
 				>
 					<Checkbox
-						checked={selectionState === 'all' ? true : selectionState === 'some' ? 'indeterminate' : false}
+						checked={
+							selectionState === INCIDENT_SELECTION_STATE.ALL
+								? true
+								: selectionState === INCIDENT_SELECTION_STATE.SOME
+									? 'indeterminate'
+									: false
+						}
 						onCheckedChange={() => onToggleSelection?.()}
-						aria-label={selectionState === 'all' ? 'Unselect incident alerts' : 'Select incident alerts'}
+						aria-label={
+							selectionState === INCIDENT_SELECTION_STATE.ALL
+								? INCIDENT_SELECTION_LABELS.unselect
+								: INCIDENT_SELECTION_LABELS.select
+						}
 						className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary"
 					/>
 				</div>
