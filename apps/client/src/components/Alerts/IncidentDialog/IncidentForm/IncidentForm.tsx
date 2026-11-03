@@ -98,7 +98,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 						<DestinationOption
 							selected={destination === 'new'}
 							icon={<FolderPlus className="h-3.5 w-3.5" />}
-							label="New incident"
+							label="New"
 							onSelect={() => setDestination('new')}
 						/>
 						<DestinationOption
@@ -106,7 +106,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							disabled={candidates.length === 0}
 							title={candidates.length === 0 ? 'No existing incident can take these alerts' : undefined}
 							icon={<FolderInput className="h-3.5 w-3.5" />}
-							label="Existing incident"
+							label="Existing"
 							onSelect={() => setDestination('existing')}
 						/>
 						<DestinationOption
