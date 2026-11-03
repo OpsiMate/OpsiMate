@@ -1,14 +1,19 @@
 interface PanelResizeHandleProps {
 	onPointerDown: (e: React.PointerEvent) => void;
 	onDoubleClick: () => void;
+	ariaLabel?: string;
 }
 
 // The invisible grab strip on the panel's left edge; highlights on hover while dragging.
-export const PanelResizeHandle = ({ onPointerDown, onDoubleClick }: PanelResizeHandleProps) => (
+export const PanelResizeHandle = ({
+	onPointerDown,
+	onDoubleClick,
+	ariaLabel = 'Resize alert details panel',
+}: PanelResizeHandleProps) => (
 	<div
 		role="separator"
 		aria-orientation="vertical"
-		aria-label="Resize alert details panel"
+		aria-label={ariaLabel}
 		title="Drag to resize · double-click to reset"
 		onPointerDown={onPointerDown}
 		onDoubleClick={onDoubleClick}

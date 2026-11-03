@@ -17,15 +17,11 @@ export interface AnalyticsScope {
 export const useAlertAnalytics = (from: string | null, scope?: AnalyticsScope) => {
 	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	return useQuery({
-		queryKey: [
-			...queryKeys.alerts,
-			'analytics',
-			from,
-			timeZone,
-			scope?.filters ?? null,
-			scope?.search ?? null,
-			scope?.tagKey ?? null,
-		],
+		queryKey: queryKeys.alertAnalytics(from, timeZone, {
+			filters: scope?.filters ?? null,
+			search: scope?.search ?? null,
+			tagKey: scope?.tagKey ?? null,
+		}),
 		queryFn: async (): Promise<AlertAnalytics> => {
 			const response = await alertsApi.getAlertAnalytics({
 				from,

@@ -34,7 +34,7 @@ export const useDeleteAlert = () => {
 			// A manual resolve also writes a history event and possibly a resolve comment,
 			// so refresh the detail queries in case the details panel is open on this alert.
 			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistory(alertId) });
-			queryClient.invalidateQueries({ queryKey: [...queryKeys.alertComments, alertId] });
+			queryClient.invalidateQueries({ queryKey: queryKeys.alertCommentsFor(alertId) });
 		},
 	});
 };

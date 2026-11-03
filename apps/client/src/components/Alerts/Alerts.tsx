@@ -22,6 +22,8 @@ import {
 	useDeleteResolvedAlert,
 	useMarkAlertRead,
 } from '@/hooks/queries/alerts';
+import { IncidentDialog } from './IncidentDialog';
+import { IncidentPanel } from './IncidentPanel';
 import {
 	useCreateDashboard,
 	useDeleteDashboard,
@@ -33,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { pluralize } from '@/lib/text';
+import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
 import { AiFilterResult, Alert } from '@OpsiMate/shared';
 import {
@@ -75,6 +78,7 @@ import {
 	useColumnManagement,
 	useExpandRows,
 	useFilterPanelCollapsed,
+	useIncidentActions,
 } from './hooks';
 
 import { canDelete } from '@/lib/permissions';
@@ -381,6 +385,9 @@ const Alerts = () => {
 	const { filterPanelCollapsed, toggleFilterPanelCollapsed } = useFilterPanelCollapsed();
 
 	const allAlerts = useMemo(() => [...alerts, ...resolvedAlerts], [alerts, resolvedAlerts]);
+	// Members of an open incident resolve to alert objects through this (loaded rows
+	// only; the panel notes how many members the current view has not fetched).
+	const loadedAlertsById = useMemo(() => new Map(allAlerts.map((a) => [a.id, a])), [allAlerts]);
 
 	// Sidebar facets, tag keys and the silenced total come from the server, computed
 	// over the RAW dataset — the loaded page is filtered, so deriving them from it
@@ -775,6 +782,20 @@ const Alerts = () => {
 	} = useAlertActions();
 	const deleteResolvedAlertMutation = useDeleteResolvedAlert();
 	const markAlertReadMutation = useMarkAlertRead();
+	const {
+		incidentsById,
+		selectedIncident,
+		selectedIncidentId,
+		openIncidentPanel,
+		closeIncidentPanel,
+		openDialog: openIncidentDialog,
+		closeDialog: closeIncidentDialog,
+		dialogTarget: incidentDialogTarget,
+		handleDialogSubmit: handleIncidentDialogSubmit,
+		isSubmitting: incidentSubmitting,
+		ungroupIncident: handleUngroupIncident,
+		removeAlertFromIncident: handleRemoveFromIncident,
+	} = useIncidentActions({ selectedAlerts, onSelectAlerts: handleSelectAlerts, alertsById: loadedAlertsById });
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -1033,6 +1054,12 @@ const Alerts = () => {
 			onColumnWidthsChange={handleColumnWidthsChange}
 			onAlertClick={handleAlertClick}
 			activeAlertId={syncedSelectedAlert?.id ?? null}
+			incidentsById={incidentsById}
+			onOpenIncident={handleOpenIncident}
+			activeIncidentId={selectedIncidentId}
+			onEditIncident={openIncidentDialog}
+			onUngroupIncident={handleUngroupIncident}
+			onRemoveFromIncident={handleRemoveFromIncident}
 			tagKeyColumnLabels={allColumnLabels}
 			groupByColumns={dashboardState.groupBy}
 			onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1104,7 +1131,25 @@ const Alerts = () => {
 		}
 	};
 
+	const handleOpenIncident = (incidentId: number) => {
+		// The two right-side panels are exclusive: opening an incident closes the alert
+		// details and vice versa (see handleAlertClick).
+		setSelectedAlert(null);
+		openIncidentPanel(incidentId);
+	};
+
+	// Any selection can open the incident dialog (new incident, existing one, or remove),
+	// except when "all N matching" is armed with only a page loaded: grouping would
+	// silently take the loaded subset while the bar claims the whole match set is selected.
+	// Playground mode has no incidents endpoint (useIncidents is disabled there), so the
+	// dialog could neither list incidents nor warn about dissolving one.
+	const canOpenIncidentDialog =
+		!isPlaygroundMode() &&
+		selectedAlerts.length > 0 &&
+		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
+
 	const handleAlertClick = (alert: Alert) => {
+		closeIncidentPanel();
 		// Opening an unread (active) alert marks it as read, un-bolding its row. The transient
 		// isResolved flag (set on resolved rows in the All view) is the guard here — an id-based
 		// check would wrongly skip active alerts that were resolved once and re-fired.
@@ -1431,6 +1476,12 @@ const Alerts = () => {
 												: undefined
 										}
 										onClearSelection={() => handleSelectAlerts([])}
+										// Hidden when "all N matching" is armed but only a page is
+										// loaded: grouping would silently take the loaded subset
+										// while the bar claims the whole match set is selected.
+										onGroupIntoIncident={
+											canOpenIncidentDialog ? () => openIncidentDialog('create') : undefined
+										}
 										onSilenceAll={confirmSilenceAllSelected}
 										onUnsilenceAll={handleUnsilenceAllSelected}
 										onAssignOwnerAll={handleAssignOwnerAllSelected}
@@ -1480,6 +1531,12 @@ const Alerts = () => {
 									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
+									incidentsById={incidentsById}
+									onOpenIncident={handleOpenIncident}
+									activeIncidentId={selectedIncidentId}
+									onEditIncident={openIncidentDialog}
+									onUngroupIncident={handleUngroupIncident}
+									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1525,6 +1582,12 @@ const Alerts = () => {
 									onColumnWidthsChange={handleColumnWidthsChange}
 									onAlertClick={handleAlertClick}
 									activeAlertId={syncedSelectedAlert?.id ?? null}
+									incidentsById={incidentsById}
+									onOpenIncident={handleOpenIncident}
+									activeIncidentId={selectedIncidentId}
+									onEditIncident={openIncidentDialog}
+									onUngroupIncident={handleUngroupIncident}
+									onRemoveFromIncident={handleRemoveFromIncident}
 									tagKeyColumnLabels={allColumnLabels}
 									groupByColumns={dashboardState.groupBy}
 									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
@@ -1543,6 +1606,16 @@ const Alerts = () => {
 						)}
 					</div>
 
+					{selectedIncident && (
+						<IncidentPanel
+							incident={selectedIncident}
+							alertsById={loadedAlertsById}
+							onClose={closeIncidentPanel}
+							onOpenAlert={handleAlertClick}
+							onEdit={openIncidentDialog}
+							onUngroup={handleUngroupIncident}
+						/>
+					)}
 					{syncedSelectedAlert &&
 						(() => {
 							// Data-driven (not tab-driven): resolving an alert while its panel is
@@ -1576,6 +1649,14 @@ const Alerts = () => {
 			</div>
 
 			<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
+			<IncidentDialog
+				target={incidentDialogTarget}
+				onOpenChange={(open) => {
+					if (!open) closeIncidentDialog();
+				}}
+				onSubmit={handleIncidentDialogSubmit}
+				isSubmitting={incidentSubmitting}
+			/>
 
 			<DashboardSettingsDrawer
 				open={showDashboardSettings}

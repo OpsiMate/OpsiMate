@@ -81,6 +81,8 @@ export const useBulkAlertAction = () => {
 			queryClient.invalidateQueries({ queryKey: queryKeys.resolvedAlerts });
 			queryClient.invalidateQueries({ queryKey: queryKeys.alertComments });
 			queryClient.invalidateQueries({ queryKey: queryKeys.alertHistoryAll });
+			// Removing an owner takes the alert out of its incident (server rule).
+			queryClient.invalidateQueries({ queryKey: queryKeys.incidents });
 		},
 	});
 };

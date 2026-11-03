@@ -35,7 +35,10 @@ const alerts: Alert[] = [
 const render = (controlledGroupBy?: string[], onGroupByChange?: (cols: string[]) => void) =>
 	renderHook(() => useAlertGrouping(alerts, {}, controlledGroupBy, onGroupByChange));
 
-const rowIds = (rows: FlatGroupItem[]): string[] => rows.map((row) => (row.type === 'group' ? row.key : row.alert.id));
+const rowIds = (rows: FlatGroupItem[]): string[] =>
+	rows.map((row) =>
+		row.type === 'group' ? row.key : row.type === 'incident' ? `incident:${row.incident.id}` : row.alert.id
+	);
 
 const storedGroupBy = (): string | null => localStorage.getItem(ALERTS_GROUP_BY_STORAGE_KEY);
 

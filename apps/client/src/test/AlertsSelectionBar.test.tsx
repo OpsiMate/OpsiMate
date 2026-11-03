@@ -95,3 +95,23 @@ describe('AlertsSelectionBar while a bulk action runs', () => {
 		expect(screen.getByRole('button', { name: 'Clear selection' })).toBeEnabled();
 	});
 });
+
+describe('AlertsSelectionBar incident action', () => {
+	test('shows the incident button only when the parent offers it, following the in-flight restriction', () => {
+		(getUserRole as ReturnType<typeof vi.fn>).mockReturnValue(Role.Editor);
+		const { rerender } = render(
+			<AlertsSelectionBar selectedAlerts={[alert('a1')]} onClearSelection={noop} onSilenceAll={noop} />
+		);
+		expect(screen.queryByRole('button', { name: /^Incident$/ })).toBeNull();
+		rerender(
+			<AlertsSelectionBar
+				selectedAlerts={[alert('a1')]}
+				onClearSelection={noop}
+				onSilenceAll={noop}
+				onGroupIntoIncident={noop}
+				actionsDisabled
+			/>
+		);
+		expect(screen.getByRole('button', { name: /^Incident$/ })).toBeDisabled();
+	});
+});
