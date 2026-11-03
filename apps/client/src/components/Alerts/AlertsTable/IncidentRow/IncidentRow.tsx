@@ -82,8 +82,8 @@ export const IncidentRow = ({
 						onCheckedChange={() => onToggleSelection?.()}
 						aria-label={
 							selectionState === INCIDENT_SELECTION_STATE.ALL
-								? INCIDENT_SELECTION_LABELS.unselect
-								: INCIDENT_SELECTION_LABELS.select
+								? INCIDENT_SELECTION_LABELS.unselect(incident.name)
+								: INCIDENT_SELECTION_LABELS.select(incident.name)
 						}
 						className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary"
 					/>
