@@ -118,4 +118,7 @@ export type FlatGroupItem =
 			incident: IncidentSummary;
 			shownCount: number;
 			isExpanded: boolean;
+			// The members folded under this folder (the ones in the current rows), so the
+			// folder's checkbox can select them without a second lookup.
+			members: Alert[];
 	  };
