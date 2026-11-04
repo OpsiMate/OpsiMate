@@ -6,7 +6,7 @@ import { dropId, UngroupedDropZone } from '../AlertDragAndDrop';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert, Wrench } from 'lucide-react';
-import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -130,8 +130,10 @@ export const AlertsTable = ({
 	// Everything captured is a ref or a setState, so the empty deps are sound.
 	// The whole scroller is a drop area for "take out of the incident" (see
 	// UngroupedDropZone); rows and folders inside it win when the pointer is over them.
+	// Scoped per table: the split view renders two, each with its own band and background.
+	const dropScope = useId();
 	const { setNodeRef: setDropAreaRef, isOver: isOverDropArea } = useDroppable({
-		id: dropId.ungroupedArea,
+		id: dropId.ungroupedArea(dropScope),
 		disabled: !removeDropZone,
 	});
 	const observeScroller = useCallback((el: HTMLDivElement | null) => {
@@ -436,7 +438,9 @@ export const AlertsTable = ({
 					    filter click that flips the overflow state feeds back through the width
 					    observer (width change -> column widths recompute -> overflow can flip
 					    again), visible as a ~15px column jump and wasted re-renders. */}
-					{removeDropZone && <UngroupedDropZone areaIsOver={isOverDropArea} />}
+					{removeDropZone && (
+						<UngroupedDropZone id={dropId.ungrouped(dropScope)} areaIsOver={isOverDropArea} />
+					)}
 					<div
 						ref={attachScroller}
 						className="flex-1 min-h-0 overflow-auto"

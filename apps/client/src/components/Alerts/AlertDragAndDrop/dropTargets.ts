@@ -1,35 +1,50 @@
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
 
+// What a draggable row carries (useDraggable's `data`).
+export interface AlertDragData {
+	alert: Alert;
+}
+
+// dnd-kit keeps droppables in a map by id, so two with the same id would shadow each
+// other. Targets that can render more than once — a folder for an incident spanning
+// several group-by segments, each split-view table's "ungrouped" band and background —
+// take a `scope` (a useId) that makes each instance its own droppable.
+const scoped = (id: string, scope?: string) => (scope ? `${id}:${scope}` : id);
+
 // Droppable ids. Rows and tray chips are plain strings, parsed back here so the page's
 // drop handler has one place that decides what a drop means.
 export const dropId = {
-	incident: (incidentId: number) => `incident:${incidentId}`,
+	incident: (incidentId: number, scope?: string) => scoped(`incident:${incidentId}`, scope),
 	alert: (alertId: string) => `alert:${alertId}`,
 	trayIncident: (incidentId: number) => `tray:incident:${incidentId}`,
 	trayNew: 'tray:new',
 	trayRemove: 'tray:remove',
 	// Out of the incident: the band that appears above the rows while members are dragged...
-	ungrouped: 'ungrouped',
+	ungrouped: (scope?: string) => scoped('ungrouped', scope),
 	// ...and the table's background, so dropping on empty space below the rows works too.
-	ungroupedArea: 'ungrouped-area',
+	ungroupedArea: (scope?: string) => scoped('ungrouped-area', scope),
 	// The split view's Assigned pane: unowned alerts dropped there are assigned to the dragger.
 	assignedPane: 'pane:assigned',
 };
+
+const INCIDENT_TARGET = /^(?:tray:)?incident:(\d+)(?::|$)/;
+const isUngroupedArea = (id: string) => /^ungrouped-area(?::|$)/.test(id);
+const isRemoveTarget = (id: string) => id === dropId.trayRemove || /^ungrouped(?:-area)?(?::|$)/.test(id);
 
 // The table background is a droppable that contains every row and folder, so the
 // pointer is always "within" it too. A drop means the most specific thing under the
 // pointer: rows, folders and tray chips win; the background only counts on its own.
 // (A member dropped back on its own row must stay a no-op, not fall through to the
 // background's "out of the incident".)
-const FALLBACK_TARGETS = new Set<string>([dropId.ungroupedArea]);
+const isFallbackTarget = (id: string) => isUngroupedArea(id);
 // The Assigned pane is context rather than a fallback: it stays in the list, after the
 // row under the pointer, so resolveDrop knows where that row sits.
-const CONTEXT_TARGETS = new Set<string>([dropId.assignedPane]);
+const isContextTarget = (id: string) => id === dropId.assignedPane;
 
 export const preferSpecificTargets = <T extends { id: string | number }>(collisions: T[]): T[] => {
-	const context = collisions.filter((collision) => CONTEXT_TARGETS.has(String(collision.id)));
+	const context = collisions.filter((collision) => isContextTarget(String(collision.id)));
 	const specific = collisions.filter(
-		(collision) => !FALLBACK_TARGETS.has(String(collision.id)) && !CONTEXT_TARGETS.has(String(collision.id))
+		(collision) => !isFallbackTarget(String(collision.id)) && !isContextTarget(String(collision.id))
 	);
 	return specific.length > 0 ? [...specific, ...context] : collisions;
 };
@@ -90,7 +105,7 @@ const resolveDropOn = (
 	inAssignedPane: boolean
 ): DropAction | null => {
 	if (dragged.length === 0) return null;
-	const incidentMatch = /^(?:tray:)?incident:(\d+)$/.exec(overId);
+	const incidentMatch = INCIDENT_TARGET.exec(overId);
 	if (incidentMatch) {
 		const incidentId = Number(incidentMatch[1]);
 		if (dragged.every((alert) => alert.incidentId === incidentId)) return null;
@@ -98,7 +113,7 @@ const resolveDropOn = (
 	}
 	if (overId === dropId.trayNew) return { kind: 'create', alerts: dragged };
 	if (overId === dropId.assignedPane) return assignUnowned(dragged);
-	if (overId === dropId.trayRemove || overId === dropId.ungrouped || overId === dropId.ungroupedArea) {
+	if (isRemoveTarget(overId)) {
 		const members = dragged.filter((alert) => alert.incidentId != null);
 		return members.length > 0 ? { kind: 'remove', alerts: members } : null;
 	}

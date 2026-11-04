@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { cloneElement, isValidElement, ReactElement, ReactNode } from 'react';
+import { usePaneDropTarget } from './hooks/usePaneDropTarget';
 
 type PaneTone = 'amber' | 'emerald';
 
@@ -45,17 +45,6 @@ interface AssignmentPaneProps {
 interface HeadingSlotProps {
 	heading?: ReactNode;
 }
-
-// The pane as a drop target. Lit while the pointer is anywhere inside it — including over
-// its rows, which win as the "over" target but still mean the pane (see resolveDrop).
-const usePaneDropTarget = (dropTargetId: string | undefined, dropActive: boolean) => {
-	const { setNodeRef } = useDroppable({ id: dropTargetId ?? 'pane:none', disabled: !dropTargetId });
-	const { collisions } = useDndContext();
-	const isWithin = dropTargetId != null && (collisions?.some((collision) => collision.id === dropTargetId) ?? false);
-	const dropClass = dropActive && isWithin && 'ring-2 ring-inset ring-primary rounded-lg bg-primary/5';
-	return { setNodeRef, dropClass };
-};
-
 // One pane of the split-by-assignment view. When it has alerts it renders the table with the
 // count caption injected; when empty it shows the same caption over a short message so both
 // panes always stay labelled.

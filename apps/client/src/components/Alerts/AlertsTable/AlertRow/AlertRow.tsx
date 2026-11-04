@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useCallback, useEffect, useRef } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { dragId, dropId } from '../../AlertDragAndDrop';
+import { AlertDragData, dragId, dropId } from '../../AlertDragAndDrop';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -92,16 +92,26 @@ export const AlertRow = ({
 	// Set by a Ctrl+left press on the row itself, so its contextmenu (button 0 or 2) is suppressed.
 	const ctrlPrimaryPressRef = useRef(false);
 
+	const dragData: AlertDragData = { alert };
 	const {
 		setNodeRef: setDragRef,
 		listeners: dragListeners,
 		isDragging: isBeingDragged,
-	} = useDraggable({ id: dragId(alert.id), data: { alert }, disabled: !dragAndDrop });
+	} = useDraggable({ id: dragId(alert.id), data: dragData, disabled: !dragAndDrop });
 	const { setNodeRef: setDropRef, isOver: isDropTarget } = useDroppable({
 		id: dropId.alert(alert.id),
-		data: { alert },
+		data: dragData,
 		disabled: !dragAndDrop,
 	});
+	// One stable ref callback: a new identity each render would make React detach and
+	// re-attach the node, and dnd-kit re-observe the row, on every re-render during a drag.
+	const setRowRef = useCallback(
+		(node: HTMLTableRowElement | null) => {
+			setDragRef(node);
+			setDropRef(node);
+		},
+		[setDragRef, setDropRef]
+	);
 	// The click that ends a drag lands on this row; it must not open or select it. The
 	// flag is armed for the drag and disarmed a tick after it ends: the browser fires that
 	// click (if the pointer is still over this row) before a zero-delay timer runs, and a
@@ -205,10 +215,7 @@ export const AlertRow = ({
 
 	return (
 		<TableRow
-			ref={(node) => {
-				setDragRef(node);
-				setDropRef(node);
-			}}
+			ref={setRowRef}
 			data-alert-id={alert.id}
 			{...(dragAndDrop ? dragListeners : {})}
 			className={cn(

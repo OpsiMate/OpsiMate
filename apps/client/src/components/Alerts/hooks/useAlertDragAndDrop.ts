@@ -1,7 +1,8 @@
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
 import { DragEndEvent, DragStartEvent, useSensor, useSensors } from '@dnd-kit/core';
 import { useRef, useState } from 'react';
-import { AlertPointerSensor, incidentsDissolvedBy, resolveDrop } from '../AlertDragAndDrop';
+import { AlertDragData, AlertPointerSensor, DropAction, incidentsDissolvedBy, resolveDrop } from '../AlertDragAndDrop';
+import { IncidentDialogPreset } from '../IncidentDialog';
 
 interface UseAlertDragAndDropProps {
 	selectedAlerts: Alert[];
@@ -11,7 +12,7 @@ interface UseAlertDragAndDropProps {
 	// The incident actions a drop turns into (see useIncidentActions).
 	addAlertsToIncident: (alerts: Alert[], incidentId: number) => Promise<void>;
 	removeAlertsFromIncidents: (alerts: Alert[]) => Promise<void>;
-	openCreateDialogFor: (alerts: Alert[]) => void;
+	openCreateDialogFor: (alerts: Alert[], preset?: IncidentDialogPreset) => void;
 	// Unowned alerts dropped on the Assigned pane become the current user's.
 	assignAlertsToMe: (alerts: Alert[]) => Promise<void>;
 }
@@ -29,10 +30,7 @@ export const useAlertDragAndDrop = ({
 	onSelectAlerts,
 	alertsById,
 	incidents,
-	addAlertsToIncident,
-	removeAlertsFromIncidents,
-	openCreateDialogFor,
-	assignAlertsToMe,
+	...actions
 }: UseAlertDragAndDropProps) => {
 	const [dragging, setDragging] = useState<Alert[] | null>(null);
 	// The drag-end handler runs from a dnd-kit listener, so it reads the set from a ref
@@ -52,7 +50,7 @@ export const useAlertDragAndDrop = ({
 	};
 
 	const onDragStart = ({ active }: DragStartEvent) => {
-		const alert = (active.data.current as { alert?: Alert } | undefined)?.alert;
+		const alert = (active.data.current as AlertDragData | undefined)?.alert;
 		if (!alert) return;
 		const inSelection = selectedAlerts.some((a) => a.id === alert.id);
 		if (!inSelection) onSelectAlerts([alert]);
@@ -70,20 +68,40 @@ export const useAlertDragAndDrop = ({
 		// already ordered them); a row inside a pane is tried before the pane itself.
 		const overIds = collisions?.length ? collisions.map((c) => String(c.id)) : over ? [String(over.id)] : [];
 		const action = resolveDrop(overIds, alerts, alertsById);
-		if (!action) return;
-		if (action.kind === 'create') {
-			openCreateDialogFor(action.alerts);
-		} else if (action.kind === 'add') {
-			// Moving the last members out of an incident dissolves it: let the dialog warn
-			// instead of doing it silently.
-			if (incidentsDissolvedBy(alerts, incidents, action.incidentId).length > 0) openCreateDialogFor(alerts);
-			else await addAlertsToIncident(alerts, action.incidentId);
-		} else if (action.kind === 'remove') {
-			await removeAlertsFromIncidents(action.alerts);
-		} else {
-			await assignAlertsToMe(action.alerts);
-		}
+		if (action) await performDrop(action, alerts, incidents, actions);
 	};
 
 	return { sensors, dragging, onDragStart, onDragEnd, onDragCancel };
+};
+
+type DropActions = Pick<
+	UseAlertDragAndDropProps,
+	'addAlertsToIncident' | 'removeAlertsFromIncidents' | 'openCreateDialogFor' | 'assignAlertsToMe'
+>;
+
+// Carries a resolved drop out. Moving the last members out of an incident dissolves it,
+// so such drops go through the dialog, opened on the drop's own destination: it warns,
+// and confirming does what the drop meant.
+const performDrop = async (
+	action: DropAction,
+	dragged: Alert[],
+	incidents: IncidentSummary[],
+	actions: DropActions
+) => {
+	switch (action.kind) {
+		case 'create':
+			return actions.openCreateDialogFor(action.alerts);
+		case 'add':
+			if (incidentsDissolvedBy(dragged, incidents, action.incidentId).length > 0) {
+				return actions.openCreateDialogFor(dragged, { destination: 'existing', incidentId: action.incidentId });
+			}
+			return actions.addAlertsToIncident(dragged, action.incidentId);
+		case 'remove':
+			if (incidentsDissolvedBy(action.alerts, incidents).length > 0) {
+				return actions.openCreateDialogFor(action.alerts, { destination: 'remove' });
+			}
+			return actions.removeAlertsFromIncidents(action.alerts);
+		case 'assign':
+			return actions.assignAlertsToMe(action.alerts);
+	}
 };

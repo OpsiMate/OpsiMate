@@ -6,6 +6,7 @@ import { INCIDENT_SELECTION_LABELS, INCIDENT_SELECTION_STATE, IncidentSelectionS
 import { formatShortDateTime } from '@/lib/datetime';
 import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
+import { useId } from 'react';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -57,7 +58,10 @@ export const IncidentRow = ({
 	dropTarget = false,
 }: IncidentRowProps) => {
 	const partial = shownCount < incident.alertCount;
-	const { setNodeRef, isOver } = useDroppable({ id: dropId.incident(incident.id), disabled: !dropTarget });
+	// An incident spanning several group-by segments renders one folder per segment; each
+	// is its own drop target.
+	const dropScope = useId();
+	const { setNodeRef, isOver } = useDroppable({ id: dropId.incident(incident.id, dropScope), disabled: !dropTarget });
 	return (
 		<div
 			ref={setNodeRef}

@@ -1,5 +1,19 @@
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
 
+// Open the form on "Existing" with this incident chosen (a drop on it that needs the
+// dialog's dissolve warning first).
+export interface IncidentExistingPreset {
+	destination: 'existing';
+	incidentId: number;
+}
+
+// Open the form on "Remove" (a drop on a remove target that needs the warning first).
+export interface IncidentRemovePreset {
+	destination: 'remove';
+}
+
+export type IncidentDialogPreset = IncidentExistingPreset | IncidentRemovePreset;
+
 // Grouping `alerts`: into a new incident, or into one of the existing `incidents`.
 export interface IncidentCreateTarget {
 	alerts: Alert[];
@@ -7,6 +21,8 @@ export interface IncidentCreateTarget {
 	// Until the incidents list has loaded, the form cannot offer existing incidents nor
 	// warn which ones a move would dissolve, so it holds off on submitting.
 	incidentsState: 'loading' | 'error' | 'ready';
+	// Where the form starts; "New" when absent.
+	preset?: IncidentDialogPreset;
 }
 
 // Editing an existing incident's name and details.

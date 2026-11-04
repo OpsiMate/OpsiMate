@@ -7,13 +7,16 @@ import type { PointerEvent } from 'react';
 // button. Everything else — a plain press that then moves — drags the row.
 const NOT_A_DRAG_HANDLE = '[data-select-cell], button, a, input, textarea, [role="checkbox"], [role="menuitem"]';
 
-export const canStartAlertDrag = (event: {
+// The parts of a pointer press the gate looks at (a PointerEvent satisfies it).
+interface AlertDragPress {
 	button: number;
 	metaKey: boolean;
 	ctrlKey: boolean;
 	shiftKey: boolean;
 	target: EventTarget | null;
-}): boolean => {
+}
+
+export const canStartAlertDrag = (event: AlertDragPress): boolean => {
 	if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return false;
 	const target = event.target as Element | null;
 	return !target?.closest?.(NOT_A_DRAG_HANDLE);

@@ -48,9 +48,17 @@ describe('resolveDrop', () => {
 	});
 
 	test('the "out of the incident" zone and the table background remove members only', () => {
-		expect(resolveDrop(dropId.ungrouped, [a, m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
-		expect(resolveDrop(dropId.ungroupedArea, [m1, m2], alerts)).toEqual({ kind: 'remove', alerts: [m1, m2] });
-		expect(resolveDrop(dropId.ungroupedArea, [a], alerts)).toBeNull();
+		expect(resolveDrop(dropId.ungrouped(), [a, m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
+		expect(resolveDrop(dropId.ungroupedArea(), [m1, m2], alerts)).toEqual({ kind: 'remove', alerts: [m1, m2] });
+		expect(resolveDrop(dropId.ungroupedArea(), [a], alerts)).toBeNull();
+	});
+
+	test('scoped ids (one folder per segment, one band/background per table) resolve like the plain ones', () => {
+		expect(resolveDrop(dropId.incident(7, '«r3»'), [a], alerts)).toEqual({ kind: 'add', incidentId: 7 });
+		expect(resolveDrop(dropId.ungrouped(':r1:'), [m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
+		expect(resolveDrop(dropId.ungroupedArea('«r2»'), [m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
+		// Two tables' ids are distinct droppables.
+		expect(dropId.ungroupedArea('«r1»')).not.toBe(dropId.ungroupedArea('«r2»'));
 	});
 
 	test('the Assigned pane assigns only the unowned alerts; owned ones are left alone', () => {
@@ -61,7 +69,7 @@ describe('resolveDrop', () => {
 
 	test('inside the Assigned pane, unowned alerts dropped on a plain row are assigned, not grouped', () => {
 		const owned = { ...alert('o'), ownerId: '2' } as Alert;
-		const inPane = (target: Alert) => [dropId.alert(target.id), dropId.ungroupedArea, dropId.assignedPane];
+		const inPane = (target: Alert) => [dropId.alert(target.id), dropId.ungroupedArea(), dropId.assignedPane];
 		expect(resolveDrop(inPane(b), [a], alerts)).toEqual({ kind: 'assign', alerts: [a] });
 		// Nothing unowned in the set: the row keeps its usual meaning.
 		expect(resolveDrop(inPane(b), [owned], alerts)).toEqual({ kind: 'create', alerts: [owned, b] });
@@ -77,7 +85,7 @@ describe('resolveDrop', () => {
 		});
 		// An unowned alert over the Assigned pane's table background: the area says nothing
 		// (no members), so the pane applies.
-		expect(resolveDrop([dropId.ungroupedArea, dropId.assignedPane], [a], alerts)).toEqual({
+		expect(resolveDrop([dropId.ungroupedArea(), dropId.assignedPane], [a], alerts)).toEqual({
 			kind: 'assign',
 			alerts: [a],
 		});
@@ -133,15 +141,16 @@ describe('canStartAlertDrag', () => {
 
 describe('preferSpecificTargets', () => {
 	test('a row or folder under the pointer beats the table background; the background stands alone', () => {
-		const area = { id: dropId.ungroupedArea };
+		const area = { id: dropId.ungroupedArea() };
 		const row = { id: dropId.alert('a') };
 		expect(preferSpecificTargets([area, row])).toEqual([row]);
+		expect(preferSpecificTargets([{ id: dropId.ungroupedArea('«r1»') }, row])).toEqual([row]);
 		expect(preferSpecificTargets([area])).toEqual([area]);
 		expect(preferSpecificTargets([])).toEqual([]);
 	});
 
 	test('the Assigned pane stays in the list after the row under the pointer', () => {
-		const area = { id: dropId.ungroupedArea };
+		const area = { id: dropId.ungroupedArea() };
 		const row = { id: dropId.alert('a') };
 		const pane = { id: dropId.assignedPane };
 		expect(preferSpecificTargets([row, area, pane])).toEqual([row, pane]);
