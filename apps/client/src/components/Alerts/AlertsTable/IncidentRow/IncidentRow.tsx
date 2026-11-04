@@ -73,9 +73,11 @@ export const IncidentRow = ({
 		>
 			{selectionState !== undefined && (
 				// Sits under the table's select column so the folder checkbox lines up with the
-				// rows' checkboxes. Mixed state when only some members are selected.
+				// rows' checkboxes: same width, and the same left-only padding the table cells get
+				// (TableCell drops its right padding around a checkbox). Mixed state when only
+				// some members are selected.
 				<div
-					className="flex shrink-0 items-center justify-center"
+					className="flex shrink-0 items-center justify-center pl-2"
 					style={{ width: SELECT_COLUMN_WIDTH }}
 					onClick={(e) => e.stopPropagation()}
 				>
