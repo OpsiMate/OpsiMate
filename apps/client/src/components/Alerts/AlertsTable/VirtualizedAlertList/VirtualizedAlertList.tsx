@@ -164,7 +164,7 @@ export const VirtualizedAlertList = ({
 								onEdit={onEditIncident}
 								onUngroup={onUngroupIncident}
 								isActive={item.incident.id === activeIncidentId}
-								selectionState={onSelectAlerts ? selectionState : undefined}
+								selectionState={onSelectAlerts && onToggleMembersSelection ? selectionState : undefined}
 								onToggleSelection={
 									onSelectAlerts && onToggleMembersSelection
 										? () => onToggleMembersSelection(item.members)
