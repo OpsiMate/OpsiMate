@@ -6,6 +6,7 @@ import {
 	incidentsDissolvedBy,
 	resolveDrop,
 	preferSpecificTargets,
+	followPointer,
 } from '@/components/Alerts/AlertDragAndDrop';
 
 const alert = (id: string, incidentId: number | null = null): Alert => ({ id, incidentId }) as Alert;
@@ -145,5 +146,23 @@ describe('preferSpecificTargets', () => {
 		const pane = { id: dropId.assignedPane };
 		expect(preferSpecificTargets([row, area, pane])).toEqual([row, pane]);
 		expect(preferSpecificTargets([area, pane])).toEqual([area, pane]);
+	});
+});
+
+describe('followPointer', () => {
+	const rect = { top: 100, left: 50, width: 400, height: 40, right: 450, bottom: 140 };
+	const transform = { x: 10, y: 20, scaleX: 1, scaleY: 1 };
+	const args = (activatorEvent: Event | null) =>
+		({ activatorEvent, draggingNodeRect: rect, transform }) as unknown as Parameters<typeof followPointer>[0];
+
+	test('re-anchors the overlay to where the row was grabbed, pointer on the grip', () => {
+		// Grabbed 300px into the row, 20px down: shift right by 300 - grip, up to centre.
+		const press = new MouseEvent('pointerdown', { clientX: 350, clientY: 120 });
+		expect(followPointer(args(press))).toEqual({ ...transform, x: 10 + 300 - 20, y: 20 + 20 - 20 });
+	});
+
+	test('leaves the transform alone without a pointer event or a rect', () => {
+		expect(followPointer(args(null))).toEqual(transform);
+		expect(followPointer({ ...args(new MouseEvent('pointerdown')), draggingNodeRect: null })).toEqual(transform);
 	});
 });
