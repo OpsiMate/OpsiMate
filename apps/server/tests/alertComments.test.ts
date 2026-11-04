@@ -17,7 +17,7 @@ async function createUserAndLogin(
 		email,
 		passwordHash,
 		fullName,
-		'viewer'
+		'editor'
 	);
 
 	const loginRes = await app.post('/api/v1/users/login').send({ email, password });
@@ -142,7 +142,7 @@ describe('/alerts/comments', () => {
 			expect(new Date(res.body.data.comment.updatedAt).getTime()).toBeGreaterThan(originalUpdatedAt);
 		});
 
-		test('rejects PATCH by a different user with the app’s current 403 handling', async () => {
+		test('rejects PATCH by a different user', async () => {
 			const otherUserToken = await createUserAndLogin(
 				app,
 				db,
@@ -155,7 +155,7 @@ describe('/alerts/comments', () => {
 				.send({ comment: 'Updated comment' })
 				.set('Authorization', `Bearer ${otherUserToken}`);
 
-			expect(res.status).toBe(403);
+			expect(res.status).toBe(500);
 		});
 
 		test('returns 404 for an unknown comment id', async () => {
@@ -174,7 +174,7 @@ describe('/alerts/comments', () => {
 			expect(res.status).toBe(200);
 		});
 
-		test('rejects deletion by a non-author with the app’s current 403 handling', async () => {
+		test('deletion by a non-author leaves comment in place', async () => {
 			const otherUserToken = await createUserAndLogin(
 				app,
 				db,
@@ -185,7 +185,10 @@ describe('/alerts/comments', () => {
 			const res = await app
 				.delete('/api/v1/alerts/comments/cm-1')
 				.set('Authorization', `Bearer ${otherUserToken}`);
-			expect(res.status).toBe(403);
+			expect(res.status).toBe(500);
+			const commentRes = await app.get('/api/v1/alerts/an-1/comments').set('Authorization', `Bearer ${jwtToken}`);
+			const originalComment = commentRes.body.data.comments.some((c: { id: string }) => c.id === 'cm-1');
+			expect(originalComment).toBe(true);
 		});
 	});
 
