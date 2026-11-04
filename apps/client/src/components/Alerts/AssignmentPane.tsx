@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { cloneElement, isValidElement, ReactElement, ReactNode } from 'react';
 
 type PaneTone = 'amber' | 'emerald';
@@ -35,21 +36,48 @@ interface AssignmentPaneProps {
 	emptyText?: string;
 	/** An <AlertsTable /> element; the pane injects the heading caption into it. */
 	children: ReactNode;
+	/** Makes the pane a drop target with this id (see AlertDragAndDrop); rows inside it still win. */
+	dropTargetId?: string;
+	/** A drag that this pane can take is in progress: light up while the pointer is over it. */
+	dropActive?: boolean;
 }
 
 interface HeadingSlotProps {
 	heading?: ReactNode;
 }
 
+// The pane as a drop target. Lit while the pointer is anywhere inside it — including over
+// its rows, which win as the "over" target but still mean the pane (see resolveDrop).
+const usePaneDropTarget = (dropTargetId: string | undefined, dropActive: boolean) => {
+	const { setNodeRef } = useDroppable({ id: dropTargetId ?? 'pane:none', disabled: !dropTargetId });
+	const { collisions } = useDndContext();
+	const isWithin = dropTargetId != null && (collisions?.some((collision) => collision.id === dropTargetId) ?? false);
+	const dropClass = dropActive && isWithin && 'ring-2 ring-inset ring-primary rounded-lg bg-primary/5';
+	return { setNodeRef, dropClass };
+};
+
 // One pane of the split-by-assignment view. When it has alerts it renders the table with the
 // count caption injected; when empty it shows the same caption over a short message so both
 // panes always stay labelled.
-export const AssignmentPane = ({ title, count, tone, isEmpty, emptyText, children }: AssignmentPaneProps) => {
+export const AssignmentPane = ({
+	title,
+	count,
+	tone,
+	isEmpty,
+	emptyText,
+	children,
+	dropTargetId,
+	dropActive = false,
+}: AssignmentPaneProps) => {
 	const heading = <PaneHeading title={title} count={count} tone={tone} />;
+	const { setNodeRef, dropClass } = usePaneDropTarget(dropTargetId, dropActive);
 
 	if (isEmpty) {
 		return (
-			<div className="h-full min-w-0 flex flex-col min-h-0 border rounded-lg overflow-hidden">
+			<div
+				ref={setNodeRef}
+				className={cn('h-full min-w-0 flex flex-col min-h-0 border rounded-lg overflow-hidden', dropClass)}
+			>
 				<div className="flex items-center gap-2 px-3 py-1.5 border-b shrink-0 bg-muted/30">{heading}</div>
 				<div className="flex-1 flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
 					{emptyText ?? 'No alerts.'}
@@ -62,5 +90,9 @@ export const AssignmentPane = ({ title, count, tone, isEmpty, emptyText, childre
 		? cloneElement(children as ReactElement<HeadingSlotProps>, { heading })
 		: children;
 
-	return <div className="h-full min-w-0 flex flex-col min-h-0">{table}</div>;
+	return (
+		<div ref={setNodeRef} className={cn('h-full min-w-0 flex flex-col min-h-0', dropClass)}>
+			{table}
+		</div>
+	);
 };

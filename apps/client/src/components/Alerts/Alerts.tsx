@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { pluralize } from '@/lib/text';
+import { getCurrentUser } from '@/lib/auth';
 import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
 import { AiFilterResult, Alert } from '@OpsiMate/shared';
@@ -57,7 +58,7 @@ import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActionDialog';
 import { AlertsTable } from './AlertsTable';
-import { AlertDragOverlay, IncidentDropTray, preferSpecificTargets } from './AlertDragAndDrop';
+import { AlertDragOverlay, dropId, IncidentDropTray, preferSpecificTargets } from './AlertDragAndDrop';
 import { useAlertDragAndDrop } from './hooks/useAlertDragAndDrop';
 import { DndContext, pointerWithin } from '@dnd-kit/core';
 import { AssignmentPane } from './AssignmentPane';
@@ -812,6 +813,8 @@ const Alerts = () => {
 		addAlertsToIncident,
 		removeAlertsFromIncidents,
 		openCreateDialogFor,
+		// Defined further down (it needs runBulkAction); only called when a drop lands.
+		assignAlertsToMe: (alerts) => assignAlertsToMe(alerts),
 	});
 	const bulkAction = useBulkAlertAction();
 
@@ -826,7 +829,9 @@ const Alerts = () => {
 			comment?: string;
 			ownerId?: string | null;
 		},
-		labels: { title: string; verb: string }
+		labels: { title: string; verb: string },
+		// Explicit targets (a drop) instead of the selection / the armed "all matching" scope.
+		targets?: Alert[]
 	) => {
 		// The query is built HERE, not from a memo — the rolling window must be the one
 		// the user is looking at when they confirm, not the one from when they selected.
@@ -841,7 +846,11 @@ const Alerts = () => {
 			});
 			return;
 		}
-		const scope = allMatchingSelected ? { query: buildBulkScopeQuery() } : { ids: selectedAlerts.map((a) => a.id) };
+		const scope = targets
+			? { ids: targets.map((a) => a.id) }
+			: allMatchingSelected
+				? { query: buildBulkScopeQuery() }
+				: { ids: selectedAlerts.map((a) => a.id) };
 		// Cleared up front: the rows already show the change (optimistic), so a selection
 		// bar still offering actions on them would invite a second request for the same ids.
 		setSelectedAlerts([]);
@@ -874,6 +883,26 @@ const Alerts = () => {
 			{ action: 'silence', silencedUntil: silencedUntil ?? null, comment },
 			{ title: 'Alerts silenced', verb: 'Silenced' }
 		);
+
+	// Drop on the Assigned pane: the dragged unowned alerts become the dragger's. The same
+	// bulk assign-owner path as the selection bar, so the server fires its usual
+	// owner-assigned history entries and callbacks.
+	const assignAlertsToMe = async (alerts: Alert[]) => {
+		const me = getCurrentUser();
+		if (!me) {
+			toast({
+				title: 'Not signed in',
+				description: 'Sign in to take ownership of alerts.',
+				variant: 'destructive',
+			});
+			return;
+		}
+		await runBulkAction(
+			{ action: 'assignOwner', ownerId: String(me.id) },
+			{ title: 'Assigned to you', verb: 'Assigned to you' },
+			alerts
+		);
+	};
 
 	const handleAssignOwnerAllSelected = (ownerId: string | null) =>
 		runBulkAction(
@@ -1168,6 +1197,8 @@ const Alerts = () => {
 		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
 	// Members are being dragged: the tables show the "out of the incident" drop zone.
 	const draggingMembers = alertDrag.dragging?.some((alert) => alert.incidentId != null) ?? false;
+	// Unowned alerts are being dragged: the Assigned pane can take them.
+	const draggingUnowned = alertDrag.dragging?.some((alert) => alert.ownerId == null) ?? false;
 	// Dragging rows into incidents: same guards, minus "something is selected" (a drag
 	// selects as it starts), plus a loaded incidents list for the drop targets.
 	const canDragIntoIncidents =
@@ -1483,6 +1514,10 @@ const Alerts = () => {
 											bottom={
 												<AssignmentPane
 													title="Assigned"
+													dropTargetId={
+														canDragIntoIncidents ? dropId.assignedPane : undefined
+													}
+													dropActive={draggingUnowned}
 													count={assignedTotal ?? assignedAlerts.length}
 													tone="emerald"
 													isEmpty={assignedAlerts.length === 0 && !isLoading}

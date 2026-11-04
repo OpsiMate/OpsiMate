@@ -12,6 +12,8 @@ interface UseAlertDragAndDropProps {
 	addAlertsToIncident: (alerts: Alert[], incidentId: number) => Promise<void>;
 	removeAlertsFromIncidents: (alerts: Alert[]) => Promise<void>;
 	openCreateDialogFor: (alerts: Alert[]) => void;
+	// Unowned alerts dropped on the Assigned pane become the current user's.
+	assignAlertsToMe: (alerts: Alert[]) => Promise<void>;
 }
 
 // Pointer must travel this far before a press becomes a drag; a shorter move is a click.
@@ -30,6 +32,7 @@ export const useAlertDragAndDrop = ({
 	addAlertsToIncident,
 	removeAlertsFromIncidents,
 	openCreateDialogFor,
+	assignAlertsToMe,
 }: UseAlertDragAndDropProps) => {
 	const [dragging, setDragging] = useState<Alert[] | null>(null);
 	// The drag-end handler runs from a dnd-kit listener, so it reads the set from a ref
@@ -60,10 +63,13 @@ export const useAlertDragAndDrop = ({
 		endDrag();
 	};
 
-	const onDragEnd = async ({ over }: DragEndEvent) => {
+	const onDragEnd = async ({ over, collisions }: DragEndEvent) => {
 		const alerts = endDrag();
 		if (!alerts) return;
-		const action = resolveDrop(over ? String(over.id) : null, alerts, alertsById);
+		// Every target under the pointer, most specific first (the collision detection
+		// already ordered them); a row inside a pane is tried before the pane itself.
+		const overIds = collisions?.length ? collisions.map((c) => String(c.id)) : over ? [String(over.id)] : [];
+		const action = resolveDrop(overIds, alerts, alertsById);
 		if (!action) return;
 		if (action.kind === 'create') {
 			openCreateDialogFor(action.alerts);
@@ -72,8 +78,10 @@ export const useAlertDragAndDrop = ({
 			// instead of doing it silently.
 			if (incidentsDissolvedBy(alerts, incidents, action.incidentId).length > 0) openCreateDialogFor(alerts);
 			else await addAlertsToIncident(alerts, action.incidentId);
-		} else {
+		} else if (action.kind === 'remove') {
 			await removeAlertsFromIncidents(action.alerts);
+		} else {
+			await assignAlertsToMe(action.alerts);
 		}
 	};
 
