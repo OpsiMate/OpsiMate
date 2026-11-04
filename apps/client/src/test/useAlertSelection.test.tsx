@@ -158,3 +158,32 @@ describe('useAlertSelection handleSelectAlert', () => {
 		expect(result.current.allSelected).toBe(false);
 	});
 });
+
+describe('useAlertSelection plain click and folder checkbox', () => {
+	test('handleSelectOnly replaces the whole selection, other pane included', () => {
+		const onSelectAlerts = vi.fn();
+		const { result } = renderSelection({
+			sortedAlerts: activeRows,
+			selectedAlerts: [...copyOf(resolvedRows), copyOf(activeRows)[1]],
+			onSelectAlerts,
+		});
+		act(() => result.current.handleSelectOnly(activeRows[0]));
+		expect(onSelectAlerts).toHaveBeenCalledWith([activeRows[0]]);
+	});
+
+	test('handleToggleMembers adds the missing members, then drops them all once every one is selected', () => {
+		const onSelectAlerts = vi.fn();
+		const other = copyOf(resolvedRows)[0];
+		const { result, rerender } = renderSelection({
+			sortedAlerts: activeRows,
+			selectedAlerts: [other, copyOf(activeRows)[0]],
+			onSelectAlerts,
+		});
+		act(() => result.current.handleToggleMembers(activeRows));
+		expect(onSelectAlerts).toHaveBeenLastCalledWith([other, copyOf(activeRows)[0], activeRows[1]]);
+		rerender({ sortedAlerts: activeRows, selectedAlerts: [other, ...copyOf(activeRows)], onSelectAlerts });
+		act(() => result.current.handleToggleMembers(activeRows));
+		// Every member was selected: only they leave; the other pane's pick survives.
+		expect(onSelectAlerts).toHaveBeenLastCalledWith([other]);
+	});
+});

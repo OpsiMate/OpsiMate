@@ -30,6 +30,8 @@ export interface AlertRowProps {
 	onSelectAlert: (alert: Alert) => void;
 	// Shift+click: select every row from the last toggled one to this one.
 	onSelectRange?: (alert: Alert) => void;
+	// Plain click: the selection becomes just this row (alongside opening its details).
+	onSelectOnly?: (alert: Alert) => void;
 	onAlertClick?: (alert: Alert) => void;
 	// True when this alert is the one open in the details panel.
 	isActiveRow?: boolean;
@@ -60,6 +62,7 @@ export const AlertRow = ({
 	contentColumnWidths = {},
 	onSelectAlert,
 	onSelectRange,
+	onSelectOnly,
 	onAlertClick,
 	isActiveRow = false,
 	onSilenceAlert,
@@ -93,6 +96,10 @@ export const AlertRow = ({
 			if (!isForeignTarget(e)) (onSelectRange ?? onSelectAlert)(alert);
 			return;
 		}
+		// A plain click both opens the row and makes it THE selection, so the bulk
+		// actions always apply to what the user is looking at. Controls inside the row
+		// (owner picker, actions menu) keep their own click.
+		if (onSelectAlerts && !isForeignTarget(e)) onSelectOnly?.(alert);
 		onAlertClick?.(alert);
 	};
 

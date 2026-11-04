@@ -27,18 +27,32 @@ const rowKinds = (rows: FlatGroupItem[]) =>
 	rows.map((r) => (r.type === 'leaf' ? `leaf:${r.alert.id}${r.incidentMember ? '*' : ''}` : `${r.type}`));
 
 describe('useIncidentFolding', () => {
-	test('members collapse into one folder at the FIRST member position, preserving sort order', () => {
+	test('members collapse into one folder at the BOTTOM of the segment; plain alerts keep their order', () => {
 		const rows = [leaf('a'), leaf('b', 1), leaf('c'), leaf('d', 1)];
 		const { result } = renderHook(() => useIncidentFolding(rows, byId(incident(1, 2))));
-		// Folder sits where 'b' (the best-sorted member) sat; 'd' folded away.
-		expect(rowKinds(result.current.foldedRows)).toEqual(['leaf:a', 'incident', 'leaf:c']);
+		expect(rowKinds(result.current.foldedRows)).toEqual(['leaf:a', 'leaf:c', 'incident']);
+	});
+
+	test('several folders keep the order of their best-sorted members', () => {
+		const rows = [leaf('a', 2), leaf('b', 1), leaf('c'), leaf('d', 1)];
+		const { result } = renderHook(() => useIncidentFolding(rows, byId(incident(1, 2), incident(2, 1))));
+		const folders = result.current.foldedRows.filter((r) => r.type === 'incident');
+		expect(rowKinds(result.current.foldedRows)).toEqual(['leaf:c', 'incident', 'incident']);
+		expect(folders.map((f) => (f.type === 'incident' ? f.incident.id : null))).toEqual([2, 1]);
+	});
+
+	test('the folder carries its folded members, for the folder checkbox', () => {
+		const rows = [leaf('a'), leaf('b', 1), leaf('d', 1)];
+		const { result } = renderHook(() => useIncidentFolding(rows, byId(incident(1, 5))));
+		const folder = result.current.foldedRows.find((r) => r.type === 'incident');
+		expect(folder?.type === 'incident' && folder.members.map((m) => m.id)).toEqual(['b', 'd']);
 	});
 
 	test('expanding emits the members right under the folder, marked as members', () => {
 		const rows = [leaf('a'), leaf('b', 1), leaf('c'), leaf('d', 1)];
 		const { result } = renderHook(() => useIncidentFolding(rows, byId(incident(1, 2))));
 		act(() => result.current.toggleIncident(1));
-		expect(rowKinds(result.current.foldedRows)).toEqual(['leaf:a', 'incident', 'leaf:b*', 'leaf:d*', 'leaf:c']);
+		expect(rowKinds(result.current.foldedRows)).toEqual(['leaf:a', 'leaf:c', 'incident', 'leaf:b*', 'leaf:d*']);
 	});
 
 	test('shownCount reflects only the members present in the current rows', () => {
