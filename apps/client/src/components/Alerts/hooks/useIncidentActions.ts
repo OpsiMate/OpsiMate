@@ -92,9 +92,10 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 		}
 	};
 
-	const addSelectionToIncident = async (incidentId: number) => {
+	const addSelectionToIncident = (incidentId: number) => addAlertsToIncident(selectedAlerts, incidentId);
+
+	const addAlertsToIncident = async (alerts: Alert[], incidentId: number) => {
 		const incident = incidentsById.get(incidentId);
-		const alerts = selectedAlerts;
 		closeDialogIf('create');
 		onSelectAlerts([]);
 		try {
@@ -109,14 +110,15 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 	// Bulk "Remove from incident": the selection may span several incidents, and the
 	// endpoint is per incident, so group the members by theirs. Alerts in no incident are
 	// left alone.
-	const removeSelectionFromIncidents = async () => {
+	const removeSelectionFromIncidents = () => removeAlertsFromIncidents(selectedAlerts);
+
+	const removeAlertsFromIncidents = async (selection: Alert[]) => {
 		const byIncident = new Map<number, Alert[]>();
-		for (const alert of selectedAlerts) {
+		for (const alert of selection) {
 			if (alert.incidentId == null) continue;
 			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert]);
 		}
 		if (byIncident.size === 0) return;
-		const selection = selectedAlerts;
 		closeDialogIf('create');
 		onSelectAlerts([]);
 		setRemovalPending(true);
@@ -214,9 +216,21 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 		}
 	};
 
+	// Drag and drop: the dialog reads the selection, so "create from these alerts" first
+	// makes them the selection, then opens it.
+	const openCreateDialogFor = (alerts: Alert[]) => {
+		onSelectAlerts(alerts);
+		setDialog('create');
+	};
+
 	return {
 		incidents,
 		incidentsById,
+		// The incidents list is loaded and trustworthy (drag targets, dissolution checks).
+		incidentsReady: !isLoading && !isError,
+		addAlertsToIncident,
+		removeAlertsFromIncidents,
+		openCreateDialogFor,
 		// The open panel's incident, or null (also while the list has not loaded it yet).
 		selectedIncident: selectedIncidentId != null ? (incidentsById.get(selectedIncidentId) ?? null) : null,
 		selectedIncidentId,

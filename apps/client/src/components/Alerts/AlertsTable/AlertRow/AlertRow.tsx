@@ -1,4 +1,6 @@
-import { Fragment, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { dragId, dropId } from '../../AlertDragAndDrop';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,9 @@ export interface AlertRowProps {
 	onUnresolveAlert?: (alertId: string) => void;
 	// Set on rows rendered under an incident folder; adds "Remove from incident".
 	onRemoveFromIncident?: (alertId: string) => void;
+	// Drag the row (or the selection it is part of) onto an incident folder, another row,
+	// or the drop tray; and accept drops. The page owns the DndContext and the outcome.
+	dragAndDrop?: boolean;
 	onSelectAlerts?: (alerts: Alert[]) => void;
 	isResolved?: boolean;
 	isDragging?: boolean;
@@ -70,6 +75,7 @@ export const AlertRow = ({
 	onDeleteAlert,
 	onUnresolveAlert,
 	onRemoveFromIncident,
+	dragAndDrop = false,
 	onSelectAlerts,
 	isResolved = false,
 	isDragging = false,
@@ -86,7 +92,37 @@ export const AlertRow = ({
 	// Set by a Ctrl+left press on the row itself, so its contextmenu (button 0 or 2) is suppressed.
 	const ctrlPrimaryPressRef = useRef(false);
 
+	const {
+		setNodeRef: setDragRef,
+		listeners: dragListeners,
+		isDragging: isBeingDragged,
+	} = useDraggable({ id: dragId(alert.id), data: { alert }, disabled: !dragAndDrop });
+	const { setNodeRef: setDropRef, isOver: isDropTarget } = useDroppable({
+		id: dropId.alert(alert.id),
+		data: { alert },
+		disabled: !dragAndDrop,
+	});
+	// The click that ends a drag lands on this row; it must not open or select it. The
+	// flag is armed for the drag and disarmed a tick after it ends: the browser fires that
+	// click (if the pointer is still over this row) before a zero-delay timer runs, and a
+	// drop elsewhere produces no click at all, so the next real click must go through.
+	const wasDragging = useRef(false);
+	useEffect(() => {
+		if (isBeingDragged) {
+			wasDragging.current = true;
+			return;
+		}
+		const disarm = setTimeout(() => {
+			wasDragging.current = false;
+		}, 0);
+		return () => clearTimeout(disarm);
+	}, [isBeingDragged]);
+
 	const handleRowClick = (e: React.MouseEvent) => {
+		if (wasDragging.current) {
+			wasDragging.current = false;
+			return;
+		}
 		if (onSelectAlerts && isToggleModifier(e)) {
 			// The toggle already happened on mouseup via the drag hook; without one, toggle here.
 			if (!onDragStart && !isForeignTarget(e)) onSelectAlert(alert);
@@ -169,7 +205,12 @@ export const AlertRow = ({
 
 	return (
 		<TableRow
+			ref={(node) => {
+				setDragRef(node);
+				setDropRef(node);
+			}}
 			data-alert-id={alert.id}
+			{...(dragAndDrop ? dragListeners : {})}
 			className={cn(
 				'h-8 cursor-pointer hover:bg-muted/50',
 				COLUMN_SEPARATOR_CLASSES,
@@ -183,7 +224,12 @@ export const AlertRow = ({
 				alert.isRead === false && 'font-black',
 				// The alert currently open in the details panel: tinted row + accent edge,
 				// inset shadow instead of a border so the columns don't shift.
-				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary'
+				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary',
+				// Drag and drop: the dragged row dims (the overlay follows the pointer); a row
+				// under a drag shows it will take the drop.
+				dragAndDrop && 'select-none',
+				isBeingDragged && 'opacity-40',
+				isDropTarget && 'ring-2 ring-inset ring-primary bg-primary/10'
 			)}
 			onClick={handleRowClick}
 			onMouseDown={handleRowMouseDown}

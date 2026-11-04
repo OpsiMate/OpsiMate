@@ -81,6 +81,7 @@ export const AlertsTable = ({
 	onAlertClick,
 	activeAlertId = null,
 	incidentsById,
+	dragAndDrop = false,
 	onOpenIncident,
 	activeIncidentId = null,
 	onEditIncident,
@@ -629,6 +630,7 @@ export const AlertsTable = ({
 									onEditIncident={onEditIncident}
 									onUngroupIncident={onUngroupIncident}
 									onRemoveFromIncident={onRemoveFromIncident}
+									dragAndDrop={dragAndDrop}
 									onSelectAlert={handleSelectAlert}
 									onSelectRange={handleSelectRange}
 									onSelectOnly={handleSelectOnly}
