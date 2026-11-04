@@ -6,6 +6,7 @@ import { INCIDENT_SELECTION_LABELS, INCIDENT_SELECTION_STATE, IncidentSelectionS
 import { formatShortDateTime } from '@/lib/datetime';
 import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
+import { useId } from 'react';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,6 +15,8 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IncidentSummary } from '@OpsiMate/shared';
+import { useDroppable } from '@dnd-kit/core';
+import { dropId } from '../../AlertDragAndDrop';
 import { ChevronDown, ChevronRight, FolderOpen, Folder, MoreVertical, Pencil, Ungroup, User } from 'lucide-react';
 
 interface IncidentRowProps {
@@ -33,6 +36,8 @@ interface IncidentRowProps {
 	selectionState?: IncidentSelectionState;
 	// The folder checkbox: select every member, or unselect them all.
 	onToggleSelection?: () => void;
+	// Accept alerts dragged onto the folder (the page owns the DndContext).
+	dropTarget?: boolean;
 }
 
 // The folder row an incident renders as in the alerts table. The row body toggles
@@ -50,12 +55,19 @@ export const IncidentRow = ({
 	isActive,
 	selectionState,
 	onToggleSelection,
+	dropTarget = false,
 }: IncidentRowProps) => {
 	const partial = shownCount < incident.alertCount;
+	// An incident spanning several group-by segments renders one folder per segment; each
+	// is its own drop target.
+	const dropScope = useId();
+	const { setNodeRef, isOver } = useDroppable({ id: dropId.incident(incident.id, dropScope), disabled: !dropTarget });
 	return (
 		<div
+			ref={setNodeRef}
 			className={cn(
 				'flex items-center gap-2 h-9 border-b border-border bg-primary/[0.04] hover:bg-primary/[0.08] pr-2 cursor-pointer select-none',
+				isOver && 'ring-2 ring-inset ring-primary bg-primary/15',
 				// Without a checkbox cell the chevron takes the select column's padding.
 				selectionState === undefined && 'pl-2',
 				isActive && 'bg-primary/10 shadow-[inset_3px_0_0_0] shadow-primary'
@@ -65,9 +77,11 @@ export const IncidentRow = ({
 		>
 			{selectionState !== undefined && (
 				// Sits under the table's select column so the folder checkbox lines up with the
-				// rows' checkboxes. Mixed state when only some members are selected.
+				// rows' checkboxes: same width, and the same left-only padding the table cells get
+				// (TableCell drops its right padding around a checkbox). Mixed state when only
+				// some members are selected.
 				<div
-					className="flex shrink-0 items-center justify-center"
+					className="flex shrink-0 items-center justify-center pl-2"
 					style={{ width: SELECT_COLUMN_WIDTH }}
 					onClick={(e) => e.stopPropagation()}
 				>

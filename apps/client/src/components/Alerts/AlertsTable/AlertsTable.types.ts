@@ -33,6 +33,10 @@ export interface AlertsTableProps {
 	// Incident summaries keyed by id; rows whose alert carries a matching incidentId
 	// fold under a folder row. Absent = no folding (e.g. playground mode).
 	incidentsById?: Map<number, IncidentSummary>;
+	// Rows can be dragged onto incident folders / other rows (the page provides the DndContext).
+	dragAndDrop?: boolean;
+	// Incident members are being dragged: show the "out of the incident" drop zone.
+	removeDropZone?: boolean;
 	// Opens the incident details panel (folder-row name click).
 	onOpenIncident?: (incidentId: number) => void;
 	activeIncidentId?: number | null;
