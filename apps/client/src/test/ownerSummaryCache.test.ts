@@ -26,11 +26,15 @@ const node = (value: string, count: number): AlertGroupSummaryNode => ({
 const counts = (nodes: AlertGroupSummaryNode[] | undefined) =>
 	Object.fromEntries((nodes ?? []).map((n) => [n.value, n.count]));
 
-const listKey = ['alerts', 'api', { sort: 'startsAt' }] as const;
-const otherListKey = ['alerts', 'api', { sort: 'severity' }] as const;
-const ownerSummariesKey = ['alerts', 'groups', 'active', ['owner'], null, null, null, null] as const;
-const nestedOwnerSummariesKey = ['alerts', 'groups', 'active', ['owner', 'severity'], null, null, null, null] as const;
-const severitySummariesKey = ['alerts', 'groups', 'active', ['severity'], null, null, null, null] as const;
+const scope = { filters: { severity: ['critical'] }, from: '2026-11-01T00:00:00Z', to: null, search: undefined };
+const listKey = ['alerts', 'api', { ...scope, sort: 'startsAt' }] as const;
+const otherListKey = ['alerts', 'api', { ...scope, sort: 'severity' }] as const;
+const summariesKey = (groupBy: string[], filters: unknown = scope.filters) =>
+	['alerts', 'groups', 'active', groupBy, filters, scope.from, null, null] as const;
+const ownerSummariesKey = summariesKey(['owner']);
+const otherScopeSummariesKey = summariesKey(['owner'], { severity: ['warning'] });
+const nestedOwnerSummariesKey = summariesKey(['owner', 'severity']);
+const severitySummariesKey = summariesKey(['severity']);
 const resolvedOwnerSummariesKey = ['alerts', 'groups', 'resolved', ['owner'], null, null, null, null] as const;
 
 const seed = () => {
@@ -45,6 +49,7 @@ const seed = () => {
 	client.setQueryData(['users'], [{ id: '1', fullName: 'Idan QA' }]);
 	client.setQueryData(ownerSummariesKey, [node('Idan QA', 1), node('Unassigned', 2)]);
 	client.setQueryData(nestedOwnerSummariesKey, [node('Idan QA', 1), node('Unassigned', 2)]);
+	client.setQueryData(otherScopeSummariesKey, [node('Unassigned', 9)]);
 	client.setQueryData(severitySummariesKey, [{ ...node('critical', 3), field: 'severity' }]);
 	client.setQueryData(resolvedOwnerSummariesKey, [node('Unassigned', 5)]);
 	return client;
@@ -54,18 +59,18 @@ describe('ownerMovesBetween', () => {
 	test('reads each alert once across lists; unchanged owners are not moves', () => {
 		const client = seed();
 		const snapshot = client.getQueriesData({ queryKey: ['alerts'] });
-		const moves = ownerMovesBetween(
+		const byScope = ownerMovesBetween(
 			snapshot,
 			updateAlertsInCache(new Set(['a', 'c']), (a) => ({ ...a, ownerId: '1' }))
 		);
-		expect([...moves]).toEqual([['a', { from: null, to: '1' }]]);
+		expect([...byScope.values()].map((moves) => [...moves])).toEqual([[['a', { from: null, to: '1' }]]]);
 	});
 
 	test('an alert the updater drops from the lists leaves its bucket', () => {
 		const client = seed();
 		const snapshot = client.getQueriesData({ queryKey: ['alerts'] });
-		const moves = ownerMovesBetween(snapshot, removeAlertsFromCache(new Set(['c'])));
-		expect([...moves]).toEqual([['c', { from: '1', to: undefined }]]);
+		const byScope = ownerMovesBetween(snapshot, removeAlertsFromCache(new Set(['c'])));
+		expect([...byScope.values()].map((moves) => [...moves])).toEqual([[['c', { from: '1', to: undefined }]]]);
 	});
 });
 
@@ -94,7 +99,7 @@ describe('shiftOwnerSummaries', () => {
 });
 
 describe('applyToAlertCaches shifts the owner summaries with the rows', () => {
-	test('assigning two unowned alerts moves them to the owner, under both owner groupings only', async () => {
+	test('assigning two unowned alerts moves them to the owner in the flat owner summary of that scope only', async () => {
 		const client = seed();
 		const snapshot = await applyToAlertCaches(
 			client,
@@ -102,7 +107,9 @@ describe('applyToAlertCaches shifts the owner summaries with the rows', () => {
 			updateAlertsInCache(new Set(['a', 'b']), (a) => ({ ...a, ownerId: '1' }))
 		);
 		expect(counts(client.getQueryData(ownerSummariesKey))).toEqual({ 'Idan QA': 3 });
-		expect(counts(client.getQueryData(nestedOwnerSummariesKey))).toEqual({ 'Idan QA': 3 });
+		// Nested groupings (children, rollup status) and other scopes wait for the refetch.
+		expect(counts(client.getQueryData(nestedOwnerSummariesKey))).toEqual({ 'Idan QA': 1, Unassigned: 2 });
+		expect(counts(client.getQueryData(otherScopeSummariesKey))).toEqual({ Unassigned: 9 });
 		expect(counts(client.getQueryData(severitySummariesKey))).toEqual({ critical: 3 });
 		expect(counts(client.getQueryData(resolvedOwnerSummariesKey))).toEqual({ Unassigned: 5 });
 		// Rolling back puts the counts back with the rows.
