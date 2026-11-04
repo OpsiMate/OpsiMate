@@ -57,7 +57,7 @@ import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActionDialog';
 import { AlertsTable } from './AlertsTable';
-import { AlertDragOverlay, IncidentDropTray } from './AlertDragAndDrop';
+import { AlertDragOverlay, IncidentDropTray, preferSpecificTargets } from './AlertDragAndDrop';
 import { useAlertDragAndDrop } from './hooks/useAlertDragAndDrop';
 import { DndContext, pointerWithin } from '@dnd-kit/core';
 import { AssignmentPane } from './AssignmentPane';
@@ -1073,6 +1073,7 @@ const Alerts = () => {
 			activeAlertId={syncedSelectedAlert?.id ?? null}
 			incidentsById={incidentsById}
 			dragAndDrop={canDragIntoIncidents}
+			removeDropZone={draggingMembers}
 			onOpenIncident={handleOpenIncident}
 			activeIncidentId={selectedIncidentId}
 			onEditIncident={openIncidentDialog}
@@ -1165,6 +1166,8 @@ const Alerts = () => {
 		!isPlaygroundMode() &&
 		selectedAlerts.length > 0 &&
 		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
+	// Members are being dragged: the tables show the "out of the incident" drop zone.
+	const draggingMembers = alertDrag.dragging?.some((alert) => alert.incidentId != null) ?? false;
 	// Dragging rows into incidents: same guards, minus "something is selected" (a drag
 	// selects as it starts), plus a loaded incidents list for the drop targets.
 	const canDragIntoIncidents =
@@ -1212,7 +1215,7 @@ const Alerts = () => {
 		<DashboardLayout>
 			<DndContext
 				sensors={alertDrag.sensors}
-				collisionDetection={pointerWithin}
+				collisionDetection={(args) => preferSpecificTargets(pointerWithin(args))}
 				onDragStart={alertDrag.onDragStart}
 				onDragEnd={alertDrag.onDragEnd}
 				onDragCancel={alertDrag.onDragCancel}
@@ -1578,6 +1581,7 @@ const Alerts = () => {
 										activeAlertId={syncedSelectedAlert?.id ?? null}
 										incidentsById={incidentsById}
 										dragAndDrop={canDragIntoIncidents}
+										removeDropZone={draggingMembers}
 										onOpenIncident={handleOpenIncident}
 										activeIncidentId={selectedIncidentId}
 										onEditIncident={openIncidentDialog}
@@ -1630,6 +1634,7 @@ const Alerts = () => {
 										activeAlertId={syncedSelectedAlert?.id ?? null}
 										incidentsById={incidentsById}
 										dragAndDrop={canDragIntoIncidents}
+										removeDropZone={draggingMembers}
 										onOpenIncident={handleOpenIncident}
 										activeIncidentId={selectedIncidentId}
 										onEditIncident={openIncidentDialog}

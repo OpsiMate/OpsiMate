@@ -1,6 +1,12 @@
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
 import { describe, expect, test } from 'vitest';
-import { canStartAlertDrag, dropId, incidentsDissolvedBy, resolveDrop } from '@/components/Alerts/AlertDragAndDrop';
+import {
+	canStartAlertDrag,
+	dropId,
+	incidentsDissolvedBy,
+	resolveDrop,
+	preferSpecificTargets,
+} from '@/components/Alerts/AlertDragAndDrop';
 
 const alert = (id: string, incidentId: number | null = null): Alert => ({ id, incidentId }) as Alert;
 const incident = (id: number, alertIds: string[]): IncidentSummary =>
@@ -38,6 +44,12 @@ describe('resolveDrop', () => {
 		expect(resolveDrop(dropId.trayNew, [a, b], alerts)).toEqual({ kind: 'create', alerts: [a, b] });
 		expect(resolveDrop(dropId.trayRemove, [a, m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
 		expect(resolveDrop(dropId.trayRemove, [a], alerts)).toBeNull();
+	});
+
+	test('the "out of the incident" zone and the table background remove members only', () => {
+		expect(resolveDrop(dropId.ungrouped, [a, m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
+		expect(resolveDrop(dropId.ungroupedArea, [m1, m2], alerts)).toEqual({ kind: 'remove', alerts: [m1, m2] });
+		expect(resolveDrop(dropId.ungroupedArea, [a], alerts)).toBeNull();
 	});
 
 	test('no target, nothing dragged, or an unknown id does nothing', () => {
@@ -85,5 +97,15 @@ describe('canStartAlertDrag', () => {
 		const inner = cell.appendChild(document.createElement('span'));
 		expect(canStartAlertDrag(press({ target: inner }))).toBe(false);
 		expect(canStartAlertDrag(press({ target: document.createElement('button') }))).toBe(false);
+	});
+});
+
+describe('preferSpecificTargets', () => {
+	test('a row or folder under the pointer beats the table background; the background stands alone', () => {
+		const area = { id: dropId.ungroupedArea };
+		const row = { id: dropId.alert('a') };
+		expect(preferSpecificTargets([area, row])).toEqual([row]);
+		expect(preferSpecificTargets([area])).toEqual([area]);
+		expect(preferSpecificTargets([])).toEqual([]);
 	});
 });

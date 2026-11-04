@@ -8,6 +8,20 @@ export const dropId = {
 	trayIncident: (incidentId: number) => `tray:incident:${incidentId}`,
 	trayNew: 'tray:new',
 	trayRemove: 'tray:remove',
+	// Out of the incident: the band that appears above the rows while members are dragged...
+	ungrouped: 'ungrouped',
+	// ...and the table's background, so dropping on empty space below the rows works too.
+	ungroupedArea: 'ungrouped-area',
+};
+
+const AREA_TARGETS = new Set<string>([dropId.ungroupedArea]);
+
+// The table background is a droppable that contains every row and folder, so the
+// pointer is always "within" it too. A drop means the most specific thing under the
+// pointer: rows, folders and tray chips win; the background only counts on its own.
+export const preferSpecificTargets = <T extends { id: string | number }>(collisions: T[]): T[] => {
+	const specific = collisions.filter((collision) => !AREA_TARGETS.has(String(collision.id)));
+	return specific.length > 0 ? specific : collisions;
 };
 
 export const dragId = (alertId: string) => `drag:${alertId}`;
@@ -49,7 +63,7 @@ export const resolveDrop = (
 		return { kind: 'add', incidentId };
 	}
 	if (overId === dropId.trayNew) return { kind: 'create', alerts: dragged };
-	if (overId === dropId.trayRemove) {
+	if (overId === dropId.trayRemove || overId === dropId.ungrouped || overId === dropId.ungroupedArea) {
 		const members = dragged.filter((alert) => alert.incidentId != null);
 		return members.length > 0 ? { kind: 'remove', alerts: members } : null;
 	}
