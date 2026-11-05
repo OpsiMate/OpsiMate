@@ -16,7 +16,11 @@ export interface AlertLastCommentColumnProps {
 // the full comment thread lives in the details panel's Comments tab.
 export const AlertLastCommentColumn = ({ alert, expanded = false, className, style }: AlertLastCommentColumnProps) => {
 	return (
-		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell
+			style={style}
+			data-copy-value={alert.lastComment ?? undefined}
+			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
+		>
 			<span
 				className={cn(
 					'text-sm text-foreground block',

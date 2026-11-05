@@ -18,7 +18,11 @@ export const AlertSummaryColumn = ({ alert, expanded = false, className, style }
 	// the details panel. Collapsed it is a single truncated line; expanded it wraps but
 	// is capped at 6 lines (line-clamp) so one huge summary can't fill the viewport.
 	return (
-		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell
+			style={style}
+			data-copy-value={alert.summary ? stripHtml(alert.summary) : undefined}
+			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
+		>
 			<span
 				className={cn(
 					'text-sm text-foreground block',
