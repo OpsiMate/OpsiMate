@@ -6,6 +6,7 @@ import {
 	GROUP_STATUS_BADGE_CLASS,
 	GROUP_STATUS_BADGE_VARIANT,
 } from '../../AlertsTable.constants';
+import { INCIDENT_PARTIAL_COUNT_LABEL } from '../IncidentRow.constants';
 import { incidentStatus, incidentStatusBreakdown } from '../IncidentRow.utils';
 
 interface IncidentCountBadgeProps {
@@ -25,7 +26,7 @@ export const IncidentCountBadge = ({ incident, shownCount }: IncidentCountBadgeP
 			variant={GROUP_STATUS_BADGE_VARIANT[status]}
 			className={cn(GROUP_COUNT_BADGE_CLASSES, GROUP_STATUS_BADGE_CLASS[status])}
 			title={breakdown}
-			aria-label={breakdown}
+			aria-label={partial ? INCIDENT_PARTIAL_COUNT_LABEL(shownCount, incident.alertCount, breakdown) : breakdown}
 		>
 			{partial ? `${shownCount}/${incident.alertCount}` : incident.alertCount}
 		</Badge>

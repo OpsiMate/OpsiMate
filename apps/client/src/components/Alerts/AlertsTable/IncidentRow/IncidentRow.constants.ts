@@ -20,3 +20,8 @@ export const INCIDENT_STATUS_LABELS: Record<'firing' | 'silenced' | 'resolved', 
 	silenced: 'silenced',
 	resolved: 'resolved',
 };
+
+// The count badge's accessible name when filters hide some members: the visible
+// "shown/total" first, then the full split.
+export const INCIDENT_PARTIAL_COUNT_LABEL = (shown: number, total: number, breakdown: string): string =>
+	`${shown}/${total} shown, ${breakdown}`;
