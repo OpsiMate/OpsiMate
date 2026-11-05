@@ -21,7 +21,7 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, 
 	return (
 		<TableCell
 			style={style}
-			data-copy-value={value || undefined}
+			data-copy-value={value || ''}
 			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
 		>
 			{value ? (

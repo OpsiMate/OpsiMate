@@ -25,6 +25,8 @@ describe('copyValueOf', () => {
 		expect(copyValueOf(cellFor('<td>  Idan QA </td>'))).toBe('Idan QA');
 		expect(copyValueOf(cellFor('<td><button aria-label="x"></button></td>'))).toBeNull();
 		expect(copyValueOf(cellFor('<td data-select-cell>x</td>'))).toBeNull();
+		// A placeholder cell ("-") declares it has nothing to copy.
+		expect(copyValueOf(cellFor('<td data-copy-value="">-</td>'))).toBeNull();
 		expect(copyValueOf(document.body)).toBeNull();
 		expect(copyValueOf(null)).toBeNull();
 	});
@@ -43,7 +45,7 @@ describe('AlertCellContextMenu', () => {
 		writeText.mockClear();
 		Object.assign(navigator, { clipboard: { writeText } });
 	});
-	const alert = { id: 'a', alertName: 'Disk almost full', summary: '  /dev/sda1 at 97%  ' } as Alert;
+	const alert = { id: 'a', alertName: 'Disk almost full', summary: '  <b>/dev/sda1</b> at 97%  ' } as Alert;
 	const open = (cellValue: string | null) => {
 		render(
 			<ContextMenu>
@@ -64,7 +66,7 @@ describe('AlertCellContextMenu', () => {
 		await waitFor(() => expect(writeText).toHaveBeenCalledWith('Disk almost full'));
 	});
 
-	test('copies the summary trimmed; no "Copy value" when the click was not on a cell', async () => {
+	test('copies the summary as plain text, trimmed; no "Copy value" when the click was not on a cell', async () => {
 		open(null);
 		expect(await screen.findByText('Copy alert name')).toBeInTheDocument();
 		expect(screen.queryByText('Copy value')).toBeNull();

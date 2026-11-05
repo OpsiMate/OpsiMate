@@ -18,7 +18,7 @@ export const AlertLastCommentColumn = ({ alert, expanded = false, className, sty
 	return (
 		<TableCell
 			style={style}
-			data-copy-value={alert.lastComment ?? undefined}
+			data-copy-value={alert.lastComment ?? ''}
 			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
 		>
 			<span

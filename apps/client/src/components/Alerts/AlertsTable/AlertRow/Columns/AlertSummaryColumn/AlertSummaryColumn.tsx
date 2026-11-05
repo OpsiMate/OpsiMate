@@ -20,7 +20,7 @@ export const AlertSummaryColumn = ({ alert, expanded = false, className, style }
 	return (
 		<TableCell
 			style={style}
-			data-copy-value={alert.summary ? stripHtml(alert.summary) : undefined}
+			data-copy-value={alert.summary ? stripHtml(alert.summary) : ''}
 			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
 		>
 			<span

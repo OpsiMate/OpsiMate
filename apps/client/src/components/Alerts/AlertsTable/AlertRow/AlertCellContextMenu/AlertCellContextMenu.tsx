@@ -2,7 +2,8 @@ import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '@/com
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { Alert } from '@OpsiMate/shared';
 import { Copy } from 'lucide-react';
-import { CELL_COPY_LABELS, COPY_PREVIEW_MAX_CHARS } from '../AlertRow.constants';
+import { stripHtml } from '@/components/shared';
+import { CELL_COPY_LABELS, COPY_PREVIEW_MAX_CHARS, COPY_SUBJECTS } from './AlertCellContextMenu.constants';
 import { previewValue } from '../AlertRow.utils';
 
 interface AlertCellContextMenuProps {
@@ -18,8 +19,9 @@ interface AlertCellContextMenuProps {
 export const AlertCellContextMenu = ({ alert, cellValue }: AlertCellContextMenuProps) => {
 	const { copy } = useCopyToClipboard();
 	const copyWithToast = (value: string, what: string) =>
-		copy(value, { successDescription: CELL_COPY_LABELS.copied(what), failureDescription: what });
-	const summary = alert.summary?.trim() || null;
+		copy(value, { successDescription: COPY_SUBJECTS.copied(what), failureDescription: what });
+	// The same plain text the cell shows and its hover button copies; none if only markup.
+	const summary = alert.summary ? stripHtml(alert.summary).trim() || null : null;
 	return (
 		<ContextMenuContent className="min-w-48">
 			{cellValue !== null && (
@@ -38,12 +40,12 @@ export const AlertCellContextMenu = ({ alert, cellValue }: AlertCellContextMenuP
 					<ContextMenuSeparator />
 				</>
 			)}
-			<ContextMenuItem onSelect={() => copyWithToast(alert.alertName, 'Alert name')}>
+			<ContextMenuItem onSelect={() => copyWithToast(alert.alertName, COPY_SUBJECTS.alertName)}>
 				<Copy className="mr-2 h-3.5 w-3.5 shrink-0" />
 				{CELL_COPY_LABELS.alertName}
 			</ContextMenuItem>
 			{summary && (
-				<ContextMenuItem onSelect={() => copyWithToast(summary, 'Summary')}>
+				<ContextMenuItem onSelect={() => copyWithToast(summary, COPY_SUBJECTS.summary)}>
 					<Copy className="mr-2 h-3.5 w-3.5 shrink-0" />
 					{CELL_COPY_LABELS.summary}
 				</ContextMenuItem>
