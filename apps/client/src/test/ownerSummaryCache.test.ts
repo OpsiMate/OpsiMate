@@ -137,3 +137,30 @@ describe('applyToAlertCaches shifts the owner summaries with the rows', () => {
 		expect(counts(client.getQueryData(ownerSummariesKey))).toEqual({ 'Idan QA': 1, Unassigned: 2 });
 	});
 });
+
+describe('owner summaries that wait for the refetch instead', () => {
+	test('a summary filtered by owner, or a client without the users list, waits for the refetch', async () => {
+		const client = seed();
+		const ownerFilteredKey = summariesKey(['owner'], { owner: ['Idan QA'] });
+		client.setQueryData(ownerFilteredKey, [node('Idan QA', 1)]);
+		client.setQueryData(['alerts', 'api', { ...scope, filters: { owner: ['Idan QA'] }, sort: 'startsAt' }], {
+			pages: [{ alerts: [alert('c', '1')] }],
+			pageParams: [],
+		});
+		await applyToAlertCaches(
+			client,
+			['alerts'],
+			updateAlertsInCache(new Set(['c']), (a) => ({ ...a, ownerId: '2' }))
+		);
+		expect(counts(client.getQueryData(ownerFilteredKey))).toEqual({ 'Idan QA': 1 });
+
+		const noUsers = seed();
+		noUsers.removeQueries({ queryKey: ['users'] });
+		await applyToAlertCaches(
+			noUsers,
+			['alerts'],
+			updateAlertsInCache(new Set(['a']), (a) => ({ ...a, ownerId: '1' }))
+		);
+		expect(counts(noUsers.getQueryData(ownerSummariesKey))).toEqual({ 'Idan QA': 1, Unassigned: 2 });
+	});
+});

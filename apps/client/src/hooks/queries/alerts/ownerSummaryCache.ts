@@ -56,10 +56,16 @@ const listScope = (key: QueryKey): string | null =>
 // from, to, search] (see useAlertGroupSummaries). Only the flat owner grouping is
 // shifted: a nested one would need its children and rollup status recomputed too, and
 // nothing reads it for the panes — it waits for the refetch.
+// A scope filtered BY owner cannot be shifted blind: an alert handed to another owner
+// leaves it (or enters it) rather than moving between its buckets — left for the refetch.
+const filtersByOwner = (filters: ScopeParams['filters']): boolean =>
+	!!filters && ((filters.owner?.length ?? 0) > 0 || (filters['!owner']?.length ?? 0) > 0);
+
 const ownerSummaryScope = (key: QueryKey): string | null => {
 	const groupBy = key[3];
 	if (key[1] !== 'groups' || key[2] !== 'active' || !Array.isArray(groupBy)) return null;
 	if (groupBy.length !== 1 || groupBy[0] !== 'owner') return null;
+	if (filtersByOwner(key[4] as ScopeParams['filters'])) return null;
 	return scopeKey({
 		filters: key[4] as ScopeParams['filters'],
 		from: key[5] as string | null,
@@ -159,10 +165,13 @@ export const shiftOwnerSummaries = (
 
 // Paints each scope's moves onto the cached active owner summaries of that same scope.
 // Display names come from the cached users list, the same way the server labels its
-// buckets; an owner it does not know gets the server's own fallback label.
+// buckets (an owner it does not know gets the server's own fallback label). Without
+// that list the labels could not match the buckets, so the summaries wait for the
+// refetch instead — the alerts page loads it alongside the table, so in practice they do not.
 export const applyOwnerMovesToSummaries = (queryClient: QueryClient, movesByScope: OwnerMovesByScope): void => {
 	if ([...movesByScope.values()].every((moves) => moves.size === 0)) return;
-	const users = queryClient.getQueryData<UserInfo[]>(queryKeys.users) ?? [];
+	const users = queryClient.getQueryData<UserInfo[]>(queryKeys.users);
+	if (!users) return;
 	const owners: AlertOwnerInfo[] = users.map((user) => ({ id: String(user.id), fullName: user.fullName }));
 	const nameOf = (ownerId: string | null) => getOwnerDisplayName(ownerId, owners);
 	for (const [key, data] of queryClient.getQueriesData({ queryKey: [...queryKeys.alerts, 'groups', 'active'] })) {
