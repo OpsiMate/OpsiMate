@@ -1,4 +1,4 @@
-import { groupAlerts, flattenGroups } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
+import { flattenGroups, groupAlerts, memberSelectionState } from '@/components/Alerts/AlertsTable/AlertsTable.utils';
 import { AlertStatus, type Alert } from '@OpsiMate/shared';
 import { describe, expect, it } from 'vitest';
 
@@ -94,5 +94,29 @@ describe('flattening alert groups', () => {
 		).toEqual([rootKey, apiKey, '1', webKey, '2']);
 		expect(groups).toEqual(originalGroups);
 		expect(alerts.map((alert) => alert.id)).toEqual(['1', '2']);
+	});
+});
+
+describe('group members and their selection state', () => {
+	const alert = (id: string, service: string, env: string): Alert =>
+		({ id, status: 'firing', tags: { service, env } }) as unknown as Alert;
+	const alerts = [alert('1', 'api', 'prod'), alert('2', 'api', 'dev'), alert('3', 'web', 'prod')];
+	const byTag = (a: Alert, field: string) => (a.tags as Record<string, string>)[field];
+
+	it('a header carries every alert under it, nested groups included', () => {
+		const groups = groupAlerts(alerts, ['service', 'env'], byTag);
+		const flattened = flattenGroups(groups, new Set(groups.map((g) => (g.type === 'group' ? g.key : ''))));
+		// Expanded, so each top-level group is followed by its env sub-headers and rows.
+		const [api, web] = flattened.filter((item) => item.type === 'group' && item.level === 0);
+		// Members follow the nested order (env 'dev' sorts before 'prod').
+		expect(api.type === 'group' && api.members.map((a) => a.id)).toEqual(['2', '1']);
+		expect(web.type === 'group' && web.members.map((a) => a.id)).toEqual(['3']);
+	});
+
+	it('none / some / all of the members selected', () => {
+		expect(memberSelectionState(alerts, [])).toBe('none');
+		expect(memberSelectionState(alerts, [alerts[1]])).toBe('some');
+		expect(memberSelectionState(alerts, [...alerts])).toBe('all');
+		expect(memberSelectionState([], alerts)).toBe('none');
 	});
 });

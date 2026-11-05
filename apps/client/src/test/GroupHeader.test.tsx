@@ -13,6 +13,7 @@ const makeGroup = (isExpanded: boolean): FlatGroupItem => ({
 	level: 0,
 	isExpanded,
 	groupStatus: 'firing',
+	members: [],
 });
 
 describe.each([
@@ -37,5 +38,51 @@ describe.each([
 		fireEvent.click(screen.getByRole('button'));
 		expect(onToggle).toHaveBeenCalledTimes(1);
 		expect(onToggle).toHaveBeenCalledWith('status:firing');
+	});
+});
+
+describe.each([
+	['GroupHeader', GroupHeader],
+	['StickyGroupHeader', StickyGroupHeader],
+])('%s checkbox', (_name, Component) => {
+	const labels = { status: 'Status' };
+
+	it('is absent when the table has no selection', () => {
+		render(<Component item={makeGroup(false)} onToggle={vi.fn()} columnLabels={labels} />);
+		expect(screen.queryByRole('checkbox')).toBeNull();
+	});
+
+	it('reflects none / some / all of the group being selected, and names the group', () => {
+		const { rerender } = render(
+			<Component item={makeGroup(false)} onToggle={vi.fn()} columnLabels={labels} selectionState="none" />
+		);
+		expect(screen.getByRole('checkbox', { name: 'Select the alerts of group Status: firing' })).toHaveAttribute(
+			'data-state',
+			'unchecked'
+		);
+		rerender(<Component item={makeGroup(false)} onToggle={vi.fn()} columnLabels={labels} selectionState="some" />);
+		expect(screen.getByRole('checkbox')).toHaveAttribute('data-state', 'indeterminate');
+		rerender(<Component item={makeGroup(false)} onToggle={vi.fn()} columnLabels={labels} selectionState="all" />);
+		expect(screen.getByRole('checkbox', { name: 'Unselect the alerts of group Status: firing' })).toHaveAttribute(
+			'data-state',
+			'checked'
+		);
+	});
+
+	it('toggles the selection without expanding or collapsing the group', () => {
+		const onToggle = vi.fn();
+		const onToggleSelection = vi.fn();
+		render(
+			<Component
+				item={makeGroup(false)}
+				onToggle={onToggle}
+				columnLabels={labels}
+				selectionState="none"
+				onToggleSelection={onToggleSelection}
+			/>
+		);
+		fireEvent.click(screen.getByRole('checkbox'));
+		expect(onToggleSelection).toHaveBeenCalledTimes(1);
+		expect(onToggle).not.toHaveBeenCalled();
 	});
 });

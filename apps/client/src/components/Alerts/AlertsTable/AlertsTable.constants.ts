@@ -121,3 +121,16 @@ export const GROUP_STATUS_BADGE_CLASS: Record<GroupStatus, string> = {
 	resolved: '',
 	silenced: '',
 };
+
+// How many of a row's members (an incident folder's, a group's) are selected: drives
+// that row's checkbox.
+export type MemberSelectionState = 'none' | 'some' | 'all';
+export const MEMBER_SELECTION_STATE: Record<Uppercase<MemberSelectionState>, MemberSelectionState> = {
+	NONE: 'none',
+	SOME: 'some',
+	ALL: 'all',
+};
+// The checkbox a folder or group header selects its members with: the same small box
+// the rows use, filled for checked and mixed states.
+export const MEMBER_CHECKBOX_CLASSES =
+	'h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary';
