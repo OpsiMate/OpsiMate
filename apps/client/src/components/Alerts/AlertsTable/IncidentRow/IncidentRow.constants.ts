@@ -13,3 +13,10 @@ export const INCIDENT_SELECTION_LABELS: Record<'select' | 'unselect', (incidentN
 	select: (incidentName) => `Select the alerts of incident "${incidentName}"`,
 	unselect: (incidentName) => `Unselect the alerts of incident "${incidentName}"`,
 };
+
+// The buckets named in the count badge's tooltip ("3 alerts: 2 firing, 1 silenced").
+export const INCIDENT_STATUS_LABELS: Record<'firing' | 'silenced' | 'resolved', string> = {
+	firing: 'firing',
+	silenced: 'silenced',
+	resolved: 'resolved',
+};
