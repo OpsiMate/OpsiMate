@@ -1,3 +1,4 @@
+import type { GroupStatus } from './AlertsTable.types';
 export const ACTIONS_COLUMN = 'actions';
 
 export const SELECT_COLUMN_WIDTH = '40px';
@@ -103,3 +104,20 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 // cell (actions) and the aria-hidden filler cell that absorbs leftover width.
 export const COLUMN_SEPARATOR_CLASSES =
 	'[&>*:not(:last-child,[aria-hidden])]:shadow-[inset_-1px_0_0_0] [&>*:not(:last-child,[aria-hidden])]:shadow-border';
+
+// The count badge a group header (and an incident folder) opens with: its colour is the
+// group's rolled-up status, its width fixed so the numbers line up down the table.
+export const GROUP_COUNT_BADGE_CLASSES = 'h-5 min-w-10 justify-center px-1.5 text-xs rounded-sm shrink-0';
+export const GROUP_STATUS_BADGE_VARIANT: Record<GroupStatus, 'destructive' | 'success' | 'muted' | 'secondary'> = {
+	firing: 'destructive',
+	muted: 'secondary',
+	resolved: 'success',
+	silenced: 'muted',
+};
+// Muted groups are amber on top of the secondary variant.
+export const GROUP_STATUS_BADGE_CLASS: Record<GroupStatus, string> = {
+	firing: '',
+	muted: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+	resolved: '',
+	silenced: '',
+};
