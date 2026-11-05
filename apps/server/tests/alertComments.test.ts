@@ -4,6 +4,7 @@ import { SuperTest, Test } from 'supertest';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { AlertCommentsRepository } from '../src/dal/alertCommentsRepository';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { User, AlertComment } from '@OpsiMate/shared';
 
 async function createUserAndLogin(
 	app: SuperTest<Test>,
@@ -39,9 +40,10 @@ describe('/alerts/comments', () => {
 		app = await setupExpressApp(db);
 		commentsRepo = new AlertCommentsRepository(db);
 		jwtToken = await setupUserWithToken(app);
-		const user = db.prepare('SELECT id FROM users WHERE email = ?').get('provideruser@example.com') as {
-			id: string;
-		};
+		const user = db.prepare('SELECT id FROM users WHERE email = ?').get('provideruser@example.com') as Pick<
+			User,
+			'id'
+		>;
 		const userId = String(user.id);
 
 		const insertAlert = db.prepare(`
@@ -124,12 +126,22 @@ describe('/alerts/comments', () => {
 			'2026-08-13T00:00:00.000Z',
 			'2026-08-13T00:00:00.000Z'
 		);
+		insertComment.run(
+			'cm-4',
+			'an-1',
+			userId,
+			'Fourth comment',
+			'2026-08-11T00:00:00.000Z',
+			'2026-08-11T00:00:00.000Z'
+		);
 	});
 
 	describe('PATCH /api/v1/alerts/comments/:commentId', () => {
 		test('author can update their comment and updatedAt advances', async () => {
 			const commentRes = await app.get('/api/v1/alerts/an-1/comments').set('Authorization', `Bearer ${jwtToken}`);
-			const originalComment = commentRes.body.data.comments.find((c: { id: string }) => c.id === 'cm-1');
+			const originalComment = commentRes.body.data.comments.find(
+				(c: Pick<AlertComment, 'id'>) => c.id === 'cm-1'
+			);
 			const originalUpdatedAt = new Date(originalComment.updatedAt).getTime();
 
 			const res = await app
@@ -187,7 +199,9 @@ describe('/alerts/comments', () => {
 				.set('Authorization', `Bearer ${otherUserToken}`);
 			expect(res.status).toBe(500);
 			const commentRes = await app.get('/api/v1/alerts/an-1/comments').set('Authorization', `Bearer ${jwtToken}`);
-			const originalComment = commentRes.body.data.comments.some((c: { id: string }) => c.id === 'cm-1');
+			const originalComment = commentRes.body.data.comments.some(
+				(c: Pick<AlertComment, 'id'>) => c.id === 'cm-1'
+			);
 			expect(originalComment).toBe(true);
 		});
 	});
@@ -196,9 +210,10 @@ describe('/alerts/comments', () => {
 		test('returns comments newest first', async () => {
 			const res = await app.get('/api/v1/alerts/an-1/comments').set('Authorization', `Bearer ${jwtToken}`);
 			expect(res.status).toBe(200);
-			expect(res.body.data.comments).toHaveLength(2);
+			expect(res.body.data.comments).toHaveLength(3);
 			expect(res.body.data.comments[0].id).toBe('cm-2');
-			expect(res.body.data.comments[1].id).toBe('cm-1');
+			expect(res.body.data.comments[1].id).toBe('cm-4');
+			expect(res.body.data.comments[2].id).toBe('cm-1');
 		});
 	});
 
